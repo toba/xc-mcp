@@ -33,7 +33,9 @@ public struct CreateGroupTool: Sendable {
                     ]),
                     "path": .object([
                         "type": .string("string"),
-                        "description": .string("Relative path for the group (optional)"),
+                        "description": .string(
+                            "Relative path from parent group to the directory this group represents on disk. Required when the group should correspond to an actual directory (Relative to Group). Typically set to the same value as group_name (e.g., group_name='Models', path='Models'). If omitted, the group will be virtual (no corresponding directory on disk)."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("group_name")]),
