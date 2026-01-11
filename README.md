@@ -60,7 +60,7 @@ docker pull ghcr.io/giginet/xcodeproj-mcp-server
 ### Configuration for Claude Code
 
 ```bash
-claude mcp add xcodeproj -- docker run --rm -i -v $PWD:/workspace ghcr.io/giginet/xcodeproj-mcp-server /workspace
+claude mcp add xcodeproj -- docker run --pull=always --rm -i -v $PWD:/workspace ghcr.io/giginet/xcodeproj-mcp-server:latest /workspace
 ```
 
 We need to mount the current working directory (`$PWD`) to `/workspace` inside the container. This allows the server to access your Xcode projects.
