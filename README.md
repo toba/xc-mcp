@@ -59,11 +59,22 @@ docker pull ghcr.io/giginet/xcodeproj-mcp-server
 ### Configuration for Claude Code
 
 ```bash
-# Add MCP server using Docker
-$ claude mcp add xcodeproj -- docker run --rm -i -v $PWD:/workspace ghcr.io/giginet/xcodeproj-mcp-server /workspace
+claude mcp add xcodeproj -- docker run --rm -i -v $PWD:/workspace ghcr.io/giginet/xcodeproj-mcp-server /workspace
 ```
 
 We need to mount the current working directory (`$PWD`) to `/workspace` inside the container. This allows the server to access your Xcode projects.
+
+#### Recommended settings
+
+Enabling `ENABLE_TOOL_SEARCH` in `.claude/settings.json` activates dynamic MCP tool loading. This prevents unused MCP tools from consuming context.
+
+```json
+{
+  "env": {
+    "ENABLE_TOOL_SEARCH": "1"
+  }
+}
+```
 
 ### Configuration for Claude Desktop
 
