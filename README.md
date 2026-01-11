@@ -35,6 +35,7 @@ This server enables AI assistants and other MCP clients to:
 - **Add folder references**: Include external resource folders or asset directories as synchronized folder references in your project, automatically reflecting any file system changes
 - **Add build phases**: Integrate code formatters, linters, or custom build scripts into your targets (e.g., SwiftLint, SwiftFormat execution phases)
 - **Create frameworks and app extensions**: Quickly scaffold new framework targets or app extensions for modularizing your codebase
+- **Add Widget Extensions**: Automatically create and embed Widget Extension targets with proper configuration for iOS home screen widgets
 
 ### Project Configuration Management
 - **Automate Info.plist setup**: Programmatically configure Info.plist settings, entitlements, and provisioning profiles for different targets
