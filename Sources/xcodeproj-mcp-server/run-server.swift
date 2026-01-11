@@ -1,28 +1,34 @@
+import ArgumentParser
 import Foundation
 import Logging
 import XcodeProjectMCP
 
 @main
-struct XcodeprojMCPServer {
-    static func main() async throws {
+struct XcodeprojMCPServer: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "xcodeproj-mcp-server",
+        abstract: "MCP server for manipulating Xcode project files"
+    )
+
+    @Argument(help: "Base path for the server to operate in. Defaults to current directory.")
+    var basePath: String?
+
+    @Flag(name: .shortAndLong, help: "Enable verbose logging (debug level)")
+    var verbose: Bool = false
+
+    mutating func run() async throws {
+        let logLevel: Logger.Level = verbose ? .debug : .info
         LoggingSystem.bootstrap { label in
             var handler = StreamLogHandler.standardError(label: label)
-            handler.logLevel = .debug
+            handler.logLevel = logLevel
             return handler
         }
 
         let logger = Logger(label: "org.giginet.xcodeproj-mcp-server")
 
-        // Get base path from command line arguments or use current directory
-        let arguments = CommandLine.arguments
-        let basePath: String
-        if arguments.count > 1 {
-            basePath = arguments[1]
-        } else {
-            basePath = FileManager.default.currentDirectoryPath
-        }
+        let resolvedBasePath = basePath ?? FileManager.default.currentDirectoryPath
 
-        let server = XcodeProjectMCPServer(basePath: basePath, logger: logger)
+        let server = XcodeProjectMCPServer(basePath: resolvedBasePath, logger: logger)
         try await server.run()
     }
 }
