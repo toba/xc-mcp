@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct GetMacAppPathTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -149,10 +149,8 @@ public struct GetMacAppPathTool: Sendable {
                     .text("App path for scheme '\(scheme)':\n\(appPath)")
                 ]
             )
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to get app path: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

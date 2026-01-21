@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct ShowSessionDefaultsTool: Sendable {
     private let sessionManager: SessionManager

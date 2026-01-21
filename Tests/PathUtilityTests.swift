@@ -1,7 +1,8 @@
 import Foundation
 import Testing
+import XCMCPCore
 
-@testable import xc_mcp
+@testable import XCMCPTools
 
 struct PathUtilityTests {
 

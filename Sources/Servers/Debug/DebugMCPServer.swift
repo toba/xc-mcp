@@ -2,6 +2,7 @@ import Foundation
 import Logging
 import MCP
 import XCMCPCore
+import XCMCPTools
 
 /// All available tool names exposed by the xc-debug MCP server.
 public enum DebugToolName: String, CaseIterable, Sendable {

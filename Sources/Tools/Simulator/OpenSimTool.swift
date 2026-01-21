@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct OpenSimTool: Sendable {
     public init() {}
@@ -70,11 +70,8 @@ public struct OpenSimTool: Sendable {
                     throw MCPError.internalError("Failed to open Simulator.app")
                 }
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to open Simulator.app: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

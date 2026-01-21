@@ -32,4 +32,5 @@
 /// - `SwiftRunner`: Swift CLI wrapper
 /// - `ErrorExtractor`: Build error extraction utilities
 /// - `ArgumentExtraction`: MCP argument parsing helpers
+/// - `MCPErrorConvertible`: Protocol for converting domain errors to MCPError
 public enum XCMCPCore {}

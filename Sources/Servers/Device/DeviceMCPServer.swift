@@ -2,6 +2,7 @@ import Foundation
 import Logging
 import MCP
 import XCMCPCore
+import XCMCPTools
 
 /// All available tool names exposed by the xc-device MCP server.
 public enum DeviceToolName: String, CaseIterable, Sendable {

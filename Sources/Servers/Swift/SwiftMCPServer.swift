@@ -2,6 +2,7 @@ import Foundation
 import Logging
 import MCP
 import XCMCPCore
+import XCMCPTools
 
 /// All available tool names exposed by the xc-swift MCP server.
 public enum SwiftToolName: String, CaseIterable, Sendable {

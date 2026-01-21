@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 /// MCP tool for building Xcode projects for the iOS/tvOS/watchOS Simulator.
 ///
@@ -97,10 +97,8 @@ public struct BuildSimTool: Sendable {
                 let errorOutput = ErrorExtractor.extractBuildErrors(from: result.output)
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Build failed: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

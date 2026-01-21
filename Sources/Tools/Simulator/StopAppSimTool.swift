@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct StopAppSimTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -57,10 +57,8 @@ public struct StopAppSimTool: Sendable {
                 throw MCPError.internalError(
                     "Failed to stop app: \(result.stderr.isEmpty ? result.stdout : result.stderr)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to stop app: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

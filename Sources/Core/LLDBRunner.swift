@@ -1,4 +1,5 @@
 import Foundation
+import MCP
 
 /// Manages active LLDB debug sessions.
 ///
@@ -274,7 +275,7 @@ public struct LLDBRunner: Sendable {
 }
 
 /// Errors that can occur during LLDB operations.
-public enum LLDBError: LocalizedError, Sendable {
+public enum LLDBError: LocalizedError, Sendable, MCPErrorConvertible {
     /// An LLDB command failed with an error message.
     case commandFailed(String)
 
@@ -292,6 +293,15 @@ public enum LLDBError: LocalizedError, Sendable {
             return "Failed to attach to process: \(message)"
         case .noActiveSession:
             return "No active debug session"
+        }
+    }
+
+    public func toMCPError() -> MCPError {
+        switch self {
+        case .noActiveSession:
+            return .invalidParams(errorDescription ?? "No active debug session")
+        case .commandFailed, .attachFailed:
+            return .internalError(errorDescription ?? "Debug operation failed")
         }
     }
 }

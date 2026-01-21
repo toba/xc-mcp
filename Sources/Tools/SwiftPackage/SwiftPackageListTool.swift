@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct SwiftPackageListTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -70,11 +70,8 @@ public struct SwiftPackageListTool: Sendable {
             } else {
                 throw MCPError.internalError("Failed to list dependencies:\n\(result.output)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to list dependencies: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

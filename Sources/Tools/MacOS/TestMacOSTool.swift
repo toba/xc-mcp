@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct TestMacOSTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -90,10 +90,8 @@ public struct TestMacOSTool: Sendable {
                 let errorOutput = extractTestFailures(from: result.output)
                 throw MCPError.internalError("Tests failed:\n\(errorOutput)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Tests failed: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

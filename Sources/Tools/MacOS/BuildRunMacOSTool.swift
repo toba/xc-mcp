@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct BuildRunMacOSTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -182,10 +182,8 @@ public struct BuildRunMacOSTool: Sendable {
                 let output = String(data: data, encoding: .utf8) ?? ""
                 throw MCPError.internalError("Failed to launch app: \(output)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Build and run failed: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

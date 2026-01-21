@@ -43,7 +43,14 @@
       "Bash(git -C /Users/jason/Developer/toba/xc-mcp tag -l)",
       "Bash(git -C /Users/jason/Developer/toba/xc-mcp log --oneline -10)",
       "Bash(swift -version:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(/Users/jason/.claude/skills/skill-creator/scripts/init_skill.py:*)",
+      "Bash(git tag:*)",
+      "Bash(/Users/jason/.claude/skills/skill-creator/scripts/package_skill.py /Users/jason/.claude/skills/swift-review)",
+      "Bash(shasum:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(xargs rm:*)"
     ]
   }
 }

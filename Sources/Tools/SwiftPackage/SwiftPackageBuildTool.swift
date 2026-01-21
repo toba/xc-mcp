@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct SwiftPackageBuildTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -78,10 +78,8 @@ public struct SwiftPackageBuildTool: Sendable {
                 let errorOutput = ErrorExtractor.extractBuildErrors(from: result.output)
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Build failed: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

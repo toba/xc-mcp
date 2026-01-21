@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct CleanTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -133,10 +133,8 @@ public struct CleanTool: Sendable {
                 let errorOutput = extractBuildErrors(from: result.output)
                 throw MCPError.internalError("Clean failed:\n\(errorOutput)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Clean failed: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

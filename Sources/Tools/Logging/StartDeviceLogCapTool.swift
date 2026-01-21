@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct StartDeviceLogCapTool: Sendable {
     private let deviceCtlRunner: DeviceCtlRunner
@@ -159,12 +159,8 @@ public struct StartDeviceLogCapTool: Sendable {
             message += "\nUse stop_device_log_cap to stop the capture."
 
             return CallTool.Result(content: [.text(message)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to start log capture: \(error.localizedDescription)"
-            )
+            throw error.asMCPError()
         }
     }
 }

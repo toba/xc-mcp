@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct SwiftPackageTestTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -75,10 +75,8 @@ public struct SwiftPackageTestTool: Sendable {
                 let errorOutput = extractTestErrors(from: result.output)
                 throw MCPError.internalError("Tests failed:\n\(errorOutput)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Test execution failed: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

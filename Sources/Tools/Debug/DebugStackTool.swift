@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct DebugStackTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -73,10 +73,8 @@ public struct DebugStackTool: Sendable {
             message += ":\n\n\(result.output)"
 
             return CallTool.Result(content: [.text(message)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to get stack trace: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct EraseSimTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -57,11 +57,8 @@ public struct EraseSimTool: Sendable {
                         "Failed to erase simulators: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                     )
                 }
-            } catch let error as MCPError {
-                throw error
             } catch {
-                throw MCPError.internalError(
-                    "Failed to erase simulators: \(error.localizedDescription)")
+                throw error.asMCPError()
             }
         }
 
@@ -89,10 +86,8 @@ public struct EraseSimTool: Sendable {
                     "Failed to erase simulator: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to erase simulator: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

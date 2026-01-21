@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct ListSchemesTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -58,10 +58,8 @@ public struct ListSchemesTool: Sendable {
                     "Failed to list schemes: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to list schemes: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

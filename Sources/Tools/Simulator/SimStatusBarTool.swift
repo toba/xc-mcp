@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct SimStatusBarTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -100,11 +100,8 @@ public struct SimStatusBarTool: Sendable {
                         "Failed to clear status bar: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                     )
                 }
-            } catch let error as MCPError {
-                throw error
             } catch {
-                throw MCPError.internalError(
-                    "Failed to clear status bar: \(error.localizedDescription)")
+                throw error.asMCPError()
             }
         }
 
@@ -156,10 +153,8 @@ public struct SimStatusBarTool: Sendable {
                     "Failed to set status bar: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to set status bar: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

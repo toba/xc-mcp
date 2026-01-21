@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct StopDeviceLogCapTool: Sendable {
     private let sessionManager: SessionManager
@@ -136,11 +136,8 @@ public struct StopDeviceLogCapTool: Sendable {
             }
 
             return CallTool.Result(content: [.text(message)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to stop log capture: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

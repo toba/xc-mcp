@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct DebugBreakpointRemoveTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -68,11 +68,8 @@ public struct DebugBreakpointRemoveTool: Sendable {
             message += "\n\n\(result.output)"
 
             return CallTool.Result(content: [.text(message)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove breakpoint: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

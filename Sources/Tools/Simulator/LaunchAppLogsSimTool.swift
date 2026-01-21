@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct LaunchAppLogsSimTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -112,11 +112,8 @@ public struct LaunchAppLogsSimTool: Sendable {
             output += logs
 
             return CallTool.Result(content: [.text(output)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to launch app with logs: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

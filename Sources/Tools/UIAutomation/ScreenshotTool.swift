@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct ScreenshotTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -100,10 +100,8 @@ public struct ScreenshotTool: Sendable {
                     "Failed to take screenshot: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to take screenshot: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

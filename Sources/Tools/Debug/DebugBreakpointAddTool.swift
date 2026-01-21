@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct DebugBreakpointAddTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -112,10 +112,8 @@ public struct DebugBreakpointAddTool: Sendable {
             message += "\n\n\(result.output)"
 
             return CallTool.Result(content: [.text(message)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to add breakpoint: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

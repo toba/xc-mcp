@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct StartSimLogCapTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -128,12 +128,8 @@ public struct StartSimLogCapTool: Sendable {
             message += "\nUse stop_sim_log_cap to stop the capture."
 
             return CallTool.Result(content: [.text(message)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to start log capture: \(error.localizedDescription)"
-            )
+            throw error.asMCPError()
         }
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct LaunchAppDeviceTool: Sendable {
     private let deviceCtlRunner: DeviceCtlRunner
@@ -55,10 +55,8 @@ public struct LaunchAppDeviceTool: Sendable {
                     "Failed to launch app: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to launch app: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

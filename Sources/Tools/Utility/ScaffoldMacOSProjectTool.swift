@@ -1,7 +1,7 @@
 import Foundation
-import XCMCPCore
 import MCP
 import PathKit
+import XCMCPCore
 import XcodeProj
 
 public struct ScaffoldMacOSProjectTool: Sendable {
@@ -181,12 +181,10 @@ public struct ScaffoldMacOSProjectTool: Sendable {
             resultMessage += "\nOpen the workspace with: open \"\(workspacePath)\""
 
             return CallTool.Result(content: [.text(resultMessage)])
-        } catch let error as MCPError {
-            throw error
         } catch {
             // Clean up on failure
             try? fileManager.removeItem(atPath: projectDir)
-            throw MCPError.internalError("Failed to create project: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

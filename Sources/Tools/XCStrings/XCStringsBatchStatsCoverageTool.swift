@@ -33,7 +33,7 @@ public struct XCStringsBatchStatsCoverageTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+    public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         let files = arguments.getStringArray("files")
         if files.isEmpty {
             throw MCPError.invalidParams("files array is required and cannot be empty")

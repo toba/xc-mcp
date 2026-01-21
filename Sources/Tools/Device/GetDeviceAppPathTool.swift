@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct GetDeviceAppPathTool: Sendable {
     private let deviceCtlRunner: DeviceCtlRunner
@@ -68,10 +68,8 @@ public struct GetDeviceAppPathTool: Sendable {
                     "Failed to get app info: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to get app info: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

@@ -1,7 +1,8 @@
 import Foundation
+import MCP
 
 /// Errors that can occur during path resolution and validation.
-public enum PathError: LocalizedError {
+public enum PathError: LocalizedError, MCPErrorConvertible {
     /// The resolved path is outside the allowed base directory.
     case pathOutsideBasePath(path: String, basePath: String)
 
@@ -10,6 +11,10 @@ public enum PathError: LocalizedError {
         case let .pathOutsideBasePath(path, basePath):
             return "Path '\(path)' is outside the allowed base path '\(basePath)'"
         }
+    }
+
+    public func toMCPError() -> MCPError {
+        .invalidParams(errorDescription ?? "Invalid path")
     }
 }
 

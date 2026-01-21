@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct DebugAttachSimTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -98,11 +98,8 @@ public struct DebugAttachSimTool: Sendable {
                     "Failed to attach to process: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to attach debugger: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct SwiftPackageStopTool: Sendable {
     private let sessionManager: SessionManager
@@ -86,10 +86,8 @@ public struct SwiftPackageStopTool: Sendable {
                 let stderr = String(data: stderrData, encoding: .utf8) ?? ""
                 throw MCPError.internalError("Failed to stop process: \(stderr)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to stop process: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

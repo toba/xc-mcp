@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct ButtonTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -85,10 +85,8 @@ public struct ButtonTool: Sendable {
                     "Failed to press button: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to press button: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

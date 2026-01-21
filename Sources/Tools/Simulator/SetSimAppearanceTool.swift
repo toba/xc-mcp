@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct SetSimAppearanceTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -76,10 +76,8 @@ public struct SetSimAppearanceTool: Sendable {
                     "Failed to set appearance: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to set appearance: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

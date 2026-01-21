@@ -1,4 +1,5 @@
 import Foundation
+import MCP
 
 /// Information about a connected physical device.
 ///
@@ -203,7 +204,7 @@ public struct DeviceCtlRunner: Sendable {
 }
 
 /// Errors that can occur during devicectl operations.
-public enum DeviceCtlError: LocalizedError, Sendable {
+public enum DeviceCtlError: LocalizedError, Sendable, MCPErrorConvertible {
     /// A devicectl command failed with an error message.
     case commandFailed(String)
 
@@ -221,6 +222,15 @@ public enum DeviceCtlError: LocalizedError, Sendable {
             return "devicectl returned invalid output"
         case .deviceNotFound(let udid):
             return "Device not found: \(udid)"
+        }
+    }
+
+    public func toMCPError() -> MCPError {
+        switch self {
+        case .deviceNotFound:
+            return .invalidParams(errorDescription ?? "Device not found")
+        case .commandFailed, .invalidOutput:
+            return .internalError(errorDescription ?? "Device operation failed")
         }
     }
 }

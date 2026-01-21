@@ -35,7 +35,7 @@ public struct XCStringsCreateFileTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+    public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         let filePath = try arguments.getRequiredString("file")
         let sourceLanguage = arguments.getString("sourceLanguage") ?? "en"
         let overwrite = arguments.getBool("overwrite", default: false)

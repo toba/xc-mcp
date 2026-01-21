@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct StopMacAppTool: Sendable {
     private let sessionManager: SessionManager
@@ -129,10 +129,8 @@ public struct StopMacAppTool: Sendable {
 
                 throw MCPError.internalError("Failed to stop app: \(output)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to stop app: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

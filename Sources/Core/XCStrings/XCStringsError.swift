@@ -2,7 +2,7 @@ import Foundation
 import MCP
 
 /// Errors thrown by XCStrings operations
-public enum XCStringsError: Swift.Error, LocalizedError, Sendable {
+public enum XCStringsError: Swift.Error, LocalizedError, Sendable, MCPErrorConvertible {
     case fileNotFound(path: String)
     case fileAlreadyExists(path: String)
     case invalidFileFormat(path: String, reason: String)

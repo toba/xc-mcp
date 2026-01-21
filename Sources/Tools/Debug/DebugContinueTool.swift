@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct DebugContinueTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -59,11 +59,8 @@ public struct DebugContinueTool: Sendable {
             }
 
             return CallTool.Result(content: [.text(message)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to continue execution: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

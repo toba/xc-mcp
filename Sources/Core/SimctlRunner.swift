@@ -1,4 +1,5 @@
 import Foundation
+import MCP
 
 /// Information about a simulator device.
 ///
@@ -422,7 +423,7 @@ public struct SimctlRunner: Sendable {
 }
 
 /// Errors that can occur during simctl operations.
-public enum SimctlError: LocalizedError, Sendable {
+public enum SimctlError: LocalizedError, Sendable, MCPErrorConvertible {
     /// A simctl command failed with an error message.
     case commandFailed(String)
 
@@ -440,6 +441,15 @@ public enum SimctlError: LocalizedError, Sendable {
             return "simctl returned invalid output"
         case .deviceNotFound(let udid):
             return "Simulator device not found: \(udid)"
+        }
+    }
+
+    public func toMCPError() -> MCPError {
+        switch self {
+        case .deviceNotFound:
+            return .invalidParams(errorDescription ?? "Simulator not found")
+        case .commandFailed, .invalidOutput:
+            return .internalError(errorDescription ?? "Simulator operation failed")
         }
     }
 }

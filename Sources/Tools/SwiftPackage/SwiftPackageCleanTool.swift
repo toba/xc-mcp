@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct SwiftPackageCleanTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -63,10 +63,8 @@ public struct SwiftPackageCleanTool: Sendable {
             } else {
                 throw MCPError.internalError("Clean failed:\n\(result.output)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Clean failed: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

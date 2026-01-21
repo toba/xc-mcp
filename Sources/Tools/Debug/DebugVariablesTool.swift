@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct DebugVariablesTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -70,10 +70,8 @@ public struct DebugVariablesTool: Sendable {
             message += result.output
 
             return CallTool.Result(content: [.text(message)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to get variables: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

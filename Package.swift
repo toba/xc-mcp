@@ -26,8 +26,9 @@ let package = Package(
         .executable(name: "xc-build", targets: ["xc-build"]),
         .executable(name: "xc-strings", targets: ["xc-strings"]),
 
-        // Shared library for utilities
+        // Shared libraries
         .library(name: "XCMCPCore", targets: ["XCMCPCore"]),
+        .library(name: "XCMCPTools", targets: ["XCMCPTools"]),
     ],
     dependencies: [
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk", from: "0.9.0"),
@@ -39,9 +40,21 @@ let package = Package(
         .target(
             name: "XCMCPCore",
             dependencies: [
-                .product(name: "MCP", package: "swift-sdk"),
+                .product(name: "MCP", package: "swift-sdk")
             ],
             path: "Sources/Core",
+            swiftSettings: sharedSwiftSettings
+        ),
+
+        // MARK: - Shared Tools Library
+        .target(
+            name: "XCMCPTools",
+            dependencies: [
+                "XCMCPCore",
+                .product(name: "MCP", package: "swift-sdk"),
+                .product(name: "XcodeProj", package: "xcodeproj"),
+            ],
+            path: "Sources/Tools",
             swiftSettings: sharedSwiftSettings
         ),
 
@@ -50,16 +63,14 @@ let package = Package(
             name: "xc-mcp",
             dependencies: [
                 "XCMCPCore",
+                "XCMCPTools",
                 .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "XcodeProj", package: "xcodeproj"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources",
             sources: [
                 "CLI.swift",
                 "Server/XcodeMCPServer.swift",
-                "Tools",
-                "Utilities",
             ],
             swiftSettings: sharedSwiftSettings
         ),
@@ -72,11 +83,12 @@ let package = Package(
             name: "xc-project",
             dependencies: [
                 "XCMCPCore",
+                "XCMCPTools",
                 .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "XcodeProj", package: "xcodeproj"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/Servers/Project",
+            sources: ["CLI.swift", "ProjectMCPServer.swift"],
             swiftSettings: sharedSwiftSettings
         ),
 
@@ -86,10 +98,12 @@ let package = Package(
             name: "xc-simulator",
             dependencies: [
                 "XCMCPCore",
+                "XCMCPTools",
                 .product(name: "MCP", package: "swift-sdk"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/Servers/Simulator",
+            sources: ["CLI.swift", "SimulatorMCPServer.swift"],
             swiftSettings: sharedSwiftSettings
         ),
 
@@ -99,10 +113,12 @@ let package = Package(
             name: "xc-device",
             dependencies: [
                 "XCMCPCore",
+                "XCMCPTools",
                 .product(name: "MCP", package: "swift-sdk"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/Servers/Device",
+            sources: ["CLI.swift", "DeviceMCPServer.swift"],
             swiftSettings: sharedSwiftSettings
         ),
 
@@ -112,10 +128,12 @@ let package = Package(
             name: "xc-debug",
             dependencies: [
                 "XCMCPCore",
+                "XCMCPTools",
                 .product(name: "MCP", package: "swift-sdk"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/Servers/Debug",
+            sources: ["CLI.swift", "DebugMCPServer.swift"],
             swiftSettings: sharedSwiftSettings
         ),
 
@@ -125,10 +143,12 @@ let package = Package(
             name: "xc-swift",
             dependencies: [
                 "XCMCPCore",
+                "XCMCPTools",
                 .product(name: "MCP", package: "swift-sdk"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/Servers/Swift",
+            sources: ["CLI.swift", "SwiftMCPServer.swift"],
             swiftSettings: sharedSwiftSettings
         ),
 
@@ -138,11 +158,12 @@ let package = Package(
             name: "xc-build",
             dependencies: [
                 "XCMCPCore",
+                "XCMCPTools",
                 .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "XcodeProj", package: "xcodeproj"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/Servers/Build",
+            sources: ["CLI.swift", "BuildMCPServer.swift"],
             swiftSettings: sharedSwiftSettings
         ),
 
@@ -152,10 +173,12 @@ let package = Package(
             name: "xc-strings",
             dependencies: [
                 "XCMCPCore",
+                "XCMCPTools",
                 .product(name: "MCP", package: "swift-sdk"),
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/Servers/Strings",
+            sources: ["CLI.swift", "StringsMCPServer.swift"],
             swiftSettings: sharedSwiftSettings
         ),
 
@@ -163,8 +186,8 @@ let package = Package(
         .testTarget(
             name: "xc-mcp-tests",
             dependencies: [
-                "xc-mcp",
                 "XCMCPCore",
+                "XCMCPTools",
             ],
             path: "Tests",
             swiftSettings: sharedSwiftSettings

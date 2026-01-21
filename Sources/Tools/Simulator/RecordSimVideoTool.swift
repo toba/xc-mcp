@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 /// Tracks active video recording sessions
 actor VideoRecordingManager {

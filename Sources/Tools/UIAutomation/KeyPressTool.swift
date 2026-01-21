@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct KeyPressTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -88,10 +88,8 @@ public struct KeyPressTool: Sendable {
                     "Failed to press key: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to press key: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

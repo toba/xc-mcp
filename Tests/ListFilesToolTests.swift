@@ -2,9 +2,10 @@ import Foundation
 import MCP
 import PathKit
 import Testing
+import XCMCPCore
 import XcodeProj
 
-@testable import xc_mcp
+@testable import XCMCPTools
 
 struct ListFilesToolTests {
 

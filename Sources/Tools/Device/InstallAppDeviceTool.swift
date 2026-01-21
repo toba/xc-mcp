@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct InstallAppDeviceTool: Sendable {
     private let deviceCtlRunner: DeviceCtlRunner
@@ -53,10 +53,8 @@ public struct InstallAppDeviceTool: Sendable {
                     "Failed to install app: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to install app: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

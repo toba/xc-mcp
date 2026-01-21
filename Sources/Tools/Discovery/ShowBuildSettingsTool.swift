@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct ShowBuildSettingsTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -80,11 +80,8 @@ public struct ShowBuildSettingsTool: Sendable {
                     "Failed to get build settings: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to get build settings: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

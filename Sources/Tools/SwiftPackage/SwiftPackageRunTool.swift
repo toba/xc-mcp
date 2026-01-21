@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct SwiftPackageRunTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -107,10 +107,8 @@ public struct SwiftPackageRunTool: Sendable {
                 throw MCPError.internalError(
                     "Execution failed (exit code \(result.exitCode)):\n\(result.output)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Execution failed: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

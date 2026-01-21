@@ -1,7 +1,7 @@
 import Foundation
-import XCMCPCore
 import MCP
 import PathKit
+import XCMCPCore
 import XcodeProj
 
 public struct SetBuildSettingTool: Sendable {

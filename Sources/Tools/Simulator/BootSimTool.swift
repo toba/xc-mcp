@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct BootSimTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -52,10 +52,8 @@ public struct BootSimTool: Sendable {
                     "Failed to boot simulator: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to boot simulator: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct DebugDetachTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -61,10 +61,8 @@ public struct DebugDetachTool: Sendable {
             }
 
             return CallTool.Result(content: [.text(message)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to detach: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

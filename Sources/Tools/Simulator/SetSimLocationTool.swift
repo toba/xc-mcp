@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct SetSimLocationTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -92,10 +92,8 @@ public struct SetSimLocationTool: Sendable {
                     "Failed to set location: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to set location: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

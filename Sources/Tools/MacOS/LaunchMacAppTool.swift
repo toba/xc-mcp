@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct LaunchMacAppTool: Sendable {
     private let sessionManager: SessionManager
@@ -161,10 +161,8 @@ public struct LaunchMacAppTool: Sendable {
                 let output = String(data: data, encoding: .utf8) ?? ""
                 throw MCPError.internalError("Failed to launch app: \(output)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Failed to launch app: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

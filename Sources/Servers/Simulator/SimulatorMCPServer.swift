@@ -2,6 +2,7 @@ import Foundation
 import Logging
 import MCP
 import XCMCPCore
+import XCMCPTools
 
 /// All available tool names exposed by the xc-simulator MCP server.
 public enum SimulatorToolName: String, CaseIterable, Sendable {

@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct BuildMacOSTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -86,10 +86,8 @@ public struct BuildMacOSTool: Sendable {
                 let errorOutput = ErrorExtractor.extractBuildErrors(from: result.output)
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Build failed: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

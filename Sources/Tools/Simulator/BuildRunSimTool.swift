@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct BuildRunSimTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -141,10 +141,8 @@ public struct BuildRunSimTool: Sendable {
                     "Failed to launch app: \(launchResult.stderr.isEmpty ? launchResult.stdout : launchResult.stderr)"
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError("Build and run failed: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 

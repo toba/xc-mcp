@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct DebugLLDBCommandTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -67,11 +67,8 @@ public struct DebugLLDBCommandTool: Sendable {
             message += result.output
 
             return CallTool.Result(content: [.text(message)])
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to execute LLDB command: \(error.localizedDescription)")
+            throw error.asMCPError()
         }
     }
 }

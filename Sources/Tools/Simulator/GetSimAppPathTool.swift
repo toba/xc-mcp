@@ -1,6 +1,6 @@
 import Foundation
-import XCMCPCore
 import MCP
+import XCMCPCore
 
 public struct GetSimAppPathTool: Sendable {
     private let simctlRunner: SimctlRunner
