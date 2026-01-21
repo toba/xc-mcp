@@ -13,7 +13,15 @@
       "Bash(swift test:*)",
       "Bash(swift format:*)",
       "Bash(beans update:*)",
-      "Bash(beans query:*)"
+      "Bash(beans query:*)",
+      "Bash(git push:*)",
+      "Bash(grep:*)",
+      "Bash(git -C /Users/jason/Developer/toba/xc-mcp log --name-status --oneline -20)",
+      "Bash(head:*)",
+      "Bash(echo:*)",
+      "Bash(swiftlint:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix swiftlint warnings across codebase\n\n- Apply shorthand optional binding syntax \\(if let x = x → if let x\\)\n- Remove unnecessary async/throws keywords\n- Fix pattern matching keywords in PathUtility\n- Convert for-if to for-where clauses in 5 files\n- Change TestProjectHelper from struct to enum \\(convenience type\\)\n- Fix isEmpty assertions in test file\n- Disable closure_parameter_position rule \\(conflicts with swift-format\\)\nEOF\n\\)\")"
     ]
   }
 }
