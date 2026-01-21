@@ -20,6 +20,61 @@ This server enables AI assistants and MCP clients to:
 - Automate UI interactions
 - Work with Swift Package Manager projects
 
+## Multi-Server Architecture
+
+xc-mcp provides both a monolithic server (all 89 tools) and focused servers for token efficiency:
+
+| Server | Tools | Token Overhead | Description |
+|--------|-------|----------------|-------------|
+| `xc-mcp` | 89 | ~50K | Full monolithic server |
+| `xc-project` | 23 | ~5K | .xcodeproj file manipulation |
+| `xc-simulator` | 29 | ~6K | Simulator, UI automation, logs |
+| `xc-device` | 12 | ~2K | Physical iOS devices |
+| `xc-debug` | 8 | ~2K | LLDB debugging |
+| `xc-swift` | 6 | ~1.5K | Swift Package Manager |
+| `xc-build` | 18 | ~3K | macOS builds, discovery, utilities |
+| `xc-strings` | 18 | ~6K | Xcode String Catalog (.xcstrings) localization |
+
+**When to use focused servers:**
+- Use `xc-project` for project file editing (no CLI alternative exists)
+- Use `xc-simulator` for build+run workflows on simulators
+- Use `xc-device` for physical device deployment
+- Use `xc-debug` for debugging sessions
+- Use `xc-swift` for Swift package operations
+- Use `xc-strings` for localization management with .xcstrings files
+
+**Configuration presets:**
+
+```json
+// Minimal (~5K tokens) - project editing only
+{
+  "mcpServers": {
+    "xc-project": { "command": "/path/to/xc-project" }
+  }
+}
+
+// Standard (~14K tokens) - project + simulator + build
+{
+  "mcpServers": {
+    "xc-project": { "command": "/path/to/xc-project" },
+    "xc-simulator": { "command": "/path/to/xc-simulator" },
+    "xc-build": { "command": "/path/to/xc-build" }
+  }
+}
+
+// Full (~20K tokens) - all capabilities
+{
+  "mcpServers": {
+    "xc-project": { "command": "/path/to/xc-project" },
+    "xc-simulator": { "command": "/path/to/xc-simulator" },
+    "xc-device": { "command": "/path/to/xc-device" },
+    "xc-debug": { "command": "/path/to/xc-debug" },
+    "xc-swift": { "command": "/path/to/xc-swift" },
+    "xc-build": { "command": "/path/to/xc-build" }
+  }
+}
+```
+
 ## Requirements
 
 - macOS 15+
@@ -204,6 +259,29 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 | `scaffold_ios_project` | Scaffold iOS project |
 | `scaffold_macos_project` | Scaffold macOS project |
 
+### Localization (18 tools)
+
+| Tool | Description |
+|------|-------------|
+| `xcstrings_list_keys` | List all localization keys |
+| `xcstrings_list_languages` | List all languages in file |
+| `xcstrings_list_untranslated` | List untranslated keys for language |
+| `xcstrings_get_source_language` | Get the source language |
+| `xcstrings_get_key` | Get translations for a key |
+| `xcstrings_check_key` | Check if a key exists |
+| `xcstrings_stats_coverage` | Get overall coverage statistics |
+| `xcstrings_stats_progress` | Get progress for a language |
+| `xcstrings_batch_stats_coverage` | Get coverage for multiple files |
+| `xcstrings_create_file` | Create a new xcstrings file |
+| `xcstrings_add_translation` | Add a single translation |
+| `xcstrings_add_translations` | Add multiple translations (batch) |
+| `xcstrings_update_translation` | Update a single translation |
+| `xcstrings_update_translations` | Update multiple translations (batch) |
+| `xcstrings_rename_key` | Rename a localization key |
+| `xcstrings_delete_key` | Delete a key and all translations |
+| `xcstrings_delete_translation` | Delete a single translation |
+| `xcstrings_delete_translations` | Delete multiple translations (batch) |
+
 ## Path Security
 
 When providing a base path as a command-line argument, all file operations are restricted to that directory.
@@ -212,4 +290,4 @@ When providing a base path as a command-line argument, all file operations are r
 
 MIT License. See [LICENSE](LICENSE) for details.
 
-This project is based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server).
+This project is based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server). The localization functionality is based on [Ryu0118/xcstrings-crud](https://github.com/Ryu0118/xcstrings-crud).

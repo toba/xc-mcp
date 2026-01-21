@@ -1,4 +1,5 @@
 import Foundation
+import XCMCPCore
 import MCP
 
 /// MCP tool for listing connected physical iOS/tvOS/watchOS devices.

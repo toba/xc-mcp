@@ -1,6 +1,7 @@
 import Foundation
 import Logging
 import MCP
+import XCMCPCore
 
 /// All available tool names exposed by the MCP server.
 ///

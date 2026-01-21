@@ -1,4 +1,5 @@
 import Foundation
+import XCMCPCore
 import MCP
 
 /// MCP tool for building Xcode projects for the iOS/tvOS/watchOS Simulator.

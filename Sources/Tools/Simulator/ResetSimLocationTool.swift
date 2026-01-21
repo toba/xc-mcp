@@ -1,4 +1,5 @@
 import Foundation
+import XCMCPCore
 import MCP
 
 public struct ResetSimLocationTool: Sendable {

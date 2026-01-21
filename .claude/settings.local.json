@@ -21,7 +21,29 @@
       "Bash(echo:*)",
       "Bash(swiftlint:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix swiftlint warnings across codebase\n\n- Apply shorthand optional binding syntax \\(if let x = x → if let x\\)\n- Remove unnecessary async/throws keywords\n- Fix pattern matching keywords in PathUtility\n- Convert for-if to for-where clauses in 5 files\n- Change TestProjectHelper from struct to enum \\(convenience type\\)\n- Fix isEmpty assertions in test file\n- Disable closure_parameter_position rule \\(conflicts with swift-format\\)\nEOF\n\\)\")"
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix swiftlint warnings across codebase\n\n- Apply shorthand optional binding syntax \\(if let x = x → if let x\\)\n- Remove unnecessary async/throws keywords\n- Fix pattern matching keywords in PathUtility\n- Convert for-if to for-where clauses in 5 files\n- Change TestProjectHelper from struct to enum \\(convenience type\\)\n- Fix isEmpty assertions in test file\n- Disable closure_parameter_position rule \\(conflicts with swift-format\\)\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:lldb.llvm.org)",
+      "WebFetch(domain:www.iosdev.recipes)",
+      "Bash(done)",
+      "Bash(for file in /Users/jason/Developer/toba/xc-mcp/Sources/Tools/Simulator/*.swift)",
+      "Bash(do)",
+      "Bash(basename:*)",
+      "Bash(git -C /Users/jason/Developer/toba/xc-mcp log --oneline -20)",
+      "WebFetch(domain:nshipster.com)",
+      "WebFetch(domain:docs.brew.sh)",
+      "Bash(git -C /Users/jason/Developer/toba/xc-mcp remote:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(wc:*)",
+      "Bash(/Users/jason/Developer/toba/xc-mcp/.build/arm64-apple-macosx/debug/xc-mcp:*)",
+      "Bash(git -C /Users/jason/Developer/toba/xc-mcp describe --tags)",
+      "Bash(git -C /Users/jason/Developer/toba/xc-mcp branch -a)",
+      "Bash(git -C /Users/jason/Developer/toba/xc-mcp tag -l)",
+      "Bash(git -C /Users/jason/Developer/toba/xc-mcp log --oneline -10)",
+      "Bash(swift -version:*)",
+      "Bash(gh api:*)"
     ]
   }
 }
