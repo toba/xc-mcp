@@ -49,28 +49,28 @@ xc-mcp provides both a monolithic server (all 89 tools) and focused servers for 
 // Minimal (~5K tokens) - project editing only
 {
   "mcpServers": {
-    "xc-project": { "command": "/path/to/xc-project" }
+    "xc-project": { "command": "/opt/homebrew/bin/xc-project" }
   }
 }
 
 // Standard (~14K tokens) - project + simulator + build
 {
   "mcpServers": {
-    "xc-project": { "command": "/path/to/xc-project" },
-    "xc-simulator": { "command": "/path/to/xc-simulator" },
-    "xc-build": { "command": "/path/to/xc-build" }
+    "xc-project": { "command": "/opt/homebrew/bin/xc-project" },
+    "xc-simulator": { "command": "/opt/homebrew/bin/xc-simulator" },
+    "xc-build": { "command": "/opt/homebrew/bin/xc-build" }
   }
 }
 
 // Full (~20K tokens) - all capabilities
 {
   "mcpServers": {
-    "xc-project": { "command": "/path/to/xc-project" },
-    "xc-simulator": { "command": "/path/to/xc-simulator" },
-    "xc-device": { "command": "/path/to/xc-device" },
-    "xc-debug": { "command": "/path/to/xc-debug" },
-    "xc-swift": { "command": "/path/to/xc-swift" },
-    "xc-build": { "command": "/path/to/xc-build" }
+    "xc-project": { "command": "/opt/homebrew/bin/xc-project" },
+    "xc-simulator": { "command": "/opt/homebrew/bin/xc-simulator" },
+    "xc-device": { "command": "/opt/homebrew/bin/xc-device" },
+    "xc-debug": { "command": "/opt/homebrew/bin/xc-debug" },
+    "xc-swift": { "command": "/opt/homebrew/bin/xc-swift" },
+    "xc-build": { "command": "/opt/homebrew/bin/xc-build" }
   }
 }
 ```
@@ -81,6 +81,15 @@ xc-mcp provides both a monolithic server (all 89 tools) and focused servers for 
 - Xcode (for `xcodebuild`, `simctl`, `devicectl`)
 
 ## Installation
+
+### Homebrew (Recommended)
+
+```bash
+brew tap toba/xc-mcp
+brew install xc-mcp
+```
+
+### From Source
 
 ```bash
 git clone https://github.com/toba/xc-mcp.git
@@ -93,6 +102,10 @@ swift build -c release
 ### Claude Code
 
 ```bash
+# With Homebrew
+claude mcp add xc-mcp -- $(brew --prefix)/bin/xc-mcp
+
+# From source
 claude mcp add xc-mcp -- /path/to/xc-mcp/.build/release/xc-mcp
 ```
 
@@ -104,11 +117,13 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "xc-mcp": {
-      "command": "/path/to/xc-mcp/.build/release/xc-mcp"
+      "command": "/opt/homebrew/bin/xc-mcp"
     }
   }
 }
 ```
+
+For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 
 ## Tools
 
