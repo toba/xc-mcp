@@ -1,0 +1,74 @@
+import Foundation
+import MCP
+
+public struct StopAppDeviceTool: Sendable {
+    private let deviceCtlRunner: DeviceCtlRunner
+    private let sessionManager: SessionManager
+
+    public init(
+        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager
+    ) {
+        self.deviceCtlRunner = deviceCtlRunner
+        self.sessionManager = sessionManager
+    }
+
+    public func tool() -> Tool {
+        Tool(
+            name: "stop_app_device",
+            description:
+                "Stop (terminate) a running app on a connected device by its bundle identifier.",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "bundle_id": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "The bundle identifier of the app to stop (e.g., 'com.example.MyApp')."),
+                    ]),
+                    "device": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Device UDID. Uses session default if not specified."),
+                    ]),
+                ]),
+                "required": .array([.string("bundle_id")]),
+            ])
+        )
+    }
+
+    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+        guard case let .string(bundleId) = arguments["bundle_id"] else {
+            throw MCPError.invalidParams("bundle_id is required")
+        }
+
+        // Get device
+        let device: String
+        if case let .string(value) = arguments["device"] {
+            device = value
+        } else if let sessionDevice = await sessionManager.deviceUDID {
+            device = sessionDevice
+        } else {
+            throw MCPError.invalidParams(
+                "device is required. Set it with set_session_defaults or pass it directly.")
+        }
+
+        do {
+            let result = try await deviceCtlRunner.terminate(udid: device, bundleId: bundleId)
+
+            if result.succeeded {
+                return CallTool.Result(
+                    content: [
+                        .text("Successfully stopped '\(bundleId)' on device '\(device)'")
+                    ]
+                )
+            } else {
+                throw MCPError.internalError(
+                    "Failed to stop app: \(result.stderr.isEmpty ? result.stdout : result.stderr)")
+            }
+        } catch let error as MCPError {
+            throw error
+        } catch {
+            throw MCPError.internalError("Failed to stop app: \(error.localizedDescription)")
+        }
+    }
+}

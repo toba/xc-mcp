@@ -4,18 +4,18 @@
 import PackageDescription
 
 let package = Package(
-    name: "xcodeproj-mcp-server",
+    name: "xcode-mcp",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v15)
     ],
     products: [
         .executable(
-            name: "xcodeproj-mcp-server",
-            targets: ["xcodeproj-mcp-server"]
+            name: "xcode-mcp-server",
+            targets: ["xcode-mcp-server"]
         ),
         .library(
-            name: "XcodeProjectMCP",
-            targets: ["XcodeProjectMCP"]
+            name: "XcodeMCP",
+            targets: ["XcodeMCP"]
         ),
     ],
     dependencies: [
@@ -25,23 +25,35 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "XcodeProjectMCP",
+            name: "XcodeMCP",
             dependencies: [
                 .product(name: "MCP", package: "swift-sdk"),
                 .product(name: "XcodeProj", package: "xcodeproj"),
+            ],
+            swiftSettings: [
+                .swiftLanguageMode(.v6),
+                .enableExperimentalFeature("StrictConcurrency"),
             ]
         ),
         .executableTarget(
-            name: "xcodeproj-mcp-server",
+            name: "xcode-mcp-server",
             dependencies: [
-                "XcodeProjectMCP",
+                "XcodeMCP",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ],
+            swiftSettings: [
+                .swiftLanguageMode(.v6),
+                .enableExperimentalFeature("StrictConcurrency"),
             ]
         ),
         .testTarget(
-            name: "XcodeProjectMCPTests",
+            name: "XcodeMCPTests",
             dependencies: [
-                "XcodeProjectMCP"
+                "XcodeMCP"
+            ],
+            swiftSettings: [
+                .swiftLanguageMode(.v6),
+                .enableExperimentalFeature("StrictConcurrency"),
             ]
         ),
     ]

@@ -1,10 +1,13 @@
-# xcodeproj-mcp-server
+# xcode-mcp-server
 
-A Model Context Protocol (MCP) server for manipulating Xcode project files (.xcodeproj) using Swift.
+A comprehensive Model Context Protocol (MCP) server for Xcode development on macOS.
 
 ## Overview
 
-This project provides an MCP server that enables interaction with Xcode projects through a standardized protocol. It leverages the [tuist/xcodeproj](https://github.com/tuist/xcodeproj) library for project manipulation and the [modelcontextprotocol/swift-sdk](https://github.com/modelcontextprotocol/swift-sdk) for MCP functionality.
+This project provides a unified MCP server that combines Xcode project manipulation with full build, test, and run capabilities. It leverages:
+- [tuist/xcodeproj](https://github.com/tuist/xcodeproj) for project file manipulation
+- [modelcontextprotocol/swift-sdk](https://github.com/modelcontextprotocol/swift-sdk) for MCP functionality
+- Native `xcodebuild`, `simctl`, and `devicectl` for build and device operations
 
 ## Architecture
 
@@ -16,80 +19,83 @@ This project provides an MCP server that enables interaction with Xcode projects
 
 ## Package Structure
 
-The project is organized into multiple targets for better modularity and testability:
-
 ```
-xcodeproj-mcp-server/
+xcode-mcp-server/
 ├── Package.swift
 ├── Sources/
-│   ├── XcodeProjectMCP/           # Library target
-│   │   ├── XcodeProjectMCPServer.swift
-│   │   ├── CreateXcodeprojTool.swift
-│   │   └── [other tool implementations]
-│   └── xcodeproj-mcp-server/      # Executable target
+│   ├── XcodeMCP/                    # Library target
+│   │   ├── Server/
+│   │   │   ├── XcodeMCPServer.swift    # Main server with tool registry
+│   │   │   └── SessionManager.swift     # Session state management
+│   │   ├── Tools/
+│   │   │   ├── Project/                 # 23 project manipulation tools
+│   │   │   ├── Session/                 # 3 session management tools
+│   │   │   ├── Simulator/               # 17 simulator tools
+│   │   │   ├── Device/                  # 7 device tools
+│   │   │   ├── MacOS/                   # 6 macOS build tools
+│   │   │   ├── Discovery/               # 5 project discovery tools
+│   │   │   ├── Logging/                 # 4 log capture tools
+│   │   │   ├── Debug/                   # 8 LLDB debug tools
+│   │   │   ├── UIAutomation/            # 7 UI automation tools
+│   │   │   ├── SwiftPackage/            # 6 Swift Package Manager tools
+│   │   │   └── Utility/                 # 4 utility tools
+│   │   └── Utilities/
+│   │       ├── PathUtility.swift
+│   │       ├── XcodebuildRunner.swift
+│   │       ├── SimctlRunner.swift
+│   │       ├── DeviceCtlRunner.swift
+│   │       ├── LLDBRunner.swift
+│   │       └── SwiftRunner.swift
+│   └── xcode-mcp-server/            # Executable target
 │       └── main.swift
 ├── Tests/
-│   └── XcodeProjectMCPTests/      # Test target
-│       └── CreateXcodeprojToolTests.swift
+│   └── XcodeMCPTests/               # Test target
+│       └── [tool tests]
 └── CLAUDE.md
 ```
 
 ### Targets
 
-- **XcodeProjectMCP** (Library): Core functionality and MCP tools
-  - Contains all tool implementations
-  - Provides the main server class
-  - Can be imported by other Swift packages
+- **XcodeMCP** (Library): Core functionality and MCP tools (93 tools)
+- **xcode-mcp-server** (Executable): Command-line interface
+- **XcodeMCPTests** (Test): Unit tests using swift-testing framework
 
-- **xcodeproj-mcp-server** (Executable): Command-line interface
-  - Minimal main.swift that starts the server
-  - Depends on XcodeProjectMCP library
+## Tool Categories
 
-- **XcodeProjectMCPTests** (Test): Unit tests
-  - Tests for tool implementations
-  - Integration tests for MCP functionality
-  - All tests are written using swift-testing framework
+### Session Management (3 tools)
+- `set_session_defaults` - Set default project, scheme, simulator, device
+- `show_session_defaults` - Show current session defaults
+- `clear_session_defaults` - Clear all session defaults
 
-## Available Tools
+### Project Management (23 tools)
+- Project creation, file/target management, build settings, dependencies, app extensions
 
-### Core Operations
-- `create_xcodeproj` - Create a new Xcode project with basic configuration
-- `list_targets` - List all targets in an Xcode project
-- `list_build_configurations` - List all build configurations
-- `list_files` - List all files in a specific target
-- `get_build_settings` - Get build settings for a specific target
+### Simulator (17 tools)
+- List, boot, build, run, test, record video, set location/appearance, UI automation
 
-### File Management
-- `add_file` - Add a file to the Xcode project
-- `remove_file` - Remove a file from the Xcode project
-- `move_file` - Move or rename a file within the project
-- `create_group` - Create a new group in the project navigator
+### Device (7 tools)
+- List devices, build, install, run, test on physical devices
 
-### Target Management
-- `add_target` - Create a new target
-- `remove_target` - Remove an existing target
-- `add_dependency` - Add dependency between targets
-- `set_build_setting` - Modify build settings for a target
+### macOS (6 tools)
+- Build, run, test macOS applications
 
-### App Extension Management
-- `add_app_extension` - Add an App Extension target and embed it in a host app (Widget, Push Notification, Share, etc.)
-- `remove_app_extension` - Remove an App Extension target and its embedding from the host app
+### Discovery (5 tools)
+- Discover projects, list schemes, show build settings, get bundle IDs
 
-### Advanced Operations
-- `add_framework` - Add framework dependencies
-- `add_build_phase` - Add custom build phases
-- `duplicate_target` - Duplicate an existing target
+### Logging (4 tools)
+- Capture simulator and device logs
 
-## Implementation Status
+### Debug (8 tools)
+- LLDB integration: attach, breakpoints, stack, variables, commands
 
-✅ **Completed**:
-- Project initialization
-- Package.swift with dependencies
-- Basic MCP server structure
-- All tool implementations (except open_xcodeproj which was removed for container compatibility)
-- Comprehensive error handling and validation
-- Complete unit test suite using swift-testing framework
-- PathUtility for secure path handling within base directory constraints
+### UI Automation (7 tools)
+- Tap, swipe, type, press keys/buttons, screenshot
+
+### Swift Package Manager (6 tools)
+- Build, test, run, clean, list dependencies
+
+### Utilities (4 tools)
+- Clean build products, doctor diagnostics, scaffold iOS/macOS projects
 
 ## Building and Running
 
@@ -98,31 +104,18 @@ xcodeproj-mcp-server/
 swift build
 
 # Run the MCP server
-swift run xcodeproj-mcp-server
-```
+swift run xcode-mcp-server
 
-## Usage Example
-
-The server responds to MCP tool calls. Example of creating a new Xcode project:
-
-```json
-{
-  "tool": "create_xcodeproj",
-  "arguments": {
-    "project_name": "MyApp",
-    "path": "/path/to/projects",
-    "organization_name": "My Company",
-    "bundle_identifier": "com.mycompany"
-  }
-}
+# Run tests
+swift test
 ```
 
 ## Development Notes
 
-- Each tool is implemented as a separate Swift file in the Sources directory
-- Tools conform to the `Tool` protocol from ModelContextProtocol
-- XcodeProj library handles the low-level .xcodeproj file manipulation
-- Error handling uses custom ToolError enum for consistent error reporting
-- **Testing**: All tests are written using swift-testing framework instead of XCTest for modern Swift testing capabilities
-- **Development Rule**: Always run `swift test` after implementing new features to verify tests pass
-- Execute `swift format -r -i .` to format the codebase before committing changes
+- Each tool is implemented as a separate Swift file organized by category
+- Tools follow a consistent pattern with `tool()` and `execute()` methods
+- XcodeProj library handles .xcodeproj file manipulation
+- Runner utilities wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift)
+- **Testing**: All tests use swift-testing framework (166 tests)
+- **Swift 6**: Strict concurrency enabled
+- **Formatting**: Execute `swift format -r -i .` before committing
