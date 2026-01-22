@@ -58,7 +58,8 @@ After pushing the tag, update the homebrew-xc-mcp tap:
 
 1. Update the formula version in `../homebrew-xc-mcp/Formula/xc-mcp.rb`:
    - Change the `url` line to use the new version tag
-   - Set `sha256` to `"PLACEHOLDER_SHA256"` (GitHub Actions will update it after release)
+   - Change the `version` line to the new version (without 'v' prefix)
+   - Set `sha256` to `"PLACEHOLDER_SHA256"` (will be updated after release publishes)
 2. Commit and push the homebrew tap:
    ```bash
    cd ../homebrew-xc-mcp
