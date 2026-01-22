@@ -50,7 +50,10 @@
       "Bash(shasum:*)",
       "Bash(git init:*)",
       "Bash(git remote add:*)",
-      "Bash(xargs rm:*)"
+      "Bash(xargs rm:*)",
+      "Bash(gh release view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
     ]
   }
 }
