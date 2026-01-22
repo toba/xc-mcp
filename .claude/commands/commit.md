@@ -54,13 +54,24 @@ If $ARGUMENTS contains "push" or user requested push:
 
 ### Step 4: Update Homebrew Tap
 
-After pushing the tag, update the homebrew-xc-mcp tap:
+After pushing the tag:
 
-1. Update the formula version in `../homebrew-xc-mcp/Formula/xc-mcp.rb`:
+1. Wait for the release workflow to complete:
+   ```bash
+   gh run watch $(gh run list --repo toba/xc-mcp --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId') --repo toba/xc-mcp
+   ```
+
+2. Fetch the sha256 from the release:
+   ```bash
+   gh release download v<new-version> --repo toba/xc-mcp --pattern "*.sha256" -O - | awk '{print $1}'
+   ```
+
+3. Update `../homebrew-xc-mcp/Formula/xc-mcp.rb`:
    - Change the `url` line to use the new version tag
    - Change the `version` line to the new version (without 'v' prefix)
-   - Set `sha256` to `"PLACEHOLDER_SHA256"` (will be updated after release publishes)
-2. Commit and push the homebrew tap:
+   - Set `sha256` to the value from step 2
+
+4. Commit and push the homebrew tap:
    ```bash
    cd ../homebrew-xc-mcp
    git add Formula/xc-mcp.rb
@@ -68,7 +79,6 @@ After pushing the tag, update the homebrew-xc-mcp tap:
    git push
    cd ../xc-mcp
    ```
-3. GitHub Actions in the homebrew repo will update the sha256 once the release is published
 
 ### Version Examples
 
