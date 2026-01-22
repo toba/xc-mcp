@@ -52,10 +52,19 @@ public enum BuildToolName: String, CaseIterable, Sendable {
 /// - **Session**: manage default project and build settings
 public struct BuildMCPServer: Sendable {
     private let basePath: String
+    private let sandboxEnabled: Bool
     private let logger: Logger
 
-    public init(basePath: String, logger: Logger) {
+    /// Creates a new build MCP server instance.
+    ///
+    /// - Parameters:
+    ///   - basePath: The root directory for file operations.
+    ///   - sandboxEnabled: Whether to enforce that paths stay within the base directory.
+    ///     Defaults to `true`.
+    ///   - logger: Logger instance for diagnostic output.
+    public init(basePath: String, sandboxEnabled: Bool = true, logger: Logger) {
         self.basePath = basePath
+        self.sandboxEnabled = sandboxEnabled
         self.logger = logger
     }
 
@@ -67,7 +76,7 @@ public struct BuildMCPServer: Sendable {
         )
 
         // Create utilities
-        let pathUtility = PathUtility(basePath: basePath)
+        let pathUtility = PathUtility(basePath: basePath, sandboxEnabled: sandboxEnabled)
         let xcodebuildRunner = XcodebuildRunner()
         let sessionManager = SessionManager()
 

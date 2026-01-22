@@ -33,6 +33,28 @@ If any command fails or review finds blocking issues, report them and STOP. Do n
    - Include affected bean IDs if applicable
 5. Run `git status` to confirm the commit succeeded
 
-## Step 3: Push (if requested)
+## Step 3: Push and Version (if requested)
 
-If $ARGUMENTS contains "push" or user requested push, run `git push`.
+If $ARGUMENTS contains "push" or user requested push:
+
+1. Get the latest version tag: `git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1`
+2. Get the previous tag's commit to see what changed: `git log <latest-tag>..HEAD --oneline`
+3. Determine version increment based on changes since last tag:
+   - **patch** (x.y.Z): Bug fixes, minor improvements, documentation
+   - **minor** (x.Y.0): New features, new tools, new flags (like --no-sandbox)
+   - **major** (X.0.0): Breaking changes, API changes, removed functionality
+4. Ask user to confirm the version increment (show current version and proposed new version)
+5. After confirmation:
+   ```bash
+   git push
+   git tag v<new-version>
+   git push origin v<new-version>
+   ```
+6. The GitHub Actions workflow will automatically create a release with binaries
+
+### Version Examples
+
+- Current: v1.2.3
+  - Bug fix → v1.2.4 (patch)
+  - New --no-sandbox flag → v1.3.0 (minor)
+  - Changed tool argument names → v2.0.0 (major)

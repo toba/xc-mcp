@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer
+
+    - name: Build release binaries
+      run: swift build -c release --disable-sandbox
+
+    - name: Create archive
+      run: |
+        mkdir -p dist
+        cp .build/release/xc-mcp dist/
+        cp .build/release/xc-project dist/
+        cp .build/release/xc-simulator dist/
+        cp .build/release/xc-device dist/
+        cp .build/release/xc-debug dist/
+        cp .build/release/xc-swift dist/
+        cp .build/release/xc-build dist/
+        cp .build/release/xc-strings dist/
+        cd dist && tar -czvf ../xc-mcp-${{ github.ref_name }}-arm64.tar.gz *
+
+    - name: Generate SHA256
+      run: shasum -a 256 xc-mcp-${{ github.ref_name }}-arm64.tar.gz > xc-mcp-${{ github.ref_name }}-arm64.tar.gz.sha256
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          xc-mcp-${{ github.ref_name }}-arm64.tar.gz
+          xc-mcp-${{ github.ref_name }}-arm64.tar.gz.sha256
+        generate_release_notes: true

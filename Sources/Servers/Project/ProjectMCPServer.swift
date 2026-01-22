@@ -54,15 +54,19 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
 /// - App extensions: `add_app_extension`, `remove_app_extension`
 public struct ProjectMCPServer: Sendable {
     private let basePath: String
+    private let sandboxEnabled: Bool
     private let logger: Logger
 
     /// Creates a new project MCP server instance.
     ///
     /// - Parameters:
     ///   - basePath: The root directory for file operations.
+    ///   - sandboxEnabled: Whether to enforce that paths stay within the base directory.
+    ///     Defaults to `true`.
     ///   - logger: Logger instance for diagnostic output.
-    public init(basePath: String, logger: Logger) {
+    public init(basePath: String, sandboxEnabled: Bool = true, logger: Logger) {
         self.basePath = basePath
+        self.sandboxEnabled = sandboxEnabled
         self.logger = logger
     }
 
@@ -75,7 +79,7 @@ public struct ProjectMCPServer: Sendable {
         )
 
         // Create path utility
-        let pathUtility = PathUtility(basePath: basePath)
+        let pathUtility = PathUtility(basePath: basePath, sandboxEnabled: sandboxEnabled)
 
         // Create project tools
         let createXcodeprojTool = CreateXcodeprojTool(pathUtility: pathUtility)

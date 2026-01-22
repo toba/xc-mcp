@@ -45,15 +45,35 @@ public enum PathError: LocalizedError, MCPErrorConvertible {
 /// // Paths outside base throw an error
 /// try utility.resolvePath(from: "../outside") // Throws PathError
 /// ```
+///
+/// ## Disabling Sandboxing
+///
+/// When running as an MCP server without a known working directory, sandboxing can be
+/// disabled to allow access to any path:
+///
+/// ```swift
+/// let utility = PathUtility(basePath: "/tmp", sandboxEnabled: false)
+/// // All paths are allowed, basePath is only used for resolving relative paths
+/// ```
 public struct PathUtility: Sendable {
     /// The root directory for all path operations.
     public let basePath: String
 
+    /// Whether path sandboxing is enabled.
+    ///
+    /// When `true` (the default), all resolved paths must be within the base path.
+    /// When `false`, paths outside the base path are allowed.
+    public let sandboxEnabled: Bool
+
     /// Creates a new path utility with the specified base directory.
     ///
-    /// - Parameter basePath: The root directory that constrains all path operations.
-    public init(basePath: String) {
+    /// - Parameters:
+    ///   - basePath: The root directory that constrains all path operations.
+    ///   - sandboxEnabled: Whether to enforce that paths stay within the base directory.
+    ///     Defaults to `true`.
+    public init(basePath: String, sandboxEnabled: Bool = true) {
         self.basePath = basePath
+        self.sandboxEnabled = sandboxEnabled
     }
 
     /// Resolves a path relative to the base path and validates it's within bounds.
@@ -70,25 +90,28 @@ public struct PathUtility: Sendable {
     ///
     /// - Parameter path: The path to resolve (absolute or relative).
     /// - Returns: The resolved URL.
-    /// - Throws: ``PathError/pathOutsideBasePath(path:basePath:)`` if the path is outside the base directory.
+    /// - Throws: ``PathError/pathOutsideBasePath(path:basePath:)`` if sandboxing is enabled
+    ///   and the path is outside the base directory.
     public func resolvePathURL(from path: String) throws(PathError) -> URL {
         let baseURL = URL(fileURLWithPath: basePath).standardized
 
         let resolvedURL: URL
         if path.hasPrefix("/") {
-            // Absolute path - must validate it's within base path
+            // Absolute path - must validate it's within base path (if sandboxing is enabled)
             resolvedURL = URL(fileURLWithPath: path).standardized
         } else {
             // Relative path - resolve relative to base path
             resolvedURL = baseURL.appendingPathComponent(path).standardized
         }
 
-        // Validate the resolved path is within the base path
-        let basePath = baseURL.path
-        let resolvedPath = resolvedURL.path
+        // Only validate when sandboxing is enabled
+        if sandboxEnabled {
+            let basePath = baseURL.path
+            let resolvedPath = resolvedURL.path
 
-        if !resolvedPath.hasPrefix(basePath) {
-            throw PathError.pathOutsideBasePath(path: resolvedPath, basePath: basePath)
+            if !resolvedPath.hasPrefix(basePath) {
+                throw PathError.pathOutsideBasePath(path: resolvedPath, basePath: basePath)
+            }
         }
 
         return resolvedURL

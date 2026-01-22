@@ -33,6 +33,10 @@ struct StringsServerCLI: AsyncParsableCommand {
     @Flag(name: .shortAndLong, help: "Enable verbose logging (debug level)")
     var verbose: Bool = false
 
+    @Flag(
+        name: .long, help: "Disable path sandboxing (allow access to paths outside base directory)")
+    var noSandbox: Bool = false
+
     mutating func run() async throws {
         let logLevel: Logger.Level = verbose ? .debug : .info
         LoggingSystem.bootstrap { label in
@@ -45,7 +49,11 @@ struct StringsServerCLI: AsyncParsableCommand {
 
         let resolvedBasePath = basePath ?? FileManager.default.currentDirectoryPath
 
-        let server = StringsMCPServer(basePath: resolvedBasePath, logger: logger)
+        let server = StringsMCPServer(
+            basePath: resolvedBasePath,
+            sandboxEnabled: !noSandbox,
+            logger: logger
+        )
         try await server.run()
     }
 }
