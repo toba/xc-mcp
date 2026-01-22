@@ -23,6 +23,12 @@ import Foundation
 /// }
 /// ```
 public struct XcodebuildRunner: Sendable {
+    /// Default timeout for build operations (5 minutes)
+    public static let defaultTimeout: TimeInterval = 300
+
+    /// Timeout for no-output detection (30 seconds without output = stuck)
+    public static let outputTimeout: TimeInterval = 30
+
     /// Creates a new xcodebuild runner.
     public init() {}
 
@@ -32,36 +38,119 @@ public struct XcodebuildRunner: Sendable {
     /// - Returns: The result containing exit code and output.
     /// - Throws: An error if the process fails to launch.
     public func run(arguments: [String]) async throws -> XcodebuildResult {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-            process.arguments = ["xcodebuild"] + arguments
+        try await run(arguments: arguments, timeout: Self.defaultTimeout, onProgress: nil)
+    }
 
-            let stdoutPipe = Pipe()
-            let stderrPipe = Pipe()
-            process.standardOutput = stdoutPipe
-            process.standardError = stderrPipe
+    /// Executes an xcodebuild command with timeout and optional progress callback.
+    ///
+    /// - Parameters:
+    ///   - arguments: The command-line arguments to pass to xcodebuild.
+    ///   - timeout: Maximum time to wait for the build to complete.
+    ///   - onProgress: Optional callback invoked with output lines as they arrive.
+    /// - Returns: The result containing exit code and output.
+    /// - Throws: An error if the process fails to launch or times out.
+    public func run(
+        arguments: [String],
+        timeout: TimeInterval,
+        onProgress: (@Sendable (String) -> Void)?
+    ) async throws -> XcodebuildResult {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+        process.arguments = ["xcodebuild"] + arguments
 
-            do {
-                try process.run()
-                process.waitUntilExit()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
 
-                let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+        // Collected output
+        let outputActor = OutputCollector()
 
-                let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
-                let stderr = String(data: stderrData, encoding: .utf8) ?? ""
+        // Track last output time for stuck detection
+        let lastOutputTime = LastOutputTime()
 
-                let result = XcodebuildResult(
-                    exitCode: process.terminationStatus,
-                    stdout: stdout,
-                    stderr: stderr
-                )
-                continuation.resume(returning: result)
-            } catch {
-                continuation.resume(throwing: error)
+        // Set up async reading of stdout
+        let stdoutHandle = stdoutPipe.fileHandleForReading
+        stdoutHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            if !data.isEmpty {
+                Task {
+                    await lastOutputTime.update()
+                    if let line = String(data: data, encoding: .utf8) {
+                        await outputActor.appendStdout(line)
+                        onProgress?(line)
+                    }
+                }
             }
         }
+
+        // Set up async reading of stderr
+        let stderrHandle = stderrPipe.fileHandleForReading
+        stderrHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            if !data.isEmpty {
+                Task {
+                    await lastOutputTime.update()
+                    if let line = String(data: data, encoding: .utf8) {
+                        await outputActor.appendStderr(line)
+                        onProgress?(line)
+                    }
+                }
+            }
+        }
+
+        try process.run()
+
+        // Wait for process with timeout
+        let startTime = Date()
+
+        while process.isRunning {
+            // Check total timeout
+            if Date().timeIntervalSince(startTime) > timeout {
+                process.terminate()
+                let (stdout, stderr) = await outputActor.getOutput()
+                throw XcodebuildError.timeout(
+                    duration: timeout,
+                    partialOutput: stdout + stderr
+                )
+            }
+
+            // Check for stuck process (no output for too long)
+            let timeSinceLastOutput = await lastOutputTime.timeSinceLastOutput()
+            if timeSinceLastOutput > Self.outputTimeout {
+                process.terminate()
+                let (stdout, stderr) = await outputActor.getOutput()
+                throw XcodebuildError.stuckProcess(
+                    noOutputFor: timeSinceLastOutput,
+                    partialOutput: stdout + stderr
+                )
+            }
+
+            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+        }
+
+        // Clean up handlers
+        stdoutHandle.readabilityHandler = nil
+        stderrHandle.readabilityHandler = nil
+
+        // Read any remaining data
+        let remainingStdout = stdoutHandle.readDataToEndOfFile()
+        let remainingStderr = stderrHandle.readDataToEndOfFile()
+
+        if !remainingStdout.isEmpty, let line = String(data: remainingStdout, encoding: .utf8) {
+            await outputActor.appendStdout(line)
+        }
+        if !remainingStderr.isEmpty, let line = String(data: remainingStderr, encoding: .utf8) {
+            await outputActor.appendStderr(line)
+        }
+
+        let (stdout, stderr) = await outputActor.getOutput()
+
+        return XcodebuildResult(
+            exitCode: process.terminationStatus,
+            stdout: stdout,
+            stderr: stderr
+        )
     }
 
     /// Builds a project for a specific destination.
@@ -223,5 +312,64 @@ public struct XcodebuildRunner: Sendable {
         ]
 
         return try await run(arguments: args)
+    }
+}
+
+// MARK: - Helper Types
+
+/// Errors specific to xcodebuild execution.
+public enum XcodebuildError: LocalizedError {
+    /// The build exceeded the maximum allowed time.
+    case timeout(duration: TimeInterval, partialOutput: String)
+
+    /// The build process stopped producing output (likely stuck).
+    case stuckProcess(noOutputFor: TimeInterval, partialOutput: String)
+
+    public var errorDescription: String? {
+        switch self {
+        case let .timeout(duration, _):
+            return "Build timed out after \(Int(duration)) seconds"
+        case let .stuckProcess(noOutputFor, _):
+            return "Build appears stuck (no output for \(Int(noOutputFor)) seconds)"
+        }
+    }
+
+    /// The partial output captured before the error occurred.
+    public var partialOutput: String {
+        switch self {
+        case let .timeout(_, output), let .stuckProcess(_, output):
+            return output
+        }
+    }
+}
+
+/// Actor for safely collecting output from multiple sources.
+private actor OutputCollector {
+    private var stdout = ""
+    private var stderr = ""
+
+    func appendStdout(_ text: String) {
+        stdout += text
+    }
+
+    func appendStderr(_ text: String) {
+        stderr += text
+    }
+
+    func getOutput() -> (stdout: String, stderr: String) {
+        return (stdout, stderr)
+    }
+}
+
+/// Actor for tracking the last time output was received.
+private actor LastOutputTime {
+    private var lastTime = Date()
+
+    func update() {
+        lastTime = Date()
+    }
+
+    func timeSinceLastOutput() -> TimeInterval {
+        return Date().timeIntervalSince(lastTime)
     }
 }
