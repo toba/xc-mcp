@@ -53,7 +53,8 @@
       "Bash(xargs rm:*)",
       "Bash(gh release view:*)",
       "Bash(gh run list:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Bash(gh run watch:*)"
     ]
   }
 }
