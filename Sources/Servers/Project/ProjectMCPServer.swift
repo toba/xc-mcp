@@ -27,6 +27,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case removeSwiftPackage = "remove_swift_package"
     case listGroups = "list_groups"
     case addSynchronizedFolder = "add_synchronized_folder"
+    case removeSynchronizedFolder = "remove_synchronized_folder"
     case addAppExtension = "add_app_extension"
     case removeAppExtension = "remove_app_extension"
 }
@@ -103,6 +104,7 @@ public struct ProjectMCPServer: Sendable {
         let removeSwiftPackageTool = RemoveSwiftPackageTool(pathUtility: pathUtility)
         let listGroupsTool = ListGroupsTool(pathUtility: pathUtility)
         let addSynchronizedFolderTool = AddFolderTool(pathUtility: pathUtility)
+        let removeSynchronizedFolderTool = RemoveFolderTool(pathUtility: pathUtility)
         let addAppExtensionTool = AddAppExtensionTool(pathUtility: pathUtility)
         let removeAppExtensionTool = RemoveAppExtensionTool(pathUtility: pathUtility)
 
@@ -130,6 +132,7 @@ public struct ProjectMCPServer: Sendable {
                 removeSwiftPackageTool.tool(),
                 listGroupsTool.tool(),
                 addSynchronizedFolderTool.tool(),
+                removeSynchronizedFolderTool.tool(),
                 addAppExtensionTool.tool(),
                 removeAppExtensionTool.tool(),
             ])
@@ -186,6 +189,8 @@ public struct ProjectMCPServer: Sendable {
                 return try listGroupsTool.execute(arguments: arguments)
             case .addSynchronizedFolder:
                 return try addSynchronizedFolderTool.execute(arguments: arguments)
+            case .removeSynchronizedFolder:
+                return try removeSynchronizedFolderTool.execute(arguments: arguments)
             case .addAppExtension:
                 return try addAppExtensionTool.execute(arguments: arguments)
             case .removeAppExtension:
