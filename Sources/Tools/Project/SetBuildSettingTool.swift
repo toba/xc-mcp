@@ -116,7 +116,7 @@ public struct SetBuildSettingTool: Sendable {
             }
 
             // Save project
-            try xcodeproj.write(path: Path(projectURL.path))
+            try xcodeproj.writePBXProj(path: Path(projectURL.path), outputSettings: PBXOutputSettings())
 
             let configurationsText = modifiedConfigurations.joined(separator: ", ")
             return CallTool.Result(

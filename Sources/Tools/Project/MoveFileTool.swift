@@ -94,7 +94,7 @@ public struct MoveFileTool: Sendable {
             }
 
             if fileMoved {
-                try xcodeproj.write(path: Path(projectURL.path))
+                try xcodeproj.writePBXProj(path: Path(projectURL.path), outputSettings: PBXOutputSettings())
 
                 // Optionally move on disk
                 if moveOnDisk {

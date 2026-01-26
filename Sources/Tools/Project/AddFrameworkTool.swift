@@ -207,7 +207,7 @@ public struct AddFrameworkTool: Sendable {
             }
 
             // Save project
-            try xcodeproj.write(path: Path(projectURL.path))
+            try xcodeproj.writePBXProj(path: Path(projectURL.path), outputSettings: PBXOutputSettings())
 
             let embedText = embed && !isSystemFramework ? " (embedded)" : ""
             return CallTool.Result(

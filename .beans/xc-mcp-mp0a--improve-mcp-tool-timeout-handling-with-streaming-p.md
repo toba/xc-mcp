@@ -1,11 +1,11 @@
 ---
 # xc-mcp-mp0a
 title: Improve MCP tool timeout handling with streaming progress
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-01-22T06:12:39Z
-updated_at: 2026-01-22T06:13:56Z
+updated_at: 2026-01-22T06:19:14Z
 ---
 
 MCP tools (especially xc-build) timeout after long waits with AbortError. Implement:

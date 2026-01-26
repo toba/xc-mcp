@@ -114,7 +114,7 @@ public struct AddDependencyTool: Sendable {
             target.dependencies.append(targetDependency)
 
             // Save project
-            try xcodeproj.write(path: Path(projectURL.path))
+            try xcodeproj.writePBXProj(path: Path(projectURL.path), outputSettings: PBXOutputSettings())
 
             return CallTool.Result(
                 content: [

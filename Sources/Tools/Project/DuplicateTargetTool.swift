@@ -208,7 +208,7 @@ public struct DuplicateTargetTool: Sendable {
             }
 
             // Save project
-            try xcodeproj.write(path: Path(projectURL.path))
+            try xcodeproj.writePBXProj(path: Path(projectURL.path), outputSettings: PBXOutputSettings())
 
             let bundleIdText =
                 newBundleIdentifier != nil

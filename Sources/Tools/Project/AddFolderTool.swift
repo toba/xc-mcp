@@ -152,7 +152,7 @@ public struct AddFolderTool: Sendable {
             }
 
             // Write project
-            try xcodeproj.write(path: Path(projectURL.path))
+            try xcodeproj.writePBXProj(path: Path(projectURL.path), outputSettings: PBXOutputSettings())
 
             let targetInfo = targetName != nil ? " to target '\(targetName!)'" : ""
             let groupInfo = groupName != nil ? " in group '\(groupName!)'" : ""
