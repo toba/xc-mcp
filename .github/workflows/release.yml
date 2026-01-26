@@ -34,10 +34,25 @@ jobs:
     - name: Generate SHA256
       run: shasum -a 256 xc-mcp-${{ github.ref_name }}-arm64.tar.gz > xc-mcp-${{ github.ref_name }}-arm64.tar.gz.sha256
 
+    - name: Generate release notes
+      id: release_notes
+      run: |
+        # Get the previous tag
+        PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p')
+        if [ -z "$PREV_TAG" ]; then
+          # First release, get all commits
+          NOTES=$(git log --pretty=format:"- %s" HEAD)
+        else
+          # Get commits since previous tag
+          NOTES=$(git log --pretty=format:"- %s" ${PREV_TAG}..HEAD)
+        fi
+        # Write to file to preserve newlines
+        echo "$NOTES" > release_notes.txt
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v2
       with:
         files: |
           xc-mcp-${{ github.ref_name }}-arm64.tar.gz
           xc-mcp-${{ github.ref_name }}-arm64.tar.gz.sha256
-        generate_release_notes: true
+        body_path: release_notes.txt
