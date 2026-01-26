@@ -53,7 +53,8 @@
       "WebFetch(domain:lldb.llvm.org)",
       "WebFetch(domain:www.iosdev.recipes)",
       "WebFetch(domain:nshipster.com)",
-      "WebFetch(domain:docs.brew.sh)"
+      "WebFetch(domain:docs.brew.sh)",
+      "Bash(git fetch:*)"
     ]
   }
 }

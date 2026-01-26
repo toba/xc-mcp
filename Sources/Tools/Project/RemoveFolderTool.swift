@@ -27,7 +27,8 @@ public struct RemoveFolderTool: Sendable {
                     "folder_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path of the synchronized folder to remove (e.g., 'Core' or 'Core/Sources')"),
+                            "Path of the synchronized folder to remove (e.g., 'Core' or 'Core/Sources')"
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("folder_path")]),

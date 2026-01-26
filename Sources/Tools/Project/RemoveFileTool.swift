@@ -143,7 +143,8 @@ public struct RemoveFileTool: Sendable {
             }
 
             if fileRemoved {
-                try xcodeproj.writePBXProj(path: Path(projectURL.path), outputSettings: PBXOutputSettings())
+                try xcodeproj.writePBXProj(
+                    path: Path(projectURL.path), outputSettings: PBXOutputSettings())
 
                 // Optionally remove from disk
                 if removeFromDisk {

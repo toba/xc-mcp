@@ -241,7 +241,8 @@ public struct AddTargetTool: Sendable {
             }
 
             // Save project
-            try xcodeproj.writePBXProj(path: Path(projectURL.path), outputSettings: PBXOutputSettings())
+            try xcodeproj.writePBXProj(
+                path: Path(projectURL.path), outputSettings: PBXOutputSettings())
 
             return CallTool.Result(
                 content: [
