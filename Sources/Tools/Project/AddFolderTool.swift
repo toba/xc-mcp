@@ -134,20 +134,12 @@ public struct AddFolderTool: Sendable {
                     throw MCPError.invalidParams("Target '\(targetName)' not found in project")
                 }
 
-                // Create build file for the folder
-                let buildFile = PBXBuildFile(file: folderReference)
-                xcodeproj.pbxproj.add(object: buildFile)
-
-                // Add to resources build phase
-                if let resourcesBuildPhase = target.buildPhases.first(where: {
-                    $0 is PBXResourcesBuildPhase
-                }) as? PBXResourcesBuildPhase {
-                    resourcesBuildPhase.files?.append(buildFile)
+                // Add synchronized group to target's fileSystemSynchronizedGroups
+                // This tells Xcode to automatically include files from this folder in the target
+                if target.fileSystemSynchronizedGroups == nil {
+                    target.fileSystemSynchronizedGroups = [folderReference]
                 } else {
-                    // Create resources build phase if it doesn't exist
-                    let resourcesBuildPhase = PBXResourcesBuildPhase(files: [buildFile])
-                    xcodeproj.pbxproj.add(object: resourcesBuildPhase)
-                    target.buildPhases.append(resourcesBuildPhase)
+                    target.fileSystemSynchronizedGroups?.append(folderReference)
                 }
             }
 
