@@ -90,14 +90,25 @@ public struct AddFolderTool: Sendable {
             // Find the group to add the folder to (must be done before calculating relative path)
             let targetGroup: PBXGroup
             if let groupName {
-                // Find group by name or path
-                if let foundGroup = xcodeproj.pbxproj.groups.first(where: {
-                    $0.name == groupName || $0.path == groupName
-                }) {
-                    targetGroup = foundGroup
-                } else {
-                    throw MCPError.invalidParams("Group '\(groupName)' not found in project")
+                // Support path-based lookup (e.g., "Integrations/BibTeX")
+                let pathComponents = groupName.split(separator: "/").map(String.init)
+
+                guard let project = try xcodeproj.pbxproj.rootProject(),
+                    let mainGroup = project.mainGroup
+                else {
+                    throw MCPError.internalError("Main group not found in project")
                 }
+
+                var currentGroup: PBXGroup = mainGroup
+                for component in pathComponents {
+                    if let childGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(where: { $0.name == component || $0.path == component }) {
+                        currentGroup = childGroup
+                    } else {
+                        throw MCPError.invalidParams(
+                            "Group '\(groupName)' not found in project (failed at '\(component)')")
+                    }
+                }
+                targetGroup = currentGroup
             } else {
                 // Use main group
                 guard let project = try xcodeproj.pbxproj.rootProject(),
