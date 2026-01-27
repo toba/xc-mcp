@@ -54,7 +54,8 @@
       "WebFetch(domain:www.iosdev.recipes)",
       "WebFetch(domain:nshipster.com)",
       "WebFetch(domain:docs.brew.sh)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(swift package:*)"
     ]
   }
 }

@@ -87,20 +87,7 @@ public struct AddFolderTool: Sendable {
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            // Create file system synchronized root group
-            let folderName = URL(filePath: resolvedFolderPath).lastPathComponent
-            // Use relative path from project for folder reference
-            let relativePath =
-                pathUtility.makeRelativePath(from: resolvedFolderPath) ?? resolvedFolderPath
-
-            let folderReference = PBXFileSystemSynchronizedRootGroup(
-                sourceTree: .group,
-                path: relativePath,
-                name: folderName
-            )
-            xcodeproj.pbxproj.add(object: folderReference)
-
-            // Find the group to add the folder to
+            // Find the group to add the folder to (must be done before calculating relative path)
             let targetGroup: PBXGroup
             if let groupName {
                 // Find group by name or path
@@ -120,6 +107,40 @@ public struct AddFolderTool: Sendable {
                 }
                 targetGroup = mainGroup
             }
+
+            // Create file system synchronized root group
+            let folderName = URL(filePath: resolvedFolderPath).lastPathComponent
+
+            // Calculate the path relative to the parent group, not project root
+            // Since sourceTree is .group, Xcode resolves paths relative to the parent group
+            let projectRoot = projectURL.deletingLastPathComponent().path
+            let groupFullPath: String
+            if let groupPath = try targetGroup.fullPath(sourceRoot: projectRoot) {
+                groupFullPath = groupPath
+            } else {
+                groupFullPath = projectRoot
+            }
+
+            // Make the folder path relative to the group's location
+            let relativePath: String
+            if resolvedFolderPath.hasPrefix(groupFullPath + "/") {
+                // Folder is inside the group's directory - use relative path from group
+                relativePath = String(resolvedFolderPath.dropFirst(groupFullPath.count + 1))
+            } else if resolvedFolderPath == groupFullPath {
+                // Folder is the group's directory itself
+                relativePath = "."
+            } else {
+                // Folder is not inside the group - use path relative to project root
+                relativePath =
+                    pathUtility.makeRelativePath(from: resolvedFolderPath) ?? resolvedFolderPath
+            }
+
+            let folderReference = PBXFileSystemSynchronizedRootGroup(
+                sourceTree: .group,
+                path: relativePath,
+                name: folderName
+            )
+            xcodeproj.pbxproj.add(object: folderReference)
 
             // Add folder to group
             targetGroup.children.append(folderReference)

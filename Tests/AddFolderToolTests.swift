@@ -246,4 +246,57 @@ struct AddFolderToolTests {
         try FileManager.default.removeItem(atPath: projectPath.string)
         try FileManager.default.removeItem(atPath: filePath.string)
     }
+
+    @Test("Adds folder with path relative to parent group")
+    func addsFolderWithRelativePathToParentGroup() throws {
+        let tool = AddFolderTool(pathUtility: pathUtility)
+
+        // Create a test project
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        // Create directory structure: DOM/Sources
+        let domPath = Path(tempDir) + "DOM"
+        let sourcesPath = domPath + "Sources"
+        try FileManager.default.createDirectory(
+            atPath: sourcesPath.string, withIntermediateDirectories: true)
+
+        // Load the project and add a group "DOM" with path = "DOM"
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let domGroup = PBXGroup(children: [], sourceTree: .group, name: "DOM", path: "DOM")
+        xcodeproj.pbxproj.add(object: domGroup)
+        if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
+            mainGroup.children.append(domGroup)
+        }
+        try xcodeproj.write(path: projectPath)
+
+        // Execute the tool to add DOM/Sources to the DOM group
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string(sourcesPath.string),
+            "group_name": .string("DOM"),
+        ])
+
+        // Verify the result
+        if case let .text(message) = result.content.first {
+            #expect(message.contains("Successfully added folder reference 'Sources'"))
+            #expect(message.contains("in group 'DOM'"))
+        } else {
+            Issue.record("Expected text result")
+        }
+
+        // Verify the folder was added with the correct relative path
+        // Since the folder is inside DOM group (which has path = "DOM"),
+        // the synchronized folder should have path = "Sources" (not "DOM/Sources")
+        let updatedProject = try XcodeProj(path: projectPath)
+        let folderReferences = updatedProject.pbxproj.fileSystemSynchronizedRootGroups
+        #expect(folderReferences.count == 1)
+
+        let folderRef = folderReferences.first
+        #expect(folderRef?.name == "Sources")
+        // The key assertion: path should be relative to the parent group, not project root
+        #expect(
+            folderRef?.path == "Sources",
+            "Expected path to be 'Sources' relative to DOM group, not 'DOM/Sources'")
+    }
 }

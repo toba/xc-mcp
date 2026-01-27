@@ -1,11 +1,11 @@
 ---
 # xc-mcp-pzcj
 title: add_synchronized_folder deletes scheme files
-status: in-progress
+status: completed
 type: bug
 priority: critical
 created_at: 2026-01-26T22:19:25Z
-updated_at: 2026-01-26T22:23:09Z
+updated_at: 2026-01-27T00:33:43Z
 ---
 
 ## Summary

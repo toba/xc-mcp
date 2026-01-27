@@ -309,4 +309,76 @@ struct AddBuildPhaseToolTests {
         }
         #expect(message.contains("not found"))
     }
+
+    @Test("Copy files phase dstSubfolderSpec is preserved after other operations")
+    func copyFilesPhasePreservedAfterOtherOperations() throws {
+        // This test verifies the fix for bug xc-mcp-f1y3:
+        // "MCP tools corrupt unrelated PBXCopyFilesBuildPhase sections"
+
+        // Create a temporary directory
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        // Create a test project with target and add a copy files build phase
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath)
+
+        // Add a copy files build phase with dstSubfolderSpec = .resources
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }!
+
+        let copyPhase = PBXCopyFilesBuildPhase(
+            dstPath: "styles",
+            dstSubfolderSpec: .resources,
+            name: "Copy Styles"
+        )
+        xcodeproj.pbxproj.add(object: copyPhase)
+        target.buildPhases.append(copyPhase)
+        try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
+
+        // Verify the phase was created correctly
+        let verifyProject = try XcodeProj(path: projectPath)
+        let verifyTarget = verifyProject.pbxproj.nativeTargets.first { $0.name == "App" }!
+        let verifyCopyPhase = verifyTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
+            .first { $0.name == "Copy Styles" }
+
+        #expect(verifyCopyPhase != nil, "Copy phase should exist")
+        #expect(
+            verifyCopyPhase?.dstSubfolderSpec == .resources,
+            "dstSubfolderSpec should be .resources before modification")
+
+        // Now use add_synchronized_folder to add a folder (this was corrupting copy phases)
+        let folderPath = Path(tempDir.path) + "TestFolder"
+        try FileManager.default.createDirectory(
+            atPath: folderPath.string, withIntermediateDirectories: true)
+
+        let folderTool = AddFolderTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try folderTool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string(folderPath.string),
+        ])
+
+        // Verify the copy files phase still has the correct dstSubfolderSpec
+        let updatedProject = try XcodeProj(path: projectPath)
+        let updatedTarget = updatedProject.pbxproj.nativeTargets.first { $0.name == "App" }!
+        let updatedCopyPhase = updatedTarget.buildPhases.compactMap {
+            $0 as? PBXCopyFilesBuildPhase
+        }
+        .first { $0.name == "Copy Styles" }
+
+        #expect(updatedCopyPhase != nil, "Copy phase should still exist after folder operation")
+        #expect(
+            updatedCopyPhase?.dstSubfolderSpec == .resources,
+            "dstSubfolderSpec should remain .resources after folder operation (was corrupted to \(String(describing: updatedCopyPhase?.dstSubfolderSpec)))"
+        )
+        #expect(
+            updatedCopyPhase?.dstPath == "styles",
+            "dstPath should remain 'styles' after folder operation")
+    }
 }
