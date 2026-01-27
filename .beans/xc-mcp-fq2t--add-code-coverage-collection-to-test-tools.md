@@ -1,10 +1,11 @@
 ---
 # xc-mcp-fq2t
 title: Add code coverage collection to test tools
-status: todo
+status: completed
 type: feature
+priority: normal
 created_at: 2026-01-21T07:37:59Z
-updated_at: 2026-01-21T07:37:59Z
+updated_at: 2026-01-27T03:00:46Z
 ---
 
 Add code coverage support to existing test tools (TestSimTool, TestDeviceTool, TestMacOSTool).

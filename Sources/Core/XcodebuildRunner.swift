@@ -200,6 +200,10 @@ public struct XcodebuildRunner: Sendable {
     ///   - scheme: The scheme containing tests to run.
     ///   - destination: The test destination (e.g., "platform=iOS Simulator,id=<UDID>").
     ///   - configuration: Build configuration (Debug or Release). Defaults to Debug.
+    ///   - onlyTesting: Test identifiers to run exclusively (e.g., "MyTests/testFoo").
+    ///   - skipTesting: Test identifiers to skip.
+    ///   - enableCodeCoverage: Whether to enable code coverage collection.
+    ///   - resultBundlePath: Path to store the .xcresult bundle.
     ///   - additionalArguments: Extra arguments to pass to xcodebuild.
     /// - Returns: The test result containing exit code and output.
     /// - Throws: An error if the process fails to launch.
@@ -209,6 +213,10 @@ public struct XcodebuildRunner: Sendable {
         scheme: String,
         destination: String,
         configuration: String = "Debug",
+        onlyTesting: [String]? = nil,
+        skipTesting: [String]? = nil,
+        enableCodeCoverage: Bool = false,
+        resultBundlePath: String? = nil,
         additionalArguments: [String] = []
     ) async throws -> XcodebuildResult {
         var args: [String] = []
@@ -223,9 +231,31 @@ public struct XcodebuildRunner: Sendable {
             "-scheme", scheme,
             "-destination", destination,
             "-configuration", configuration,
-            "test",
         ]
 
+        // Add test selection arguments
+        if let onlyTesting {
+            for testIdentifier in onlyTesting {
+                args += ["-only-testing:\(testIdentifier)"]
+            }
+        }
+
+        if let skipTesting {
+            for testIdentifier in skipTesting {
+                args += ["-skip-testing:\(testIdentifier)"]
+            }
+        }
+
+        // Add code coverage arguments
+        if enableCodeCoverage {
+            args += ["-enableCodeCoverage", "YES"]
+        }
+
+        if let resultBundlePath {
+            args += ["-resultBundlePath", resultBundlePath]
+        }
+
+        args += ["test"]
         args += additionalArguments
 
         return try await run(arguments: args)

@@ -33,6 +33,10 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addSynchronizedFolder = "add_synchronized_folder"
     case addAppExtension = "add_app_extension"
     case removeAppExtension = "remove_app_extension"
+    case listCopyFilesPhases = "list_copy_files_phases"
+    case addCopyFilesPhase = "add_copy_files_phase"
+    case addToCopyFilesPhase = "add_to_copy_files_phase"
+    case removeCopyFilesPhase = "remove_copy_files_phase"
 
     // Session tools
     case setSessionDefaults = "set_session_defaults"
@@ -211,6 +215,10 @@ public struct XcodeMCPServer: Sendable {
         let addSynchronizedFolderTool = AddFolderTool(pathUtility: pathUtility)
         let addAppExtensionTool = AddAppExtensionTool(pathUtility: pathUtility)
         let removeAppExtensionTool = RemoveAppExtensionTool(pathUtility: pathUtility)
+        let listCopyFilesPhases = ListCopyFilesPhases(pathUtility: pathUtility)
+        let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
+        let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
+        let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
 
         // Create session tools
         let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
@@ -371,6 +379,10 @@ public struct XcodeMCPServer: Sendable {
                 addSynchronizedFolderTool.tool(),
                 addAppExtensionTool.tool(),
                 removeAppExtensionTool.tool(),
+                listCopyFilesPhases.tool(),
+                addCopyFilesPhase.tool(),
+                addToCopyFilesPhase.tool(),
+                removeCopyFilesPhase.tool(),
                 // Session tools
                 setSessionDefaultsTool.tool(),
                 showSessionDefaultsTool.tool(),
@@ -508,6 +520,14 @@ public struct XcodeMCPServer: Sendable {
                 return try addAppExtensionTool.execute(arguments: arguments)
             case .removeAppExtension:
                 return try removeAppExtensionTool.execute(arguments: arguments)
+            case .listCopyFilesPhases:
+                return try listCopyFilesPhases.execute(arguments: arguments)
+            case .addCopyFilesPhase:
+                return try addCopyFilesPhase.execute(arguments: arguments)
+            case .addToCopyFilesPhase:
+                return try addToCopyFilesPhase.execute(arguments: arguments)
+            case .removeCopyFilesPhase:
+                return try removeCopyFilesPhase.execute(arguments: arguments)
 
             // Session tools
             case .setSessionDefaults:

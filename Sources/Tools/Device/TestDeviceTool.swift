@@ -48,6 +48,28 @@ public struct TestDeviceTool: Sendable {
                         "description": .string(
                             "Build configuration (Debug or Release). Defaults to Debug."),
                     ]),
+                    "only_testing": .object([
+                        "type": .string("array"),
+                        "items": .object(["type": .string("string")]),
+                        "description": .string(
+                            "Test identifiers to run exclusively (e.g., 'MyTests/testFoo')."),
+                    ]),
+                    "skip_testing": .object([
+                        "type": .string("array"),
+                        "items": .object(["type": .string("string")]),
+                        "description": .string(
+                            "Test identifiers to skip."),
+                    ]),
+                    "enable_code_coverage": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "Enable code coverage collection. Defaults to false."),
+                    ]),
+                    "result_bundle_path": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Path to store the .xcresult bundle for coverage and test results."),
+                    ]),
                 ]),
                 "required": .array([]),
             ])
@@ -62,6 +84,14 @@ public struct TestDeviceTool: Sendable {
         let device = try await sessionManager.resolveDevice(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
 
+        // Extract test selection and coverage parameters
+        let onlyTestingArray = arguments.getStringArray("only_testing")
+        let onlyTesting: [String]? = onlyTestingArray.isEmpty ? nil : onlyTestingArray
+        let skipTestingArray = arguments.getStringArray("skip_testing")
+        let skipTesting: [String]? = skipTestingArray.isEmpty ? nil : skipTestingArray
+        let enableCodeCoverage = arguments.getBool("enable_code_coverage")
+        let resultBundlePath = arguments.getString("result_bundle_path")
+
         do {
             let destination = "id=\(device)"
 
@@ -70,7 +100,11 @@ public struct TestDeviceTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 destination: destination,
-                configuration: configuration
+                configuration: configuration,
+                onlyTesting: onlyTesting,
+                skipTesting: skipTesting,
+                enableCodeCoverage: enableCodeCoverage,
+                resultBundlePath: resultBundlePath
             )
 
             if result.succeeded {

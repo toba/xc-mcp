@@ -55,7 +55,8 @@
       "WebFetch(domain:nshipster.com)",
       "WebFetch(domain:docs.brew.sh)",
       "Bash(git fetch:*)",
-      "Bash(swift package:*)"
+      "Bash(swift package:*)",
+      "Bash(gh release list:*)"
     ]
   }
 }

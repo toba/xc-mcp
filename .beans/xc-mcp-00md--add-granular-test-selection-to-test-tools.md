@@ -1,10 +1,11 @@
 ---
 # xc-mcp-00md
 title: Add granular test selection to test tools
-status: todo
+status: completed
 type: feature
+priority: normal
 created_at: 2026-01-21T07:37:59Z
-updated_at: 2026-01-21T07:37:59Z
+updated_at: 2026-01-27T03:00:46Z
 ---
 
 Add parameters to test tools for selecting specific tests to run or skip.
