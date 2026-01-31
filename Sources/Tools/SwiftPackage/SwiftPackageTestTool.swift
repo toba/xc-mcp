@@ -57,50 +57,17 @@ public struct SwiftPackageTestTool: Sendable {
                 filter: filter
             )
 
-            if result.succeeded {
-                // Parse test results
-                let summary = extractTestSummary(from: result.output)
-                var message = "Tests passed"
-                if let filter {
-                    message += " (filter: '\(filter)')"
-                }
-                if !summary.isEmpty {
-                    message += "\n\(summary)"
-                }
-
-                return CallTool.Result(
-                    content: [.text(message)]
-                )
-            } else {
-                let errorOutput = extractTestErrors(from: result.output)
-                throw MCPError.internalError("Tests failed:\n\(errorOutput)")
+            var context = "swift package"
+            if let filter {
+                context += " (filter: '\(filter)')"
             }
+            return try ErrorExtractor.formatTestToolResult(
+                output: result.output, succeeded: result.succeeded,
+                context: context
+            )
         } catch {
             throw error.asMCPError()
         }
     }
 
-    private func extractTestSummary(from output: String) -> String {
-        let lines = output.components(separatedBy: .newlines)
-        // Look for test summary lines
-        let summaryLines = lines.filter {
-            $0.contains("Test Suite") || $0.contains("Executed")
-                || $0.contains("passed") || $0.contains("failed")
-        }
-        return summaryLines.suffix(5).joined(separator: "\n")
-    }
-
-    private func extractTestErrors(from output: String) -> String {
-        let lines = output.components(separatedBy: .newlines)
-        let errorLines = lines.filter {
-            $0.contains("error:") || $0.contains("failed") || $0.contains("FAILED")
-                || $0.contains("XCTAssert")
-        }
-
-        if errorLines.isEmpty {
-            return lines.suffix(30).joined(separator: "\n")
-        }
-
-        return errorLines.joined(separator: "\n")
-    }
 }

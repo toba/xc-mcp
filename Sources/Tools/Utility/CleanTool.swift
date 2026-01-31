@@ -54,56 +54,11 @@ public struct CleanTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get project/workspace path
-        let projectPath: String?
-        if case let .string(value) = arguments["project_path"] {
-            projectPath = value
-        } else {
-            projectPath = await sessionManager.projectPath
-        }
-
-        let workspacePath: String?
-        if case let .string(value) = arguments["workspace_path"] {
-            workspacePath = value
-        } else {
-            workspacePath = await sessionManager.workspacePath
-        }
-
-        // Get scheme
-        let scheme: String
-        if case let .string(value) = arguments["scheme"] {
-            scheme = value
-        } else if let sessionScheme = await sessionManager.scheme {
-            scheme = sessionScheme
-        } else {
-            throw MCPError.invalidParams(
-                "scheme is required. Set it with set_session_defaults or pass it directly.")
-        }
-
-        // Get configuration
-        let configuration: String
-        if case let .string(value) = arguments["configuration"] {
-            configuration = value
-        } else if let sessionConfig = await sessionManager.configuration {
-            configuration = sessionConfig
-        } else {
-            configuration = "Debug"
-        }
-
-        // Get derived_data flag
-        let cleanDerivedData: Bool
-        if case let .bool(value) = arguments["derived_data"] {
-            cleanDerivedData = value
-        } else {
-            cleanDerivedData = false
-        }
-
-        // Validate we have either project or workspace
-        if projectPath == nil && workspacePath == nil {
-            throw MCPError.invalidParams(
-                "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly."
-            )
-        }
+        let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
+            from: arguments)
+        let scheme = try await sessionManager.resolveScheme(from: arguments)
+        let configuration = await sessionManager.resolveConfiguration(from: arguments)
+        let cleanDerivedData = arguments.getBool("derived_data")
 
         do {
             let result = try await xcodebuildRunner.clean(
@@ -130,7 +85,7 @@ public struct CleanTool: Sendable {
                     content: [.text(messages.joined(separator: "\n"))]
                 )
             } else {
-                let errorOutput = extractBuildErrors(from: result.output)
+                let errorOutput = ErrorExtractor.extractBuildErrors(from: result.output)
                 throw MCPError.internalError("Clean failed:\n\(errorOutput)")
             }
         } catch {
@@ -187,16 +142,4 @@ public struct CleanTool: Sendable {
         }
     }
 
-    private func extractBuildErrors(from output: String) -> String {
-        let lines = output.components(separatedBy: .newlines)
-        let errorLines = lines.filter {
-            $0.contains("error:") || $0.contains("CLEAN FAILED")
-        }
-
-        if errorLines.isEmpty {
-            return lines.suffix(20).joined(separator: "\n")
-        }
-
-        return errorLines.joined(separator: "\n")
-    }
 }

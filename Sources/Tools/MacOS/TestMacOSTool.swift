@@ -20,57 +20,37 @@ public struct TestMacOSTool: Sendable {
                 "Run tests for an Xcode project or workspace on macOS.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "project_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."),
-                    ]),
-                    "workspace_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
-                        ),
-                    ]),
-                    "scheme": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "The scheme to test. Uses session default if not specified."),
-                    ]),
-                    "configuration": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."),
-                    ]),
-                    "arch": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Architecture to test on (arm64 or x86_64). Defaults to the current machine's architecture."
-                        ),
-                    ]),
-                    "only_testing": .object([
-                        "type": .string("array"),
-                        "items": .object(["type": .string("string")]),
-                        "description": .string(
-                            "Test identifiers to run exclusively (e.g., 'MyTests/testFoo')."),
-                    ]),
-                    "skip_testing": .object([
-                        "type": .string("array"),
-                        "items": .object(["type": .string("string")]),
-                        "description": .string(
-                            "Test identifiers to skip."),
-                    ]),
-                    "enable_code_coverage": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Enable code coverage collection. Defaults to false."),
-                    ]),
-                    "result_bundle_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to store the .xcresult bundle for coverage and test results."),
-                    ]),
-                ]),
+                "properties": .object(
+                    [
+                        "project_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcodeproj file. Uses session default if not specified."
+                            ),
+                        ]),
+                        "workspace_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcworkspace file. Uses session default if not specified."
+                            ),
+                        ]),
+                        "scheme": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "The scheme to test. Uses session default if not specified."),
+                        ]),
+                        "configuration": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Build configuration (Debug or Release). Defaults to Debug."),
+                        ]),
+                        "arch": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Architecture to test on (arm64 or x86_64). Defaults to the current machine's architecture."
+                            ),
+                        ]),
+                    ].merging([String: Value].testSchemaProperties) { _, new in new }),
                 "required": .array([]),
             ])
         )
@@ -84,13 +64,7 @@ public struct TestMacOSTool: Sendable {
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let arch = arguments.getString("arch")
 
-        // Extract test selection and coverage parameters
-        let onlyTestingArray = arguments.getStringArray("only_testing")
-        let onlyTesting: [String]? = onlyTestingArray.isEmpty ? nil : onlyTestingArray
-        let skipTestingArray = arguments.getStringArray("skip_testing")
-        let skipTesting: [String]? = skipTestingArray.isEmpty ? nil : skipTestingArray
-        let enableCodeCoverage = arguments.getBool("enable_code_coverage")
-        let resultBundlePath = arguments.getString("result_bundle_path")
+        let testParams = arguments.testParameters()
 
         do {
             var destination = "platform=macOS"
@@ -104,68 +78,19 @@ public struct TestMacOSTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                onlyTesting: onlyTesting,
-                skipTesting: skipTesting,
-                enableCodeCoverage: enableCodeCoverage,
-                resultBundlePath: resultBundlePath
+                onlyTesting: testParams.onlyTesting,
+                skipTesting: testParams.skipTesting,
+                enableCodeCoverage: testParams.enableCodeCoverage,
+                resultBundlePath: testParams.resultBundlePath
             )
 
-            if result.succeeded {
-                let summary = extractTestSummary(from: result.output)
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            "Tests passed for scheme '\(scheme)' on macOS\n\n\(summary)"
-                        )
-                    ]
-                )
-            } else {
-                // Extract relevant error information
-                let errorOutput = extractTestFailures(from: result.output)
-                throw MCPError.internalError("Tests failed:\n\(errorOutput)")
-            }
+            return try ErrorExtractor.formatTestToolResult(
+                output: result.output, succeeded: result.succeeded,
+                context: "scheme '\(scheme)' on macOS"
+            )
         } catch {
             throw error.asMCPError()
         }
     }
 
-    private func extractTestSummary(from output: String) -> String {
-        // Look for test summary lines
-        let lines = output.components(separatedBy: .newlines)
-        var summaryLines: [String] = []
-
-        for line in lines {
-            if line.contains("Test Suite") || line.contains("Executed")
-                || line.contains("passed") || line.contains("failed")
-            {
-                summaryLines.append(line)
-            }
-        }
-
-        if summaryLines.isEmpty {
-            return "Test run completed."
-        }
-
-        return summaryLines.joined(separator: "\n")
-    }
-
-    private func extractTestFailures(from output: String) -> String {
-        let lines = output.components(separatedBy: .newlines)
-        var failureLines: [String] = []
-
-        for line in lines {
-            if line.contains("error:") || line.contains("failed")
-                || line.contains("FAILED") || line.contains("TEST FAILED")
-            {
-                failureLines.append(line)
-            }
-        }
-
-        if failureLines.isEmpty {
-            // Return last 30 lines if no specific failures found
-            return lines.suffix(30).joined(separator: "\n")
-        }
-
-        return failureLines.joined(separator: "\n")
-    }
 }

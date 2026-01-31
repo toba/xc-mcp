@@ -190,6 +190,9 @@ let package = Package(
                 "XCMCPTools",
             ],
             path: "Tests",
+            resources: [
+                .copy("Fixtures")
+            ],
             swiftSettings: sharedSwiftSettings
         ),
     ]

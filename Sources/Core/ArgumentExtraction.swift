@@ -1,5 +1,13 @@
 import MCP
 
+/// Holds extracted test selection and coverage parameters.
+public struct TestParameters: Sendable {
+    public let onlyTesting: [String]?
+    public let skipTesting: [String]?
+    public let enableCodeCoverage: Bool
+    public let resultBundlePath: String?
+}
+
 /// Extension providing convenient argument extraction methods for MCP tool parameters.
 ///
 /// These helpers reduce boilerplate when extracting typed values from argument dictionaries.
@@ -76,5 +84,48 @@ extension [String: Value] {
             }
             return nil
         }
+    }
+
+    /// Extracts test selection and coverage parameters from arguments.
+    public func testParameters() -> TestParameters {
+        let onlyTestingArray = getStringArray("only_testing")
+        let skipTestingArray = getStringArray("skip_testing")
+        return TestParameters(
+            onlyTesting: onlyTestingArray.isEmpty ? nil : onlyTestingArray,
+            skipTesting: skipTestingArray.isEmpty ? nil : skipTestingArray,
+            enableCodeCoverage: getBool("enable_code_coverage"),
+            resultBundlePath: getString("result_bundle_path")
+        )
+    }
+
+    /// Schema properties for test selection and coverage parameters.
+    ///
+    /// Returns the common `only_testing`, `skip_testing`, `enable_code_coverage`,
+    /// and `result_bundle_path` properties used across test tools.
+    public static var testSchemaProperties: [String: Value] {
+        [
+            "only_testing": .object([
+                "type": .string("array"),
+                "items": .object(["type": .string("string")]),
+                "description": .string(
+                    "Test identifiers to run exclusively (e.g., 'MyTests/testFoo')."),
+            ]),
+            "skip_testing": .object([
+                "type": .string("array"),
+                "items": .object(["type": .string("string")]),
+                "description": .string(
+                    "Test identifiers to skip."),
+            ]),
+            "enable_code_coverage": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "Enable code coverage collection. Defaults to false."),
+            ]),
+            "result_bundle_path": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Path to store the .xcresult bundle for coverage and test results."),
+            ]),
+        ]
     }
 }

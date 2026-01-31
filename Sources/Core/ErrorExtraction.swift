@@ -1,27 +1,58 @@
 import Foundation
+import MCP
 
-/// Utilities for extracting error information from build output.
+/// Utilities for extracting error information from build and test output.
 public enum ErrorExtractor {
-    /// Extracts build errors from xcodebuild or swift build output.
+
+    /// Parses build output and returns a formatted summary of errors, warnings, and timing.
     ///
-    /// Filters the output for lines containing error indicators like "error:"
-    /// or "BUILD FAILED". If no specific errors are found, returns the last
-    /// few lines of output for context.
+    /// Uses `BuildOutputParser` for structured parsing and `BuildResultFormatter` for display.
+    ///
+    /// - Parameter output: The full build output to parse.
+    /// - Returns: A formatted string describing the build result.
+    public static func extractBuildErrors(from output: String) -> String {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: output)
+        return BuildResultFormatter.formatBuildResult(result)
+    }
+
+    /// Parses test output and returns a formatted summary of test results.
+    ///
+    /// - Parameter output: The full test output to parse.
+    /// - Returns: A formatted string describing the test result.
+    public static func extractTestResults(from output: String) -> String {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: output)
+        return BuildResultFormatter.formatTestResult(result)
+    }
+
+    /// Formats test output into a `CallTool.Result`, throwing on failure.
     ///
     /// - Parameters:
-    ///   - output: The full build output to search.
-    ///   - contextLines: Number of trailing lines to return if no errors found. Defaults to 20.
-    /// - Returns: A string containing either the filtered error lines or trailing context.
-    public static func extractBuildErrors(from output: String, contextLines: Int = 20) -> String {
-        let lines = output.components(separatedBy: .newlines)
-        let errorLines = lines.filter {
-            $0.contains("error:") || $0.contains("BUILD FAILED")
+    ///   - output: The raw test output to parse.
+    ///   - succeeded: Whether the test run succeeded.
+    ///   - context: A human-readable description of the test target (e.g., "scheme 'Foo' on macOS").
+    /// - Returns: A successful `CallTool.Result` if tests passed.
+    /// - Throws: `MCPError.internalError` if tests failed.
+    public static func formatTestToolResult(
+        output: String, succeeded: Bool, context: String
+    ) throws -> CallTool.Result {
+        let testResult = extractTestResults(from: output)
+        if succeeded {
+            return CallTool.Result(
+                content: [.text("Tests passed for \(context)\n\n\(testResult)")]
+            )
+        } else {
+            throw MCPError.internalError("Tests failed:\n\(testResult)")
         }
+    }
 
-        if errorLines.isEmpty {
-            return lines.suffix(contextLines).joined(separator: "\n")
-        }
-
-        return errorLines.joined(separator: "\n")
+    /// Parses build output and returns the structured `BuildResult`.
+    ///
+    /// - Parameter output: The full build output to parse.
+    /// - Returns: A structured `BuildResult` with errors, warnings, timing, etc.
+    public static func parseBuildOutput(_ output: String) -> BuildResult {
+        let parser = BuildOutputParser()
+        return parser.parse(input: output)
     }
 }

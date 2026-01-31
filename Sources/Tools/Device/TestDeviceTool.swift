@@ -21,56 +21,36 @@ public struct TestDeviceTool: Sendable {
                 "Run tests for an Xcode project or workspace on a connected iOS/tvOS/watchOS device.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "project_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."),
-                    ]),
-                    "workspace_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
-                        ),
-                    ]),
-                    "scheme": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "The scheme to test. Uses session default if not specified."),
-                    ]),
-                    "device": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Device UDID. Uses session default if not specified."),
-                    ]),
-                    "configuration": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."),
-                    ]),
-                    "only_testing": .object([
-                        "type": .string("array"),
-                        "items": .object(["type": .string("string")]),
-                        "description": .string(
-                            "Test identifiers to run exclusively (e.g., 'MyTests/testFoo')."),
-                    ]),
-                    "skip_testing": .object([
-                        "type": .string("array"),
-                        "items": .object(["type": .string("string")]),
-                        "description": .string(
-                            "Test identifiers to skip."),
-                    ]),
-                    "enable_code_coverage": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Enable code coverage collection. Defaults to false."),
-                    ]),
-                    "result_bundle_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to store the .xcresult bundle for coverage and test results."),
-                    ]),
-                ]),
+                "properties": .object(
+                    [
+                        "project_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcodeproj file. Uses session default if not specified."
+                            ),
+                        ]),
+                        "workspace_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcworkspace file. Uses session default if not specified."
+                            ),
+                        ]),
+                        "scheme": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "The scheme to test. Uses session default if not specified."),
+                        ]),
+                        "device": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Device UDID. Uses session default if not specified."),
+                        ]),
+                        "configuration": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Build configuration (Debug or Release). Defaults to Debug."),
+                        ]),
+                    ].merging([String: Value].testSchemaProperties) { _, new in new }),
                 "required": .array([]),
             ])
         )
@@ -84,13 +64,7 @@ public struct TestDeviceTool: Sendable {
         let device = try await sessionManager.resolveDevice(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
 
-        // Extract test selection and coverage parameters
-        let onlyTestingArray = arguments.getStringArray("only_testing")
-        let onlyTesting: [String]? = onlyTestingArray.isEmpty ? nil : onlyTestingArray
-        let skipTestingArray = arguments.getStringArray("skip_testing")
-        let skipTesting: [String]? = skipTestingArray.isEmpty ? nil : skipTestingArray
-        let enableCodeCoverage = arguments.getBool("enable_code_coverage")
-        let resultBundlePath = arguments.getString("result_bundle_path")
+        let testParams = arguments.testParameters()
 
         do {
             let destination = "id=\(device)"
@@ -101,65 +75,19 @@ public struct TestDeviceTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                onlyTesting: onlyTesting,
-                skipTesting: skipTesting,
-                enableCodeCoverage: enableCodeCoverage,
-                resultBundlePath: resultBundlePath
+                onlyTesting: testParams.onlyTesting,
+                skipTesting: testParams.skipTesting,
+                enableCodeCoverage: testParams.enableCodeCoverage,
+                resultBundlePath: testParams.resultBundlePath
             )
 
-            if result.succeeded {
-                let summary = extractTestSummary(from: result.output)
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            "Tests passed for scheme '\(scheme)' on device '\(device)'\n\n\(summary)"
-                        )
-                    ]
-                )
-            } else {
-                let errorOutput = extractTestFailures(from: result.output)
-                throw MCPError.internalError("Tests failed:\n\(errorOutput)")
-            }
+            return try ErrorExtractor.formatTestToolResult(
+                output: result.output, succeeded: result.succeeded,
+                context: "scheme '\(scheme)' on device '\(device)'"
+            )
         } catch {
             throw error.asMCPError()
         }
     }
 
-    private func extractTestSummary(from output: String) -> String {
-        let lines = output.components(separatedBy: .newlines)
-        var summaryLines: [String] = []
-
-        for line in lines {
-            if line.contains("Test Suite") || line.contains("Executed")
-                || line.contains("passed") || line.contains("failed")
-            {
-                summaryLines.append(line)
-            }
-        }
-
-        if summaryLines.isEmpty {
-            return "Test run completed."
-        }
-
-        return summaryLines.joined(separator: "\n")
-    }
-
-    private func extractTestFailures(from output: String) -> String {
-        let lines = output.components(separatedBy: .newlines)
-        var failureLines: [String] = []
-
-        for line in lines {
-            if line.contains("error:") || line.contains("failed")
-                || line.contains("FAILED") || line.contains("TEST FAILED")
-            {
-                failureLines.append(line)
-            }
-        }
-
-        if failureLines.isEmpty {
-            return lines.suffix(30).joined(separator: "\n")
-        }
-
-        return failureLines.joined(separator: "\n")
-    }
 }
