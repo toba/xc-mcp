@@ -56,7 +56,14 @@
       "WebFetch(domain:docs.brew.sh)",
       "Bash(git fetch:*)",
       "Bash(swift package:*)",
-      "Bash(gh release list:*)"
+      "Bash(gh release list:*)",
+      "Bash(gh search:*)",
+      "Bash(gh search issues:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(for f in Sources/Tools/Project/RemoveFileTool.swift Sources/Tools/Project/MoveFileTool.swift Sources/Tools/Project/RemoveFolderTool.swift)",
+      "Bash(do sed -i '' '/try xcodeproj\\\\.writePBXProj\\(/{\nN\ns/try xcodeproj\\\\.writePBXProj\\(\\\\n[[:space:]]*path: Path\\(projectURL\\\\.path\\), outputSettings: PBXOutputSettings\\(\\)\\)/try PBXProjWriter.write\\(xcodeproj, to: Path\\(projectURL.path\\)\\)/\n}' \"$f\")",
+      "Bash(done)"
     ]
   }
 }

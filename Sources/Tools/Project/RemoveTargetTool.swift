@@ -128,8 +128,7 @@ public struct RemoveTargetTool: Sendable {
             xcodeproj.pbxproj.delete(object: target)
 
             // Save project
-            try xcodeproj.writePBXProj(
-                path: Path(projectURL.path), outputSettings: PBXOutputSettings())
+            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
             return CallTool.Result(
                 content: [

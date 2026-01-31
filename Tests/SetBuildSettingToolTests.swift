@@ -289,6 +289,93 @@ struct SetBuildSettingToolTests {
             "dstPath should remain 'styles' after set_build_setting")
     }
 
+    @Test("set_build_setting preserves Xcode 26 string-based dstSubfolder on round-trip")
+    func setBuildSettingPreservesXcode26DstSubfolder() throws {
+        // Regression test for tuist/XcodeProj#1034:
+        // Xcode 26 writes `dstSubfolder = Resources;` (string) instead of
+        // `dstSubfolderSpec = 7;` (numeric). XcodeProj drops the string variant.
+
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        // Create a project normally first, then patch the pbxproj to use Xcode 26 format
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath)
+
+        // Read the pbxproj and inject a PBXCopyFilesBuildPhase with string-based dstSubfolder
+        let pbxprojPath = projectPath + "project.pbxproj"
+        var content = try String(contentsOfFile: pbxprojPath.string, encoding: .utf8)
+
+        // Insert a CopyFiles phase using Xcode 26 string format (dstSubfolder, not dstSubfolderSpec)
+        let copyPhaseID = "AABBCCDD00112233EEFF4455"
+        let copyPhaseBlock = """
+            /* Begin PBXCopyFilesBuildPhase section */
+            \t\t\(copyPhaseID) /* Copy Styles */ = {
+            \t\t\tisa = PBXCopyFilesBuildPhase;
+            \t\t\tdstPath = styles;
+            \t\t\tdstSubfolder = Resources;
+            \t\t\tfiles = (
+            \t\t\t);
+            \t\t\tname = "Copy Styles";
+            \t\t};
+            /* End PBXCopyFilesBuildPhase section */
+
+            """
+
+        // Insert the section before PBXFileReference or before PBXGroup
+        if content.contains("/* Begin PBXFileReference section */") {
+            content = content.replacingOccurrences(
+                of: "/* Begin PBXFileReference section */",
+                with: copyPhaseBlock + "/* Begin PBXFileReference section */")
+        } else {
+            content = content.replacingOccurrences(
+                of: "/* Begin PBXGroup section */",
+                with: copyPhaseBlock + "/* Begin PBXGroup section */")
+        }
+
+        // Add the copy phase ref to buildPhases array
+        if let buildPhasesRange = content.range(of: "buildPhases = (") {
+            let searchStart = buildPhasesRange.upperBound
+            if let closingRange = content.range(
+                of: "\n\t\t\t);", range: searchStart..<content.endIndex)
+            {
+                content.insert(
+                    contentsOf: "\n\t\t\t\t\(copyPhaseID) /* Copy Styles */,",
+                    at: closingRange.lowerBound)
+            }
+        }
+
+        try content.write(toFile: pbxprojPath.string, atomically: true, encoding: .utf8)
+
+        // Verify the raw file has dstSubfolder (not dstSubfolderSpec)
+        let beforeContent = try String(contentsOfFile: pbxprojPath.string, encoding: .utf8)
+        #expect(beforeContent.contains("dstSubfolder = Resources;"))
+        #expect(!beforeContent.contains("dstSubfolderSpec"))
+
+        // Now use set_build_setting — this triggers PBXProjWriter
+        let tool = SetBuildSettingTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "configuration": Value.string("Debug"),
+            "setting_name": Value.string("SWIFT_VERSION"),
+            "setting_value": Value.string("5.9"),
+        ])
+
+        // Verify dstSubfolder = Resources; is preserved in the written file
+        let afterContent = try String(contentsOfFile: pbxprojPath.string, encoding: .utf8)
+        #expect(
+            afterContent.contains("dstSubfolder = Resources;"),
+            "dstSubfolder = Resources should be preserved after set_build_setting round-trip"
+        )
+    }
+
     @Test("Set build setting with non-existent configuration")
     func setBuildSettingWithNonExistentConfiguration() throws {
         // Create a temporary directory

@@ -101,8 +101,7 @@ public struct RemoveCopyFilesPhase: Sendable {
             // Delete the phase object
             xcodeproj.pbxproj.delete(object: copyFilesPhase)
 
-            try xcodeproj.writePBXProj(
-                path: Path(projectURL.path), outputSettings: PBXOutputSettings())
+            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
             return CallTool.Result(
                 content: [

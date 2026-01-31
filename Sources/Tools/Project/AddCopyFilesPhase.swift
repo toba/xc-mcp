@@ -108,8 +108,7 @@ public struct AddCopyFilesPhase: Sendable {
             xcodeproj.pbxproj.add(object: copyFilesPhase)
             target.buildPhases.append(copyFilesPhase)
 
-            try xcodeproj.writePBXProj(
-                path: Path(projectURL.path), outputSettings: PBXOutputSettings())
+            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
             var message =
                 "Successfully created Copy Files phase '\(phaseName)' in target '\(targetName)'"

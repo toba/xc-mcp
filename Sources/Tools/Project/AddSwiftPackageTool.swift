@@ -126,8 +126,7 @@ public struct AddSwiftPackageTool: Sendable {
             }
 
             // Save project
-            try xcodeproj.writePBXProj(
-                path: Path(projectURL.path), outputSettings: PBXOutputSettings())
+            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
             var message =
                 "Successfully added Swift Package '\(packageURL)' with requirement '\(requirement)'"

@@ -99,11 +99,14 @@ public struct CreateGroupTool: Sendable {
 
                 var currentGroup: PBXGroup = mainGroup
                 for component in pathComponents {
-                    if let childGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(where: { $0.name == component || $0.path == component }) {
+                    if let childGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(
+                        where: { $0.name == component || $0.path == component })
+                    {
                         currentGroup = childGroup
                     } else {
                         throw MCPError.invalidParams(
-                            "Parent group '\(parentGroupName)' not found in project (failed at '\(component)')")
+                            "Parent group '\(parentGroupName)' not found in project (failed at '\(component)')"
+                        )
                     }
                 }
                 parentGroup = currentGroup
@@ -121,8 +124,7 @@ public struct CreateGroupTool: Sendable {
             parentGroup.children.append(newGroup)
 
             // Save project
-            try xcodeproj.writePBXProj(
-                path: Path(projectURL.path), outputSettings: PBXOutputSettings())
+            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
             return CallTool.Result(
                 content: [

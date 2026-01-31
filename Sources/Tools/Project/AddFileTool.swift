@@ -182,8 +182,7 @@ public struct AddFileTool: Sendable {
             }
 
             // Write project
-            try xcodeproj.writePBXProj(
-                path: Path(projectURL.path), outputSettings: PBXOutputSettings())
+            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
             let targetInfo = targetName != nil ? " to target '\(targetName!)'" : ""
             let groupInfo = groupName != nil ? " in group '\(groupName!)'" : ""

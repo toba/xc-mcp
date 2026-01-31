@@ -105,8 +105,7 @@ public struct RemoveSwiftPackageTool: Sendable {
             xcodeproj.pbxproj.delete(object: packageRef)
 
             // Save project
-            try xcodeproj.writePBXProj(
-                path: Path(projectURL.path), outputSettings: PBXOutputSettings())
+            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
             var message = "Successfully removed Swift Package '\(packageURL)' from project"
             if removeFromTargets {

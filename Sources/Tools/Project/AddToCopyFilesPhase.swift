@@ -132,8 +132,7 @@ public struct AddToCopyFilesPhase: Sendable {
                 }
             }
 
-            try xcodeproj.writePBXProj(
-                path: Path(projectURL.path), outputSettings: PBXOutputSettings())
+            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
             var message = "Added \(addedFiles.count) file(s) to Copy Files phase '\(phaseName)':"
             for file in addedFiles {
