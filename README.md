@@ -305,4 +305,4 @@ When providing a base path as a command-line argument, all file operations are r
 
 MIT License. See [LICENSE](LICENSE) for details.
 
-This project is based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server). The localization functionality is based on [Ryu0118/xcstrings-crud](https://github.com/Ryu0118/xcstrings-crud).
+This project is based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server). Build output parsing and code coverage are adapted from [ldomaradzki/xcsift](https://github.com/ldomaradzki/xcsift). The localization functionality is based on [Ryu0118/xcstrings-crud](https://github.com/Ryu0118/xcstrings-crud).
