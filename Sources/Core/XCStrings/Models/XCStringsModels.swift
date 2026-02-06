@@ -243,6 +243,82 @@ public struct AggregatedCoverage: Codable, Sendable {
     }
 }
 
+// MARK: - Stale Key Models
+
+/// Result of listing stale keys in a single file
+public struct StaleKeysResult: Codable, Sendable {
+    public let file: String
+    public let staleKeys: [String]
+    public let count: Int
+
+    public init(file: String, staleKeys: [String]) {
+        self.file = file
+        self.staleKeys = staleKeys
+        self.count = staleKeys.count
+    }
+}
+
+/// Summary of stale keys across multiple files
+public struct BatchStaleKeysSummary: Codable, Sendable {
+    public let files: [StaleKeysResult]
+    public let totalStaleKeys: Int
+
+    public init(files: [StaleKeysResult]) {
+        self.files = files
+        self.totalStaleKeys = files.reduce(0) { $0 + $1.count }
+    }
+}
+
+// MARK: - Batch Check Models
+
+/// Result of checking multiple keys for existence
+public struct BatchCheckKeysResult: Codable, Sendable {
+    public let results: [String: Bool]
+    public let existCount: Int
+    public let missingCount: Int
+
+    public init(results: [String: Bool]) {
+        self.results = results
+        self.existCount = results.values.filter(\.self).count
+        self.missingCount = results.values.filter { !$0 }.count
+    }
+}
+
+// MARK: - Batch Write Models
+
+/// Entry for a batch translation operation
+public struct BatchTranslationEntry: Codable, Sendable {
+    public let key: String
+    public let translations: [String: String]
+
+    public init(key: String, translations: [String: String]) {
+        self.key = key
+        self.translations = translations
+    }
+}
+
+/// Result of a batch write operation
+public struct BatchWriteResult: Codable, Sendable {
+    public let succeeded: Int
+    public let errors: [BatchWriteError]
+
+    public init(succeeded: Int, errors: [BatchWriteError]) {
+        self.succeeded = succeeded
+        self.errors = errors
+    }
+}
+
+/// Individual error from a batch write operation
+public struct BatchWriteError: Codable, Sendable {
+    public let key: String
+    public let error: String
+
+    public init(key: String, error: String) {
+        self.key = key
+        self.error = error
+    }
+}
+
 // MARK: - Compact Output Models (100% languages omitted)
 
 /// Compact stats info - only shows languages under 100%

@@ -115,6 +115,22 @@ public struct XCStringsReader: Sendable {
         return true
     }
 
+    /// List keys with extractionState == "stale" (potentially unused)
+    public func listStaleKeys() -> [String] {
+        file.strings.compactMap { key, entry in
+            entry.extractionState == "stale" ? key : nil
+        }.sorted()
+    }
+
+    /// Check if multiple keys exist
+    public func checkKeys(_ keys: [String], language: String?) -> [String: Bool] {
+        var results: [String: Bool] = [:]
+        for key in keys {
+            results[key] = checkKey(key, language: language)
+        }
+        return results
+    }
+
     /// Check coverage for a key
     public func checkCoverage(_ key: String) throws -> CoverageInfo {
         let allLanguages = listLanguages()

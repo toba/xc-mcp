@@ -305,6 +305,7 @@ public final class BuildOutputParser: @unchecked Sendable {
             line.contains("error:") || line.contains("warning:") || line.contains("failed")
             || line.contains("passed")
             || line.contains("✘") || line.contains("✓") || line.contains("❌")
+            || line.contains("Test ") || line.contains("recorded an issue")
             || line.contains("Build succeeded")
             || line.contains("Build failed") || line.contains("Executed")
             || line.contains("] Testing ")
@@ -501,6 +502,52 @@ public final class BuildOutputParser: @unchecked Sendable {
             return String(testName.dropFirst(2).dropLast(1))
         }
         return testName
+    }
+
+    /// Extracts a Swift Testing test name from a line containing `Test "name"` or `Test funcName()`.
+    ///
+    /// Returns the test name and the substring index after the name (past the closing quote or
+    /// parentheses), or nil if no match.
+    private func extractSwiftTestingName(from line: String, after startIndex: String.Index)
+        -> (name: String, endIndex: String.Index)?
+    {
+        guard startIndex < line.endIndex else { return nil }
+
+        // Quoted format: Test "name"
+        if line[startIndex] == "\"" {
+            let afterQuote = line.index(after: startIndex)
+            guard afterQuote < line.endIndex,
+                let closingQuote = line[afterQuote...].firstIndex(of: "\"")
+            else {
+                return nil
+            }
+            let name = String(line[afterQuote..<closingQuote])
+            return (name, line.index(after: closingQuote))
+        }
+
+        // Unquoted format: Test funcName() ...
+        // Read until we hit a space that isn't part of the identifier/parens
+        var idx = startIndex
+        var parenDepth = 0
+        while idx < line.endIndex {
+            let ch = line[idx]
+            if ch == "(" {
+                parenDepth += 1
+            } else if ch == ")" {
+                parenDepth -= 1
+                if parenDepth <= 0 {
+                    idx = line.index(after: idx)
+                    break
+                }
+            } else if ch == " " && parenDepth == 0 {
+                break
+            }
+            idx = line.index(after: idx)
+        }
+
+        let name = String(line[startIndex..<idx])
+        guard !name.isEmpty else { return nil }
+        return (name, idx)
     }
 
     private func hasSeenSimilarTest(_ normalizedTestName: String) -> Bool {
@@ -774,23 +821,24 @@ public final class BuildOutputParser: @unchecked Sendable {
             return true
         }
 
-        if line.hasPrefix("✓ Test \""), let endQuote = line.range(of: "\" passed") {
-            let startIndex = line.index(line.startIndex, offsetBy: 8)
-            let testName = String(line[startIndex..<endQuote.lowerBound])
-
-            var duration: Double?
-            if let afterRange = line.range(
-                of: " after ", range: endQuote.upperBound..<line.endIndex)
-            {
-                let afterStr = line[afterRange.upperBound...]
-                if let secondsRange = afterStr.range(of: " seconds") {
-                    let durationStr = String(afterStr[..<secondsRange.lowerBound])
-                    duration = Double(durationStr)
+        // Swift Testing: <symbol> Test "name" passed or <symbol> Test funcName() passed
+        if let testRange = line.range(of: "Test ") {
+            let nameStart = testRange.upperBound
+            if let extracted = extractSwiftTestingName(from: line, after: nameStart) {
+                let remaining = line[extracted.endIndex...]
+                if remaining.hasPrefix(" passed") {
+                    var duration: Double?
+                    if let afterRange = remaining.range(of: " after ") {
+                        let afterStr = remaining[afterRange.upperBound...]
+                        if let secondsRange = afterStr.range(of: " seconds") {
+                            let durationStr = String(afterStr[..<secondsRange.lowerBound])
+                            duration = Double(durationStr)
+                        }
+                    }
+                    recordPassedTest(named: extracted.name, duration: duration)
+                    return true
                 }
             }
-
-            recordPassedTest(named: testName, duration: duration)
-            return true
         }
 
         return false
@@ -867,40 +915,47 @@ public final class BuildOutputParser: @unchecked Sendable {
                 test: test, message: message, file: nil, line: nil, duration: duration)
         }
 
-        // Swift Testing: ✘ Test "name" recorded an issue at file:line:column: message
-        if line.hasPrefix("✘ Test \""), let issueAt = line.range(of: "\" recorded an issue at ") {
-            let startIndex = line.index(line.startIndex, offsetBy: 8)
-            let test = String(line[startIndex..<issueAt.lowerBound])
-            let afterIssue = String(line[issueAt.upperBound...])
+        // Swift Testing: <symbol> Test "name" recorded an issue at file:line:column: message
+        // Also supports unquoted: <symbol> Test funcName() recorded an issue at ...
+        if let testRange = line.range(of: "Test "),
+            let extracted = extractSwiftTestingName(from: line, after: testRange.upperBound)
+        {
+            let remaining = line[extracted.endIndex...]
 
-            let parts = afterIssue.split(
-                separator: ":", maxSplits: 3, omittingEmptySubsequences: false)
-            if parts.count >= 4, let lineNum = Int(parts[1]) {
-                let file = String(parts[0])
-                let message = String(parts[3]).trimmingCharacters(in: .whitespaces)
-                return FailedTest(test: test, message: message, file: file, line: lineNum)
-            }
-        }
-
-        // Swift Testing: ✘ Test "name" failed after X seconds with N issues.
-        if line.hasPrefix("✘ Test \""), let failedAfter = line.range(of: "\" failed after ") {
-            let startIndex = line.index(line.startIndex, offsetBy: 8)
-            let test = String(line[startIndex..<failedAfter.lowerBound])
-
-            var duration: Double?
-            let afterStr = line[failedAfter.upperBound...]
-            if let secondsRange = afterStr.range(of: " seconds") {
-                let durationStr = String(afterStr[..<secondsRange.lowerBound])
-                duration = Double(durationStr)
+            let issueMarker = " recorded an issue at "
+            if remaining.hasPrefix(issueMarker) {
+                let afterIssue = String(
+                    remaining[remaining.index(remaining.startIndex, offsetBy: issueMarker.count)...]
+                )
+                let parts = afterIssue.split(
+                    separator: ":", maxSplits: 3, omittingEmptySubsequences: false)
+                if parts.count >= 4, let lineNum = Int(parts[1]) {
+                    let file = String(parts[0])
+                    let message = String(parts[3]).trimmingCharacters(in: .whitespaces)
+                    return FailedTest(
+                        test: extracted.name, message: message, file: file, line: lineNum)
+                }
             }
 
-            let normalizedTest = normalizeTestName(test)
-            if let dur = duration {
-                failedTestDurations[normalizedTest] = dur
-            }
+            let failedMarker = " failed after "
+            if remaining.hasPrefix(failedMarker) {
+                let afterStr = remaining[
+                    remaining.index(remaining.startIndex, offsetBy: failedMarker.count)...]
+                var duration: Double?
+                if let secondsRange = afterStr.range(of: " seconds") {
+                    let durationStr = String(afterStr[..<secondsRange.lowerBound])
+                    duration = Double(durationStr)
+                }
 
-            return FailedTest(
-                test: test, message: "Test failed", file: nil, line: nil, duration: duration)
+                let normalizedTest = normalizeTestName(extracted.name)
+                if let dur = duration {
+                    failedTestDurations[normalizedTest] = dur
+                }
+
+                return FailedTest(
+                    test: extracted.name, message: "Test failed", file: nil, line: nil,
+                    duration: duration)
+            }
         }
 
         // ❌ testname (message)
@@ -995,52 +1050,89 @@ public final class BuildOutputParser: @unchecked Sendable {
             return
         }
 
-        // Swift Testing failure summary: ✘ Test run with N tests failed, N tests passed after X seconds.
-        if let testRunRange = line.range(of: "Test run with "),
-            let failedRange = line.range(
+        // Swift Testing failure summary (two formats):
+        // Format 1: Test run with N tests failed, M tests passed after X seconds.
+        // Format 2: Test run with N test(s) in M suite(s) failed after X seconds with Y issue(s).
+        if let testRunRange = line.range(of: "Test run with ") {
+
+            // Format 1: "N tests failed, M tests passed after X seconds."
+            if let failedRange = line.range(
                 of: " failed, ", range: testRunRange.upperBound..<line.endIndex),
-            let passedRange = line.range(
-                of: " passed after ", range: failedRange.upperBound..<line.endIndex)
-        {
-            let beforeFailed = line[testRunRange.upperBound..<failedRange.lowerBound]
-            let failedCountStr = beforeFailed.split(separator: " ").first
-            if let failedCountStr, let failedCount = Int(failedCountStr) {
-                swiftTestingFailedCount = failedCount
-            }
-
-            let beforePassed = line[failedRange.upperBound..<passedRange.lowerBound]
-            let passedCountStr = beforePassed.split(separator: " ").first
-            if let passedCountStr, let passedCount = Int(passedCountStr),
-                let failedCount = swiftTestingFailedCount
+                let passedRange = line.range(
+                    of: " passed after ", range: failedRange.upperBound..<line.endIndex)
             {
-                swiftTestingExecutedCount = passedCount + failedCount
+                let beforeFailed = line[testRunRange.upperBound..<failedRange.lowerBound]
+                let failedCountStr = beforeFailed.split(separator: " ").first
+                if let failedCountStr, let failedCount = Int(failedCountStr) {
+                    swiftTestingFailedCount = failedCount
+                }
+
+                let beforePassed = line[failedRange.upperBound..<passedRange.lowerBound]
+                let passedCountStr = beforePassed.split(separator: " ").first
+                if let passedCountStr, let passedCount = Int(passedCountStr),
+                    let failedCount = swiftTestingFailedCount
+                {
+                    swiftTestingExecutedCount = passedCount + failedCount
+                }
+
+                let afterPassed = line[passedRange.upperBound...]
+                if let secondsRange = afterPassed.range(of: " seconds", options: .backwards) {
+                    accumulateTestTime(String(afterPassed[..<secondsRange.lowerBound]))
+                } else {
+                    accumulateTestTime(String(afterPassed))
+                }
+                return
             }
 
-            let afterPassed = line[passedRange.upperBound...]
-            if let secondsRange = afterPassed.range(of: " seconds", options: .backwards) {
-                accumulateTestTime(String(afterPassed[..<secondsRange.lowerBound]))
-            } else {
-                accumulateTestTime(String(afterPassed))
-            }
-            return
-        }
+            // Format 2: "N test(s) in M suite(s) failed after X seconds with Y issue(s)."
+            if let failedAfterRange = line.range(
+                of: " failed after ", range: testRunRange.upperBound..<line.endIndex),
+                line.contains(" issue")
+            {
+                let beforeFailed = line[testRunRange.upperBound..<failedAfterRange.lowerBound]
+                let testCountStr = beforeFailed.split(separator: " ").first
+                if let testCountStr, let total = Int(testCountStr) {
+                    swiftTestingExecutedCount = total
 
-        // Swift Testing passed: Test run with N tests in N suites passed after X seconds.
-        if let testRunRange = line.range(of: "Test run with "),
-            let passedAfter = line.range(of: " passed after ")
-        {
-            let afterPrefix = line[testRunRange.upperBound..<passedAfter.lowerBound]
-            let testCountStr = afterPrefix.split(separator: " ").first
-            if let testCountStr, let total = Int(testCountStr) {
-                swiftTestingExecutedCount = total
-                swiftTestingFailedCount = 0
-
-                if total > 0 {
-                    let afterPassed = line[passedAfter.upperBound...]
-                    if let secondsRange = afterPassed.range(of: " seconds", options: .backwards) {
-                        accumulateTestTime(String(afterPassed[..<secondsRange.lowerBound]))
+                    // Extract issue count from "with Y issue(s)"
+                    let afterFailed = line[failedAfterRange.upperBound...]
+                    if let withRange = afterFailed.range(of: " with ") {
+                        let afterWith = afterFailed[withRange.upperBound...]
+                        let issueCountStr = afterWith.split(separator: " ").first
+                        if let issueCountStr, let issueCount = Int(issueCountStr) {
+                            swiftTestingFailedCount = issueCount
+                        } else {
+                            swiftTestingFailedCount = total
+                        }
                     } else {
-                        accumulateTestTime(String(afterPassed))
+                        swiftTestingFailedCount = total
+                    }
+
+                    if let secondsRange = afterFailed.range(of: " seconds") {
+                        let timeStr = String(afterFailed[..<secondsRange.lowerBound])
+                        accumulateTestTime(timeStr)
+                    }
+                }
+                return
+            }
+
+            // Swift Testing passed: Test run with N tests in M suites passed after X seconds.
+            if let passedAfter = line.range(of: " passed after ") {
+                let afterPrefix = line[testRunRange.upperBound..<passedAfter.lowerBound]
+                let testCountStr = afterPrefix.split(separator: " ").first
+                if let testCountStr, let total = Int(testCountStr) {
+                    swiftTestingExecutedCount = total
+                    swiftTestingFailedCount = 0
+
+                    if total > 0 {
+                        let afterPassed = line[passedAfter.upperBound...]
+                        if let secondsRange = afterPassed.range(
+                            of: " seconds", options: .backwards)
+                        {
+                            accumulateTestTime(String(afterPassed[..<secondsRange.lowerBound]))
+                        } else {
+                            accumulateTestTime(String(afterPassed))
+                        }
                     }
                 }
             }

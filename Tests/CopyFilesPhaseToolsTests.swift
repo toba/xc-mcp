@@ -136,7 +136,7 @@ struct CopyFilesPhaseToolsTests {
         let toolDefinition = tool.tool()
 
         #expect(toolDefinition.name == "add_copy_files_phase")
-        #expect(toolDefinition.description.contains("Copy Files"))
+        #expect(toolDefinition.description?.contains("Copy Files") == true)
     }
 
     @Test("AddCopyFilesPhase with missing parameters")
@@ -267,7 +267,7 @@ struct CopyFilesPhaseToolsTests {
         let toolDefinition = tool.tool()
 
         #expect(toolDefinition.name == "add_to_copy_files_phase")
-        #expect(toolDefinition.description.contains("Add files"))
+        #expect(toolDefinition.description?.contains("Add files") == true)
     }
 
     @Test("AddToCopyFilesPhase with missing parameters")
@@ -419,7 +419,7 @@ struct CopyFilesPhaseToolsTests {
         let toolDefinition = tool.tool()
 
         #expect(toolDefinition.name == "remove_copy_files_phase")
-        #expect(toolDefinition.description.contains("Remove"))
+        #expect(toolDefinition.description?.contains("Remove") == true)
     }
 
     @Test("RemoveCopyFilesPhase with missing parameters")

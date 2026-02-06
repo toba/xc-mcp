@@ -33,7 +33,7 @@ xc-mcp provides both a monolithic server (all 89 tools) and focused servers for 
 | `xc-debug` | 8 | ~2K | LLDB debugging |
 | `xc-swift` | 6 | ~1.5K | Swift Package Manager |
 | `xc-build` | 18 | ~3K | macOS builds, discovery, utilities |
-| `xc-strings` | 18 | ~6K | Xcode String Catalog (.xcstrings) localization |
+| `xc-strings` | 24 | ~8K | Xcode String Catalog (.xcstrings) localization |
 
 **When to use focused servers:**
 - Use `xc-project` for project file editing (no CLI alternative exists)
@@ -274,24 +274,30 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 | `scaffold_ios_project` | Scaffold iOS project |
 | `scaffold_macos_project` | Scaffold macOS project |
 
-### Localization (18 tools)
+### Localization (24 tools)
 
 | Tool | Description |
 |------|-------------|
 | `xcstrings_list_keys` | List all localization keys |
 | `xcstrings_list_languages` | List all languages in file |
 | `xcstrings_list_untranslated` | List untranslated keys for language |
+| `xcstrings_list_stale` | List keys with "stale" extraction state (potentially unused) |
 | `xcstrings_get_source_language` | Get the source language |
 | `xcstrings_get_key` | Get translations for a key |
 | `xcstrings_check_key` | Check if a key exists |
+| `xcstrings_check_coverage` | Check translation coverage for a specific key |
+| `xcstrings_batch_check_keys` | Check if multiple keys exist in one call |
 | `xcstrings_stats_coverage` | Get overall coverage statistics |
 | `xcstrings_stats_progress` | Get progress for a language |
 | `xcstrings_batch_stats_coverage` | Get coverage for multiple files |
+| `xcstrings_batch_list_stale` | List stale keys across multiple files |
 | `xcstrings_create_file` | Create a new xcstrings file |
 | `xcstrings_add_translation` | Add a single translation |
-| `xcstrings_add_translations` | Add multiple translations (batch) |
+| `xcstrings_add_translations` | Add multiple translations for one key |
+| `xcstrings_batch_add_translations` | Add translations for multiple keys atomically |
 | `xcstrings_update_translation` | Update a single translation |
-| `xcstrings_update_translations` | Update multiple translations (batch) |
+| `xcstrings_update_translations` | Update multiple translations for one key |
+| `xcstrings_batch_update_translations` | Update translations for multiple keys atomically |
 | `xcstrings_rename_key` | Rename a localization key |
 | `xcstrings_delete_key` | Delete a key and all translations |
 | `xcstrings_delete_translation` | Delete a single translation |

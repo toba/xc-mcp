@@ -110,6 +110,52 @@ public enum XCStringsWriter {
         return result
     }
 
+    /// Add translations for multiple keys atomically
+    public static func addTranslationsBatch(
+        to file: XCStringsFile,
+        entries: [BatchTranslationEntry],
+        allowOverwrite: Bool = false
+    ) -> (file: XCStringsFile, result: BatchWriteResult) {
+        var result = file
+        var succeeded = 0
+        var errors: [BatchWriteError] = []
+
+        for entry in entries {
+            do {
+                result = try addTranslations(
+                    to: result, key: entry.key, translations: entry.translations,
+                    allowOverwrite: allowOverwrite)
+                succeeded += 1
+            } catch {
+                errors.append(BatchWriteError(key: entry.key, error: error.localizedDescription))
+            }
+        }
+
+        return (result, BatchWriteResult(succeeded: succeeded, errors: errors))
+    }
+
+    /// Update translations for multiple keys atomically
+    public static func updateTranslationsBatch(
+        in file: XCStringsFile,
+        entries: [BatchTranslationEntry]
+    ) -> (file: XCStringsFile, result: BatchWriteResult) {
+        var result = file
+        var succeeded = 0
+        var errors: [BatchWriteError] = []
+
+        for entry in entries {
+            do {
+                result = try updateTranslations(
+                    in: result, key: entry.key, translations: entry.translations)
+                succeeded += 1
+            } catch {
+                errors.append(BatchWriteError(key: entry.key, error: error.localizedDescription))
+            }
+        }
+
+        return (result, BatchWriteResult(succeeded: succeeded, errors: errors))
+    }
+
     /// Rename a key
     public static func renameKey(
         in file: XCStringsFile,

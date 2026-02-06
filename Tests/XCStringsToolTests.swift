@@ -5,9 +5,41 @@ import XCMCPCore
 
 @testable import XCMCPTools
 
-// MARK: - Test Helper
+// MARK: - Test Helpers
 
 enum XCStringsTestHelper {
+    /// Create a sample xcstrings file with stale keys for testing
+    static func createSampleWithStaleKeys(at path: String) throws {
+        let file = XCStringsFile(
+            sourceLanguage: "en",
+            strings: [
+                "active_key": StringEntry(
+                    extractionState: "manual",
+                    localizations: [
+                        "en": Localization(
+                            stringUnit: StringUnit(state: "translated", value: "Active"))
+                    ]),
+                "stale_key_1": StringEntry(
+                    extractionState: "stale",
+                    localizations: [
+                        "en": Localization(
+                            stringUnit: StringUnit(state: "translated", value: "Stale 1"))
+                    ]),
+                "stale_key_2": StringEntry(
+                    extractionState: "stale",
+                    localizations: [
+                        "en": Localization(
+                            stringUnit: StringUnit(state: "translated", value: "Stale 2"))
+                    ]),
+            ],
+            version: "1.0")
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(file)
+        try data.write(to: URL(fileURLWithPath: path))
+    }
+
     /// Create a sample xcstrings file with test data
     static func createSampleXCStringsFile(at path: String, sourceLanguage: String = "en") throws {
         let file = XCStringsFile(
@@ -561,7 +593,7 @@ struct XCStringsBatchStatsCoverageToolTests {
         let toolDefinition = tool.tool()
 
         #expect(toolDefinition.name == "xcstrings_batch_stats_coverage")
-        #expect(toolDefinition.description.contains("token-efficient"))
+        #expect(toolDefinition.description?.contains("token-efficient") == true)
     }
 
     @Test func testEmptyFilesArray() throws {
@@ -1185,6 +1217,324 @@ struct XCStringsDeleteTranslationsToolTests {
             #expect(content.contains("2 languages"))
         } else {
             Issue.record("Expected text content")
+        }
+    }
+}
+
+// MARK: - XCStringsListStaleTool Tests
+
+struct XCStringsListStaleToolTests {
+    @Test func testToolCreation() {
+        let tool = XCStringsListStaleTool(pathUtility: PathUtility(basePath: "/workspace"))
+        let toolDefinition = tool.tool()
+
+        #expect(toolDefinition.name == "xcstrings_list_stale")
+        #expect(toolDefinition.description?.contains("stale") == true)
+    }
+
+    @Test func testListStaleKeys() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "XCStringsListStaleTests-\(UUID().uuidString)"
+        ).path
+        try FileManager.default.createDirectory(
+            atPath: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+
+        let filePath = "\(tempDir)/test.xcstrings"
+        try XCStringsTestHelper.createSampleWithStaleKeys(at: filePath)
+
+        let tool = XCStringsListStaleTool(pathUtility: PathUtility(basePath: tempDir))
+        let result = try await tool.execute(arguments: ["file": .string(filePath)])
+
+        if case let .text(json) = result.content[0] {
+            #expect(json.contains("stale_key_1"))
+            #expect(json.contains("stale_key_2"))
+            #expect(!json.contains("active_key") || json.contains("\"count\" : 2"))
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
+
+    @Test func testNoStaleKeys() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "XCStringsListStaleTests-\(UUID().uuidString)"
+        ).path
+        try FileManager.default.createDirectory(
+            atPath: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+
+        let filePath = "\(tempDir)/test.xcstrings"
+        try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
+
+        let tool = XCStringsListStaleTool(pathUtility: PathUtility(basePath: tempDir))
+        let result = try await tool.execute(arguments: ["file": .string(filePath)])
+
+        if case let .text(json) = result.content[0] {
+            #expect(json.contains("\"count\" : 0"))
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
+}
+
+// MARK: - XCStringsBatchListStaleTool Tests
+
+struct XCStringsBatchListStaleToolTests {
+    @Test func testBatchListStale() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "XCStringsBatchListStaleTests-\(UUID().uuidString)"
+        ).path
+        try FileManager.default.createDirectory(
+            atPath: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+
+        let file1 = "\(tempDir)/test1.xcstrings"
+        let file2 = "\(tempDir)/test2.xcstrings"
+        try XCStringsTestHelper.createSampleWithStaleKeys(at: file1)
+        try XCStringsTestHelper.createSampleXCStringsFile(at: file2)
+
+        let tool = XCStringsBatchListStaleTool(pathUtility: PathUtility(basePath: tempDir))
+        let result = try tool.execute(arguments: [
+            "files": .array([.string(file1), .string(file2)])
+        ])
+
+        if case let .text(json) = result.content[0] {
+            #expect(json.contains("totalStaleKeys"))
+            #expect(json.contains("stale_key_1"))
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
+
+    @Test func testEmptyFilesArray() throws {
+        let tool = XCStringsBatchListStaleTool(pathUtility: PathUtility(basePath: "/workspace"))
+
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: ["files": .array([])])
+        }
+    }
+}
+
+// MARK: - XCStringsBatchCheckKeysTool Tests
+
+struct XCStringsBatchCheckKeysToolTests {
+    @Test func testBatchCheckKeys() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "XCStringsBatchCheckKeysTests-\(UUID().uuidString)"
+        ).path
+        try FileManager.default.createDirectory(
+            atPath: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+
+        let filePath = "\(tempDir)/test.xcstrings"
+        try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
+
+        let tool = XCStringsBatchCheckKeysTool(pathUtility: PathUtility(basePath: tempDir))
+        let result = try await tool.execute(arguments: [
+            "file": .string(filePath),
+            "keys": .array([.string("hello"), .string("nonexistent"), .string("goodbye")]),
+        ])
+
+        if case let .text(json) = result.content[0] {
+            #expect(json.contains("\"existCount\" : 2"))
+            #expect(json.contains("\"missingCount\" : 1"))
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
+
+    @Test func testBatchCheckKeysWithLanguage() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "XCStringsBatchCheckKeysTests-\(UUID().uuidString)"
+        ).path
+        try FileManager.default.createDirectory(
+            atPath: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+
+        let filePath = "\(tempDir)/test.xcstrings"
+        try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
+
+        let tool = XCStringsBatchCheckKeysTool(pathUtility: PathUtility(basePath: tempDir))
+        // "goodbye" has no "fr" translation, "hello" does
+        let result = try await tool.execute(arguments: [
+            "file": .string(filePath),
+            "keys": .array([.string("hello"), .string("goodbye")]),
+            "language": .string("fr"),
+        ])
+
+        if case let .text(json) = result.content[0] {
+            #expect(json.contains("\"existCount\" : 1"))
+            #expect(json.contains("\"missingCount\" : 1"))
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
+
+    @Test func testEmptyKeysArray() async throws {
+        let tool = XCStringsBatchCheckKeysTool(pathUtility: PathUtility(basePath: "/workspace"))
+
+        await #expect(throws: MCPError.self) {
+            try await tool.execute(arguments: [
+                "file": .string("/dummy.xcstrings"),
+                "keys": .array([]),
+            ])
+        }
+    }
+}
+
+// MARK: - XCStringsBatchAddTranslationsTool Tests
+
+struct XCStringsBatchAddTranslationsToolTests {
+    @Test func testBatchAddTranslations() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "XCStringsBatchAddTests-\(UUID().uuidString)"
+        ).path
+        try FileManager.default.createDirectory(
+            atPath: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+
+        let filePath = "\(tempDir)/test.xcstrings"
+        try XCStringsTestHelper.createEmptyXCStringsFile(at: filePath)
+
+        let tool = XCStringsBatchAddTranslationsTool(pathUtility: PathUtility(basePath: tempDir))
+        let result = try await tool.execute(arguments: [
+            "file": .string(filePath),
+            "entries": .array([
+                .object([
+                    "key": .string("greeting"),
+                    "translations": .object([
+                        "en": .string("Hello"),
+                        "fr": .string("Bonjour"),
+                    ]),
+                ]),
+                .object([
+                    "key": .string("farewell"),
+                    "translations": .object([
+                        "en": .string("Bye")
+                    ]),
+                ]),
+            ]),
+        ])
+
+        if case let .text(json) = result.content[0] {
+            #expect(json.contains("\"succeeded\" : 2"))
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
+
+    @Test func testEmptyEntries() async throws {
+        let tool = XCStringsBatchAddTranslationsTool(
+            pathUtility: PathUtility(basePath: "/workspace"))
+
+        await #expect(throws: MCPError.self) {
+            try await tool.execute(arguments: [
+                "file": .string("/dummy.xcstrings"),
+                "entries": .array([]),
+            ])
+        }
+    }
+}
+
+// MARK: - XCStringsBatchUpdateTranslationsTool Tests
+
+struct XCStringsBatchUpdateTranslationsToolTests {
+    @Test func testBatchUpdateTranslations() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "XCStringsBatchUpdateTests-\(UUID().uuidString)"
+        ).path
+        try FileManager.default.createDirectory(
+            atPath: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+
+        let filePath = "\(tempDir)/test.xcstrings"
+        try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
+
+        let tool = XCStringsBatchUpdateTranslationsTool(
+            pathUtility: PathUtility(basePath: tempDir))
+        let result = try await tool.execute(arguments: [
+            "file": .string(filePath),
+            "entries": .array([
+                .object([
+                    "key": .string("hello"),
+                    "translations": .object([
+                        "en": .string("Hi there")
+                    ]),
+                ]),
+                .object([
+                    "key": .string("nonexistent"),
+                    "translations": .object([
+                        "en": .string("Nope")
+                    ]),
+                ]),
+            ]),
+        ])
+
+        if case let .text(json) = result.content[0] {
+            // First key succeeds, second fails
+            #expect(json.contains("\"succeeded\" : 1"))
+            #expect(json.contains("\"errors\""))
+            #expect(json.contains("nonexistent"))
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
+}
+
+// MARK: - XCStringsCheckCoverageTool Tests
+
+struct XCStringsCheckCoverageToolTests {
+    @Test func testToolCreation() {
+        let tool = XCStringsCheckCoverageTool(pathUtility: PathUtility(basePath: "/workspace"))
+        let toolDefinition = tool.tool()
+
+        #expect(toolDefinition.name == "xcstrings_check_coverage")
+        #expect(toolDefinition.description?.contains("coverage") == true)
+    }
+
+    @Test func testCheckCoverage() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "XCStringsCheckCoverageTests-\(UUID().uuidString)"
+        ).path
+        try FileManager.default.createDirectory(
+            atPath: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+
+        let filePath = "\(tempDir)/test.xcstrings"
+        try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
+
+        let tool = XCStringsCheckCoverageTool(pathUtility: PathUtility(basePath: tempDir))
+        let result = try await tool.execute(arguments: [
+            "file": .string(filePath),
+            "key": .string("hello"),
+        ])
+
+        if case let .text(json) = result.content[0] {
+            #expect(json.contains("coveragePercent"))
+            #expect(json.contains("translatedLanguages"))
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
+
+    @Test func testCheckCoverageKeyNotFound() async throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "XCStringsCheckCoverageTests-\(UUID().uuidString)"
+        ).path
+        try FileManager.default.createDirectory(
+            atPath: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+
+        let filePath = "\(tempDir)/test.xcstrings"
+        try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
+
+        let tool = XCStringsCheckCoverageTool(pathUtility: PathUtility(basePath: tempDir))
+
+        await #expect(throws: MCPError.self) {
+            try await tool.execute(arguments: [
+                "file": .string(filePath),
+                "key": .string("nonexistent_key"),
+            ])
         }
     }
 }

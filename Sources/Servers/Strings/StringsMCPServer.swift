@@ -24,6 +24,12 @@ public enum StringsToolName: String, CaseIterable, Sendable {
     case deleteKey = "xcstrings_delete_key"
     case deleteTranslation = "xcstrings_delete_translation"
     case deleteTranslations = "xcstrings_delete_translations"
+    case listStale = "xcstrings_list_stale"
+    case batchListStale = "xcstrings_batch_list_stale"
+    case batchCheckKeys = "xcstrings_batch_check_keys"
+    case batchAddTranslations = "xcstrings_batch_add_translations"
+    case batchUpdateTranslations = "xcstrings_batch_update_translations"
+    case checkCoverage = "xcstrings_check_coverage"
 }
 
 /// MCP server for Xcode String Catalog (.xcstrings) file manipulation.
@@ -93,6 +99,13 @@ public struct StringsMCPServer: Sendable {
         let deleteKeyTool = XCStringsDeleteKeyTool(pathUtility: pathUtility)
         let deleteTranslationTool = XCStringsDeleteTranslationTool(pathUtility: pathUtility)
         let deleteTranslationsTool = XCStringsDeleteTranslationsTool(pathUtility: pathUtility)
+        let listStaleTool = XCStringsListStaleTool(pathUtility: pathUtility)
+        let batchListStaleTool = XCStringsBatchListStaleTool(pathUtility: pathUtility)
+        let batchCheckKeysTool = XCStringsBatchCheckKeysTool(pathUtility: pathUtility)
+        let batchAddTranslationsTool = XCStringsBatchAddTranslationsTool(pathUtility: pathUtility)
+        let batchUpdateTranslationsTool = XCStringsBatchUpdateTranslationsTool(
+            pathUtility: pathUtility)
+        let checkCoverageTool = XCStringsCheckCoverageTool(pathUtility: pathUtility)
 
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
@@ -115,6 +128,12 @@ public struct StringsMCPServer: Sendable {
                 deleteKeyTool.tool(),
                 deleteTranslationTool.tool(),
                 deleteTranslationsTool.tool(),
+                listStaleTool.tool(),
+                batchListStaleTool.tool(),
+                batchCheckKeysTool.tool(),
+                batchAddTranslationsTool.tool(),
+                batchUpdateTranslationsTool.tool(),
+                checkCoverageTool.tool(),
             ])
         }
 
@@ -163,6 +182,18 @@ public struct StringsMCPServer: Sendable {
                 return try await deleteTranslationTool.execute(arguments: arguments)
             case .deleteTranslations:
                 return try await deleteTranslationsTool.execute(arguments: arguments)
+            case .listStale:
+                return try await listStaleTool.execute(arguments: arguments)
+            case .batchListStale:
+                return try batchListStaleTool.execute(arguments: arguments)
+            case .batchCheckKeys:
+                return try await batchCheckKeysTool.execute(arguments: arguments)
+            case .batchAddTranslations:
+                return try await batchAddTranslationsTool.execute(arguments: arguments)
+            case .batchUpdateTranslations:
+                return try await batchUpdateTranslationsTool.execute(arguments: arguments)
+            case .checkCoverage:
+                return try await checkCoverageTool.execute(arguments: arguments)
             }
         }
 

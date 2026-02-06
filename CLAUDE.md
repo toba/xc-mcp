@@ -44,7 +44,7 @@ xc-mcp/
 │       ├── DeviceCtlRunner.swift
 │       ├── LLDBRunner.swift
 │       └── SwiftRunner.swift
-├── Tests/                           # Unit tests (166 tests)
+├── Tests/                           # Unit tests (310 tests)
 └── CLAUDE.md
 ```
 
@@ -67,6 +67,6 @@ swift test
 - Tools follow a consistent pattern with `tool()` and `execute()` methods
 - XcodeProj library handles .xcodeproj file manipulation
 - Runner utilities wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift)
-- **Testing**: swift-testing framework (166 tests)
+- **Testing**: swift-testing framework (310 tests)
 - **Swift 6**: Strict concurrency enabled
 - **Formatting**: `swift format -r -i .` then `swiftlint` before committing

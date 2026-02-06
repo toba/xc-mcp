@@ -14,7 +14,10 @@ func toolProperties() {
 
     #expect(tool.name == "create_xcodeproj")
     #expect(tool.description == "Create a new Xcode project file (.xcodeproj)")
-    #expect(tool.inputSchema != nil)
+    if case .object = tool.inputSchema {
+    } else {
+        Issue.record("Expected inputSchema to be an object")
+    }
 }
 
 @Test("CreateXcodeprojTool can be executed")

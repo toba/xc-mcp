@@ -68,7 +68,9 @@
       "Bash(gh issue list:*)",
       "Bash(gh secret list:*)",
       "Bash(gh repo delete:*)",
-      "Bash(gh repo create:*)"
+      "Bash(gh repo create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)"
     ]
   }
 }

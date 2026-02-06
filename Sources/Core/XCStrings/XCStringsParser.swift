@@ -84,6 +84,29 @@ public actor XCStringsParser {
         return try XCStringsReader(file: file).checkCoverage(key)
     }
 
+    /// List keys with extractionState == "stale"
+    public func listStaleKeys() throws -> [String] {
+        let file = try load()
+        return XCStringsReader(file: file).listStaleKeys()
+    }
+
+    /// Check if multiple keys exist
+    public func checkKeys(_ keys: [String], language: String?) throws -> [String: Bool] {
+        let file = try load()
+        return XCStringsReader(file: file).checkKeys(keys, language: language)
+    }
+
+    /// List stale keys across multiple files
+    public static func batchListStaleKeys(paths: [String]) throws -> BatchStaleKeysSummary {
+        let results: [StaleKeysResult] = try paths.map { path in
+            let handler = XCStringsFileHandler(path: path)
+            let file = try handler.load()
+            let staleKeys = XCStringsReader(file: file).listStaleKeys()
+            return StaleKeysResult(file: path, staleKeys: staleKeys)
+        }
+        return BatchStaleKeysSummary(files: results)
+    }
+
     // MARK: - Stats Operations
 
     /// Get overall statistics
@@ -171,6 +194,33 @@ public actor XCStringsParser {
         let file = try load()
         let updated = try XCStringsWriter.renameKey(in: file, from: oldKey, to: newKey)
         try save(updated)
+    }
+
+    // MARK: - Batch Write Operations
+
+    /// Add translations for multiple keys
+    public func addTranslationsBatch(
+        entries: [BatchTranslationEntry], allowOverwrite: Bool = false
+    ) throws -> BatchWriteResult {
+        let file = try load()
+        let (updated, result) = XCStringsWriter.addTranslationsBatch(
+            to: file, entries: entries, allowOverwrite: allowOverwrite)
+        if result.succeeded > 0 {
+            try save(updated)
+        }
+        return result
+    }
+
+    /// Update translations for multiple keys
+    public func updateTranslationsBatch(entries: [BatchTranslationEntry]) throws -> BatchWriteResult
+    {
+        let file = try load()
+        let (updated, result) = XCStringsWriter.updateTranslationsBatch(
+            in: file, entries: entries)
+        if result.succeeded > 0 {
+            try save(updated)
+        }
+        return result
     }
 
     // MARK: - Delete Operations

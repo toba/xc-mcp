@@ -350,6 +350,84 @@ struct BuildOutputParserTests {
         #expect(result.failedTests[0].duration == 0.070)
     }
 
+    @Test("Swift Testing unquoted function names")
+    func testSwiftTestingUnquotedFunctionNames() {
+        let parser = BuildOutputParser()
+        let input = """
+            ◇ Test functionName() recorded an issue at /path/to/File.swift:42:10: expected true
+            ✘ Test anotherFunc() failed after 1.234 seconds with 2 issues.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.failedTests.count == 2)
+        #expect(result.failedTests[0].test == "functionName()")
+        #expect(result.failedTests[0].file == "/path/to/File.swift")
+        #expect(result.failedTests[0].line == 42)
+        #expect(result.failedTests[0].message == "expected true")
+        #expect(result.failedTests[1].test == "anotherFunc()")
+        #expect(result.failedTests[1].duration == 1.234)
+    }
+
+    @Test("Swift Testing non-standard symbols")
+    func testSwiftTestingNonStandardSymbols() {
+        let parser = BuildOutputParser()
+        let input = """
+            ◇ Test "test1" passed after 0.010 seconds.
+            ▷ Test "test2" passed after 0.020 seconds.
+            Test run with 2 tests in 1 suite passed after 0.030 seconds.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "success")
+        #expect(result.summary.passedTests == 2)
+        #expect(result.summary.testTime == "0.030s")
+    }
+
+    @Test("Swift Testing failure summary with suites and issues")
+    func testSwiftTestingFailureSummaryWithSuitesAndIssues() {
+        let parser = BuildOutputParser()
+        let input = """
+            ✘ Test "failingTest" recorded an issue at /path/File.swift:10:5: assertion failed
+            Test run with 5 tests in 2 suites failed after 1.500 seconds with 3 issues.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.summary.passedTests == 5 - 3)
+        #expect(result.summary.failedTests == 3)
+        #expect(result.summary.testTime == "1.500s")
+    }
+
+    @Test("Swift Testing failure summary singular test and issue")
+    func testSwiftTestingFailureSummarySingular() {
+        let parser = BuildOutputParser()
+        let input = """
+            Test run with 1 test in 1 suite failed after 0.500 seconds with 1 issue.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.summary.failedTests == 1)
+        #expect(result.summary.passedTests == 0)
+    }
+
+    @Test("Swift Testing passed with unquoted function name")
+    func testSwiftTestingPassedUnquotedFunctionName() {
+        let parser = BuildOutputParser()
+        let input = """
+            ✓ Test myTestFunction() passed after 0.050 seconds.
+            Test run with 1 test in 1 suite passed after 0.050 seconds.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "success")
+        #expect(result.summary.passedTests == 1)
+    }
+
     @Test(
         "Real-world Swift Testing output",
         .enabled(
