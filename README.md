@@ -14,7 +14,7 @@ This server enables AI assistants and MCP clients to:
 
 - Create and manage Xcode projects
 - Build and run apps on simulators and physical devices
-- Run tests and capture logs
+- Run tests (XCTest and Swift Testing) and capture logs
 - Control simulator state, appearance, and location
 - Debug apps with LLDB
 - Automate UI interactions
@@ -302,6 +302,15 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 | `xcstrings_delete_key` | Delete a key and all translations |
 | `xcstrings_delete_translation` | Delete a single translation |
 | `xcstrings_delete_translations` | Delete multiple translations (batch) |
+
+## Build Output Parsing
+
+Test tools parse both **XCTest** and **Swift Testing** output formats, extracting structured pass/fail results with test names, durations, and failure details. Supported formats include:
+
+- XCTest sequential and parallel test output
+- Swift Testing quoted and unquoted function names (e.g., `"testExample()"` or `testExample()`)
+- Swift Testing symbol-prefixed output (e.g., `✘`, `✓`, or SF Symbol codepoints)
+- Failure summaries with suite and issue counts
 
 ## Path Security
 

@@ -526,28 +526,19 @@ public final class BuildOutputParser: @unchecked Sendable {
         }
 
         // Unquoted format: Test funcName() ...
-        // Read until we hit a space that isn't part of the identifier/parens
-        var idx = startIndex
-        var parenDepth = 0
-        while idx < line.endIndex {
-            let ch = line[idx]
-            if ch == "(" {
-                parenDepth += 1
-            } else if ch == ")" {
-                parenDepth -= 1
-                if parenDepth <= 0 {
-                    idx = line.index(after: idx)
-                    break
-                }
-            } else if ch == " " && parenDepth == 0 {
-                break
+        // Find end by searching for known keyword markers that follow test names
+        let afterTest = line[startIndex...]
+        let endMarkers = [" recorded", " failed", " passed", " started"]
+        for marker in endMarkers {
+            if let markerRange = afterTest.range(of: marker) {
+                let name = String(line[startIndex..<markerRange.lowerBound])
+                    .trimmingCharacters(in: .whitespaces)
+                guard !name.isEmpty else { return nil }
+                return (name, markerRange.lowerBound)
             }
-            idx = line.index(after: idx)
         }
 
-        let name = String(line[startIndex..<idx])
-        guard !name.isEmpty else { return nil }
-        return (name, idx)
+        return nil
     }
 
     private func hasSeenSimilarTest(_ normalizedTestName: String) -> Bool {
@@ -823,6 +814,11 @@ public final class BuildOutputParser: @unchecked Sendable {
 
         // Swift Testing: <symbol> Test "name" passed or <symbol> Test funcName() passed
         if let testRange = line.range(of: "Test ") {
+            let afterTest = line[testRange.upperBound...]
+            // Skip "Test run with" (summary line) and "Test Case" (XCTest format)
+            guard !afterTest.hasPrefix("run with "), !afterTest.hasPrefix("Case ") else {
+                return false
+            }
             let nameStart = testRange.upperBound
             if let extracted = extractSwiftTestingName(from: line, after: nameStart) {
                 let remaining = line[extracted.endIndex...]
@@ -917,9 +913,16 @@ public final class BuildOutputParser: @unchecked Sendable {
 
         // Swift Testing: <symbol> Test "name" recorded an issue at file:line:column: message
         // Also supports unquoted: <symbol> Test funcName() recorded an issue at ...
-        if let testRange = line.range(of: "Test "),
-            let extracted = extractSwiftTestingName(from: line, after: testRange.upperBound)
-        {
+        if let testRange = line.range(of: "Test ") {
+            let afterTest = line[testRange.upperBound...]
+            // Skip "Test run with" (summary line) and "Test Case" (XCTest format)
+            guard !afterTest.hasPrefix("run with "), !afterTest.hasPrefix("Case ") else {
+                return nil
+            }
+            guard let extracted = extractSwiftTestingName(from: line, after: testRange.upperBound)
+            else {
+                return nil
+            }
             let remaining = line[extracted.endIndex...]
 
             let issueMarker = " recorded an issue at "
