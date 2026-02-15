@@ -26,13 +26,13 @@ xc-mcp provides both a monolithic server (all 89 tools) and focused servers for 
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 89 | ~50K | Full monolithic server |
+| `xc-mcp` | 91 | ~50K | Full monolithic server |
 | `xc-project` | 23 | ~5K | .xcodeproj file manipulation |
-| `xc-simulator` | 29 | ~6K | Simulator, UI automation, logs |
+| `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
 | `xc-device` | 12 | ~2K | Physical iOS devices |
 | `xc-debug` | 8 | ~2K | LLDB debugging |
 | `xc-swift` | 6 | ~1.5K | Swift Package Manager |
-| `xc-build` | 18 | ~3K | macOS builds, discovery, utilities |
+| `xc-build` | 20 | ~3K | macOS builds, discovery, logging, utilities |
 | `xc-strings` | 24 | ~8K | Xcode String Catalog (.xcstrings) localization |
 
 **When to use focused servers:**
@@ -209,7 +209,7 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 | `get_device_app_path` | Get path to installed app |
 | `test_device` | Run tests on physical device |
 
-### macOS (6 tools)
+### macOS (8 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -219,6 +219,8 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 | `stop_mac_app` | Stop a macOS app |
 | `get_mac_app_path` | Get path to built macOS app |
 | `test_macos` | Run tests for macOS app |
+| `start_mac_log_cap` | Start capturing macOS app logs via unified logging |
+| `stop_mac_log_cap` | Stop capturing and return macOS log results |
 
 ### Logging (4 tools)
 
