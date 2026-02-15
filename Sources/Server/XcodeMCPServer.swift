@@ -105,6 +105,14 @@ public enum ToolName: String, CaseIterable, Sendable {
     case debugStack = "debug_stack"
     case debugVariables = "debug_variables"
     case debugLLDBCommand = "debug_lldb_command"
+    case debugEvaluate = "debug_evaluate"
+    case debugThreads = "debug_threads"
+    case debugWatchpoint = "debug_watchpoint"
+    case debugStep = "debug_step"
+    case debugMemory = "debug_memory"
+    case debugSymbolLookup = "debug_symbol_lookup"
+    case debugViewHierarchy = "debug_view_hierarchy"
+    case debugProcessStatus = "debug_process_status"
 
     // UI Automation tools
     case tap = "tap"
@@ -323,6 +331,14 @@ public struct XcodeMCPServer: Sendable {
         let debugStackTool = DebugStackTool(lldbRunner: lldbRunner)
         let debugVariablesTool = DebugVariablesTool(lldbRunner: lldbRunner)
         let debugLLDBCommandTool = DebugLLDBCommandTool(lldbRunner: lldbRunner)
+        let debugEvaluateTool = DebugEvaluateTool(lldbRunner: lldbRunner)
+        let debugThreadsTool = DebugThreadsTool(lldbRunner: lldbRunner)
+        let debugWatchpointTool = DebugWatchpointTool(lldbRunner: lldbRunner)
+        let debugStepTool = DebugStepTool(lldbRunner: lldbRunner)
+        let debugMemoryTool = DebugMemoryTool(lldbRunner: lldbRunner)
+        let debugSymbolLookupTool = DebugSymbolLookupTool(lldbRunner: lldbRunner)
+        let debugViewHierarchyTool = DebugViewHierarchyTool(lldbRunner: lldbRunner)
+        let debugProcessStatusTool = DebugProcessStatusTool(lldbRunner: lldbRunner)
 
         // Create UI automation tools
         let tapTool = TapTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
@@ -447,6 +463,14 @@ public struct XcodeMCPServer: Sendable {
                 debugStackTool.tool(),
                 debugVariablesTool.tool(),
                 debugLLDBCommandTool.tool(),
+                debugEvaluateTool.tool(),
+                debugThreadsTool.tool(),
+                debugWatchpointTool.tool(),
+                debugStepTool.tool(),
+                debugMemoryTool.tool(),
+                debugSymbolLookupTool.tool(),
+                debugViewHierarchyTool.tool(),
+                debugProcessStatusTool.tool(),
                 // UI Automation tools
                 tapTool.tool(),
                 longPressTool.tool(),
@@ -654,6 +678,22 @@ public struct XcodeMCPServer: Sendable {
                 return try await debugVariablesTool.execute(arguments: arguments)
             case .debugLLDBCommand:
                 return try await debugLLDBCommandTool.execute(arguments: arguments)
+            case .debugEvaluate:
+                return try await debugEvaluateTool.execute(arguments: arguments)
+            case .debugThreads:
+                return try await debugThreadsTool.execute(arguments: arguments)
+            case .debugWatchpoint:
+                return try await debugWatchpointTool.execute(arguments: arguments)
+            case .debugStep:
+                return try await debugStepTool.execute(arguments: arguments)
+            case .debugMemory:
+                return try await debugMemoryTool.execute(arguments: arguments)
+            case .debugSymbolLookup:
+                return try await debugSymbolLookupTool.execute(arguments: arguments)
+            case .debugViewHierarchy:
+                return try await debugViewHierarchyTool.execute(arguments: arguments)
+            case .debugProcessStatus:
+                return try await debugProcessStatusTool.execute(arguments: arguments)
 
             // UI Automation tools
             case .tap:

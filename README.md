@@ -26,11 +26,11 @@ xc-mcp provides both a monolithic server (all 89 tools) and focused servers for 
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 91 | ~50K | Full monolithic server |
+| `xc-mcp` | 99 | ~50K | Full monolithic server |
 | `xc-project` | 23 | ~5K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
 | `xc-device` | 12 | ~2K | Physical iOS devices |
-| `xc-debug` | 8 | ~2K | LLDB debugging |
+| `xc-debug` | 16 | ~4K | LLDB debugging |
 | `xc-swift` | 6 | ~1.5K | Swift Package Manager |
 | `xc-build` | 20 | ~3K | macOS builds, discovery, logging, utilities |
 | `xc-strings` | 24 | ~8K | Xcode String Catalog (.xcstrings) localization |
@@ -231,18 +231,50 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 | `start_device_log_cap` | Start capturing device logs |
 | `stop_device_log_cap` | Stop capturing device logs |
 
-### Debug (8 tools)
+### Debug (16 tools)
+
+Debug tools use a persistent LLDB session — a single LLDB process stays alive across tool calls, so breakpoints are preserved and there are no hangs from rapid attach/detach cycles. Attach once with `debug_attach_sim`, then use any combination of debug tools against the live session.
+
+**Session management:**
 
 | Tool | Description |
 |------|-------------|
 | `debug_attach_sim` | Attach LLDB to app on simulator |
-| `debug_detach` | Detach debugger |
-| `debug_breakpoint_add` | Add a breakpoint |
-| `debug_breakpoint_remove` | Remove a breakpoint |
+| `debug_detach` | Detach debugger and end session |
+| `debug_process_status` | Get current process state (running, stopped, signal info) |
+
+**Breakpoints and watchpoints:**
+
+| Tool | Description |
+|------|-------------|
+| `debug_breakpoint_add` | Add a breakpoint (by symbol name or file:line) |
+| `debug_breakpoint_remove` | Remove a breakpoint by ID |
+| `debug_watchpoint` | Manage watchpoints — add (by variable or address with optional condition), remove, or list |
+
+**Execution control:**
+
+| Tool | Description |
+|------|-------------|
 | `debug_continue` | Continue execution |
-| `debug_stack` | Print stack trace |
-| `debug_variables` | Print local variables |
-| `debug_lldb_command` | Execute LLDB command |
+| `debug_step` | Step through code — `in` (step into), `over` (step over), `out` (step out), or `instruction` (single CPU instruction). Returns the new source location after stepping |
+
+**Inspection:**
+
+| Tool | Description |
+|------|-------------|
+| `debug_stack` | Print stack trace (single thread or all threads) |
+| `debug_variables` | Print local variables in a stack frame |
+| `debug_threads` | List all threads, optionally select one to switch context |
+| `debug_evaluate` | Evaluate expressions — supports `po` (object description), `p` (value), and explicit Swift or Objective-C expression language |
+| `debug_memory` | Read memory at an address in hex, bytes, ASCII, or disassembly format with configurable item size and count |
+| `debug_symbol_lookup` | Look up symbols by address (symbolication), name (regex search), or type name |
+| `debug_view_hierarchy` | Dump the live UI view hierarchy (iOS `UIApplication` or macOS `NSApplication`), inspect a specific view by address, and show Auto Layout constraints |
+
+**Passthrough:**
+
+| Tool | Description |
+|------|-------------|
+| `debug_lldb_command` | Execute arbitrary LLDB command for anything not covered above |
 
 ### UI Automation (7 tools)
 

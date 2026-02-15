@@ -446,6 +446,263 @@ public struct LLDBRunner: Sendable {
         return LLDBResult(exitCode: 0, stdout: output, stderr: "")
     }
 
+    /// Evaluates an expression in the debugger context.
+    ///
+    /// - Parameters:
+    ///   - pid: The process ID of the target process.
+    ///   - expression: The expression to evaluate.
+    ///   - language: Optional language (`"swift"` or `"objc"`).
+    ///   - objectDescription: Whether to use `po` (default true).
+    /// - Returns: The result containing expression output.
+    public func evaluate(
+        pid: Int32,
+        expression: String,
+        language: String?,
+        objectDescription: Bool
+    ) async throws -> LLDBResult {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+        let command: String
+        if let language {
+            command = "expr -l \(language) -- \(expression)"
+        } else if objectDescription {
+            command = "po \(expression)"
+        } else {
+            command = "expr \(expression)"
+        }
+        let output = try await session.sendCommand(command)
+        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+    }
+
+    /// Lists threads and optionally selects one.
+    ///
+    /// - Parameters:
+    ///   - pid: The process ID of the target process.
+    ///   - selectIndex: Optional thread index to switch to.
+    /// - Returns: The result containing thread information.
+    public func listThreads(pid: Int32, selectIndex: Int?) async throws -> LLDBResult {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+        let listOutput = try await session.sendCommand("thread list")
+        if let selectIndex {
+            let selectOutput = try await session.sendCommand("thread select \(selectIndex)")
+            let infoOutput = try await session.sendCommand("thread info")
+            return LLDBResult(
+                exitCode: 0,
+                stdout: listOutput + "\n" + selectOutput + "\n" + infoOutput,
+                stderr: ""
+            )
+        }
+        return LLDBResult(exitCode: 0, stdout: listOutput, stderr: "")
+    }
+
+    /// Manages watchpoints (add, remove, list).
+    ///
+    /// - Parameters:
+    ///   - pid: The process ID of the target process.
+    ///   - action: The action to perform (`"add"`, `"remove"`, or `"list"`).
+    ///   - variable: Variable name for add action.
+    ///   - address: Memory address for add action (alternative to variable).
+    ///   - watchpointId: Watchpoint ID for remove action.
+    ///   - condition: Optional condition expression for add action.
+    /// - Returns: The result containing watchpoint information.
+    public func manageWatchpoint(
+        pid: Int32,
+        action: String,
+        variable: String?,
+        address: String?,
+        watchpointId: Int?,
+        condition: String?
+    ) async throws -> LLDBResult {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+        switch action {
+        case "add":
+            let setOutput: String
+            if let variable {
+                setOutput = try await session.sendCommand("watchpoint set variable \(variable)")
+            } else if let address {
+                setOutput = try await session.sendCommand("watchpoint set expression -- \(address)")
+            } else {
+                throw LLDBError.commandFailed("Either 'variable' or 'address' is required for add")
+            }
+            var output = setOutput
+            if let condition {
+                // Extract watchpoint ID from output to apply condition
+                let modOutput = try await session.sendCommand(
+                    "watchpoint modify -c '\(condition)'")
+                output += "\n" + modOutput
+            }
+            let listOutput = try await session.sendCommand("watchpoint list")
+            return LLDBResult(exitCode: 0, stdout: output + "\n" + listOutput, stderr: "")
+
+        case "remove":
+            guard let watchpointId else {
+                throw LLDBError.commandFailed("watchpoint_id is required for remove")
+            }
+            let deleteOutput = try await session.sendCommand("watchpoint delete \(watchpointId)")
+            let listOutput = try await session.sendCommand("watchpoint list")
+            return LLDBResult(
+                exitCode: 0,
+                stdout: deleteOutput + "\n" + listOutput,
+                stderr: ""
+            )
+
+        case "list":
+            let output = try await session.sendCommand("watchpoint list")
+            return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+
+        default:
+            throw LLDBError.commandFailed("Unknown watchpoint action: \(action)")
+        }
+    }
+
+    /// Steps through code execution.
+    ///
+    /// - Parameters:
+    ///   - pid: The process ID of the target process.
+    ///   - mode: Step mode (`"in"`, `"over"`, `"out"`, or `"instruction"`).
+    /// - Returns: The result containing the new location after stepping.
+    public func step(pid: Int32, mode: String) async throws -> LLDBResult {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+        let command: String
+        switch mode {
+        case "in": command = "thread step-in"
+        case "over": command = "thread step-over"
+        case "out": command = "thread step-out"
+        case "instruction": command = "thread step-inst"
+        default:
+            throw LLDBError.commandFailed("Unknown step mode: \(mode)")
+        }
+        let stepOutput = try await session.sendCommand(command)
+        let frameOutput = try await session.sendCommand("frame info")
+        return LLDBResult(
+            exitCode: 0,
+            stdout: stepOutput + "\n" + frameOutput,
+            stderr: ""
+        )
+    }
+
+    /// Reads memory at an address.
+    ///
+    /// - Parameters:
+    ///   - pid: The process ID of the target process.
+    ///   - address: The memory address to read (hex string).
+    ///   - count: Number of items to read.
+    ///   - format: Output format (`"hex"`, `"bytes"`, `"ascii"`, or `"instruction"`).
+    ///   - size: Item size in bytes (1, 2, 4, or 8).
+    /// - Returns: The result containing memory contents.
+    public func readMemory(
+        pid: Int32,
+        address: String,
+        count: Int,
+        format: String,
+        size: Int
+    ) async throws -> LLDBResult {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+        let fmt: String
+        switch format {
+        case "hex": fmt = "x"
+        case "bytes": fmt = "Y"
+        case "ascii": fmt = "c"
+        case "instruction": fmt = "i"
+        default: fmt = "x"
+        }
+        let output = try await session.sendCommand(
+            "memory read --size \(size) --format \(fmt) --count \(count) \(address)")
+        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+    }
+
+    /// Looks up symbols, addresses, and types.
+    ///
+    /// - Parameters:
+    ///   - pid: The process ID of the target process.
+    ///   - address: Address to symbolicate.
+    ///   - name: Symbol or function name regex.
+    ///   - type: Type name to look up.
+    ///   - verbose: Whether to use verbose output.
+    /// - Returns: The result containing symbol information.
+    public func symbolLookup(
+        pid: Int32,
+        address: String?,
+        name: String?,
+        type: String?,
+        verbose: Bool
+    ) async throws -> LLDBResult {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+        var outputs: [String] = []
+
+        if let address {
+            let verboseFlag = verbose ? " -v" : ""
+            let output = try await session.sendCommand(
+                "image lookup --address \(address)\(verboseFlag)")
+            outputs.append(output)
+        }
+
+        if let name {
+            let output = try await session.sendCommand("image lookup -r -n \(name)")
+            outputs.append(output)
+        }
+
+        if let type {
+            let output = try await session.sendCommand("image lookup --type \(type)")
+            outputs.append(output)
+        }
+
+        return LLDBResult(exitCode: 0, stdout: outputs.joined(separator: "\n"), stderr: "")
+    }
+
+    /// Dumps the UI view hierarchy.
+    ///
+    /// - Parameters:
+    ///   - pid: The process ID of the target process.
+    ///   - platform: `"ios"` or `"macos"`.
+    ///   - address: Optional specific view address to inspect.
+    ///   - constraints: Whether to show Auto Layout constraints.
+    /// - Returns: The result containing the view hierarchy.
+    public func viewHierarchy(
+        pid: Int32,
+        platform: String,
+        address: String?,
+        constraints: Bool
+    ) async throws -> LLDBResult {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+        var outputs: [String] = []
+
+        if let address {
+            let output = try await session.sendCommand(
+                "expr -l objc -O -- [(id)\(address) recursiveDescription]")
+            outputs.append(output)
+            if constraints {
+                let hOutput = try await session.sendCommand(
+                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:0]")
+                let vOutput = try await session.sendCommand(
+                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:1]")
+                outputs.append("Horizontal constraints:\n" + hOutput)
+                outputs.append("Vertical constraints:\n" + vOutput)
+            }
+        } else if platform == "macos" {
+            let output = try await session.sendCommand(
+                "expr -l objc -O -- [[[NSApplication sharedApplication] mainWindow] contentView]._subtreeDescription"
+            )
+            outputs.append(output)
+        } else {
+            let output = try await session.sendCommand(
+                "expr -l objc -O -- [[[UIApplication sharedApplication] keyWindow] recursiveDescription]"
+            )
+            outputs.append(output)
+        }
+
+        return LLDBResult(exitCode: 0, stdout: outputs.joined(separator: "\n\n"), stderr: "")
+    }
+
+    /// Gets the current process status.
+    ///
+    /// - Parameter pid: The process ID of the target process.
+    /// - Returns: The result containing process state information.
+    public func processStatus(pid: Int32) async throws -> LLDBResult {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+        let output = try await session.sendCommand("process status")
+        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+    }
+
     /// Executes LLDB in batch mode with a script (used for cases where persistent sessions aren't applicable).
     private func runBatch(commands: [String]) async throws -> LLDBResult {
         try await withCheckedThrowingContinuation { continuation in
