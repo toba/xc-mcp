@@ -26,11 +26,11 @@ xc-mcp provides both a monolithic server (all 89 tools) and focused servers for 
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 99 | ~50K | Full monolithic server |
+| `xc-mcp` | 100 | ~50K | Full monolithic server |
 | `xc-project` | 23 | ~5K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
 | `xc-device` | 12 | ~2K | Physical iOS devices |
-| `xc-debug` | 16 | ~4K | LLDB debugging |
+| `xc-debug` | 17 | ~4K | LLDB debugging |
 | `xc-swift` | 6 | ~1.5K | Swift Package Manager |
 | `xc-build` | 20 | ~3K | macOS builds, discovery, logging, utilities |
 | `xc-strings` | 24 | ~8K | Xcode String Catalog (.xcstrings) localization |
@@ -231,9 +231,15 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 | `start_device_log_cap` | Start capturing device logs |
 | `stop_device_log_cap` | Stop capturing device logs |
 
-### Debug (16 tools)
+### Debug (17 tools)
 
 Debug tools use a persistent LLDB session — a single LLDB process stays alive across tool calls, so breakpoints are preserved and there are no hangs from rapid attach/detach cycles. Attach once with `debug_attach_sim`, then use any combination of debug tools against the live session.
+
+**Build & debug launch:**
+
+| Tool | Description |
+|------|-------------|
+| `build_debug_macos` | Build and launch a macOS app under LLDB — the equivalent of Xcode's Run button. Builds incrementally, sets `DYLD_FRAMEWORK_PATH`/`DYLD_LIBRARY_PATH` so frameworks load correctly, and launches with the debugger attached from the start. Supports custom args, env vars, and stop-at-entry. All debug tools work with the returned PID. |
 
 **Session management:**
 

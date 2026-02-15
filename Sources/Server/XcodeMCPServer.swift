@@ -97,6 +97,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case simStatusbar = "sim_statusbar"
 
     // Debug tools
+    case buildDebugMacOS = "build_debug_macos"
     case debugAttachSim = "debug_attach_sim"
     case debugDetach = "debug_detach"
     case debugBreakpointAdd = "debug_breakpoint_add"
@@ -322,6 +323,9 @@ public struct XcodeMCPServer: Sendable {
 
         // Create debug tools
         let lldbRunner = LLDBRunner()
+        let buildDebugMacOSTool = BuildDebugMacOSTool(
+            xcodebuildRunner: xcodebuildRunner, lldbRunner: lldbRunner,
+            sessionManager: sessionManager)
         let debugAttachSimTool = DebugAttachSimTool(
             lldbRunner: lldbRunner, simctlRunner: simctlRunner, sessionManager: sessionManager)
         let debugDetachTool = DebugDetachTool(lldbRunner: lldbRunner)
@@ -455,6 +459,7 @@ public struct XcodeMCPServer: Sendable {
                 setSimAppearanceTool.tool(),
                 simStatusBarTool.tool(),
                 // Debug tools
+                buildDebugMacOSTool.tool(),
                 debugAttachSimTool.tool(),
                 debugDetachTool.tool(),
                 debugBreakpointAddTool.tool(),
@@ -662,6 +667,8 @@ public struct XcodeMCPServer: Sendable {
                 return try await simStatusBarTool.execute(arguments: arguments)
 
             // Debug tools
+            case .buildDebugMacOS:
+                return try await buildDebugMacOSTool.execute(arguments: arguments)
             case .debugAttachSim:
                 return try await debugAttachSimTool.execute(arguments: arguments)
             case .debugDetach:

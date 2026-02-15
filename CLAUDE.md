@@ -33,7 +33,7 @@ xc-mcp/
 │   │   ├── MacOS/                   # 6 macOS build tools
 │   │   ├── Discovery/               # 5 project discovery tools
 │   │   ├── Logging/                 # 4 log capture tools
-│   │   ├── Debug/                   # 8 LLDB debug tools
+│   │   ├── Debug/                   # 9 LLDB debug tools
 │   │   ├── UIAutomation/            # 7 UI automation tools
 │   │   ├── SwiftPackage/            # 6 Swift Package Manager tools
 │   │   └── Utility/                 # 4 utility tools

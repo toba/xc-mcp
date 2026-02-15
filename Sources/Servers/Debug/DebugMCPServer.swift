@@ -6,6 +6,7 @@ import XCMCPTools
 
 /// All available tool names exposed by the xc-debug MCP server.
 public enum DebugToolName: String, CaseIterable, Sendable {
+    case buildDebugMacOS = "build_debug_macos"
     case debugAttachSim = "debug_attach_sim"
     case debugDetach = "debug_detach"
     case debugBreakpointAdd = "debug_breakpoint_add"
@@ -71,6 +72,10 @@ public struct DebugMCPServer: Sendable {
         let sessionManager = SessionManager()
 
         // Create debug tools
+        let xcodebuildRunner = XcodebuildRunner()
+        let buildDebugMacOSTool = BuildDebugMacOSTool(
+            xcodebuildRunner: xcodebuildRunner, lldbRunner: lldbRunner,
+            sessionManager: sessionManager)
         let debugAttachSimTool = DebugAttachSimTool(
             lldbRunner: lldbRunner, simctlRunner: simctlRunner, sessionManager: sessionManager)
         let debugDetachTool = DebugDetachTool(lldbRunner: lldbRunner)
@@ -92,6 +97,7 @@ public struct DebugMCPServer: Sendable {
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
             ListTools.Result(tools: [
+                buildDebugMacOSTool.tool(),
                 debugAttachSimTool.tool(),
                 debugDetachTool.tool(),
                 debugBreakpointAddTool.tool(),
@@ -120,6 +126,8 @@ public struct DebugMCPServer: Sendable {
             let arguments = params.arguments ?? [:]
 
             switch toolName {
+            case .buildDebugMacOS:
+                return try await buildDebugMacOSTool.execute(arguments: arguments)
             case .debugAttachSim:
                 return try await debugAttachSimTool.execute(arguments: arguments)
             case .debugDetach:

@@ -14,7 +14,7 @@ public actor LLDBSession {
     private let commandTimeout: TimeInterval
 
     /// The PID of the process being debugged.
-    public let targetPID: Int32
+    public private(set) var targetPID: Int32
 
     /// Whether the LLDB process is still running.
     public var isAlive: Bool {
@@ -60,6 +60,61 @@ public actor LLDBSession {
         _ = try await readUntilPrompt()
         // Attach to the target process
         return try await sendCommand("process attach --pid \(targetPID)")
+    }
+
+    /// Launches a new process under the debugger.
+    ///
+    /// Must be called exactly once after `init` (instead of `attach`) before sending other commands.
+    ///
+    /// - Parameters:
+    ///   - executablePath: Path to the executable to launch.
+    ///   - environment: Environment variables to set before launch.
+    ///   - arguments: Command-line arguments to pass to the process.
+    ///   - stopAtEntry: If true, stops at the entry point before running.
+    /// - Returns: The launch command output.
+    @discardableResult
+    public func launch(
+        executablePath: String,
+        environment: [String: String] = [:],
+        arguments: [String] = [],
+        stopAtEntry: Bool = false
+    ) async throws -> String {
+        // Wait for initial prompt
+        _ = try await readUntilPrompt()
+
+        // Set the executable
+        let fileOutput = try await sendCommand("file \"\(executablePath)\"")
+
+        // Set environment variables
+        for (key, value) in environment {
+            _ = try await sendCommand(
+                "settings set target.env-vars \(key)=\(value)")
+        }
+
+        // Build launch command
+        var launchCommand = "process launch"
+        if stopAtEntry {
+            launchCommand += " --stop-at-entry"
+        }
+        if !arguments.isEmpty {
+            let escapedArgs = arguments.map { "\"\($0)\"" }.joined(separator: " ")
+            launchCommand += " -- \(escapedArgs)"
+        }
+
+        let launchOutput = try await sendCommand(launchCommand)
+
+        // Parse PID from output like "Process 12345 launched"
+        if let range = launchOutput.range(
+            of: #"Process (\d+) launched"#, options: .regularExpression)
+        {
+            let match = launchOutput[range]
+            let digits = match.split(separator: " ")[1]
+            if let pid = Int32(digits) {
+                self.targetPID = pid
+            }
+        }
+
+        return fileOutput + "\n" + launchOutput
     }
 
     /// Sends a command to the LLDB process and waits for the response.
@@ -175,6 +230,37 @@ public actor LLDBSessionManager {
         let session = try LLDBSession(pid: pid)
         try await session.attach()
         sessions[pid] = session
+        return session
+    }
+
+    /// Creates a new persistent LLDB session that launches a process.
+    ///
+    /// Unlike `createSession(pid:)` which attaches to an existing process,
+    /// this launches a new process under the debugger.
+    ///
+    /// - Parameters:
+    ///   - executablePath: Path to the executable to launch.
+    ///   - environment: Environment variables to set before launch.
+    ///   - arguments: Command-line arguments to pass to the process.
+    ///   - stopAtEntry: If true, stops at the entry point before running.
+    /// - Returns: The LLDB session with the launched process.
+    public func createLaunchSession(
+        executablePath: String,
+        environment: [String: String] = [:],
+        arguments: [String] = [],
+        stopAtEntry: Bool = false
+    ) async throws -> LLDBSession {
+        let session = try LLDBSession(pid: 0)
+        try await session.launch(
+            executablePath: executablePath,
+            environment: environment,
+            arguments: arguments,
+            stopAtEntry: stopAtEntry
+        )
+        let pid = await session.targetPID
+        if pid > 0 {
+            sessions[pid] = session
+        }
         return session
     }
 
@@ -296,6 +382,34 @@ public struct LLDBRunner: Sendable {
         let session = try await LLDBSessionManager.shared.createSession(pid: pid)
         let statusOutput = try await session.sendCommand("process status")
         return LLDBResult(exitCode: 0, stdout: statusOutput, stderr: "")
+    }
+
+    /// Launches a process under the debugger.
+    ///
+    /// Creates a persistent LLDB session that launches the executable and keeps it
+    /// under debugger control. The returned PID can be used with all other debug commands.
+    ///
+    /// - Parameters:
+    ///   - executablePath: Path to the executable to launch.
+    ///   - environment: Environment variables to set before launch.
+    ///   - arguments: Command-line arguments to pass to the process.
+    ///   - stopAtEntry: If true, stops at the entry point before running.
+    /// - Returns: The result containing launch output and the PID.
+    public func launchProcess(
+        executablePath: String,
+        environment: [String: String] = [:],
+        arguments: [String] = [],
+        stopAtEntry: Bool = false
+    ) async throws -> (result: LLDBResult, pid: Int32) {
+        let session = try await LLDBSessionManager.shared.createLaunchSession(
+            executablePath: executablePath,
+            environment: environment,
+            arguments: arguments,
+            stopAtEntry: stopAtEntry
+        )
+        let pid = await session.targetPID
+        let statusOutput = try await session.sendCommand("process status")
+        return (LLDBResult(exitCode: 0, stdout: statusOutput, stderr: ""), pid)
     }
 
     /// Attaches to a process by name.
