@@ -1,7 +1,7 @@
 ---
 # xc-mcp-68vg
 title: Add privacy/permissions management tools
-status: todo
+status: ready
 type: feature
 created_at: 2026-01-21T07:36:52Z
 updated_at: 2026-01-21T07:36:52Z

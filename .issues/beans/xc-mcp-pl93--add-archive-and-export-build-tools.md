@@ -1,7 +1,7 @@
 ---
 # xc-mcp-pl93
 title: Add archive and export build tools
-status: todo
+status: ready
 type: feature
 created_at: 2026-01-21T07:37:59Z
 updated_at: 2026-01-21T07:37:59Z

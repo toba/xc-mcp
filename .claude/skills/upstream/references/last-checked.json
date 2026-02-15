@@ -1,0 +1,14 @@
+{
+  "giginet/xcodeproj-mcp-server": {
+    "last_checked_sha": "b29c9aae7fa57a9e65e50fa91dc55eebd1820d4b",
+    "last_checked_date": "2026-01-11T06:36:26Z"
+  },
+  "ldomaradzki/xcsift": {
+    "last_checked_sha": "7cdf88aba7059490985c05d75955c6cefd06fe3d",
+    "last_checked_date": "2026-02-12T09:23:58Z"
+  },
+  "Ryu0118/xcstrings-crud": {
+    "last_checked_sha": "467982835dadd388ee6bdc62021fc252aef9a135",
+    "last_checked_date": "2026-01-25T13:11:11Z"
+  }
+}
