@@ -41,10 +41,7 @@ public struct DebugDetachTool: Sendable {
         }
 
         if pid == nil, case let .string(bundleId) = arguments["bundle_id"] {
-            pid = await LLDBSessionManager.shared.getSession(bundleId: bundleId)
-            if pid != nil {
-                await LLDBSessionManager.shared.removeSession(bundleId: bundleId)
-            }
+            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
         }
 
         guard let targetPID = pid else {

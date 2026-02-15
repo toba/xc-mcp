@@ -56,7 +56,7 @@ public struct DebugBreakpointAddTool: Sendable {
         }
 
         if pid == nil, case let .string(bundleId) = arguments["bundle_id"] {
-            pid = await LLDBSessionManager.shared.getSession(bundleId: bundleId)
+            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
         }
 
         guard let targetPID = pid else {

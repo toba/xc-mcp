@@ -55,7 +55,8 @@ public struct StartMacLogCapTool: Sendable {
         let processName = arguments.getString("process_name")
         let subsystem = arguments.getString("subsystem")
         let customPredicate = arguments.getString("predicate")
-        let outputFile = arguments.getString("output_file")
+        let outputFile =
+            arguments.getString("output_file")
             ?? "/tmp/mac_log_\(bundleId ?? processName ?? "system").log"
 
         do {

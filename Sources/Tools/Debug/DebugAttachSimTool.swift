@@ -83,10 +83,10 @@ public struct DebugAttachSimTool: Sendable {
             let result = try await lldbRunner.attachToPID(targetPID)
 
             if result.succeeded || result.output.contains("Process") {
-                // Register the session
+                // Register the bundle ID mapping
                 if case let .string(bundleId) = arguments["bundle_id"] {
-                    await LLDBSessionManager.shared.registerSession(
-                        bundleId: bundleId, pid: targetPID)
+                    await LLDBSessionManager.shared.registerBundleId(
+                        bundleId, forPID: targetPID)
                 }
 
                 var message = "Successfully attached to process \(targetPID)\n\n"
