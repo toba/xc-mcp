@@ -2,17 +2,60 @@ import Foundation
 import MCP
 import Synchronization
 
+/// Opens a pseudo-TTY pair and returns (primary, replica) file descriptors.
+///
+/// LLDB suppresses the interactive `(lldb) ` prompt when stdin is a pipe.
+/// Using a PTY makes LLDB believe it's connected to a terminal, so it emits
+/// prompts that `readUntilPrompt()` can detect.
+private func openPTY() throws -> (primary: Int32, replica: Int32) {
+    let primary = posix_openpt(O_RDWR | O_NOCTTY)
+    guard primary >= 0 else {
+        throw LLDBError.commandFailed("posix_openpt failed: \(String(cString: strerror(errno)))")
+    }
+    guard grantpt(primary) == 0 else {
+        close(primary)
+        throw LLDBError.commandFailed("grantpt failed: \(String(cString: strerror(errno)))")
+    }
+    guard unlockpt(primary) == 0 else {
+        close(primary)
+        throw LLDBError.commandFailed("unlockpt failed: \(String(cString: strerror(errno)))")
+    }
+    guard let name = ptsname(primary) else {
+        close(primary)
+        throw LLDBError.commandFailed("ptsname failed: \(String(cString: strerror(errno)))")
+    }
+    let replica = open(name, O_RDWR | O_NOCTTY)
+    guard replica >= 0 else {
+        close(primary)
+        throw LLDBError.commandFailed(
+            "Failed to open replica PTY: \(String(cString: strerror(errno)))")
+    }
+
+    // Disable echo and canonical mode on the replica so we don't get
+    // our own commands echoed back through the PTY driver.
+    var attrs = termios()
+    tcgetattr(replica, &attrs)
+    attrs.c_lflag &= ~UInt(ECHO | ICANON)
+    tcsetattr(replica, TCSANOW, &attrs)
+
+    return (primary, replica)
+}
+
 /// A persistent LLDB process that stays alive across tool calls.
 ///
 /// Instead of spawning a new `lldb --batch` process for each command,
 /// `LLDBSession` keeps a single LLDB process running and sends commands
 /// via stdin, reading responses until the `(lldb) ` prompt reappears.
+///
+/// Uses a pseudo-TTY so LLDB emits interactive prompts.
 public actor LLDBSession {
     private let process: Process
     private let stdin: FileHandle
     private let stdout: FileHandle
     private let stderr: FileHandle
     private let commandTimeout: TimeInterval
+    /// File descriptors to close when the session is terminated.
+    private let ptyFDs: [Int32]
 
     /// The PID of the process being debugged.
     public private(set) var targetPID: Int32
@@ -27,6 +70,8 @@ public actor LLDBSession {
 
     /// Creates a new persistent LLDB session attached to a process.
     ///
+    /// Uses a pseudo-TTY for stdin/stdout so LLDB emits interactive prompts.
+    ///
     /// - Parameters:
     ///   - pid: The process ID to debug.
     ///   - commandTimeout: Maximum time to wait for a command response (default 30s).
@@ -39,17 +84,22 @@ public actor LLDBSession {
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/lldb")
         proc.arguments = ["--no-use-colors"]
 
-        let stdinPipe = Pipe()
-        let stdoutPipe = Pipe()
+        // Use a PTY for stdin+stdout so LLDB emits interactive prompts.
+        let (primaryFD, replicaFD) = try openPTY()
+        let replicaHandle = FileHandle(fileDescriptor: replicaFD, closeOnDealloc: false)
+        proc.standardInput = replicaHandle
+        proc.standardOutput = replicaHandle
+
         let stderrPipe = Pipe()
-        proc.standardInput = stdinPipe
-        proc.standardOutput = stdoutPipe
         proc.standardError = stderrPipe
 
         self.process = proc
-        self.stdin = stdinPipe.fileHandleForWriting
-        self.stdout = stdoutPipe.fileHandleForReading
+        // Write to the primary side to send to LLDB's stdin
+        self.stdin = FileHandle(fileDescriptor: primaryFD, closeOnDealloc: false)
+        // Read from the primary side to get LLDB's stdout
+        self.stdout = FileHandle(fileDescriptor: primaryFD, closeOnDealloc: false)
         self.stderr = stderrPipe.fileHandleForReading
+        self.ptyFDs = [primaryFD, replicaFD]
 
         try proc.run()
     }
@@ -161,7 +211,7 @@ public actor LLDBSession {
         try stdin.write(contentsOf: commandData)
     }
 
-    /// Terminates the LLDB process.
+    /// Terminates the LLDB process and closes PTY file descriptors.
     public func terminate() {
         if process.isRunning {
             // Try graceful quit first
@@ -169,10 +219,18 @@ public actor LLDBSession {
             try? stdin.write(contentsOf: quitData)
 
             // Give it a moment, then force kill
+            let fds = self.ptyFDs
             DispatchQueue.global().asyncAfter(deadline: .now() + 1) { [process] in
                 if process.isRunning {
                     process.terminate()
                 }
+                for fd in fds {
+                    close(fd)
+                }
+            }
+        } else {
+            for fd in ptyFDs {
+                close(fd)
             }
         }
     }
@@ -187,6 +245,8 @@ public actor LLDBSession {
         return try await withCheckedThrowingContinuation { continuation in
             // Guard to ensure the continuation is resumed exactly once.
             let resumed = Mutex(false)
+            // Shared accumulator so timeout handler can report partial output.
+            let partialOutput = Mutex("")
 
             let workItem = DispatchWorkItem { [stdout] in
                 var accumulated = ""
@@ -209,6 +269,7 @@ public actor LLDBSession {
                     if let str = String(data: buffer, encoding: .utf8) {
                         buffer = Data()
                         accumulated += str
+                        partialOutput.withLock { $0 = accumulated }
                         if accumulated.hasSuffix(promptMarker) {
                             // Strip the trailing prompt from the output
                             let endIndex = accumulated.index(
@@ -241,9 +302,22 @@ public actor LLDBSession {
                     if let self {
                         Task { await self.markPoisoned() }
                     }
+                    let partial = partialOutput.withLock { $0 }
+                    let detail: String
+                    if partial.isEmpty {
+                        detail =
+                            "Timed out waiting for LLDB response (no output received)"
+                    } else {
+                        // Include last portion of output for diagnostics
+                        let maxChars = 2000
+                        let truncated =
+                            partial.count > maxChars
+                            ? "...\(partial.suffix(maxChars))" : partial
+                        detail =
+                            "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
+                    }
                     continuation.resume(
-                        throwing: LLDBError.commandFailed(
-                            "Timed out waiting for LLDB response"))
+                        throwing: LLDBError.commandFailed(detail))
                 }
             }
 
@@ -315,9 +389,10 @@ public actor LLDBSessionManager {
         executablePath: String,
         environment: [String: String] = [:],
         arguments: [String] = [],
-        stopAtEntry: Bool = false
+        stopAtEntry: Bool = false,
+        commandTimeout: TimeInterval = 30
     ) async throws -> LLDBSession {
-        let session = try LLDBSession(pid: 0)
+        let session = try LLDBSession(pid: 0, commandTimeout: commandTimeout)
         try await session.launch(
             executablePath: executablePath,
             environment: environment,
@@ -463,6 +538,9 @@ public struct LLDBRunner: Sendable {
     ///   - arguments: Command-line arguments to pass to the process.
     ///   - stopAtEntry: If true, stops at the entry point before running.
     /// - Returns: The result containing launch output and the PID.
+    /// Timeout for launch sessions — loading executables and symbols takes longer than normal commands.
+    private static let launchCommandTimeout: TimeInterval = 120
+
     public func launchProcess(
         executablePath: String,
         environment: [String: String] = [:],
@@ -473,7 +551,8 @@ public struct LLDBRunner: Sendable {
             executablePath: executablePath,
             environment: environment,
             arguments: arguments,
-            stopAtEntry: stopAtEntry
+            stopAtEntry: stopAtEntry,
+            commandTimeout: Self.launchCommandTimeout
         )
         let pid = await session.targetPID
         let statusOutput = try await session.sendCommand("process status")
@@ -585,7 +664,8 @@ public struct LLDBRunner: Sendable {
         try await session.sendCommandNoWait("continue")
         return LLDBResult(
             exitCode: 0,
-            stdout: "Process \(pid) resumed. Use debug_stack or debug_variables when the process stops at a breakpoint.",
+            stdout:
+                "Process \(pid) resumed. Use debug_stack or debug_variables when the process stops at a breakpoint.",
             stderr: ""
         )
     }

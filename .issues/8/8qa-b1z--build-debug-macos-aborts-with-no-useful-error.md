@@ -5,7 +5,7 @@ status: completed
 type: bug
 priority: normal
 created_at: 2026-02-15T20:44:54Z
-updated_at: 2026-02-15T20:50:31Z
+updated_at: 2026-02-15T22:00:19Z
 ---
 
 ## Problem
@@ -37,3 +37,43 @@ updated_at: 2026-02-15T20:50:31Z
 - Made `XcodebuildError` conform to `MCPErrorConvertible` so timeout/stuck errors include partial build output (extracted errors or last 2000 chars)
 - Added `timeout` and `onProgress` parameters to `XcodebuildRunner.build()` method
 - All 315 tests pass
+
+## Update (2026-02-15)
+
+After xc-mcp update, the AbortError is fixed but now fails with a different error:
+
+```
+MCP error -32603: Internal error: LLDB command failed: Timed out waiting for LLDB response
+```
+
+### Observations
+
+- No build error returned, so the build phase likely succeeded
+- LLDB times out during the launch/attach phase
+- No Thesis process found after the failure (`pgrep -fl Thesis` returns nothing)
+- App never actually launched
+
+### Reproduction
+
+```
+mcp__xc-debug__set_session_defaults(project_path: "Thesis.xcodeproj", scheme: "Standard")
+mcp__xc-debug__build_debug_macos()
+# → MCP error -32603: Internal error: LLDB command failed: Timed out waiting for LLDB response
+```
+
+### Root Cause
+
+LLDB suppresses the interactive `(lldb) ` prompt when stdin is a pipe (not a TTY). `LLDBSession` used `Pipe()` for stdin/stdout, so LLDB never emitted the prompt that `readUntilPrompt()` waits for — causing every command to hang until the 30s timeout.
+
+Additionally, the 30s command timeout was too short for launch operations even if prompts were working.
+
+### Fix Applied (see also op7-ozw)
+
+1. **PTY instead of pipes** — Replaced `Pipe()` with a pseudo-TTY (`posix_openpt/grantpt/unlockpt/ptsname`) for LLDB's stdin/stdout in `LLDBSession`. LLDB now believes it's connected to a terminal and emits `(lldb) ` prompts correctly.
+2. **Increased launch timeout** — Added `launchCommandTimeout` (120s) to `LLDBRunner`, threaded through `createLaunchSession` → `LLDBSession` init.
+3. **Better timeout diagnostics** — Timeout errors now include partial LLDB output (last 2000 chars) instead of the generic "Timed out waiting for LLDB response".
+4. **Test harness** — Created `test-debug.sh` for end-to-end testing without brew install/deploy.
+
+### Verified
+
+Thesis app builds and launches under LLDB in ~23s. All 315 tests pass.
