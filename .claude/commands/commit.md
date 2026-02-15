@@ -32,6 +32,7 @@ If any command fails or review finds blocking issues, report them and STOP. Do n
    - Focus on "why" not just "what"
    - Include affected bean IDs if applicable
 5. Run `git status` to confirm the commit succeeded
+6. Run `todo sync` to sync issues to GitHub
 
 ## Step 3: Push and Version (if requested)
 

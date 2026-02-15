@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-07T17:46:40Z
 updated_at: 2026-02-07T17:56:12Z
+sync:
+    github:
+        issue_number: "34"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Unknown fix to OutputParser + CoverageParser — need to check the diff and determine if our code is affected.

@@ -7,6 +7,10 @@ priority: normal
 created_at: 2026-01-21T05:25:40Z
 updated_at: 2026-01-21T05:31:35Z
 parent: xc-mcp-u2z4
+sync:
+    github:
+        issue_number: "51"
+        synced_at: "2026-02-15T22:08:26Z"
 ---
 
 Implement project discovery tools.

@@ -3,8 +3,13 @@
 title: Unified Xcode MCP Server Implementation
 status: completed
 type: milestone
+priority: normal
 created_at: 2026-01-21T05:03:16Z
 updated_at: 2026-01-21T05:03:16Z
+sync:
+    github:
+        issue_number: "19"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Merge xcodeproj-mcp-server (23 tools) with XcodeBuildMCP (71 tools) into a single Swift-based MCP server with full feature parity (~94 tools).

@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-01-21T06:36:26Z
 updated_at: 2026-01-21T06:44:15Z
+sync:
+    github:
+        issue_number: "45"
+        synced_at: "2026-02-15T22:08:24Z"
 ---
 
 Implement the 6-phase optimization plan to reduce code duplication (~900+ lines), add generics, and improve concurrency.

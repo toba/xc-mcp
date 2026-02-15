@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-15T16:10:26Z
 updated_at: 2026-02-15T16:14:03Z
+sync:
+    github:
+        issue_number: "1"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Implement debug_evaluate, debug_threads, debug_watchpoint, debug_step, debug_memory, debug_symbol_lookup, debug_view_hierarchy, debug_process_status tools.

@@ -7,6 +7,10 @@ priority: normal
 created_at: 2026-01-21T05:08:50Z
 updated_at: 2026-01-21T05:14:00Z
 parent: xc-mcp-u2z4
+sync:
+    github:
+        issue_number: "49"
+        synced_at: "2026-02-15T22:08:26Z"
 ---
 
 Implement simulator management tools using xcrun simctl.

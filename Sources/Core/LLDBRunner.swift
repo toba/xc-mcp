@@ -68,6 +68,11 @@ public actor LLDBSession {
         process.isRunning && !isPoisoned
     }
 
+    /// Updates the target PID (e.g. after a `--waitfor` attach resolves).
+    public func setTargetPID(_ pid: Int32) {
+        self.targetPID = pid
+    }
+
     /// Creates a new persistent LLDB session attached to a process.
     ///
     /// Uses a pseudo-TTY for stdin/stdout so LLDB emits interactive prompts.
@@ -239,7 +244,7 @@ public actor LLDBSession {
     ///
     /// Uses a lock-guarded flag to ensure the continuation is resumed exactly once.
     /// On timeout, marks the session as poisoned so it will be recreated on next use.
-    private func readUntilPrompt() async throws -> String {
+    func readUntilPrompt() async throws -> String {
         let promptMarker = "(lldb) "
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -406,6 +411,102 @@ public actor LLDBSessionManager {
         return session
     }
 
+    /// Creates an LLDB session that launches an app via `/usr/bin/open` and attaches with `--waitfor`.
+    ///
+    /// This mimics Xcode's debugger behavior: launch the app through Launch Services
+    /// (which handles `@rpath`, sandbox setup, and code signing correctly), then attach LLDB.
+    /// This avoids the SIGABRT in dyld that occurs when launching signed/sandboxed macOS apps
+    /// directly via LLDB's `process launch`.
+    ///
+    /// - Parameters:
+    ///   - appPath: Path to the .app bundle.
+    ///   - executableName: Name of the executable inside the bundle (used for `--waitfor`).
+    ///   - arguments: Command-line arguments to pass to the app via `--args`.
+    ///   - environment: Environment variables to set on the launched process.
+    ///   - stopAtEntry: If true, leaves the process stopped after attach.
+    /// - Returns: The LLDB session with the attached process.
+    public func createOpenAndAttachSession(
+        appPath: String,
+        executableName: String,
+        arguments: [String] = [],
+        environment: [String: String] = [:],
+        stopAtEntry: Bool = false
+    ) async throws -> LLDBSession {
+        // Create a session with a long timeout — waitfor blocks until the process appears
+        let session = try LLDBSession(pid: 0, commandTimeout: 120)
+
+        // Consume the initial LLDB prompt
+        _ = try await session.readUntilPrompt()
+
+        // Tell LLDB to wait for a process with this name to appear
+        try await session.sendCommandNoWait(
+            "process attach --name \"\(executableName)\" --waitfor")
+
+        // Kill any existing instances of the app to avoid attaching to a stale process
+        let pkill = Process()
+        pkill.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        pkill.arguments = ["-f", appPath]
+        try? pkill.run()
+        pkill.waitUntilExit()
+
+        // Brief sleep so terminated processes fully exit before we launch a new one
+        try await Task.sleep(for: .milliseconds(500))
+
+        // Launch the app via /usr/bin/open (Launch Services handles @rpath, sandbox, etc.)
+        let openProcess = Process()
+        openProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        var openArgs = [appPath]
+        if !arguments.isEmpty {
+            openArgs += ["--args"] + arguments
+        }
+        openProcess.arguments = openArgs
+
+        // Pass user environment variables through the open process
+        if !environment.isEmpty {
+            var env = ProcessInfo.processInfo.environment
+            for (key, value) in environment {
+                env[key] = value
+            }
+            openProcess.environment = env
+        }
+
+        try openProcess.run()
+        openProcess.waitUntilExit()
+
+        guard openProcess.terminationStatus == 0 else {
+            await session.terminate()
+            throw LLDBError.commandFailed(
+                "Failed to launch app via /usr/bin/open (exit code \(openProcess.terminationStatus))"
+            )
+        }
+
+        // Wait for LLDB to complete the attach (it blocks until the named process appears)
+        let attachOutput = try await session.readUntilPrompt()
+
+        // Parse PID from attach output like "Process NNN stopped"
+        if let range = attachOutput.range(
+            of: #"Process (\d+) stopped"#, options: .regularExpression)
+        {
+            let match = attachOutput[range]
+            let digits = match.split(separator: " ")[1]
+            if let pid = Int32(digits) {
+                await session.setTargetPID(pid)
+            }
+        }
+
+        let pid = await session.targetPID
+        if pid > 0 {
+            sessions[pid] = session
+        }
+
+        // If not stopping at entry, continue execution
+        if !stopAtEntry {
+            try await session.sendCommandNoWait("continue")
+        }
+
+        return session
+    }
+
     /// Gets an existing session for a PID.
     ///
     /// - Parameter pid: The process ID.
@@ -556,6 +657,45 @@ public struct LLDBRunner: Sendable {
         )
         let pid = await session.targetPID
         let statusOutput = try await session.sendCommand("process status")
+        return (LLDBResult(exitCode: 0, stdout: statusOutput, stderr: ""), pid)
+    }
+
+    /// Launches a macOS app via `/usr/bin/open` and attaches LLDB using `--waitfor`.
+    ///
+    /// This is the correct way to debug signed/sandboxed macOS apps. Launch Services
+    /// handles `@rpath` resolution, sandbox setup, and code signing validation that
+    /// LLDB's `process launch` bypasses (causing SIGABRT in dyld).
+    ///
+    /// - Parameters:
+    ///   - appPath: Path to the .app bundle.
+    ///   - executableName: Name of the executable (for `--waitfor` attach).
+    ///   - arguments: Command-line arguments to pass to the app.
+    ///   - environment: Environment variables to set.
+    ///   - stopAtEntry: If true, stops at the entry point before running.
+    /// - Returns: The result containing attach output and the PID.
+    public func launchViaOpenAndAttach(
+        appPath: String,
+        executableName: String,
+        arguments: [String] = [],
+        environment: [String: String] = [:],
+        stopAtEntry: Bool = false
+    ) async throws -> (result: LLDBResult, pid: Int32) {
+        let session = try await LLDBSessionManager.shared.createOpenAndAttachSession(
+            appPath: appPath,
+            executableName: executableName,
+            arguments: arguments,
+            environment: environment,
+            stopAtEntry: stopAtEntry
+        )
+        let pid = await session.targetPID
+        // Get status — if process is running (not stopped), this will time out,
+        // so only check status when stopped at entry
+        let statusOutput: String
+        if stopAtEntry {
+            statusOutput = try await session.sendCommand("process status")
+        } else {
+            statusOutput = "Process \(pid) launched and running under debugger"
+        }
         return (LLDBResult(exitCode: 0, stdout: statusOutput, stderr: ""), pid)
     }
 

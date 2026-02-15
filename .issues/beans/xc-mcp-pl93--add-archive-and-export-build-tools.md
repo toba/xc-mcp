@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-01-21T07:37:59Z
 updated_at: 2026-02-15T20:53:29Z
+sync:
+    github:
+        issue_number: "18"
+        synced_at: "2026-02-15T22:08:22Z"
 ---
 
 Add tools to create .xcarchive and export to IPA/app.

@@ -3,8 +3,13 @@
 title: Parameterize tests using Swift Testing framework
 status: completed
 type: task
+priority: normal
 created_at: 2026-01-21T06:54:56Z
 updated_at: 2026-01-21T06:54:56Z
+sync:
+    github:
+        issue_number: "10"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Refactor the test suite to use swift-testing's parameterized testing feature (@Test(arguments:)) to reduce code duplication and improve maintainability.

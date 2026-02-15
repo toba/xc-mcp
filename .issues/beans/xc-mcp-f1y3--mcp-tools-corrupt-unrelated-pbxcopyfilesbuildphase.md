@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-01-27T00:31:57Z
 updated_at: 2026-01-27T00:34:04Z
+sync:
+    github:
+        issue_number: "29"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 When using MCP project tools (observed with add_synchronized_folder, remove_synchronized_folder, create_group), unrelated `PBXCopyFilesBuildPhase` sections get corrupted.

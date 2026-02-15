@@ -3,8 +3,13 @@
 title: Implement Homebrew package for xc-mcp
 status: completed
 type: feature
+priority: normal
 created_at: 2026-01-21T17:07:43Z
 updated_at: 2026-01-21T17:07:43Z
+sync:
+    github:
+        issue_number: "42"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Create a custom Homebrew tap (toba/homebrew-xc-mcp) to enable installation via brew tap toba/xc-mcp && brew install xc-mcp.

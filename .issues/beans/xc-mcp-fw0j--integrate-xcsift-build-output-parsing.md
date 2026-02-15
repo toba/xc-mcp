@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-01-31T16:39:43Z
 updated_at: 2026-01-31T16:51:56Z
+sync:
+    github:
+        issue_number: "17"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Port xcsift's OutputParser, Models, and CoverageParser into xc-mcp Sources/Core/, add a BuildResultFormatter, update all build/test tools to use structured parsing, and add tests.

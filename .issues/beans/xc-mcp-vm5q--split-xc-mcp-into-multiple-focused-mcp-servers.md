@@ -3,8 +3,13 @@
 title: Split xc-mcp into multiple focused MCP servers
 status: completed
 type: epic
+priority: normal
 created_at: 2026-01-21T16:24:01Z
 updated_at: 2026-01-21T16:24:01Z
+sync:
+    github:
+        issue_number: "5"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Implement the multi-server architecture as specified in the plan:

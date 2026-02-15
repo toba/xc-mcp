@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-15T05:53:58Z
 updated_at: 2026-02-15T21:14:49Z
+sync:
+    github:
+        issue_number: "8"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Add `start_mac_log_cap` / `stop_mac_log_cap` tools to the MacOS tools directory, mirroring the existing simulator log capture pattern.

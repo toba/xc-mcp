@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-01-21T17:21:11Z
 updated_at: 2026-01-27T00:33:43Z
+sync:
+    github:
+        issue_number: "25"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Implement consolidation plan to reduce codebase from ~230 to ~140 files (39% reduction).

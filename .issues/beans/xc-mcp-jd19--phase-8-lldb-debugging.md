@@ -7,6 +7,10 @@ priority: normal
 created_at: 2026-01-21T05:25:41Z
 updated_at: 2026-01-21T05:39:36Z
 parent: xc-mcp-u2z4
+sync:
+    github:
+        issue_number: "57"
+        synced_at: "2026-02-15T22:08:26Z"
 ---
 
 Implement LLDB debugging tools.

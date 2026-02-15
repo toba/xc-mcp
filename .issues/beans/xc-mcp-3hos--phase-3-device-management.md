@@ -7,6 +7,10 @@ priority: normal
 created_at: 2026-01-21T05:14:05Z
 updated_at: 2026-01-21T05:17:23Z
 parent: xc-mcp-u2z4
+sync:
+    github:
+        issue_number: "55"
+        synced_at: "2026-02-15T22:08:26Z"
 ---
 
 Implement device management tools using xcrun devicectl.

@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-15T07:37:25Z
 updated_at: 2026-02-15T07:40:32Z
+sync:
+    github:
+        issue_number: "11"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Implement persistent LLDB sessions to fix breakpoint loss and attach/detach hangs. Add LLDBSession actor, update LLDBSessionManager, and update LLDBRunner methods.

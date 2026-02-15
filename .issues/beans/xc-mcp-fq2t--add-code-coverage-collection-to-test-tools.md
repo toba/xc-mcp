@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-01-21T07:37:59Z
 updated_at: 2026-01-27T03:00:46Z
+sync:
+    github:
+        issue_number: "44"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Add code coverage support to existing test tools (TestSimTool, TestDeviceTool, TestMacOSTool).

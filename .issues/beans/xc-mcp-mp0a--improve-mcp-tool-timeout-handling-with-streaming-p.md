@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-01-22T06:12:39Z
 updated_at: 2026-01-22T06:19:14Z
+sync:
+    github:
+        issue_number: "16"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 MCP tools (especially xc-build) timeout after long waits with AbortError. Implement:

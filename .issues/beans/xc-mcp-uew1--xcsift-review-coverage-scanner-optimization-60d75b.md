@@ -6,6 +6,10 @@ type: task
 priority: low
 created_at: 2026-02-07T17:46:40Z
 updated_at: 2026-02-07T18:00:38Z
+sync:
+    github:
+        issue_number: "2"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Performance optimization for directory scanning in upstream Sources/CoverageParser.swift. Compare against our Sources/Core/CoverageParser.swift.

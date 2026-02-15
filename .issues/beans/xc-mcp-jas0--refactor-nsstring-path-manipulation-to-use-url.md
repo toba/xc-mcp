@@ -3,8 +3,13 @@
 title: Refactor NSString path manipulation to use URL
 status: completed
 type: task
+priority: normal
 created_at: 2026-01-21T07:04:35Z
 updated_at: 2026-01-21T07:04:35Z
+sync:
+    github:
+        issue_number: "3"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Replace all `(path as NSString).appendingPathComponent(...)` and similar NSString path operations with pure Swift URL-based path manipulation.

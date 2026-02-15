@@ -30,10 +30,10 @@ xc-mcp/
 │   │   ├── Session/                 # 3 session management tools
 │   │   ├── Simulator/               # 17 simulator tools
 │   │   ├── Device/                  # 7 device tools
-│   │   ├── MacOS/                   # 6 macOS build tools
+│   │   ├── MacOS/                   # 8 macOS build tools
 │   │   ├── Discovery/               # 5 project discovery tools
 │   │   ├── Logging/                 # 4 log capture tools
-│   │   ├── Debug/                   # 9 LLDB debug tools
+│   │   ├── Debug/                   # 17 LLDB debug tools
 │   │   ├── UIAutomation/            # 7 UI automation tools
 │   │   ├── SwiftPackage/            # 6 Swift Package Manager tools
 │   │   └── Utility/                 # 4 utility tools
@@ -44,7 +44,7 @@ xc-mcp/
 │       ├── DeviceCtlRunner.swift
 │       ├── LLDBRunner.swift
 │       └── SwiftRunner.swift
-├── Tests/                           # Unit tests (310 tests)
+├── Tests/                           # Unit tests (315 tests)
 └── CLAUDE.md
 ```
 

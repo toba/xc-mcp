@@ -6,6 +6,10 @@ type: task
 priority: high
 created_at: 2026-02-07T17:46:40Z
 updated_at: 2026-02-07T17:52:43Z
+sync:
+    github:
+        issue_number: "14"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Very recent (3 days ago) — likely has improvements to Swift Testing parsing not yet in our code. Compare upstream Sources/OutputParser.swift changes from this PR against our Sources/Core/BuildOutputParser.swift.

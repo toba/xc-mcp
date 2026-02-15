@@ -3,8 +3,13 @@
 title: Document unexposed capabilities from underlying tools
 status: completed
 type: task
+priority: normal
 created_at: 2026-01-21T07:35:21Z
 updated_at: 2026-01-21T07:35:21Z
+sync:
+    github:
+        issue_number: "15"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Research findings on capabilities available in xcodebuild, simctl, devicectl, and lldb that are not currently exposed through xc-mcp MCP tools.

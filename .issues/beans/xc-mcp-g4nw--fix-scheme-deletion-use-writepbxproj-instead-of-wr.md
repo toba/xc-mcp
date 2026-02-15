@@ -3,8 +3,13 @@
 title: 'Fix scheme deletion: use writePBXProj instead of write'
 status: completed
 type: bug
+priority: normal
 created_at: 2026-01-26T22:25:52Z
 updated_at: 2026-01-26T22:25:52Z
+sync:
+    github:
+        issue_number: "40"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 When project-modifying tools call xcodeproj.write(), XcodeProj's writeSharedData() method deletes and rewrites the xcshareddata/xcschemes/ directory, causing scheme files to be permanently deleted.

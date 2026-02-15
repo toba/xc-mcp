@@ -6,6 +6,10 @@ type: bug
 priority: high
 created_at: 2026-01-31T02:27:46Z
 updated_at: 2026-01-31T03:39:11Z
+sync:
+    github:
+        issue_number: "31"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 When using the set_build_setting tool, it rewrites the entire pbxproj file and drops `dstSubfolder` fields from `PBXCopyFilesBuildPhase` sections, causing copy file build phases to target `/` instead of Resources.

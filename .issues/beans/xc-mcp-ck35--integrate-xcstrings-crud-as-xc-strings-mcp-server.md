@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-01-21T16:53:28Z
 updated_at: 2026-01-21T17:03:17Z
+sync:
+    github:
+        issue_number: "43"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Port localization functionality from Ryu0118/xcstrings-crud as a new focused MCP server (xc-strings) following xc-mcp's established multi-server architecture.

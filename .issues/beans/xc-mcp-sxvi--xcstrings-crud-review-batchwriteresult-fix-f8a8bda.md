@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-07T17:46:40Z
 updated_at: 2026-02-07T18:01:27Z
+sync:
+    github:
+        issue_number: "39"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 Upstream added a boolean success flag and omits empty arrays from BatchWriteResult. Our implementation uses succeeded: Int — check if the upstream fix addresses a real issue.

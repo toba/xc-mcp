@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-01-27T00:31:46Z
 updated_at: 2026-01-27T00:34:04Z
+sync:
+    github:
+        issue_number: "6"
+        synced_at: "2026-02-15T22:08:23Z"
 ---
 
 When adding a synchronized folder to a group that has a `path` attribute, the tool incorrectly creates the folder path as an absolute path from project root instead of relative to the parent group.

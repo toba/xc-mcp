@@ -1,11 +1,15 @@
 ---
 # 18h-usv
 title: App crashes with SIGABRT in dyld when launched via LLDB process launch
-status: ready
+status: completed
 type: bug
 priority: normal
 created_at: 2026-02-15T22:05:26Z
-updated_at: 2026-02-15T22:05:26Z
+updated_at: 2026-02-15T23:01:04Z
+sync:
+    github:
+        issue_number: "9"
+        synced_at: "2026-02-15T22:08:22Z"
 ---
 
 ## Problem
@@ -46,3 +50,21 @@ LLDB's `process launch` differs from `open` / Launch Services in several ways:
 - [ ] Check if `DYLD_FRAMEWORK_PATH` / `DYLD_LIBRARY_PATH` env vars conflict with the app's embedded frameworks
 - [ ] Get full dyld crash reason (use `thread backtrace` and `register read` on the SIGABRT frame)
 - [ ] Compare Xcode's launch environment/arguments with our LLDB launch to find differences
+
+
+## Summary of Changes
+
+Fixed SIGABRT in dyld by switching from `process launch` to `open` + LLDB `--waitfor` attach. Also fixed non-embedded frameworks with absolute install names by symlinking them into the bundle and rewriting references to `@rpath/`.
+
+### Root causes identified
+1. **Sandbox**: `process launch` bypasses Launch Services, so sandbox isn't initialized for sandboxed apps
+2. **DYLD_FRAMEWORK_PATH stripped**: hardened runtime + SIP strips DYLD_* env vars, even via LSEnvironment
+3. **Absolute install names**: framework targets with `INSTALL_PATH = /Library/Frameworks` produce absolute references that dyld can't resolve without DYLD_FRAMEWORK_PATH
+4. **JSON parsing bug**: `showBuildSettings` returns JSON (`-json` flag), but extraction methods parsed text format — `BUILT_PRODUCTS_DIR` was always nil
+
+### Changes
+- `Sources/Core/LLDBRunner.swift`: Added `open` + `--waitfor` attach flow (`createOpenAndAttachSession`, `launchViaOpenAndAttach`)
+- `Sources/Tools/Debug/BuildDebugMacOSTool.swift`:
+  - Fixed `extractBuildSetting`/`extractAppPath` to parse JSON build settings
+  - Added `prepareAppForDebugLaunch`: symlinks frameworks into bundle, rewrites absolute install names with `install_name_tool`, re-signs
+  - Replaced `launchProcess()` with `launchViaOpenAndAttach()`
