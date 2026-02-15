@@ -1,10 +1,11 @@
 ---
 # 49g-hr7
 title: Add macOS log capture tools
-status: ready
+status: completed
 type: feature
+priority: normal
 created_at: 2026-02-15T05:53:58Z
-updated_at: 2026-02-15T05:53:58Z
+updated_at: 2026-02-15T21:14:49Z
 ---
 
 Add `start_mac_log_cap` / `stop_mac_log_cap` tools to the MacOS tools directory, mirroring the existing simulator log capture pattern.
@@ -15,14 +16,14 @@ Current logging tools only support simulators (`simctl spawn ... log stream`) an
 
 ## Tasks
 
-- [ ] Create `StartMacLogCapTool.swift` in `Sources/Tools/MacOS/`
-- [ ] Create `StopMacLogCapTool.swift` in `Sources/Tools/MacOS/`
-- [ ] Register tools in `XcodeMCPServer.swift`
-- [ ] Use `/usr/bin/log stream` with `--predicate` filtering (subsystem, bundle ID, process name)
-- [ ] Write output to temp file (e.g. `/tmp/mac_log_<bundle_id>.log`)
-- [ ] Store background process for cleanup
-- [ ] Add tests
-- [ ] Expose via `xc-build` or `xc-debug` server (whichever is appropriate)
+- [x] Create `StartMacLogCapTool.swift` in `Sources/Tools/MacOS/`
+- [x] Create `StopMacLogCapTool.swift` in `Sources/Tools/MacOS/`
+- [x] Register tools in `XcodeMCPServer.swift`
+- [x] Use `/usr/bin/log stream` with `--predicate` filtering (subsystem, bundle ID, process name)
+- [x] Write output to temp file (e.g. `/tmp/mac_log_<bundle_id>.log`)
+- [x] Store background process for cleanup
+- [x] Add tests
+- [x] Expose via `xc-build` or `xc-debug` server (whichever is appropriate)
 
 ## Design Notes
 

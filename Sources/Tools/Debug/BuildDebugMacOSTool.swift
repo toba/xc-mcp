@@ -1,8 +1,14 @@
 import Foundation
+import Logging
 import MCP
 import XCMCPCore
 
 public struct BuildDebugMacOSTool: Sendable {
+    /// Build timeout for debug builds (10 minutes to accommodate large projects)
+    private static let buildTimeout: TimeInterval = 600
+
+    private static let logger = Logger(label: "build_debug_macos")
+
     private let xcodebuildRunner: XcodebuildRunner
     private let lldbRunner: LLDBRunner
     private let sessionManager: SessionManager
@@ -125,7 +131,11 @@ public struct BuildDebugMacOSTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 destination: destination,
-                configuration: configuration
+                configuration: configuration,
+                timeout: Self.buildTimeout,
+                onProgress: { line in
+                    Self.logger.info("\(line)")
+                }
             )
 
             if !buildResult.succeeded {

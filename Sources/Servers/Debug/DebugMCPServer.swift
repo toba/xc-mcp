@@ -23,6 +23,11 @@ public enum DebugToolName: String, CaseIterable, Sendable {
     case debugSymbolLookup = "debug_symbol_lookup"
     case debugViewHierarchy = "debug_view_hierarchy"
     case debugProcessStatus = "debug_process_status"
+
+    // Session tools
+    case setSessionDefaults = "set_session_defaults"
+    case showSessionDefaults = "show_session_defaults"
+    case clearSessionDefaults = "clear_session_defaults"
 }
 
 /// MCP server for LLDB debugging operations.
@@ -94,6 +99,11 @@ public struct DebugMCPServer: Sendable {
         let debugViewHierarchyTool = DebugViewHierarchyTool(lldbRunner: lldbRunner)
         let debugProcessStatusTool = DebugProcessStatusTool(lldbRunner: lldbRunner)
 
+        // Create session tools
+        let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
+        let showSessionDefaultsTool = ShowSessionDefaultsTool(sessionManager: sessionManager)
+        let clearSessionDefaultsTool = ClearSessionDefaultsTool(sessionManager: sessionManager)
+
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
             ListTools.Result(tools: [
@@ -114,6 +124,10 @@ public struct DebugMCPServer: Sendable {
                 debugSymbolLookupTool.tool(),
                 debugViewHierarchyTool.tool(),
                 debugProcessStatusTool.tool(),
+                // Session tools
+                setSessionDefaultsTool.tool(),
+                showSessionDefaultsTool.tool(),
+                clearSessionDefaultsTool.tool(),
             ])
         }
 
@@ -160,6 +174,14 @@ public struct DebugMCPServer: Sendable {
                 return try await debugViewHierarchyTool.execute(arguments: arguments)
             case .debugProcessStatus:
                 return try await debugProcessStatusTool.execute(arguments: arguments)
+
+            // Session tools
+            case .setSessionDefaults:
+                return try await setSessionDefaultsTool.execute(arguments: arguments)
+            case .showSessionDefaults:
+                return try await showSessionDefaultsTool.execute(arguments: arguments)
+            case .clearSessionDefaults:
+                return try await clearSessionDefaultsTool.execute(arguments: arguments)
             }
         }
 

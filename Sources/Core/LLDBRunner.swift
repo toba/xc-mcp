@@ -1,5 +1,6 @@
 import Foundation
 import MCP
+import Synchronization
 
 /// A persistent LLDB process that stays alive across tool calls.
 ///
@@ -16,9 +17,12 @@ public actor LLDBSession {
     /// The PID of the process being debugged.
     public private(set) var targetPID: Int32
 
-    /// Whether the LLDB process is still running.
+    /// Whether the session has been poisoned by a timeout and should be recreated.
+    public private(set) var isPoisoned: Bool = false
+
+    /// Whether the LLDB process is still running and the session is usable.
     public var isAlive: Bool {
-        process.isRunning
+        process.isRunning && !isPoisoned
     }
 
     /// Creates a new persistent LLDB session attached to a process.
@@ -126,11 +130,35 @@ public actor LLDBSession {
         guard process.isRunning else {
             throw LLDBError.commandFailed("LLDB process is no longer running")
         }
+        guard !isPoisoned else {
+            throw LLDBError.commandFailed(
+                "LLDB session is poisoned by a previous timeout — session will be recreated")
+        }
 
         let commandData = Data((command + "\n").utf8)
         try stdin.write(contentsOf: commandData)
 
         return try await readUntilPrompt()
+    }
+
+    /// Sends a command without waiting for the prompt to return.
+    ///
+    /// Used for commands like `continue` where LLDB won't show a prompt
+    /// until the process stops again. Returns immediately with a confirmation message.
+    ///
+    /// - Parameter command: The LLDB command to execute.
+    /// - Throws: ``LLDBError/commandFailed(_:)`` if the process has exited.
+    public func sendCommandNoWait(_ command: String) throws {
+        guard process.isRunning else {
+            throw LLDBError.commandFailed("LLDB process is no longer running")
+        }
+        guard !isPoisoned else {
+            throw LLDBError.commandFailed(
+                "LLDB session is poisoned by a previous timeout — session will be recreated")
+        }
+
+        let commandData = Data((command + "\n").utf8)
+        try stdin.write(contentsOf: commandData)
     }
 
     /// Terminates the LLDB process.
@@ -150,18 +178,31 @@ public actor LLDBSession {
     }
 
     /// Reads output from LLDB until the `(lldb) ` prompt appears.
+    ///
+    /// Uses a lock-guarded flag to ensure the continuation is resumed exactly once.
+    /// On timeout, marks the session as poisoned so it will be recreated on next use.
     private func readUntilPrompt() async throws -> String {
         let promptMarker = "(lldb) "
-        var accumulated = ""
 
         return try await withCheckedThrowingContinuation { continuation in
+            // Guard to ensure the continuation is resumed exactly once.
+            let resumed = Mutex(false)
+
             let workItem = DispatchWorkItem { [stdout] in
+                var accumulated = ""
                 var buffer = Data()
                 while true {
                     let chunk = stdout.availableData
                     if chunk.isEmpty {
                         // EOF — process exited
-                        continuation.resume(returning: accumulated)
+                        let didResume = resumed.withLock { alreadyResumed -> Bool in
+                            if alreadyResumed { return false }
+                            alreadyResumed = true
+                            return true
+                        }
+                        if didResume {
+                            continuation.resume(returning: accumulated)
+                        }
                         return
                     }
                     buffer.append(chunk)
@@ -173,19 +214,37 @@ public actor LLDBSession {
                             let endIndex = accumulated.index(
                                 accumulated.endIndex, offsetBy: -promptMarker.count)
                             let result = String(accumulated[accumulated.startIndex..<endIndex])
-                            continuation.resume(returning: result)
+                            let didResume = resumed.withLock { alreadyResumed -> Bool in
+                                if alreadyResumed { return false }
+                                alreadyResumed = true
+                                return true
+                            }
+                            if didResume {
+                                continuation.resume(returning: result)
+                            }
                             return
                         }
                     }
                 }
             }
 
-            // Timeout handling
-            let timeoutItem = DispatchWorkItem {
-                workItem.cancel()
-                continuation.resume(
-                    throwing: LLDBError.commandFailed(
-                        "Timed out waiting for LLDB response"))
+            // Timeout handling — marks session as poisoned and resumes with error.
+            let timeoutItem = DispatchWorkItem { [weak self] in
+                let didResume = resumed.withLock { alreadyResumed -> Bool in
+                    if alreadyResumed { return false }
+                    alreadyResumed = true
+                    return true
+                }
+                if didResume {
+                    // Mark session as poisoned. The reader thread may still be alive
+                    // consuming stdout, but we won't reuse this session.
+                    if let self {
+                        Task { await self.markPoisoned() }
+                    }
+                    continuation.resume(
+                        throwing: LLDBError.commandFailed(
+                            "Timed out waiting for LLDB response"))
+                }
             }
 
             DispatchQueue.global().async(execute: workItem)
@@ -197,6 +256,11 @@ public actor LLDBSession {
                 timeoutItem.cancel()
             }
         }
+    }
+
+    /// Marks this session as poisoned so it will be discarded and recreated.
+    private func markPoisoned() {
+        isPoisoned = true
     }
 }
 
@@ -224,7 +288,10 @@ public actor LLDBSessionManager {
             return existing
         }
 
-        // Clean up any dead session for this PID
+        // Clean up any dead or poisoned session for this PID
+        if let old = sessions[pid] {
+            await old.terminate()
+        }
         sessions.removeValue(forKey: pid)
 
         let session = try LLDBSession(pid: pid)
@@ -267,13 +334,14 @@ public actor LLDBSessionManager {
     /// Gets an existing session for a PID.
     ///
     /// - Parameter pid: The process ID.
-    /// - Returns: The session if one exists and is alive, nil otherwise.
+    /// - Returns: The session if one exists and is alive (not poisoned), nil otherwise.
     public func getSession(pid: Int32) async -> LLDBSession? {
         guard let session = sessions[pid] else { return nil }
         if await session.isAlive {
             return session
         }
-        // Clean up dead session
+        // Clean up dead or poisoned session
+        await session.terminate()
         sessions.removeValue(forKey: pid)
         return nil
     }
@@ -505,12 +573,21 @@ public struct LLDBRunner: Sendable {
 
     /// Continues execution of a stopped process.
     ///
+    /// This sends the `continue` command without waiting for LLDB's prompt,
+    /// because LLDB won't show a prompt until the process stops again (e.g.,
+    /// at a breakpoint or signal). Waiting would cause a timeout and poison
+    /// the session.
+    ///
     /// - Parameter pid: The process ID of the target process.
-    /// - Returns: The result containing continue output.
+    /// - Returns: The result confirming the process was resumed.
     public func continueExecution(pid: Int32) async throws -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
-        let output = try await session.sendCommand("continue")
-        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+        try await session.sendCommandNoWait("continue")
+        return LLDBResult(
+            exitCode: 0,
+            stdout: "Process \(pid) resumed. Use debug_stack or debug_variables when the process stops at a breakpoint.",
+            stderr: ""
+        )
     }
 
     /// Gets the current stack trace.

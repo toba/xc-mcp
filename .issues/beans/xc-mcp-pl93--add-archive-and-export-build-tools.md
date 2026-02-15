@@ -1,10 +1,11 @@
 ---
 # xc-mcp-pl93
 title: Add archive and export build tools
-status: ready
+status: draft
 type: feature
+priority: normal
 created_at: 2026-01-21T07:37:59Z
-updated_at: 2026-01-21T07:37:59Z
+updated_at: 2026-02-15T20:53:29Z
 ---
 
 Add tools to create .xcarchive and export to IPA/app.

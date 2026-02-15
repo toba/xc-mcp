@@ -1,4 +1,5 @@
 import Foundation
+import MCP
 
 /// Wrapper for executing xcodebuild commands.
 ///
@@ -170,7 +171,9 @@ public struct XcodebuildRunner: Sendable {
         scheme: String,
         destination: String,
         configuration: String = "Debug",
-        additionalArguments: [String] = []
+        additionalArguments: [String] = [],
+        timeout: TimeInterval = defaultTimeout,
+        onProgress: (@Sendable (String) -> Void)? = nil
     ) async throws -> XcodebuildResult {
         var args: [String] = []
 
@@ -189,7 +192,7 @@ public struct XcodebuildRunner: Sendable {
 
         args += additionalArguments
 
-        return try await run(arguments: args)
+        return try await run(arguments: args, timeout: timeout, onProgress: onProgress)
     }
 
     /// Builds and runs tests for a scheme.
@@ -348,7 +351,7 @@ public struct XcodebuildRunner: Sendable {
 // MARK: - Helper Types
 
 /// Errors specific to xcodebuild execution.
-public enum XcodebuildError: LocalizedError {
+public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
     /// The build exceeded the maximum allowed time.
     case timeout(duration: TimeInterval, partialOutput: String)
 
@@ -370,6 +373,12 @@ public enum XcodebuildError: LocalizedError {
         case let .timeout(_, output), let .stuckProcess(_, output):
             return output
         }
+    }
+
+    public func toMCPError() -> MCPError {
+        let errors = ErrorExtractor.extractBuildErrors(from: partialOutput)
+        let detail = errors.isEmpty ? partialOutput.suffix(2000) : errors[...]
+        return MCPError.internalError("\(errorDescription ?? "Build error")\n\n\(detail)")
     }
 }
 

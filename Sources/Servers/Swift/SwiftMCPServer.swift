@@ -12,6 +12,11 @@ public enum SwiftToolName: String, CaseIterable, Sendable {
     case swiftPackageClean = "swift_package_clean"
     case swiftPackageList = "swift_package_list"
     case swiftPackageStop = "swift_package_stop"
+
+    // Session tools
+    case setSessionDefaults = "set_session_defaults"
+    case showSessionDefaults = "show_session_defaults"
+    case clearSessionDefaults = "clear_session_defaults"
 }
 
 /// MCP server for Swift Package Manager operations.
@@ -72,6 +77,11 @@ public struct SwiftMCPServer: Sendable {
             swiftRunner: swiftRunner, sessionManager: sessionManager)
         let swiftPackageStopTool = SwiftPackageStopTool(sessionManager: sessionManager)
 
+        // Create session tools
+        let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
+        let showSessionDefaultsTool = ShowSessionDefaultsTool(sessionManager: sessionManager)
+        let clearSessionDefaultsTool = ClearSessionDefaultsTool(sessionManager: sessionManager)
+
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
             ListTools.Result(tools: [
@@ -81,6 +91,10 @@ public struct SwiftMCPServer: Sendable {
                 swiftPackageCleanTool.tool(),
                 swiftPackageListTool.tool(),
                 swiftPackageStopTool.tool(),
+                // Session tools
+                setSessionDefaultsTool.tool(),
+                showSessionDefaultsTool.tool(),
+                clearSessionDefaultsTool.tool(),
             ])
         }
 
@@ -105,6 +119,14 @@ public struct SwiftMCPServer: Sendable {
                 return try await swiftPackageListTool.execute(arguments: arguments)
             case .swiftPackageStop:
                 return try await swiftPackageStopTool.execute(arguments: arguments)
+
+            // Session tools
+            case .setSessionDefaults:
+                return try await setSessionDefaultsTool.execute(arguments: arguments)
+            case .showSessionDefaults:
+                return try await showSessionDefaultsTool.execute(arguments: arguments)
+            case .clearSessionDefaults:
+                return try await clearSessionDefaultsTool.execute(arguments: arguments)
             }
         }
 
