@@ -53,34 +53,6 @@ If $ARGUMENTS contains "push" or user requested push:
    ```
 6. The GitHub Actions workflow will automatically create a release with binaries
 
-### Step 4: Update Homebrew Tap
-
-After pushing the tag:
-
-1. Wait for the release workflow to complete:
-   ```bash
-   gh run watch $(gh run list --repo toba/xc-mcp --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId') --repo toba/xc-mcp
-   ```
-
-2. Fetch the sha256 from the release:
-   ```bash
-   gh release download v<new-version> --repo toba/xc-mcp --pattern "*.sha256" -O - | awk '{print $1}'
-   ```
-
-3. Update `../homebrew-xc-mcp/Formula/xc-mcp.rb`:
-   - Change the `url` line to use the new version tag
-   - Change the `version` line to the new version (without 'v' prefix)
-   - Set `sha256` to the value from step 2
-
-4. Commit and push the homebrew tap:
-   ```bash
-   cd ../homebrew-xc-mcp
-   git add Formula/xc-mcp.rb
-   git commit -m "bump to v<new-version>"
-   git push
-   cd ../xc-mcp
-   ```
-
 ### Version Examples
 
 - Current: v1.2.3

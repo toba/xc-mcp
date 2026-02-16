@@ -56,3 +56,73 @@ jobs:
           xc-mcp-${{ github.ref_name }}-arm64.tar.gz
           xc-mcp-${{ github.ref_name }}-arm64.tar.gz.sha256
         body_path: release_notes.txt
+
+  update-homebrew:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Homebrew formula
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+
+          # Download SHA256 from the release .sha256 file
+          SHA=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*.sha256" -O - | awk '{print $1}')
+
+          # Clone tap and update formula
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/toba/homebrew-xc-mcp.git" tap
+          cd tap
+
+          cat > Formula/xc-mcp.rb << 'FORMULA'
+          class XcMcp < Formula
+            desc "MCP server for Xcode development - build, test, run, and debug iOS/macOS apps"
+            homepage "https://github.com/toba/xc-mcp"
+            url "URL_PLACEHOLDER"
+            version "VERSION_PLACEHOLDER"
+            sha256 "SHA_PLACEHOLDER"
+            license "MIT"
+
+            depends_on :macos => :sequoia
+            depends_on arch: :arm64
+
+            def install
+              bin.install "xc-mcp"
+              bin.install "xc-project"
+              bin.install "xc-simulator"
+              bin.install "xc-device"
+              bin.install "xc-debug"
+              bin.install "xc-swift"
+              bin.install "xc-build"
+              bin.install "xc-strings"
+            end
+
+            def caveats
+              <<~EOS
+                xc-mcp requires Xcode for xcodebuild, simctl, and devicectl.
+
+                Configure with Claude Code:
+                  claude mcp add xc-mcp -- #{bin}/xc-mcp
+
+                Focused servers available: xc-project, xc-simulator, xc-device, xc-debug, xc-swift, xc-build, xc-strings
+              EOS
+            end
+
+            test do
+              assert_match "MCP server", shell_output("#{bin}/xc-mcp --help")
+            end
+          end
+          FORMULA
+
+          # Remove heredoc indentation and substitute placeholders
+          sed -i 's/^          //' Formula/xc-mcp.rb
+          sed -i "s|URL_PLACEHOLDER|https://github.com/toba/xc-mcp/releases/download/${TAG}/xc-mcp-${TAG}-arm64.tar.gz|" Formula/xc-mcp.rb
+          sed -i "s|VERSION_PLACEHOLDER|${VERSION}|" Formula/xc-mcp.rb
+          sed -i "s|SHA_PLACEHOLDER|${SHA}|" Formula/xc-mcp.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/xc-mcp.rb
+          git commit -m "bump to ${VERSION}"
+          git push
