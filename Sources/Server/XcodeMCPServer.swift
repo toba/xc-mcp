@@ -75,6 +75,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case testMacOS = "test_macos"
     case startMacLogCap = "start_mac_log_cap"
     case stopMacLogCap = "stop_mac_log_cap"
+    case screenshotMacWindow = "screenshot_mac_window"
 
     // Discovery tools
     case discoverProjs = "discover_projs"
@@ -113,6 +114,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case debugMemory = "debug_memory"
     case debugSymbolLookup = "debug_symbol_lookup"
     case debugViewHierarchy = "debug_view_hierarchy"
+    case debugViewBorders = "debug_view_borders"
     case debugProcessStatus = "debug_process_status"
 
     // UI Automation tools
@@ -290,6 +292,7 @@ public struct XcodeMCPServer: Sendable {
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
         let startMacLogCapTool = StartMacLogCapTool(sessionManager: sessionManager)
         let stopMacLogCapTool = StopMacLogCapTool(sessionManager: sessionManager)
+        let screenshotMacWindowTool = ScreenshotMacWindowTool()
 
         // Create discovery tools
         let discoverProjsTool = DiscoverProjectsTool(pathUtility: pathUtility)
@@ -342,6 +345,7 @@ public struct XcodeMCPServer: Sendable {
         let debugMemoryTool = DebugMemoryTool(lldbRunner: lldbRunner)
         let debugSymbolLookupTool = DebugSymbolLookupTool(lldbRunner: lldbRunner)
         let debugViewHierarchyTool = DebugViewHierarchyTool(lldbRunner: lldbRunner)
+        let debugViewBordersTool = DebugViewBordersTool(lldbRunner: lldbRunner)
         let debugProcessStatusTool = DebugProcessStatusTool(lldbRunner: lldbRunner)
 
         // Create UI automation tools
@@ -441,6 +445,7 @@ public struct XcodeMCPServer: Sendable {
                 testMacOSTool.tool(),
                 startMacLogCapTool.tool(),
                 stopMacLogCapTool.tool(),
+                screenshotMacWindowTool.tool(),
                 // Discovery tools
                 discoverProjsTool.tool(),
                 listSchemesTool.tool(),
@@ -475,6 +480,7 @@ public struct XcodeMCPServer: Sendable {
                 debugMemoryTool.tool(),
                 debugSymbolLookupTool.tool(),
                 debugViewHierarchyTool.tool(),
+                debugViewBordersTool.tool(),
                 debugProcessStatusTool.tool(),
                 // UI Automation tools
                 tapTool.tool(),
@@ -631,6 +637,8 @@ public struct XcodeMCPServer: Sendable {
                 return try await startMacLogCapTool.execute(arguments: arguments)
             case .stopMacLogCap:
                 return try await stopMacLogCapTool.execute(arguments: arguments)
+            case .screenshotMacWindow:
+                return try await screenshotMacWindowTool.execute(arguments: arguments)
 
             // Discovery tools
             case .discoverProjs:
@@ -699,6 +707,8 @@ public struct XcodeMCPServer: Sendable {
                 return try await debugSymbolLookupTool.execute(arguments: arguments)
             case .debugViewHierarchy:
                 return try await debugViewHierarchyTool.execute(arguments: arguments)
+            case .debugViewBorders:
+                return try await debugViewBordersTool.execute(arguments: arguments)
             case .debugProcessStatus:
                 return try await debugProcessStatusTool.execute(arguments: arguments)
 

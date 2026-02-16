@@ -22,7 +22,7 @@ This server enables AI assistants and MCP clients to:
 
 ## Multi-Server Architecture
 
-xc-mcp provides both a monolithic server (all 89 tools) and focused servers for token efficiency:
+xc-mcp provides both a monolithic server and focused servers for token efficiency:
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
@@ -30,7 +30,7 @@ xc-mcp provides both a monolithic server (all 89 tools) and focused servers for 
 | `xc-project` | 23 | ~5K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
 | `xc-device` | 12 | ~2K | Physical iOS devices |
-| `xc-debug` | 20 | ~4K | LLDB debugging + session defaults |
+| `xc-debug` | 22 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
 | `xc-swift` | 9 | ~2K | Swift Package Manager + session defaults |
 | `xc-build` | 20 | ~3K | macOS builds, discovery, logging, utilities |
 | `xc-strings` | 24 | ~8K | Xcode String Catalog (.xcstrings) localization |
@@ -79,6 +79,22 @@ xc-mcp provides both a monolithic server (all 89 tools) and focused servers for 
 
 - macOS 15+
 - Xcode (for `xcodebuild`, `simctl`, `devicectl`)
+
+### macOS Permissions
+
+Some tools require macOS privacy permissions granted via **System Settings > Privacy & Security**:
+
+| Permission | Tools | Notes |
+|-----------|-------|-------|
+| **Screen Recording** | `screenshot_mac_window` | Required for ScreenCaptureKit window capture |
+
+macOS grants these permissions to the **responsible process** — the GUI app at the top of the process tree, not the `xc-mcp` binary itself. This means:
+
+- **Claude Desktop** needs Screen Recording permission when using `xc-debug` as an MCP server
+- **VS Code / Cursor** needs it when running xc-mcp through an MCP extension
+- **Terminal / iTerm** needs it when running the test harness or using `xc-mcp` via Claude Code
+
+The `xc-mcp` binary won't appear in System Settings because it's a CLI tool — TCC (Transparency, Consent, and Control) always resolves up to the parent GUI application. No special setup is needed for the server itself.
 
 ## Installation
 
@@ -209,10 +225,11 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 | `get_device_app_path` | Get path to installed app |
 | `test_device` | Run tests on physical device |
 
-### macOS (8 tools)
+### macOS (9 tools)
 
 | Tool | Description |
 |------|-------------|
+| `screenshot_mac_window` | Take a screenshot of a macOS app window via ScreenCaptureKit. Match by app name, bundle ID, or window title. Returns the image inline as base64 PNG and optionally saves to disk. Works with `debug_view_borders` to capture visual debugging output |
 | `build_macos` | Build a macOS app |
 | `build_run_macos` | Build and run macOS app |
 | `launch_mac_app` | Launch a macOS app |
@@ -231,7 +248,7 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 | `start_device_log_cap` | Start capturing device logs |
 | `stop_device_log_cap` | Stop capturing device logs |
 
-### Debug (17 tools)
+### Debug (18 tools)
 
 Debug tools use persistent LLDB sessions backed by a pseudo-TTY — a single LLDB process stays alive across tool calls, so breakpoints are preserved and there are no hangs from rapid attach/detach cycles. Attach once with `debug_attach_sim`, then use any combination of debug tools against the live session.
 
@@ -275,6 +292,7 @@ Debug tools use persistent LLDB sessions backed by a pseudo-TTY — a single LLD
 | `debug_memory` | Read memory at an address in hex, bytes, ASCII, or disassembly format with configurable item size and count |
 | `debug_symbol_lookup` | Look up symbols by address (symbolication), name (regex search), or type name |
 | `debug_view_hierarchy` | Dump the live UI view hierarchy (iOS `UIApplication` or macOS `NSApplication`), inspect a specific view by address, and show Auto Layout constraints |
+| `debug_view_borders` | Toggle colored borders on all views in a running macOS app via LLDB. Iterates every window's view tree and sets `CALayer` borders. Configurable color (`red`, `green`, `blue`, `yellow`, `cyan`, `magenta`, `orange`, `white`) and border width. Process must be stopped (breakpoint or interrupt). Resume with `debug_continue` and use `screenshot_mac_window` to see the result |
 
 **Passthrough:**
 

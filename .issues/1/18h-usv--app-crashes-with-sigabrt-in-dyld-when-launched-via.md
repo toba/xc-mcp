@@ -9,7 +9,7 @@ updated_at: 2026-02-15T23:01:04Z
 sync:
     github:
         issue_number: "9"
-        synced_at: "2026-02-15T22:08:22Z"
+        synced_at: "2026-02-15T23:05:21Z"
 ---
 
 ## Problem

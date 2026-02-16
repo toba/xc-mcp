@@ -61,6 +61,27 @@ swift run xc-mcp
 swift test
 ```
 
+## Test Harness
+
+`test-debug.sh` is a bash harness for testing the xc-debug MCP server end-to-end via JSON-RPC over pipes.
+
+```bash
+# Build and launch app under LLDB (stopped at entry)
+./test-debug.sh <project_path> <scheme>
+
+# Full workflow: build, launch, enable view borders, take screenshot
+./test-debug.sh <project_path> <scheme> screenshot
+
+# Example with thesis project
+./test-debug.sh /Users/jason/Developer/toba/thesis/Thesis.xcodeproj Standard screenshot
+```
+
+Modes:
+- `build` (default) — builds and launches under LLDB, stopped at entry
+- `screenshot` — builds, launches, continues, interrupts, enables view borders via LLDB, continues, then takes a screenshot via ScreenCaptureKit
+
+The harness manages an MCP server process lifecycle (named pipe for stdin, temp files for stdout/stderr), sends JSON-RPC initialize + tool calls, and extracts results. Server stderr is saved to `/tmp/xc-debug-last-stderr.log` for post-mortem debugging.
+
 ## Development Notes
 
 - Each tool is a separate Swift file organized by category

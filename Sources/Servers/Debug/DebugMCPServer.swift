@@ -22,7 +22,11 @@ public enum DebugToolName: String, CaseIterable, Sendable {
     case debugMemory = "debug_memory"
     case debugSymbolLookup = "debug_symbol_lookup"
     case debugViewHierarchy = "debug_view_hierarchy"
+    case debugViewBorders = "debug_view_borders"
     case debugProcessStatus = "debug_process_status"
+
+    // macOS tools
+    case screenshotMacWindow = "screenshot_mac_window"
 
     // Session tools
     case setSessionDefaults = "set_session_defaults"
@@ -97,7 +101,11 @@ public struct DebugMCPServer: Sendable {
         let debugMemoryTool = DebugMemoryTool(lldbRunner: lldbRunner)
         let debugSymbolLookupTool = DebugSymbolLookupTool(lldbRunner: lldbRunner)
         let debugViewHierarchyTool = DebugViewHierarchyTool(lldbRunner: lldbRunner)
+        let debugViewBordersTool = DebugViewBordersTool(lldbRunner: lldbRunner)
         let debugProcessStatusTool = DebugProcessStatusTool(lldbRunner: lldbRunner)
+
+        // Create macOS tools
+        let screenshotMacWindowTool = ScreenshotMacWindowTool()
 
         // Create session tools
         let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
@@ -123,7 +131,10 @@ public struct DebugMCPServer: Sendable {
                 debugMemoryTool.tool(),
                 debugSymbolLookupTool.tool(),
                 debugViewHierarchyTool.tool(),
+                debugViewBordersTool.tool(),
                 debugProcessStatusTool.tool(),
+                // macOS tools
+                screenshotMacWindowTool.tool(),
                 // Session tools
                 setSessionDefaultsTool.tool(),
                 showSessionDefaultsTool.tool(),
@@ -172,8 +183,14 @@ public struct DebugMCPServer: Sendable {
                 return try await debugSymbolLookupTool.execute(arguments: arguments)
             case .debugViewHierarchy:
                 return try await debugViewHierarchyTool.execute(arguments: arguments)
+            case .debugViewBorders:
+                return try await debugViewBordersTool.execute(arguments: arguments)
             case .debugProcessStatus:
                 return try await debugProcessStatusTool.execute(arguments: arguments)
+
+            // macOS tools
+            case .screenshotMacWindow:
+                return try await screenshotMacWindowTool.execute(arguments: arguments)
 
             // Session tools
             case .setSessionDefaults:

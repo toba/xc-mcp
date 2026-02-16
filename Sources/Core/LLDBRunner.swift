@@ -1104,6 +1104,38 @@ public struct LLDBRunner: Sendable {
         return LLDBResult(exitCode: 0, stdout: outputs.joined(separator: "\n\n"), stderr: "")
     }
 
+    /// Toggles colored borders on all views in the key window of a running macOS app.
+    ///
+    /// Uses a stack-based NSView traversal to set or clear CALayer borders on every subview.
+    /// The process must be stopped (at a breakpoint or interrupted) for expression evaluation.
+    ///
+    /// - Parameters:
+    ///   - pid: The process ID of the target process.
+    ///   - enabled: Whether to enable or disable borders.
+    ///   - borderWidth: The border width in points.
+    ///   - nsColorSelector: The NSColor selector name (e.g. "redColor").
+    /// - Returns: The result containing the count of affected views.
+    public func toggleViewBorders(
+        pid: Int32,
+        enabled: Bool,
+        borderWidth: Double,
+        nsColorSelector: String
+    ) async throws -> LLDBResult {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+
+        let expression: String
+        if enabled {
+            expression =
+                "expr -l objc -O -- @import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [v setWantsLayer:YES]; [[v layer] setBorderWidth:\(borderWidth)]; [[v layer] setBorderColor:[[NSColor \(nsColorSelector)] CGColor]]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders enabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]"
+        } else {
+            expression =
+                "expr -l objc -O -- @import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [[v layer] setBorderWidth:0]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders disabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]"
+        }
+
+        let output = try await session.sendCommand(expression)
+        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+    }
+
     /// Gets the current process status.
     ///
     /// - Parameter pid: The process ID of the target process.

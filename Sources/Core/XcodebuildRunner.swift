@@ -75,12 +75,10 @@ public struct XcodebuildRunner: Sendable {
         stdoutHandle.readabilityHandler = { handle in
             let data = handle.availableData
             if !data.isEmpty {
-                Task {
-                    await lastOutputTime.update()
-                    if let line = String(data: data, encoding: .utf8) {
-                        await outputActor.appendStdout(line)
-                        onProgress?(line)
-                    }
+                outputActor.appendStdout(data)
+                lastOutputTime.update()
+                if let text = String(data: data, encoding: .utf8) {
+                    onProgress?(text)
                 }
             }
         }
@@ -90,12 +88,10 @@ public struct XcodebuildRunner: Sendable {
         stderrHandle.readabilityHandler = { handle in
             let data = handle.availableData
             if !data.isEmpty {
-                Task {
-                    await lastOutputTime.update()
-                    if let line = String(data: data, encoding: .utf8) {
-                        await outputActor.appendStderr(line)
-                        onProgress?(line)
-                    }
+                outputActor.appendStderr(data)
+                lastOutputTime.update()
+                if let text = String(data: data, encoding: .utf8) {
+                    onProgress?(text)
                 }
             }
         }
@@ -109,7 +105,7 @@ public struct XcodebuildRunner: Sendable {
             // Check total timeout
             if Date().timeIntervalSince(startTime) > timeout {
                 process.terminate()
-                let (stdout, stderr) = await outputActor.getOutput()
+                let (stdout, stderr) = outputActor.getOutput()
                 throw XcodebuildError.timeout(
                     duration: timeout,
                     partialOutput: stdout + stderr
@@ -117,10 +113,10 @@ public struct XcodebuildRunner: Sendable {
             }
 
             // Check for stuck process (no output for too long)
-            let timeSinceLastOutput = await lastOutputTime.timeSinceLastOutput()
+            let timeSinceLastOutput = lastOutputTime.timeSinceLastOutput()
             if timeSinceLastOutput > Self.outputTimeout {
                 process.terminate()
-                let (stdout, stderr) = await outputActor.getOutput()
+                let (stdout, stderr) = outputActor.getOutput()
                 throw XcodebuildError.stuckProcess(
                     noOutputFor: timeSinceLastOutput,
                     partialOutput: stdout + stderr
@@ -138,14 +134,14 @@ public struct XcodebuildRunner: Sendable {
         let remainingStdout = stdoutHandle.readDataToEndOfFile()
         let remainingStderr = stderrHandle.readDataToEndOfFile()
 
-        if !remainingStdout.isEmpty, let line = String(data: remainingStdout, encoding: .utf8) {
-            await outputActor.appendStdout(line)
+        if !remainingStdout.isEmpty {
+            outputActor.appendStdout(remainingStdout)
         }
-        if !remainingStderr.isEmpty, let line = String(data: remainingStderr, encoding: .utf8) {
-            await outputActor.appendStderr(line)
+        if !remainingStderr.isEmpty {
+            outputActor.appendStderr(remainingStderr)
         }
 
-        let (stdout, stderr) = await outputActor.getOutput()
+        let (stdout, stderr) = outputActor.getOutput()
 
         return XcodebuildResult(
             exitCode: process.terminationStatus,
@@ -382,33 +378,49 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
     }
 }
 
-/// Actor for safely collecting output from multiple sources.
-private actor OutputCollector {
-    private var stdout = ""
-    private var stderr = ""
+/// Thread-safe output collector that appends Data synchronously from readabilityHandler
+/// callbacks (which run on a serial dispatch queue), avoiding Task reordering issues.
+private final class OutputCollector: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stdoutData = Data()
+    private var stderrData = Data()
 
-    func appendStdout(_ text: String) {
-        stdout += text
+    func appendStdout(_ data: Data) {
+        lock.lock()
+        stdoutData.append(data)
+        lock.unlock()
     }
 
-    func appendStderr(_ text: String) {
-        stderr += text
+    func appendStderr(_ data: Data) {
+        lock.lock()
+        stderrData.append(data)
+        lock.unlock()
     }
 
     func getOutput() -> (stdout: String, stderr: String) {
-        return (stdout, stderr)
+        lock.lock()
+        let out = String(data: stdoutData, encoding: .utf8) ?? ""
+        let err = String(data: stderrData, encoding: .utf8) ?? ""
+        lock.unlock()
+        return (out, err)
     }
 }
 
-/// Actor for tracking the last time output was received.
-private actor LastOutputTime {
+/// Thread-safe tracker for the last time output was received.
+private final class LastOutputTime: @unchecked Sendable {
+    private let lock = NSLock()
     private var lastTime = Date()
 
     func update() {
+        lock.lock()
         lastTime = Date()
+        lock.unlock()
     }
 
     func timeSinceLastOutput() -> TimeInterval {
-        return Date().timeIntervalSince(lastTime)
+        lock.lock()
+        let interval = Date().timeIntervalSince(lastTime)
+        lock.unlock()
+        return interval
     }
 }
