@@ -1,24 +1,51 @@
 # xc-mcp
 
-A Model Context Protocol (MCP) server for Xcode development on macOS. Build, test, run, and debug iOS, macOS, watchOS, and tvOS apps on simulators and physical devices with full project manipulation capabilities.
+An MCP server for Xcode development on macOS. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 100+ tools for project manipulation, LLDB debugging, UI automation, localization, and SwiftUI preview capture.
 
-## Overview
+## Notable Powers
 
-xc-mcp is a unified MCP server that combines Xcode project manipulation with build, test, and run capabilities. It uses:
+**Token Efficiency** — run a single server with all tools are use some combination of smaller servers with the subset of tools relevant to your work.
 
-- [tuist/xcodeproj](https://github.com/tuist/xcodeproj) for project file manipulation
-- [modelcontextprotocol/swift-sdk](https://github.com/modelcontextprotocol/swift-sdk) for MCP implementation
-- Native `xcodebuild`, `simctl`, and `devicectl` for build and device operations
+**Screenshot any macOS app window** — `screenshot_mac_window` uses ScreenCaptureKit to capture a any window without needing a simulator, including your debug build.
 
-This server enables AI assistants and MCP clients to:
+**Interact with macOS apps via Accessibility** — The `interact_` tools use the macOS Accessibility API (AXUIElement) to click buttons, read values, navigate menus, type text, and dump the full UI element tree. This is *semantic* automation — you're clicking "Save" by name, not by pixel coordinate. Eight tools: `interact_ui_tree`, `interact_click`, `interact_set_value`, `interact_get_value`, `interact_menu`, `interact_focus`, `interact_key`, `interact_find`.
 
-- Create and manage Xcode projects
-- Build and run apps on simulators and physical devices
-- Run tests (XCTest and Swift Testing) and capture logs
-- Control simulator state, appearance, and location
-- Debug apps with LLDB
-- Automate UI interactions
-- Work with Swift Package Manager projects
+**Capture SwiftUI previews as screenshots** — `preview_capture` extracts `#Preview` blocks from your Swift source, generates a temporary host app, builds it, installs it on the iOS Simulator, launches it, takes a screenshot, and cleans up. Programmatic preview screenshots without opening Xcode.
+
+**Paint view borders on a running app** — `debug_view_borders` injects colored `CALayer` borders onto every view in a running macOS app via LLDB. Pair with `screenshot_mac_window` to see the result. No code changes, no restarts.
+
+**Full LLDB debugging over MCP** — Persistent LLDB sessions backed by a pseudo-TTY, so breakpoints survive across tool calls. Breakpoints, watchpoints, stepping, expression evaluation, memory inspection, view hierarchy dumps, symbol lookup — the full debugger experience, minus the GUI.
+
+## Built On
+
+- [tuist/xcodeproj](https://github.com/tuist/xcodeproj) — project file manipulation
+- [modelcontextprotocol/swift-sdk](https://github.com/modelcontextprotocol/swift-sdk) — MCP implementation
+- Native `xcodebuild`, `simctl`, `devicectl`, and `lldb` — the usual suspects
+
+Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server). Build output parsing adapted from [ldomaradzki/xcsift](https://github.com/ldomaradzki/xcsift). Localization from [Ryu0118/xcstrings-crud](https://github.com/Ryu0118/xcstrings-crud).
+
+## Table of Contents
+
+- [Multi-Server Architecture](#multi-server-architecture)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Requirements](#requirements)
+- [Tools](#tools)
+  - [macOS Interaction](#macos-interaction-8-tools)
+  - [macOS Screenshots & Builds](#macos-screenshots--builds-9-tools)
+  - [SwiftUI Preview Capture](#swiftui-preview-capture-1-tool)
+  - [Debug](#debug-18-tools)
+  - [Simulator](#simulator-17-tools)
+  - [Simulator UI Automation](#simulator-ui-automation-7-tools)
+  - [Device](#device-7-tools)
+  - [Project Management](#project-management-23-tools)
+  - [Discovery](#discovery-5-tools)
+  - [Logging](#logging-4-tools)
+  - [Swift Package Manager](#swift-package-manager-6-tools)
+  - [Localization](#localization-24-tools)
+  - [Session & Utilities](#session--utilities-7-tools)
+- [Path Security](#path-security)
+- [License](#license)
 
 ## Multi-Server Architecture
 
@@ -75,27 +102,6 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 }
 ```
 
-## Requirements
-
-- macOS 15+
-- Xcode (for `xcodebuild`, `simctl`, `devicectl`)
-
-### macOS Permissions
-
-Some tools require macOS privacy permissions granted via **System Settings > Privacy & Security**:
-
-| Permission | Tools | Notes |
-|-----------|-------|-------|
-| **Screen Recording** | `screenshot_mac_window` | Required for ScreenCaptureKit window capture |
-
-macOS grants these permissions to the **responsible process** — the GUI app at the top of the process tree, not the `xc-mcp` binary itself. This means:
-
-- **Claude Desktop** needs Screen Recording permission when using `xc-debug` as an MCP server
-- **VS Code / Cursor** needs it when running xc-mcp through an MCP extension
-- **Terminal / iTerm** needs it when running the test harness or using `xc-mcp` via Claude Code
-
-The `xc-mcp` binary won't appear in System Settings because it's a CLI tool — TCC (Transparency, Consent, and Control) always resolves up to the parent GUI application. No special setup is needed for the server itself.
-
 ## Installation
 
 ### Homebrew (Recommended)
@@ -141,15 +147,164 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 
+## Requirements
+
+- macOS 15+
+- Xcode (for `xcodebuild`, `simctl`, `devicectl`)
+
+### macOS Permissions
+
+Some tools require macOS privacy permissions granted via **System Settings > Privacy & Security**:
+
+| Permission | Tools | Notes |
+|-----------|-------|-------|
+| **Accessibility** | `interact_*` tools | Required for AXUIElement API access |
+| **Screen Recording** | `screenshot_mac_window` | Required for ScreenCaptureKit window capture |
+
+macOS grants these permissions to the **responsible process** — the GUI app at the top of the process tree, not the `xc-mcp` binary itself. This means:
+
+- **Claude Desktop** needs the relevant permission when using xc-mcp as an MCP server
+- **VS Code / Cursor** needs it when running xc-mcp through an MCP extension
+- **Terminal / iTerm** needs it when running xc-mcp via Claude Code
+
+The `xc-mcp` binary won't appear in System Settings because it's a CLI tool — TCC (Transparency, Consent, and Control) always resolves up to the parent GUI application.
+
 ## Tools
 
-### Session Management (3 tools)
+### macOS Interaction (8 tools)
+
+Semantic UI automation for macOS apps via the Accessibility API. These work on *any* running macOS app — your own debug builds, system apps, whatever has accessibility enabled. You interact with elements by role, title, and ID rather than screen coordinates.
 
 | Tool | Description |
 |------|-------------|
-| `set_session_defaults` | Set default project, scheme, simulator, device, and configuration |
-| `show_session_defaults` | Show current session defaults |
-| `clear_session_defaults` | Clear all session defaults |
+| `interact_ui_tree` | Dump the full UI element tree with assigned IDs for targeting |
+| `interact_click` | Click a UI element by ID or role+title search |
+| `interact_set_value` | Set value on a UI element (text fields, sliders, etc.) |
+| `interact_get_value` | Read the current value of a UI element |
+| `interact_menu` | Navigate and select menu bar items |
+| `interact_focus` | Focus or activate a UI element |
+| `interact_key` | Send keyboard input to the focused element |
+| `interact_find` | Search for UI elements by properties |
+
+### macOS Screenshots & Builds (9 tools)
+
+| Tool | Description |
+|------|-------------|
+| `screenshot_mac_window` | Capture a macOS app window via ScreenCaptureKit. Match by app name, bundle ID, or window title. Returns inline base64 PNG. Works with `debug_view_borders` to capture visual debugging output |
+| `build_macos` | Build a macOS app |
+| `build_run_macos` | Build and run macOS app |
+| `launch_mac_app` | Launch a macOS app |
+| `stop_mac_app` | Stop a macOS app |
+| `get_mac_app_path` | Get path to built macOS app |
+| `test_macos` | Run tests for macOS app |
+| `start_mac_log_cap` | Start capturing macOS app logs via unified logging |
+| `stop_mac_log_cap` | Stop capturing and return macOS log results |
+
+### SwiftUI Preview Capture (1 tool)
+
+| Tool | Description |
+|------|-------------|
+| `preview_capture` | Extract a `#Preview` block from a Swift file, build a temporary host app, install and launch on iOS Simulator, capture a screenshot, and clean up. Supports multi-preview files via `preview_index`, configurable `render_delay`, and optional `save_path` |
+
+### Debug (18 tools)
+
+Debug tools use persistent LLDB sessions backed by a pseudo-TTY — a single LLDB process stays alive across tool calls, so breakpoints are preserved and there are no hangs from rapid attach/detach cycles. Attach once with `debug_attach_sim`, then use any combination of debug tools against the live session.
+
+**Build & debug launch:**
+
+| Tool | Description |
+|------|-------------|
+| `build_debug_macos` | Build and launch a macOS app under LLDB — the equivalent of Xcode's Run button. Builds incrementally, launches via Launch Services and attaches LLDB with `--waitfor`. Handles sandboxed and hardened-runtime apps: symlinks non-embedded frameworks into the app bundle and rewrites install names to `@rpath/`. Supports custom args, env vars, and stop-at-entry |
+
+**Session management:**
+
+| Tool | Description |
+|------|-------------|
+| `debug_attach_sim` | Attach LLDB to app on simulator |
+| `debug_detach` | Detach debugger and end session |
+| `debug_process_status` | Get current process state (running, stopped, signal info) |
+
+**Breakpoints and watchpoints:**
+
+| Tool | Description |
+|------|-------------|
+| `debug_breakpoint_add` | Add a breakpoint (by symbol name or file:line) |
+| `debug_breakpoint_remove` | Remove a breakpoint by ID |
+| `debug_watchpoint` | Manage watchpoints — add (by variable or address with optional condition), remove, or list |
+
+**Execution control:**
+
+| Tool | Description |
+|------|-------------|
+| `debug_continue` | Continue execution |
+| `debug_step` | Step through code — `in`, `over`, `out`, or `instruction`. Returns new source location |
+
+**Inspection:**
+
+| Tool | Description |
+|------|-------------|
+| `debug_stack` | Print stack trace (single thread or all threads) |
+| `debug_variables` | Print local variables in a stack frame |
+| `debug_threads` | List all threads, optionally select one to switch context |
+| `debug_evaluate` | Evaluate expressions — `po` (object description), `p` (value), Swift or ObjC |
+| `debug_memory` | Read memory at an address in hex, bytes, ASCII, or disassembly format |
+| `debug_symbol_lookup` | Look up symbols by address, name (regex), or type name |
+| `debug_view_hierarchy` | Dump the live UI view hierarchy (iOS or macOS), inspect by address, show Auto Layout constraints |
+| `debug_view_borders` | Toggle colored borders on all views in a running macOS app via LLDB. Configurable color and width. Resume with `debug_continue` and screenshot to see results |
+
+**Passthrough:**
+
+| Tool | Description |
+|------|-------------|
+| `debug_lldb_command` | Execute arbitrary LLDB command for anything not covered above |
+
+### Simulator (17 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_sims` | List available simulators |
+| `boot_sim` | Boot a simulator |
+| `open_sim` | Open Simulator.app with a specific simulator |
+| `build_sim` | Build an app for simulator |
+| `build_run_sim` | Build and run on simulator |
+| `install_app_sim` | Install an app on simulator |
+| `launch_app_sim` | Launch an app on simulator |
+| `stop_app_sim` | Stop a running app |
+| `get_sim_app_path` | Get path to installed app |
+| `test_sim` | Run tests on simulator |
+| `record_sim_video` | Record video of simulator |
+| `launch_app_logs_sim` | Launch app and capture logs |
+| `erase_sims` | Reset a simulator |
+| `set_sim_location` | Set simulated location |
+| `reset_sim_location` | Reset simulated location |
+| `set_sim_appearance` | Set appearance (light/dark mode) |
+| `sim_statusbar` | Override status bar settings |
+
+### Simulator UI Automation (7 tools)
+
+Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`.
+
+| Tool | Description |
+|------|-------------|
+| `tap` | Tap at coordinate |
+| `long_press` | Long press at coordinate |
+| `swipe` | Swipe between points |
+| `type_text` | Type text |
+| `key_press` | Press hardware key |
+| `button` | Press hardware button |
+| `screenshot` | Take simulator screenshot |
+
+### Device (7 tools)
+
+| Tool | Description |
+|------|-------------|
+| `list_devices` | List connected physical devices |
+| `build_device` | Build for physical device |
+| `install_app_device` | Install on physical device |
+| `launch_app_device` | Launch on physical device |
+| `stop_app_device` | Stop app on physical device |
+| `get_device_app_path` | Get path to installed app |
+| `test_device` | Run tests on physical device |
 
 ### Project Management (23 tools)
 
@@ -191,54 +346,6 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 | `get_app_bundle_id` | Get bundle identifier for iOS/watchOS/tvOS app |
 | `get_mac_bundle_id` | Get bundle identifier for macOS app |
 
-### Simulator (17 tools)
-
-| Tool | Description |
-|------|-------------|
-| `list_sims` | List available simulators |
-| `boot_sim` | Boot a simulator |
-| `open_sim` | Open Simulator.app with a specific simulator |
-| `build_sim` | Build an app for simulator |
-| `build_run_sim` | Build and run on simulator |
-| `install_app_sim` | Install an app on simulator |
-| `launch_app_sim` | Launch an app on simulator |
-| `stop_app_sim` | Stop a running app |
-| `get_sim_app_path` | Get path to installed app |
-| `test_sim` | Run tests on simulator |
-| `record_sim_video` | Record video of simulator |
-| `launch_app_logs_sim` | Launch app and capture logs |
-| `erase_sims` | Reset a simulator |
-| `set_sim_location` | Set simulated location |
-| `reset_sim_location` | Reset simulated location |
-| `set_sim_appearance` | Set appearance (light/dark mode) |
-| `sim_statusbar` | Override status bar settings |
-
-### Device (7 tools)
-
-| Tool | Description |
-|------|-------------|
-| `list_devices` | List connected physical devices |
-| `build_device` | Build for physical device |
-| `install_app_device` | Install on physical device |
-| `launch_app_device` | Launch on physical device |
-| `stop_app_device` | Stop app on physical device |
-| `get_device_app_path` | Get path to installed app |
-| `test_device` | Run tests on physical device |
-
-### macOS (9 tools)
-
-| Tool | Description |
-|------|-------------|
-| `screenshot_mac_window` | Take a screenshot of a macOS app window via ScreenCaptureKit. Match by app name, bundle ID, or window title. Returns the image inline as base64 PNG and optionally saves to disk. Works with `debug_view_borders` to capture visual debugging output |
-| `build_macos` | Build a macOS app |
-| `build_run_macos` | Build and run macOS app |
-| `launch_mac_app` | Launch a macOS app |
-| `stop_mac_app` | Stop a macOS app |
-| `get_mac_app_path` | Get path to built macOS app |
-| `test_macos` | Run tests for macOS app |
-| `start_mac_log_cap` | Start capturing macOS app logs via unified logging |
-| `stop_mac_log_cap` | Stop capturing and return macOS log results |
-
 ### Logging (4 tools)
 
 | Tool | Description |
@@ -247,70 +354,6 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 | `stop_sim_log_cap` | Stop capturing and return results |
 | `start_device_log_cap` | Start capturing device logs |
 | `stop_device_log_cap` | Stop capturing device logs |
-
-### Debug (18 tools)
-
-Debug tools use persistent LLDB sessions backed by a pseudo-TTY — a single LLDB process stays alive across tool calls, so breakpoints are preserved and there are no hangs from rapid attach/detach cycles. Attach once with `debug_attach_sim`, then use any combination of debug tools against the live session.
-
-**Build & debug launch:**
-
-| Tool | Description |
-|------|-------------|
-| `build_debug_macos` | Build and launch a macOS app under LLDB — the equivalent of Xcode's Run button. Builds incrementally, launches via Launch Services (`/usr/bin/open`) and attaches LLDB with `--waitfor`. Automatically handles sandboxed and hardened-runtime apps: symlinks non-embedded frameworks into the app bundle and rewrites absolute install names to `@rpath/` so dyld can resolve them without `DYLD_FRAMEWORK_PATH`. Supports custom args, env vars, and stop-at-entry. All debug tools work with the returned PID. |
-
-**Session management:**
-
-| Tool | Description |
-|------|-------------|
-| `debug_attach_sim` | Attach LLDB to app on simulator |
-| `debug_detach` | Detach debugger and end session |
-| `debug_process_status` | Get current process state (running, stopped, signal info) |
-
-**Breakpoints and watchpoints:**
-
-| Tool | Description |
-|------|-------------|
-| `debug_breakpoint_add` | Add a breakpoint (by symbol name or file:line) |
-| `debug_breakpoint_remove` | Remove a breakpoint by ID |
-| `debug_watchpoint` | Manage watchpoints — add (by variable or address with optional condition), remove, or list |
-
-**Execution control:**
-
-| Tool | Description |
-|------|-------------|
-| `debug_continue` | Continue execution |
-| `debug_step` | Step through code — `in` (step into), `over` (step over), `out` (step out), or `instruction` (single CPU instruction). Returns the new source location after stepping |
-
-**Inspection:**
-
-| Tool | Description |
-|------|-------------|
-| `debug_stack` | Print stack trace (single thread or all threads) |
-| `debug_variables` | Print local variables in a stack frame |
-| `debug_threads` | List all threads, optionally select one to switch context |
-| `debug_evaluate` | Evaluate expressions — supports `po` (object description), `p` (value), and explicit Swift or Objective-C expression language |
-| `debug_memory` | Read memory at an address in hex, bytes, ASCII, or disassembly format with configurable item size and count |
-| `debug_symbol_lookup` | Look up symbols by address (symbolication), name (regex search), or type name |
-| `debug_view_hierarchy` | Dump the live UI view hierarchy (iOS `UIApplication` or macOS `NSApplication`), inspect a specific view by address, and show Auto Layout constraints |
-| `debug_view_borders` | Toggle colored borders on all views in a running macOS app via LLDB. Iterates every window's view tree and sets `CALayer` borders. Configurable color (`red`, `green`, `blue`, `yellow`, `cyan`, `magenta`, `orange`, `white`) and border width. Process must be stopped (breakpoint or interrupt). Resume with `debug_continue` and use `screenshot_mac_window` to see the result |
-
-**Passthrough:**
-
-| Tool | Description |
-|------|-------------|
-| `debug_lldb_command` | Execute arbitrary LLDB command for anything not covered above |
-
-### UI Automation (7 tools)
-
-| Tool | Description |
-|------|-------------|
-| `tap` | Tap at coordinate |
-| `long_press` | Long press at coordinate |
-| `swipe` | Swipe between points |
-| `type_text` | Type text |
-| `key_press` | Press hardware key |
-| `button` | Press hardware button |
-| `screenshot` | Take screenshot |
 
 ### Swift Package Manager (6 tools)
 
@@ -323,16 +366,9 @@ Debug tools use persistent LLDB sessions backed by a pseudo-TTY — a single LLD
 | `swift_package_list` | List dependencies |
 | `swift_package_stop` | Stop running executable |
 
-### Utilities (4 tools)
-
-| Tool | Description |
-|------|-------------|
-| `clean` | Clean build products |
-| `doctor` | Diagnose Xcode environment |
-| `scaffold_ios_project` | Scaffold iOS project |
-| `scaffold_macos_project` | Scaffold macOS project |
-
 ### Localization (24 tools)
+
+Full CRUD for Apple's `.xcstrings` format — add, update, rename, delete keys and translations, plus coverage stats and stale key detection. Batch operations are atomic.
 
 | Tool | Description |
 |------|-------------|
@@ -361,6 +397,18 @@ Debug tools use persistent LLDB sessions backed by a pseudo-TTY — a single LLD
 | `xcstrings_delete_translation` | Delete a single translation |
 | `xcstrings_delete_translations` | Delete multiple translations (batch) |
 
+### Session & Utilities (7 tools)
+
+| Tool | Description |
+|------|-------------|
+| `set_session_defaults` | Set default project, scheme, simulator, device, and configuration |
+| `show_session_defaults` | Show current session defaults |
+| `clear_session_defaults` | Clear all session defaults |
+| `clean` | Clean build products |
+| `doctor` | Diagnose Xcode environment |
+| `scaffold_ios_project` | Scaffold iOS project |
+| `scaffold_macos_project` | Scaffold macOS project |
+
 ## Build Output Parsing
 
 Test tools parse both **XCTest** and **Swift Testing** output formats, extracting structured pass/fail results with test names, durations, and failure details. Supported formats include:
@@ -377,5 +425,3 @@ When providing a base path as a command-line argument, all file operations are r
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
-
-This project is based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server). Build output parsing and code coverage are adapted from [ldomaradzki/xcsift](https://github.com/ldomaradzki/xcsift). The localization functionality is based on [Ryu0118/xcstrings-crud](https://github.com/Ryu0118/xcstrings-crud).

@@ -9,7 +9,7 @@ updated_at: 2026-02-17T01:38:57Z
 sync:
     github:
         issue_number: "61"
-        synced_at: "2026-02-17T01:03:31Z"
+        synced_at: "2026-02-17T01:41:11Z"
 ---
 
 preview_capture tool is implemented (PreviewExtractor, PreviewCaptureTool, registration, 334 tests pass) but has never successfully rendered a preview screenshot end-to-end. Three problems discovered during testing against thesis project:
