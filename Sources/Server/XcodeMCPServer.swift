@@ -56,6 +56,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case testSim = "test_sim"
     case recordSimVideo = "record_sim_video"
     case launchAppLogsSim = "launch_app_logs_sim"
+    case previewCapture = "preview_capture"
 
     // Device tools
     case listDevices = "list_devices"
@@ -125,6 +126,16 @@ public enum ToolName: String, CaseIterable, Sendable {
     case keyPress = "key_press"
     case button = "button"
     case screenshot = "screenshot"
+
+    // Interact tools (macOS Accessibility API)
+    case interactUITree = "interact_ui_tree"
+    case interactClick = "interact_click"
+    case interactSetValue = "interact_set_value"
+    case interactGetValue = "interact_get_value"
+    case interactMenu = "interact_menu"
+    case interactFocus = "interact_focus"
+    case interactKey = "interact_key"
+    case interactFind = "interact_find"
 
     // Swift Package Manager tools
     case swiftPackageBuild = "swift_package_build"
@@ -263,6 +274,12 @@ public struct XcodeMCPServer: Sendable {
             simctlRunner: simctlRunner, sessionManager: sessionManager)
         let launchAppLogsSimTool = LaunchAppLogsSimTool(
             simctlRunner: simctlRunner, sessionManager: sessionManager)
+        let previewCaptureTool = PreviewCaptureTool(
+            xcodebuildRunner: xcodebuildRunner,
+            simctlRunner: simctlRunner,
+            pathUtility: pathUtility,
+            sessionManager: sessionManager
+        )
 
         // Create device tools
         let listDevicesTool = ListDevicesTool(deviceCtlRunner: deviceCtlRunner)
@@ -373,6 +390,17 @@ public struct XcodeMCPServer: Sendable {
             swiftRunner: swiftRunner, sessionManager: sessionManager)
         let swiftPackageStopTool = SwiftPackageStopTool(sessionManager: sessionManager)
 
+        // Create interact tools
+        let interactRunner = InteractRunner()
+        let interactUITreeTool = InteractUITreeTool(interactRunner: interactRunner)
+        let interactClickTool = InteractClickTool(interactRunner: interactRunner)
+        let interactSetValueTool = InteractSetValueTool(interactRunner: interactRunner)
+        let interactGetValueTool = InteractGetValueTool(interactRunner: interactRunner)
+        let interactMenuTool = InteractMenuTool(interactRunner: interactRunner)
+        let interactFocusTool = InteractFocusTool(interactRunner: interactRunner)
+        let interactKeyTool = InteractKeyTool(interactRunner: interactRunner)
+        let interactFindTool = InteractFindTool(interactRunner: interactRunner)
+
         // Create utility tools
         let cleanTool = CleanTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
@@ -428,6 +456,7 @@ public struct XcodeMCPServer: Sendable {
                 testSimTool.tool(),
                 recordSimVideoTool.tool(),
                 launchAppLogsSimTool.tool(),
+                previewCaptureTool.tool(),
                 // Device tools
                 listDevicesTool.tool(),
                 buildDeviceTool.tool(),
@@ -497,6 +526,15 @@ public struct XcodeMCPServer: Sendable {
                 swiftPackageCleanTool.tool(),
                 swiftPackageListTool.tool(),
                 swiftPackageStopTool.tool(),
+                // Interact tools
+                interactUITreeTool.tool(),
+                interactClickTool.tool(),
+                interactSetValueTool.tool(),
+                interactGetValueTool.tool(),
+                interactMenuTool.tool(),
+                interactFocusTool.tool(),
+                interactKeyTool.tool(),
+                interactFindTool.tool(),
                 // Utility tools
                 cleanTool.tool(),
                 doctorTool.tool(),
@@ -603,6 +641,8 @@ public struct XcodeMCPServer: Sendable {
                 return try await recordSimVideoTool.execute(arguments: arguments)
             case .launchAppLogsSim:
                 return try await launchAppLogsSimTool.execute(arguments: arguments)
+            case .previewCapture:
+                return try await previewCaptureTool.execute(arguments: arguments)
 
             // Device tools
             case .listDevices:
@@ -741,6 +781,24 @@ public struct XcodeMCPServer: Sendable {
                 return try await swiftPackageListTool.execute(arguments: arguments)
             case .swiftPackageStop:
                 return try await swiftPackageStopTool.execute(arguments: arguments)
+
+            // Interact tools
+            case .interactUITree:
+                return try await interactUITreeTool.execute(arguments: arguments)
+            case .interactClick:
+                return try await interactClickTool.execute(arguments: arguments)
+            case .interactSetValue:
+                return try await interactSetValueTool.execute(arguments: arguments)
+            case .interactGetValue:
+                return try await interactGetValueTool.execute(arguments: arguments)
+            case .interactMenu:
+                return try interactMenuTool.execute(arguments: arguments)
+            case .interactFocus:
+                return try await interactFocusTool.execute(arguments: arguments)
+            case .interactKey:
+                return try interactKeyTool.execute(arguments: arguments)
+            case .interactFind:
+                return try await interactFindTool.execute(arguments: arguments)
 
             // Utility tools
             case .clean:

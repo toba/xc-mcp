@@ -1,0 +1,39 @@
+rules:
+  - name: git-push
+    pattern: 'git\s+push'
+    message: "git push not allowed — only user should push"
+
+  - name: git-checkout-switch
+    pattern: 'git\s+(checkout|switch)\s+'
+    message: "git checkout/switch not allowed — branch changes require user approval"
+
+  - name: git-commit
+    pattern: 'git\s+commit'
+    message: "git commit not allowed — only user should commit"
+
+  - name: git-no-verify
+    pattern: '--no-verify'
+    message: "skipping hooks with --no-verify not allowed"
+
+  - name: destructive-rm
+    pattern: 'rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+|--force\s+).*(/|~|\$HOME)'
+    message: "destructive rm on broad paths not allowed"
+
+  - name: curl-bearer
+    pattern: 'curl.*Authorization.*Bearer'
+    message: "direct API calls with bearer tokens not allowed"
+
+  - name: todo-archive
+    pattern: 'todo\s+archive'
+    message: "todo archive not allowed — only user should archive issues"
+
+  # Non-Bash tool rules
+  - name: no-write-env
+    pattern: '"file_path"\s*:\s*"[^"]*\.env"'
+    tools: ["Write", "Edit"]
+    message: "writing to .env files not allowed"
+
+  - name: no-write-credentials
+    pattern: '"file_path"\s*:\s*"[^"]*(\.pem|\.key|\.p12|credentials\.json)"'
+    tools: ["Write", "Edit"]
+    message: "writing to credential files not allowed"
