@@ -193,4 +193,74 @@ struct PreviewExtractorTests {
         #expect(!body.contains("#Preview"))
         #expect(body.contains("Text(\"Hello\")"))
     }
+
+    // MARK: - stripPreviewBlocks Tests
+
+    @Test("Strip single preview block")
+    func stripSinglePreview() {
+        let source = """
+            import SwiftUI
+
+            struct ContentView: View {
+                var body: some View {
+                    Text("Hello")
+                }
+            }
+
+            #Preview {
+                ContentView()
+            }
+            """
+        let stripped = PreviewExtractor.stripPreviewBlocks(from: source)
+        #expect(!stripped.contains("#Preview"))
+        #expect(!stripped.contains("ContentView()"))
+        #expect(stripped.contains("struct ContentView"))
+        #expect(stripped.contains("Text(\"Hello\")"))
+    }
+
+    @Test("Strip multiple preview blocks")
+    func stripMultiplePreviews() {
+        let source = """
+            struct A: View { var body: some View { Text("A") } }
+
+            #Preview("First") {
+                A()
+            }
+
+            struct B: View { var body: some View { Text("B") } }
+
+            #Preview {
+                B()
+            }
+            """
+        let stripped = PreviewExtractor.stripPreviewBlocks(from: source)
+        #expect(!stripped.contains("#Preview"))
+        #expect(stripped.contains("struct A"))
+        #expect(stripped.contains("struct B"))
+    }
+
+    @Test("Strip preview with nested braces")
+    func stripPreviewWithNestedBraces() {
+        let source = """
+            #Preview {
+                struct Nested: View {
+                    var body: some View { Text("nested") }
+                }
+                return Nested()
+            }
+
+            func keepMe() { }
+            """
+        let stripped = PreviewExtractor.stripPreviewBlocks(from: source)
+        #expect(!stripped.contains("#Preview"))
+        #expect(!stripped.contains("Nested"))
+        #expect(stripped.contains("func keepMe()"))
+    }
+
+    @Test("Strip preserves non-preview code intact")
+    func stripPreservesNonPreviewCode() {
+        let source = "let x = 1\nlet y = 2\n"
+        let stripped = PreviewExtractor.stripPreviewBlocks(from: source)
+        #expect(stripped == source)
+    }
 }

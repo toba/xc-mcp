@@ -95,6 +95,7 @@ public struct PreviewCaptureTool: Sendable {
         var tempDir: String?
         var resolvedProjectPath: String?
         var schemePath: String?
+        var xcconfigPath: String?
 
         do {
             // Step 1: Resolve inputs
@@ -174,7 +175,20 @@ public struct PreviewCaptureTool: Sendable {
             // For framework targets: use `import ModuleName` instead, since compiling
             // the source directly fails when it references internal symbols from
             // dependency frameworks that aren't available as source.
-            var additionalSourcePaths: [String] = isAppTarget ? [resolvedFilePath] : []
+            //
+            // When including the source file, we must strip its #Preview blocks.
+            // The preview body is already inlined in PreviewHostApp.swift, and
+            // leaving #Preview macros in the compiled source triggers a Swift
+            // compiler crash (infinite recursion in ASTMangler when mangling
+            // nested closure types in a different target context).
+            var additionalSourcePaths: [String] = []
+            if isAppTarget {
+                let strippedSource = PreviewExtractor.stripPreviewBlocks(from: source)
+                let strippedPath = "\(tempDirectory)/\(sourceURL.lastPathComponent)"
+                try strippedSource.write(
+                    toFile: strippedPath, atomically: true, encoding: .utf8)
+                additionalSourcePaths = [strippedPath]
+            }
 
             // Step 5: Inject temporary target
             let targetName = "_PreviewHost_\(uuid)"
@@ -207,10 +221,11 @@ public struct PreviewCaptureTool: Sendable {
                 isMacOS = true
             }
 
-            // Force Release configuration for preview host — Debug builds generate
-            // .debug.dylib and __preview.dylib that reference symbols from dependency
-            // frameworks, causing crashes on launch. Release avoids this entirely.
-            let previewConfig = "Release"
+            // Debug config avoids Release's _relinkableLibraryClasses linker error
+            // (ld 1230.1, Xcode 26, no workaround). ENABLE_DEBUG_DYLIB=NO prevents
+            // .debug.dylib generation that crashes on launch with missing symbols.
+            // MERGED_BINARY_TYPE=none keeps framework dylibs real (not empty stubs).
+            let previewConfig = "Debug"
 
             let buildArgs = { (dest: String) -> [String] in
                 [
@@ -221,7 +236,11 @@ public struct PreviewCaptureTool: Sendable {
                     "ONLY_ACTIVE_ARCH=YES",
                     "-skipMacroValidation",
                     "ENABLE_PREVIEWS=NO",
-                    "GCC_OPTIMIZATION_LEVEL=0",
+                    "ENABLE_DEBUG_DYLIB=NO",
+                    "MERGED_BINARY_TYPE=none",
+                    "SKIP_MERGEABLE_LIBRARY_BUNDLE_HOOK=YES",
+                    "SWIFT_COMPILATION_MODE=wholemodule",
+                    "SWIFT_OPTIMIZATION_LEVEL=-Onone",
                     "build",
                 ]
             }
@@ -260,25 +279,37 @@ public struct PreviewCaptureTool: Sendable {
             let screenshotData: Data
 
             if isMacOS {
-                // macOS: launch directly, screenshot via ScreenCaptureKit
+                // macOS: launch the binary directly with DYLD_FRAMEWORK_PATH set
+                // so framework dependencies resolve from the build products dir.
+                // Using 'open -a' goes through LaunchServices which strips env vars.
+                let appURL = URL(fileURLWithPath: appPath)
+                let appName = appURL.deletingPathExtension().lastPathComponent
+                let execPath = appURL
+                    .appendingPathComponent("Contents/MacOS/\(appName)").path
+                let buildProductsDir = appURL.deletingLastPathComponent().path
+
                 let launchProcess = Process()
-                launchProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                launchProcess.arguments = [
-                    "-a", appPath, "--stdout", "/dev/null", "--stderr", "/dev/null",
-                ]
+                launchProcess.executableURL = URL(fileURLWithPath: execPath)
+                var env = ProcessInfo.processInfo.environment
+                env["DYLD_FRAMEWORK_PATH"] = buildProductsDir
+                launchProcess.environment = env
                 let launchPipe = Pipe()
                 launchProcess.standardError = launchPipe
+                launchProcess.standardOutput = FileHandle.nullDevice
+                // Launch in background — don't wait for exit since it's a GUI app
                 try launchProcess.run()
-                launchProcess.waitUntilExit()
 
-                if launchProcess.terminationStatus != 0 {
+                // Give the app a moment to crash or start
+                try await Task.sleep(for: .seconds(1))
+
+                if !launchProcess.isRunning {
                     let launchErr =
                         String(
                             data: launchPipe.fileHandleForReading.readDataToEndOfFile(),
                             encoding: .utf8) ?? ""
                     FileHandle.standardError.write(
                         Data(
-                            "[preview_capture] open -a failed (\(launchProcess.terminationStatus)): \(launchErr)\n"
+                            "[preview_capture] Binary launch failed (\(launchProcess.terminationStatus)): \(launchErr.suffix(500))\n"
                                 .utf8))
                 }
 
@@ -380,12 +411,12 @@ public struct PreviewCaptureTool: Sendable {
             // Cleanup
             cleanup(
                 projectPath: resolvedProjectPath, targetName: injectedTargetName,
-                tempDir: tempDir, schemePath: schemePath)
+                tempDir: tempDir, schemePath: schemePath, xcconfigPath: xcconfigPath)
             return result
         } catch {
             cleanup(
                 projectPath: resolvedProjectPath, targetName: injectedTargetName,
-                tempDir: tempDir, schemePath: schemePath)
+                tempDir: tempDir, schemePath: schemePath, xcconfigPath: xcconfigPath)
             throw error.asMCPError()
         }
     }
@@ -490,6 +521,12 @@ public struct PreviewCaptureTool: Sendable {
         collected: inout [PBXNativeTarget]
     ) {
         for dep in target.dependencies {
+            if dep.target == nil {
+                FileHandle.standardError.write(
+                    Data(
+                        "[preview_capture]   dep of \(target.name): target=nil, proxy=\(dep.targetProxy?.remoteInfo ?? "nil")\n"
+                            .utf8))
+            }
             guard let depTarget = dep.target as? PBXNativeTarget else { continue }
             guard !collected.contains(where: { $0 === depTarget }) else { continue }
             if depTarget.productType == .framework
@@ -498,6 +535,11 @@ public struct PreviewCaptureTool: Sendable {
                 collected.append(depTarget)
                 collectTransitiveDependencies(
                     of: depTarget, in: xcodeproj, collected: &collected)
+            } else {
+                FileHandle.standardError.write(
+                    Data(
+                        "[preview_capture]   skipping \(depTarget.name) (productType=\(depTarget.productType?.rawValue ?? "nil"))\n"
+                            .utf8))
             }
         }
     }
@@ -519,6 +561,13 @@ public struct PreviewCaptureTool: Sendable {
     /// Generates the SwiftUI host app source code.
     /// For framework targets, imports the module so public types are available.
     /// For app targets, the source file is compiled directly (no import needed).
+    ///
+    /// The preview body is placed in a top-level function rather than inline
+    /// in the WindowGroup closure. Preview bodies may contain nested struct
+    /// definitions (e.g. `struct MyShape: Shape { ... }`); when these are
+    /// nested inside struct → computed property → closure, the Swift compiler's
+    /// ASTMangler enters infinite recursion mangling the nested type context.
+    /// A top-level function avoids this depth.
     private func generateHostSource(
         previewBody: String,
         moduleName: String? = nil
@@ -529,21 +578,26 @@ public struct PreviewCaptureTool: Sendable {
             lines.append("import \(moduleName)")
         }
 
+        // Place preview body in a top-level function to avoid ASTMangler crash.
         lines.append("")
-        lines.append("@main")
-        lines.append("struct PreviewHostApp: App {")
-        lines.append("    var body: some Scene {")
-        lines.append("        WindowGroup {")
-        // Indent the preview body
+        lines.append("func _previewContent() -> some View {")
         let bodyLines = previewBody.split(separator: "\n", omittingEmptySubsequences: false)
         for line in bodyLines {
             let trimmed = line.drop(while: { $0 == " " || $0 == "\t" })
             if trimmed.isEmpty {
                 lines.append("")
             } else {
-                lines.append("            \(trimmed)")
+                lines.append("    \(trimmed)")
             }
         }
+        lines.append("}")
+
+        lines.append("")
+        lines.append("@main")
+        lines.append("struct PreviewHostApp: App {")
+        lines.append("    var body: some Scene {")
+        lines.append("        WindowGroup {")
+        lines.append("            _previewContent()")
         lines.append("        }")
         lines.append("    }")
         lines.append("}")
@@ -581,6 +635,12 @@ public struct PreviewCaptureTool: Sendable {
                 "@executable_path/Frameworks",
                 "@executable_path/../Frameworks",
             ]),
+            // Prevent merging framework dependencies into the app binary.
+            // Projects using Xcode 15+ mergeable libraries produce empty
+            // framework bundles (no dylib). Setting this to "none" forces
+            // the build system to produce separate dynamic frameworks that
+            // the preview host can link against.
+            "MERGED_BINARY_TYPE": .string("none"),
         ]
 
         // Copy platform-related build settings from source target.
@@ -690,6 +750,20 @@ public struct PreviewCaptureTool: Sendable {
             collectTransitiveDependencies(
                 of: sourceTarget, in: xcodeproj, collected: &frameworkDeps)
 
+            FileHandle.standardError.write(
+                Data(
+                    "[preview_capture] sourceTarget: \(sourceTarget.name) (isApp=\(isAppTarget)), frameworkDeps: \(frameworkDeps.map { $0.name })\n"
+                        .utf8))
+            for fw in frameworkDeps {
+                let pkgDeps = fw.packageProductDependencies ?? []
+                if !pkgDeps.isEmpty {
+                    FileHandle.standardError.write(
+                        Data(
+                            "[preview_capture]   \(fw.name) SPM deps: \(pkgDeps.map { $0.productName })\n"
+                                .utf8))
+                }
+            }
+
             if !frameworkDeps.isEmpty {
                 // Embed frameworks phase
                 let embedPhase = PBXCopyFilesBuildPhase(
@@ -744,6 +818,10 @@ public struct PreviewCaptureTool: Sendable {
             if !collectedPackageDeps.isEmpty {
                 var newPkgDeps: [XCSwiftPackageProductDependency] = []
                 for pkgDep in collectedPackageDeps {
+                    FileHandle.standardError.write(
+                        Data(
+                            "[preview_capture]   adding SPM dep: \(pkgDep.productName), package=\(pkgDep.package?.name ?? pkgDep.package?.repositoryURL ?? "nil")\n"
+                                .utf8))
                     let newPkgDep = XCSwiftPackageProductDependency(
                         productName: pkgDep.productName,
                         package: pkgDep.package
@@ -1030,7 +1108,7 @@ public struct PreviewCaptureTool: Sendable {
     /// Never throws — logs errors silently.
     private func cleanup(
         projectPath: String?, targetName: String?, tempDir: String?,
-        schemePath: String? = nil
+        schemePath: String? = nil, xcconfigPath: String? = nil
     ) {
         // Remove injected target from project
         if let projectPath, let targetName {
@@ -1124,9 +1202,12 @@ public struct PreviewCaptureTool: Sendable {
             }
         }
 
-        // Remove scheme file
+        // Remove scheme file and xcconfig
         if let schemePath {
             try? FileManager.default.removeItem(atPath: schemePath)
+        }
+        if let xcconfigPath {
+            try? FileManager.default.removeItem(atPath: xcconfigPath)
         }
 
         // Remove temp directory

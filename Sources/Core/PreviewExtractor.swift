@@ -128,6 +128,91 @@ public enum PreviewExtractor {
         return previews
     }
 
+    /// Returns the source with all `#Preview { ... }` blocks removed.
+    ///
+    /// This is used to preprocess additional source files when compiling them
+    /// into the preview host target. Without stripping, the `#Preview` macro
+    /// in the original file can trigger a Swift compiler crash (infinite
+    /// recursion in ASTMangler when mangling nested closure types in a
+    /// different target context).
+    public static func stripPreviewBlocks(from source: String) -> String {
+        let chars = Array(source.unicodeScalars)
+        let count = chars.count
+        var result: [Unicode.Scalar] = []
+        var i = 0
+
+        while i < count {
+            // Skip string literals
+            if chars[i] == "\"" {
+                let end = skipStringLiteral(chars, from: i)
+                result.append(contentsOf: chars[i..<end])
+                i = end
+                continue
+            }
+
+            // Skip line comments
+            if chars[i] == "/" && i + 1 < count && chars[i + 1] == "/" {
+                let end = skipLineComment(chars, from: i)
+                result.append(contentsOf: chars[i..<end])
+                i = end
+                continue
+            }
+
+            // Skip block comments
+            if chars[i] == "/" && i + 1 < count && chars[i + 1] == "*" {
+                let end = skipBlockComment(chars, from: i)
+                result.append(contentsOf: chars[i..<end])
+                i = end
+                continue
+            }
+
+            // Detect #Preview and skip the entire block
+            if chars[i] == "#" && matchesPreview(chars, at: i) {
+                var j = i + 8  // skip "#Preview"
+                j = skipWhitespace(chars, from: j)
+
+                // Skip optional parenthesized arguments
+                if j < count && chars[j] == "(" {
+                    let (_, afterParen) = extractPreviewName(chars, from: j)
+                    j = afterParen
+                    j = skipWhitespace(chars, from: j)
+                }
+
+                // Skip the brace-balanced body
+                if j < count && chars[j] == "{" {
+                    var depth = 1
+                    j += 1
+                    while j < count && depth > 0 {
+                        let c = chars[j]
+                        if c == "\"" {
+                            j = skipStringLiteral(chars, from: j)
+                            continue
+                        }
+                        if c == "/" && j + 1 < count && chars[j + 1] == "/" {
+                            j = skipLineComment(chars, from: j)
+                            continue
+                        }
+                        if c == "/" && j + 1 < count && chars[j + 1] == "*" {
+                            j = skipBlockComment(chars, from: j)
+                            continue
+                        }
+                        if c == "{" { depth += 1 } else if c == "}" { depth -= 1 }
+                        j += 1
+                    }
+                    // Skip trailing newline after closing brace
+                    if j < count && chars[j] == "\n" { j += 1 }
+                    i = j
+                    continue
+                }
+            }
+
+            result.append(chars[i])
+            i += 1
+        }
+
+        return String(String.UnicodeScalarView(result))
+    }
+
     // MARK: - Private Helpers
 
     /// Checks if `#Preview` keyword starts at the given index.

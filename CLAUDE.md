@@ -82,6 +82,21 @@ Modes:
 
 The harness manages an MCP server process lifecycle (named pipe for stdin, temp files for stdout/stderr), sends JSON-RPC initialize + tool calls, and extracts results. Server stderr is saved to `/tmp/xc-debug-last-stderr.log` for post-mortem debugging.
 
+## Skills
+
+### build-review
+
+Xcode build system knowledge for injected targets (via XcodeProj). Reference files:
+
+| File | Topic |
+|------|-------|
+| `SKILL.md` | Required build settings, failure modes table, diagnostic commands |
+| `references/debug-dylib.md` | ENABLE_DEBUG_DYLIB mechanics and known issues |
+| `references/mergeable-libraries.md` | Mergeable library internals, _relinkableLibraryClasses |
+| `references/new-linker.md` | ld_prime timeline, ld_classic removal |
+| `references/swift-driver.md` | Compilation modes and optimization levels |
+| `references/swift-syntax-preview.md` | Alternative #Preview extraction via swift-syntax |
+
 ## Development Notes
 
 - Each tool is a separate Swift file organized by category

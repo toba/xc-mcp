@@ -2,15 +2,17 @@
 name: test
 description: >-
   End-to-end testing of xc-mcp MCP tools against the Thesis macOS app from ../thesis.
-  Use when: (1) user says "test", "test with thesis", "try the tools", "/test",
-  (2) verifying any MCP tool works end-to-end (interact_, debug_, screenshot, build),
-  (3) running a full UI automation scenario (build → tree → click → screenshot),
-  (4) launching the Thesis app for manual feature evaluation.
+  Use when: (1) user says "test", "test with thesis", "try the tools", "test harness",
+  "test the tool", "/test", (2) verifying any MCP tool works end-to-end (interact_,
+  debug_, screenshot, build, preview_capture), (3) running a full UI automation scenario
+  (build → tree → click → screenshot), (4) launching the Thesis app for manual feature
+  evaluation, (5) testing MCP tools via JSON-RPC over pipes (test-debug.sh),
+  (6) debugging MCP tool failures by running the server directly.
 ---
 
-# Test Interact Tools
+# Test MCP Tools
 
-Test the `interact_*` MCP tools by launching the Thesis macOS app and driving its UI.
+End-to-end testing of xc-mcp MCP tools by launching the Thesis macOS app and driving its UI.
 
 ## Prerequisites
 
@@ -88,6 +90,30 @@ screenshot_mac_window(pid: <PID>, save_path: "/tmp/interact-test.png")
 - `interact_key` sends keyboard input
 - `interact_focus` brings app to front
 - `interact_get_value` returns full attributes for an element
+
+## Testing preview_capture
+
+Test the preview capture tool against Thesis source files:
+
+```
+preview_capture(file_path: "/Users/jason/Developer/toba/thesis/App/Sources/SomeView.swift", project_path: "/Users/jason/Developer/toba/thesis/Thesis.xcodeproj")
+```
+
+The tool injects a temporary target, builds it, launches the preview host, and captures a screenshot. Check `/tmp/xc-debug-last-stderr.log` for build diagnostics.
+
+## Debugging MCP Tool Failures
+
+Run the MCP server directly via JSON-RPC over pipes using `test-debug.sh`:
+
+```bash
+# The harness manages server lifecycle (named pipe stdin, temp files for stdout/stderr)
+./test-debug.sh /Users/jason/Developer/toba/thesis/Thesis.xcodeproj Standard
+
+# Server stderr is always saved for post-mortem
+cat /tmp/xc-debug-last-stderr.log
+```
+
+For manual JSON-RPC testing, send requests to the server's stdin pipe and read responses from its stdout. The harness handles initialization and tool call framing.
 
 ## Troubleshooting
 
