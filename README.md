@@ -14,7 +14,7 @@ This project iterates rapidly. Fairly complex issues had to be solved to get to 
 
 **Interact with macOS apps via Accessibility**: The `interact_` tools use the macOS Accessibility API (AXUIElement) to click buttons, read values, navigate menus, type text, and dump the full UI element tree. This is *semantic* automation — you're clicking "Save" by name, not by pixel coordinate. Eight tools: `interact_ui_tree`, `interact_click`, `interact_set_value`, `interact_get_value`, `interact_menu`, `interact_focus`, `interact_key`, `interact_find`.
 
-**Capture SwiftUI previews as screenshots**: `preview_capture` extracts `#Preview` blocks from your Swift source, generates a temporary host app, builds it, installs it on the iOS Simulator, launches it, takes a screenshot, and cleans up. Programmatic preview screenshots without opening Xcode.
+**Capture SwiftUI previews as screenshots**: `preview_capture` extracts `#Preview` blocks from your Swift source, generates a temporary host app, builds it, launches it (iOS Simulator or macOS), takes a screenshot, and cleans up. Handles complex project configurations: mergeable library architectures, SPM transitive dependencies, cross-project framework embedding, and nested struct previews that crash the compiler when naively inlined. Programmatic preview screenshots without opening Xcode.
 
 **Paint view borders on a running app**: `debug_view_borders` injects colored `CALayer` borders onto every view in a running macOS app via LLDB. Pair with `screenshot_mac_window` to see the result. No code changes, no restarts.
 
@@ -208,7 +208,7 @@ Semantic UI automation for macOS apps via the Accessibility API. These work on *
 
 | Tool | Description |
 |------|-------------|
-| `preview_capture` | Extract a `#Preview` block from a Swift file, build a temporary host app, install and launch on iOS Simulator, capture a screenshot, and clean up. Supports multi-preview files via `preview_index`, configurable `render_delay`, and optional `save_path` |
+| `preview_capture` | Extract a `#Preview` block from a Swift file, build a temporary host app, launch on iOS Simulator or macOS, capture a screenshot, and clean up. Works with mergeable library projects, cross-project dependencies (GRDB, etc.), and previews containing nested types. Supports multi-preview files via `preview_index`, configurable `render_delay`, and optional `save_path` |
 
 ### Debug (18 tools)
 

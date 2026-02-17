@@ -1,11 +1,15 @@
 ---
 # px3-c2c
 title: Fix preview_capture build config to avoid compiler crash and launch failure
-status: in-progress
+status: completed
 type: bug
 priority: high
 created_at: 2026-02-17T02:40:18Z
-updated_at: 2026-02-17T04:59:03Z
+updated_at: 2026-02-17T05:13:21Z
+sync:
+    github:
+        issue_number: "62"
+        synced_at: "2026-02-17T04:59:55Z"
 ---
 
 The preview_capture tool builds a temporary preview host app from a target project's source. Finding a build configuration that both compiles and launches successfully has been difficult.
@@ -270,5 +274,56 @@ The `ENABLE_DEBUG_DYLIB=NO` and `MERGED_BINARY_TYPE=none` settings are correct f
 ### Next steps
 
 - [x] Fix ASTMangler crash — moved preview body to top-level function, avoiding nested types inside struct→closure chain
-- [ ] Fix SPM transitive dependency linking for static .o packages
+- [x] Fix SPM transitive dependency linking via import-based framework filtering
 - [ ] Consider testing with a simpler project that doesn't have deep dependency chains
+
+
+## Session 6: Full Fix (2026-02-16)
+
+### Root Causes Identified and Fixed
+
+**1. ASTMangler infinite recursion** (swift-frontend crash)
+- **Cause**: Preview bodies with nested struct definitions (e.g. `struct TriangleShape: Shape { ... }` inside `#Preview { }`) get inlined into `WindowGroup { }`, creating deep type-inside-closure-inside-type nesting that the compiler's ASTMangler can't handle.
+- **Fix**: Generate preview body in a top-level `func _previewContent() -> some View` instead of inlining in the WindowGroup closure.
+
+**2. Merge-only framework targets** (linker errors)
+- **Cause**: Zotero and DocX have SPM dependencies (HTTPTypes, ZIPFoundation) but no Frameworks build phase linking them. They're designed for merge-only linking into the app — they can't produce standalone dylibs. Adding `MERGEABLE_LIBRARY=NO` and deleting empty stubs doesn't help because the framework targets fundamentally lack the link structure for standalone use.
+- **Fix**: Parse `import` statements from source files and only link framework dependencies whose modules are actually imported. This avoids pulling in merge-only frameworks that the preview doesn't need.
+
+**3. macOS framework embedding path** (runtime crash)
+- **Cause**: `embedMissingFrameworks` used `app/Frameworks/` but macOS apps use `app/Contents/Frameworks/`.
+- **Fix**: Detect macOS layout by checking for `Contents/` directory.
+
+**4. Cross-project code signature mismatch** (Team ID error)
+- **Cause**: GRDB.framework (from a sub-xcodeproj) has a different signing identity than the preview host app. When embedded, `dyld` rejects it at launch.
+- **Fix**: Ad-hoc re-sign the entire .app bundle (`codesign --force --sign - --deep`) after embedding missing frameworks.
+
+### Working Configuration (verified end-to-end)
+
+Build settings:
+- `Debug` configuration
+- `ENABLE_DEBUG_DYLIB=NO`
+- `MERGED_BINARY_TYPE=none`
+- `MERGEABLE_LIBRARY=NO`
+- `SKIP_MERGEABLE_LIBRARY_BUNDLE_HOOK=YES`
+- `SWIFT_COMPILATION_MODE=wholemodule`
+- `SWIFT_OPTIMIZATION_LEVEL=-Onone`
+
+Source handling:
+- Preview body in top-level function (avoids ASTMangler crash)
+- #Preview blocks stripped from app target source files
+- Import-based framework dep filtering (avoids merge-only targets)
+- macOS-aware framework embedding + ad-hoc re-signing
+
+### Key Insight: Framework Dependency Architecture
+
+| Framework | SPM Deps | Frameworks Build Phase | Standalone Dylib? |
+|-----------|----------|----------------------|-------------------|
+| Core | HTTPTypes, ZIPFoundation | YES (links SPM deps) | YES (8MB) |
+| DOM | none direct | YES | YES (2MB) |
+| Zotero | HTTPTypes (transitive) | NO | NO (merge-only) |
+| DocX | ZIPFoundation (transitive) | NO | NO (merge-only) |
+| BibTeX, CSL, etc. | none | NO | YES (self-contained) |
+
+Frameworks without external deps are self-contained and produce real dylibs.
+Frameworks WITH external deps but WITHOUT a Frameworks build phase are merge-only — they can't exist as standalone dylibs.

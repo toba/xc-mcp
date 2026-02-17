@@ -190,6 +190,14 @@ public struct PreviewCaptureTool: Sendable {
                 additionalSourcePaths = [strippedPath]
             }
 
+            // Collect imported modules from all source files. This determines
+            // which framework dependencies the preview host needs to link.
+            // Only linking what's actually imported avoids pulling in frameworks
+            // that can't produce standalone dylibs (e.g. merge-only targets
+            // with unlinked SPM dependencies).
+            var importedModules = extractImports(from: hostSource)
+            importedModules.formUnion(extractImports(from: source))
+
             // Step 5: Inject temporary target
             let targetName = "_PreviewHost_\(uuid)"
             injectedTargetName = targetName
@@ -204,7 +212,8 @@ public struct PreviewCaptureTool: Sendable {
                 additionalSourcePaths: additionalSourcePaths,
                 sourceTarget: sourceTarget,
                 isAppTarget: isAppTarget,
-                deploymentTarget: deploymentTarget
+                deploymentTarget: deploymentTarget,
+                importedModules: importedModules
             )
 
             // Step 6: Determine platform and build
@@ -238,12 +247,24 @@ public struct PreviewCaptureTool: Sendable {
                     "ENABLE_PREVIEWS=NO",
                     "ENABLE_DEBUG_DYLIB=NO",
                     "MERGED_BINARY_TYPE=none",
+                    "MERGEABLE_LIBRARY=NO",
                     "SKIP_MERGEABLE_LIBRARY_BUNDLE_HOOK=YES",
                     "SWIFT_COMPILATION_MODE=wholemodule",
                     "SWIFT_OPTIMIZATION_LEVEL=-Onone",
                     "build",
                 ]
             }
+
+            // Delete empty framework stubs from the build products directory.
+            // Other schemes (e.g., the main app with MERGED_BINARY_TYPE=automatic)
+            // may have merged framework binaries into the app, leaving empty stubs
+            // in DerivedData. xcodebuild considers these up-to-date and won't
+            // re-link them even with MERGED_BINARY_TYPE=none as an override.
+            // Removing the empty bundles forces the build system to regenerate
+            // them as standalone dylibs.
+            await cleanEmptyFrameworkStubs(
+                projectPath: resolvedPath, targetName: targetName,
+                destination: destination, configuration: previewConfig)
 
             var buildResult = try await runBuildTolerant(
                 arguments: buildArgs(destination), timeout: 300)
@@ -274,6 +295,18 @@ public struct PreviewCaptureTool: Sendable {
             // in the app bundle. Cross-project references (like GRDB from a
             // sub-xcodeproj) get built but aren't automatically embedded.
             embedMissingFrameworks(appPath: appPath)
+
+            // Re-sign the app bundle after embedding additional frameworks.
+            // Embedded frameworks may have different team IDs (e.g. GRDB from
+            // a sub-xcodeproj). Ad-hoc re-signing the whole bundle ensures
+            // consistent code signature validation at launch.
+            let codesign = Process()
+            codesign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+            codesign.arguments = [
+                "--force", "--sign", "-", "--deep", appPath,
+            ]
+            try? codesign.run()
+            codesign.waitUntilExit()
 
             // Step 8-10: Platform-specific install, launch, screenshot, terminate
             let screenshotData: Data
@@ -544,6 +577,34 @@ public struct PreviewCaptureTool: Sendable {
         }
     }
 
+    /// Extracts `import` statements from Swift source code.
+    /// Returns module names (e.g., "SwiftUI", "Core").
+    private func extractImports(from source: String) -> Set<String> {
+        var modules: Set<String> = []
+        for line in source.split(separator: "\n") {
+            let trimmed = line.drop(while: { $0 == " " || $0 == "\t" })
+            if trimmed.hasPrefix("import ") {
+                let rest = trimmed.dropFirst("import ".count)
+                    .trimmingCharacters(in: .whitespaces)
+                // Handle `import Module` and `@testable import Module`
+                let moduleName = rest.split(separator: ".").first
+                    .map(String.init) ?? String(rest)
+                if !moduleName.isEmpty && !moduleName.hasPrefix("@") {
+                    modules.insert(moduleName)
+                }
+            } else if trimmed.hasPrefix("@testable import ") {
+                let rest = trimmed.dropFirst("@testable import ".count)
+                    .trimmingCharacters(in: .whitespaces)
+                let moduleName = rest.split(separator: ".").first
+                    .map(String.init) ?? String(rest)
+                if !moduleName.isEmpty {
+                    modules.insert(moduleName)
+                }
+            }
+        }
+        return modules
+    }
+
     /// Extracts the iOS deployment target from a target's build configurations.
     private func extractDeploymentTarget(from target: PBXNativeTarget?) -> String? {
         guard let configList = target?.buildConfigurationList else { return nil }
@@ -616,7 +677,8 @@ public struct PreviewCaptureTool: Sendable {
         additionalSourcePaths: [String],
         sourceTarget: PBXNativeTarget?,
         isAppTarget: Bool,
-        deploymentTarget: String?
+        deploymentTarget: String?,
+        importedModules: Set<String> = []
     ) throws {
         let projectURL = URL(fileURLWithPath: projectPath)
 
@@ -750,6 +812,23 @@ public struct PreviewCaptureTool: Sendable {
             collectTransitiveDependencies(
                 of: sourceTarget, in: xcodeproj, collected: &frameworkDeps)
 
+            // Filter framework deps to only those whose module is imported.
+            // Frameworks that aren't imported are unnecessary and may fail to
+            // link if they're merge-only targets (no Frameworks build phase
+            // linking their own SPM dependencies).
+            if !importedModules.isEmpty {
+                let before = frameworkDeps.count
+                frameworkDeps = frameworkDeps.filter { fw in
+                    importedModules.contains(fw.name)
+                }
+                if frameworkDeps.count < before {
+                    FileHandle.standardError.write(
+                        Data(
+                            "[preview_capture] Filtered \(before) framework deps to \(frameworkDeps.count) based on imports: \(importedModules.sorted())\n"
+                                .utf8))
+                }
+            }
+
             FileHandle.standardError.write(
                 Data(
                     "[preview_capture] sourceTarget: \(sourceTarget.name) (isApp=\(isAppTarget)), frameworkDeps: \(frameworkDeps.map { $0.name })\n"
@@ -879,7 +958,12 @@ public struct PreviewCaptureTool: Sendable {
     private func embedMissingFrameworks(appPath: String) {
         let fm = FileManager.default
         let appURL = URL(fileURLWithPath: appPath)
-        let frameworksDir = appURL.appendingPathComponent("Frameworks")
+        // macOS apps use Contents/Frameworks/, iOS apps use Frameworks/
+        let contentsDir = appURL.appendingPathComponent("Contents")
+        let frameworksDir =
+            fm.fileExists(atPath: contentsDir.path)
+            ? contentsDir.appendingPathComponent("Frameworks")
+            : appURL.appendingPathComponent("Frameworks")
         let buildProductsDir = appURL.deletingLastPathComponent()
 
         // Ensure Frameworks/ exists
@@ -896,6 +980,97 @@ public struct PreviewCaptureTool: Sendable {
             let src = buildProductsDir.appendingPathComponent(item)
             let dst = frameworksDir.appendingPathComponent(item)
             try? fm.copyItem(at: src, to: dst)
+
+            // Re-sign the copied framework with ad-hoc identity so it's
+            // accepted by the app's code signature validation.
+            let codesign = Process()
+            codesign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+            codesign.arguments = ["--force", "--sign", "-", "--deep", dst.path]
+            try? codesign.run()
+            codesign.waitUntilExit()
+        }
+    }
+
+    /// Deletes .framework bundles from the build products directory that have
+    /// no Mach-O binary. These are leftovers from builds that used mergeable
+    /// library merging (MERGED_BINARY_TYPE=automatic), which strips the dylib
+    /// from framework bundles after merging their code into the app binary.
+    /// Removing these forces xcodebuild to re-link them as standalone dylibs
+    /// when building with MERGED_BINARY_TYPE=none.
+    private func cleanEmptyFrameworkStubs(
+        projectPath: String, targetName: String,
+        destination: String, configuration: String
+    ) async {
+        // Get the build products dir via -showBuildSettings
+        let args = [
+            "-project", projectPath,
+            "-scheme", targetName,
+            "-destination", destination,
+            "-configuration", configuration,
+            "-showBuildSettings",
+        ]
+        guard let settingsResult = try? await xcodebuildRunner.run(arguments: args),
+            settingsResult.succeeded
+        else { return }
+
+        var builtProductsDir: String?
+        for line in settingsResult.stdout.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("BUILT_PRODUCTS_DIR = ") {
+                builtProductsDir = String(trimmed.dropFirst("BUILT_PRODUCTS_DIR = ".count))
+                break
+            }
+        }
+
+        guard let productsDir = builtProductsDir else { return }
+        let fm = FileManager.default
+        guard let items = try? fm.contentsOfDirectory(atPath: productsDir) else { return }
+
+        for item in items where item.hasSuffix(".framework") {
+            let fwPath = "\(productsDir)/\(item)"
+            let name = String(item.dropLast(".framework".count))
+
+            // Check for versioned layout (macOS) and flat layout (iOS)
+            let versionedBinary = "\(fwPath)/Versions/A/\(name)"
+            let flatBinary = "\(fwPath)/\(name)"
+
+            let hasVersionedBinary = fm.fileExists(atPath: versionedBinary)
+            let hasFlatBinary: Bool
+            if hasVersionedBinary {
+                hasFlatBinary = false  // versioned layout, don't check flat
+            } else {
+                // For flat layout, check it's a real file not a symlink to Versions/
+                var isDir: ObjCBool = false
+                let exists = fm.fileExists(atPath: flatBinary, isDirectory: &isDir)
+                hasFlatBinary = exists && !isDir.boolValue
+                    && (try? fm.destinationOfSymbolicLink(atPath: flatBinary)) == nil
+            }
+
+            if !hasVersionedBinary && !hasFlatBinary {
+                FileHandle.standardError.write(
+                    Data(
+                        "[preview_capture] Removing empty framework stub: \(item)\n".utf8))
+                try? fm.removeItem(atPath: fwPath)
+
+                // Also remove cached intermediates so the build system re-links
+                // the framework target from scratch.
+                let intermediatesDir = URL(fileURLWithPath: productsDir)
+                    .deletingLastPathComponent()  // Products/
+                    .deletingLastPathComponent()  // Build/
+                    .appendingPathComponent("Intermediates.noindex")
+                let projectName = URL(fileURLWithPath: projectPath)
+                    .deletingPathExtension().lastPathComponent
+                let buildDir = intermediatesDir
+                    .appendingPathComponent("\(projectName).build")
+                    .appendingPathComponent(configuration)
+                    .appendingPathComponent("\(name).build")
+                if fm.fileExists(atPath: buildDir.path) {
+                    FileHandle.standardError.write(
+                        Data(
+                            "[preview_capture] Removing intermediates: \(name).build\n".utf8))
+                    try? fm.removeItem(at: buildDir)
+                }
+            }
         }
     }
 
