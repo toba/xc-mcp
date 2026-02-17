@@ -9,7 +9,7 @@ updated_at: 2026-02-17T05:13:21Z
 sync:
     github:
         issue_number: "62"
-        synced_at: "2026-02-17T04:59:55Z"
+        synced_at: "2026-02-17T05:16:35Z"
 ---
 
 The preview_capture tool builds a temporary preview host app from a target project's source. Finding a build configuration that both compiles and launches successfully has been difficult.
