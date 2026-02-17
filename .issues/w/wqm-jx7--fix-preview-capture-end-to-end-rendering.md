@@ -1,11 +1,15 @@
 ---
 # wqm-jx7
 title: Fix preview_capture end-to-end rendering
-status: in-progress
+status: completed
 type: task
 priority: normal
 created_at: 2026-02-16T23:44:27Z
-updated_at: 2026-02-17T00:15:16Z
+updated_at: 2026-02-17T01:38:57Z
+sync:
+    github:
+        issue_number: "61"
+        synced_at: "2026-02-17T01:03:31Z"
 ---
 
 preview_capture tool is implemented (PreviewExtractor, PreviewCaptureTool, registration, 334 tests pass) but has never successfully rendered a preview screenshot end-to-end. Three problems discovered during testing against thesis project:
@@ -16,11 +20,11 @@ preview_capture tool is implemented (PreviewExtractor, PreviewCaptureTool, regis
 
 ## Steps
 
-- [ ] Create a simple public-only test preview file in thesis DOM target
-- [ ] Fix iOS Simulator destination matching (SDKROOT, deployment target)
-- [ ] Revert framework targets to `import Module` approach (not direct source compilation)
-- [ ] End-to-end test: build on iOS Sim → simctl install → launch → screenshot → cleanup
-- [ ] Clean up test file, verify project.pbxproj is clean, document known limitations
+- [x] Create a simple public-only test preview file in thesis DOM target
+- [x] Fix iOS Simulator destination matching (SDKROOT, deployment target)
+- [x] Revert framework targets to `import Module` approach (not direct source compilation)
+- [x] End-to-end test: build on iOS Sim → simctl install → launch → screenshot → cleanup
+- [x] Clean up test file, verify project.pbxproj is clean, document known limitations
 
 ## Known Limitations (to document)
 
@@ -95,3 +99,20 @@ preview_capture tool is implemented (PreviewExtractor, PreviewCaptureTool, regis
 
 ### swift build: PASSES (334 tests pass)
 ### swift test: PASSES (334 tests pass)
+
+## Summary of Changes (Session 2)
+
+### Fixes Applied to PreviewCaptureTool.swift
+
+1. **Scheme generation fixed** — Updated from minimal v2.0 scheme to full v2.1 with LaunchAction and BuildableProductRunnable, fixing 'Supported platforms for buildables is empty' error
+2. **SDKROOT=auto in injected target** — Set SDKROOT=auto in project-level build settings so xcodebuild can resolve the correct SDK for each platform
+3. **SUPPORTED_PLATFORMS always multi-platform** — Always set to 'iphoneos iphonesimulator macosx' regardless of source target, since xcodebuild resolves destinations from project file before applying overrides
+4. **Removed command-line SDK overrides** — Removed SDKROOT/SUPPORTED_PLATFORMS command-line overrides that were fighting with project-level settings; -destination flag is sufficient
+5. **SPM package dependencies** — Collect packageProductDependencies from source target + transitive deps and add to preview host target
+6. **Cross-project framework embedding** — Added embedMissingFrameworks() post-build step that copies .framework bundles from build products dir into app's Frameworks/ folder, fixing dyld crashes from sub-xcodeproj references (e.g., GRDB)
+7. **runBuildTolerant returns result on failure** — Instead of throwing XcodebuildError, returns failed result so fallback logic executes
+8. **Double launch for foreground** — Launch app twice with 1s delay to ensure it comes to foreground on iOS Simulator
+9. **Removed dead code** — detectMacOSOnly(), duplicate comments
+
+### Test Result
+End-to-end preview capture working: extract preview → inject target → build for iOS Sim → install → launch → screenshot → cleanup. TestPreview.swift renders correctly on iPhone 17 Pro (iOS 26.2).

@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-17T00:32:17Z
 updated_at: 2026-02-17T00:39:51Z
+sync:
+    github:
+        issue_number: "60"
+        synced_at: "2026-02-17T01:03:31Z"
 ---
 
 Implement 8 new interact_ tools using macOS Accessibility API (AXUIElement) to drive macOS app UIs.

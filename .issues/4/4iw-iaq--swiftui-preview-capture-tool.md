@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-16T22:29:52Z
 updated_at: 2026-02-16T22:49:25Z
+sync:
+    github:
+        issue_number: "59"
+        synced_at: "2026-02-17T01:03:31Z"
 ---
 
 Add a `preview_capture` tool that renders a SwiftUI `#Preview` block and returns a screenshot.

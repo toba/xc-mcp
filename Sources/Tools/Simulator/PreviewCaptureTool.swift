@@ -194,7 +194,6 @@ public struct PreviewCaptureTool: Sendable {
             )
 
             // Step 6: Determine platform and build
-            // Create a temporary scheme file so SPM dependencies resolve properly
             schemePath = try createTemporaryScheme(
                 projectPath: resolvedPath, targetName: targetName)
 
@@ -213,8 +212,8 @@ public struct PreviewCaptureTool: Sendable {
             // frameworks, causing crashes on launch. Release avoids this entirely.
             let previewConfig = "Release"
 
-            let buildArgs = { (dest: String, sdk: String?) -> [String] in
-                var args = [
+            let buildArgs = { (dest: String) -> [String] in
+                [
                     "-project", resolvedPath,
                     "-scheme", targetName,
                     "-destination", dest,
@@ -223,59 +222,23 @@ public struct PreviewCaptureTool: Sendable {
                     "-skipMacroValidation",
                     "ENABLE_PREVIEWS=NO",
                     "GCC_OPTIMIZATION_LEVEL=0",
+                    "build",
                 ]
-                if let sdk {
-                    args += ["-sdk", sdk]
-                }
-                // Pass SUPPORTED_PLATFORMS as a command-line override which takes
-                // highest precedence over project/target/xcconfig settings.
-                if dest.contains("iOS Simulator") {
-                    args += [
-                        "SDKROOT=iphoneos",
-                        "SUPPORTED_PLATFORMS=iphoneos iphonesimulator",
-                    ]
-                } else if dest.contains("macOS") {
-                    args += [
-                        "SDKROOT=macosx",
-                        "SUPPORTED_PLATFORMS=macosx",
-                    ]
-                }
-                args.append("build")
-                return args
             }
 
             var buildResult = try await runBuildTolerant(
-                arguments: buildArgs(destination, nil), timeout: 300)
+                arguments: buildArgs(destination), timeout: 300)
 
-            // If iOS Simulator build failed, retry strategies before falling back to macOS.
+            // If iOS Simulator build failed, fall back to macOS
             if !buildResult.succeeded && !isMacOS {
-                let output = buildResult.output
-
-                // Log the iOS Sim failure for debugging
                 FileHandle.standardError.write(
                     Data(
-                        "[preview_capture] iOS Sim build failed, trying fallbacks. Error: \(output.suffix(2000))\n"
+                        "[preview_capture] iOS Sim build failed, falling back to macOS. Error: \(buildResult.output.suffix(500))\n"
                             .utf8))
-
-                if output.contains("Unable to find a destination")
-                    || output.contains("no matching destination")
-                    || output.contains("does not support destination")
-                {
-                    // Retry with explicit SDK
-                    buildResult = try await runBuildTolerant(
-                        arguments: buildArgs(destination, "iphonesimulator"), timeout: 300)
-                }
-
-                // If still failing on iOS Sim, fall back to macOS
-                if !buildResult.succeeded {
-                    FileHandle.standardError.write(
-                        Data(
-                            "[preview_capture] Falling back to macOS build\n".utf8))
-                    destination = "platform=macOS"
-                    isMacOS = true
-                    buildResult = try await runBuildTolerant(
-                        arguments: buildArgs(destination, nil), timeout: 300)
-                }
+                destination = "platform=macOS"
+                isMacOS = true
+                buildResult = try await runBuildTolerant(
+                    arguments: buildArgs(destination), timeout: 300)
             }
 
             if !buildResult.succeeded {
@@ -283,10 +246,15 @@ public struct PreviewCaptureTool: Sendable {
                 throw MCPError.internalError("Preview build failed:\n\(errorOutput)")
             }
 
-            // Step 7: Find built app
+            // Step 7: Find built app and embed missing frameworks
             let appPath = try await findBuiltAppPath(
                 projectPath: resolvedPath, targetName: targetName,
                 destination: destination, configuration: previewConfig)
+
+            // Ensure all frameworks from the build products dir are embedded
+            // in the app bundle. Cross-project references (like GRDB from a
+            // sub-xcodeproj) get built but aren't automatically embedded.
+            embedMissingFrameworks(appPath: appPath)
 
             // Step 8-10: Platform-specific install, launch, screenshot, terminate
             let screenshotData: Data
@@ -295,18 +263,23 @@ public struct PreviewCaptureTool: Sendable {
                 // macOS: launch directly, screenshot via ScreenCaptureKit
                 let launchProcess = Process()
                 launchProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                launchProcess.arguments = ["-a", appPath, "--stdout", "/dev/null", "--stderr", "/dev/null"]
+                launchProcess.arguments = [
+                    "-a", appPath, "--stdout", "/dev/null", "--stderr", "/dev/null",
+                ]
                 let launchPipe = Pipe()
                 launchProcess.standardError = launchPipe
                 try launchProcess.run()
                 launchProcess.waitUntilExit()
 
                 if launchProcess.terminationStatus != 0 {
-                    let launchErr = String(
-                        data: launchPipe.fileHandleForReading.readDataToEndOfFile(),
-                        encoding: .utf8) ?? ""
+                    let launchErr =
+                        String(
+                            data: launchPipe.fileHandleForReading.readDataToEndOfFile(),
+                            encoding: .utf8) ?? ""
                     FileHandle.standardError.write(
-                        Data("[preview_capture] open -a failed (\(launchProcess.terminationStatus)): \(launchErr)\n".utf8))
+                        Data(
+                            "[preview_capture] open -a failed (\(launchProcess.terminationStatus)): \(launchErr)\n"
+                                .utf8))
                 }
 
                 try await Task.sleep(for: .seconds(renderDelay))
@@ -319,11 +292,14 @@ public struct PreviewCaptureTool: Sendable {
                 pgrepProcess.standardOutput = pgrepPipe
                 try? pgrepProcess.run()
                 pgrepProcess.waitUntilExit()
-                let pgrepOut = String(
-                    data: pgrepPipe.fileHandleForReading.readDataToEndOfFile(),
-                    encoding: .utf8) ?? ""
+                let pgrepOut =
+                    String(
+                        data: pgrepPipe.fileHandleForReading.readDataToEndOfFile(),
+                        encoding: .utf8) ?? ""
                 FileHandle.standardError.write(
-                    Data("[preview_capture] pgrep for \(bundleId): \(pgrepOut.isEmpty ? "NOT RUNNING" : pgrepOut.trimmingCharacters(in: .whitespacesAndNewlines))\n".utf8))
+                    Data(
+                        "[preview_capture] pgrep for \(bundleId): \(pgrepOut.isEmpty ? "NOT RUNNING" : pgrepOut.trimmingCharacters(in: .whitespacesAndNewlines))\n"
+                            .utf8))
 
                 screenshotData = try await captureMacOSWindow(bundleId: bundleId)
 
@@ -352,6 +328,12 @@ public struct PreviewCaptureTool: Sendable {
                         "Failed to launch preview app: \(launchResult.stderr.isEmpty ? launchResult.stdout : launchResult.stderr)"
                     )
                 }
+
+                // Wait briefly for launch, then bring to foreground by opening
+                // via simctl (launch alone may leave app behind springboard)
+                try await Task.sleep(for: .seconds(1.0))
+                _ = try? await simctlRunner.launch(
+                    udid: sim, bundleId: bundleId)
 
                 try await Task.sleep(for: .seconds(renderDelay))
 
@@ -591,6 +573,7 @@ public struct PreviewCaptureTool: Sendable {
             "GENERATE_INFOPLIST_FILE": .string("YES"),
             "INFOPLIST_KEY_UIApplicationSceneManifest_Generation": .string("YES"),
             "INFOPLIST_KEY_UILaunchScreen_Generation": .string("YES"),
+            "SDKROOT": .string("auto"),
             "SWIFT_VERSION": .string("5.0"),
             "TARGETED_DEVICE_FAMILY": .string("1,2"),
             "LD_RUNPATH_SEARCH_PATHS": .array([
@@ -718,8 +701,9 @@ public struct PreviewCaptureTool: Sendable {
 
                 for fwTarget in frameworkDeps {
                     guard let product = fwTarget.product else { continue }
-                    guard fwTarget.productType == .framework
-                        || fwTarget.productType == .staticFramework
+                    guard
+                        fwTarget.productType == .framework
+                            || fwTarget.productType == .staticFramework
                     else { continue }
 
                     // Add dependency
@@ -740,6 +724,39 @@ public struct PreviewCaptureTool: Sendable {
                     xcodeproj.pbxproj.add(object: embedFile)
                     embedPhase.files?.append(embedFile)
                 }
+            }
+
+            // Collect and add SPM package product dependencies from the source
+            // target and its transitive framework dependencies. Without this,
+            // the preview host app crashes on launch because SPM-provided
+            // frameworks (e.g., GRDB) aren't embedded.
+            var collectedPackageDeps: [XCSwiftPackageProductDependency] = []
+            let allTargets = [sourceTarget].compactMap { $0 } + frameworkDeps
+            for srcTarget in allTargets {
+                for dep in srcTarget.packageProductDependencies ?? [] {
+                    if !collectedPackageDeps.contains(where: { $0.productName == dep.productName })
+                    {
+                        collectedPackageDeps.append(dep)
+                    }
+                }
+            }
+
+            if !collectedPackageDeps.isEmpty {
+                var newPkgDeps: [XCSwiftPackageProductDependency] = []
+                for pkgDep in collectedPackageDeps {
+                    let newPkgDep = XCSwiftPackageProductDependency(
+                        productName: pkgDep.productName,
+                        package: pkgDep.package
+                    )
+                    xcodeproj.pbxproj.add(object: newPkgDep)
+                    newPkgDeps.append(newPkgDep)
+
+                    // Add as a build file to the frameworks build phase
+                    let pkgBuildFile = PBXBuildFile(product: newPkgDep)
+                    xcodeproj.pbxproj.add(object: pkgBuildFile)
+                    frameworksBuildPhase.files?.append(pkgBuildFile)
+                }
+                target.packageProductDependencies = newPkgDeps
             }
 
             // Look for resource bundle targets
@@ -777,6 +794,33 @@ public struct PreviewCaptureTool: Sendable {
 
     /// Runs xcodebuild tolerantly — if the process appears stuck but the build
     /// already succeeded (e.g., due to a slow post-build script), returns success.
+    /// Copies any .framework bundles from the build products directory into
+    /// the app's Frameworks/ folder if they aren't already there. This handles
+    /// cross-project framework references (e.g., GRDB from a sub-xcodeproj)
+    /// that get built as dependencies but aren't automatically embedded.
+    private func embedMissingFrameworks(appPath: String) {
+        let fm = FileManager.default
+        let appURL = URL(fileURLWithPath: appPath)
+        let frameworksDir = appURL.appendingPathComponent("Frameworks")
+        let buildProductsDir = appURL.deletingLastPathComponent()
+
+        // Ensure Frameworks/ exists
+        try? fm.createDirectory(at: frameworksDir, withIntermediateDirectories: true)
+
+        // Get already-embedded framework names
+        let existing = (try? fm.contentsOfDirectory(atPath: frameworksDir.path)) ?? []
+        let existingNames = Set(existing)
+
+        // Find .framework bundles in the build products directory
+        guard let items = try? fm.contentsOfDirectory(atPath: buildProductsDir.path) else { return }
+        for item in items where item.hasSuffix(".framework") {
+            guard !existingNames.contains(item) else { continue }
+            let src = buildProductsDir.appendingPathComponent(item)
+            let dst = frameworksDir.appendingPathComponent(item)
+            try? fm.copyItem(at: src, to: dst)
+        }
+    }
+
     private func runBuildTolerant(
         arguments: [String], timeout: TimeInterval
     ) async throws -> XcodebuildResult {
@@ -784,43 +828,15 @@ public struct PreviewCaptureTool: Sendable {
             return try await xcodebuildRunner.run(
                 arguments: arguments, timeout: timeout, onProgress: nil)
         } catch let error as XcodebuildError {
-            // If stuck but build actually succeeded, return the partial output as success
             let output = error.partialOutput
             if output.contains("Build succeeded") || output.contains("** BUILD SUCCEEDED **") {
+                // Build succeeded but process hung (e.g., post-build indexing)
                 return XcodebuildResult(exitCode: 0, stdout: output, stderr: "")
             }
-            throw error
+            // Return as failed result instead of throwing, so callers can
+            // inspect the output and try fallback strategies.
+            return XcodebuildResult(exitCode: 1, stdout: output, stderr: "")
         }
-    }
-
-    /// Detects whether the target only supports macOS (no iOS Simulator).
-    private func detectMacOSOnly(target: PBXNativeTarget?) -> Bool {
-        guard let configList = target?.buildConfigurationList else { return false }
-        for config in configList.buildConfigurations {
-            if let value = config.buildSettings["SUPPORTED_PLATFORMS"] {
-                switch value {
-                case let .string(s):
-                    // If SUPPORTED_PLATFORMS doesn't include iphonesimulator, it's macOS-only
-                    if !s.contains("iphonesimulator") && s.contains("macosx") {
-                        return true
-                    }
-                    return false
-                default: continue
-                }
-            }
-            // Check SDKROOT as fallback
-            if let value = config.buildSettings["SDKROOT"] {
-                switch value {
-                case let .string(s):
-                    if s == "macosx" || s.isEmpty {
-                        return true
-                    }
-                    return false
-                default: continue
-                }
-            }
-        }
-        return false
     }
 
     /// Ensures the process has a WindowServer connection for ScreenCaptureKit.
@@ -913,22 +929,50 @@ public struct PreviewCaptureTool: Sendable {
         let blueprintId = targetRef?.uuid ?? ""
         let projectName = projectURL.deletingPathExtension().lastPathComponent
 
+        let buildRef = """
+                        <BuildableReference
+                           BuildableIdentifier = "primary"
+                           BlueprintIdentifier = "\(blueprintId)"
+                           BuildableName = "\(targetName).app"
+                           BlueprintName = "\(targetName)"
+                           ReferencedContainer = "container:\(projectName).xcodeproj">
+                        </BuildableReference>
+            """
+
         let schemeXML = """
             <?xml version="1.0" encoding="UTF-8"?>
-            <Scheme LastUpgradeVersion="1600" version="2.0">
-               <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES">
+            <Scheme
+               LastUpgradeVersion = "2600"
+               version = "2.1">
+               <BuildAction
+                  parallelizeBuildables = "YES"
+                  buildImplicitDependencies = "YES">
                   <BuildActionEntries>
-                     <BuildActionEntry buildForRunning="YES" buildForTesting="NO" buildForProfiling="NO" buildForArchiving="NO" buildForAnalyzing="NO">
-                        <BuildableReference
-                           BuildableIdentifier="primary"
-                           BlueprintIdentifier="\(blueprintId)"
-                           BuildableName="\(targetName).app"
-                           BlueprintName="\(targetName)"
-                           ReferencedContainer="container:\(projectName).xcodeproj">
-                        </BuildableReference>
+                     <BuildActionEntry
+                        buildForTesting = "NO"
+                        buildForRunning = "YES"
+                        buildForProfiling = "NO"
+                        buildForArchiving = "NO"
+                        buildForAnalyzing = "NO">
+            \(buildRef)
                      </BuildActionEntry>
                   </BuildActionEntries>
                </BuildAction>
+               <LaunchAction
+                  buildConfiguration = "Release"
+                  selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+                  selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+                  launchStyle = "0"
+                  useCustomWorkingDirectory = "NO"
+                  ignoresPersistentStateOnLaunch = "NO"
+                  debugDocumentVersioning = "YES"
+                  debugServiceExtension = "internal"
+                  allowLocationSimulation = "YES">
+                  <BuildableProductRunnable
+                     runnableDebuggingMode = "0">
+            \(buildRef)
+                  </BuildableProductRunnable>
+               </LaunchAction>
             </Scheme>
             """
 
@@ -941,25 +985,13 @@ public struct PreviewCaptureTool: Sendable {
         projectPath: String, targetName: String,
         destination: String, configuration: String
     ) async throws -> String {
-        var args = [
+        let args = [
             "-project", projectPath,
             "-scheme", targetName,
             "-destination", destination,
             "-configuration", configuration,
+            "-showBuildSettings",
         ]
-        // Pass same SDK overrides as build to get correct BUILT_PRODUCTS_DIR
-        if destination.contains("iOS Simulator") {
-            args += [
-                "SDKROOT=iphoneos",
-                "SUPPORTED_PLATFORMS=iphoneos iphonesimulator",
-            ]
-        } else if destination.contains("macOS") {
-            args += [
-                "SDKROOT=macosx",
-                "SUPPORTED_PLATFORMS=macosx",
-            ]
-        }
-        args.append("-showBuildSettings")
         let settingsResult = try await xcodebuildRunner.run(arguments: args)
 
         guard settingsResult.succeeded else {
