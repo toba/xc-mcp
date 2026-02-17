@@ -48,6 +48,7 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
   - [Swift Package Manager](#swift-package-manager-6-tools)
   - [Localization](#localization-24-tools)
   - [Session & Utilities](#session--utilities-7-tools)
+- [Tests](#tests)
 - [Path Security](#path-security)
 - [License](#license)
 
@@ -421,6 +422,47 @@ Test tools parse both **XCTest** and **Swift Testing** output formats, extractin
 - Swift Testing quoted and unquoted function names (e.g., `"testExample()"` or `testExample()`)
 - Swift Testing symbol-prefixed output (e.g., `✘`, `✓`, or SF Symbol codepoints)
 - Failure summaries with suite and issue counts
+
+## Tests
+
+357 tests — 336 unit tests that run in seconds, and 21 integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
+
+### Unit Tests
+
+```bash
+swift test
+```
+
+Every tool has unit tests covering argument validation, success paths, and error cases. These don't require Xcode projects on disk — they use bundled `.xcodeproj` fixtures and mock runners that return canned output. Fast, deterministic, no simulator needed.
+
+### Integration Tests
+
+Integration tests exercise tools end-to-end against three open-source repos: [Alamofire](https://github.com/Alamofire/Alamofire), [SwiftFormat](https://github.com/nicklockwood/SwiftFormat), and [IceCubesApp](https://github.com/Dimillian/IceCubesApp). Each repo is pinned to a specific commit so tests don't break when upstream changes.
+
+```bash
+# Fetch fixture repos (idempotent, ~1 minute)
+./scripts/fetch-fixtures.sh
+
+# Run all integration tests
+swift test --filter Integration
+
+# Just the build/run/screenshot tests
+swift test --filter BuildRunScreenshot
+```
+
+Without the fixture repos, integration tests auto-skip — `swift test` won't fail, it just won't run them. Simulator-dependent tests additionally gate on a resolvable iPhone simulator UDID.
+
+**What's tested:**
+
+| Project | Build | Run | Screenshot | Preview Capture |
+|---------|-------|-----|------------|-----------------|
+| Alamofire | `build_sim` (iOS), `build_macos` | — | — | — |
+| SwiftFormat | — | `build_run_macos` | `screenshot_mac_window` | — |
+| IceCubesApp | — | `build_run_sim` | `screenshot` (sim) | `preview_capture` |
+
+Plus read-only introspection tests (`list_targets`, `list_files`, `list_groups`, `list_build_configurations`, `get_build_settings`, `list_swift_packages`, `discover_projects`) across all three repos.
+
+Build tests carry a 10-minute timeout because — well — *Xcode*. The preview capture test for IceCubesApp may fail due to code signing or xcconfig issues inherent to building someone else's project on your machine. This is a known limitation, not a bug in the tool.
 
 ## Path Security
 
