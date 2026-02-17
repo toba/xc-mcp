@@ -4,9 +4,9 @@ An MCP server for Xcode development on macOS. Build, test, run, and debug iOS an
 
 ## Notable Powers
 
-**Token Efficiency** — run a single server with all tools are use some combination of smaller servers with the subset of tools relevant to your work.
+**Token Efficiency** — run a single server with all tools or use some combination of smaller MCPs with just the subset of tools relevant to your work.
 
-**Screenshot any macOS app window** — `screenshot_mac_window` uses ScreenCaptureKit to capture a any window without needing a simulator, including your debug build.
+**Screenshot any macOS app window** — `screenshot_mac_window` uses ScreenCaptureKit to capture a any window, including your debug build, without needing a simulator.
 
 **Interact with macOS apps via Accessibility** — The `interact_` tools use the macOS Accessibility API (AXUIElement) to click buttons, read values, navigate menus, type text, and dump the full UI element tree. This is *semantic* automation — you're clicking "Save" by name, not by pixel coordinate. Eight tools: `interact_ui_tree`, `interact_click`, `interact_set_value`, `interact_get_value`, `interact_menu`, `interact_focus`, `interact_key`, `interact_find`.
 
