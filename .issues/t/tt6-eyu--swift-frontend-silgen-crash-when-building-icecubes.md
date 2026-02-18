@@ -1,15 +1,15 @@
 ---
 # tt6-eyu
 title: swift-frontend SILGen crash when building IceCubesApp fixture
-status: ready
+status: completed
 type: bug
 priority: high
 created_at: 2026-02-18T01:30:00Z
-updated_at: 2026-02-18T01:30:00Z
+updated_at: 2026-02-18T03:58:41Z
 sync:
     github:
         issue_number: "64"
-        synced_at: "2026-02-18T01:30:12Z"
+        synced_at: "2026-02-18T03:58:54Z"
 ---
 
 swift test crashes swift-frontend every time when compiling the IceCubesApp fixture for integration tests. Crash is in SILGen Transform::transform when lowering KeyPath with typed throws function conversions. Swift 6.2.3 compiler bug.

@@ -1,15 +1,15 @@
 ---
 # kxu-pmf
 title: Add screenshot_mac_window tool
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-02-16T01:20:56Z
-updated_at: 2026-02-16T01:26:10Z
+updated_at: 2026-02-18T03:58:37Z
 sync:
     github:
         issue_number: "58"
-        synced_at: "2026-02-16T02:30:15Z"
+        synced_at: "2026-02-18T03:58:54Z"
 ---
 
 Add a ScreenCaptureKit-based tool to screenshot macOS app windows, returning inline base64 PNG via MCP.

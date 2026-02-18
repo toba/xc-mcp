@@ -26,7 +26,7 @@ xc-mcp/
 │   │   ├── XcodeMCPServer.swift     # Main server with tool registry
 │   │   └── SessionManager.swift     # Session state management
 │   ├── Tools/
-│   │   ├── Project/                 # 23 project manipulation tools
+│   │   ├── Project/                 # 25 project manipulation tools
 │   │   ├── Session/                 # 3 session management tools
 │   │   ├── Simulator/               # 17 simulator tools
 │   │   ├── Device/                  # 7 device tools
@@ -44,7 +44,7 @@ xc-mcp/
 │       ├── DeviceCtlRunner.swift
 │       ├── LLDBRunner.swift
 │       └── SwiftRunner.swift
-├── Tests/                           # Unit tests (315 tests)
+├── Tests/                           # Unit tests (327 tests)
 └── CLAUDE.md
 ```
 
@@ -103,6 +103,6 @@ Xcode build system knowledge for injected targets (via XcodeProj). Reference fil
 - Tools follow a consistent pattern with `tool()` and `execute()` methods
 - XcodeProj library handles .xcodeproj file manipulation
 - Runner utilities wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift)
-- **Testing**: swift-testing framework (310 tests)
+- **Testing**: swift-testing framework (327 tests)
 - **Swift 6**: Strict concurrency enabled
 - **Formatting**: `swift format -r -i .` then `swiftlint` before committing

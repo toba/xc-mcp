@@ -9,7 +9,7 @@ updated_at: 2026-02-18T03:53:40Z
 sync:
     github:
         issue_number: "67"
-        synced_at: "2026-02-18T01:30:12Z"
+        synced_at: "2026-02-18T03:57:19Z"
 ---
 
 The IceCubesApp preview capture integration test fails because swift-frontend crashes during compilation of the IceCubesApp fixture. Blocked by the SILGen crash bug.

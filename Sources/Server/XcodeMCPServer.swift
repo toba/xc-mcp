@@ -31,6 +31,8 @@ public enum ToolName: String, CaseIterable, Sendable {
     case removeSwiftPackage = "remove_swift_package"
     case listGroups = "list_groups"
     case addSynchronizedFolder = "add_synchronized_folder"
+    case addTargetToSynchronizedFolder = "add_target_to_synchronized_folder"
+    case addSynchronizedFolderException = "add_synchronized_folder_exception"
     case addAppExtension = "add_app_extension"
     case removeAppExtension = "remove_app_extension"
     case listCopyFilesPhases = "list_copy_files_phases"
@@ -248,6 +250,10 @@ public struct XcodeMCPServer: Sendable {
         let removeSwiftPackageTool = RemoveSwiftPackageTool(pathUtility: pathUtility)
         let listGroupsTool = ListGroupsTool(pathUtility: pathUtility)
         let addSynchronizedFolderTool = AddFolderTool(pathUtility: pathUtility)
+        let addTargetToSynchronizedFolderTool = AddTargetToSynchronizedFolderTool(
+            pathUtility: pathUtility)
+        let addSynchronizedFolderExceptionTool = AddSynchronizedFolderExceptionTool(
+            pathUtility: pathUtility)
         let addAppExtensionTool = AddAppExtensionTool(pathUtility: pathUtility)
         let removeAppExtensionTool = RemoveAppExtensionTool(pathUtility: pathUtility)
         let listCopyFilesPhases = ListCopyFilesPhases(pathUtility: pathUtility)
@@ -457,6 +463,8 @@ public struct XcodeMCPServer: Sendable {
                 removeSwiftPackageTool.tool(),
                 listGroupsTool.tool(),
                 addSynchronizedFolderTool.tool(),
+                addTargetToSynchronizedFolderTool.tool(),
+                addSynchronizedFolderExceptionTool.tool(),
                 addAppExtensionTool.tool(),
                 removeAppExtensionTool.tool(),
                 listCopyFilesPhases.tool(),
@@ -629,6 +637,10 @@ public struct XcodeMCPServer: Sendable {
                 return try listGroupsTool.execute(arguments: arguments)
             case .addSynchronizedFolder:
                 return try addSynchronizedFolderTool.execute(arguments: arguments)
+            case .addTargetToSynchronizedFolder:
+                return try addTargetToSynchronizedFolderTool.execute(arguments: arguments)
+            case .addSynchronizedFolderException:
+                return try addSynchronizedFolderExceptionTool.execute(arguments: arguments)
             case .addAppExtension:
                 return try addAppExtensionTool.execute(arguments: arguments)
             case .removeAppExtension:

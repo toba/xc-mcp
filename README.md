@@ -311,7 +311,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `get_device_app_path` | Get path to installed app |
 | `test_device` | Run tests on physical device |
 
-### Project Management (23 tools)
+### Project Management (25 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -326,6 +326,8 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `remove_file` | Remove a file from the project |
 | `move_file` | Move or rename a file |
 | `add_synchronized_folder` | Add a synchronized folder reference |
+| `add_target_to_synchronized_folder` | Share an existing synchronized folder with another target |
+| `add_synchronized_folder_exception` | Exclude specific files from a target in a synchronized folder |
 | `create_group` | Create a new group |
 | `add_target` | Create a new target |
 | `remove_target` | Remove a target |

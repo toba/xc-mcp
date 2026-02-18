@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-18T01:58:23Z
 updated_at: 2026-02-18T02:03:18Z
+sync:
+    github:
+        issue_number: "71"
+        synced_at: "2026-02-18T03:57:20Z"
 ---
 
 findOwningTarget returns nil for files in local Swift packages, causing build failures. Need to add findLocalPackageModule fallback and local package dependency linking in injectTarget.

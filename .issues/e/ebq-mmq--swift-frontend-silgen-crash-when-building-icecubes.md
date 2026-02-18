@@ -1,15 +1,15 @@
 ---
 # ebq-mmq
 title: swift-frontend SILGen crash when building IceCubesApp fixture
-status: ready
+status: completed
 type: bug
 priority: high
 created_at: 2026-02-18T01:29:46Z
-updated_at: 2026-02-18T01:29:46Z
+updated_at: 2026-02-18T03:58:39Z
 sync:
     github:
         issue_number: "65"
-        synced_at: "2026-02-18T01:30:12Z"
+        synced_at: "2026-02-18T03:58:54Z"
 ---
 
 ## Description

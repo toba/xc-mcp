@@ -6,6 +6,10 @@ type: bug
 priority: high
 created_at: 2026-02-18T02:05:12Z
 updated_at: 2026-02-18T02:41:49Z
+sync:
+    github:
+        issue_number: "69"
+        synced_at: "2026-02-18T03:57:20Z"
 ---
 
 The pinned Alamofire 5.11.1 (f73a2fcb) doesn't compile with the current Swift toolchain (Xcode 26). Errors:
