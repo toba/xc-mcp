@@ -157,19 +157,27 @@ public struct PreviewCaptureTool: Sendable {
             // If no native target owns the file, check if it lives in a local Swift package
             var moduleName = sourceTarget?.name
             var localPackageProductName: String?
+            var deploymentTarget = extractDeploymentTarget(from: sourceTarget)
             if sourceTarget == nil {
                 if let pkgInfo = findLocalPackageModule(
                     for: resolvedFilePath, in: xcodeproj, projectDir: projectDir
                 ) {
                     moduleName = pkgInfo.moduleName
                     localPackageProductName = pkgInfo.productName
+                    if deploymentTarget == nil {
+                        deploymentTarget = pkgInfo.deploymentTarget
+                    }
                     FileHandle.standardError.write(
                         Data(
-                            "[preview_capture] File belongs to local package module: \(pkgInfo.moduleName)\n"
+                            "[preview_capture] File belongs to local package module: \(pkgInfo.moduleName) (iOS \(pkgInfo.deploymentTarget ?? "unspecified"))\n"
                                 .utf8))
                 }
             }
-            let deploymentTarget = extractDeploymentTarget(from: sourceTarget)
+
+            // If still no deployment target, try to get it from any target in the project
+            if deploymentTarget == nil {
+                deploymentTarget = extractProjectDeploymentTarget(from: xcodeproj)
+            }
 
             // Step 4: Generate preview host app
             let uuid = UUID().uuidString.prefix(8)
@@ -512,10 +520,10 @@ public struct PreviewCaptureTool: Sendable {
     }
 
     /// Finds a local Swift package module that owns the given file path.
-    /// Returns the inferred module name and the product name to link.
+    /// Returns the inferred module name, product name, and iOS deployment target.
     private func findLocalPackageModule(
         for filePath: String, in xcodeproj: XcodeProj, projectDir: String
-    ) -> (moduleName: String, productName: String)? {
+    ) -> (moduleName: String, productName: String, deploymentTarget: String?)? {
         let fm = FileManager.default
 
         // Collect local package directories from XCLocalSwiftPackageReference entries (Xcode 15+)
@@ -559,7 +567,33 @@ public struct PreviewCaptureTool: Sendable {
             guard resolvedFilePath.hasPrefix(pkgDir + "/") else { continue }
             let relativePath = String(resolvedFilePath.dropFirst(pkgDir.count + 1))
             let moduleName = inferModuleName(relativePath: relativePath, packageDir: pkgDir)
-            return (moduleName, moduleName)
+            let deployTarget = parseIOSDeploymentTarget(packageDir: pkgDir)
+            return (moduleName, moduleName, deployTarget)
+        }
+
+        return nil
+    }
+
+    /// Parses the iOS deployment target from a Package.swift file.
+    /// Looks for patterns like `.iOS(.v18)` or `.iOS("18.0")`.
+    private func parseIOSDeploymentTarget(packageDir: String) -> String? {
+        let packageSwift = "\(packageDir)/Package.swift"
+        guard let contents = try? String(contentsOfFile: packageSwift, encoding: .utf8) else {
+            return nil
+        }
+
+        // Match .iOS(.vNN) → "NN.0" or .iOS(.vNN_N) → "NN.N"
+        let dotVPattern = /\.iOS\(\s*\.v(\d+)(?:_(\d+))?\s*\)/
+        if let match = contents.firstMatch(of: dotVPattern) {
+            let major = String(match.1)
+            let minor = match.2.map(String.init) ?? "0"
+            return "\(major).\(minor)"
+        }
+
+        // Match .iOS("NN.N")
+        let stringPattern = /\.iOS\(\s*"([^"]+)"\s*\)/
+        if let match = contents.firstMatch(of: stringPattern) {
+            return String(match.1)
         }
 
         return nil
@@ -703,6 +737,34 @@ public struct PreviewCaptureTool: Sendable {
                 }
             }
         }
+        return nil
+    }
+
+    /// Extracts the iOS deployment target from any target in the project.
+    /// Used as a fallback when no specific source target is available
+    /// (e.g., for files in local Swift packages).
+    private func extractProjectDeploymentTarget(from xcodeproj: XcodeProj) -> String? {
+        guard let project = xcodeproj.pbxproj.rootObject else { return nil }
+
+        // Check project-level build settings first
+        if let configList = project.buildConfigurationList {
+            for config in configList.buildConfigurations {
+                if case let .string(s) = config.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"] {
+                    return s
+                }
+            }
+        }
+
+        // Fall back to the first app target's deployment target
+        for target in project.targets {
+            guard let nativeTarget = target as? PBXNativeTarget,
+                nativeTarget.productType == .application
+            else { continue }
+            if let dt = extractDeploymentTarget(from: nativeTarget) {
+                return dt
+            }
+        }
+
         return nil
     }
 
