@@ -94,7 +94,8 @@ public struct BuildRunSimTool: Sendable {
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
-                configuration: configuration
+                configuration: configuration,
+                destination: destination
             )
 
             let resolvedBundleId: String

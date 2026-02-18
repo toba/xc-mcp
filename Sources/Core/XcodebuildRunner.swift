@@ -324,7 +324,8 @@ public struct XcodebuildRunner: Sendable {
         projectPath: String? = nil,
         workspacePath: String? = nil,
         scheme: String,
-        configuration: String = "Debug"
+        configuration: String = "Debug",
+        destination: String? = nil
     ) async throws -> XcodebuildResult {
         var args: [String] = []
 
@@ -337,6 +338,13 @@ public struct XcodebuildRunner: Sendable {
         args += [
             "-scheme", scheme,
             "-configuration", configuration,
+        ]
+
+        if let destination {
+            args += ["-destination", destination]
+        }
+
+        args += [
             "-showBuildSettings",
             "-json",
         ]

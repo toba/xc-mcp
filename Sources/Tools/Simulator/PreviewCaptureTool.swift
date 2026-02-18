@@ -148,12 +148,27 @@ public struct PreviewCaptureTool: Sendable {
             let projectURL = URL(fileURLWithPath: resolvedPath)
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
+            let projectDir = projectURL.deletingLastPathComponent().path
             let (sourceTarget, isAppTarget) = findOwningTarget(
                 for: resolvedFilePath, in: xcodeproj,
-                projectDir: projectURL.deletingLastPathComponent().path
+                projectDir: projectDir
             )
 
-            let moduleName = sourceTarget?.name
+            // If no native target owns the file, check if it lives in a local Swift package
+            var moduleName = sourceTarget?.name
+            var localPackageProductName: String?
+            if sourceTarget == nil {
+                if let pkgInfo = findLocalPackageModule(
+                    for: resolvedFilePath, in: xcodeproj, projectDir: projectDir
+                ) {
+                    moduleName = pkgInfo.moduleName
+                    localPackageProductName = pkgInfo.productName
+                    FileHandle.standardError.write(
+                        Data(
+                            "[preview_capture] File belongs to local package module: \(pkgInfo.moduleName)\n"
+                                .utf8))
+                }
+            }
             let deploymentTarget = extractDeploymentTarget(from: sourceTarget)
 
             // Step 4: Generate preview host app
@@ -213,7 +228,8 @@ public struct PreviewCaptureTool: Sendable {
                 sourceTarget: sourceTarget,
                 isAppTarget: isAppTarget,
                 deploymentTarget: deploymentTarget,
-                importedModules: importedModules
+                importedModules: importedModules,
+                localPackageProductName: localPackageProductName
             )
 
             // Step 6: Determine platform and build
@@ -251,6 +267,7 @@ public struct PreviewCaptureTool: Sendable {
                     "SKIP_MERGEABLE_LIBRARY_BUNDLE_HOOK=YES",
                     "SWIFT_COMPILATION_MODE=wholemodule",
                     "SWIFT_OPTIMIZATION_LEVEL=-Onone",
+                    "CODE_SIGNING_ALLOWED=NO",
                     "build",
                 ]
             }
@@ -494,6 +511,72 @@ public struct PreviewCaptureTool: Sendable {
         return (nil, false)
     }
 
+    /// Finds a local Swift package module that owns the given file path.
+    /// Returns the inferred module name and the product name to link.
+    private func findLocalPackageModule(
+        for filePath: String, in xcodeproj: XcodeProj, projectDir: String
+    ) -> (moduleName: String, productName: String)? {
+        let fm = FileManager.default
+
+        // Collect local package directories from XCLocalSwiftPackageReference entries (Xcode 15+)
+        let projectDirURL = URL(fileURLWithPath: projectDir)
+        var packageDirs: [String] = []
+        if let project = xcodeproj.pbxproj.rootObject {
+            for localPkg in project.localPackages {
+                let rel = localPkg.relativePath
+                let resolved: String
+                if rel.hasPrefix("/") {
+                    resolved = URL(fileURLWithPath: rel).standardizedFileURL.path
+                } else {
+                    resolved =
+                        projectDirURL.appendingPathComponent(rel).standardizedFileURL.path
+                }
+                if fm.fileExists(atPath: resolved) {
+                    packageDirs.append(resolved)
+                }
+            }
+        }
+
+        // Also check file references with lastKnownFileType == "wrapper" (older-style local packages)
+        for fileRef in xcodeproj.pbxproj.fileReferences {
+            guard fileRef.lastKnownFileType == "wrapper" else { continue }
+            guard let refPath = fileRef.path else { continue }
+            let resolved: String
+            if refPath.hasPrefix("/") {
+                resolved = URL(fileURLWithPath: refPath).standardizedFileURL.path
+            } else {
+                resolved =
+                    projectDirURL.appendingPathComponent(refPath).standardizedFileURL.path
+            }
+            if fm.fileExists(atPath: resolved) && !packageDirs.contains(resolved) {
+                packageDirs.append(resolved)
+            }
+        }
+
+        // Match file path against package directories
+        let resolvedFilePath = URL(fileURLWithPath: filePath).standardizedFileURL.path
+        for pkgDir in packageDirs {
+            guard resolvedFilePath.hasPrefix(pkgDir + "/") else { continue }
+            let relativePath = String(resolvedFilePath.dropFirst(pkgDir.count + 1))
+            let moduleName = inferModuleName(relativePath: relativePath, packageDir: pkgDir)
+            return (moduleName, moduleName)
+        }
+
+        return nil
+    }
+
+    /// Infers the Swift module/target name from a relative path within a package.
+    /// Looks for the `Sources/<TargetName>/...` convention, falling back to the package directory name.
+    private func inferModuleName(relativePath: String, packageDir: String) -> String {
+        let components = relativePath.split(separator: "/")
+        // Convention: Sources/<TargetName>/...
+        if components.count >= 2 && components[0] == "Sources" {
+            return String(components[1])
+        }
+        // Fallback: use the package directory name
+        return URL(fileURLWithPath: packageDir).lastPathComponent
+    }
+
     /// Collects all Swift source files from an app target's synchronized groups,
     /// excluding files that contain `@main` (to avoid conflicts with the preview host).
     private func collectAppSourceFiles(
@@ -682,7 +765,8 @@ public struct PreviewCaptureTool: Sendable {
         sourceTarget: PBXNativeTarget?,
         isAppTarget: Bool,
         deploymentTarget: String?,
-        importedModules: Set<String> = []
+        importedModules: Set<String> = [],
+        localPackageProductName: String? = nil
     ) throws {
         let projectURL = URL(fileURLWithPath: projectPath)
 
@@ -940,6 +1024,26 @@ public struct PreviewCaptureTool: Sendable {
                     }
                 }
             }
+        }
+
+        // For files in local Swift packages (no native target), add a package product dependency
+        // so the preview host can `import <Module>` and link against the local package.
+        if sourceTarget == nil, let productName = localPackageProductName {
+            FileHandle.standardError.write(
+                Data(
+                    "[preview_capture] Adding local package product dependency: \(productName)\n"
+                        .utf8))
+            let pkgDep = XCSwiftPackageProductDependency(
+                productName: productName,
+                package: nil
+            )
+            xcodeproj.pbxproj.add(object: pkgDep)
+
+            let pkgBuildFile = PBXBuildFile(product: pkgDep)
+            xcodeproj.pbxproj.add(object: pkgBuildFile)
+            frameworksBuildPhase.files?.append(pkgBuildFile)
+
+            target.packageProductDependencies = [pkgDep]
         }
 
         // Add target to project

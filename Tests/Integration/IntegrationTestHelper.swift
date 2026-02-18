@@ -46,6 +46,9 @@ enum IntegrationFixtures {
     // MARK: - Simulator
 
     /// UDID of an available iPhone simulator, resolved once via `simctl list`.
+    /// Prefers stable iOS runtimes (18.x, 19.x) over beta SDKs (26.x) to avoid
+    /// swift-frontend crashes in SILGen when building third-party code against
+    /// bleeding-edge SDKs.
     static let simulatorUDID: String? = {
         guard
             let output = try? Process.run(
@@ -56,9 +59,32 @@ enum IntegrationFixtures {
             let devices = json["devices"] as? [String: [[String: Any]]]
         else { return nil }
 
-        // Find first available iPhone simulator (prefer latest runtime)
-        for (runtime, deviceList) in devices.sorted(by: { $0.key > $1.key }) {
-            guard runtime.contains("iOS") else { continue }
+        // Extract iOS version number from runtime key
+        // e.g. "com.apple.CoreSimulator.SimRuntime.iOS-18-5" -> 18
+        func iosMajorVersion(_ runtime: String) -> Int? {
+            guard runtime.contains("iOS") else { return nil }
+            // Split on "-"; the part ending with "iOS" is followed by the major version
+            let parts = runtime.split(separator: "-")
+            for (i, part) in parts.enumerated() where part.hasSuffix("iOS") {
+                if i + 1 < parts.count, let ver = Int(parts[i + 1]) { return ver }
+            }
+            return nil
+        }
+
+        // Sort: prefer stable runtimes (version < 26) over beta, then latest first
+        let sortedRuntimes = devices.keys
+            .filter { $0.contains("iOS") }
+            .sorted { a, b in
+                let va = iosMajorVersion(a) ?? 0
+                let vb = iosMajorVersion(b) ?? 0
+                let aIsStable = va < 26
+                let bIsStable = vb < 26
+                if aIsStable != bIsStable { return aIsStable }
+                return va > vb
+            }
+
+        for runtime in sortedRuntimes {
+            guard let deviceList = devices[runtime] else { continue }
             for device in deviceList {
                 guard
                     let name = device["name"] as? String,

@@ -8,7 +8,7 @@ import XCMCPCore
 /// Integration tests that exercise build, run, screenshot, and preview capture
 /// against real open-source repos.
 /// Requires `scripts/fetch-fixtures.sh` to have been run first.
-@Suite(.enabled(if: IntegrationFixtures.available))
+@Suite(.enabled(if: IntegrationFixtures.available), .serialized)
 struct BuildRunScreenshotIntegrationTests {
 
     // MARK: - Shared infrastructure
@@ -48,54 +48,28 @@ struct BuildRunScreenshotIntegrationTests {
         #expect(content.contains("Build succeeded"))
     }
 
-    // MARK: - SwiftFormat — build, run, screenshot (macOS)
+    // MARK: - SwiftFormat — build only (macOS)
+    // Build-only because "SwiftFormat for Xcode" is a source editor extension host
+    // with no meaningful window to screenshot, and launching it triggers a TCC dialog.
 
     @Test(.timeLimit(.minutes(10)))
-    func buildRunScreenshot_SwiftFormat_macOS() async throws {
-        // 1. Build and run
-        let buildRunTool = BuildRunMacOSTool(
+    func build_SwiftFormat_macOS() async throws {
+        let tool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager)
-        let buildResult = try await buildRunTool.execute(arguments: [
+        let result = try await tool.execute(arguments: [
             "project_path": .string(IntegrationFixtures.swiftFormatProjectPath),
             "scheme": .string("SwiftFormat for Xcode"),
         ])
 
-        let buildContent = textContent(buildResult)
-        #expect(buildContent.contains("Successfully built and launched"))
-
-        // 2. Wait for app to render
-        try await Task.sleep(for: .seconds(3))
-
-        // 3. Screenshot
-        let savePath =
-            NSTemporaryDirectory()
-            + "swiftformat_screenshot_\(ProcessInfo.processInfo.globallyUniqueString).png"
-        let screenshotTool = ScreenshotMacWindowTool()
-        let screenshotResult = try await screenshotTool.execute(arguments: [
-            "app_name": .string("SwiftFormat for Xcode"),
-            "save_path": .string(savePath),
-        ])
-
-        // ScreenshotMacWindowTool returns image content
-        let hasImage = screenshotResult.content.contains { item in
-            if case .image = item { return true }
-            return false
-        }
-        #expect(hasImage, "Expected screenshot to contain image content")
-
-        // 4. Cleanup: kill the app
-        let killProcess = Process()
-        killProcess.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-        killProcess.arguments = ["-f", "SwiftFormat for Xcode"]
-        try? killProcess.run()
-        killProcess.waitUntilExit()
-
-        // Clean up screenshot file
-        try? FileManager.default.removeItem(atPath: savePath)
+        let content = textContent(result)
+        #expect(content.contains("Build succeeded"))
     }
 
     // MARK: - IceCubesApp — build, run, screenshot (simulator)
+    // Must run before previewCapture so SPM packages are resolved in DerivedData.
+    // The preview host scheme can't resolve transitive local package dependencies
+    // from a completely clean DerivedData.
 
     @Test(.enabled(if: IntegrationFixtures.simulatorAvailable), .timeLimit(.minutes(10)))
     func buildRunScreenshot_IceCubesApp_sim() async throws {
@@ -155,6 +129,8 @@ struct BuildRunScreenshotIntegrationTests {
     }
 
     // MARK: - IceCubesApp — preview capture
+    // Runs after buildRunScreenshot which populates DerivedData with resolved
+    // SPM packages. The preview host scheme needs these cached packages.
 
     @Test(.enabled(if: IntegrationFixtures.simulatorAvailable), .timeLimit(.minutes(10)))
     func previewCapture_IceCubesApp() async throws {
