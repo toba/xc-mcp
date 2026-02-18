@@ -66,6 +66,10 @@ public struct TestDeviceTool: Sendable {
 
         let testParams = arguments.testParameters()
 
+        // Always create a result bundle for detailed test results
+        let resultBundlePath = testParams.resultBundlePath ?? createTempResultBundlePath()
+        let isTemporaryBundle = testParams.resultBundlePath == nil
+
         do {
             let destination = "id=\(device)"
 
@@ -78,16 +82,32 @@ public struct TestDeviceTool: Sendable {
                 onlyTesting: testParams.onlyTesting,
                 skipTesting: testParams.skipTesting,
                 enableCodeCoverage: testParams.enableCodeCoverage,
-                resultBundlePath: testParams.resultBundlePath
+                resultBundlePath: resultBundlePath
             )
+
+            defer {
+                if isTemporaryBundle {
+                    try? FileManager.default.removeItem(atPath: resultBundlePath)
+                }
+            }
 
             return try ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
-                context: "scheme '\(scheme)' on device '\(device)'"
+                context: "scheme '\(scheme)' on device '\(device)'",
+                xcresultPath: resultBundlePath,
+                stderr: result.stderr
             )
         } catch {
+            if isTemporaryBundle {
+                try? FileManager.default.removeItem(atPath: resultBundlePath)
+            }
             throw error.asMCPError()
         }
     }
 
+}
+
+private func createTempResultBundlePath() -> String {
+    let tempDir = FileManager.default.temporaryDirectory.path
+    return "\(tempDir)/xc-mcp-test-\(UUID().uuidString).xcresult"
 }

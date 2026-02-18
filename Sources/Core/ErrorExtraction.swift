@@ -32,12 +32,36 @@ public enum ErrorExtractor {
     ///   - output: The raw test output to parse.
     ///   - succeeded: Whether the test run succeeded.
     ///   - context: A human-readable description of the test target (e.g., "scheme 'Foo' on macOS").
+    ///   - xcresultPath: Optional path to the `.xcresult` bundle for detailed results.
+    ///   - stderr: Optional stderr output for detecting infrastructure issues.
     /// - Returns: A successful `CallTool.Result` if tests passed.
     /// - Throws: `MCPError.internalError` if tests failed.
     public static func formatTestToolResult(
-        output: String, succeeded: Bool, context: String
+        output: String,
+        succeeded: Bool,
+        context: String,
+        xcresultPath: String? = nil,
+        stderr: String? = nil
     ) throws -> CallTool.Result {
-        let testResult = extractTestResults(from: output)
+        var testResult: String
+
+        // Try xcresult bundle first for complete failure messages and test output
+        if let xcresultPath,
+            let xcresultData = XCResultParser.parseTestResults(at: xcresultPath)
+        {
+            testResult = formatXCResultData(xcresultData)
+        } else {
+            testResult = extractTestResults(from: output)
+        }
+
+        // Check for testmanagerd crashes in stderr
+        if let stderr {
+            let warnings = detectInfrastructureWarnings(stderr: stderr)
+            if !warnings.isEmpty {
+                testResult += "\n\n" + warnings
+            }
+        }
+
         if succeeded {
             return CallTool.Result(
                 content: [.text("Tests passed for \(context)\n\n\(testResult)")]
@@ -54,5 +78,103 @@ public enum ErrorExtractor {
     public static func parseBuildOutput(_ output: String) -> BuildResult {
         let parser = BuildOutputParser()
         return parser.parse(input: output)
+    }
+
+    // MARK: - XCResult Formatting
+
+    private static func formatXCResultData(_ data: XCResultParser.TestResults) -> String {
+        var parts: [String] = []
+
+        // Header
+        let passed = data.passedCount
+        let failed = data.failedCount
+        var header: String
+        if failed == 0 && passed > 0 {
+            header = "Tests passed"
+        } else if failed > 0 {
+            header = "Tests failed"
+        } else {
+            header = "Test run completed"
+        }
+
+        var details: [String] = []
+        if passed > 0 { details.append("\(passed) passed") }
+        if failed > 0 { details.append("\(failed) failed") }
+        if let duration = data.duration {
+            details.append(String(format: "%.1fs", duration))
+        }
+        if !details.isEmpty {
+            header += " (\(details.joined(separator: ", ")))"
+        }
+        parts.append(header)
+
+        // Failures
+        if !data.failures.isEmpty {
+            var lines = ["Failures:"]
+            for test in data.failures {
+                var detail = "  \(test.test) — \(test.message)"
+                if let file = test.file {
+                    detail += " (\(file)"
+                    if let line = test.line {
+                        detail += ":\(line)"
+                    }
+                    detail += ")"
+                }
+                lines.append(detail)
+            }
+            parts.append(lines.joined(separator: "\n"))
+        }
+
+        // Test output (stdout from XCUI tests)
+        if let testOutput = data.testOutput, !testOutput.isEmpty {
+            parts.append("Test output:\n\(testOutput)")
+        }
+
+        return parts.joined(separator: "\n\n")
+    }
+
+    // MARK: - Infrastructure Warning Detection
+
+    /// Detects testmanagerd crashes and other test infrastructure issues from stderr.
+    private static func detectInfrastructureWarnings(stderr: String) -> String {
+        var warnings: [String] = []
+
+        // testmanagerd crash (SIGSEGV, SIGABRT, etc.)
+        if stderr.contains("testmanagerd")
+            && (stderr.contains("crash") || stderr.contains("SIGSEGV")
+                || stderr.contains("SIGABRT") || stderr.contains("SIGBUS")
+                || stderr.contains("pointer authentication")
+                || stderr.contains("pointer auth")
+                || stderr.contains("EXC_BAD_ACCESS"))
+        {
+            warnings.append(
+                "Warning: testmanagerd crashed during the test run. "
+                    + "Test results may be incomplete or unreliable. "
+                    + "Consider re-running the tests."
+            )
+        }
+
+        // testmanagerd mentioned with "terminated" or "exited"
+        if stderr.contains("testmanagerd")
+            && (stderr.contains("terminated unexpectedly")
+                || stderr.contains("exited unexpectedly")
+                || stderr.contains("lost connection"))
+        {
+            if warnings.isEmpty {
+                warnings.append(
+                    "Warning: testmanagerd terminated unexpectedly during the test run. "
+                        + "Test results may be incomplete."
+                )
+            }
+        }
+
+        // XCTest runner daemon issues
+        if stderr.contains("IDETestRunnerDaemon") && stderr.contains("crash") {
+            warnings.append(
+                "Warning: The test runner daemon crashed during the test run."
+            )
+        }
+
+        return warnings.joined(separator: "\n")
     }
 }
