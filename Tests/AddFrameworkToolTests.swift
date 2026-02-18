@@ -266,4 +266,72 @@ struct AddFrameworkToolTests {
         }
         #expect(message.contains("not found"))
     }
+
+    @Test("Reuses existing BUILT_PRODUCTS_DIR file reference instead of creating duplicate")
+    func reusesBuiltProductsRef() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        // Create a test project with two targets where the second target's product
+        // creates a BUILT_PRODUCTS_DIR file reference
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath)
+
+        // Add a product file reference with BUILT_PRODUCTS_DIR (simulating a framework target)
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let productRef = PBXFileReference(
+            sourceTree: .buildProductsDir,
+            explicitFileType: "wrapper.framework",
+            path: "Core.framework",
+            includeInIndex: false
+        )
+        xcodeproj.pbxproj.add(object: productRef)
+
+        // Add to Products group
+        if let productsGroup = xcodeproj.pbxproj.rootObject?.productsGroup {
+            productsGroup.children.append(productRef)
+        }
+        try xcodeproj.write(path: projectPath)
+
+        // Now use add_framework to add Core.framework to App target
+        let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "framework_name": Value.string("Core.framework"),
+            "embed": Value.bool(true),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added framework"))
+
+        // Verify: the build phase should reference the original BUILT_PRODUCTS_DIR ref,
+        // not a new group-relative one
+        let updatedProj = try XcodeProj(path: projectPath)
+        let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
+        let frameworkPhase =
+            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+
+        let linkedRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
+            .first { $0.path == "Core.framework" }
+        #expect(linkedRef != nil)
+        #expect(linkedRef?.sourceTree == .buildProductsDir)
+
+        // Verify no duplicate group-relative references were created
+        let groupRelativeRefs = updatedProj.pbxproj.fileReferences.filter {
+            $0.path == "Core.framework" && $0.sourceTree == .group
+        }
+        #expect(groupRelativeRefs.isEmpty)
+    }
 }

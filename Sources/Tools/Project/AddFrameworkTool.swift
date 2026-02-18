@@ -129,7 +129,7 @@ public struct AddFrameworkTool: Sendable {
                 )
             }
 
-            // Create file reference for framework
+            // Find or create file reference for framework
             let frameworkFileRef: PBXFileReference
             if isSystemFramework {
                 frameworkFileRef = PBXFileReference(
@@ -138,6 +138,13 @@ public struct AddFrameworkTool: Sendable {
                     lastKnownFileType: "wrapper.framework",
                     path: frameworkPath
                 )
+                xcodeproj.pbxproj.add(object: frameworkFileRef)
+            } else if let existingRef = xcodeproj.pbxproj.fileReferences.first(where: {
+                $0.sourceTree == .buildProductsDir
+                    && ($0.path == frameworkFileName || $0.name == frameworkFileName)
+            }) {
+                // Reuse existing BUILT_PRODUCTS_DIR reference (e.g. from a local target's product)
+                frameworkFileRef = existingRef
             } else {
                 frameworkFileRef = PBXFileReference(
                     sourceTree: .group,
@@ -145,28 +152,30 @@ public struct AddFrameworkTool: Sendable {
                     lastKnownFileType: "wrapper.framework",
                     path: frameworkPath
                 )
+                xcodeproj.pbxproj.add(object: frameworkFileRef)
             }
-            xcodeproj.pbxproj.add(object: frameworkFileRef)
 
-            // Add to frameworks group if exists
-            if let project = xcodeproj.pbxproj.rootObject,
-                let frameworksGroup = project.mainGroup?.children.first(where: { element in
-                    if let group = element as? PBXGroup {
-                        return group.name == "Frameworks"
-                    }
-                    return false
-                }) as? PBXGroup
-            {
-                frameworksGroup.children.append(frameworkFileRef)
-            } else {
-                // Create Frameworks group if it doesn't exist
-                if let project = try xcodeproj.pbxproj.rootProject(),
-                    let mainGroup = project.mainGroup
+            // Add to frameworks group unless reusing an existing product reference
+            if frameworkFileRef.sourceTree != .buildProductsDir {
+                if let project = xcodeproj.pbxproj.rootObject,
+                    let frameworksGroup = project.mainGroup?.children.first(where: { element in
+                        if let group = element as? PBXGroup {
+                            return group.name == "Frameworks"
+                        }
+                        return false
+                    }) as? PBXGroup
                 {
-                    let frameworksGroup = PBXGroup(sourceTree: .group, name: "Frameworks")
-                    xcodeproj.pbxproj.add(object: frameworksGroup)
                     frameworksGroup.children.append(frameworkFileRef)
-                    mainGroup.children.append(frameworksGroup)
+                } else {
+                    // Create Frameworks group if it doesn't exist
+                    if let project = try xcodeproj.pbxproj.rootProject(),
+                        let mainGroup = project.mainGroup
+                    {
+                        let frameworksGroup = PBXGroup(sourceTree: .group, name: "Frameworks")
+                        xcodeproj.pbxproj.add(object: frameworksGroup)
+                        frameworksGroup.children.append(frameworkFileRef)
+                        mainGroup.children.append(frameworksGroup)
+                    }
                 }
             }
 

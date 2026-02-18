@@ -8,17 +8,12 @@ This project iterates rapidly. Fairly complex issues had to be solved to get to 
 
 ## Notable Powers
 
-**Token Efficiency**: run a single server with all tools or use some combination of smaller MCPs with just the subset of tools relevant to your work.
-
-**Screenshot any macOS app window**: `screenshot_mac_window` uses ScreenCaptureKit to capture a any window, including your debug build, without needing a simulator.
-
-**Interact with macOS apps via Accessibility**: The `interact_` tools use the macOS Accessibility API (AXUIElement) to click buttons, read values, navigate menus, type text, and dump the full UI element tree. This is *semantic* automation — you're clicking "Save" by name, not by pixel coordinate. Eight tools: `interact_ui_tree`, `interact_click`, `interact_set_value`, `interact_get_value`, `interact_menu`, `interact_focus`, `interact_key`, `interact_find`.
-
-**Capture SwiftUI previews as screenshots**: `preview_capture` extracts `#Preview` blocks from your Swift source, generates a temporary host app, builds it, launches it (iOS Simulator or macOS), takes a screenshot, and cleans up. Handles complex project configurations: mergeable library architectures, SPM transitive dependencies, cross-project framework embedding, local Swift packages (files inside `Packages/` directories referenced by the Xcode project), and nested struct previews that crash the compiler when naively inlined. Programmatic preview screenshots without opening Xcode.
-
-**Paint view borders on a running app**: `debug_view_borders` injects colored `CALayer` borders onto every view in a running macOS app via LLDB. Pair with `screenshot_mac_window` to see the result. No code changes, no restarts.
-
-**Full LLDB debugging over MCP**: Persistent LLDB sessions backed by a pseudo-TTY, so breakpoints survive across tool calls. Breakpoints, watchpoints, stepping, expression evaluation, memory inspection, view hierarchy dumps, symbol lookup — the full debugger experience, minus the GUI.
+- **Token Efficiency**: run a single server with all tools or use some combination of smaller MCPs with just the subset of tools relevant to your work.
+- **Screenshot any macOS app window**: `screenshot_mac_window` uses ScreenCaptureKit to capture a any window, including your debug build, without needing a simulator.
+- **Interact with macOS apps via Accessibility**: The `interact_` tools use the macOS Accessibility API (AXUIElement) to click buttons, read values, navigate menus, type text, and dump the full UI element tree. This is *semantic* automation — you're clicking "Save" by name, not by pixel coordinate. Eight tools: `interact_ui_tree`, `interact_click`, `interact_set_value`, `interact_get_value`, `interact_menu`, `interact_focus`, `interact_key`, `interact_find`.
+- **Capture SwiftUI previews as screenshots**: `preview_capture` extracts `#Preview` blocks from your Swift source, generates a temporary host app, builds it, launches it (iOS Simulator or macOS), takes a screenshot, and cleans up. Handles complex project configurations: mergeable library architectures, SPM transitive dependencies, cross-project framework embedding, local Swift packages (files inside `Packages/` directories referenced by the Xcode project), and nested struct previews that crash the compiler when naively inlined. Programmatic preview screenshots without opening Xcode.
+- **Paint view borders on a running app**: `debug_view_borders` injects colored `CALayer` borders onto every view in a running macOS app via LLDB. Pair with `screenshot_mac_window` to see the result. No code changes, no restarts.
+- **Full LLDB debugging over MCP**: Persistent LLDB sessions backed by a pseudo-TTY, so breakpoints survive across tool calls. Breakpoints, watchpoints, stepping, expression evaluation, memory inspection, view hierarchy dumps, symbol lookup — the full debugger experience, minus the GUI.
 
 ## Built On
 
