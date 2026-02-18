@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-18T04:37:07Z
 updated_at: 2026-02-18T04:39:47Z
+sync:
+    github:
+        issue_number: "74"
+        synced_at: "2026-02-18T04:43:12Z"
 ---
 
 When add_framework adds a framework to a target, it creates new PBXFileReference entries with sourceTree = '<group>' instead of reusing existing entries with sourceTree = BUILT_PRODUCTS_DIR. Should check Products group for existing references first.

@@ -3,8 +3,13 @@
 title: add_framework creates duplicate group-relative file references instead of reusing BUILT_PRODUCTS_DIR
 status: ready
 type: bug
+priority: normal
 created_at: 2026-02-18T04:36:04Z
 updated_at: 2026-02-18T04:36:04Z
+sync:
+    github:
+        issue_number: "73"
+        synced_at: "2026-02-18T04:43:11Z"
 ---
 
 When `add_framework` adds a framework to a target, it creates new `PBXFileReference` entries with `sourceTree = "<group>"` instead of reusing the existing `PBXFileReference` entries that have `sourceTree = BUILT_PRODUCTS_DIR` and `explicitFileType = wrapper.framework`. This causes framework linking issues because the group-relative path doesn't resolve to the built product.

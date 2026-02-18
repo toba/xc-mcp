@@ -155,6 +155,20 @@ struct AddTargetToolTests {
         #expect(target != nil)
         #expect(target?.productType == testCase.expectedProductType)
 
+        // Verify product reference
+        let productRef = target?.product
+        #expect(productRef != nil, "Target should have a productReference")
+        #expect(productRef?.sourceTree == .buildProductsDir)
+        #expect(productRef?.includeInIndex == false)
+        #expect(
+            productRef?.explicitFileType == testCase.expectedProductType.explicitFileType)
+
+        // Verify product is in Products group
+        let productsGroup = xcodeproj.pbxproj.rootObject?.productsGroup
+        #expect(productsGroup != nil, "Project should have a Products group")
+        let productInGroup = productsGroup?.children.contains { $0 === productRef } ?? false
+        #expect(productInGroup, "Product reference should be in the Products group")
+
         if let deploymentTarget = testCase.deploymentTarget, testCase.platform == "iOS" {
             let buildConfig = target?.buildConfigurationList?.buildConfigurations.first {
                 $0.name == "Debug"

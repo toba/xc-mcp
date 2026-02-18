@@ -216,6 +216,22 @@ public struct AddTargetTool: Sendable {
             let frameworksBuildPhase = PBXFrameworksBuildPhase()
             xcodeproj.pbxproj.add(object: frameworksBuildPhase)
 
+            // Create product reference
+            let productName: String
+            if let ext = productType.fileExtension {
+                productName = "\(targetName).\(ext)"
+            } else {
+                productName = targetName
+            }
+
+            let productReference = PBXFileReference(
+                sourceTree: .buildProductsDir,
+                explicitFileType: productType.explicitFileType,
+                path: productName,
+                includeInIndex: false
+            )
+            xcodeproj.pbxproj.add(object: productReference)
+
             // Create target
             let target = PBXNativeTarget(
                 name: targetName,
@@ -224,11 +240,13 @@ public struct AddTargetTool: Sendable {
                 productType: productType
             )
             target.productName = targetName
+            target.product = productReference
             xcodeproj.pbxproj.add(object: target)
 
-            // Add target to project
+            // Add target to project and product to Products group
             if let project = xcodeproj.pbxproj.rootObject {
                 project.targets.append(target)
+                project.productsGroup?.children.append(productReference)
             }
 
             // Create target folder in main group
@@ -258,6 +276,44 @@ public struct AddTargetTool: Sendable {
 }
 
 extension PBXProductType {
+    var explicitFileType: String? {
+        switch self {
+        case .application, .watchApp, .watch2App, .watch2AppContainer,
+            .onDemandInstallCapableApplication:
+            return "wrapper.application"
+        case .messagesApplication:
+            return "wrapper.application"
+        case .framework:
+            return "wrapper.framework"
+        case .staticFramework:
+            return "wrapper.framework.static"
+        case .xcFramework:
+            return "wrapper.xcframework"
+        case .staticLibrary:
+            return "archive.ar"
+        case .dynamicLibrary:
+            return "compiled.mach-o.dylib"
+        case .bundle:
+            return "wrapper.cfbundle"
+        case .unitTestBundle, .uiTestBundle, .ocUnitTestBundle:
+            return "wrapper.cfbundle"
+        case .appExtension, .extensionKitExtension, .watchExtension, .watch2Extension,
+            .tvExtension, .messagesExtension, .stickerPack, .xcodeExtension,
+            .intentsServiceExtension, .driverExtension, .systemExtension:
+            return "wrapper.app-extension"
+        case .commandLineTool:
+            return "compiled.mach-o.executable"
+        case .xpcService:
+            return "wrapper.xpc-service"
+        case .instrumentsPackage:
+            return "com.apple.instruments.instrdst"
+        case .metalLibrary:
+            return "file.metallib"
+        case .none:
+            return nil
+        }
+    }
+
     var fileExtension: String? {
         switch self {
         case .application, .watchApp, .watch2App, .watch2AppContainer, .messagesApplication,
