@@ -55,7 +55,7 @@ public struct ListSchemesTool: Sendable {
                 return CallTool.Result(content: [.text(parsed)])
             } else {
                 throw MCPError.internalError(
-                    "Failed to list schemes: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to list schemes: \(result.errorOutput)"
                 )
             }
         } catch {

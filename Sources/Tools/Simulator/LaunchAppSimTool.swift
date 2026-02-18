@@ -66,13 +66,13 @@ public struct LaunchAppSimTool: Sendable {
                     message += "\nApp is waiting for debugger to attach."
                 }
                 // Extract PID if available
-                if let pid = extractPID(from: result.stdout) {
+                if let pid = result.launchedPID {
                     message += "\nProcess ID: \(pid)"
                 }
                 return CallTool.Result(content: [.text(message)])
             } else {
                 throw MCPError.internalError(
-                    "Failed to launch app: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to launch app: \(result.errorOutput)"
                 )
             }
         } catch {
@@ -80,13 +80,4 @@ public struct LaunchAppSimTool: Sendable {
         }
     }
 
-    private func extractPID(from output: String) -> String? {
-        // simctl launch outputs: "com.example.app: 12345"
-        let components = output.trimmingCharacters(in: .whitespacesAndNewlines)
-            .components(separatedBy: ": ")
-        if components.count >= 2 {
-            return components.last
-        }
-        return nil
-    }
 }

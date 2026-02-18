@@ -89,7 +89,7 @@ public struct SetSimLocationTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to set location: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to set location: \(result.errorOutput)"
                 )
             }
         } catch {

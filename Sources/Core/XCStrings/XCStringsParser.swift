@@ -12,23 +12,23 @@ public actor XCStringsParser {
     // MARK: - File Operations
 
     /// Load file from disk
-    func load() throws -> XCStringsFile {
+    func load() throws(XCStringsError) -> XCStringsFile {
         try fileHandler.load()
     }
 
     /// Save file to disk
-    func save(_ file: XCStringsFile) throws {
+    func save(_ file: XCStringsFile) throws(XCStringsError) {
         try fileHandler.save(file)
     }
 
     /// Create a new xcstrings file
-    public func createFile(sourceLanguage: String, overwrite: Bool = false) throws {
+    public func createFile(sourceLanguage: String, overwrite: Bool = false) throws(XCStringsError) {
         try fileHandler.create(sourceLanguage: sourceLanguage, overwrite: overwrite)
     }
 
     /// Create a new xcstrings file (static version for convenience)
     public static func createFile(at path: String, sourceLanguage: String, overwrite: Bool = false)
-        throws
+        throws(XCStringsError)
     {
         let handler = XCStringsFileHandler(path: path)
         try handler.create(sourceLanguage: sourceLanguage, overwrite: overwrite)
@@ -36,73 +36,80 @@ public actor XCStringsParser {
 
     // MARK: - Read Operations
 
-    /// Get all keys sorted alphabetically
-    public func listKeys() throws -> [String] {
+    private func withReader<T>(_ operation: (XCStringsReader) throws(XCStringsError) -> T)
+        throws(XCStringsError) -> T
+    {
         let file = try load()
-        return XCStringsReader(file: file).listKeys()
+        return try operation(XCStringsReader(file: file))
+    }
+
+    /// Get all keys sorted alphabetically
+    public func listKeys() throws(XCStringsError) -> [String] {
+        try withReader { $0.listKeys() }
     }
 
     /// Get all languages used in the file
-    public func listLanguages() throws -> [String] {
-        let file = try load()
-        return XCStringsReader(file: file).listLanguages()
+    public func listLanguages() throws(XCStringsError) -> [String] {
+        try withReader { $0.listLanguages() }
     }
 
     /// Get untranslated keys for a specific language
-    public func listUntranslated(for language: String) throws -> [String] {
-        let file = try load()
-        return XCStringsReader(file: file).listUntranslated(for: language)
+    public func listUntranslated(for language: String) throws(XCStringsError) -> [String] {
+        try withReader { $0.listUntranslated(for: language) }
     }
 
     /// Get source language
-    public func getSourceLanguage() throws -> String {
-        let file = try load()
-        return XCStringsReader(file: file).getSourceLanguage()
+    public func getSourceLanguage() throws(XCStringsError) -> String {
+        try withReader { $0.getSourceLanguage() }
     }
 
     /// Get key information
-    public func getKey(_ key: String) throws -> KeyInfo {
+    public func getKey(_ key: String) throws(XCStringsError) -> KeyInfo {
         let file = try load()
         return try XCStringsReader(file: file).getKey(key)
     }
 
     /// Get translation for a key
-    public func getTranslation(key: String, language: String?) throws -> [String: TranslationInfo] {
+    public func getTranslation(key: String, language: String?) throws(XCStringsError) -> [String:
+        TranslationInfo]
+    {
         let file = try load()
         return try XCStringsReader(file: file).getTranslation(key: key, language: language)
     }
 
     /// Check if a key exists
-    public func checkKey(_ key: String, language: String?) throws -> Bool {
-        let file = try load()
-        return XCStringsReader(file: file).checkKey(key, language: language)
+    public func checkKey(_ key: String, language: String?) throws(XCStringsError) -> Bool {
+        try withReader { $0.checkKey(key, language: language) }
     }
 
     /// Check coverage for a key
-    public func checkCoverage(_ key: String) throws -> CoverageInfo {
+    public func checkCoverage(_ key: String) throws(XCStringsError) -> CoverageInfo {
         let file = try load()
         return try XCStringsReader(file: file).checkCoverage(key)
     }
 
     /// List keys with extractionState == "stale"
-    public func listStaleKeys() throws -> [String] {
-        let file = try load()
-        return XCStringsReader(file: file).listStaleKeys()
+    public func listStaleKeys() throws(XCStringsError) -> [String] {
+        try withReader { $0.listStaleKeys() }
     }
 
     /// Check if multiple keys exist
-    public func checkKeys(_ keys: [String], language: String?) throws -> [String: Bool] {
-        let file = try load()
-        return XCStringsReader(file: file).checkKeys(keys, language: language)
+    public func checkKeys(_ keys: [String], language: String?) throws(XCStringsError) -> [String:
+        Bool]
+    {
+        try withReader { $0.checkKeys(keys, language: language) }
     }
 
     /// List stale keys across multiple files
-    public static func batchListStaleKeys(paths: [String]) throws -> BatchStaleKeysSummary {
-        let results: [StaleKeysResult] = try paths.map { path in
+    public static func batchListStaleKeys(paths: [String]) throws(XCStringsError)
+        -> BatchStaleKeysSummary
+    {
+        var results: [StaleKeysResult] = []
+        for path in paths {
             let handler = XCStringsFileHandler(path: path)
             let file = try handler.load()
             let staleKeys = XCStringsReader(file: file).listStaleKeys()
-            return StaleKeysResult(file: path, staleKeys: staleKeys)
+            results.append(StaleKeysResult(file: path, staleKeys: staleKeys))
         }
         return BatchStaleKeysSummary(files: results)
     }
@@ -110,23 +117,26 @@ public actor XCStringsParser {
     // MARK: - Stats Operations
 
     /// Get overall statistics
-    public func getStats() throws -> StatsInfo {
+    public func getStats() throws(XCStringsError) -> StatsInfo {
         let file = try load()
         return XCStringsStatsCalculator(file: file).getStats()
     }
 
     /// Get progress for a specific language
-    public func getProgress(for language: String) throws -> LanguageStats {
+    public func getProgress(for language: String) throws(XCStringsError) -> LanguageStats {
         let file = try load()
         return try XCStringsStatsCalculator(file: file).getProgress(for: language)
     }
 
     /// Get batch coverage for multiple files (token-efficient)
-    public static func getBatchCoverage(paths: [String]) throws -> BatchCoverageSummary {
-        let files: [(path: String, file: XCStringsFile)] = try paths.map { path in
+    public static func getBatchCoverage(paths: [String]) throws(XCStringsError)
+        -> BatchCoverageSummary
+    {
+        var files: [(path: String, file: XCStringsFile)] = []
+        for path in paths {
             let handler = XCStringsFileHandler(path: path)
             let file = try handler.load()
-            return (path, file)
+            files.append((path, file))
         }
         return XCStringsStatsCalculator.getBatchCoverage(files: files)
     }
@@ -134,19 +144,20 @@ public actor XCStringsParser {
     // MARK: - Compact Stats Operations (100% languages omitted)
 
     /// Get compact statistics (only shows incomplete languages)
-    public func getCompactStats() throws -> CompactStatsInfo {
+    public func getCompactStats() throws(XCStringsError) -> CompactStatsInfo {
         let file = try load()
         return XCStringsStatsCalculator(file: file).getCompactStats()
     }
 
     /// Get compact batch coverage for multiple files
-    public static func getCompactBatchCoverage(paths: [String]) throws
+    public static func getCompactBatchCoverage(paths: [String]) throws(XCStringsError)
         -> CompactBatchCoverageSummary
     {
-        let files: [(path: String, file: XCStringsFile)] = try paths.map { path in
+        var files: [(path: String, file: XCStringsFile)] = []
+        for path in paths {
             let handler = XCStringsFileHandler(path: path)
             let file = try handler.load()
-            return (path, file)
+            files.append((path, file))
         }
         return XCStringsStatsCalculator.getCompactBatchCoverage(files: files)
     }

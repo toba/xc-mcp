@@ -50,7 +50,7 @@ public struct XCStringsReader: Sendable {
     }
 
     /// Get key information
-    public func getKey(_ key: String) throws -> KeyInfo {
+    public func getKey(_ key: String) throws(XCStringsError) -> KeyInfo {
         guard let entry = file.strings[key] else {
             throw XCStringsError.keyNotFound(key: key)
         }
@@ -66,7 +66,9 @@ public struct XCStringsReader: Sendable {
     }
 
     /// Get translation for a key
-    public func getTranslation(key: String, language: String?) throws -> [String: TranslationInfo] {
+    public func getTranslation(key: String, language: String?) throws(XCStringsError) -> [String:
+        TranslationInfo]
+    {
         guard let entry = file.strings[key] else {
             throw XCStringsError.keyNotFound(key: key)
         }
@@ -132,7 +134,7 @@ public struct XCStringsReader: Sendable {
     }
 
     /// Check coverage for a key
-    public func checkCoverage(_ key: String) throws -> CoverageInfo {
+    public func checkCoverage(_ key: String) throws(XCStringsError) -> CoverageInfo {
         let allLanguages = listLanguages()
 
         guard let entry = file.strings[key] else {

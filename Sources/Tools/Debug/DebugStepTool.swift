@@ -55,9 +55,7 @@ public struct DebugStepTool: Sendable {
             )
         }
 
-        guard case let .string(mode) = arguments["mode"] else {
-            throw MCPError.invalidParams("mode is required")
-        }
+        let mode = try arguments.getRequiredString("mode")
 
         guard ["in", "over", "out", "instruction"].contains(mode) else {
             throw MCPError.invalidParams(

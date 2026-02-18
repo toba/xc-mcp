@@ -97,7 +97,7 @@ public struct ScreenshotTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to take screenshot: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to take screenshot: \(result.errorOutput)"
                 )
             }
         } catch {

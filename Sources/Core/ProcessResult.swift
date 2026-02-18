@@ -41,6 +41,47 @@ public struct ProcessResult: Sendable {
             return stdout + "\n" + stderr
         }
     }
+
+    /// The most relevant error output: stderr if available, otherwise stdout.
+    public var errorOutput: String {
+        stderr.isEmpty ? stdout : stderr
+    }
+}
+
+// MARK: - Simctl Helpers
+
+extension ProcessResult {
+    /// Extracts a PID from simctl launch output (format: "bundle_id: 12345").
+    public var launchedPID: String? {
+        let components = stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: ": ")
+        return components.count >= 2 ? components.last : nil
+    }
+}
+
+// MARK: - File Utilities
+
+public enum FileUtility {
+    /// Reads the last N lines from a file using tail.
+    public static func readTailLines(path: String, count: Int = 50) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tail")
+        process.arguments = ["-n", "\(count)", path]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            if let output = String(data: data, encoding: .utf8), !output.isEmpty {
+                return output
+            }
+        } catch {}
+        return nil
+    }
 }
 
 // MARK: - Type Aliases for Runner Compatibility

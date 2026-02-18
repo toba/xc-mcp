@@ -10,15 +10,16 @@ description: |
 
 # Upstream Change Tracker
 
-Check the three upstream repos that xc-mcp derives code from for new commits, classify changes by relevance, and present a summary.
+Check upstream repos for new commits, classify changes by relevance, and present a summary.
 
 ## Upstream Repos
 
-| Repo | Default Branch | Derived Into |
-|------|---------------|--------------|
-| `giginet/xcodeproj-mcp-server` | `main` | `Sources/Tools/Project/` (23 tools), `Sources/Utilities/PathUtility.swift` |
-| `ldomaradzki/xcsift` | `master` | `Sources/Core/BuildOutputParser.swift`, `BuildOutputModels.swift`, `CoverageParser.swift` |
-| `Ryu0118/xcstrings-crud` | `main` | `Sources/Core/XCStrings/` (7 files) |
+| Repo | Default Branch | Relationship | Derived Into / Used By |
+|------|---------------|-------------|----------------------|
+| `giginet/xcodeproj-mcp-server` | `main` | Derived code | `Sources/Tools/Project/` (23 tools), `Sources/Utilities/PathUtility.swift` |
+| `ldomaradzki/xcsift` | `master` | Derived code | `Sources/Core/BuildOutputParser.swift`, `BuildOutputModels.swift`, `CoverageParser.swift` |
+| `Ryu0118/xcstrings-crud` | `main` | Derived code | `Sources/Core/XCStrings/` (7 files) |
+| `tuist/xcodeproj` | `main` | Dependency (pinned from: 9.7.2) | All project manipulation tools via XcodeProj library |
 
 ## Workflow
 
@@ -29,9 +30,9 @@ Read `.claude/skills/upstream/references/last-checked.json`.
 - **If the file does not exist** → this is a first run. Set `FIRST_RUN=true`.
 - **If the file exists** → parse the JSON to get `last_checked_sha` and `last_checked_date` per repo.
 
-### Step 2: Fetch Changes (All 3 Repos in Parallel)
+### Step 2: Fetch Changes (All 4 Repos in Parallel)
 
-Run all three `gh api` calls in parallel using the Bash tool.
+Run all four `gh api` calls in parallel using the Bash tool.
 
 #### First Run (no marker file)
 
@@ -47,6 +48,10 @@ gh api "repos/ldomaradzki/xcsift/commits?per_page=30&sha=master" --jq '[.[] | {s
 
 ```bash
 gh api "repos/Ryu0118/xcstrings-crud/commits?per_page=30&sha=main" --jq '[.[] | {sha: .sha, date: .commit.committer.date, message: (.commit.message | split("\n") | .[0]), author: .commit.author.name}]'
+```
+
+```bash
+gh api "repos/tuist/xcodeproj/commits?per_page=30&sha=main" --jq '[.[] | {sha: .sha, date: .commit.committer.date, message: (.commit.message | split("\n") | .[0]), author: .commit.author.name}]'
 ```
 
 Also fetch the changed files for each repo's recent commits to classify relevance:
@@ -71,6 +76,10 @@ gh api "repos/ldomaradzki/xcsift/compare/{LAST_SHA}...master" --jq '{total_commi
 
 ```bash
 gh api "repos/Ryu0118/xcstrings-crud/compare/{LAST_SHA}...main" --jq '{total_commits: .total_commits, commits: [.commits[] | {sha: .sha, date: .commit.committer.date, message: (.commit.message | split("\n") | .[0]), author: .commit.author.name}], files: [.files[].filename]}'
+```
+
+```bash
+gh api "repos/tuist/xcodeproj/compare/{LAST_SHA}...main" --jq '{total_commits: .total_commits, commits: [.commits[] | {sha: .sha, date: .commit.committer.date, message: (.commit.message | split("\n") | .[0]), author: .commit.author.name}], files: [.files[].filename]}'
 ```
 
 **Fallback:** If the compare API returns 404 (e.g. force-push rewrote history), fall back to date-based query:
@@ -106,6 +115,18 @@ Use these mappings to assign HIGH / MEDIUM / LOW relevance to each changed file:
 | **HIGH** | `Sources/XCStringsKit/**` |
 | **MEDIUM** | `Sources/XCStringsMCP/**`, `Sources/XCStringsCLI/**`, `Tests/**` |
 | **LOW** | `.github/**`, `README.md` |
+
+#### tuist/xcodeproj (dependency watch)
+
+This is a library dependency, not derived code. Focus on API changes, bug fixes, and breaking changes.
+
+| Relevance | Path Patterns |
+|-----------|--------------|
+| **HIGH** | `Sources/XcodeProj/Objects/**` (PBX model types we use directly), `Sources/XcodeProj/Scheme/**`, `Sources/XcodeProj/Project/**` |
+| **MEDIUM** | `Sources/XcodeProj/Utils/**`, `Sources/XcodeProj/Extensions/**`, `Package.swift`, `CHANGELOG.md`, `Tests/**` |
+| **LOW** | `.github/**`, `README.md`, `Documentation/**`, `fixtures/**`, `Makefile` |
+
+Also note any tags/releases since last check — version bumps may warrant updating `Package.swift`.
 
 Files not matching any pattern → **MEDIUM** (unknown = worth reviewing).
 
@@ -172,6 +193,10 @@ Write to `.claude/skills/upstream/references/last-checked.json`:
     "last_checked_date": "<ISO_DATE>"
   },
   "Ryu0118/xcstrings-crud": {
+    "last_checked_sha": "<HEAD_SHA>",
+    "last_checked_date": "<ISO_DATE>"
+  },
+  "tuist/xcodeproj": {
     "last_checked_sha": "<HEAD_SHA>",
     "last_checked_date": "<ISO_DATE>"
   }

@@ -65,23 +65,9 @@ public struct DebugEvaluateTool: Sendable {
             )
         }
 
-        guard case let .string(expression) = arguments["expression"] else {
-            throw MCPError.invalidParams("expression is required")
-        }
-
-        let language: String?
-        if case let .string(value) = arguments["language"] {
-            language = value
-        } else {
-            language = nil
-        }
-
-        let objectDescription: Bool
-        if case let .bool(value) = arguments["object_description"] {
-            objectDescription = value
-        } else {
-            objectDescription = true
-        }
+        let expression = try arguments.getRequiredString("expression")
+        let language = arguments.getString("language")
+        let objectDescription = arguments.getBool("object_description", default: true)
 
         do {
             let result = try await lldbRunner.evaluate(

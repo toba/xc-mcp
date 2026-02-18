@@ -85,7 +85,7 @@ public struct KeyPressTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to press key: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to press key: \(result.errorOutput)"
                 )
             }
         } catch {

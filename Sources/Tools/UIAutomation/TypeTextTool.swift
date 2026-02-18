@@ -68,7 +68,7 @@ public struct TypeTextTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to type text: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to type text: \(result.errorOutput)"
                 )
             }
         } catch {

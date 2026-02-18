@@ -9,7 +9,7 @@ public enum XCStringsWriter {
         language: String,
         value: String,
         allowOverwrite: Bool = false
-    ) throws -> XCStringsFile {
+    ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
         if result.strings[key] == nil {
@@ -37,7 +37,7 @@ public enum XCStringsWriter {
         key: String,
         translations: [String: String],
         allowOverwrite: Bool = false
-    ) throws -> XCStringsFile {
+    ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
         if result.strings[key] == nil {
@@ -67,7 +67,7 @@ public enum XCStringsWriter {
         key: String,
         language: String,
         value: String
-    ) throws -> XCStringsFile {
+    ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
         guard result.strings[key] != nil else {
@@ -90,7 +90,7 @@ public enum XCStringsWriter {
         in file: XCStringsFile,
         key: String,
         translations: [String: String]
-    ) throws -> XCStringsFile {
+    ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
         guard result.strings[key] != nil else {
@@ -161,7 +161,7 @@ public enum XCStringsWriter {
         in file: XCStringsFile,
         from oldKey: String,
         to newKey: String
-    ) throws -> XCStringsFile {
+    ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
         guard let entry = result.strings[oldKey] else {
@@ -182,7 +182,7 @@ public enum XCStringsWriter {
     public static func deleteKey(
         from file: XCStringsFile,
         key: String
-    ) throws -> XCStringsFile {
+    ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
         guard result.strings[key] != nil else {
@@ -199,7 +199,7 @@ public enum XCStringsWriter {
         from file: XCStringsFile,
         key: String,
         language: String
-    ) throws -> XCStringsFile {
+    ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
         guard result.strings[key] != nil else {
@@ -220,7 +220,7 @@ public enum XCStringsWriter {
         from file: XCStringsFile,
         key: String,
         languages: [String]
-    ) throws -> XCStringsFile {
+    ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
         guard result.strings[key] != nil else {

@@ -70,30 +70,10 @@ public struct DebugMemoryTool: Sendable {
             )
         }
 
-        guard case let .string(address) = arguments["address"] else {
-            throw MCPError.invalidParams("address is required")
-        }
-
-        let count: Int
-        if case let .int(value) = arguments["count"] {
-            count = value
-        } else {
-            count = 16
-        }
-
-        let format: String
-        if case let .string(value) = arguments["format"] {
-            format = value
-        } else {
-            format = "hex"
-        }
-
-        let size: Int
-        if case let .int(value) = arguments["size"] {
-            size = value
-        } else {
-            size = 4
-        }
+        let address = try arguments.getRequiredString("address")
+        let count = arguments.getInt("count") ?? 16
+        let format = arguments.getString("format") ?? "hex"
+        let size = arguments.getInt("size") ?? 4
 
         do {
             let result = try await lldbRunner.readMemory(

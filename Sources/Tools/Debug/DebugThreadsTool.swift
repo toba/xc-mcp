@@ -54,12 +54,7 @@ public struct DebugThreadsTool: Sendable {
             )
         }
 
-        let selectIndex: Int?
-        if case let .int(value) = arguments["select"] {
-            selectIndex = value
-        } else {
-            selectIndex = nil
-        }
+        let selectIndex = arguments.getInt("select")
 
         do {
             let result = try await lldbRunner.listThreads(

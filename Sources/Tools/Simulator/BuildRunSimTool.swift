@@ -118,7 +118,7 @@ public struct BuildRunSimTool: Sendable {
                     udid: simulator, appPath: appPath)
                 if !installResult.succeeded {
                     throw MCPError.internalError(
-                        "Failed to install app: \(installResult.stderr.isEmpty ? installResult.stdout : installResult.stderr)"
+                        "Failed to install app: \(installResult.errorOutput)"
                     )
                 }
             }
@@ -132,13 +132,13 @@ public struct BuildRunSimTool: Sendable {
             if launchResult.succeeded {
                 var message =
                     "Successfully built and launched '\(resolvedBundleId)' on simulator '\(simulator)'"
-                if let pid = extractPID(from: launchResult.stdout) {
+                if let pid = launchResult.launchedPID {
                     message += "\nProcess ID: \(pid)"
                 }
                 return CallTool.Result(content: [.text(message)])
             } else {
                 throw MCPError.internalError(
-                    "Failed to launch app: \(launchResult.stderr.isEmpty ? launchResult.stdout : launchResult.stderr)"
+                    "Failed to launch app: \(launchResult.errorOutput)"
                 )
             }
         } catch {
@@ -185,12 +185,4 @@ public struct BuildRunSimTool: Sendable {
         return nil
     }
 
-    private func extractPID(from output: String) -> String? {
-        let components = output.trimmingCharacters(in: .whitespacesAndNewlines)
-            .components(separatedBy: ": ")
-        if components.count >= 2 {
-            return components.last
-        }
-        return nil
-    }
 }

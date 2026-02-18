@@ -134,7 +134,7 @@ public struct SwipeTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to swipe: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to swipe: \(result.errorOutput)"
                 )
             }
         } catch {

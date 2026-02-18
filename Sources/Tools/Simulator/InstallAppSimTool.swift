@@ -50,7 +50,7 @@ public struct InstallAppSimTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to install app: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to install app: \(result.errorOutput)"
                 )
             }
         } catch {

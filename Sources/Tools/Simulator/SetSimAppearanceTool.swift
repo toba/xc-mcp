@@ -73,7 +73,7 @@ public struct SetSimAppearanceTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to set appearance: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to set appearance: \(result.errorOutput)"
                 )
             }
         } catch {

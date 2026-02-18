@@ -43,6 +43,7 @@ public final class BuildOutputParser: @unchecked Sendable {
     private var targetPhases: [String: [String]] = [:]
     private var targetDurations: [String: String] = [:]
     private var targetOrder: [String] = []
+    private var targetOrderSet: Set<String> = []
     private var shouldParseBuildInfo: Bool = false
 
     // Dependency graph tracking
@@ -265,6 +266,7 @@ public final class BuildOutputParser: @unchecked Sendable {
         targetPhases = [:]
         targetDurations = [:]
         targetOrder = []
+        targetOrderSet = []
         shouldParseBuildInfo = false
         targetDependencies = [:]
         currentDependencyTarget = nil
@@ -292,7 +294,7 @@ public final class BuildOutputParser: @unchecked Sendable {
                 return
             }
             if let (targetName, duration) = parseTargetTiming(line) {
-                if !targetOrder.contains(targetName) {
+                if targetOrderSet.insert(targetName).inserted {
                     targetOrder.append(targetName)
                 }
                 targetDurations[targetName] = duration
@@ -1154,12 +1156,12 @@ public final class BuildOutputParser: @unchecked Sendable {
     private func addPhaseToTarget(_ phase: String, target: String) {
         if targetPhases[target] == nil {
             targetPhases[target] = []
-            if !targetOrder.contains(target) {
+            if targetOrderSet.insert(target).inserted {
                 targetOrder.append(target)
             }
         }
-        if !targetPhases[target]!.contains(phase) {
-            targetPhases[target]!.append(phase)
+        if targetPhases[target, default: []].contains(phase) == false {
+            targetPhases[target, default: []].append(phase)
         }
     }
 
@@ -1238,7 +1240,7 @@ public final class BuildOutputParser: @unchecked Sendable {
                 let targetName = String(afterTarget[..<endQuote.lowerBound])
                 currentDependencyTarget = targetName
 
-                if !targetOrder.contains(targetName) {
+                if targetOrderSet.insert(targetName).inserted {
                     targetOrder.append(targetName)
                 }
 
@@ -1255,11 +1257,10 @@ public final class BuildOutputParser: @unchecked Sendable {
                 if let endQuote = afterStartQuote.range(of: "'") {
                     let dependencyName = String(afterStartQuote[..<endQuote.lowerBound])
 
-                    if targetDependencies[currentTarget] == nil {
-                        targetDependencies[currentTarget] = []
-                    }
-                    if !targetDependencies[currentTarget]!.contains(dependencyName) {
-                        targetDependencies[currentTarget]!.append(dependencyName)
+                    if targetDependencies[currentTarget, default: []].contains(dependencyName)
+                        == false
+                    {
+                        targetDependencies[currentTarget, default: []].append(dependencyName)
                     }
                     return true
                 }

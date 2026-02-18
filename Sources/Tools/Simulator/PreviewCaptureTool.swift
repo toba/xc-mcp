@@ -317,7 +317,8 @@ public struct PreviewCaptureTool: Sendable {
                 // Using 'open -a' goes through LaunchServices which strips env vars.
                 let appURL = URL(fileURLWithPath: appPath)
                 let appName = appURL.deletingPathExtension().lastPathComponent
-                let execPath = appURL
+                let execPath =
+                    appURL
                     .appendingPathComponent("Contents/MacOS/\(appName)").path
                 let buildProductsDir = appURL.deletingLastPathComponent().path
 
@@ -381,7 +382,7 @@ public struct PreviewCaptureTool: Sendable {
                     udid: sim, appPath: appPath)
                 if !installResult.succeeded {
                     throw MCPError.internalError(
-                        "Failed to install preview app: \(installResult.stderr.isEmpty ? installResult.stdout : installResult.stderr)"
+                        "Failed to install preview app: \(installResult.errorOutput)"
                     )
                 }
 
@@ -389,7 +390,7 @@ public struct PreviewCaptureTool: Sendable {
                     udid: sim, bundleId: bundleId)
                 if !launchResult.succeeded {
                     throw MCPError.internalError(
-                        "Failed to launch preview app: \(launchResult.stderr.isEmpty ? launchResult.stdout : launchResult.stderr)"
+                        "Failed to launch preview app: \(launchResult.errorOutput)"
                     )
                 }
 
@@ -406,7 +407,7 @@ public struct PreviewCaptureTool: Sendable {
                     udid: sim, outputPath: screenshotPath)
                 if !screenshotResult.succeeded {
                     throw MCPError.internalError(
-                        "Failed to capture screenshot: \(screenshotResult.stderr.isEmpty ? screenshotResult.stdout : screenshotResult.stderr)"
+                        "Failed to capture screenshot: \(screenshotResult.errorOutput)"
                     )
                 }
 
@@ -550,7 +551,8 @@ public struct PreviewCaptureTool: Sendable {
 
     /// Recursively collects transitive framework dependencies of a target.
     private func collectTransitiveDependencies(
-        of target: PBXNativeTarget, in xcodeproj: XcodeProj,
+        of target: PBXNativeTarget,
+        in xcodeproj: XcodeProj,
         collected: inout [PBXNativeTarget]
     ) {
         for dep in target.dependencies {
@@ -587,7 +589,8 @@ public struct PreviewCaptureTool: Sendable {
                 let rest = trimmed.dropFirst("import ".count)
                     .trimmingCharacters(in: .whitespaces)
                 // Handle `import Module` and `@testable import Module`
-                let moduleName = rest.split(separator: ".").first
+                let moduleName =
+                    rest.split(separator: ".").first
                     .map(String.init) ?? String(rest)
                 if !moduleName.isEmpty && !moduleName.hasPrefix("@") {
                     modules.insert(moduleName)
@@ -595,7 +598,8 @@ public struct PreviewCaptureTool: Sendable {
             } else if trimmed.hasPrefix("@testable import ") {
                 let rest = trimmed.dropFirst("@testable import ".count)
                     .trimmingCharacters(in: .whitespaces)
-                let moduleName = rest.split(separator: ".").first
+                let moduleName =
+                    rest.split(separator: ".").first
                     .map(String.init) ?? String(rest)
                 if !moduleName.isEmpty {
                     modules.insert(moduleName)
@@ -831,14 +835,14 @@ public struct PreviewCaptureTool: Sendable {
 
             FileHandle.standardError.write(
                 Data(
-                    "[preview_capture] sourceTarget: \(sourceTarget.name) (isApp=\(isAppTarget)), frameworkDeps: \(frameworkDeps.map { $0.name })\n"
+                    "[preview_capture] sourceTarget: \(sourceTarget.name) (isApp=\(isAppTarget)), frameworkDeps: \(frameworkDeps.map(\.name))\n"
                         .utf8))
             for fw in frameworkDeps {
                 let pkgDeps = fw.packageProductDependencies ?? []
                 if !pkgDeps.isEmpty {
                     FileHandle.standardError.write(
                         Data(
-                            "[preview_capture]   \(fw.name) SPM deps: \(pkgDeps.map { $0.productName })\n"
+                            "[preview_capture]   \(fw.name) SPM deps: \(pkgDeps.map(\.productName))\n"
                                 .utf8))
                 }
             }
@@ -884,13 +888,11 @@ public struct PreviewCaptureTool: Sendable {
             // the preview host app crashes on launch because SPM-provided
             // frameworks (e.g., GRDB) aren't embedded.
             var collectedPackageDeps: [XCSwiftPackageProductDependency] = []
-            let allTargets = [sourceTarget].compactMap { $0 } + frameworkDeps
+            let allTargets = [sourceTarget].compactMap(\.self) + frameworkDeps
             for srcTarget in allTargets {
-                for dep in srcTarget.packageProductDependencies ?? [] {
-                    if !collectedPackageDeps.contains(where: { $0.productName == dep.productName })
-                    {
-                        collectedPackageDeps.append(dep)
-                    }
+                for dep in srcTarget.packageProductDependencies ?? []
+                where !collectedPackageDeps.contains(where: { $0.productName == dep.productName }) {
+                    collectedPackageDeps.append(dep)
                 }
             }
 
@@ -1042,7 +1044,8 @@ public struct PreviewCaptureTool: Sendable {
                 // For flat layout, check it's a real file not a symlink to Versions/
                 var isDir: ObjCBool = false
                 let exists = fm.fileExists(atPath: flatBinary, isDirectory: &isDir)
-                hasFlatBinary = exists && !isDir.boolValue
+                hasFlatBinary =
+                    exists && !isDir.boolValue
                     && (try? fm.destinationOfSymbolicLink(atPath: flatBinary)) == nil
             }
 
@@ -1060,7 +1063,8 @@ public struct PreviewCaptureTool: Sendable {
                     .appendingPathComponent("Intermediates.noindex")
                 let projectName = URL(fileURLWithPath: projectPath)
                     .deletingPathExtension().lastPathComponent
-                let buildDir = intermediatesDir
+                let buildDir =
+                    intermediatesDir
                     .appendingPathComponent("\(projectName).build")
                     .appendingPathComponent(configuration)
                     .appendingPathComponent("\(name).build")

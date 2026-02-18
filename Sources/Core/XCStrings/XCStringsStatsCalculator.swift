@@ -52,7 +52,7 @@ public struct XCStringsStatsCalculator: Sendable {
     }
 
     /// Get progress for a specific language
-    public func getProgress(for language: String) throws -> LanguageStats {
+    public func getProgress(for language: String) throws(XCStringsError) -> LanguageStats {
         let stats = getStats()
 
         guard let langStats = stats.coverageByLanguage[language] else {

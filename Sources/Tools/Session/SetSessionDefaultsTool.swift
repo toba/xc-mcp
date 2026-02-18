@@ -57,54 +57,13 @@ public struct SetSessionDefaultsTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let projectPath: String?
-        if case let .string(value) = arguments["project_path"] {
-            projectPath = value
-        } else {
-            projectPath = nil
-        }
-
-        let workspacePath: String?
-        if case let .string(value) = arguments["workspace_path"] {
-            workspacePath = value
-        } else {
-            workspacePath = nil
-        }
-
-        let packagePath: String?
-        if case let .string(value) = arguments["package_path"] {
-            packagePath = value
-        } else {
-            packagePath = nil
-        }
-
-        let scheme: String?
-        if case let .string(value) = arguments["scheme"] {
-            scheme = value
-        } else {
-            scheme = nil
-        }
-
-        let simulatorUDID: String?
-        if case let .string(value) = arguments["simulator_udid"] {
-            simulatorUDID = value
-        } else {
-            simulatorUDID = nil
-        }
-
-        let deviceUDID: String?
-        if case let .string(value) = arguments["device_udid"] {
-            deviceUDID = value
-        } else {
-            deviceUDID = nil
-        }
-
-        let configuration: String?
-        if case let .string(value) = arguments["configuration"] {
-            configuration = value
-        } else {
-            configuration = nil
-        }
+        let projectPath = arguments.getString("project_path")
+        let workspacePath = arguments.getString("workspace_path")
+        let packagePath = arguments.getString("package_path")
+        let scheme = arguments.getString("scheme")
+        let simulatorUDID = arguments.getString("simulator_udid")
+        let deviceUDID = arguments.getString("device_udid")
+        let configuration = arguments.getString("configuration")
 
         // Validate that project and workspace are not both set
         if projectPath != nil && workspacePath != nil {

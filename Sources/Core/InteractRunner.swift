@@ -108,7 +108,7 @@ public struct InteractRunner: Sendable {
         AXIsProcessTrusted()
     }
 
-    public func ensureAccessibility() throws {
+    public func ensureAccessibility() throws(InteractError) {
         guard checkAccessibility() else {
             throw InteractError.accessibilityNotTrusted
         }
@@ -120,7 +120,7 @@ public struct InteractRunner: Sendable {
         pid: Int? = nil,
         bundleId: String? = nil,
         appName: String? = nil
-    ) throws -> pid_t {
+    ) throws(InteractError) -> pid_t {
         if let pid {
             return pid_t(pid)
         }
@@ -146,7 +146,8 @@ public struct InteractRunner: Sendable {
     }
 
     /// Resolves the target PID from MCP tool arguments.
-    public func resolveAppFromArguments(_ arguments: [String: Value]) throws -> pid_t {
+    public func resolveAppFromArguments(_ arguments: [String: Value]) throws(InteractError) -> pid_t
+    {
         let pid = arguments.getInt("pid")
         let bundleId = arguments.getString("bundle_id")
         let appName = arguments.getString("app_name")
@@ -159,7 +160,7 @@ public struct InteractRunner: Sendable {
     public func getUITree(
         pid: pid_t,
         maxDepth: Int = 3
-    ) throws -> [(InteractElement, SendableAXUIElement)] {
+    ) throws(InteractError) -> [(InteractElement, SendableAXUIElement)] {
         try ensureAccessibility()
         let appElement = AXUIElementCreateApplication(pid)
         var results: [(InteractElement, SendableAXUIElement)] = []
@@ -290,11 +291,17 @@ public struct InteractRunner: Sendable {
         )
     }
 
-    private func getStringAttribute(_ element: AXUIElement, _ attribute: String) -> String? {
+    private func getAttribute<T>(_ element: AXUIElement, _ attribute: String, as _: T.Type = T.self)
+        -> T?
+    {
         var ref: CFTypeRef?
         let err = AXUIElementCopyAttributeValue(element, attribute as CFString, &ref)
         guard err == .success, let value = ref else { return nil }
-        return value as? String
+        return value as? T
+    }
+
+    private func getStringAttribute(_ element: AXUIElement, _ attribute: String) -> String? {
+        getAttribute(element, attribute, as: String.self)
     }
 
     private func getAnyAttribute(_ element: AXUIElement, _ attribute: String) -> Any? {
@@ -305,15 +312,12 @@ public struct InteractRunner: Sendable {
     }
 
     private func getBoolAttribute(_ element: AXUIElement, _ attribute: String) -> Bool? {
-        var ref: CFTypeRef?
-        let err = AXUIElementCopyAttributeValue(element, attribute as CFString, &ref)
-        guard err == .success else { return nil }
-        return (ref as? Bool)
+        getAttribute(element, attribute, as: Bool.self)
     }
 
     // MARK: - Actions
 
-    public func performAction(_ action: String, on element: AXUIElement) throws {
+    public func performAction(_ action: String, on element: AXUIElement) throws(InteractError) {
         let err = AXUIElementPerformAction(element, action as CFString)
         guard err == .success else {
             throw InteractError.actionFailed(
@@ -323,7 +327,7 @@ public struct InteractRunner: Sendable {
 
     // MARK: - Set Value
 
-    public func setValue(_ value: String, on element: AXUIElement) throws {
+    public func setValue(_ value: String, on element: AXUIElement) throws(InteractError) {
         // First try to focus the element
         AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, true as CFTypeRef)
 
@@ -337,7 +341,7 @@ public struct InteractRunner: Sendable {
 
     // MARK: - Menu Navigation
 
-    public func navigateMenu(pid: pid_t, menuPath: [String]) throws {
+    public func navigateMenu(pid: pid_t, menuPath: [String]) throws(InteractError) {
         try ensureAccessibility()
         let appElement = AXUIElementCreateApplication(pid)
 
@@ -402,7 +406,7 @@ public struct InteractRunner: Sendable {
 
     // MARK: - Keyboard Events
 
-    public func sendKeyEvent(keyName: String, modifiers: [String] = []) throws {
+    public func sendKeyEvent(keyName: String, modifiers: [String] = []) throws(InteractError) {
         guard let keyCode = Self.keyCodes[keyName.lowercased()] else {
             throw InteractError.invalidKeyName(keyName)
         }
@@ -441,7 +445,7 @@ public struct InteractRunner: Sendable {
         identifier: String? = nil,
         value: String? = nil,
         maxDepth: Int = 10
-    ) throws -> [(InteractElement, SendableAXUIElement)] {
+    ) throws(InteractError) -> [(InteractElement, SendableAXUIElement)] {
         let tree = try getUITree(pid: pid, maxDepth: maxDepth)
         return tree.filter { element, _ in
             if let role, element.role?.localizedCaseInsensitiveContains(role) != true {

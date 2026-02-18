@@ -54,7 +54,7 @@ public struct EraseSimTool: Sendable {
                     )
                 } else {
                     throw MCPError.internalError(
-                        "Failed to erase simulators: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                        "Failed to erase simulators: \(result.errorOutput)"
                     )
                 }
             } catch {
@@ -83,7 +83,7 @@ public struct EraseSimTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to erase simulator: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to erase simulator: \(result.errorOutput)"
                 )
             }
         } catch {

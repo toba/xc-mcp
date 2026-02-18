@@ -66,26 +66,9 @@ public struct DebugBreakpointAddTool: Sendable {
         }
 
         // Get breakpoint location
-        let symbol: String?
-        if case let .string(value) = arguments["symbol"] {
-            symbol = value
-        } else {
-            symbol = nil
-        }
-
-        let file: String?
-        if case let .string(value) = arguments["file"] {
-            file = value
-        } else {
-            file = nil
-        }
-
-        let line: Int?
-        if case let .int(value) = arguments["line"] {
-            line = value
-        } else {
-            line = nil
-        }
+        let symbol = arguments.getString("symbol")
+        let file = arguments.getString("file")
+        let line = arguments.getInt("line")
 
         // Validate we have a location
         if symbol == nil && (file == nil || line == nil) {

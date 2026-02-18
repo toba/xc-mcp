@@ -56,12 +56,7 @@ public struct DebugStackTool: Sendable {
         }
 
         // Get optional thread index
-        let threadIndex: Int?
-        if case let .int(value) = arguments["thread"] {
-            threadIndex = value
-        } else {
-            threadIndex = nil
-        }
+        let threadIndex = arguments.getInt("thread")
 
         do {
             let result = try await lldbRunner.getStack(pid: targetPID, threadIndex: threadIndex)

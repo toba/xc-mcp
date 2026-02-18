@@ -30,6 +30,12 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case removeSynchronizedFolder = "remove_synchronized_folder"
     case addAppExtension = "add_app_extension"
     case removeAppExtension = "remove_app_extension"
+    case listDocumentTypes = "list_document_types"
+    case manageDocumentType = "manage_document_type"
+    case listTypeIdentifiers = "list_type_identifiers"
+    case manageTypeIdentifier = "manage_type_identifier"
+    case listURLTypes = "list_url_types"
+    case manageURLType = "manage_url_type"
 }
 
 /// MCP server for Xcode project file manipulation.
@@ -107,6 +113,12 @@ public struct ProjectMCPServer: Sendable {
         let removeSynchronizedFolderTool = RemoveFolderTool(pathUtility: pathUtility)
         let addAppExtensionTool = AddAppExtensionTool(pathUtility: pathUtility)
         let removeAppExtensionTool = RemoveAppExtensionTool(pathUtility: pathUtility)
+        let listDocumentTypesTool = ListDocumentTypesTool(pathUtility: pathUtility)
+        let manageDocumentTypeTool = ManageDocumentTypeTool(pathUtility: pathUtility)
+        let listTypeIdentifiersTool = ListTypeIdentifiersTool(pathUtility: pathUtility)
+        let manageTypeIdentifierTool = ManageTypeIdentifierTool(pathUtility: pathUtility)
+        let listURLTypesTool = ListURLTypesTool(pathUtility: pathUtility)
+        let manageURLTypeTool = ManageURLTypeTool(pathUtility: pathUtility)
 
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
@@ -135,6 +147,12 @@ public struct ProjectMCPServer: Sendable {
                 removeSynchronizedFolderTool.tool(),
                 addAppExtensionTool.tool(),
                 removeAppExtensionTool.tool(),
+                listDocumentTypesTool.tool(),
+                manageDocumentTypeTool.tool(),
+                listTypeIdentifiersTool.tool(),
+                manageTypeIdentifierTool.tool(),
+                listURLTypesTool.tool(),
+                manageURLTypeTool.tool(),
             ])
         }
 
@@ -195,6 +213,18 @@ public struct ProjectMCPServer: Sendable {
                 return try addAppExtensionTool.execute(arguments: arguments)
             case .removeAppExtension:
                 return try removeAppExtensionTool.execute(arguments: arguments)
+            case .listDocumentTypes:
+                return try listDocumentTypesTool.execute(arguments: arguments)
+            case .manageDocumentType:
+                return try manageDocumentTypeTool.execute(arguments: arguments)
+            case .listTypeIdentifiers:
+                return try listTypeIdentifiersTool.execute(arguments: arguments)
+            case .manageTypeIdentifier:
+                return try manageTypeIdentifierTool.execute(arguments: arguments)
+            case .listURLTypes:
+                return try listURLTypesTool.execute(arguments: arguments)
+            case .manageURLType:
+                return try manageURLTypeTool.execute(arguments: arguments)
             }
         }
 

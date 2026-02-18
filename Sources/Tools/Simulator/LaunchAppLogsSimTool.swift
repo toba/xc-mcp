@@ -89,12 +89,12 @@ public struct LaunchAppLogsSimTool: Sendable {
 
             guard launchResult.succeeded else {
                 throw MCPError.internalError(
-                    "Failed to launch app: \(launchResult.stderr.isEmpty ? launchResult.stdout : launchResult.stderr)"
+                    "Failed to launch app: \(launchResult.errorOutput)"
                 )
             }
 
             // Extract PID for log filtering
-            let pid = extractPID(from: launchResult.stdout)
+            let pid = launchResult.launchedPID
 
             // Capture logs using log stream
             let logs = try await captureLogs(
@@ -115,15 +115,6 @@ public struct LaunchAppLogsSimTool: Sendable {
         } catch {
             throw error.asMCPError()
         }
-    }
-
-    private func extractPID(from output: String) -> String? {
-        let components = output.trimmingCharacters(in: .whitespacesAndNewlines)
-            .components(separatedBy: ": ")
-        if components.count >= 2 {
-            return components.last
-        }
-        return nil
     }
 
     private func captureLogs(simulator: String, bundleId: String, pid: String?, duration: Int)

@@ -64,26 +64,9 @@ public struct DebugViewHierarchyTool: Sendable {
             )
         }
 
-        let platform: String
-        if case let .string(value) = arguments["platform"] {
-            platform = value
-        } else {
-            platform = "ios"
-        }
-
-        let address: String?
-        if case let .string(value) = arguments["address"] {
-            address = value
-        } else {
-            address = nil
-        }
-
-        let constraints: Bool
-        if case let .bool(value) = arguments["constraints"] {
-            constraints = value
-        } else {
-            constraints = false
-        }
+        let platform = arguments.getString("platform") ?? "ios"
+        let address = arguments.getString("address")
+        let constraints = arguments.getBool("constraints")
 
         do {
             let result = try await lldbRunner.viewHierarchy(

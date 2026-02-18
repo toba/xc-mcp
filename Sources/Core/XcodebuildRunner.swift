@@ -1,5 +1,6 @@
 import Foundation
 import MCP
+import Synchronization
 
 /// Wrapper for executing xcodebuild commands.
 ///
@@ -380,47 +381,34 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
 
 /// Thread-safe output collector that appends Data synchronously from readabilityHandler
 /// callbacks (which run on a serial dispatch queue), avoiding Task reordering issues.
-private final class OutputCollector: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stdoutData = Data()
-    private var stderrData = Data()
+private final class OutputCollector: Sendable {
+    private let stdoutData = Mutex(Data())
+    private let stderrData = Mutex(Data())
 
     func appendStdout(_ data: Data) {
-        lock.lock()
-        stdoutData.append(data)
-        lock.unlock()
+        stdoutData.withLock { $0.append(data) }
     }
 
     func appendStderr(_ data: Data) {
-        lock.lock()
-        stderrData.append(data)
-        lock.unlock()
+        stderrData.withLock { $0.append(data) }
     }
 
     func getOutput() -> (stdout: String, stderr: String) {
-        lock.lock()
-        let out = String(data: stdoutData, encoding: .utf8) ?? ""
-        let err = String(data: stderrData, encoding: .utf8) ?? ""
-        lock.unlock()
+        let out = stdoutData.withLock { String(data: $0, encoding: .utf8) ?? "" }
+        let err = stderrData.withLock { String(data: $0, encoding: .utf8) ?? "" }
         return (out, err)
     }
 }
 
 /// Thread-safe tracker for the last time output was received.
-private final class LastOutputTime: @unchecked Sendable {
-    private let lock = NSLock()
-    private var lastTime = Date()
+private final class LastOutputTime: Sendable {
+    private let lastTime = Mutex(Date())
 
     func update() {
-        lock.lock()
-        lastTime = Date()
-        lock.unlock()
+        lastTime.withLock { $0 = Date() }
     }
 
     func timeSinceLastOutput() -> TimeInterval {
-        lock.lock()
-        let interval = Date().timeIntervalSince(lastTime)
-        lock.unlock()
-        return interval
+        lastTime.withLock { Date().timeIntervalSince($0) }
     }
 }

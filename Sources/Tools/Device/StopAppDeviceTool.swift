@@ -52,7 +52,7 @@ public struct StopAppDeviceTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to stop app: \(result.stderr.isEmpty ? result.stdout : result.stderr)")
+                    "Failed to stop app: \(result.errorOutput)")
             }
         } catch {
             throw error.asMCPError()

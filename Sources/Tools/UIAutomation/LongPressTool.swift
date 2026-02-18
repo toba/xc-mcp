@@ -104,7 +104,7 @@ public struct LongPressTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to long press: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to long press: \(result.errorOutput)"
                 )
             }
         } catch {

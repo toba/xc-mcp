@@ -95,7 +95,7 @@ public struct DebugAttachSimTool: Sendable {
                 return CallTool.Result(content: [.text(message)])
             } else {
                 throw MCPError.internalError(
-                    "Failed to attach to process: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to attach to process: \(result.errorOutput)"
                 )
             }
         } catch {

@@ -69,33 +69,10 @@ public struct DebugSymbolLookupTool: Sendable {
             )
         }
 
-        let address: String?
-        if case let .string(value) = arguments["address"] {
-            address = value
-        } else {
-            address = nil
-        }
-
-        let name: String?
-        if case let .string(value) = arguments["name"] {
-            name = value
-        } else {
-            name = nil
-        }
-
-        let typeName: String?
-        if case let .string(value) = arguments["type"] {
-            typeName = value
-        } else {
-            typeName = nil
-        }
-
-        let verbose: Bool
-        if case let .bool(value) = arguments["verbose"] {
-            verbose = value
-        } else {
-            verbose = false
-        }
+        let address = arguments.getString("address")
+        let name = arguments.getString("name")
+        let typeName = arguments.getString("type")
+        let verbose = arguments.getBool("verbose")
 
         if address == nil && name == nil && typeName == nil {
             throw MCPError.invalidParams(

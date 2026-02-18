@@ -37,6 +37,12 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addCopyFilesPhase = "add_copy_files_phase"
     case addToCopyFilesPhase = "add_to_copy_files_phase"
     case removeCopyFilesPhase = "remove_copy_files_phase"
+    case listDocumentTypes = "list_document_types"
+    case manageDocumentType = "manage_document_type"
+    case listTypeIdentifiers = "list_type_identifiers"
+    case manageTypeIdentifier = "manage_type_identifier"
+    case listURLTypes = "list_url_types"
+    case manageURLType = "manage_url_type"
 
     // Session tools
     case setSessionDefaults = "set_session_defaults"
@@ -145,6 +151,11 @@ public enum ToolName: String, CaseIterable, Sendable {
     case swiftPackageList = "swift_package_list"
     case swiftPackageStop = "swift_package_stop"
 
+    // Instruments tools
+    case xctraceRecord = "xctrace_record"
+    case xctraceList = "xctrace_list"
+    case xctraceExport = "xctrace_export"
+
     // Utility tools
     case clean = "clean"
     case doctor = "doctor"
@@ -243,6 +254,12 @@ public struct XcodeMCPServer: Sendable {
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
+        let listDocumentTypesTool = ListDocumentTypesTool(pathUtility: pathUtility)
+        let manageDocumentTypeTool = ManageDocumentTypeTool(pathUtility: pathUtility)
+        let listTypeIdentifiersTool = ListTypeIdentifiersTool(pathUtility: pathUtility)
+        let manageTypeIdentifierTool = ManageTypeIdentifierTool(pathUtility: pathUtility)
+        let listURLTypesTool = ListURLTypesTool(pathUtility: pathUtility)
+        let manageURLTypeTool = ManageURLTypeTool(pathUtility: pathUtility)
 
         // Create session tools
         let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
@@ -401,6 +418,13 @@ public struct XcodeMCPServer: Sendable {
         let interactKeyTool = InteractKeyTool(interactRunner: interactRunner)
         let interactFindTool = InteractFindTool(interactRunner: interactRunner)
 
+        // Create instruments tools
+        let xctraceRunner = XctraceRunner()
+        let xctraceRecordTool = XctraceRecordTool(
+            xctraceRunner: xctraceRunner, sessionManager: sessionManager)
+        let xctraceListTool = XctraceListTool(xctraceRunner: xctraceRunner)
+        let xctraceExportTool = XctraceExportTool(xctraceRunner: xctraceRunner)
+
         // Create utility tools
         let cleanTool = CleanTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
@@ -439,6 +463,12 @@ public struct XcodeMCPServer: Sendable {
                 addCopyFilesPhase.tool(),
                 addToCopyFilesPhase.tool(),
                 removeCopyFilesPhase.tool(),
+                listDocumentTypesTool.tool(),
+                manageDocumentTypeTool.tool(),
+                listTypeIdentifiersTool.tool(),
+                manageTypeIdentifierTool.tool(),
+                listURLTypesTool.tool(),
+                manageURLTypeTool.tool(),
                 // Session tools
                 setSessionDefaultsTool.tool(),
                 showSessionDefaultsTool.tool(),
@@ -535,6 +565,10 @@ public struct XcodeMCPServer: Sendable {
                 interactFocusTool.tool(),
                 interactKeyTool.tool(),
                 interactFindTool.tool(),
+                // Instruments tools
+                xctraceRecordTool.tool(),
+                xctraceListTool.tool(),
+                xctraceExportTool.tool(),
                 // Utility tools
                 cleanTool.tool(),
                 doctorTool.tool(),
@@ -607,6 +641,18 @@ public struct XcodeMCPServer: Sendable {
                 return try addToCopyFilesPhase.execute(arguments: arguments)
             case .removeCopyFilesPhase:
                 return try removeCopyFilesPhase.execute(arguments: arguments)
+            case .listDocumentTypes:
+                return try listDocumentTypesTool.execute(arguments: arguments)
+            case .manageDocumentType:
+                return try manageDocumentTypeTool.execute(arguments: arguments)
+            case .listTypeIdentifiers:
+                return try listTypeIdentifiersTool.execute(arguments: arguments)
+            case .manageTypeIdentifier:
+                return try manageTypeIdentifierTool.execute(arguments: arguments)
+            case .listURLTypes:
+                return try listURLTypesTool.execute(arguments: arguments)
+            case .manageURLType:
+                return try manageURLTypeTool.execute(arguments: arguments)
 
             // Session tools
             case .setSessionDefaults:
@@ -799,6 +845,14 @@ public struct XcodeMCPServer: Sendable {
                 return try interactKeyTool.execute(arguments: arguments)
             case .interactFind:
                 return try await interactFindTool.execute(arguments: arguments)
+
+            // Instruments tools
+            case .xctraceRecord:
+                return try await xctraceRecordTool.execute(arguments: arguments)
+            case .xctraceList:
+                return try await xctraceListTool.execute(arguments: arguments)
+            case .xctraceExport:
+                return try await xctraceExportTool.execute(arguments: arguments)
 
             // Utility tools
             case .clean:

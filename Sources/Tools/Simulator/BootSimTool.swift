@@ -49,7 +49,7 @@ public struct BootSimTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to boot simulator: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to boot simulator: \(result.errorOutput)"
                 )
             }
         } catch {

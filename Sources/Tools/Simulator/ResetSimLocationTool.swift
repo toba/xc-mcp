@@ -53,7 +53,7 @@ public struct ResetSimLocationTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to reset location: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to reset location: \(result.errorOutput)"
                 )
             }
         } catch {

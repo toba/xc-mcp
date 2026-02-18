@@ -56,9 +56,7 @@ public struct DebugLLDBCommandTool: Sendable {
         }
 
         // Get command
-        guard case let .string(command) = arguments["command"] else {
-            throw MCPError.invalidParams("command is required")
-        }
+        let command = try arguments.getRequiredString("command")
 
         do {
             let result = try await lldbRunner.executeCommand(pid: targetPID, command: command)

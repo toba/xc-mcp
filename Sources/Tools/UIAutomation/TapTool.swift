@@ -86,7 +86,7 @@ public struct TapTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to tap: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to tap: \(result.errorOutput)"
                 )
             }
         } catch {

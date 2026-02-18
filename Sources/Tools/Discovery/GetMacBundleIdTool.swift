@@ -132,7 +132,7 @@ public struct GetMacBundleIdTool: Sendable {
                 return CallTool.Result(content: [.text(output)])
             } else {
                 throw MCPError.internalError(
-                    "Failed to get build settings: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to get build settings: \(result.errorOutput)"
                 )
             }
         } catch {

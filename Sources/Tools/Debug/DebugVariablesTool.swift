@@ -56,12 +56,7 @@ public struct DebugVariablesTool: Sendable {
         }
 
         // Get optional frame index
-        let frameIndex: Int
-        if case let .int(value) = arguments["frame"] {
-            frameIndex = value
-        } else {
-            frameIndex = 0
-        }
+        let frameIndex = arguments.getInt("frame") ?? 0
 
         do {
             let result = try await lldbRunner.getVariables(pid: targetPID, frameIndex: frameIndex)

@@ -68,7 +68,9 @@ struct BuildRunScreenshotIntegrationTests {
         try await Task.sleep(for: .seconds(3))
 
         // 3. Screenshot
-        let savePath = NSTemporaryDirectory() + "swiftformat_screenshot_\(ProcessInfo.processInfo.globallyUniqueString).png"
+        let savePath =
+            NSTemporaryDirectory()
+            + "swiftformat_screenshot_\(ProcessInfo.processInfo.globallyUniqueString).png"
         let screenshotTool = ScreenshotMacWindowTool()
         let screenshotResult = try await screenshotTool.execute(arguments: [
             "app_name": .string("SwiftFormat for Xcode"),
@@ -123,7 +125,9 @@ struct BuildRunScreenshotIntegrationTests {
         try await Task.sleep(for: .seconds(3))
 
         // 4. Screenshot
-        let savePath = NSTemporaryDirectory() + "icecubes_screenshot_\(ProcessInfo.processInfo.globallyUniqueString).png"
+        let savePath =
+            NSTemporaryDirectory()
+            + "icecubes_screenshot_\(ProcessInfo.processInfo.globallyUniqueString).png"
         let screenshotTool = ScreenshotTool(
             simctlRunner: simctlRunner,
             sessionManager: sessionManager)
@@ -141,7 +145,9 @@ struct BuildRunScreenshotIntegrationTests {
         // 6. Cleanup
         let terminateProcess = Process()
         terminateProcess.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-        terminateProcess.arguments = ["simctl", "terminate", simulatorUDID, "com.thomasricouard.IceCubesApp"]
+        terminateProcess.arguments = [
+            "simctl", "terminate", simulatorUDID, "com.thomasricouard.IceCubesApp",
+        ]
         try? terminateProcess.run()
         terminateProcess.waitUntilExit()
 

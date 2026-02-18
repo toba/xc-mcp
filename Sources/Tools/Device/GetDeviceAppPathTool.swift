@@ -65,7 +65,7 @@ public struct GetDeviceAppPathTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to get app info: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to get app info: \(result.errorOutput)"
                 )
             }
         } catch {

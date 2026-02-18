@@ -69,23 +69,12 @@ public struct StopMacLogCapTool: Sendable {
             }
 
             // Read tail of log file if available
-            if let outputFile, FileManager.default.fileExists(atPath: outputFile) {
-                let tailProcess = Process()
-                tailProcess.executableURL = URL(fileURLWithPath: "/usr/bin/tail")
-                tailProcess.arguments = ["-n", "\(tailLines)", outputFile]
-
-                let pipe = Pipe()
-                tailProcess.standardOutput = pipe
-
-                try tailProcess.run()
-                tailProcess.waitUntilExit()
-
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                if let tailOutput = String(data: data, encoding: .utf8), !tailOutput.isEmpty {
-                    message += "\n\nLast \(tailLines) lines of log:\n"
-                    message += String(repeating: "-", count: 50) + "\n"
-                    message += tailOutput
-                }
+            if let outputFile, FileManager.default.fileExists(atPath: outputFile),
+                let tailOutput = FileUtility.readTailLines(path: outputFile, count: tailLines)
+            {
+                message += "\n\nLast \(tailLines) lines of log:\n"
+                message += String(repeating: "-", count: 50) + "\n"
+                message += tailOutput
             }
 
             return CallTool.Result(content: [.text(message)])

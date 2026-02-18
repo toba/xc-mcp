@@ -97,7 +97,7 @@ public struct SimStatusBarTool: Sendable {
                     )
                 } else {
                     throw MCPError.internalError(
-                        "Failed to clear status bar: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                        "Failed to clear status bar: \(result.errorOutput)"
                     )
                 }
             } catch {
@@ -150,7 +150,7 @@ public struct SimStatusBarTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to set status bar: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to set status bar: \(result.errorOutput)"
                 )
             }
         } catch {

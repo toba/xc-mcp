@@ -82,7 +82,7 @@ public struct ButtonTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to press button: \(result.stderr.isEmpty ? result.stdout : result.stderr)"
+                    "Failed to press button: \(result.errorOutput)"
                 )
             }
         } catch {

@@ -9,7 +9,7 @@ public struct XCStringsFileHandler: Sendable {
     }
 
     /// Load xcstrings file from disk
-    public func load() throws -> XCStringsFile {
+    public func load() throws(XCStringsError) -> XCStringsFile {
         let url = URL(fileURLWithPath: path)
         guard FileManager.default.fileExists(atPath: path) else {
             throw XCStringsError.fileNotFound(path: path)
@@ -31,7 +31,7 @@ public struct XCStringsFileHandler: Sendable {
     }
 
     /// Save xcstrings file to disk
-    public func save(_ file: XCStringsFile) throws {
+    public func save(_ file: XCStringsFile) throws(XCStringsError) {
         let url = URL(fileURLWithPath: path)
 
         let encoder = JSONEncoder()
@@ -52,7 +52,7 @@ public struct XCStringsFileHandler: Sendable {
     }
 
     /// Create a new xcstrings file
-    public func create(sourceLanguage: String, overwrite: Bool = false) throws {
+    public func create(sourceLanguage: String, overwrite: Bool = false) throws(XCStringsError) {
         let url = URL(fileURLWithPath: path)
 
         if !overwrite && FileManager.default.fileExists(atPath: path) {

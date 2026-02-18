@@ -75,37 +75,11 @@ public struct DebugWatchpointTool: Sendable {
             )
         }
 
-        guard case let .string(action) = arguments["action"] else {
-            throw MCPError.invalidParams("action is required")
-        }
-
-        let variable: String?
-        if case let .string(value) = arguments["variable"] {
-            variable = value
-        } else {
-            variable = nil
-        }
-
-        let address: String?
-        if case let .string(value) = arguments["address"] {
-            address = value
-        } else {
-            address = nil
-        }
-
-        let watchpointId: Int?
-        if case let .int(value) = arguments["watchpoint_id"] {
-            watchpointId = value
-        } else {
-            watchpointId = nil
-        }
-
-        let condition: String?
-        if case let .string(value) = arguments["condition"] {
-            condition = value
-        } else {
-            condition = nil
-        }
+        let action = try arguments.getRequiredString("action")
+        let variable = arguments.getString("variable")
+        let address = arguments.getString("address")
+        let watchpointId = arguments.getInt("watchpoint_id")
+        let condition = arguments.getString("condition")
 
         do {
             let result = try await lldbRunner.manageWatchpoint(

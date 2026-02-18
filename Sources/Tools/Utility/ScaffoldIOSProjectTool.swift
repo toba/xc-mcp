@@ -54,41 +54,12 @@ public struct ScaffoldIOSProjectTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectName) = arguments["project_name"] else {
-            throw MCPError.invalidParams("project_name is required")
-        }
-
-        guard case let .string(basePath) = arguments["path"] else {
-            throw MCPError.invalidParams("path is required")
-        }
-
-        let organizationName: String
-        if case let .string(value) = arguments["organization_name"] {
-            organizationName = value
-        } else {
-            organizationName = "Organization"
-        }
-
-        let bundleIdPrefix: String
-        if case let .string(value) = arguments["bundle_identifier"] {
-            bundleIdPrefix = value
-        } else {
-            bundleIdPrefix = "com.example"
-        }
-
-        let deploymentTarget: String
-        if case let .string(value) = arguments["deployment_target"] {
-            deploymentTarget = value
-        } else {
-            deploymentTarget = "17.0"
-        }
-
-        let includeTests: Bool
-        if case let .bool(value) = arguments["include_tests"] {
-            includeTests = value
-        } else {
-            includeTests = true
-        }
+        let projectName = try arguments.getRequiredString("project_name")
+        let basePath = try arguments.getRequiredString("path")
+        let organizationName = arguments.getString("organization_name") ?? "Organization"
+        let bundleIdPrefix = arguments.getString("bundle_identifier") ?? "com.example"
+        let deploymentTarget = arguments.getString("deployment_target") ?? "17.0"
+        let includeTests = arguments.getBool("include_tests", default: true)
 
         // Resolve path
         let resolvedBasePath = try pathUtility.resolvePath(from: basePath)
