@@ -119,6 +119,7 @@ public enum XCStringsWriter {
         var result = file
         var succeeded = 0
         var errors: [BatchWriteError] = []
+        errors.reserveCapacity(entries.count)
 
         for entry in entries {
             do {
@@ -142,6 +143,7 @@ public enum XCStringsWriter {
         var result = file
         var succeeded = 0
         var errors: [BatchWriteError] = []
+        errors.reserveCapacity(entries.count)
 
         for entry in entries {
             do {

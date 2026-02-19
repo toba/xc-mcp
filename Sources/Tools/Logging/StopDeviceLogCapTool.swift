@@ -46,35 +46,17 @@ public struct StopDeviceLogCapTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let pid: Int?
-        if case let .int(value) = arguments["pid"] {
-            pid = value
-        } else {
-            pid = nil
-        }
-
+        let pid = arguments.getInt("pid")
         let device: String?
-        if case let .string(value) = arguments["device"] {
-            device = value
+        if let explicit = arguments.getString("device") {
+            device = explicit
         } else {
             device = await sessionManager.deviceUDID
         }
-
-        let outputFile: String?
-        if case let .string(value) = arguments["output_file"] {
-            outputFile = value
-        } else if let dev = device {
-            outputFile = "/tmp/device_log_\(dev).log"
-        } else {
-            outputFile = nil
-        }
-
-        let tailLines: Int
-        if case let .int(value) = arguments["tail_lines"] {
-            tailLines = value
-        } else {
-            tailLines = 50
-        }
+        let outputFile =
+            arguments.getString("output_file")
+            ?? device.map { "/tmp/device_log_\($0).log" }
+        let tailLines = arguments.getInt("tail_lines") ?? 50
 
         // Must have either pid or device
         if pid == nil && device == nil {
@@ -83,29 +65,14 @@ public struct StopDeviceLogCapTool: Sendable {
 
         do {
             if let pid {
-                // Kill specific process
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/bin/kill")
-                process.arguments = ["\(pid)"]
-
-                try process.run()
-                process.waitUntilExit()
+                try ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
             } else if let device {
-                // Find and kill all devicectl syslog processes for this device
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-                process.arguments = ["-f", "devicectl.*\(device).*syslog"]
-
-                try process.run()
-                process.waitUntilExit()
-
-                // Also try alternate pattern
-                let process2 = Process()
-                process2.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-                process2.arguments = ["-f", "devicectl device info syslog.*\(device)"]
-
-                try process2.run()
-                process2.waitUntilExit()
+                _ = try? ProcessResult.run(
+                    "/usr/bin/pkill",
+                    arguments: ["-f", "devicectl.*\(device).*syslog"])
+                _ = try? ProcessResult.run(
+                    "/usr/bin/pkill",
+                    arguments: ["-f", "devicectl device info syslog.*\(device)"])
             }
 
             var message = "Stopped log capture"
@@ -115,14 +82,7 @@ public struct StopDeviceLogCapTool: Sendable {
                 message += " for device '\(device)'"
             }
 
-            // Read tail of log file if available
-            if let outputFile, FileManager.default.fileExists(atPath: outputFile),
-                let tailOutput = FileUtility.readTailLines(path: outputFile, count: tailLines)
-            {
-                message += "\n\nLast \(tailLines) lines of log:\n"
-                message += String(repeating: "-", count: 50) + "\n"
-                message += tailOutput
-            }
+            LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
 
             return CallTool.Result(content: [.text(message)])
         } catch {

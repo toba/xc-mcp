@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-19T19:41:09Z
 updated_at: 2026-02-19T19:53:46Z
+sync:
+    github:
+        issue_number: "81"
+        synced_at: "2026-02-19T20:04:43Z"
 ---
 
 Implement 5 features for agent ergonomics and diagnostics:

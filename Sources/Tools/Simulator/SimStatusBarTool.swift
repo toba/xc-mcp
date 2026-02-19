@@ -83,7 +83,7 @@ public struct SimStatusBarTool: Sendable {
         }
 
         // Check if we should clear
-        if case let .bool(clear) = arguments["clear"], clear {
+        if arguments.getBool("clear") {
             do {
                 let result = try await simctlRunner.clearStatusBar(udid: simulator)
 
@@ -108,25 +108,25 @@ public struct SimStatusBarTool: Sendable {
         // Build status bar override options
         var options: [String: Any] = [:]
 
-        if case let .string(time) = arguments["time"] {
+        if let time = arguments.getString("time") {
             options["time"] = time
         }
-        if case let .int(batteryLevel) = arguments["battery_level"] {
+        if let batteryLevel = arguments.getInt("battery_level") {
             options["batteryLevel"] = batteryLevel
         }
-        if case let .string(batteryState) = arguments["battery_state"] {
+        if let batteryState = arguments.getString("battery_state") {
             options["batteryState"] = batteryState
         }
-        if case let .string(cellularMode) = arguments["cellular_mode"] {
+        if let cellularMode = arguments.getString("cellular_mode") {
             options["cellularMode"] = cellularMode
         }
-        if case let .int(cellularBars) = arguments["cellular_bars"] {
+        if let cellularBars = arguments.getInt("cellular_bars") {
             options["cellularBars"] = cellularBars
         }
-        if case let .string(wifiMode) = arguments["wifi_mode"] {
+        if let wifiMode = arguments.getString("wifi_mode") {
             options["wifiMode"] = wifiMode
         }
-        if case let .int(wifiBars) = arguments["wifi_bars"] {
+        if let wifiBars = arguments.getInt("wifi_bars") {
             options["wifiBars"] = wifiBars
         }
 

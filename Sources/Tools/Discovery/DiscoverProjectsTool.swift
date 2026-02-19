@@ -51,26 +51,9 @@ public struct DiscoverProjectsTool: Sendable {
             searchPath = pathUtility.basePath
         }
 
-        let maxDepth: Int
-        if case let .int(value) = arguments["max_depth"] {
-            maxDepth = value
-        } else {
-            maxDepth = 3
-        }
-
-        let includeWorkspaces: Bool
-        if case let .bool(value) = arguments["include_workspaces"] {
-            includeWorkspaces = value
-        } else {
-            includeWorkspaces = true
-        }
-
-        let includeProjects: Bool
-        if case let .bool(value) = arguments["include_projects"] {
-            includeProjects = value
-        } else {
-            includeProjects = true
-        }
+        let maxDepth = arguments.getInt("max_depth") ?? 3
+        let includeWorkspaces = arguments.getBool("include_workspaces", default: true)
+        let includeProjects = arguments.getBool("include_projects", default: true)
 
         let fileManager = FileManager.default
 

@@ -46,35 +46,17 @@ public struct StopSimLogCapTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let pid: Int?
-        if case let .int(value) = arguments["pid"] {
-            pid = value
-        } else {
-            pid = nil
-        }
-
+        let pid = arguments.getInt("pid")
         let simulator: String?
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
+        if let explicit = arguments.getString("simulator") {
+            simulator = explicit
         } else {
             simulator = await sessionManager.simulatorUDID
         }
-
-        let outputFile: String?
-        if case let .string(value) = arguments["output_file"] {
-            outputFile = value
-        } else if let sim = simulator {
-            outputFile = "/tmp/sim_log_\(sim).log"
-        } else {
-            outputFile = nil
-        }
-
-        let tailLines: Int
-        if case let .int(value) = arguments["tail_lines"] {
-            tailLines = value
-        } else {
-            tailLines = 50
-        }
+        let outputFile =
+            arguments.getString("output_file")
+            ?? simulator.map { "/tmp/sim_log_\($0).log" }
+        let tailLines = arguments.getInt("tail_lines") ?? 50
 
         // Must have either pid or simulator
         if pid == nil && simulator == nil {
@@ -84,31 +66,14 @@ public struct StopSimLogCapTool: Sendable {
 
         do {
             if let pid {
-                // Kill specific process
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/bin/kill")
-                process.arguments = ["\(pid)"]
-
-                try process.run()
-                process.waitUntilExit()
-
+                try ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
             } else if let simulator {
-                // Find and kill all log stream processes for this simulator
-                // Use pkill to kill processes matching the pattern
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-                process.arguments = ["-f", "simctl spawn \(simulator) log stream"]
-
-                try process.run()
-                process.waitUntilExit()
-
-                // Also try the alternate pattern
-                let process2 = Process()
-                process2.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-                process2.arguments = ["-f", "xcrun simctl.*\(simulator).*log stream"]
-
-                try process2.run()
-                process2.waitUntilExit()
+                _ = try? ProcessResult.run(
+                    "/usr/bin/pkill",
+                    arguments: ["-f", "simctl spawn \(simulator) log stream"])
+                _ = try? ProcessResult.run(
+                    "/usr/bin/pkill",
+                    arguments: ["-f", "xcrun simctl.*\(simulator).*log stream"])
             }
 
             var message = "Stopped log capture"
@@ -118,14 +83,7 @@ public struct StopSimLogCapTool: Sendable {
                 message += " for simulator '\(simulator)'"
             }
 
-            // Read tail of log file if available
-            if let outputFile, FileManager.default.fileExists(atPath: outputFile),
-                let tailOutput = FileUtility.readTailLines(path: outputFile, count: tailLines)
-            {
-                message += "\n\nLast \(tailLines) lines of log:\n"
-                message += String(repeating: "-", count: 50) + "\n"
-                message += tailOutput
-            }
+            LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
 
             return CallTool.Result(content: [.text(message)])
         } catch {

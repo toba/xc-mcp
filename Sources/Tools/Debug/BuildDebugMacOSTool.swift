@@ -204,28 +204,7 @@ public struct BuildDebugMacOSTool: Sendable {
     // MARK: - Build Settings Extraction
 
     private func extractBuildSetting(_ key: String, from buildSettings: String) -> String? {
-        // showBuildSettings returns JSON: [{"target": "...", "buildSettings": {...}}]
-        if let data = buildSettings.data(using: .utf8),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        {
-            for entry in json {
-                if let settings = entry["buildSettings"] as? [String: String],
-                    let value = settings[key]
-                {
-                    return value
-                }
-            }
-        }
-
-        // Fallback: parse text format (key = value)
-        let lines = buildSettings.components(separatedBy: .newlines)
-        for line in lines where line.contains(key) {
-            if let equalsRange = line.range(of: " = ") {
-                return String(line[equalsRange.upperBound...])
-                    .trimmingCharacters(in: .whitespaces)
-            }
-        }
-        return nil
+        BuildSettingExtractor.extractSetting(key, from: buildSettings)
     }
 
     /// Prepares a debug app bundle for launch via `/usr/bin/open`.

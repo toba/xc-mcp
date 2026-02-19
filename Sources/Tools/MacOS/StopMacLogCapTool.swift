@@ -46,21 +46,10 @@ public struct StopMacLogCapTool: Sendable {
 
         do {
             if let pid {
-                // Kill specific process
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/bin/kill")
-                process.arguments = ["\(pid)"]
-
-                try process.run()
-                process.waitUntilExit()
+                try ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
             } else {
-                // Kill all `log stream` processes started by this tool
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-                process.arguments = ["-f", "/usr/bin/log stream"]
-
-                try process.run()
-                process.waitUntilExit()
+                _ = try? ProcessResult.run(
+                    "/usr/bin/pkill", arguments: ["-f", "/usr/bin/log stream"])
             }
 
             var message = "Stopped log capture"
@@ -68,14 +57,7 @@ public struct StopMacLogCapTool: Sendable {
                 message += " (PID: \(pid))"
             }
 
-            // Read tail of log file if available
-            if let outputFile, FileManager.default.fileExists(atPath: outputFile),
-                let tailOutput = FileUtility.readTailLines(path: outputFile, count: tailLines)
-            {
-                message += "\n\nLast \(tailLines) lines of log:\n"
-                message += String(repeating: "-", count: 50) + "\n"
-                message += tailOutput
-            }
+            LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
 
             return CallTool.Result(content: [.text(message)])
         } catch {

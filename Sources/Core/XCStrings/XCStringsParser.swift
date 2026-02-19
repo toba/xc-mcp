@@ -105,6 +105,7 @@ public actor XCStringsParser {
         -> BatchStaleKeysSummary
     {
         var results: [StaleKeysResult] = []
+        results.reserveCapacity(paths.count)
         for path in paths {
             let handler = XCStringsFileHandler(path: path)
             let file = try handler.load()
@@ -133,6 +134,7 @@ public actor XCStringsParser {
         -> BatchCoverageSummary
     {
         var files: [(path: String, file: XCStringsFile)] = []
+        files.reserveCapacity(paths.count)
         for path in paths {
             let handler = XCStringsFileHandler(path: path)
             let file = try handler.load()
@@ -154,6 +156,7 @@ public actor XCStringsParser {
         -> CompactBatchCoverageSummary
     {
         var files: [(path: String, file: XCStringsFile)] = []
+        files.reserveCapacity(paths.count)
         for path in paths {
             let handler = XCStringsFileHandler(path: path)
             let file = try handler.load()
@@ -185,7 +188,9 @@ public actor XCStringsParser {
     }
 
     /// Update an existing translation
-    public func updateTranslation(key: String, language: String, value: String) throws {
+    public func updateTranslation(key: String, language: String, value: String)
+        throws(XCStringsError)
+    {
         let file = try load()
         let updated = try XCStringsWriter.updateTranslation(
             in: file, key: key, language: language, value: value)
@@ -193,7 +198,9 @@ public actor XCStringsParser {
     }
 
     /// Update translations for multiple languages
-    public func updateTranslations(key: String, translations: [String: String]) throws {
+    public func updateTranslations(key: String, translations: [String: String])
+        throws(XCStringsError)
+    {
         let file = try load()
         let updated = try XCStringsWriter.updateTranslations(
             in: file, key: key, translations: translations)
@@ -201,7 +208,7 @@ public actor XCStringsParser {
     }
 
     /// Rename a key
-    public func renameKey(from oldKey: String, to newKey: String) throws {
+    public func renameKey(from oldKey: String, to newKey: String) throws(XCStringsError) {
         let file = try load()
         let updated = try XCStringsWriter.renameKey(in: file, from: oldKey, to: newKey)
         try save(updated)
@@ -212,7 +219,7 @@ public actor XCStringsParser {
     /// Add translations for multiple keys
     public func addTranslationsBatch(
         entries: [BatchTranslationEntry], allowOverwrite: Bool = false
-    ) throws -> BatchWriteResult {
+    ) throws(XCStringsError) -> BatchWriteResult {
         let file = try load()
         let (updated, result) = XCStringsWriter.addTranslationsBatch(
             to: file, entries: entries, allowOverwrite: allowOverwrite)
@@ -223,7 +230,8 @@ public actor XCStringsParser {
     }
 
     /// Update translations for multiple keys
-    public func updateTranslationsBatch(entries: [BatchTranslationEntry]) throws -> BatchWriteResult
+    public func updateTranslationsBatch(entries: [BatchTranslationEntry]) throws(XCStringsError)
+        -> BatchWriteResult
     {
         let file = try load()
         let (updated, result) = XCStringsWriter.updateTranslationsBatch(
@@ -237,14 +245,14 @@ public actor XCStringsParser {
     // MARK: - Delete Operations
 
     /// Delete a key entirely
-    public func deleteKey(_ key: String) throws {
+    public func deleteKey(_ key: String) throws(XCStringsError) {
         let file = try load()
         let updated = try XCStringsWriter.deleteKey(from: file, key: key)
         try save(updated)
     }
 
     /// Delete a translation for a specific language
-    public func deleteTranslation(key: String, language: String) throws {
+    public func deleteTranslation(key: String, language: String) throws(XCStringsError) {
         let file = try load()
         let updated = try XCStringsWriter.deleteTranslation(
             from: file, key: key, language: language)
@@ -252,7 +260,7 @@ public actor XCStringsParser {
     }
 
     /// Delete translations for multiple languages
-    public func deleteTranslations(key: String, languages: [String]) throws {
+    public func deleteTranslations(key: String, languages: [String]) throws(XCStringsError) {
         let file = try load()
         let updated = try XCStringsWriter.deleteTranslations(
             from: file, key: key, languages: languages)

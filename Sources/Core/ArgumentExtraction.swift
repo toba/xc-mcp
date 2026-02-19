@@ -128,4 +128,41 @@ extension [String: Value] {
             ]),
         ]
     }
+
+    /// Parses batch translation entries from an "entries" array argument.
+    ///
+    /// Each entry must be an object with a "key" string and a "translations" object
+    /// mapping language codes to translated strings.
+    ///
+    /// - Returns: An array of ``BatchTranslationEntry`` values.
+    /// - Throws: MCPError.invalidParams if the structure is invalid.
+    public func parseBatchTranslationEntries() throws -> [BatchTranslationEntry] {
+        guard case let .array(entriesArray) = self["entries"] else {
+            throw MCPError.invalidParams("entries must be an array")
+        }
+
+        return try entriesArray.compactMap { entryValue -> BatchTranslationEntry? in
+            guard case let .object(entry) = entryValue,
+                case let .string(key) = entry["key"],
+                case let .object(translationsObj) = entry["translations"]
+            else {
+                throw MCPError.invalidParams(
+                    "Each entry must have a 'key' string and 'translations' object")
+            }
+
+            var translations: [String: String] = [:]
+            for (lang, val) in translationsObj {
+                if case let .string(str) = val {
+                    translations[lang] = str
+                }
+            }
+
+            guard !translations.isEmpty else {
+                throw MCPError.invalidParams(
+                    "translations for key '\(key)' must contain at least one language")
+            }
+
+            return BatchTranslationEntry(key: key, translations: translations)
+        }
+    }
 }

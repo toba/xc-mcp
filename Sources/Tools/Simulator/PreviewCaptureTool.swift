@@ -1166,8 +1166,10 @@ public struct PreviewCaptureTool: Sendable {
     /// Removing these forces xcodebuild to re-link them as standalone dylibs
     /// when building with MERGED_BINARY_TYPE=none.
     private func cleanEmptyFrameworkStubs(
-        projectPath: String, targetName: String,
-        destination: String, configuration: String
+        projectPath: String,
+        targetName: String,
+        destination: String,
+        configuration: String
     ) async {
         // Get the build products dir via -showBuildSettings
         let args = [
@@ -1405,8 +1407,10 @@ public struct PreviewCaptureTool: Sendable {
 
     /// Finds the built .app path by querying xcodebuild for build settings.
     private func findBuiltAppPath(
-        projectPath: String, targetName: String,
-        destination: String, configuration: String
+        projectPath: String,
+        targetName: String,
+        destination: String,
+        configuration: String
     ) async throws -> String {
         let args = [
             "-project", projectPath,
@@ -1452,8 +1456,11 @@ public struct PreviewCaptureTool: Sendable {
     /// Removes the injected target and cleans up temporary files.
     /// Never throws — logs errors silently.
     private func cleanup(
-        projectPath: String?, targetName: String?, tempDir: String?,
-        schemePath: String? = nil, xcconfigPath: String? = nil
+        projectPath: String?,
+        targetName: String?,
+        tempDir: String?,
+        schemePath: String? = nil,
+        xcconfigPath: String? = nil
     ) {
         // Remove injected target from project
         if let projectPath, let targetName {

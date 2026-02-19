@@ -48,43 +48,27 @@ public struct SwiftPackageStopTool: Sendable {
         }
 
         // Get signal type
-        let signal: String
-        if case let .string(value) = arguments["signal"] {
-            signal = value
-        } else {
-            signal = "TERM"
-        }
+        let signal = arguments.getString("signal") ?? "TERM"
 
         // Use pkill to find and stop the process
         let signalArg = signal == "KILL" ? "-9" : "-15"
 
         do {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-            process.arguments = [signalArg, "-f", executable]
+            let result = try ProcessResult.run(
+                "/usr/bin/pkill", arguments: [signalArg, "-f", executable], mergeStderr: false)
 
-            let stdoutPipe = Pipe()
-            let stderrPipe = Pipe()
-            process.standardOutput = stdoutPipe
-            process.standardError = stderrPipe
-
-            try process.run()
-            process.waitUntilExit()
-
-            if process.terminationStatus == 0 {
+            if result.succeeded {
                 return CallTool.Result(
                     content: [
                         .text(
                             "Successfully sent \(signal) signal to process '\(executable)'")
                     ]
                 )
-            } else if process.terminationStatus == 1 {
+            } else if result.exitCode == 1 {
                 // pkill returns 1 when no process found
                 throw MCPError.invalidParams("No running process found matching '\(executable)'")
             } else {
-                let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-                let stderr = String(data: stderrData, encoding: .utf8) ?? ""
-                throw MCPError.internalError("Failed to stop process: \(stderr)")
+                throw MCPError.internalError("Failed to stop process: \(result.stderr)")
             }
         } catch {
             throw error.asMCPError()

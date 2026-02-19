@@ -322,27 +322,10 @@ public struct DoctorTool: Sendable {
     private func runCommand(_ command: String, arguments: [String]) -> (
         exitCode: Int32, stdout: String, stderr: String
     ) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: command)
-        process.arguments = arguments
-
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        process.standardOutput = stdoutPipe
-        process.standardError = stderrPipe
-
         do {
-            try process.run()
-            process.waitUntilExit()
-
-            let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-
-            return (
-                process.terminationStatus,
-                String(data: stdoutData, encoding: .utf8) ?? "",
-                String(data: stderrData, encoding: .utf8) ?? ""
-            )
+            let result = try ProcessResult.run(
+                command, arguments: arguments, mergeStderr: false)
+            return (result.exitCode, result.stdout, result.stderr)
         } catch {
             return (-1, "", error.localizedDescription)
         }

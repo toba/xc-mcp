@@ -63,19 +63,9 @@ public struct LaunchAppLogsSimTool: Sendable {
                 "simulator is required. Set it with set_session_defaults or pass it directly.")
         }
 
-        var durationSeconds: Int = 10
-        if case let .int(value) = arguments["duration_seconds"] {
-            durationSeconds = min(60, max(1, value))
-        }
+        let durationSeconds = min(60, max(1, arguments.getInt("duration_seconds") ?? 10))
 
-        var launchArgs: [String] = []
-        if case let .array(argsArray) = arguments["args"] {
-            for arg in argsArray {
-                if case let .string(argValue) = arg {
-                    launchArgs.append(argValue)
-                }
-            }
-        }
+        let launchArgs = arguments.getStringArray("args")
 
         do {
             // Launch the app with console output redirection

@@ -41,26 +41,11 @@ public struct ListSimsTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let availableOnly: Bool
-        if case let .bool(value) = arguments["available_only"] {
-            availableOnly = value
-        } else {
-            availableOnly = true
-        }
+        let availableOnly = arguments.getBool("available_only", default: true)
 
-        let bootedOnly: Bool
-        if case let .bool(value) = arguments["booted_only"] {
-            bootedOnly = value
-        } else {
-            bootedOnly = false
-        }
+        let bootedOnly = arguments.getBool("booted_only")
 
-        let runtimeFilter: String?
-        if case let .string(value) = arguments["runtime_filter"] {
-            runtimeFilter = value.lowercased()
-        } else {
-            runtimeFilter = nil
-        }
+        let runtimeFilter = arguments.getString("runtime_filter")?.lowercased()
 
         do {
             var devices = try await simctlRunner.listDevices()

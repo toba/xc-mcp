@@ -50,7 +50,7 @@ public struct XCStringsBatchUpdateTranslationsTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let filePath = try arguments.getRequiredString("file")
-        let entries = try parseEntries(from: arguments)
+        let entries = try arguments.parseBatchTranslationEntries()
 
         if entries.isEmpty {
             throw MCPError.invalidParams("entries array is required and cannot be empty")
@@ -74,33 +74,4 @@ public struct XCStringsBatchUpdateTranslationsTool: Sendable {
         }
     }
 
-    private func parseEntries(from arguments: [String: Value]) throws -> [BatchTranslationEntry] {
-        guard case let .array(entriesArray) = arguments["entries"] else {
-            throw MCPError.invalidParams("entries must be an array")
-        }
-
-        return try entriesArray.compactMap { entryValue -> BatchTranslationEntry? in
-            guard case let .object(entry) = entryValue,
-                case let .string(key) = entry["key"],
-                case let .object(translationsObj) = entry["translations"]
-            else {
-                throw MCPError.invalidParams(
-                    "Each entry must have a 'key' string and 'translations' object")
-            }
-
-            var translations: [String: String] = [:]
-            for (lang, val) in translationsObj {
-                if case let .string(str) = val {
-                    translations[lang] = str
-                }
-            }
-
-            guard !translations.isEmpty else {
-                throw MCPError.invalidParams(
-                    "translations for key '\(key)' must contain at least one language")
-            }
-
-            return BatchTranslationEntry(key: key, translations: translations)
-        }
-    }
 }

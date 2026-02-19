@@ -54,12 +54,7 @@ public struct XctraceExportTool: Sendable {
             throw MCPError.invalidParams("input_path is required")
         }
 
-        let xpath: String?
-        if case let .string(value) = arguments["xpath"] {
-            xpath = value
-        } else {
-            xpath = nil
-        }
+        let xpath = arguments.getString("xpath")
 
         let toc: Bool
         if case let .bool(value) = arguments["toc"] {

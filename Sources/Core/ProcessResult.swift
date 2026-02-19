@@ -48,6 +48,65 @@ public struct ProcessResult: Sendable {
     }
 }
 
+// MARK: - Run
+
+extension ProcessResult {
+    /// Runs a command synchronously and captures its output.
+    ///
+    /// - Parameters:
+    ///   - executablePath: Absolute path to the executable (e.g. "/usr/bin/open").
+    ///   - arguments: Command-line arguments.
+    ///   - mergeStderr: When true, stderr is piped to the same handle as stdout.
+    ///                  When false, stdout and stderr are captured separately.
+    /// - Returns: A ``ProcessResult`` with exit code and captured output.
+    public static func run(
+        _ executablePath: String,
+        arguments: [String] = [],
+        mergeStderr: Bool = true
+    ) throws -> ProcessResult {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executablePath)
+        process.arguments = arguments
+
+        let stdoutPipe = Pipe()
+        process.standardOutput = stdoutPipe
+
+        let stderrPipe: Pipe?
+        if mergeStderr {
+            process.standardError = stdoutPipe
+            stderrPipe = nil
+        } else {
+            let pipe = Pipe()
+            process.standardError = pipe
+            stderrPipe = pipe
+        }
+
+        try process.run()
+        process.waitUntilExit()
+
+        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        let stdoutString = String(data: stdoutData, encoding: .utf8) ?? ""
+
+        let stderrString: String
+        if let stderrPipe {
+            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            stderrString = String(data: stderrData, encoding: .utf8) ?? ""
+        } else {
+            stderrString = ""
+        }
+
+        return ProcessResult(
+            exitCode: process.terminationStatus,
+            stdout: stdoutString,
+            stderr: stderrString
+        )
+    }
+
+    /// Discards the result. Useful for fire-and-forget commands like `kill` or `pkill`.
+    @discardableResult
+    public func ignore() -> ProcessResult { self }
+}
+
 // MARK: - Simctl Helpers
 
 extension ProcessResult {
@@ -64,23 +123,31 @@ extension ProcessResult {
 public enum FileUtility {
     /// Reads the last N lines from a file using tail.
     public static func readTailLines(path: String, count: Int = 50) -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/tail")
-        process.arguments = ["-n", "\(count)", path]
+        guard
+            let result = try? ProcessResult.run(
+                "/usr/bin/tail", arguments: ["-n", "\(count)", path], mergeStderr: false),
+            !result.stdout.isEmpty
+        else {
+            return nil
+        }
+        return result.stdout
+    }
+}
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
+// MARK: - Log Capture Helpers
 
-        do {
-            try process.run()
-            process.waitUntilExit()
+/// Shared helpers for log capture start/stop tools.
+public enum LogCapture {
+    /// Appends the tail of a log file to a message string.
+    public static func appendTail(to message: inout String, from outputFile: String?, lines: Int) {
+        guard let outputFile,
+            FileManager.default.fileExists(atPath: outputFile),
+            let tailOutput = FileUtility.readTailLines(path: outputFile, count: lines)
+        else { return }
 
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let output = String(data: data, encoding: .utf8), !output.isEmpty {
-                return output
-            }
-        } catch {}
-        return nil
+        message += "\n\nLast \(lines) lines of log:\n"
+        message += String(repeating: "-", count: 50) + "\n"
+        message += tailOutput
     }
 }
 

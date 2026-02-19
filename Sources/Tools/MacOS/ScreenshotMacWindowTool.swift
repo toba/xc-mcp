@@ -55,33 +55,10 @@ public struct ScreenshotMacWindowTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         await Self.ensureGUIConnection()
 
-        let appName: String?
-        if case let .string(value) = arguments["app_name"] {
-            appName = value
-        } else {
-            appName = nil
-        }
-
-        let bundleId: String?
-        if case let .string(value) = arguments["bundle_id"] {
-            bundleId = value
-        } else {
-            bundleId = nil
-        }
-
-        let windowTitle: String?
-        if case let .string(value) = arguments["window_title"] {
-            windowTitle = value
-        } else {
-            windowTitle = nil
-        }
-
-        let savePath: String?
-        if case let .string(value) = arguments["save_path"] {
-            savePath = value
-        } else {
-            savePath = nil
-        }
+        let appName = arguments.getString("app_name")
+        let bundleId = arguments.getString("bundle_id")
+        let windowTitle = arguments.getString("window_title")
+        let savePath = arguments.getString("save_path")
 
         if appName == nil && bundleId == nil && windowTitle == nil {
             throw MCPError.invalidParams(

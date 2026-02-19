@@ -48,20 +48,16 @@ public struct DebugAttachSimTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Get PID directly or look it up from bundle_id
-        var pid: Int32?
-
-        if case let .int(value) = arguments["pid"] {
-            pid = Int32(value)
-        }
+        var pid = arguments.getInt("pid").map(Int32.init)
 
         if pid == nil {
-            guard case let .string(bundleId) = arguments["bundle_id"] else {
+            guard let bundleId = arguments.getString("bundle_id") else {
                 throw MCPError.invalidParams("Either bundle_id or pid is required")
             }
 
             // Get simulator
             let simulator: String
-            if case let .string(value) = arguments["simulator"] {
+            if let value = arguments.getString("simulator") {
                 simulator = value
             } else if let sessionSimulator = await sessionManager.simulatorUDID {
                 simulator = sessionSimulator
@@ -84,7 +80,7 @@ public struct DebugAttachSimTool: Sendable {
 
             if result.succeeded || result.output.contains("Process") {
                 // Register the bundle ID mapping
-                if case let .string(bundleId) = arguments["bundle_id"] {
+                if let bundleId = arguments.getString("bundle_id") {
                     await LLDBSessionManager.shared.registerBundleId(
                         bundleId, forPID: targetPID)
                 }
@@ -121,18 +117,8 @@ public struct DebugAttachSimTool: Sendable {
         }
 
         // Use pgrep to find the process
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-        process.arguments = ["-f", bundleId]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-
-        try process.run()
-        process.waitUntilExit()
-
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(data: data, encoding: .utf8) ?? ""
+        let result = try ProcessResult.run("/usr/bin/pgrep", arguments: ["-f", bundleId])
+        let output = result.stdout
 
         guard
             let pidString = output.trimmingCharacters(in: .whitespacesAndNewlines)

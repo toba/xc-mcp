@@ -135,40 +135,11 @@ public struct XctraceRecordTool: Sendable {
         }
 
         // Extract optional parameters
-        let device: String?
-        if case let .string(value) = arguments["device"] {
-            device = value
-        } else {
-            device = nil
-        }
-
-        let timeLimit: String?
-        if case let .string(value) = arguments["time_limit"] {
-            timeLimit = value
-        } else {
-            timeLimit = nil
-        }
-
-        let attachPID: String?
-        if case let .string(value) = arguments["attach_pid"] {
-            attachPID = value
-        } else {
-            attachPID = nil
-        }
-
-        let attachName: String?
-        if case let .string(value) = arguments["attach_name"] {
-            attachName = value
-        } else {
-            attachName = nil
-        }
-
-        let allProcesses: Bool
-        if case let .bool(value) = arguments["all_processes"] {
-            allProcesses = value
-        } else {
-            allProcesses = false
-        }
+        let device = arguments.getString("device")
+        let timeLimit = arguments.getString("time_limit")
+        let attachPID = arguments.getString("attach_pid")
+        let attachName = arguments.getString("attach_name")
+        let allProcesses = arguments.getBool("all_processes")
 
         do {
             let process = try xctraceRunner.record(

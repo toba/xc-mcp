@@ -178,56 +178,10 @@ public struct GetMacBundleIdTool: Sendable {
     }
 
     private func extractBundleId(from buildSettings: String) -> String? {
-        // Try JSON parsing first
-        if let data = buildSettings.data(using: .utf8),
-            let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        {
-            for targetSettings in parsed {
-                if let settings = targetSettings["buildSettings"] as? [String: Any],
-                    let bundleId = settings["PRODUCT_BUNDLE_IDENTIFIER"] as? String
-                {
-                    if !bundleId.contains("$(") {
-                        return bundleId
-                    }
-                }
-            }
-        }
-
-        // Fallback to line parsing
-        let lines = buildSettings.components(separatedBy: .newlines)
-        for line in lines where line.contains("PRODUCT_BUNDLE_IDENTIFIER") {
-            if let range = line.range(of: "PRODUCT_BUNDLE_IDENTIFIER") {
-                let afterKey = String(line[range.upperBound...])
-                let cleaned = afterKey.trimmingCharacters(in: .whitespaces)
-                    .replacingOccurrences(of: "\"", with: "")
-                    .replacingOccurrences(of: ":", with: "")
-                    .replacingOccurrences(of: ",", with: "")
-                    .replacingOccurrences(of: " = ", with: "")
-                    .trimmingCharacters(in: .whitespaces)
-                if !cleaned.isEmpty && !cleaned.hasPrefix("$") {
-                    return cleaned
-                }
-            }
-        }
-
-        return nil
+        BuildSettingExtractor.extractBundleId(from: buildSettings)
     }
 
     private func extractProductName(from buildSettings: String) -> String? {
-        if let data = buildSettings.data(using: .utf8),
-            let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        {
-            for targetSettings in parsed {
-                if let settings = targetSettings["buildSettings"] as? [String: Any],
-                    let productName = settings["PRODUCT_NAME"] as? String
-                {
-                    if !productName.contains("$(") {
-                        return productName
-                    }
-                }
-            }
-        }
-
-        return nil
+        BuildSettingExtractor.extractProductName(from: buildSettings)
     }
 }

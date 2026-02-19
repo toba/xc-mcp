@@ -55,22 +55,10 @@ public struct SwiftPackageRunTool: Sendable {
         }
 
         // Get executable name if specified
-        let executable: String?
-        if case let .string(value) = arguments["executable"] {
-            executable = value
-        } else {
-            executable = nil
-        }
+        let executable = arguments.getString("executable")
 
         // Get arguments if specified
-        var execArgs: [String] = []
-        if case let .array(values) = arguments["arguments"] {
-            for value in values {
-                if case let .string(arg) = value {
-                    execArgs.append(arg)
-                }
-            }
-        }
+        let execArgs = arguments.getStringArray("arguments")
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(

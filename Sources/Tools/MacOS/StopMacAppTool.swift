@@ -40,75 +40,48 @@ public struct StopMacAppTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        let bundleId: String?
-        if case let .string(value) = arguments["bundle_id"] {
-            bundleId = value
-        } else {
-            bundleId = nil
-        }
-
-        let appName: String?
-        if case let .string(value) = arguments["app_name"] {
-            appName = value
-        } else {
-            appName = nil
-        }
+        let bundleId = arguments.getString("bundle_id")
+        let appName = arguments.getString("app_name")
 
         // Validate we have either bundle_id or app_name
         if bundleId == nil && appName == nil {
             throw MCPError.invalidParams("Either bundle_id or app_name is required.")
         }
 
-        let force: Bool
-        if case let .bool(value) = arguments["force"] {
-            force = value
-        } else {
-            force = false
-        }
+        let force = arguments.getBool("force")
 
         do {
-            let process = Process()
+            let executablePath: String
+            let processArgs: [String]
 
             if let bundleId {
-                // Use osascript to quit app by bundle ID gracefully, or pkill for force
                 if force {
-                    process.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-                    process.arguments = ["-9", "-f", bundleId]
+                    executablePath = "/usr/bin/pkill"
+                    processArgs = ["-9", "-f", bundleId]
                 } else {
-                    // Try graceful quit first using AppleScript
-                    process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-                    process.arguments = [
-                        "-e",
-                        "tell application id \"\(bundleId)\" to quit",
-                    ]
+                    executablePath = "/usr/bin/osascript"
+                    processArgs = ["-e", "tell application id \"\(bundleId)\" to quit"]
                 }
             } else if let appName {
                 if force {
-                    process.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-                    process.arguments = ["-9", appName]
+                    executablePath = "/usr/bin/pkill"
+                    processArgs = ["-9", appName]
                 } else {
-                    // Try graceful quit first using AppleScript
-                    process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-                    process.arguments = [
-                        "-e",
-                        "tell application \"\(appName)\" to quit",
-                    ]
+                    executablePath = "/usr/bin/osascript"
+                    processArgs = ["-e", "tell application \"\(appName)\" to quit"]
                 }
+            } else {
+                throw MCPError.invalidParams("Either bundle_id or app_name is required")
             }
 
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = pipe
-
-            try process.run()
-            process.waitUntilExit()
+            let result = try ProcessResult.run(executablePath, arguments: processArgs)
 
             let identifier = bundleId ?? appName ?? "unknown"
 
             // For osascript, exit status 0 means success
             // For pkill, exit status 0 means at least one process was killed
             // Exit status 1 for pkill means no processes matched (not necessarily an error)
-            if process.terminationStatus == 0 {
+            if result.succeeded {
                 var message = "Successfully stopped '\(identifier)'"
                 if force {
                     message += " (forced)"
@@ -116,18 +89,15 @@ public struct StopMacAppTool: Sendable {
                 return CallTool.Result(content: [.text(message)])
             } else {
                 // Check if the app just wasn't running
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: data, encoding: .utf8) ?? ""
-
-                if output.isEmpty || output.contains("no matching")
-                    || process.terminationStatus == 1
+                if result.stdout.isEmpty || result.stdout.contains("no matching")
+                    || result.exitCode == 1
                 {
                     return CallTool.Result(
                         content: [.text("App '\(identifier)' was not running")]
                     )
                 }
 
-                throw MCPError.internalError("Failed to stop app: \(output)")
+                throw MCPError.internalError("Failed to stop app: \(result.stdout)")
             }
         } catch {
             throw error.asMCPError()

@@ -160,42 +160,11 @@ public struct BuildRunSimTool: Sendable {
     }
 
     private func extractBundleId(from buildSettings: String) -> String? {
-        // Look for PRODUCT_BUNDLE_IDENTIFIER in the build settings JSON
-        let lines = buildSettings.components(separatedBy: .newlines)
-        for line in lines where line.contains("PRODUCT_BUNDLE_IDENTIFIER") {
-            // Extract value after the key
-            if let range = line.range(of: "PRODUCT_BUNDLE_IDENTIFIER") {
-                let afterKey = String(line[range.upperBound...])
-                let cleaned = afterKey.trimmingCharacters(in: .whitespaces)
-                    .replacingOccurrences(of: "\"", with: "")
-                    .replacingOccurrences(of: ":", with: "")
-                    .replacingOccurrences(of: ",", with: "")
-                    .trimmingCharacters(in: .whitespaces)
-                if !cleaned.isEmpty && !cleaned.hasPrefix("$") {
-                    return cleaned
-                }
-            }
-        }
-        return nil
+        BuildSettingExtractor.extractBundleId(from: buildSettings)
     }
 
     private func extractAppPath(from buildSettings: String) -> String? {
-        // Look for CODESIGNING_FOLDER_PATH or similar
-        let lines = buildSettings.components(separatedBy: .newlines)
-        for line in lines {
-            if line.contains("CODESIGNING_FOLDER_PATH") || line.contains("TARGET_BUILD_DIR") {
-                if let range = line.range(of: "/") {
-                    let path = String(line[range.lowerBound...])
-                        .trimmingCharacters(in: .whitespaces)
-                        .replacingOccurrences(of: "\"", with: "")
-                        .replacingOccurrences(of: ",", with: "")
-                    if path.hasSuffix(".app") {
-                        return path
-                    }
-                }
-            }
-        }
-        return nil
+        BuildSettingExtractor.extractAppPath(from: buildSettings)
     }
 
 }

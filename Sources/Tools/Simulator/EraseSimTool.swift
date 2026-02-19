@@ -36,12 +36,7 @@ public struct EraseSimTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let eraseAll: Bool
-        if case let .bool(value) = arguments["all"] {
-            eraseAll = value
-        } else {
-            eraseAll = false
-        }
+        let eraseAll = arguments.getBool("all")
 
         if eraseAll {
             // Erase all simulators

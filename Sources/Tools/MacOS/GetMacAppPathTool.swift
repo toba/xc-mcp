@@ -58,12 +58,7 @@ public struct GetMacAppPathTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let bundleId: String?
-        if case let .string(value) = arguments["bundle_id"] {
-            bundleId = value
-        } else {
-            bundleId = nil
-        }
+        let bundleId = arguments.getString("bundle_id")
 
         // If bundle_id is provided, search for the app in Applications directories
         if let bundleId {
@@ -201,44 +196,6 @@ public struct GetMacAppPathTool: Sendable {
     }
 
     private func extractAppPath(from buildSettings: String) -> String? {
-        let lines = buildSettings.components(separatedBy: .newlines)
-
-        // First try CODESIGNING_FOLDER_PATH which is the complete .app path
-        for line in lines where line.contains("CODESIGNING_FOLDER_PATH") {
-            if let range = line.range(of: "/") {
-                let path = String(line[range.lowerBound...])
-                    .trimmingCharacters(in: .whitespaces)
-                    .replacingOccurrences(of: "\"", with: "")
-                    .replacingOccurrences(of: ",", with: "")
-                if path.hasSuffix(".app") {
-                    return path
-                }
-            }
-        }
-
-        // Fallback: try TARGET_BUILD_DIR + FULL_PRODUCT_NAME
-        var targetBuildDir: String?
-        var fullProductName: String?
-
-        for line in lines {
-            if line.contains("TARGET_BUILD_DIR") && !line.contains("EFFECTIVE") {
-                if let equalsRange = line.range(of: " = ") {
-                    targetBuildDir = String(line[equalsRange.upperBound...])
-                        .trimmingCharacters(in: .whitespaces)
-                }
-            }
-            if line.contains("FULL_PRODUCT_NAME") {
-                if let equalsRange = line.range(of: " = ") {
-                    fullProductName = String(line[equalsRange.upperBound...])
-                        .trimmingCharacters(in: .whitespaces)
-                }
-            }
-        }
-
-        if let dir = targetBuildDir, let name = fullProductName {
-            return "\(dir)/\(name)"
-        }
-
-        return nil
+        BuildSettingExtractor.extractAppPath(from: buildSettings)
     }
 }

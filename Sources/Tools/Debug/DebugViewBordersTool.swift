@@ -50,12 +50,9 @@ public struct DebugViewBordersTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        var pid: Int32?
-        if case let .int(value) = arguments["pid"] {
-            pid = Int32(value)
-        }
+        var pid = arguments.getInt("pid").map(Int32.init)
 
-        if pid == nil, case let .string(bundleId) = arguments["bundle_id"] {
+        if pid == nil, let bundleId = arguments.getString("bundle_id") {
             pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
         }
 
@@ -69,21 +66,12 @@ public struct DebugViewBordersTool: Sendable {
             throw MCPError.invalidParams("'enabled' parameter is required")
         }
 
-        let borderWidth: Double
-        if case let .double(value) = arguments["border_width"] {
-            borderWidth = value
-        } else if case let .int(value) = arguments["border_width"] {
-            borderWidth = Double(value)
-        } else {
-            borderWidth = 2.0
-        }
+        let borderWidth =
+            arguments.getDouble("border_width")
+            ?? arguments.getInt("border_width").map(Double.init)
+            ?? 2.0
 
-        let colorName: String
-        if case let .string(value) = arguments["color"] {
-            colorName = value
-        } else {
-            colorName = "red"
-        }
+        let colorName = arguments.getString("color") ?? "red"
 
         let colorMap: [String: String] = [
             "red": "redColor",

@@ -58,45 +58,17 @@ public struct LaunchMacAppTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        let appPath: String?
-        if case let .string(value) = arguments["app_path"] {
-            appPath = value
-        } else {
-            appPath = nil
-        }
-
-        let bundleId: String?
-        if case let .string(value) = arguments["bundle_id"] {
-            bundleId = value
-        } else {
-            bundleId = nil
-        }
+        let appPath = arguments.getString("app_path")
+        let bundleId = arguments.getString("bundle_id")
 
         // Validate we have either app_path or bundle_id
         if appPath == nil && bundleId == nil {
             throw MCPError.invalidParams("Either app_path or bundle_id is required.")
         }
 
-        let newInstance: Bool
-        if case let .bool(value) = arguments["new_instance"] {
-            newInstance = value
-        } else {
-            newInstance = false
-        }
-
-        let hide: Bool
-        if case let .bool(value) = arguments["hide"] {
-            hide = value
-        } else {
-            hide = false
-        }
-
-        let wait: Bool
-        if case let .bool(value) = arguments["wait"] {
-            wait = value
-        } else {
-            wait = false
-        }
+        let newInstance = arguments.getBool("new_instance")
+        let hide = arguments.getBool("hide")
+        let wait = arguments.getBool("wait")
 
         var launchArgs: [String] = []
         if case let .array(argsArray) = arguments["args"] {
@@ -108,9 +80,6 @@ public struct LaunchMacAppTool: Sendable {
         }
 
         do {
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-
             var openArgs: [String] = []
 
             if let bundleId {
@@ -137,16 +106,9 @@ public struct LaunchMacAppTool: Sendable {
                 openArgs.append(contentsOf: launchArgs)
             }
 
-            process.arguments = openArgs
+            let result = try ProcessResult.run("/usr/bin/open", arguments: openArgs)
 
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = pipe
-
-            try process.run()
-            process.waitUntilExit()
-
-            if process.terminationStatus == 0 {
+            if result.succeeded {
                 let identifier = bundleId ?? appPath ?? "unknown"
                 var message = "Successfully launched '\(identifier)'"
                 if newInstance {
@@ -167,9 +129,7 @@ public struct LaunchMacAppTool: Sendable {
                     ]),
                 ])
             } else {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: data, encoding: .utf8) ?? ""
-                throw MCPError.internalError("Failed to launch app: \(output)")
+                throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }
         } catch {
             throw error.asMCPError()

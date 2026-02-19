@@ -29,7 +29,7 @@ public struct XcodebuildRunner: Sendable {
     public static let defaultTimeout: TimeInterval = 300
 
     /// Timeout for no-output detection (30 seconds without output = stuck)
-    public static let outputTimeout: TimeInterval = 30
+    public static let outputTimeout: Duration = .seconds(30)
 
     /// Creates a new xcodebuild runner.
     public init() {}
@@ -100,11 +100,11 @@ public struct XcodebuildRunner: Sendable {
         try process.run()
 
         // Wait for process with timeout
-        let startTime = Date()
+        let startTime = ContinuousClock.now
 
         while process.isRunning {
             // Check total timeout
-            if Date().timeIntervalSince(startTime) > timeout {
+            if startTime.duration(to: .now) > .seconds(timeout) {
                 process.terminate()
                 let (stdout, stderr) = outputActor.getOutput()
                 throw XcodebuildError.timeout(
@@ -118,8 +118,11 @@ public struct XcodebuildRunner: Sendable {
             if timeSinceLastOutput > Self.outputTimeout {
                 process.terminate()
                 let (stdout, stderr) = outputActor.getOutput()
+                let seconds =
+                    Double(timeSinceLastOutput.components.seconds)
+                    + Double(timeSinceLastOutput.components.attoseconds) / 1e18
                 throw XcodebuildError.stuckProcess(
-                    noOutputFor: timeSinceLastOutput,
+                    noOutputFor: seconds,
                     partialOutput: stdout + stderr
                 )
             }
@@ -410,13 +413,13 @@ private final class OutputCollector: Sendable {
 
 /// Thread-safe tracker for the last time output was received.
 private final class LastOutputTime: Sendable {
-    private let lastTime = Mutex(Date())
+    private let lastTime = Mutex(ContinuousClock.now)
 
     func update() {
-        lastTime.withLock { $0 = Date() }
+        lastTime.withLock { $0 = .now }
     }
 
-    func timeSinceLastOutput() -> TimeInterval {
-        lastTime.withLock { Date().timeIntervalSince($0) }
+    func timeSinceLastOutput() -> Duration {
+        lastTime.withLock { $0.duration(to: .now) }
     }
 }

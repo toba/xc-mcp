@@ -225,9 +225,11 @@ public actor LLDBSession {
 
             // Give it a moment, then force kill
             let fds = self.ptyFDs
-            DispatchQueue.global().asyncAfter(deadline: .now() + 1) { [process] in
-                if process.isRunning {
-                    process.terminate()
+            let proc = self.process
+            Task {
+                try? await Task.sleep(for: .seconds(1))
+                if proc.isRunning {
+                    proc.terminate()
                 }
                 for fd in fds {
                     close(fd)

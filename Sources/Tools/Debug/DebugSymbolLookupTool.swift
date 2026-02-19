@@ -54,12 +54,9 @@ public struct DebugSymbolLookupTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        var pid: Int32?
-        if case let .int(value) = arguments["pid"] {
-            pid = Int32(value)
-        }
+        var pid = arguments.getInt("pid").map(Int32.init)
 
-        if pid == nil, case let .string(bundleId) = arguments["bundle_id"] {
+        if pid == nil, let bundleId = arguments.getString("bundle_id") {
             pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
         }
 

@@ -26,49 +26,26 @@ public struct OpenSimTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        let simulator: String?
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else {
-            simulator = nil
-        }
+        let simulator = arguments.getString("simulator")
 
         do {
+            let args: [String]
             if let udid = simulator {
-                // Open specific simulator
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                process.arguments = [
-                    "-a", "Simulator",
-                    "--args", "-CurrentDeviceUDID", udid,
-                ]
-
-                try process.run()
-                process.waitUntilExit()
-
-                if process.terminationStatus == 0 {
-                    return CallTool.Result(
-                        content: [.text("Opened Simulator.app with device: \(udid)")]
-                    )
-                } else {
-                    throw MCPError.internalError("Failed to open Simulator.app")
-                }
+                args = ["-a", "Simulator", "--args", "-CurrentDeviceUDID", udid]
             } else {
-                // Just open Simulator.app
-                let process = Process()
-                process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-                process.arguments = ["-a", "Simulator"]
+                args = ["-a", "Simulator"]
+            }
 
-                try process.run()
-                process.waitUntilExit()
+            let result = try ProcessResult.run("/usr/bin/open", arguments: args)
 
-                if process.terminationStatus == 0 {
-                    return CallTool.Result(
-                        content: [.text("Opened Simulator.app")]
-                    )
-                } else {
-                    throw MCPError.internalError("Failed to open Simulator.app")
-                }
+            if result.succeeded {
+                let message =
+                    simulator != nil
+                    ? "Opened Simulator.app with device: \(simulator!)"
+                    : "Opened Simulator.app"
+                return CallTool.Result(content: [.text(message)])
+            } else {
+                throw MCPError.internalError("Failed to open Simulator.app")
             }
         } catch {
             throw error.asMCPError()

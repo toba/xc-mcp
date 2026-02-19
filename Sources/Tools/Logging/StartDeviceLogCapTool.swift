@@ -69,20 +69,10 @@ public struct StartDeviceLogCapTool: Sendable {
         }
 
         // Get optional bundle_id filter
-        let bundleId: String?
-        if case let .string(value) = arguments["bundle_id"] {
-            bundleId = value
-        } else {
-            bundleId = nil
-        }
+        let bundleId = arguments.getString("bundle_id")
 
         // Get optional predicate
-        let predicate: String?
-        if case let .string(value) = arguments["predicate"] {
-            predicate = value
-        } else {
-            predicate = nil
-        }
+        let predicate = arguments.getString("predicate")
 
         do {
             // Use devicectl device info syslog or idevicesyslog
@@ -115,29 +105,27 @@ public struct StartDeviceLogCapTool: Sendable {
                 process.standardOutput = pipe
                 process.standardError = FileHandle.nullDevice
 
-                // Set up filtering in background
+                // Set up filtering via readability handler
                 let filterBundleId = bundleId
                 let filterPredicate = predicate
 
-                DispatchQueue.global().async {
-                    pipe.fileHandleForReading.readabilityHandler = { handle in
-                        let data = handle.availableData
-                        guard !data.isEmpty else { return }
+                pipe.fileHandleForReading.readabilityHandler = { handle in
+                    let data = handle.availableData
+                    guard !data.isEmpty else { return }
 
-                        if let line = String(data: data, encoding: .utf8) {
-                            // Simple filtering - check if line contains bundle ID
-                            var shouldWrite = true
-                            if let bundleId = filterBundleId {
-                                shouldWrite = line.contains(bundleId)
-                            }
-                            if shouldWrite, let predicate = filterPredicate {
-                                // Very basic predicate matching
-                                shouldWrite = line.contains(predicate)
-                            }
+                    if let line = String(data: data, encoding: .utf8) {
+                        // Simple filtering - check if line contains bundle ID
+                        var shouldWrite = true
+                        if let bundleId = filterBundleId {
+                            shouldWrite = line.contains(bundleId)
+                        }
+                        if shouldWrite, let predicate = filterPredicate {
+                            // Very basic predicate matching
+                            shouldWrite = line.contains(predicate)
+                        }
 
-                            if shouldWrite {
-                                fileHandle.write(data)
-                            }
+                        if shouldWrite {
+                            fileHandle.write(data)
                         }
                     }
                 }

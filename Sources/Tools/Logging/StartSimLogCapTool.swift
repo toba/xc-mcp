@@ -67,20 +67,10 @@ public struct StartSimLogCapTool: Sendable {
         }
 
         // Get optional bundle_id filter
-        let bundleId: String?
-        if case let .string(value) = arguments["bundle_id"] {
-            bundleId = value
-        } else {
-            bundleId = nil
-        }
+        let bundleId = arguments.getString("bundle_id")
 
         // Get optional predicate
-        let predicate: String?
-        if case let .string(value) = arguments["predicate"] {
-            predicate = value
-        } else {
-            predicate = nil
-        }
+        let predicate = arguments.getString("predicate")
 
         do {
             // Build the log stream command

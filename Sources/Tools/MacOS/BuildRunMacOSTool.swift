@@ -102,31 +102,20 @@ public struct BuildRunMacOSTool: Sendable {
             }
 
             // Step 3: Launch app using open command
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-
             var openArgs = [appPath]
             if !launchArgs.isEmpty {
                 openArgs.append("--args")
                 openArgs.append(contentsOf: launchArgs)
             }
-            process.arguments = openArgs
 
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = pipe
+            let result = try ProcessResult.run("/usr/bin/open", arguments: openArgs)
 
-            try process.run()
-            process.waitUntilExit()
-
-            if process.terminationStatus == 0 {
+            if result.succeeded {
                 var message = "Successfully built and launched '\(scheme)' on macOS"
                 message += "\nApp path: \(appPath)"
                 return CallTool.Result(content: [.text(message)])
             } else {
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: data, encoding: .utf8) ?? ""
-                throw MCPError.internalError("Failed to launch app: \(output)")
+                throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }
         } catch {
             throw error.asMCPError()
@@ -134,45 +123,6 @@ public struct BuildRunMacOSTool: Sendable {
     }
 
     private func extractAppPath(from buildSettings: String) -> String? {
-        // Look for CODESIGNING_FOLDER_PATH or TARGET_BUILD_DIR + FULL_PRODUCT_NAME
-        let lines = buildSettings.components(separatedBy: .newlines)
-
-        // First try CODESIGNING_FOLDER_PATH which is the complete .app path
-        for line in lines where line.contains("CODESIGNING_FOLDER_PATH") {
-            if let range = line.range(of: "/") {
-                let path = String(line[range.lowerBound...])
-                    .trimmingCharacters(in: .whitespaces)
-                    .replacingOccurrences(of: "\"", with: "")
-                    .replacingOccurrences(of: ",", with: "")
-                if path.hasSuffix(".app") {
-                    return path
-                }
-            }
-        }
-
-        // Fallback: try TARGET_BUILD_DIR + FULL_PRODUCT_NAME
-        var targetBuildDir: String?
-        var fullProductName: String?
-
-        for line in lines {
-            if line.contains("TARGET_BUILD_DIR") && !line.contains("EFFECTIVE") {
-                if let equalsRange = line.range(of: " = ") {
-                    targetBuildDir = String(line[equalsRange.upperBound...])
-                        .trimmingCharacters(in: .whitespaces)
-                }
-            }
-            if line.contains("FULL_PRODUCT_NAME") {
-                if let equalsRange = line.range(of: " = ") {
-                    fullProductName = String(line[equalsRange.upperBound...])
-                        .trimmingCharacters(in: .whitespaces)
-                }
-            }
-        }
-
-        if let dir = targetBuildDir, let name = fullProductName {
-            return "\(dir)/\(name)"
-        }
-
-        return nil
+        BuildSettingExtractor.extractAppPath(from: buildSettings)
     }
 }
