@@ -39,13 +39,18 @@ public struct BootSimTool: Sendable {
 
             let result = try await simctlRunner.boot(udid: udid)
 
+            let bootHints = NextStepHints.content(hints: [
+                NextStepHint(tool: "build_sim", description: "Build a project for the simulator"),
+                NextStepHint(
+                    tool: "build_run_sim", description: "Build and run an app on the simulator"),
+            ])
             if result.succeeded {
                 return CallTool.Result(
-                    content: [.text("Successfully booted simulator: \(simulator)")]
+                    content: [.text("Successfully booted simulator: \(simulator)"), bootHints]
                 )
             } else if result.stderr.contains("Unable to boot device in current state: Booted") {
                 return CallTool.Result(
-                    content: [.text("Simulator is already booted: \(simulator)")]
+                    content: [.text("Simulator is already booted: \(simulator)"), bootHints]
                 )
             } else {
                 throw MCPError.internalError(

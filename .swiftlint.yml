@@ -85,6 +85,7 @@ analyzer_rules:
   - unused_import
 excluded:
   - .build
+  - fixtures
 unhandled_throwing_task:
   severity: warning
 reporter: "xcode"

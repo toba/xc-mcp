@@ -1,10 +1,12 @@
 # xc-mcp
 
-An exhaustive MCP server for Xcode development on macOS. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 100+ tools for project manipulation, LLDB debugging, UI automation, localization, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 130+ tools for project manipulation, LLDB debugging, UI automation, localization, and SwiftUI preview capture.
+
+I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
 ## Be Wary
 
-This project iterates rapidly. Fairly complex issues had to be solved to get to this point which is both reassuring and disconcerting. There is good linting and strong tests but no genuine QA process. As with any agent work, ensure your files are committed or otherwise backed up before releasing the kraken.
+This project iterates rapidly. Fairly complex issues had to be solved to get to this point which is both reassuring and disconcerting. There is good linting and strong tests, including fixtures that are actual, open source Swift projects, but no genuine QA process. As with any agent work, ensure your files are committed or otherwise backed up before releasing the kraken.
 
 ## Notable Powers
 
@@ -14,6 +16,10 @@ This project iterates rapidly. Fairly complex issues had to be solved to get to 
 - **Capture SwiftUI previews as screenshots**: `preview_capture` extracts `#Preview` blocks from your Swift source, generates a temporary host app, builds it, launches it (iOS Simulator or macOS), takes a screenshot, and cleans up. Handles complex project configurations: mergeable library architectures, SPM transitive dependencies, cross-project framework embedding, local Swift packages (files inside `Packages/` directories referenced by the Xcode project), and nested struct previews that crash the compiler when naively inlined. Programmatic preview screenshots without opening Xcode.
 - **Paint view borders on a running app**: `debug_view_borders` injects colored `CALayer` borders onto every view in a running macOS app via LLDB. Pair with `screenshot_mac_window` to see the result. No code changes, no restarts.
 - **Full LLDB debugging over MCP**: Persistent LLDB sessions backed by a pseudo-TTY, so breakpoints survive across tool calls. Breakpoints, watchpoints, stepping, expression evaluation, memory inspection, view hierarchy dumps, symbol lookup — the full debugger experience, minus the GUI.
+- **Gesture presets**: `gesture` provides named presets — `scroll_up`, `pull_to_refresh`, `swipe_from_left_edge`, etc. — so agents don't have to do coordinate math every time they want to scroll a list. Eight presets, all computed as fractions of the screen dimensions you give it.
+- **Xcode state sync**: `sync_xcode_defaults` reads your active scheme and run destination straight from Xcode's `UserInterfaceState.xcuserstate`. Open a project in Xcode, pick your scheme, then let the agent inherit that context without manual configuration.
+- **Next step hints**: After each successful tool call, the response includes suggested follow-up tools. Build succeeded? Here's `launch_app_sim` and `test_sim`. Screenshot taken? Here's `tap`, `swipe`, and `gesture`. Agents that pay attention waste fewer turns figuring out what to do next.
+- **Dynamic tool workflows**: `manage_workflows` lets you enable or disable entire tool categories (project, simulator, debug, etc.) at runtime. When an agent doesn't need 130 tools cluttering its context, disable the irrelevant ones. The server sends `tools/list_changed` notifications so clients update automatically.
 
 ## Built On
 
@@ -35,14 +41,14 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
   - [SwiftUI Preview Capture](#swiftui-preview-capture-1-tool)
   - [Debug](#debug-18-tools)
   - [Simulator](#simulator-17-tools)
-  - [Simulator UI Automation](#simulator-ui-automation-7-tools)
+  - [Simulator UI Automation](#simulator-ui-automation-8-tools)
   - [Device](#device-7-tools)
   - [Project Management](#project-management-23-tools)
   - [Discovery](#discovery-5-tools)
   - [Logging](#logging-4-tools)
   - [Swift Package Manager](#swift-package-manager-6-tools)
   - [Localization](#localization-24-tools)
-  - [Session & Utilities](#session--utilities-7-tools)
+  - [Session & Utilities](#session--utilities-10-tools)
 - [Tests](#tests)
 - [Path Security](#path-security)
 - [License](#license)
@@ -53,7 +59,7 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 100 | ~50K | Full monolithic server |
+| `xc-mcp` | 130 | ~50K | Full monolithic server |
 | `xc-project` | 23 | ~5K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
 | `xc-device` | 12 | ~2K | Physical iOS devices |
@@ -280,7 +286,7 @@ Debug tools use persistent LLDB sessions backed by a pseudo-TTY — a single LLD
 | `set_sim_appearance` | Set appearance (light/dark mode) |
 | `sim_statusbar` | Override status bar settings |
 
-### Simulator UI Automation (7 tools)
+### Simulator UI Automation (8 tools)
 
 Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`.
 
@@ -289,6 +295,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `tap` | Tap at coordinate |
 | `long_press` | Long press at coordinate |
 | `swipe` | Swipe between points |
+| `gesture` | Named gesture presets — `scroll_up`, `scroll_down`, `scroll_left`, `scroll_right`, `swipe_from_left_edge`, `swipe_from_right_edge`, `pull_to_refresh`, `swipe_down_to_dismiss`. Coordinates computed from screen dimensions (default iPhone 15 Pro) |
 | `type_text` | Type text |
 | `key_press` | Press hardware key |
 | `button` | Press hardware button |
@@ -399,15 +406,17 @@ Full CRUD for Apple's `.xcstrings` format — add, update, rename, delete keys a
 | `xcstrings_delete_translation` | Delete a single translation |
 | `xcstrings_delete_translations` | Delete multiple translations (batch) |
 
-### Session & Utilities (7 tools)
+### Session & Utilities (10 tools)
 
 | Tool | Description |
 |------|-------------|
 | `set_session_defaults` | Set default project, scheme, simulator, device, and configuration |
 | `show_session_defaults` | Show current session defaults |
 | `clear_session_defaults` | Clear all session defaults |
+| `sync_xcode_defaults` | Read active scheme and run destination from Xcode's IDE state (`UserInterfaceState.xcuserstate`) and apply as session defaults |
+| `manage_workflows` | Enable or disable tool workflow categories (project, simulator, debug, etc.) to reduce tool surface area. Server sends `tools/list_changed` so clients update automatically |
 | `clean` | Clean build products |
-| `doctor` | Diagnose Xcode environment |
+| `doctor` | Diagnose Xcode environment — checks Xcode, CLT, xcodebuild, simctl, devicectl, Swift, LLDB, SDKs, DerivedData, session state, and active debug sessions |
 | `scaffold_ios_project` | Scaffold iOS project |
 | `scaffold_macos_project` | Scaffold macOS project |
 
@@ -422,7 +431,7 @@ Test tools parse both **XCTest** and **Swift Testing** output formats, extractin
 
 ## Tests
 
-357 tests — 336 unit tests that run in seconds, and 21 integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
+452 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
 
 ### Unit Tests
 

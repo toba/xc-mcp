@@ -58,7 +58,14 @@ public struct DebugContinueTool: Sendable {
                 message += "\n\n\(result.output)"
             }
 
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [
+                .text(message),
+                NextStepHints.content(hints: [
+                    NextStepHint(tool: "debug_stack", description: "View the call stack"),
+                    NextStepHint(
+                        tool: "screenshot", description: "Take a screenshot to see current state"),
+                ]),
+            ])
         } catch {
             throw error.asMCPError()
         }

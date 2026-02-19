@@ -136,7 +136,19 @@ public struct BuildRunSimTool: Sendable {
                 if let pid = launchResult.launchedPID {
                     message += "\nProcess ID: \(pid)"
                 }
-                return CallTool.Result(content: [.text(message)])
+                return CallTool.Result(content: [
+                    .text(message),
+                    NextStepHints.content(hints: [
+                        NextStepHint(
+                            tool: "screenshot",
+                            description: "Take a screenshot to verify the result"),
+                        NextStepHint(
+                            tool: "tap", description: "Tap a UI element (provide x, y coordinates)"),
+                        NextStepHint(
+                            tool: "debug_attach_sim",
+                            description: "Attach the debugger to the running app"),
+                    ]),
+                ])
             } else {
                 throw MCPError.internalError(
                     "Failed to launch app: \(launchResult.errorOutput)"

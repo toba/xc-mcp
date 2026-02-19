@@ -94,7 +94,12 @@ public struct SetSessionDefaultsTool: Sendable {
         let summary = await sessionManager.summary()
         return CallTool.Result(
             content: [
-                .text("Session defaults updated.\n\n\(summary)")
+                .text("Session defaults updated.\n\n\(summary)"),
+                NextStepHints.content(hints: [
+                    NextStepHint(tool: "build_sim", description: "Build for the simulator"),
+                    NextStepHint(tool: "build_macos", description: "Build for macOS"),
+                    NextStepHint(tool: "list_schemes", description: "List available schemes"),
+                ]),
             ]
         )
     }

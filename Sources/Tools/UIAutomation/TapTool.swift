@@ -81,7 +81,15 @@ public struct TapTool: Sendable {
                     content: [
                         .text(
                             "Tapped at (\(Int(x)), \(Int(y))) on simulator '\(simulator)'"
-                        )
+                        ),
+                        NextStepHints.content(hints: [
+                            NextStepHint(
+                                tool: "screenshot",
+                                description: "Take a screenshot to verify the result"),
+                            NextStepHint(tool: "tap", description: "Tap another UI element"),
+                            NextStepHint(
+                                tool: "type_text", description: "Type text into a focused field"),
+                        ]),
                     ]
                 )
             } else {

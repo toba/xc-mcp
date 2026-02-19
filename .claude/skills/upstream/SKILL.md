@@ -20,6 +20,7 @@ Check upstream repos for new commits, classify changes by relevance, and present
 | `ldomaradzki/xcsift` | `master` | Derived code | `Sources/Core/BuildOutputParser.swift`, `BuildOutputModels.swift`, `CoverageParser.swift` |
 | `Ryu0118/xcstrings-crud` | `main` | Derived code | `Sources/Core/XCStrings/` (7 files) |
 | `tuist/xcodeproj` | `main` | Dependency (pinned from: 9.7.2) | All project manipulation tools via XcodeProj library |
+| `getsentry/XcodeBuildMCP` | `main` | Feature watch | Monitor for features worth incorporating into xc-mcp |
 
 ## Workflow
 
@@ -54,6 +55,10 @@ gh api "repos/Ryu0118/xcstrings-crud/commits?per_page=30&sha=main" --jq '[.[] | 
 gh api "repos/tuist/xcodeproj/commits?per_page=30&sha=main" --jq '[.[] | {sha: .sha, date: .commit.committer.date, message: (.commit.message | split("\n") | .[0]), author: .commit.author.name}]'
 ```
 
+```bash
+gh api "repos/getsentry/XcodeBuildMCP/commits?per_page=30&sha=main" --jq '[.[] | {sha: .sha, date: .commit.committer.date, message: (.commit.message | split("\n") | .[0]), author: .commit.author.name}]'
+```
+
 Also fetch the changed files for each repo's recent commits to classify relevance:
 
 ```bash
@@ -80,6 +85,10 @@ gh api "repos/Ryu0118/xcstrings-crud/compare/{LAST_SHA}...main" --jq '{total_com
 
 ```bash
 gh api "repos/tuist/xcodeproj/compare/{LAST_SHA}...main" --jq '{total_commits: .total_commits, commits: [.commits[] | {sha: .sha, date: .commit.committer.date, message: (.commit.message | split("\n") | .[0]), author: .commit.author.name}], files: [.files[].filename]}'
+```
+
+```bash
+gh api "repos/getsentry/XcodeBuildMCP/compare/{LAST_SHA}...main" --jq '{total_commits: .total_commits, commits: [.commits[] | {sha: .sha, date: .commit.committer.date, message: (.commit.message | split("\n") | .[0]), author: .commit.author.name}], files: [.files[].filename]}'
 ```
 
 **Fallback:** If the compare API returns 404 (e.g. force-push rewrote history), fall back to date-based query:
@@ -127,6 +136,18 @@ This is a library dependency, not derived code. Focus on API changes, bug fixes,
 | **LOW** | `.github/**`, `README.md`, `Documentation/**`, `fixtures/**`, `Makefile` |
 
 Also note any tags/releases since last check — version bumps may warrant updating `Package.swift`.
+
+#### getsentry/XcodeBuildMCP (feature watch)
+
+This is not upstream code — it's a competing Xcode MCP server. Monitor for features, tool designs, or approaches worth adopting.
+
+| Relevance | Path Patterns |
+|-----------|--------------|
+| **HIGH** | `Sources/**/*Tool*.swift`, `Sources/**/*Handler*.swift` (new tools or capabilities) |
+| **MEDIUM** | `Sources/**/*.swift` (other source changes), `Package.swift`, `Tests/**` |
+| **LOW** | `.github/**`, `README.md`, `Documentation/**`, `LICENSE`, `*.md` |
+
+When summarizing changes from this repo, focus on **new tool capabilities** and **architectural patterns** rather than line-by-line diffs.
 
 Files not matching any pattern → **MEDIUM** (unknown = worth reviewing).
 
@@ -197,6 +218,10 @@ Write to `.claude/skills/upstream/references/last-checked.json`:
     "last_checked_date": "<ISO_DATE>"
   },
   "tuist/xcodeproj": {
+    "last_checked_sha": "<HEAD_SHA>",
+    "last_checked_date": "<ISO_DATE>"
+  },
+  "getsentry/XcodeBuildMCP": {
     "last_checked_sha": "<HEAD_SHA>",
     "last_checked_date": "<ISO_DATE>"
   }

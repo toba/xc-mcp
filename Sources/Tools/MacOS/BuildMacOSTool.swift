@@ -79,7 +79,12 @@ public struct BuildMacOSTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text("Build succeeded for scheme '\(scheme)' on macOS")
+                        .text("Build succeeded for scheme '\(scheme)' on macOS"),
+                        NextStepHints.content(hints: [
+                            NextStepHint(
+                                tool: "launch_mac_app", description: "Launch the built macOS app"),
+                            NextStepHint(tool: "test_macos", description: "Run tests on macOS"),
+                        ]),
                     ]
                 )
             } else {

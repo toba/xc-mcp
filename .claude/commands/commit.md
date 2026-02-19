@@ -9,18 +9,11 @@ This is an active codebase with multiple agents and people making changes concur
 - If files you didn't touch appear modified, another agent may have changed them - include or exclude as appropriate
 - Focus on what IS changed, not what ISN'T
 
-## Step 1: Run Critical Review (Parallel)
+## Step 1: Review Changes
 
-**IMPORTANT**: Before committing, run lint and tests **in parallel** (single message, multiple Bash calls).
+Review the diff for security/quality issues. If you find blocking issues, report them and STOP.
 
-Execute these commands concurrently:
-1. `swiftlint` - check for lint violations
-2. `swift build` - verify compilation
-3. `swift test` - run test suite
-
-Then review the diff for security/quality issues.
-
-If any command fails or review finds blocking issues, report them and STOP. Do not proceed to commit.
+**Do NOT run swift format, swiftlint, swift build, or swift test** — the pre-commit hook handles all of these automatically. Running them here wastes time since they'll run again during `git commit`.
 
 ## Step 2: Stage and Commit
 

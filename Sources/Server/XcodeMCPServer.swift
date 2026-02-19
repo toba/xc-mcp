@@ -50,6 +50,8 @@ public enum ToolName: String, CaseIterable, Sendable {
     case setSessionDefaults = "set_session_defaults"
     case showSessionDefaults = "show_session_defaults"
     case clearSessionDefaults = "clear_session_defaults"
+    case syncXcodeDefaults = "sync_xcode_defaults"
+    case manageWorkflows = "manage_workflows"
 
     // Simulator tools
     case listSims = "list_sims"
@@ -130,6 +132,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case tap = "tap"
     case longPress = "long_press"
     case swipe = "swipe"
+    case gesture = "gesture"
     case typeText = "type_text"
     case keyPress = "key_press"
     case button = "button"
@@ -163,6 +166,73 @@ public enum ToolName: String, CaseIterable, Sendable {
     case doctor = "doctor"
     case scaffoldIOS = "scaffold_ios_project"
     case scaffoldMacOS = "scaffold_macos_project"
+    /// The workflow category this tool belongs to.
+    public var workflow: Workflow {
+        switch self {
+        // Project
+        case .createXcodeproj, .listTargets, .listBuildConfigurations, .listFiles,
+            .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
+            .addTarget, .removeTarget, .addDependency, .setBuildSetting, .addFramework,
+            .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
+            .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
+            .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
+            .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
+            .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
+            .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
+            .manageTypeIdentifier, .listURLTypes, .manageURLType:
+            return .project
+        // Session
+        case .setSessionDefaults, .showSessionDefaults, .clearSessionDefaults,
+            .syncXcodeDefaults, .manageWorkflows:
+            return .session
+        // Simulator
+        case .listSims, .bootSim, .openSim, .buildSim, .buildRunSim, .installAppSim,
+            .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
+            .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
+            .resetSimLocation, .setSimAppearance, .simStatusbar:
+            return .simulator
+        // Device
+        case .listDevices, .buildDevice, .installAppDevice, .launchAppDevice,
+            .stopAppDevice, .getDeviceAppPath, .testDevice:
+            return .device
+        // macOS
+        case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
+            .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
+            return .macos
+        // Discovery
+        case .discoverProjs, .listSchemes, .showBuildSettings, .getAppBundleId,
+            .getMacBundleId:
+            return .discovery
+        // Logging
+        case .startSimLogCap, .stopSimLogCap, .startDeviceLogCap, .stopDeviceLogCap:
+            return .logging
+        // Debug
+        case .buildDebugMacOS, .debugAttachSim, .debugDetach, .debugBreakpointAdd,
+            .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
+            .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
+            .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
+            .debugViewBorders, .debugProcessStatus:
+            return .debug
+        // UI Automation
+        case .tap, .longPress, .swipe, .gesture, .typeText, .keyPress, .button,
+            .screenshot:
+            return .uiAutomation
+        // Interact
+        case .interactUITree, .interactClick, .interactSetValue, .interactGetValue,
+            .interactMenu, .interactFocus, .interactKey, .interactFind:
+            return .interact
+        // Swift Package
+        case .swiftPackageBuild, .swiftPackageTest, .swiftPackageRun, .swiftPackageClean,
+            .swiftPackageList, .swiftPackageStop:
+            return .swiftPackage
+        // Instruments
+        case .xctraceRecord, .xctraceList, .xctraceExport:
+            return .instruments
+        // Utility
+        case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS:
+            return .utility
+        }
+    }
 }
 
 /// The main MCP server for Xcode development operations.
@@ -219,8 +289,11 @@ public struct XcodeMCPServer: Sendable {
         let server = Server(
             name: "xcode-mcp-server",
             version: "1.0.0",
-            capabilities: .init(tools: .init())
+            capabilities: .init(tools: .init(listChanged: true))
         )
+
+        // Workflow manager
+        let workflowManager = WorkflowManager()
 
         // Create utilities
         let pathUtility = PathUtility(basePath: basePath)
@@ -271,6 +344,8 @@ public struct XcodeMCPServer: Sendable {
         let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
         let showSessionDefaultsTool = ShowSessionDefaultsTool(sessionManager: sessionManager)
         let clearSessionDefaultsTool = ClearSessionDefaultsTool(sessionManager: sessionManager)
+        let syncXcodeDefaultsTool = SyncXcodeDefaultsTool(sessionManager: sessionManager)
+        let manageWorkflowsTool = ManageWorkflowsTool(workflowManager: workflowManager)
 
         // Create simulator tools
         let listSimsTool = ListSimsTool(simctlRunner: simctlRunner)
@@ -393,6 +468,7 @@ public struct XcodeMCPServer: Sendable {
         let longPressTool = LongPressTool(
             simctlRunner: simctlRunner, sessionManager: sessionManager)
         let swipeTool = SwipeTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
+        let gestureTool = GestureTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let typeTextTool = TypeTextTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let keyPressTool = KeyPressTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let buttonTool = ButtonTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
@@ -434,161 +510,186 @@ public struct XcodeMCPServer: Sendable {
         // Create utility tools
         let cleanTool = CleanTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
-        let doctorTool = DoctorTool()
+        let doctorTool = DoctorTool(sessionManager: sessionManager)
         let scaffoldIOSTool = ScaffoldIOSProjectTool(pathUtility: pathUtility)
         let scaffoldMacOSTool = ScaffoldMacOSProjectTool(pathUtility: pathUtility)
 
-        // Register tools/list handler
+        // Build the complete tool registry: (ToolName, Tool) pairs
+        let allTools: [(ToolName, Tool)] = [
+            // Project tools
+            (.createXcodeproj, createXcodeprojTool.tool()),
+            (.listTargets, listTargetsTool.tool()),
+            (.listBuildConfigurations, listBuildConfigurationsTool.tool()),
+            (.listFiles, listFilesTool.tool()),
+            (.getBuildSettings, getBuildSettingsTool.tool()),
+            (.addFile, addFileTool.tool()),
+            (.removeFile, removeFileTool.tool()),
+            (.moveFile, moveFileTool.tool()),
+            (.createGroup, createGroupTool.tool()),
+            (.addTarget, addTargetTool.tool()),
+            (.removeTarget, removeTargetTool.tool()),
+            (.addDependency, addDependencyTool.tool()),
+            (.setBuildSetting, setBuildSettingTool.tool()),
+            (.addFramework, addFrameworkTool.tool()),
+            (.addBuildPhase, addBuildPhaseTool.tool()),
+            (.duplicateTarget, duplicateTargetTool.tool()),
+            (.addSwiftPackage, addSwiftPackageTool.tool()),
+            (.listSwiftPackages, listSwiftPackagesTool.tool()),
+            (.removeSwiftPackage, removeSwiftPackageTool.tool()),
+            (.listGroups, listGroupsTool.tool()),
+            (.addSynchronizedFolder, addSynchronizedFolderTool.tool()),
+            (.addTargetToSynchronizedFolder, addTargetToSynchronizedFolderTool.tool()),
+            (.addSynchronizedFolderException, addSynchronizedFolderExceptionTool.tool()),
+            (.addAppExtension, addAppExtensionTool.tool()),
+            (.removeAppExtension, removeAppExtensionTool.tool()),
+            (.listCopyFilesPhases, listCopyFilesPhases.tool()),
+            (.addCopyFilesPhase, addCopyFilesPhase.tool()),
+            (.addToCopyFilesPhase, addToCopyFilesPhase.tool()),
+            (.removeCopyFilesPhase, removeCopyFilesPhase.tool()),
+            (.listDocumentTypes, listDocumentTypesTool.tool()),
+            (.manageDocumentType, manageDocumentTypeTool.tool()),
+            (.listTypeIdentifiers, listTypeIdentifiersTool.tool()),
+            (.manageTypeIdentifier, manageTypeIdentifierTool.tool()),
+            (.listURLTypes, listURLTypesTool.tool()),
+            (.manageURLType, manageURLTypeTool.tool()),
+            // Session tools
+            (.setSessionDefaults, setSessionDefaultsTool.tool()),
+            (.showSessionDefaults, showSessionDefaultsTool.tool()),
+            (.clearSessionDefaults, clearSessionDefaultsTool.tool()),
+            (.syncXcodeDefaults, syncXcodeDefaultsTool.tool()),
+            (.manageWorkflows, manageWorkflowsTool.tool()),
+            // Simulator tools
+            (.listSims, listSimsTool.tool()),
+            (.bootSim, bootSimTool.tool()),
+            (.openSim, openSimTool.tool()),
+            (.buildSim, buildSimTool.tool()),
+            (.buildRunSim, buildRunSimTool.tool()),
+            (.installAppSim, installAppSimTool.tool()),
+            (.launchAppSim, launchAppSimTool.tool()),
+            (.stopAppSim, stopAppSimTool.tool()),
+            (.getSimAppPath, getSimAppPathTool.tool()),
+            (.testSim, testSimTool.tool()),
+            (.recordSimVideo, recordSimVideoTool.tool()),
+            (.launchAppLogsSim, launchAppLogsSimTool.tool()),
+            (.previewCapture, previewCaptureTool.tool()),
+            // Device tools
+            (.listDevices, listDevicesTool.tool()),
+            (.buildDevice, buildDeviceTool.tool()),
+            (.installAppDevice, installAppDeviceTool.tool()),
+            (.launchAppDevice, launchAppDeviceTool.tool()),
+            (.stopAppDevice, stopAppDeviceTool.tool()),
+            (.getDeviceAppPath, getDeviceAppPathTool.tool()),
+            (.testDevice, testDeviceTool.tool()),
+            // macOS tools
+            (.buildMacOS, buildMacOSTool.tool()),
+            (.buildRunMacOS, buildRunMacOSTool.tool()),
+            (.launchMacApp, launchMacAppTool.tool()),
+            (.stopMacApp, stopMacAppTool.tool()),
+            (.getMacAppPath, getMacAppPathTool.tool()),
+            (.testMacOS, testMacOSTool.tool()),
+            (.startMacLogCap, startMacLogCapTool.tool()),
+            (.stopMacLogCap, stopMacLogCapTool.tool()),
+            (.screenshotMacWindow, screenshotMacWindowTool.tool()),
+            // Discovery tools
+            (.discoverProjs, discoverProjsTool.tool()),
+            (.listSchemes, listSchemesTool.tool()),
+            (.showBuildSettings, showBuildSettingsTool.tool()),
+            (.getAppBundleId, getAppBundleIdTool.tool()),
+            (.getMacBundleId, getMacBundleIdTool.tool()),
+            // Logging tools
+            (.startSimLogCap, startSimLogCapTool.tool()),
+            (.stopSimLogCap, stopSimLogCapTool.tool()),
+            (.startDeviceLogCap, startDeviceLogCapTool.tool()),
+            (.stopDeviceLogCap, stopDeviceLogCapTool.tool()),
+            // Extended simulator tools
+            (.eraseSims, eraseSimTool.tool()),
+            (.setSimLocation, setSimLocationTool.tool()),
+            (.resetSimLocation, resetSimLocationTool.tool()),
+            (.setSimAppearance, setSimAppearanceTool.tool()),
+            (.simStatusbar, simStatusBarTool.tool()),
+            // Debug tools
+            (.buildDebugMacOS, buildDebugMacOSTool.tool()),
+            (.debugAttachSim, debugAttachSimTool.tool()),
+            (.debugDetach, debugDetachTool.tool()),
+            (.debugBreakpointAdd, debugBreakpointAddTool.tool()),
+            (.debugBreakpointRemove, debugBreakpointRemoveTool.tool()),
+            (.debugContinue, debugContinueTool.tool()),
+            (.debugStack, debugStackTool.tool()),
+            (.debugVariables, debugVariablesTool.tool()),
+            (.debugLLDBCommand, debugLLDBCommandTool.tool()),
+            (.debugEvaluate, debugEvaluateTool.tool()),
+            (.debugThreads, debugThreadsTool.tool()),
+            (.debugWatchpoint, debugWatchpointTool.tool()),
+            (.debugStep, debugStepTool.tool()),
+            (.debugMemory, debugMemoryTool.tool()),
+            (.debugSymbolLookup, debugSymbolLookupTool.tool()),
+            (.debugViewHierarchy, debugViewHierarchyTool.tool()),
+            (.debugViewBorders, debugViewBordersTool.tool()),
+            (.debugProcessStatus, debugProcessStatusTool.tool()),
+            // UI Automation tools
+            (.tap, tapTool.tool()),
+            (.longPress, longPressTool.tool()),
+            (.swipe, swipeTool.tool()),
+            (.gesture, gestureTool.tool()),
+            (.typeText, typeTextTool.tool()),
+            (.keyPress, keyPressTool.tool()),
+            (.button, buttonTool.tool()),
+            (.screenshot, screenshotTool.tool()),
+            // Swift Package Manager tools
+            (.swiftPackageBuild, swiftPackageBuildTool.tool()),
+            (.swiftPackageTest, swiftPackageTestTool.tool()),
+            (.swiftPackageRun, swiftPackageRunTool.tool()),
+            (.swiftPackageClean, swiftPackageCleanTool.tool()),
+            (.swiftPackageList, swiftPackageListTool.tool()),
+            (.swiftPackageStop, swiftPackageStopTool.tool()),
+            // Interact tools
+            (.interactUITree, interactUITreeTool.tool()),
+            (.interactClick, interactClickTool.tool()),
+            (.interactSetValue, interactSetValueTool.tool()),
+            (.interactGetValue, interactGetValueTool.tool()),
+            (.interactMenu, interactMenuTool.tool()),
+            (.interactFocus, interactFocusTool.tool()),
+            (.interactKey, interactKeyTool.tool()),
+            (.interactFind, interactFindTool.tool()),
+            // Instruments tools
+            (.xctraceRecord, xctraceRecordTool.tool()),
+            (.xctraceList, xctraceListTool.tool()),
+            (.xctraceExport, xctraceExportTool.tool()),
+            // Utility tools
+            (.clean, cleanTool.tool()),
+            (.doctor, doctorTool.tool()),
+            (.scaffoldIOS, scaffoldIOSTool.tool()),
+            (.scaffoldMacOS, scaffoldMacOSTool.tool()),
+        ]
+
+        // Register tools/list handler — filters by enabled workflows
         await server.withMethodHandler(ListTools.self) { _ in
-            ListTools.Result(tools: [
-                // Project tools
-                createXcodeprojTool.tool(),
-                listTargetsTool.tool(),
-                listBuildConfigurationsTool.tool(),
-                listFilesTool.tool(),
-                getBuildSettingsTool.tool(),
-                addFileTool.tool(),
-                removeFileTool.tool(),
-                moveFileTool.tool(),
-                createGroupTool.tool(),
-                addTargetTool.tool(),
-                removeTargetTool.tool(),
-                addDependencyTool.tool(),
-                setBuildSettingTool.tool(),
-                addFrameworkTool.tool(),
-                addBuildPhaseTool.tool(),
-                duplicateTargetTool.tool(),
-                addSwiftPackageTool.tool(),
-                listSwiftPackagesTool.tool(),
-                removeSwiftPackageTool.tool(),
-                listGroupsTool.tool(),
-                addSynchronizedFolderTool.tool(),
-                addTargetToSynchronizedFolderTool.tool(),
-                addSynchronizedFolderExceptionTool.tool(),
-                addAppExtensionTool.tool(),
-                removeAppExtensionTool.tool(),
-                listCopyFilesPhases.tool(),
-                addCopyFilesPhase.tool(),
-                addToCopyFilesPhase.tool(),
-                removeCopyFilesPhase.tool(),
-                listDocumentTypesTool.tool(),
-                manageDocumentTypeTool.tool(),
-                listTypeIdentifiersTool.tool(),
-                manageTypeIdentifierTool.tool(),
-                listURLTypesTool.tool(),
-                manageURLTypeTool.tool(),
-                // Session tools
-                setSessionDefaultsTool.tool(),
-                showSessionDefaultsTool.tool(),
-                clearSessionDefaultsTool.tool(),
-                // Simulator tools
-                listSimsTool.tool(),
-                bootSimTool.tool(),
-                openSimTool.tool(),
-                buildSimTool.tool(),
-                buildRunSimTool.tool(),
-                installAppSimTool.tool(),
-                launchAppSimTool.tool(),
-                stopAppSimTool.tool(),
-                getSimAppPathTool.tool(),
-                testSimTool.tool(),
-                recordSimVideoTool.tool(),
-                launchAppLogsSimTool.tool(),
-                previewCaptureTool.tool(),
-                // Device tools
-                listDevicesTool.tool(),
-                buildDeviceTool.tool(),
-                installAppDeviceTool.tool(),
-                launchAppDeviceTool.tool(),
-                stopAppDeviceTool.tool(),
-                getDeviceAppPathTool.tool(),
-                testDeviceTool.tool(),
-                // macOS tools
-                buildMacOSTool.tool(),
-                buildRunMacOSTool.tool(),
-                launchMacAppTool.tool(),
-                stopMacAppTool.tool(),
-                getMacAppPathTool.tool(),
-                testMacOSTool.tool(),
-                startMacLogCapTool.tool(),
-                stopMacLogCapTool.tool(),
-                screenshotMacWindowTool.tool(),
-                // Discovery tools
-                discoverProjsTool.tool(),
-                listSchemesTool.tool(),
-                showBuildSettingsTool.tool(),
-                getAppBundleIdTool.tool(),
-                getMacBundleIdTool.tool(),
-                // Logging tools
-                startSimLogCapTool.tool(),
-                stopSimLogCapTool.tool(),
-                startDeviceLogCapTool.tool(),
-                stopDeviceLogCapTool.tool(),
-                // Extended simulator tools
-                eraseSimTool.tool(),
-                setSimLocationTool.tool(),
-                resetSimLocationTool.tool(),
-                setSimAppearanceTool.tool(),
-                simStatusBarTool.tool(),
-                // Debug tools
-                buildDebugMacOSTool.tool(),
-                debugAttachSimTool.tool(),
-                debugDetachTool.tool(),
-                debugBreakpointAddTool.tool(),
-                debugBreakpointRemoveTool.tool(),
-                debugContinueTool.tool(),
-                debugStackTool.tool(),
-                debugVariablesTool.tool(),
-                debugLLDBCommandTool.tool(),
-                debugEvaluateTool.tool(),
-                debugThreadsTool.tool(),
-                debugWatchpointTool.tool(),
-                debugStepTool.tool(),
-                debugMemoryTool.tool(),
-                debugSymbolLookupTool.tool(),
-                debugViewHierarchyTool.tool(),
-                debugViewBordersTool.tool(),
-                debugProcessStatusTool.tool(),
-                // UI Automation tools
-                tapTool.tool(),
-                longPressTool.tool(),
-                swipeTool.tool(),
-                typeTextTool.tool(),
-                keyPressTool.tool(),
-                buttonTool.tool(),
-                screenshotTool.tool(),
-                // Swift Package Manager tools
-                swiftPackageBuildTool.tool(),
-                swiftPackageTestTool.tool(),
-                swiftPackageRunTool.tool(),
-                swiftPackageCleanTool.tool(),
-                swiftPackageListTool.tool(),
-                swiftPackageStopTool.tool(),
-                // Interact tools
-                interactUITreeTool.tool(),
-                interactClickTool.tool(),
-                interactSetValueTool.tool(),
-                interactGetValueTool.tool(),
-                interactMenuTool.tool(),
-                interactFocusTool.tool(),
-                interactKeyTool.tool(),
-                interactFindTool.tool(),
-                // Instruments tools
-                xctraceRecordTool.tool(),
-                xctraceListTool.tool(),
-                xctraceExportTool.tool(),
-                // Utility tools
-                cleanTool.tool(),
-                doctorTool.tool(),
-                scaffoldIOSTool.tool(),
-                scaffoldMacOSTool.tool(),
-            ])
+            var tools: [Tool] = []
+            for (name, tool) in allTools {
+                // manage_workflows is always visible
+                if name == .manageWorkflows {
+                    tools.append(tool)
+                } else if await workflowManager.isEnabled(name.workflow) {
+                    tools.append(tool)
+                }
+            }
+            return ListTools.Result(tools: tools)
         }
 
         // Register tools/call handler
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = ToolName(rawValue: params.name) else {
                 throw MCPError.methodNotFound("Unknown tool: \(params.name)")
+            }
+
+            // Check workflow is enabled (manage_workflows is always allowed)
+            if toolName != .manageWorkflows {
+                let enabled = await workflowManager.isEnabled(toolName.workflow)
+                if !enabled {
+                    throw MCPError.invalidRequest(
+                        "Tool '\(params.name)' is disabled. Its workflow '\(toolName.workflow.rawValue)' is currently disabled. Use manage_workflows to re-enable it."
+                    )
+                }
             }
 
             let arguments = params.arguments ?? [:]
@@ -673,6 +774,18 @@ public struct XcodeMCPServer: Sendable {
                 return try await showSessionDefaultsTool.execute(arguments: arguments)
             case .clearSessionDefaults:
                 return try await clearSessionDefaultsTool.execute(arguments: arguments)
+            case .syncXcodeDefaults:
+                return try await syncXcodeDefaultsTool.execute(arguments: arguments)
+            case .manageWorkflows:
+                let (result, changed) = try await manageWorkflowsTool.execute(
+                    arguments: arguments)
+                if changed {
+                    try await server.notify(
+                        Message<ToolListChangedNotification>(
+                            method: ToolListChangedNotification.name,
+                            params: Empty()))
+                }
+                return result
 
             // Simulator tools
             case .listSims:
@@ -817,6 +930,8 @@ public struct XcodeMCPServer: Sendable {
                 return try await longPressTool.execute(arguments: arguments)
             case .swipe:
                 return try await swipeTool.execute(arguments: arguments)
+            case .gesture:
+                return try await gestureTool.execute(arguments: arguments)
             case .typeText:
                 return try await typeTextTool.execute(arguments: arguments)
             case .keyPress:

@@ -110,7 +110,7 @@ public struct BuildMCPServer: Sendable {
         // Create utility tools
         let cleanTool = CleanTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
-        let doctorTool = DoctorTool()
+        let doctorTool = DoctorTool(sessionManager: sessionManager)
         let scaffoldIOSTool = ScaffoldIOSProjectTool(pathUtility: pathUtility)
         let scaffoldMacOSTool = ScaffoldMacOSProjectTool(pathUtility: pathUtility)
 

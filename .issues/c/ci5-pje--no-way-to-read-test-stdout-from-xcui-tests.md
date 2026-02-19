@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-18T06:11:55Z
 updated_at: 2026-02-18T06:21:59Z
+sync:
+    github:
+        issue_number: "76"
+        synced_at: "2026-02-18T06:23:53Z"
 ---
 
 print() statements in XCUI tests go to the test runner process stdout, which isn't captured in the test results returned by test_macos. Would be useful to surface test output logs (or at least provide a way to retrieve them).

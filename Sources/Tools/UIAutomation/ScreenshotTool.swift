@@ -92,7 +92,18 @@ public struct ScreenshotTool: Sendable {
                     content: [
                         .text(
                             "Screenshot saved to: \(finalPath)"
-                        )
+                        ),
+                        NextStepHints.content(hints: [
+                            NextStepHint(
+                                tool: "tap",
+                                description: "Tap a UI element (provide x, y coordinates)"),
+                            NextStepHint(
+                                tool: "swipe", description: "Swipe on the simulator screen"),
+                            NextStepHint(
+                                tool: "gesture", description: "Perform a named gesture preset"),
+                            NextStepHint(
+                                tool: "screenshot", description: "Take another screenshot"),
+                        ]),
                     ]
                 )
             } else {

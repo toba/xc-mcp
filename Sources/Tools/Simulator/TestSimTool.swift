@@ -90,11 +90,19 @@ public struct TestSimTool: Sendable {
                 }
             }
 
-            return try ErrorExtractor.formatTestToolResult(
+            let testToolResult = try ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: "scheme '\(scheme)' on simulator '\(simulator)'",
                 xcresultPath: resultBundlePath,
                 stderr: result.stderr
+            )
+            return CallTool.Result(
+                content: testToolResult.content + [
+                    NextStepHints.content(hints: [
+                        NextStepHint(tool: "build_sim", description: "Rebuild after making changes")
+                    ])
+                ],
+                isError: testToolResult.isError
             )
         } catch {
             if isTemporaryBundle {

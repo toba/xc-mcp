@@ -155,7 +155,17 @@ public struct LaunchMacAppTool: Sendable {
                 if hide {
                     message += " (hidden)"
                 }
-                return CallTool.Result(content: [.text(message)])
+                return CallTool.Result(content: [
+                    .text(message),
+                    NextStepHints.content(hints: [
+                        NextStepHint(
+                            tool: "screenshot_mac_window",
+                            description: "Take a screenshot of a macOS window"),
+                        NextStepHint(
+                            tool: "interact_ui_tree",
+                            description: "Inspect the app's accessibility UI tree"),
+                    ]),
+                ])
             } else {
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 let output = String(data: data, encoding: .utf8) ?? ""

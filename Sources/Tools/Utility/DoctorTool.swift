@@ -3,13 +3,17 @@ import MCP
 import XCMCPCore
 
 public struct DoctorTool: Sendable {
-    public init() {}
+    private let sessionManager: SessionManager
+
+    public init(sessionManager: SessionManager) {
+        self.sessionManager = sessionManager
+    }
 
     public func tool() -> Tool {
         Tool(
             name: "doctor",
             description:
-                "Diagnose the Xcode development environment. Checks Xcode installation, command line tools, simulators, and other dependencies.",
+                "Diagnose the Xcode development environment. Checks Xcode installation, command line tools, simulators, LLDB, SDKs, session state, and other dependencies.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([:]),
@@ -26,6 +30,7 @@ public struct DoctorTool: Sendable {
         diagnostics.append("## System Information")
         let osVersion = ProcessInfo.processInfo.operatingSystemVersionString
         diagnostics.append("macOS: \(osVersion)")
+        diagnostics.append("Server version: 1.0.0")
 
         // Run all checks in parallel for faster execution
         async let xcodeCheck = checkXcode()
@@ -34,6 +39,14 @@ public struct DoctorTool: Sendable {
         async let simctlCheck = checkSimctl()
         async let devicectlCheck = checkDevicectl()
         async let swiftCheck = checkSwift()
+        async let lldbCheck = checkLLDB()
+        async let sdksCheck = checkSDKs()
+        async let derivedDataCheck = checkDerivedData()
+
+        // Session state (requires await on actor)
+        let sessionSummary = await sessionManager.summary()
+        diagnostics.append("\n## Session State")
+        diagnostics.append(sessionSummary)
 
         // Await results and append in order
         let xcode = await xcodeCheck
@@ -60,6 +73,29 @@ public struct DoctorTool: Sendable {
         diagnostics.append("\n## Swift")
         diagnostics.append(contentsOf: swift)
 
+        let lldb = await lldbCheck
+        diagnostics.append("\n## LLDB")
+        diagnostics.append(contentsOf: lldb)
+
+        let sdks = await sdksCheck
+        diagnostics.append("\n## SDKs")
+        diagnostics.append(contentsOf: sdks)
+
+        // Active debug sessions
+        let debugSessions = await LLDBSessionManager.shared.getAllSessions()
+        diagnostics.append("\n## Active Debug Sessions")
+        if debugSessions.isEmpty {
+            diagnostics.append("No active debug sessions")
+        } else {
+            for (bundleId, pid) in debugSessions {
+                diagnostics.append("  \(bundleId): PID \(pid)")
+            }
+        }
+
+        let derivedData = await derivedDataCheck
+        diagnostics.append("\n## DerivedData")
+        diagnostics.append(contentsOf: derivedData)
+
         // Summary
         diagnostics.append("\n## Summary")
         let allPassed =
@@ -78,7 +114,17 @@ public struct DoctorTool: Sendable {
         }
 
         return CallTool.Result(
-            content: [.text(diagnostics.joined(separator: "\n"))]
+            content: [
+                .text(diagnostics.joined(separator: "\n")),
+                NextStepHints.content(hints: [
+                    NextStepHint(
+                        tool: "set_session_defaults",
+                        description: "Configure project, scheme, and device defaults"),
+                    NextStepHint(
+                        tool: "discover_projs",
+                        description: "Discover Xcode projects in the workspace"),
+                ]),
+            ]
         )
     }
 
@@ -202,6 +248,72 @@ public struct DoctorTool: Sendable {
             results.append("[OK] \(version)")
         } else {
             results.append("[FAIL] Swift not found")
+        }
+
+        return results
+    }
+
+    private func checkLLDB() async -> [String] {
+        var results: [String] = []
+
+        let result = await runCommand("/usr/bin/xcrun", arguments: ["lldb", "--version"])
+        if result.exitCode == 0 {
+            let version =
+                result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: .newlines).first ?? "Unknown"
+            results.append("[OK] \(version)")
+        } else {
+            results.append("[WARN] LLDB not available")
+        }
+
+        return results
+    }
+
+    private func checkSDKs() async -> [String] {
+        var results: [String] = []
+
+        let result = await runCommand("/usr/bin/xcodebuild", arguments: ["-showsdks"])
+        if result.exitCode == 0 {
+            let lines = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: .newlines)
+                .filter { $0.contains("-sdk ") }
+            if lines.isEmpty {
+                results.append("[WARN] No SDKs found")
+            } else {
+                for line in lines {
+                    results.append("  \(line.trimmingCharacters(in: .whitespaces))")
+                }
+            }
+        } else {
+            results.append("[WARN] Could not list SDKs")
+        }
+
+        return results
+    }
+
+    private func checkDerivedData() -> [String] {
+        var results: [String] = []
+
+        let derivedDataPath = NSHomeDirectory() + "/Library/Developer/Xcode/DerivedData"
+        let fm = FileManager.default
+
+        if fm.fileExists(atPath: derivedDataPath) {
+            do {
+                let attrs = try fm.attributesOfFileSystem(forPath: derivedDataPath)
+                if let freeSize = attrs[.systemFreeSize] as? Int64 {
+                    let freeGB = Double(freeSize) / 1_073_741_824
+                    results.append(
+                        String(format: "Disk free space: %.1f GB", freeGB))
+                }
+                // Count subdirectories to estimate project count
+                let contents = try fm.contentsOfDirectory(atPath: derivedDataPath)
+                let projectDirs = contents.filter { !$0.hasPrefix(".") }
+                results.append("Cached projects: \(projectDirs.count)")
+            } catch {
+                results.append("[WARN] Could not read DerivedData: \(error.localizedDescription)")
+            }
+        } else {
+            results.append("DerivedData directory does not exist (clean state)")
         }
 
         return results

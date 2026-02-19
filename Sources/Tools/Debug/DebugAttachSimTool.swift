@@ -92,7 +92,13 @@ public struct DebugAttachSimTool: Sendable {
                 var message = "Successfully attached to process \(targetPID)\n\n"
                 message += result.output
 
-                return CallTool.Result(content: [.text(message)])
+                return CallTool.Result(content: [
+                    .text(message),
+                    NextStepHints.content(hints: [
+                        NextStepHint(tool: "debug_breakpoint_add", description: "Add a breakpoint"),
+                        NextStepHint(tool: "debug_continue", description: "Continue execution"),
+                    ]),
+                ])
             } else {
                 throw MCPError.internalError(
                     "Failed to attach to process: \(result.errorOutput)"
