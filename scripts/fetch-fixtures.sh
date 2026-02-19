@@ -10,7 +10,7 @@ REPOS_DIR="$ROOT_DIR/fixtures/repos"
 # Parallel arrays
 NAMES=(    IceCubesApp                                     Alamofire                                       SwiftFormat)
 URLS=(     https://github.com/Dimillian/IceCubesApp.git    https://github.com/Alamofire/Alamofire.git      https://github.com/nicklockwood/SwiftFormat.git)
-COMMITS=(  99484408ca50d28f01363af45e3697c24bad412d        f73a2fcb60198ef2b92dc3b6074b18f98ccee875        2d1b035f27ef4bc1e0096e6d198ee4a41cc52c9f)
+COMMITS=(  99484408ca50d28f01363af45e3697c24bad412d        f73a2fcb60198ef2b92dc3b6074b18f98ccee875        22a472ced4c621a0e41b982a6f32dec868d09392)
 
 mkdir -p "$REPOS_DIR"
 
@@ -86,7 +86,9 @@ for fname in ['DataRequest.swift', 'DataStreamRequest.swift', 'DownloadRequest.s
 }
 patch_alamofire
 
-# SwiftFormat: develop branch (2d1b035) already compiles with Xcode 26.
+# SwiftFormat 0.59.1 (22a472c) compiles cleanly with Xcode 26.
+# The previous pin (0.55.3 develop, 2d1b035) had 3 compilation errors from
+# Swift 6.2 changes (removeTokens range type, Range.split, AutoUpdatingIndex).
 # No patches needed.
 
 echo ""

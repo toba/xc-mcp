@@ -6,6 +6,10 @@ type: task
 priority: high
 created_at: 2026-02-19T20:12:54Z
 updated_at: 2026-02-19T20:36:15Z
+sync:
+    github:
+        issue_number: "84"
+        synced_at: "2026-02-19T20:42:41Z"
 ---
 
 Extract duplicated process kill/stop logic (~100 lines each) from 3 logging tools, and log capture setup from 3 start tools.

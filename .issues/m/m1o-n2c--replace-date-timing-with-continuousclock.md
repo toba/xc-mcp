@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-19T20:12:58Z
 updated_at: 2026-02-19T20:22:57Z
+sync:
+    github:
+        issue_number: "86"
+        synced_at: "2026-02-19T20:42:41Z"
 ---
 
 XcodebuildRunner.swift uses Date() for timing which can go backwards (NTP).

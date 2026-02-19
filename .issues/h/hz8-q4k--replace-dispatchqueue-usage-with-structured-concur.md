@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-19T20:12:57Z
 updated_at: 2026-02-19T20:26:22Z
+sync:
+    github:
+        issue_number: "83"
+        synced_at: "2026-02-19T20:42:41Z"
 ---
 
 Replace remaining DispatchQueue calls with Swift concurrency primitives.
