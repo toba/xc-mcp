@@ -9,7 +9,7 @@ updated_at: 2026-02-19T20:51:40Z
 sync:
     github:
         issue_number: "91"
-        synced_at: "2026-02-19T20:42:40Z"
+        synced_at: "2026-02-19T20:54:31Z"
 ---
 
 The build_SwiftFormat_macOS integration test is failing with a build error (3 errors, 2 warnings). This is a pre-existing failure unrelated to recent refactoring.

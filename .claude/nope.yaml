@@ -7,10 +7,6 @@ rules:
     pattern: 'git\s+(checkout|switch)\s+'
     message: "git checkout/switch not allowed — branch changes require user approval"
 
-  - name: git-commit
-    pattern: 'git\s+commit'
-    message: "git commit not allowed — only user should commit"
-
   - name: git-no-verify
     pattern: '--no-verify'
     message: "skipping hooks with --no-verify not allowed"
