@@ -1,8 +1,4 @@
 rules:
-  - name: git-push
-    pattern: 'git\s+push'
-    message: "git push not allowed — only user should push"
-
   - name: git-checkout-switch
     pattern: 'git\s+(checkout|switch)\s+'
     message: "git checkout/switch not allowed — branch changes require user approval"
