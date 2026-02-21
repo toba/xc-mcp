@@ -30,6 +30,12 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case removeSynchronizedFolder = "remove_synchronized_folder"
     case addAppExtension = "add_app_extension"
     case removeAppExtension = "remove_app_extension"
+    case addTargetToSynchronizedFolder = "add_target_to_synchronized_folder"
+    case addSynchronizedFolderException = "add_synchronized_folder_exception"
+    case listCopyFilesPhases = "list_copy_files_phases"
+    case addCopyFilesPhase = "add_copy_files_phase"
+    case addToCopyFilesPhase = "add_to_copy_files_phase"
+    case removeCopyFilesPhase = "remove_copy_files_phase"
     case listDocumentTypes = "list_document_types"
     case manageDocumentType = "manage_document_type"
     case listTypeIdentifiers = "list_type_identifiers"
@@ -45,7 +51,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
 ///
 /// ## Token Efficiency
 ///
-/// This server exposes 23 tools with approximately 5K token overhead, compared to
+/// This server exposes 29 tools with approximately 5K token overhead, compared to
 /// ~50K for the full monolithic xc-mcp server. Use this server when you only need
 /// project manipulation capabilities.
 ///
@@ -54,9 +60,12 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
 /// - Project creation: `create_xcodeproj`
 /// - Target management: `add_target`, `remove_target`, `duplicate_target`, `list_targets`
 /// - File management: `add_file`, `remove_file`, `move_file`, `list_files`
-/// - Group management: `create_group`, `list_groups`, `add_synchronized_folder`
+/// - Group management: `create_group`, `list_groups`, `add_synchronized_folder`,
+///   `add_target_to_synchronized_folder`, `add_synchronized_folder_exception`
 /// - Build settings: `get_build_settings`, `set_build_setting`, `list_build_configurations`
 /// - Dependencies: `add_dependency`, `add_framework`, `add_build_phase`
+/// - Copy files phases: `list_copy_files_phases`, `add_copy_files_phase`,
+///   `add_to_copy_files_phase`, `remove_copy_files_phase`
 /// - Swift packages: `add_swift_package`, `list_swift_packages`, `remove_swift_package`
 /// - App extensions: `add_app_extension`, `remove_app_extension`
 public struct ProjectMCPServer: Sendable {
@@ -119,6 +128,14 @@ public struct ProjectMCPServer: Sendable {
         let manageTypeIdentifierTool = ManageTypeIdentifierTool(pathUtility: pathUtility)
         let listURLTypesTool = ListURLTypesTool(pathUtility: pathUtility)
         let manageURLTypeTool = ManageURLTypeTool(pathUtility: pathUtility)
+        let addTargetToSynchronizedFolderTool = AddTargetToSynchronizedFolderTool(
+            pathUtility: pathUtility)
+        let addSynchronizedFolderExceptionTool = AddSynchronizedFolderExceptionTool(
+            pathUtility: pathUtility)
+        let listCopyFilesPhases = ListCopyFilesPhases(pathUtility: pathUtility)
+        let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
+        let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
+        let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
 
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
@@ -153,6 +170,12 @@ public struct ProjectMCPServer: Sendable {
                 manageTypeIdentifierTool.tool(),
                 listURLTypesTool.tool(),
                 manageURLTypeTool.tool(),
+                addTargetToSynchronizedFolderTool.tool(),
+                addSynchronizedFolderExceptionTool.tool(),
+                listCopyFilesPhases.tool(),
+                addCopyFilesPhase.tool(),
+                addToCopyFilesPhase.tool(),
+                removeCopyFilesPhase.tool(),
             ])
         }
 
@@ -225,6 +248,18 @@ public struct ProjectMCPServer: Sendable {
                 return try listURLTypesTool.execute(arguments: arguments)
             case .manageURLType:
                 return try manageURLTypeTool.execute(arguments: arguments)
+            case .addTargetToSynchronizedFolder:
+                return try addTargetToSynchronizedFolderTool.execute(arguments: arguments)
+            case .addSynchronizedFolderException:
+                return try addSynchronizedFolderExceptionTool.execute(arguments: arguments)
+            case .listCopyFilesPhases:
+                return try listCopyFilesPhases.execute(arguments: arguments)
+            case .addCopyFilesPhase:
+                return try addCopyFilesPhase.execute(arguments: arguments)
+            case .addToCopyFilesPhase:
+                return try addToCopyFilesPhase.execute(arguments: arguments)
+            case .removeCopyFilesPhase:
+                return try removeCopyFilesPhase.execute(arguments: arguments)
             }
         }
 
