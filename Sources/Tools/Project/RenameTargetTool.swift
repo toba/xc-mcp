@@ -48,8 +48,8 @@ public struct RenameTargetTool: Sendable {
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(newName) = arguments["new_name"]
+            case let .string(targetName) = arguments["target_name"],
+            case let .string(newName) = arguments["new_name"]
         else {
             throw MCPError.invalidParams("project_path, target_name, and new_name are required")
         }
@@ -75,7 +75,7 @@ public struct RenameTargetTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project"),
+                        .text("Target '\(targetName)' not found in project")
                     ]
                 )
             }
@@ -84,7 +84,7 @@ public struct RenameTargetTool: Sendable {
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == newName }) {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(newName)' already exists in project"),
+                        .text("Target '\(newName)' already exists in project")
                     ]
                 )
             }
@@ -103,7 +103,7 @@ public struct RenameTargetTool: Sendable {
 
                     // INFOPLIST_FILE — string-replace old name with new name
                     if let infoPlist = config.buildSettings["INFOPLIST_FILE"]?.stringValue,
-                       infoPlist.contains(targetName)
+                        infoPlist.contains(targetName)
                     {
                         let newInfoPlist = infoPlist.replacingOccurrences(
                             of: targetName, with: newName
@@ -147,7 +147,7 @@ public struct RenameTargetTool: Sendable {
 
                     // TEST_HOST — string-replace old name with new name
                     if let testHost = config.buildSettings["TEST_HOST"]?.stringValue,
-                       testHost.contains(targetName)
+                        testHost.contains(targetName)
                     {
                         config.buildSettings["TEST_HOST"] = .string(
                             testHost.replacingOccurrences(of: targetName, with: newName)
@@ -188,8 +188,8 @@ public struct RenameTargetTool: Sendable {
                     guard let copyPhase = buildPhase as? PBXCopyFilesBuildPhase else { continue }
                     for buildFile in copyPhase.files ?? [] {
                         if let fileRef = buildFile.file,
-                           let path = fileRef.path,
-                           path.contains(targetName)
+                            let path = fileRef.path,
+                            path.contains(targetName)
                         {
                             fileRef.path = path.replacingOccurrences(
                                 of: targetName, with: newName
@@ -211,12 +211,12 @@ public struct RenameTargetTool: Sendable {
 
             // 7. Rename target group in main group hierarchy
             if let project = try xcodeproj.pbxproj.rootProject(),
-               let mainGroup = project.mainGroup
+                let mainGroup = project.mainGroup
             {
                 func renameGroup(in group: PBXGroup) {
                     for child in group.children {
                         if let childGroup = child as? PBXGroup,
-                           childGroup.name == targetName
+                            childGroup.name == targetName
                         {
                             childGroup.name = newName
                             if childGroup.path == targetName {
@@ -243,7 +243,8 @@ public struct RenameTargetTool: Sendable {
 
             var message = "Successfully renamed target '\(targetName)' to '\(newName)'"
             if schemesUpdated > 0 {
-                message += " (updated \(schemesUpdated) scheme file\(schemesUpdated == 1 ? "" : "s"))"
+                message +=
+                    " (updated \(schemesUpdated) scheme file\(schemesUpdated == 1 ? "" : "s"))"
             }
 
             return CallTool.Result(

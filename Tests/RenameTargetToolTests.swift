@@ -3,8 +3,9 @@ import MCP
 import PathKit
 import Testing
 import XCMCPCore
-@testable import XCMCPTools
 import XcodeProj
+
+@testable import XCMCPTools
 
 @Suite("RenameTargetTool Tests")
 struct RenameTargetToolTests {
@@ -464,17 +465,17 @@ struct RenameTargetToolTests {
             atPath: schemesDir, withIntermediateDirectories: true
         )
         let schemeContent = """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <Scheme>
-           <BuildableReference
-              BuildableIdentifier = "primary"
-              BlueprintIdentifier = "ABC123"
-              BuildableName = "App.app"
-              BlueprintName = "App"
-              ReferencedContainer = "container:TestProject.xcodeproj">
-           </BuildableReference>
-        </Scheme>
-        """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Scheme>
+               <BuildableReference
+                  BuildableIdentifier = "primary"
+                  BlueprintIdentifier = "ABC123"
+                  BuildableName = "App.app"
+                  BlueprintName = "App"
+                  ReferencedContainer = "container:TestProject.xcodeproj">
+               </BuildableReference>
+            </Scheme>
+            """
         try schemeContent.write(
             toFile: "\(schemesDir)/App.xcscheme", atomically: true, encoding: .utf8
         )

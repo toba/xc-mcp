@@ -44,8 +44,8 @@ public struct RenameGroupTool: Sendable {
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(groupPath) = arguments["group_path"],
-              case let .string(newName) = arguments["new_name"]
+            case let .string(groupPath) = arguments["group_path"],
+            case let .string(newName) = arguments["new_name"]
         else {
             throw MCPError.invalidParams("project_path, group_path, and new_name are required")
         }
@@ -57,7 +57,7 @@ public struct RenameGroupTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                  let mainGroup = project.mainGroup
+                let mainGroup = project.mainGroup
             else {
                 return CallTool.Result(
                     content: [.text("Could not find main group in project")]
@@ -78,7 +78,7 @@ public struct RenameGroupTool: Sendable {
                         content: [
                             .text(
                                 "Group '\(groupPath)' not found in project (failed at '\(component)')"
-                            ),
+                            )
                         ]
                     )
                 }
@@ -108,7 +108,7 @@ public struct RenameGroupTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Successfully renamed group '\(oldName)' to '\(newName)'"),
+                    .text("Successfully renamed group '\(oldName)' to '\(newName)'")
                 ]
             )
         } catch {

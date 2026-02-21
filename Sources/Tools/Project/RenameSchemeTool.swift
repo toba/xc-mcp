@@ -40,8 +40,8 @@ public struct RenameSchemeTool: Sendable {
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(schemeName) = arguments["scheme_name"],
-              case let .string(newName) = arguments["new_name"]
+            case let .string(schemeName) = arguments["scheme_name"],
+            case let .string(newName) = arguments["new_name"]
         else {
             throw MCPError.invalidParams("project_path, scheme_name, and new_name are required")
         }
@@ -75,7 +75,7 @@ public struct RenameSchemeTool: Sendable {
                         content: [
                             .text(
                                 "Successfully renamed scheme '\(schemeName)' to '\(newName)'"
-                            ),
+                            )
                         ]
                     )
                 } catch {

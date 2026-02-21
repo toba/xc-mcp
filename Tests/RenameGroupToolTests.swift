@@ -3,8 +3,9 @@ import MCP
 import PathKit
 import Testing
 import XCMCPCore
-@testable import XCMCPTools
 import XcodeProj
+
+@testable import XCMCPTools
 
 @Suite("RenameGroupTool Tests")
 struct RenameGroupToolTests {

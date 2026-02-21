@@ -3,6 +3,7 @@ import MCP
 import PathKit
 import Testing
 import XCMCPCore
+
 @testable import XCMCPTools
 
 @Suite("RenameSchemeTool Tests")
