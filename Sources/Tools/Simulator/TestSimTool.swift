@@ -17,7 +17,7 @@ public struct TestSimTool: Sendable {
         Tool(
             name: "test_sim",
             description:
-                "Run tests for an Xcode project or workspace on the iOS/tvOS/watchOS Simulator.",
+            "Run tests for an Xcode project or workspace on the iOS/tvOS/watchOS Simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -37,19 +37,23 @@ public struct TestSimTool: Sendable {
                         "scheme": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "The scheme to test. Uses session default if not specified."),
+                                "The scheme to test. Uses session default if not specified."
+                            ),
                         ]),
                         "simulator": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "Simulator UDID or name. Uses session default if not specified."),
+                                "Simulator UDID or name. Uses session default if not specified."
+                            ),
                         ]),
                         "configuration": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "Build configuration (Debug or Release). Defaults to Debug."),
+                                "Build configuration (Debug or Release). Defaults to Debug."
+                            ),
                         ]),
-                    ].merging([String: Value].testSchemaProperties) { _, new in new }),
+                    ].merging([String: Value].testSchemaProperties) { _, new in new }
+                ),
                 "required": .array([]),
             ])
         )
@@ -58,7 +62,8 @@ public struct TestSimTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments)
+            from: arguments
+        )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
@@ -81,7 +86,8 @@ public struct TestSimTool: Sendable {
                 onlyTesting: testParams.onlyTesting,
                 skipTesting: testParams.skipTesting,
                 enableCodeCoverage: testParams.enableCodeCoverage,
-                resultBundlePath: resultBundlePath
+                resultBundlePath: resultBundlePath,
+                timeout: TimeInterval(testParams.timeout ?? 300)
             )
 
             defer {
@@ -99,8 +105,8 @@ public struct TestSimTool: Sendable {
             return CallTool.Result(
                 content: testToolResult.content + [
                     NextStepHints.content(hints: [
-                        NextStepHint(tool: "build_sim", description: "Rebuild after making changes")
-                    ])
+                        NextStepHint(tool: "build_sim", description: "Rebuild after making changes"),
+                    ]),
                 ],
                 isError: testToolResult.isError
             )
@@ -111,7 +117,6 @@ public struct TestSimTool: Sendable {
             throw error.asMCPError()
         }
     }
-
 }
 
 private func createTempResultBundlePath() -> String {

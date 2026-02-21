@@ -120,14 +120,14 @@ public struct XcodebuildRunner: Sendable {
                 let (stdout, stderr) = outputActor.getOutput()
                 let seconds =
                     Double(timeSinceLastOutput.components.seconds)
-                    + Double(timeSinceLastOutput.components.attoseconds) / 1e18
+                        + Double(timeSinceLastOutput.components.attoseconds) / 1e18
                 throw XcodebuildError.stuckProcess(
                     noOutputFor: seconds,
                     partialOutput: stdout + stderr
                 )
             }
 
-            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         }
 
         // Clean up handlers
@@ -220,7 +220,8 @@ public struct XcodebuildRunner: Sendable {
         skipTesting: [String]? = nil,
         enableCodeCoverage: Bool = false,
         resultBundlePath: String? = nil,
-        additionalArguments: [String] = []
+        additionalArguments: [String] = [],
+        timeout: TimeInterval = defaultTimeout
     ) async throws -> XcodebuildResult {
         var args: [String] = []
 
@@ -261,7 +262,7 @@ public struct XcodebuildRunner: Sendable {
         args += ["test"]
         args += additionalArguments
 
-        return try await run(arguments: args)
+        return try await run(arguments: args, timeout: timeout, onProgress: nil)
     }
 
     /// Cleans build artifacts for a scheme.

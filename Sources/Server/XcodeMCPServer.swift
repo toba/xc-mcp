@@ -97,6 +97,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case showBuildSettings = "show_build_settings"
     case getAppBundleId = "get_app_bundle_id"
     case getMacBundleId = "get_mac_bundle_id"
+    case listTestPlanTargets = "list_test_plan_targets"
 
     // Logging tools
     case startSimLogCap = "start_sim_log_cap"
@@ -174,61 +175,61 @@ public enum ToolName: String, CaseIterable, Sendable {
         switch self {
         // Project
         case .createXcodeproj, .listTargets, .listBuildConfigurations, .listFiles,
-            .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
-            .addTarget, .removeTarget, .renameTarget, .renameScheme, .renameGroup,
-            .addDependency, .setBuildSetting,
-            .addFramework,
-            .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
-            .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
-            .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
-            .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
-            .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
-            .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
-            .manageTypeIdentifier, .listURLTypes, .manageURLType:
+             .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
+             .addTarget, .removeTarget, .renameTarget, .renameScheme, .renameGroup,
+             .addDependency, .setBuildSetting,
+             .addFramework,
+             .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
+             .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
+             .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
+             .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
+             .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
+             .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
+             .manageTypeIdentifier, .listURLTypes, .manageURLType:
             return .project
         // Session
         case .setSessionDefaults, .showSessionDefaults, .clearSessionDefaults,
-            .syncXcodeDefaults, .manageWorkflows:
+             .syncXcodeDefaults, .manageWorkflows:
             return .session
         // Simulator
         case .listSims, .bootSim, .openSim, .buildSim, .buildRunSim, .installAppSim,
-            .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
-            .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
-            .resetSimLocation, .setSimAppearance, .simStatusbar:
+             .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
+             .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
+             .resetSimLocation, .setSimAppearance, .simStatusbar:
             return .simulator
         // Device
         case .listDevices, .buildDevice, .installAppDevice, .launchAppDevice,
-            .stopAppDevice, .getDeviceAppPath, .testDevice:
+             .stopAppDevice, .getDeviceAppPath, .testDevice:
             return .device
         // macOS
         case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
-            .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
+             .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
             return .macos
         // Discovery
         case .discoverProjs, .listSchemes, .showBuildSettings, .getAppBundleId,
-            .getMacBundleId:
+             .getMacBundleId, .listTestPlanTargets:
             return .discovery
         // Logging
         case .startSimLogCap, .stopSimLogCap, .startDeviceLogCap, .stopDeviceLogCap:
             return .logging
         // Debug
         case .buildDebugMacOS, .debugAttachSim, .debugDetach, .debugBreakpointAdd,
-            .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
-            .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
-            .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
-            .debugViewBorders, .debugProcessStatus:
+             .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
+             .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
+             .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
+             .debugViewBorders, .debugProcessStatus:
             return .debug
         // UI Automation
         case .tap, .longPress, .swipe, .gesture, .typeText, .keyPress, .button,
-            .screenshot:
+             .screenshot:
             return .uiAutomation
         // Interact
         case .interactUITree, .interactClick, .interactSetValue, .interactGetValue,
-            .interactMenu, .interactFocus, .interactKey, .interactFind:
+             .interactMenu, .interactFocus, .interactKey, .interactFind:
             return .interact
         // Swift Package
         case .swiftPackageBuild, .swiftPackageTest, .swiftPackageRun, .swiftPackageClean,
-            .swiftPackageList, .swiftPackageStop:
+             .swiftPackageList, .swiftPackageStop:
             return .swiftPackage
         // Instruments
         case .xctraceRecord, .xctraceList, .xctraceExport:
@@ -451,6 +452,9 @@ public struct XcodeMCPServer: Sendable {
         let getMacBundleIdTool = GetMacBundleIdTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
         )
+        let listTestPlanTargetsTool = ListTestPlanTargetsTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
 
         // Create logging tools
         let startSimLogCapTool = StartSimLogCapTool(
@@ -648,6 +652,7 @@ public struct XcodeMCPServer: Sendable {
             (.showBuildSettings, showBuildSettingsTool.tool()),
             (.getAppBundleId, getAppBundleIdTool.tool()),
             (.getMacBundleId, getMacBundleIdTool.tool()),
+            (.listTestPlanTargets, listTestPlanTargetsTool.tool()),
             // Logging tools
             (.startSimLogCap, startSimLogCapTool.tool()),
             (.stopSimLogCap, stopSimLogCapTool.tool()),
@@ -918,6 +923,8 @@ public struct XcodeMCPServer: Sendable {
                 return try await getAppBundleIdTool.execute(arguments: arguments)
             case .getMacBundleId:
                 return try await getMacBundleIdTool.execute(arguments: arguments)
+            case .listTestPlanTargets:
+                return try await listTestPlanTargetsTool.execute(arguments: arguments)
             // Logging tools
             case .startSimLogCap:
                 return try await startSimLogCapTool.execute(arguments: arguments)

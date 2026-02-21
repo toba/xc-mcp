@@ -18,7 +18,7 @@ public struct TestDeviceTool: Sendable {
         Tool(
             name: "test_device",
             description:
-                "Run tests for an Xcode project or workspace on a connected iOS/tvOS/watchOS device.",
+            "Run tests for an Xcode project or workspace on a connected iOS/tvOS/watchOS device.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -38,19 +38,23 @@ public struct TestDeviceTool: Sendable {
                         "scheme": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "The scheme to test. Uses session default if not specified."),
+                                "The scheme to test. Uses session default if not specified."
+                            ),
                         ]),
                         "device": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "Device UDID. Uses session default if not specified."),
+                                "Device UDID. Uses session default if not specified."
+                            ),
                         ]),
                         "configuration": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "Build configuration (Debug or Release). Defaults to Debug."),
+                                "Build configuration (Debug or Release). Defaults to Debug."
+                            ),
                         ]),
-                    ].merging([String: Value].testSchemaProperties) { _, new in new }),
+                    ].merging([String: Value].testSchemaProperties) { _, new in new }
+                ),
                 "required": .array([]),
             ])
         )
@@ -59,7 +63,8 @@ public struct TestDeviceTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments)
+            from: arguments
+        )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let device = try await sessionManager.resolveDevice(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
@@ -82,7 +87,8 @@ public struct TestDeviceTool: Sendable {
                 onlyTesting: testParams.onlyTesting,
                 skipTesting: testParams.skipTesting,
                 enableCodeCoverage: testParams.enableCodeCoverage,
-                resultBundlePath: resultBundlePath
+                resultBundlePath: resultBundlePath,
+                timeout: TimeInterval(testParams.timeout ?? 300)
             )
 
             defer {
@@ -104,7 +110,6 @@ public struct TestDeviceTool: Sendable {
             throw error.asMCPError()
         }
     }
-
 }
 
 private func createTempResultBundlePath() -> String {

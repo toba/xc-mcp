@@ -17,7 +17,7 @@ public struct TestMacOSTool: Sendable {
         Tool(
             name: "test_macos",
             description:
-                "Run tests for an Xcode project or workspace on macOS.",
+            "Run tests for an Xcode project or workspace on macOS.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -37,12 +37,14 @@ public struct TestMacOSTool: Sendable {
                         "scheme": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "The scheme to test. Uses session default if not specified."),
+                                "The scheme to test. Uses session default if not specified."
+                            ),
                         ]),
                         "configuration": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "Build configuration (Debug or Release). Defaults to Debug."),
+                                "Build configuration (Debug or Release). Defaults to Debug."
+                            ),
                         ]),
                         "arch": .object([
                             "type": .string("string"),
@@ -50,7 +52,8 @@ public struct TestMacOSTool: Sendable {
                                 "Architecture to test on (arm64 or x86_64). Defaults to the current machine's architecture."
                             ),
                         ]),
-                    ].merging([String: Value].testSchemaProperties) { _, new in new }),
+                    ].merging([String: Value].testSchemaProperties) { _, new in new }
+                ),
                 "required": .array([]),
             ])
         )
@@ -59,7 +62,8 @@ public struct TestMacOSTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments)
+            from: arguments
+        )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let arch = arguments.getString("arch")
@@ -85,7 +89,8 @@ public struct TestMacOSTool: Sendable {
                 onlyTesting: testParams.onlyTesting,
                 skipTesting: testParams.skipTesting,
                 enableCodeCoverage: testParams.enableCodeCoverage,
-                resultBundlePath: resultBundlePath
+                resultBundlePath: resultBundlePath,
+                timeout: TimeInterval(testParams.timeout ?? 300)
             )
 
             defer {
@@ -107,7 +112,6 @@ public struct TestMacOSTool: Sendable {
             throw error.asMCPError()
         }
     }
-
 }
 
 private func createTempResultBundlePath() -> String {

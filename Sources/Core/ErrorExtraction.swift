@@ -3,7 +3,6 @@ import MCP
 
 /// Utilities for extracting error information from build and test output.
 public enum ErrorExtractor {
-
     /// Parses build output and returns a formatted summary of errors, warnings, and timing.
     ///
     /// Uses `BuildOutputParser` for structured parsing and `BuildResultFormatter` for display.
@@ -47,9 +46,19 @@ public enum ErrorExtractor {
 
         // Try xcresult bundle first for complete failure messages and test output
         if let xcresultPath,
-            let xcresultData = XCResultParser.parseTestResults(at: xcresultPath)
+           let xcresultData = XCResultParser.parseTestResults(at: xcresultPath)
         {
             testResult = formatXCResultData(xcresultData)
+
+            // When xcresult shows no tests ran (0 passed, 0 failed) and the run failed,
+            // the build likely failed before tests could execute. Fall back to parsing
+            // stdout for compiler/linker errors that the xcresult doesn't capture.
+            if !succeeded && xcresultData.passedCount == 0 && xcresultData.failedCount == 0 {
+                let buildErrors = extractTestResults(from: output)
+                if !buildErrors.isEmpty {
+                    testResult += "\n\n" + buildErrors
+                }
+            }
         } else {
             testResult = extractTestResults(from: output)
         }
