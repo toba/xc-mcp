@@ -21,6 +21,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case createGroup = "create_group"
     case addTarget = "add_target"
     case removeTarget = "remove_target"
+    case renameTarget = "rename_target"
     case addDependency = "add_dependency"
     case setBuildSetting = "set_build_setting"
     case addFramework = "add_framework"
@@ -129,14 +130,14 @@ public enum ToolName: String, CaseIterable, Sendable {
     case debugProcessStatus = "debug_process_status"
 
     // UI Automation tools
-    case tap = "tap"
+    case tap
     case longPress = "long_press"
-    case swipe = "swipe"
-    case gesture = "gesture"
+    case swipe
+    case gesture
     case typeText = "type_text"
     case keyPress = "key_press"
-    case button = "button"
-    case screenshot = "screenshot"
+    case button
+    case screenshot
 
     // Interact tools (macOS Accessibility API)
     case interactUITree = "interact_ui_tree"
@@ -162,8 +163,8 @@ public enum ToolName: String, CaseIterable, Sendable {
     case xctraceExport = "xctrace_export"
 
     // Utility tools
-    case clean = "clean"
-    case doctor = "doctor"
+    case clean
+    case doctor
     case scaffoldIOS = "scaffold_ios_project"
     case scaffoldMacOS = "scaffold_macos_project"
     /// The workflow category this tool belongs to.
@@ -171,59 +172,59 @@ public enum ToolName: String, CaseIterable, Sendable {
         switch self {
         // Project
         case .createXcodeproj, .listTargets, .listBuildConfigurations, .listFiles,
-            .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
-            .addTarget, .removeTarget, .addDependency, .setBuildSetting, .addFramework,
-            .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
-            .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
-            .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
-            .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
-            .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
-            .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
-            .manageTypeIdentifier, .listURLTypes, .manageURLType:
+             .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
+             .addTarget, .removeTarget, .renameTarget, .addDependency, .setBuildSetting, .addFramework,
+             .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
+             .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
+             .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
+             .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
+             .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
+             .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
+             .manageTypeIdentifier, .listURLTypes, .manageURLType:
             return .project
         // Session
         case .setSessionDefaults, .showSessionDefaults, .clearSessionDefaults,
-            .syncXcodeDefaults, .manageWorkflows:
+             .syncXcodeDefaults, .manageWorkflows:
             return .session
         // Simulator
         case .listSims, .bootSim, .openSim, .buildSim, .buildRunSim, .installAppSim,
-            .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
-            .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
-            .resetSimLocation, .setSimAppearance, .simStatusbar:
+             .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
+             .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
+             .resetSimLocation, .setSimAppearance, .simStatusbar:
             return .simulator
         // Device
         case .listDevices, .buildDevice, .installAppDevice, .launchAppDevice,
-            .stopAppDevice, .getDeviceAppPath, .testDevice:
+             .stopAppDevice, .getDeviceAppPath, .testDevice:
             return .device
         // macOS
         case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
-            .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
+             .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
             return .macos
         // Discovery
         case .discoverProjs, .listSchemes, .showBuildSettings, .getAppBundleId,
-            .getMacBundleId:
+             .getMacBundleId:
             return .discovery
         // Logging
         case .startSimLogCap, .stopSimLogCap, .startDeviceLogCap, .stopDeviceLogCap:
             return .logging
         // Debug
         case .buildDebugMacOS, .debugAttachSim, .debugDetach, .debugBreakpointAdd,
-            .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
-            .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
-            .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
-            .debugViewBorders, .debugProcessStatus:
+             .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
+             .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
+             .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
+             .debugViewBorders, .debugProcessStatus:
             return .debug
         // UI Automation
         case .tap, .longPress, .swipe, .gesture, .typeText, .keyPress, .button,
-            .screenshot:
+             .screenshot:
             return .uiAutomation
         // Interact
         case .interactUITree, .interactClick, .interactSetValue, .interactGetValue,
-            .interactMenu, .interactFocus, .interactKey, .interactFind:
+             .interactMenu, .interactFocus, .interactKey, .interactFind:
             return .interact
         // Swift Package
         case .swiftPackageBuild, .swiftPackageTest, .swiftPackageRun, .swiftPackageClean,
-            .swiftPackageList, .swiftPackageStop:
+             .swiftPackageList, .swiftPackageStop:
             return .swiftPackage
         // Instruments
         case .xctraceRecord, .xctraceList, .xctraceExport:
@@ -276,7 +277,7 @@ public struct XcodeMCPServer: Sendable {
     public init(basePath: String, logger: Logger) {
         self.basePath = basePath
         self.logger = logger
-        self.sessionManager = SessionManager()
+        sessionManager = SessionManager()
     }
 
     /// Starts the MCP server and begins processing requests.
@@ -313,6 +314,7 @@ public struct XcodeMCPServer: Sendable {
         let createGroupTool = CreateGroupTool(pathUtility: pathUtility)
         let addTargetTool = AddTargetTool(pathUtility: pathUtility)
         let removeTargetTool = RemoveTargetTool(pathUtility: pathUtility)
+        let renameTargetTool = RenameTargetTool(pathUtility: pathUtility)
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
@@ -324,9 +326,11 @@ public struct XcodeMCPServer: Sendable {
         let listGroupsTool = ListGroupsTool(pathUtility: pathUtility)
         let addSynchronizedFolderTool = AddFolderTool(pathUtility: pathUtility)
         let addTargetToSynchronizedFolderTool = AddTargetToSynchronizedFolderTool(
-            pathUtility: pathUtility)
+            pathUtility: pathUtility
+        )
         let addSynchronizedFolderExceptionTool = AddSynchronizedFolderExceptionTool(
-            pathUtility: pathUtility)
+            pathUtility: pathUtility
+        )
         let addAppExtensionTool = AddAppExtensionTool(pathUtility: pathUtility)
         let removeAppExtensionTool = RemoveAppExtensionTool(pathUtility: pathUtility)
         let listCopyFilesPhases = ListCopyFilesPhases(pathUtility: pathUtility)
@@ -352,26 +356,34 @@ public struct XcodeMCPServer: Sendable {
         let bootSimTool = BootSimTool(simctlRunner: simctlRunner)
         let openSimTool = OpenSimTool()
         let buildSimTool = BuildSimTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let buildRunSimTool = BuildRunSimTool(
             xcodebuildRunner: xcodebuildRunner,
             simctlRunner: simctlRunner,
             sessionManager: sessionManager
         )
         let installAppSimTool = InstallAppSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let launchAppSimTool = LaunchAppSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let stopAppSimTool = StopAppSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let getSimAppPathTool = GetSimAppPathTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let testSimTool = TestSimTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let recordSimVideoTool = RecordSimVideoTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let launchAppLogsSimTool = LaunchAppLogsSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let previewCaptureTool = PreviewCaptureTool(
             xcodebuildRunner: xcodebuildRunner,
             simctlRunner: simctlRunner,
@@ -382,29 +394,39 @@ public struct XcodeMCPServer: Sendable {
         // Create device tools
         let listDevicesTool = ListDevicesTool(deviceCtlRunner: deviceCtlRunner)
         let buildDeviceTool = BuildDeviceTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let installAppDeviceTool = InstallAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager)
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+        )
         let launchAppDeviceTool = LaunchAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager)
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+        )
         let stopAppDeviceTool = StopAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager)
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+        )
         let getDeviceAppPathTool = GetDeviceAppPathTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager)
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+        )
         let testDeviceTool = TestDeviceTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
 
         // Create macOS tools
         let buildMacOSTool = BuildMacOSTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let buildRunMacOSTool = BuildRunMacOSTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let launchMacAppTool = LaunchMacAppTool(sessionManager: sessionManager)
         let stopMacAppTool = StopMacAppTool(sessionManager: sessionManager)
         let getMacAppPathTool = GetMacAppPathTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let testMacOSTool = TestMacOSTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let startMacLogCapTool = StartMacLogCapTool(sessionManager: sessionManager)
         let stopMacLogCapTool = StopMacLogCapTool(sessionManager: sessionManager)
         let screenshotMacWindowTool = ScreenshotMacWindowTool()
@@ -412,40 +434,52 @@ public struct XcodeMCPServer: Sendable {
         // Create discovery tools
         let discoverProjsTool = DiscoverProjectsTool(pathUtility: pathUtility)
         let listSchemesTool = ListSchemesTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let showBuildSettingsTool = ShowBuildSettingsTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let getAppBundleIdTool = GetAppBundleIdTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let getMacBundleIdTool = GetMacBundleIdTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
 
         // Create logging tools
         let startSimLogCapTool = StartSimLogCapTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let stopSimLogCapTool = StopSimLogCapTool(sessionManager: sessionManager)
         let startDeviceLogCapTool = StartDeviceLogCapTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager)
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+        )
         let stopDeviceLogCapTool = StopDeviceLogCapTool(sessionManager: sessionManager)
 
         // Create extended simulator tools
         let eraseSimTool = EraseSimTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let setSimLocationTool = SetSimLocationTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let resetSimLocationTool = ResetSimLocationTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let setSimAppearanceTool = SetSimAppearanceTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let simStatusBarTool = SimStatusBarTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
 
         // Create debug tools
         let lldbRunner = LLDBRunner()
         let buildDebugMacOSTool = BuildDebugMacOSTool(
             xcodebuildRunner: xcodebuildRunner, lldbRunner: lldbRunner,
-            sessionManager: sessionManager)
+            sessionManager: sessionManager
+        )
         let debugAttachSimTool = DebugAttachSimTool(
-            lldbRunner: lldbRunner, simctlRunner: simctlRunner, sessionManager: sessionManager)
+            lldbRunner: lldbRunner, simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let debugDetachTool = DebugDetachTool(lldbRunner: lldbRunner)
         let debugBreakpointAddTool = DebugBreakpointAddTool(lldbRunner: lldbRunner)
         let debugBreakpointRemoveTool = DebugBreakpointRemoveTool(lldbRunner: lldbRunner)
@@ -466,27 +500,34 @@ public struct XcodeMCPServer: Sendable {
         // Create UI automation tools
         let tapTool = TapTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let longPressTool = LongPressTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let swipeTool = SwipeTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let gestureTool = GestureTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let typeTextTool = TypeTextTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let keyPressTool = KeyPressTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let buttonTool = ButtonTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let screenshotTool = ScreenshotTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
 
         // Create Swift Package Manager tools
         let swiftRunner = SwiftRunner()
         let swiftPackageBuildTool = SwiftPackageBuildTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager)
+            swiftRunner: swiftRunner, sessionManager: sessionManager
+        )
         let swiftPackageTestTool = SwiftPackageTestTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager)
+            swiftRunner: swiftRunner, sessionManager: sessionManager
+        )
         let swiftPackageRunTool = SwiftPackageRunTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager)
+            swiftRunner: swiftRunner, sessionManager: sessionManager
+        )
         let swiftPackageCleanTool = SwiftPackageCleanTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager)
+            swiftRunner: swiftRunner, sessionManager: sessionManager
+        )
         let swiftPackageListTool = SwiftPackageListTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager)
+            swiftRunner: swiftRunner, sessionManager: sessionManager
+        )
         let swiftPackageStopTool = SwiftPackageStopTool(sessionManager: sessionManager)
 
         // Create interact tools
@@ -503,13 +544,15 @@ public struct XcodeMCPServer: Sendable {
         // Create instruments tools
         let xctraceRunner = XctraceRunner()
         let xctraceRecordTool = XctraceRecordTool(
-            xctraceRunner: xctraceRunner, sessionManager: sessionManager)
+            xctraceRunner: xctraceRunner, sessionManager: sessionManager
+        )
         let xctraceListTool = XctraceListTool(xctraceRunner: xctraceRunner)
         let xctraceExportTool = XctraceExportTool(xctraceRunner: xctraceRunner)
 
         // Create utility tools
         let cleanTool = CleanTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let doctorTool = DoctorTool(sessionManager: sessionManager)
         let scaffoldIOSTool = ScaffoldIOSProjectTool(pathUtility: pathUtility)
         let scaffoldMacOSTool = ScaffoldMacOSProjectTool(pathUtility: pathUtility)
@@ -528,6 +571,7 @@ public struct XcodeMCPServer: Sendable {
             (.createGroup, createGroupTool.tool()),
             (.addTarget, addTargetTool.tool()),
             (.removeTarget, removeTargetTool.tool()),
+            (.renameTarget, renameTargetTool.tool()),
             (.addDependency, addDependencyTool.tool()),
             (.setBuildSetting, setBuildSettingTool.tool()),
             (.addFramework, addFrameworkTool.tool()),
@@ -718,6 +762,8 @@ public struct XcodeMCPServer: Sendable {
                 return try addTargetTool.execute(arguments: arguments)
             case .removeTarget:
                 return try removeTargetTool.execute(arguments: arguments)
+            case .renameTarget:
+                return try renameTargetTool.execute(arguments: arguments)
             case .addDependency:
                 return try addDependencyTool.execute(arguments: arguments)
             case .setBuildSetting:
@@ -766,7 +812,6 @@ public struct XcodeMCPServer: Sendable {
                 return try listURLTypesTool.execute(arguments: arguments)
             case .manageURLType:
                 return try manageURLTypeTool.execute(arguments: arguments)
-
             // Session tools
             case .setSessionDefaults:
                 return try await setSessionDefaultsTool.execute(arguments: arguments)
@@ -778,15 +823,17 @@ public struct XcodeMCPServer: Sendable {
                 return try await syncXcodeDefaultsTool.execute(arguments: arguments)
             case .manageWorkflows:
                 let (result, changed) = try await manageWorkflowsTool.execute(
-                    arguments: arguments)
+                    arguments: arguments
+                )
                 if changed {
                     try await server.notify(
                         Message<ToolListChangedNotification>(
                             method: ToolListChangedNotification.name,
-                            params: Empty()))
+                            params: Empty()
+                        )
+                    )
                 }
                 return result
-
             // Simulator tools
             case .listSims:
                 return try await listSimsTool.execute(arguments: arguments)
@@ -814,7 +861,6 @@ public struct XcodeMCPServer: Sendable {
                 return try await launchAppLogsSimTool.execute(arguments: arguments)
             case .previewCapture:
                 return try await previewCaptureTool.execute(arguments: arguments)
-
             // Device tools
             case .listDevices:
                 return try await listDevicesTool.execute(arguments: arguments)
@@ -830,7 +876,6 @@ public struct XcodeMCPServer: Sendable {
                 return try await getDeviceAppPathTool.execute(arguments: arguments)
             case .testDevice:
                 return try await testDeviceTool.execute(arguments: arguments)
-
             // macOS tools
             case .buildMacOS:
                 return try await buildMacOSTool.execute(arguments: arguments)
@@ -850,7 +895,6 @@ public struct XcodeMCPServer: Sendable {
                 return try await stopMacLogCapTool.execute(arguments: arguments)
             case .screenshotMacWindow:
                 return try await screenshotMacWindowTool.execute(arguments: arguments)
-
             // Discovery tools
             case .discoverProjs:
                 return try discoverProjsTool.execute(arguments: arguments)
@@ -862,7 +906,6 @@ public struct XcodeMCPServer: Sendable {
                 return try await getAppBundleIdTool.execute(arguments: arguments)
             case .getMacBundleId:
                 return try await getMacBundleIdTool.execute(arguments: arguments)
-
             // Logging tools
             case .startSimLogCap:
                 return try await startSimLogCapTool.execute(arguments: arguments)
@@ -872,7 +915,6 @@ public struct XcodeMCPServer: Sendable {
                 return try await startDeviceLogCapTool.execute(arguments: arguments)
             case .stopDeviceLogCap:
                 return try await stopDeviceLogCapTool.execute(arguments: arguments)
-
             // Extended simulator tools
             case .eraseSims:
                 return try await eraseSimTool.execute(arguments: arguments)
@@ -884,7 +926,6 @@ public struct XcodeMCPServer: Sendable {
                 return try await setSimAppearanceTool.execute(arguments: arguments)
             case .simStatusbar:
                 return try await simStatusBarTool.execute(arguments: arguments)
-
             // Debug tools
             case .buildDebugMacOS:
                 return try await buildDebugMacOSTool.execute(arguments: arguments)
@@ -922,7 +963,6 @@ public struct XcodeMCPServer: Sendable {
                 return try await debugViewBordersTool.execute(arguments: arguments)
             case .debugProcessStatus:
                 return try await debugProcessStatusTool.execute(arguments: arguments)
-
             // UI Automation tools
             case .tap:
                 return try await tapTool.execute(arguments: arguments)
@@ -940,7 +980,6 @@ public struct XcodeMCPServer: Sendable {
                 return try await buttonTool.execute(arguments: arguments)
             case .screenshot:
                 return try await screenshotTool.execute(arguments: arguments)
-
             // Swift Package Manager tools
             case .swiftPackageBuild:
                 return try await swiftPackageBuildTool.execute(arguments: arguments)
@@ -954,7 +993,6 @@ public struct XcodeMCPServer: Sendable {
                 return try await swiftPackageListTool.execute(arguments: arguments)
             case .swiftPackageStop:
                 return try await swiftPackageStopTool.execute(arguments: arguments)
-
             // Interact tools
             case .interactUITree:
                 return try await interactUITreeTool.execute(arguments: arguments)
@@ -972,7 +1010,6 @@ public struct XcodeMCPServer: Sendable {
                 return try interactKeyTool.execute(arguments: arguments)
             case .interactFind:
                 return try await interactFindTool.execute(arguments: arguments)
-
             // Instruments tools
             case .xctraceRecord:
                 return try await xctraceRecordTool.execute(arguments: arguments)
@@ -980,7 +1017,6 @@ public struct XcodeMCPServer: Sendable {
                 return try await xctraceListTool.execute(arguments: arguments)
             case .xctraceExport:
                 return try await xctraceExportTool.execute(arguments: arguments)
-
             // Utility tools
             case .clean:
                 return try await cleanTool.execute(arguments: arguments)

@@ -11,9 +11,9 @@ This project provides an MCP server for Xcode project manipulation with build, t
 
 ## Architecture
 
-- **Language**: Swift 6
+- **Language**: Swift 6.2 (strict concurrency enabled)
 - **Platform**: macOS 15+
-- **Dependencies**: MCP Swift SDK, XcodeProj, ArgumentParser
+- **Dependencies**: MCP Swift SDK (≥0.9.0), XcodeProj (≥9.7.2), ArgumentParser (≥1.7.0)
 
 ## Package Structure
 
@@ -21,32 +21,81 @@ This project provides an MCP server for Xcode project manipulation with build, t
 xc-mcp/
 ├── Package.swift
 ├── Sources/
-│   ├── CLI.swift                    # Entry point
+│   ├── CLI.swift                    # Entry point (monolithic server)
 │   ├── Server/
-│   │   ├── XcodeMCPServer.swift     # Main server with tool registry
-│   │   └── SessionManager.swift     # Session state management
-│   ├── Tools/
-│   │   ├── Project/                 # 40 project manipulation tools
-│   │   ├── Session/                 # 3 session management tools
-│   │   ├── Simulator/               # 17 simulator tools
+│   │   └── XcodeMCPServer.swift     # Monolithic server with all tools
+│   ├── Servers/                     # Focused servers (smaller tool surface)
+│   │   ├── Build/                   # xc-build (20 tools)
+│   │   ├── Debug/                   # xc-debug (22 tools)
+│   │   ├── Device/                  # xc-device (12 tools)
+│   │   ├── Project/                 # xc-project (40 tools)
+│   │   ├── Simulator/               # xc-simulator (29 tools)
+│   │   ├── Strings/                 # xc-strings (24 tools)
+│   │   └── Swift/                   # xc-swift (9 tools)
+│   ├── Core/                        # Shared utilities (25 files)
+│   │   ├── SessionManager.swift
+│   │   ├── PathUtility.swift
+│   │   ├── XcodebuildRunner.swift
+│   │   ├── SimctlRunner.swift
+│   │   ├── DeviceCtlRunner.swift
+│   │   ├── LLDBRunner.swift
+│   │   ├── SwiftRunner.swift
+│   │   ├── InteractRunner.swift
+│   │   ├── XctraceRunner.swift
+│   │   ├── BuildOutputParser.swift
+│   │   ├── BuildOutputModels.swift
+│   │   ├── BuildResultFormatter.swift
+│   │   ├── BuildSettingExtractor.swift
+│   │   ├── CoverageParser.swift
+│   │   ├── ErrorExtraction.swift
+│   │   ├── XCResultParser.swift
+│   │   ├── PreviewExtractor.swift
+│   │   ├── InteractSessionManager.swift
+│   │   ├── WorkflowManager.swift
+│   │   ├── XcodeStateReader.swift
+│   │   ├── NextStepHints.swift
+│   │   ├── ArgumentExtraction.swift
+│   │   ├── MCPErrorConvertible.swift
+│   │   ├── ProcessResult.swift
+│   │   └── XCMCPCore.swift
+│   ├── Tools/                       # 162 tools across 14 categories
+│   │   ├── Project/                 # 43 project manipulation tools
+│   │   ├── XCStrings/               # 24 localization/string catalog tools
+│   │   ├── Simulator/               # 18 simulator tools
+│   │   ├── Debug/                   # 18 LLDB debug tools
+│   │   ├── MacOS/                   # 9 macOS build tools
+│   │   ├── Interact/                # 8 macOS UI automation (accessibility)
+│   │   ├── UIAutomation/            # 8 simulator UI automation tools
 │   │   ├── Device/                  # 7 device tools
-│   │   ├── MacOS/                   # 8 macOS build tools
-│   │   ├── Discovery/               # 5 project discovery tools
-│   │   ├── Logging/                 # 4 log capture tools
-│   │   ├── Debug/                   # 17 LLDB debug tools
-│   │   ├── UIAutomation/            # 7 UI automation tools
 │   │   ├── SwiftPackage/            # 6 Swift Package Manager tools
-│   │   └── Utility/                 # 4 utility tools
-│   └── Utilities/
-│       ├── PathUtility.swift
-│       ├── XcodebuildRunner.swift
-│       ├── SimctlRunner.swift
-│       ├── DeviceCtlRunner.swift
-│       ├── LLDBRunner.swift
-│       └── SwiftRunner.swift
-├── Tests/                           # Unit tests (506 tests)
+│   │   ├── Discovery/               # 5 project discovery tools
+│   │   ├── Session/                 # 5 session management tools
+│   │   ├── Logging/                 # 4 log capture tools
+│   │   ├── Utility/                 # 4 utility tools
+│   │   └── Instruments/             # 3 Xcode Instruments tools
+│   └── Documentation.docc/          # DocC documentation
+├── Tests/                           # 506 tests (swift-testing)
+├── fixtures/                        # Test fixtures (open source repos)
+├── scripts/                         # Build/utility scripts
 └── CLAUDE.md
 ```
+
+## Executables
+
+The project builds 8 executables — one monolithic server and 7 focused servers:
+
+| Executable | Tools | Use case |
+|------------|-------|----------|
+| `xc-mcp` | 143 | Full server (~50K tokens) |
+| `xc-project` | 40 | Project file manipulation |
+| `xc-simulator` | 29 | Simulator + UI automation |
+| `xc-debug` | 22 | LLDB debugging |
+| `xc-build` | 20 | Build, test, run |
+| `xc-device` | 12 | Physical device management |
+| `xc-swift` | 9 | SPM + Swift operations |
+| `xc-strings` | 24 | Localization/string catalogs |
+
+Focused servers reduce token overhead for clients that only need specific capabilities.
 
 ## Building and Running
 
@@ -54,8 +103,11 @@ xc-mcp/
 # Build
 swift build
 
-# Run the MCP server
+# Run the monolithic MCP server
 swift run xc-mcp
+
+# Run a focused server
+swift run xc-debug
 
 # Run tests
 swift test
@@ -102,7 +154,44 @@ Xcode build system knowledge for injected targets (via XcodeProj). Reference fil
 - Each tool is a separate Swift file organized by category
 - Tools follow a consistent pattern with `tool()` and `execute()` methods
 - XcodeProj library handles .xcodeproj file manipulation
-- Runner utilities wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift)
+- Runner utilities in `Sources/Core/` wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift, xctrace, accessibility)
 - **Testing**: swift-testing framework (506 tests)
-- **Swift 6**: Strict concurrency enabled
+- **Swift 6.2**: Strict concurrency enabled (`swift-tools-version: 6.2`)
 - **Formatting**: `swiftformat .` then `swiftlint` before committing
+
+## Swift Code Quality Standards
+
+These standards apply to all code changes. Run `/swift-review` periodically to check for regressions.
+
+### Concurrency
+
+- All async code uses structured concurrency (async/await, TaskGroup, actors) — no completion handlers or GCD
+- Use `@concurrent` for CPU-intensive async functions that should run off the caller's actor
+- Use `sending` when values cross isolation boundaries
+- Prefer actors over classes with locks for shared mutable state
+- Use `Task.detached` only when `@concurrent` is insufficient
+
+### Error Handling
+
+- Use typed throws (`throws(ErrorType)`) where a function throws a single error type
+- Keep error enums focused — one per domain, not one per file
+
+### Code Duplication
+
+- Runner utilities in `Sources/Core/` exist to eliminate duplication of process execution patterns — use them
+- Extract shared logic into Core when the same pattern appears in 2+ tools
+- Use generics to consolidate functions that differ only in types
+
+### Performance
+
+- Avoid `Data.dropFirst()` / `Data.prefix()` in loops (quadratic copies) — use index-based iteration
+- Pre-allocate collections with `reserveCapacity` when final size is known
+- Use `EmptyCollection()` and `CollectionOfOne(x)` instead of `[]` and `[x]` for parameters typed as `some Collection`/`some Sequence`
+- Prefer `ContinuousClock.now` over `Date()` for timing/benchmarks
+
+### Swift 6.2 Idioms
+
+- Use `InlineArray<N, T>` for fixed-size buffers instead of tuples
+- Use `Span` / `RawSpan` instead of `UnsafeBufferPointer` when deployment target allows (macOS 26.0+)
+- Mark hot public generic functions `@inlinable` in library targets
+- Use isolated conformances instead of `nonisolated` workarounds for `@MainActor` types
