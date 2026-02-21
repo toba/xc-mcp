@@ -1,15 +1,15 @@
 ---
 # 57l-rn2
 title: add_target sets BUNDLE_IDENTIFIER instead of PRODUCT_BUNDLE_IDENTIFIER
-status: ready
+status: completed
 type: bug
 priority: high
 created_at: 2026-02-18T05:22:44Z
-updated_at: 2026-02-18T05:22:44Z
+updated_at: 2026-02-20T17:51:36Z
 sync:
     github:
         issue_number: "79"
-        synced_at: "2026-02-18T06:23:52Z"
+        synced_at: "2026-02-20T17:52:06Z"
 ---
 
 ## Problem
