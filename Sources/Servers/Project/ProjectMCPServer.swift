@@ -18,6 +18,9 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case removeGroup = "remove_group"
     case addTarget = "add_target"
     case removeTarget = "remove_target"
+    case renameTarget = "rename_target"
+    case renameScheme = "rename_scheme"
+    case renameGroup = "rename_group"
     case addDependency = "add_dependency"
     case setBuildSetting = "set_build_setting"
     case addFramework = "add_framework"
@@ -115,6 +118,9 @@ public struct ProjectMCPServer: Sendable {
         let removeGroupTool = RemoveGroupTool(pathUtility: pathUtility)
         let addTargetTool = AddTargetTool(pathUtility: pathUtility)
         let removeTargetTool = RemoveTargetTool(pathUtility: pathUtility)
+        let renameTargetTool = RenameTargetTool(pathUtility: pathUtility)
+        let renameSchemeTool = RenameSchemeTool(pathUtility: pathUtility)
+        let renameGroupTool = RenameGroupTool(pathUtility: pathUtility)
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
@@ -135,15 +141,20 @@ public struct ProjectMCPServer: Sendable {
         let listURLTypesTool = ListURLTypesTool(pathUtility: pathUtility)
         let manageURLTypeTool = ManageURLTypeTool(pathUtility: pathUtility)
         let addTargetToSynchronizedFolderTool = AddTargetToSynchronizedFolderTool(
-            pathUtility: pathUtility)
+            pathUtility: pathUtility
+        )
         let removeTargetFromSynchronizedFolderTool = RemoveTargetFromSynchronizedFolderTool(
-            pathUtility: pathUtility)
+            pathUtility: pathUtility
+        )
         let addSynchronizedFolderExceptionTool = AddSynchronizedFolderExceptionTool(
-            pathUtility: pathUtility)
+            pathUtility: pathUtility
+        )
         let removeSynchronizedFolderExceptionTool = RemoveSynchronizedFolderExceptionTool(
-            pathUtility: pathUtility)
+            pathUtility: pathUtility
+        )
         let listSynchronizedFolderExceptionsTool = ListSynchronizedFolderExceptionsTool(
-            pathUtility: pathUtility)
+            pathUtility: pathUtility
+        )
         let listCopyFilesPhases = ListCopyFilesPhases(pathUtility: pathUtility)
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
@@ -164,6 +175,9 @@ public struct ProjectMCPServer: Sendable {
                 removeGroupTool.tool(),
                 addTargetTool.tool(),
                 removeTargetTool.tool(),
+                renameTargetTool.tool(),
+                renameSchemeTool.tool(),
+                renameGroupTool.tool(),
                 addDependencyTool.tool(),
                 setBuildSettingTool.tool(),
                 addFrameworkTool.tool(),
@@ -228,6 +242,12 @@ public struct ProjectMCPServer: Sendable {
                 return try addTargetTool.execute(arguments: arguments)
             case .removeTarget:
                 return try removeTargetTool.execute(arguments: arguments)
+            case .renameTarget:
+                return try renameTargetTool.execute(arguments: arguments)
+            case .renameScheme:
+                return try renameSchemeTool.execute(arguments: arguments)
+            case .renameGroup:
+                return try renameGroupTool.execute(arguments: arguments)
             case .addDependency:
                 return try addDependencyTool.execute(arguments: arguments)
             case .setBuildSetting:
