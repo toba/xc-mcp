@@ -84,7 +84,8 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
                 throw MCPError.internalError("Main group not found in project")
             }
 
-            guard let syncGroup = findSyncGroup(folderPath, in: mainGroup) else {
+            guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
+            else {
                 throw MCPError.invalidParams(
                     "Synchronized folder '\(folderPath)' not found in project")
             }
@@ -132,23 +133,5 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
             throw MCPError.internalError(
                 "Failed to add synchronized folder exception: \(error.localizedDescription)")
         }
-    }
-
-    private func findSyncGroup(_ path: String, in group: PBXGroup)
-        -> PBXFileSystemSynchronizedRootGroup?
-    {
-        for child in group.children {
-            if let syncGroup = child as? PBXFileSystemSynchronizedRootGroup,
-                syncGroup.path == path
-            {
-                return syncGroup
-            }
-            if let childGroup = child as? PBXGroup {
-                if let found = findSyncGroup(path, in: childGroup) {
-                    return found
-                }
-            }
-        }
-        return nil
     }
 }

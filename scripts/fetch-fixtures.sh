@@ -86,10 +86,50 @@ for fname in ['DataRequest.swift', 'DataStreamRequest.swift', 'DownloadRequest.s
 }
 patch_alamofire
 
-# SwiftFormat 0.59.1 (22a472c) compiles cleanly with Xcode 26.
-# The previous pin (0.55.3 develop, 2d1b035) had 3 compilation errors from
-# Swift 6.2 changes (removeTokens range type, Range.split, AutoUpdatingIndex).
-# No patches needed.
+# SwiftFormat 0.59.1 (22a472c) has 3 compilation errors with Xcode 26 / Swift 6.2:
+# 1. Range<Int>.split is ambiguous (OpaqueGenericParameters.swift)
+# 2. removeTokens(in:) overload resolution fails for ClosedRange (HoistPatternLet.swift)
+# 3. ClosedRange ... operator resolves to wrong autoUpdating overload (NoForceUnwrapInTests.swift)
+patch_swiftformat() {
+  local sf="$REPOS_DIR/SwiftFormat"
+  [ -d "$sf" ] || return
+
+  python3 -c "
+sf = '$sf'
+import os
+
+# Fix 1: Range<Int>.split is ambiguous — convert range to [Int] first
+f = os.path.join(sf, 'Sources/Rules/OpaqueGenericParameters.swift')
+with open(f) as fh: s = fh.read()
+s = s.replace(
+    'let parameterListTokenIndices = (declaration.argumentsRange.lowerBound + 1) ..< declaration.argumentsRange.upperBound',
+    'let parameterListTokenIndices: [Int] = .init((declaration.argumentsRange.lowerBound + 1) ..< declaration.argumentsRange.upperBound)'
+)
+with open(f, 'w') as fh: fh.write(s)
+
+# Fix 2: removeTokens(in:) overload ambiguous for ClosedRange — use Range<Int> overload
+f = os.path.join(sf, 'Sources/Rules/HoistPatternLet.swift')
+with open(f) as fh: s = fh.read()
+s = s.replace(
+    'let range = ((formatter.index(of: .nonSpace, before: startIndex) ?? (prevIndex - 1)) + 1) ... startIndex\n                formatter.removeTokens(in: range)',
+    'let rangeLower = (formatter.index(of: .nonSpace, before: startIndex) ?? (prevIndex - 1)) + 1\n                formatter.removeTokens(in: rangeLower ..< startIndex + 1)'
+)
+with open(f, 'w') as fh: fh.write(s)
+
+# Fix 3: ... operator resolves to Int.autoUpdating (AutoUpdatingIndex) instead of
+# ClosedRange<Int>.autoUpdating (AutoUpdatingRange) — use explicit ClosedRange init
+f = os.path.join(sf, 'Sources/Rules/NoForceUnwrapInTests.swift')
+with open(f) as fh: s = fh.read()
+s = s.replace(
+    'let absoluteRange = (subExpressionRange.lowerBound + expressionRange.lowerBound) ... (subExpressionRange.upperBound + expressionRange.lowerBound)\n            expressionRange = absoluteRange.autoUpdating(in: self)',
+    'let absoluteLower = subExpressionRange.lowerBound + expressionRange.lowerBound\n            let absoluteUpper = subExpressionRange.upperBound + expressionRange.lowerBound\n            let absoluteRange = ClosedRange(uncheckedBounds: (absoluteLower, absoluteUpper))\n            expressionRange = absoluteRange.autoUpdating(in: self)'
+)
+with open(f, 'w') as fh: fh.write(s)
+"
+
+  echo "ok: patched SwiftFormat for Xcode 26 compatibility"
+}
+patch_swiftformat
 
 echo ""
 echo "All fixtures ready in $REPOS_DIR"

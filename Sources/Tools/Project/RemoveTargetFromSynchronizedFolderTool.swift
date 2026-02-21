@@ -4,7 +4,7 @@ import PathKit
 import XCMCPCore
 import XcodeProj
 
-public struct AddTargetToSynchronizedFolderTool: Sendable {
+public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
     private let pathUtility: PathUtility
 
     public init(pathUtility: PathUtility) {
@@ -13,9 +13,9 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
 
     public func tool() -> Tool {
         Tool(
-            name: "add_target_to_synchronized_folder",
+            name: "remove_target_from_synchronized_folder",
             description:
-                "Add an existing synchronized folder to a target's file system synchronized groups (for sharing a folder between multiple targets)",
+                "Remove a target's reference to a synchronized folder (unlink a shared folder from a target)",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -33,7 +33,7 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target to add the synchronized folder to"),
+                            "Name of the target to unlink from the synchronized folder"),
                     ]),
                 ]),
                 "required": .array([
@@ -57,7 +57,7 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
             let projectURL = URL(filePath: resolvedProjectPath)
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            // Find the synchronized folder by walking the group hierarchy
+            // Find the synchronized folder
             guard let project = try xcodeproj.pbxproj.rootProject(),
                 let mainGroup = project.mainGroup
             else {
@@ -79,24 +79,44 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
                 throw MCPError.invalidParams("Target '\(targetName)' not found in project")
             }
 
-            // Check if already added (idempotency)
-            if let existing = target.fileSystemSynchronizedGroups,
-                existing.contains(where: { $0 === syncGroup })
-            {
+            // Check if target actually references this sync group
+            guard let syncGroups = target.fileSystemSynchronizedGroups,
+                syncGroups.contains(where: { $0 === syncGroup })
+            else {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Synchronized folder '\(folderPath)' is already in target '\(targetName)'"
+                            "Target '\(targetName)' does not reference synchronized folder '\(folderPath)'"
                         )
                     ]
                 )
             }
 
-            // Add the sync group to the target
-            if target.fileSystemSynchronizedGroups == nil {
-                target.fileSystemSynchronizedGroups = [syncGroup]
-            } else {
-                target.fileSystemSynchronizedGroups?.append(syncGroup)
+            // Remove the sync group reference from the target
+            target.fileSystemSynchronizedGroups?.removeAll { $0 === syncGroup }
+            if target.fileSystemSynchronizedGroups?.isEmpty == true {
+                target.fileSystemSynchronizedGroups = nil
+            }
+
+            // Clean up exception sets that reference this target
+            if let exceptions = syncGroup.exceptions {
+                let orphaned = exceptions.filter { exceptionSet in
+                    if let buildFileException =
+                        exceptionSet as? PBXFileSystemSynchronizedBuildFileExceptionSet
+                    {
+                        return buildFileException.target === target
+                    }
+                    return false
+                }
+                syncGroup.exceptions?.removeAll { exceptionSet in
+                    orphaned.contains { $0 === exceptionSet }
+                }
+                for exceptionSet in orphaned {
+                    xcodeproj.pbxproj.delete(object: exceptionSet)
+                }
+                if syncGroup.exceptions?.isEmpty == true {
+                    syncGroup.exceptions = nil
+                }
             }
 
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
@@ -104,7 +124,7 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully added synchronized folder '\(folderPath)' to target '\(targetName)'"
+                        "Successfully removed target '\(targetName)' from synchronized folder '\(folderPath)'"
                     )
                 ]
             )
@@ -112,7 +132,7 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to add target to synchronized folder: \(error.localizedDescription)")
+                "Failed to remove target from synchronized folder: \(error.localizedDescription)")
         }
     }
 }

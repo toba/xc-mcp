@@ -1,10 +1,11 @@
 ---
 # d91-5mi
 title: Add remove_group tool
-status: ready
+status: completed
 type: feature
+priority: normal
 created_at: 2026-02-21T20:39:41Z
-updated_at: 2026-02-21T20:39:41Z
+updated_at: 2026-02-21T21:07:59Z
 ---
 
 There is no tool to remove a PBXGroup from the project. `create_group` exists but has no counterpart.
@@ -31,3 +32,9 @@ During file restructuring, the agent had to manually find and delete three empty
 
 - New: `Sources/Tools/Project/RemoveGroupTool.swift`
 - Modify: `Sources/Servers/Project/ProjectMCPServer.swift` (register)
+
+## Summary of Changes
+
+- Added `RemoveGroupTool` at `Sources/Tools/Project/RemoveGroupTool.swift`
+- Registered `remove_group` in `ProjectMCPServer.swift` (enum case, instantiation, tool list, call handler)
+- Added 8 tests in `Tests/RemoveGroupToolTests.swift` covering: tool creation, missing params, remove empty group, non-existent group, children without recursive (blocked), recursive removal, and path-based lookup

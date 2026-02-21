@@ -45,7 +45,7 @@ public struct ListFilesTool: Sendable {
         do {
             // Resolve and validate the path
             let resolvedPath = try pathUtility.resolvePath(from: projectPath)
-            let projectURL = URL(fileURLWithPath: resolvedPath)
+            let projectURL = URL(filePath: resolvedPath)
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
@@ -56,46 +56,77 @@ public struct ListFilesTool: Sendable {
                 throw MCPError.invalidParams("Target '\(targetName)' not found in project")
             }
 
-            var fileList: [String] = []
+            var sources: [String] = []
+            var resources: [String] = []
+            var frameworks: [String] = []
 
             // Get files from build phases
             for buildPhase in target.buildPhases {
                 if let sourcesBuildPhase = buildPhase as? PBXSourcesBuildPhase {
                     for file in sourcesBuildPhase.files ?? [] {
                         if let fileRef = file.file {
-                            if let path = fileRef.path {
-                                fileList.append("- \(path)")
-                            } else if let name = fileRef.name {
-                                fileList.append("- \(name)")
-                            }
+                            let name = fileRef.path ?? fileRef.name
+                            if let name { sources.append("  - \(name)") }
                         }
                     }
                 } else if let resourcesBuildPhase = buildPhase as? PBXResourcesBuildPhase {
                     for file in resourcesBuildPhase.files ?? [] {
                         if let fileRef = file.file {
-                            if let path = fileRef.path {
-                                fileList.append("- \(path)")
-                            } else if let name = fileRef.name {
-                                fileList.append("- \(name)")
-                            }
+                            let name = fileRef.path ?? fileRef.name
+                            if let name { resources.append("  - \(name)") }
                         }
                     }
                 } else if let frameworksBuildPhase = buildPhase as? PBXFrameworksBuildPhase {
                     for file in frameworksBuildPhase.files ?? [] {
                         if let fileRef = file.file {
-                            if let path = fileRef.path {
-                                fileList.append("- \(path)")
-                            } else if let name = fileRef.name {
-                                fileList.append("- \(name)")
-                            }
+                            let name = fileRef.path ?? fileRef.name
+                            if let name { frameworks.append("  - \(name)") }
                         }
                     }
                 }
             }
 
+            // Get synchronized folders
+            var syncFolders: [String] = []
+            if let syncGroups = target.fileSystemSynchronizedGroups {
+                for syncGroup in syncGroups {
+                    guard let path = syncGroup.path else { continue }
+                    var line = "  - \(path)"
+                    // Check for per-target membership exceptions
+                    if let exceptions = syncGroup.exceptions {
+                        let targetExceptions = exceptions.compactMap {
+                            $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
+                        }.filter { $0.target === target }
+                        let excluded = targetExceptions.flatMap {
+                            $0.membershipExceptions ?? []
+                        }
+                        if !excluded.isEmpty {
+                            line += " (excludes: \(excluded.joined(separator: ", ")))"
+                        }
+                    }
+                    syncFolders.append(line)
+                }
+            }
+
+            // Build sectioned output
+            var sections: [String] = []
+            if !syncFolders.isEmpty {
+                sections.append("Synchronized folders:\n" + syncFolders.joined(separator: "\n"))
+            }
+            if !sources.isEmpty {
+                sections.append("Sources:\n" + sources.joined(separator: "\n"))
+            }
+            if !resources.isEmpty {
+                sections.append("Resources:\n" + resources.joined(separator: "\n"))
+            }
+            if !frameworks.isEmpty {
+                sections.append("Frameworks:\n" + frameworks.joined(separator: "\n"))
+            }
+
             let result =
-                fileList.isEmpty
-                ? "No files found in target '\(targetName)'." : fileList.joined(separator: "\n")
+                sections.isEmpty
+                ? "No files found in target '\(targetName)'."
+                : sections.joined(separator: "\n")
 
             return CallTool.Result(
                 content: [

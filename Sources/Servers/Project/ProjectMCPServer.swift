@@ -15,6 +15,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case removeFile = "remove_file"
     case moveFile = "move_file"
     case createGroup = "create_group"
+    case removeGroup = "remove_group"
     case addTarget = "add_target"
     case removeTarget = "remove_target"
     case addDependency = "add_dependency"
@@ -31,7 +32,10 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case addAppExtension = "add_app_extension"
     case removeAppExtension = "remove_app_extension"
     case addTargetToSynchronizedFolder = "add_target_to_synchronized_folder"
+    case removeTargetFromSynchronizedFolder = "remove_target_from_synchronized_folder"
     case addSynchronizedFolderException = "add_synchronized_folder_exception"
+    case removeSynchronizedFolderException = "remove_synchronized_folder_exception"
+    case listSynchronizedFolderExceptions = "list_synchronized_folder_exceptions"
     case listCopyFilesPhases = "list_copy_files_phases"
     case addCopyFilesPhase = "add_copy_files_phase"
     case addToCopyFilesPhase = "add_to_copy_files_phase"
@@ -61,7 +65,8 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
 /// - Target management: `add_target`, `remove_target`, `duplicate_target`, `list_targets`
 /// - File management: `add_file`, `remove_file`, `move_file`, `list_files`
 /// - Group management: `create_group`, `list_groups`, `add_synchronized_folder`,
-///   `add_target_to_synchronized_folder`, `add_synchronized_folder_exception`
+///   `add_target_to_synchronized_folder`, `add_synchronized_folder_exception`,
+///   `remove_synchronized_folder_exception`, `list_synchronized_folder_exceptions`
 /// - Build settings: `get_build_settings`, `set_build_setting`, `list_build_configurations`
 /// - Dependencies: `add_dependency`, `add_framework`, `add_build_phase`
 /// - Copy files phases: `list_copy_files_phases`, `add_copy_files_phase`,
@@ -107,6 +112,7 @@ public struct ProjectMCPServer: Sendable {
         let removeFileTool = RemoveFileTool(pathUtility: pathUtility)
         let moveFileTool = MoveFileTool(pathUtility: pathUtility)
         let createGroupTool = CreateGroupTool(pathUtility: pathUtility)
+        let removeGroupTool = RemoveGroupTool(pathUtility: pathUtility)
         let addTargetTool = AddTargetTool(pathUtility: pathUtility)
         let removeTargetTool = RemoveTargetTool(pathUtility: pathUtility)
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
@@ -130,7 +136,13 @@ public struct ProjectMCPServer: Sendable {
         let manageURLTypeTool = ManageURLTypeTool(pathUtility: pathUtility)
         let addTargetToSynchronizedFolderTool = AddTargetToSynchronizedFolderTool(
             pathUtility: pathUtility)
+        let removeTargetFromSynchronizedFolderTool = RemoveTargetFromSynchronizedFolderTool(
+            pathUtility: pathUtility)
         let addSynchronizedFolderExceptionTool = AddSynchronizedFolderExceptionTool(
+            pathUtility: pathUtility)
+        let removeSynchronizedFolderExceptionTool = RemoveSynchronizedFolderExceptionTool(
+            pathUtility: pathUtility)
+        let listSynchronizedFolderExceptionsTool = ListSynchronizedFolderExceptionsTool(
             pathUtility: pathUtility)
         let listCopyFilesPhases = ListCopyFilesPhases(pathUtility: pathUtility)
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
@@ -149,6 +161,7 @@ public struct ProjectMCPServer: Sendable {
                 removeFileTool.tool(),
                 moveFileTool.tool(),
                 createGroupTool.tool(),
+                removeGroupTool.tool(),
                 addTargetTool.tool(),
                 removeTargetTool.tool(),
                 addDependencyTool.tool(),
@@ -171,7 +184,10 @@ public struct ProjectMCPServer: Sendable {
                 listURLTypesTool.tool(),
                 manageURLTypeTool.tool(),
                 addTargetToSynchronizedFolderTool.tool(),
+                removeTargetFromSynchronizedFolderTool.tool(),
                 addSynchronizedFolderExceptionTool.tool(),
+                removeSynchronizedFolderExceptionTool.tool(),
+                listSynchronizedFolderExceptionsTool.tool(),
                 listCopyFilesPhases.tool(),
                 addCopyFilesPhase.tool(),
                 addToCopyFilesPhase.tool(),
@@ -206,6 +222,8 @@ public struct ProjectMCPServer: Sendable {
                 return try moveFileTool.execute(arguments: arguments)
             case .createGroup:
                 return try createGroupTool.execute(arguments: arguments)
+            case .removeGroup:
+                return try removeGroupTool.execute(arguments: arguments)
             case .addTarget:
                 return try addTargetTool.execute(arguments: arguments)
             case .removeTarget:
@@ -250,8 +268,14 @@ public struct ProjectMCPServer: Sendable {
                 return try manageURLTypeTool.execute(arguments: arguments)
             case .addTargetToSynchronizedFolder:
                 return try addTargetToSynchronizedFolderTool.execute(arguments: arguments)
+            case .removeTargetFromSynchronizedFolder:
+                return try removeTargetFromSynchronizedFolderTool.execute(arguments: arguments)
             case .addSynchronizedFolderException:
                 return try addSynchronizedFolderExceptionTool.execute(arguments: arguments)
+            case .removeSynchronizedFolderException:
+                return try removeSynchronizedFolderExceptionTool.execute(arguments: arguments)
+            case .listSynchronizedFolderExceptions:
+                return try listSynchronizedFolderExceptionsTool.execute(arguments: arguments)
             case .listCopyFilesPhases:
                 return try listCopyFilesPhases.execute(arguments: arguments)
             case .addCopyFilesPhase:

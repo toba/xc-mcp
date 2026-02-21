@@ -154,6 +154,105 @@ struct ListFilesToolTests {
         #expect(result.content.count == 1)
         if case let .text(content) = result.content[0] {
             #expect(content.contains("TestFile.swift"))
+            #expect(content.contains("Sources:"))
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
+
+    @Test func testListFilesWithSynchronizedFolder() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestProject", at: projectPath)
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first!
+        let mainGroup = xcodeproj.pbxproj.rootObject!.mainGroup!
+
+        // Add a synchronized root group
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(
+            sourceTree: .group, path: "App/Sources")
+        xcodeproj.pbxproj.add(object: syncGroup)
+        mainGroup.children.append(syncGroup)
+        target.fileSystemSynchronizedGroups = [syncGroup]
+
+        try xcodeproj.write(path: projectPath)
+
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("TestProject"),
+        ])
+
+        #expect(result.content.count == 1)
+        if case let .text(content) = result.content[0] {
+            #expect(content.contains("Synchronized folders:"))
+            #expect(content.contains("App/Sources"))
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
+
+    @Test func testListFilesWithSynchronizedFolderExceptions() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestProject", at: projectPath)
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first!
+        let mainGroup = xcodeproj.pbxproj.rootObject!.mainGroup!
+
+        // Add a synchronized root group with exceptions
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(
+            sourceTree: .group, path: "App/Sources")
+        xcodeproj.pbxproj.add(object: syncGroup)
+        mainGroup.children.append(syncGroup)
+        target.fileSystemSynchronizedGroups = [syncGroup]
+
+        let exceptionSet = PBXFileSystemSynchronizedBuildFileExceptionSet(
+            target: target,
+            membershipExceptions: ["Excluded.swift", "TestHelper.swift"],
+            publicHeaders: nil,
+            privateHeaders: nil,
+            additionalCompilerFlagsByRelativePath: nil,
+            attributesByRelativePath: nil
+        )
+        xcodeproj.pbxproj.add(object: exceptionSet)
+        syncGroup.exceptions = [exceptionSet]
+
+        try xcodeproj.write(path: projectPath)
+
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("TestProject"),
+        ])
+
+        #expect(result.content.count == 1)
+        if case let .text(content) = result.content[0] {
+            #expect(content.contains("Synchronized folders:"))
+            #expect(content.contains("App/Sources"))
+            #expect(content.contains("excludes:"))
+            #expect(content.contains("Excluded.swift"))
+            #expect(content.contains("TestHelper.swift"))
         } else {
             Issue.record("Expected text content")
         }

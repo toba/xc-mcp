@@ -1,10 +1,11 @@
 ---
 # j1b-tdm
 title: Add exception set removal and listing tools
-status: ready
+status: completed
 type: feature
+priority: normal
 created_at: 2026-02-21T20:39:58Z
-updated_at: 2026-02-21T20:39:58Z
+updated_at: 2026-02-21T21:03:35Z
 ---
 
 Exception sets (`PBXFileSystemSynchronizedBuildFileExceptionSet`) can be added via the unexposed `AddSynchronizedFolderExceptionTool`, but there's no way to remove them or list what exists.
@@ -46,3 +47,10 @@ There was also no way to inspect what exception sets existed on a synchronized f
 - New: `Sources/Tools/Project/RemoveSynchronizedFolderExceptionTool.swift`
 - New: `Sources/Tools/Project/ListSynchronizedFolderExceptionsTool.swift`
 - Modify: `Sources/Servers/Project/ProjectMCPServer.swift` (register)
+
+## Summary of Changes
+
+- Added `RemoveSynchronizedFolderExceptionTool` — removes a file from an exception set, or removes an entire exception set from a synchronized folder
+- Added `ListSynchronizedFolderExceptionsTool` — lists all exception sets on a synchronized folder with target names and excluded files
+- Registered both tools in `ProjectMCPServer`
+- Added 14 tests across both tools (7 each)

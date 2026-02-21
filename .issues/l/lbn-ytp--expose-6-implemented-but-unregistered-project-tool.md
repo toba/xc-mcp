@@ -1,11 +1,11 @@
 ---
 # lbn-ytp
 title: Expose 6 implemented-but-unregistered project tools
-status: ready
+status: completed
 type: task
 priority: high
 created_at: 2026-02-21T20:39:33Z
-updated_at: 2026-02-21T20:39:33Z
+updated_at: 2026-02-21T20:59:09Z
 ---
 
 6 tools in `Sources/Tools/Project/` are fully implemented but not registered in `ProjectMCPServer.swift`:
@@ -19,9 +19,9 @@ updated_at: 2026-02-21T20:39:33Z
 
 ## TODO
 
-- [ ] Register all 6 tools in `ProjectMCPServer.swift`
-- [ ] Add integration tests for each
-- [ ] Update tool documentation/schema descriptions
+- [x] Register all 6 tools in `ProjectMCPServer.swift`
+- [x] Add integration tests for each
+- [x] Update tool documentation/schema descriptions
 
 ## Context
 
@@ -36,3 +36,11 @@ Found during a DiagnosticApp restructuring session in Thesis. The agent had to m
 - `Sources/Tools/Project/ListCopyFilesPhases.swift`
 - `Sources/Tools/Project/AddToCopyFilesPhase.swift`
 - `Sources/Tools/Project/RemoveCopyFilesPhase.swift`
+
+
+## Summary of Changes
+
+- All 6 tools registered in `ProjectMCPServer.swift` (commit 14305f1)
+- Added `Tests/CopyFilesPhaseToolTests.swift` with 22 tests covering AddCopyFilesPhase, ListCopyFilesPhases, AddToCopyFilesPhase, and RemoveCopyFilesPhase
+- Synchronized folder tools (AddTargetToSynchronizedFolderTool, AddSynchronizedFolderExceptionTool) already had tests
+- Tool schema descriptions were already complete in each tool file

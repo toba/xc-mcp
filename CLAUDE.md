@@ -105,4 +105,4 @@ Xcode build system knowledge for injected targets (via XcodeProj). Reference fil
 - Runner utilities wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift)
 - **Testing**: swift-testing framework (327 tests)
 - **Swift 6**: Strict concurrency enabled
-- **Formatting**: `swift format -r -i .` then `swiftlint` before committing
+- **Formatting**: `swiftformat .` then `swiftlint` before committing

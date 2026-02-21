@@ -144,4 +144,41 @@ enum TestProjectHelper {
         // Write project
         try xcodeproj.write(path: path)
     }
+
+    /// Creates a test project with a target and a synchronized folder, optionally with an exception set.
+    static func createTestProjectWithSyncFolder(
+        name: String,
+        targetName: String,
+        folderPath: String,
+        membershipExceptions: [String]? = nil,
+        at path: Path
+    ) throws {
+        try createTestProjectWithTarget(name: name, targetName: targetName, at: path)
+
+        let xcodeproj = try XcodeProj(path: path)
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(
+            sourceTree: .group, path: folderPath, name: folderPath)
+        xcodeproj.pbxproj.add(object: syncGroup)
+        if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
+            mainGroup.children.append(syncGroup)
+        }
+
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == targetName }!
+        target.fileSystemSynchronizedGroups = [syncGroup]
+
+        if let exceptions = membershipExceptions {
+            let exceptionSet = PBXFileSystemSynchronizedBuildFileExceptionSet(
+                target: target,
+                membershipExceptions: exceptions,
+                publicHeaders: nil,
+                privateHeaders: nil,
+                additionalCompilerFlagsByRelativePath: nil,
+                attributesByRelativePath: nil
+            )
+            xcodeproj.pbxproj.add(object: exceptionSet)
+            syncGroup.exceptions = [exceptionSet]
+        }
+
+        try xcodeproj.write(path: path)
+    }
 }
