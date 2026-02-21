@@ -1,6 +1,6 @@
 # xc-mcp
 
-An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 130+ tools for project manipulation, LLDB debugging, UI automation, localization, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 156 tools for project manipulation, LLDB debugging, UI automation, localization, and SwiftUI preview capture.
 
 I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
@@ -42,12 +42,12 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
   - [Simulator](#simulator-17-tools)
   - [Simulator UI Automation](#simulator-ui-automation-8-tools)
   - [Device](#device-7-tools)
-  - [Project Management](#project-management-23-tools)
+  - [Project Management](#project-management-40-tools)
   - [Discovery](#discovery-5-tools)
   - [Logging](#logging-4-tools)
   - [Swift Package Manager](#swift-package-manager-6-tools)
   - [Localization](#localization-24-tools)
-  - [Session & Utilities](#session--utilities-10-tools)
+  - [Session & Utilities](#session--utilities-7-tools)
 - [Tests](#tests)
 - [Path Security](#path-security)
 - [License](#license)
@@ -58,8 +58,8 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 130 | ~50K | Full monolithic server |
-| `xc-project` | 23 | ~5K | .xcodeproj file manipulation |
+| `xc-mcp` | 143 | ~50K | Full monolithic server |
+| `xc-project` | 40 | ~10K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
 | `xc-device` | 12 | ~2K | Physical iOS devices |
 | `xc-debug` | 22 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
@@ -312,7 +312,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `get_device_app_path` | Get path to installed app |
 | `test_device` | Run tests on physical device |
 
-### Project Management (25 tools)
+### Project Management (40 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -321,15 +321,13 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `scaffold_macos_project` | Create macOS project with workspace + SPM architecture |
 | `list_targets` | List all targets in a project |
 | `list_build_configurations` | List all build configurations |
-| `list_files` | List all files in a target |
+| `list_files` | List all files in a target (includes synchronized folder content and exclusions) |
 | `list_groups` | List all groups in the project |
 | `add_file` | Add a file to the project |
 | `remove_file` | Remove a file from the project |
 | `move_file` | Move or rename a file |
-| `add_synchronized_folder` | Add a synchronized folder reference |
-| `add_target_to_synchronized_folder` | Share an existing synchronized folder with another target |
-| `add_synchronized_folder_exception` | Exclude specific files from a target in a synchronized folder |
 | `create_group` | Create a new group |
+| `remove_group` | Remove a group from the project navigator |
 | `add_target` | Create a new target |
 | `remove_target` | Remove a target |
 | `duplicate_target` | Duplicate a target |
@@ -343,6 +341,23 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `add_swift_package` | Add a Swift Package dependency |
 | `list_swift_packages` | List Swift Package dependencies |
 | `remove_swift_package` | Remove a Swift Package dependency |
+| `add_synchronized_folder` | Add a synchronized folder reference |
+| `remove_synchronized_folder` | Remove a synchronized folder reference (does not delete from disk) |
+| `add_target_to_synchronized_folder` | Share an existing synchronized folder with another target |
+| `remove_target_from_synchronized_folder` | Unlink a synchronized folder from a target |
+| `add_synchronized_folder_exception` | Exclude specific files from a target in a synchronized folder |
+| `remove_synchronized_folder_exception` | Remove a file or entire exception set from a synchronized folder |
+| `list_synchronized_folder_exceptions` | List all exception sets on a synchronized folder with target names and excluded files |
+| `add_copy_files_phase` | Create a new Copy Files build phase with a destination |
+| `add_to_copy_files_phase` | Add files to an existing Copy Files build phase |
+| `list_copy_files_phases` | List all Copy Files build phases for a target |
+| `remove_copy_files_phase` | Remove a Copy Files build phase from a target |
+| `list_document_types` | List document types (`CFBundleDocumentTypes`) in a target's Info.plist |
+| `manage_document_type` | Add, update, or remove a document type in a target's Info.plist |
+| `list_type_identifiers` | List exported/imported type identifiers (`UTExportedTypeDeclarations` / `UTImportedTypeDeclarations`) |
+| `manage_type_identifier` | Add, update, or remove an exported or imported type identifier |
+| `list_url_types` | List URL types (`CFBundleURLTypes`) — custom URL schemes the app handles |
+| `manage_url_type` | Add, update, or remove a URL type (custom URL scheme) |
 
 ### Discovery (5 tools)
 
@@ -405,7 +420,7 @@ Full CRUD for Apple's `.xcstrings` format — add, update, rename, delete keys a
 | `xcstrings_delete_translation` | Delete a single translation |
 | `xcstrings_delete_translations` | Delete multiple translations (batch) |
 
-### Session & Utilities (10 tools)
+### Session & Utilities (7 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -416,8 +431,6 @@ Full CRUD for Apple's `.xcstrings` format — add, update, rename, delete keys a
 | `manage_workflows` | Enable or disable tool workflow categories (project, simulator, debug, etc.) to reduce tool surface area. Server sends `tools/list_changed` so clients update automatically |
 | `clean` | Clean build products |
 | `doctor` | Diagnose Xcode environment — checks Xcode, CLT, xcodebuild, simctl, devicectl, Swift, LLDB, SDKs, DerivedData, session state, and active debug sessions |
-| `scaffold_ios_project` | Scaffold iOS project |
-| `scaffold_macos_project` | Scaffold macOS project |
 
 ## Build Output Parsing
 
@@ -430,7 +443,7 @@ Test tools parse both **XCTest** and **Swift Testing** output formats, extractin
 
 ## Tests
 
-452 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
+506 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
 
 ### Unit Tests
 
