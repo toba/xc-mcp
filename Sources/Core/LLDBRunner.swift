@@ -331,7 +331,9 @@ public actor LLDBSession {
                                 let endIndex = accumulated.index(
                                     accumulated.endIndex, offsetBy: -promptMarker.count,
                                 )
-                                gate.resume(returning: String(accumulated[accumulated.startIndex ..< endIndex]))
+                                gate
+                                    .resume(returning: String(accumulated[accumulated
+                                            .startIndex ..< endIndex]))
                                 return
                             }
                         }
@@ -357,7 +359,7 @@ public actor LLDBSession {
                         // Mark session as poisoned. The reader thread may still be alive
                         // consuming stdout, but we won't reuse this session.
                         if let self {
-                            await self.markPoisoned()
+                            await markPoisoned()
                         }
                     }
                 }
@@ -789,7 +791,9 @@ public struct LLDBRunner: Sendable {
     ///   - file: The source file path.
     ///   - line: The line number in the source file.
     /// - Returns: The result containing breakpoint information.
-    public func setBreakpoint(pid: Int32, file: String, line: Int) async throws(LLDBError) -> LLDBResult {
+    public func setBreakpoint(pid: Int32, file: String,
+                              line: Int) async throws(LLDBError) -> LLDBResult
+    {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let setOutput = try await session.sendCommand(
             "breakpoint set --file \"\(file)\" --line \(line)",
@@ -818,7 +822,9 @@ public struct LLDBRunner: Sendable {
     ///   - pid: The process ID of the target process.
     ///   - breakpointId: The breakpoint ID to delete.
     /// - Returns: The result containing updated breakpoint list.
-    public func deleteBreakpoint(pid: Int32, breakpointId: Int) async throws(LLDBError) -> LLDBResult {
+    public func deleteBreakpoint(pid: Int32,
+                                 breakpointId: Int) async throws(LLDBError) -> LLDBResult
+    {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let deleteOutput = try await session.sendCommand("breakpoint delete \(breakpointId)")
         let listOutput = try await session.sendCommand("breakpoint list")
@@ -855,7 +861,9 @@ public struct LLDBRunner: Sendable {
     ///   - pid: The process ID of the target process.
     ///   - threadIndex: Optional thread index to get backtrace for (all threads if nil).
     /// - Returns: The result containing stack trace information.
-    public func getStack(pid: Int32, threadIndex: Int? = nil) async throws(LLDBError) -> LLDBResult {
+    public func getStack(pid: Int32,
+                         threadIndex: Int? = nil) async throws(LLDBError) -> LLDBResult
+    {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let command: String
         if let threadIndex {
@@ -873,7 +881,9 @@ public struct LLDBRunner: Sendable {
     ///   - pid: The process ID of the target process.
     ///   - frameIndex: The stack frame index to inspect (0 is current frame).
     /// - Returns: The result containing variable information.
-    public func getVariables(pid: Int32, frameIndex: Int = 0) async throws(LLDBError) -> LLDBResult {
+    public func getVariables(pid: Int32,
+                             frameIndex: Int = 0) async throws(LLDBError) -> LLDBResult
+    {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let selectOutput = try await session.sendCommand("frame select \(frameIndex)")
         let varsOutput = try await session.sendCommand("frame variable")
@@ -1216,7 +1226,11 @@ public struct LLDBRunner: Sendable {
                 .name("lldb"),
                 arguments: ["-s", scriptPath.path, "--batch"],
             )
-            return LLDBResult(exitCode: result.exitCode, stdout: result.stdout, stderr: result.stderr)
+            return LLDBResult(
+                exitCode: result.exitCode,
+                stdout: result.stdout,
+                stderr: result.stderr,
+            )
         } catch {
             throw .commandFailed("\(error)")
         }

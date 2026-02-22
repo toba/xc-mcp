@@ -41,7 +41,7 @@ public struct StopMacLogCapTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+    public func execute(arguments: [String: Value]) async -> CallTool.Result {
         let pid = arguments.getInt("pid")
         let outputFile = arguments.getString("output_file")
         let tailLines = arguments.getInt("tail_lines") ?? 50

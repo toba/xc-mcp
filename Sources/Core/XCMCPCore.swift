@@ -1,4 +1,5 @@
 import Foundation
+
 // Re-export MCP for convenience
 @_exported import MCP
 
