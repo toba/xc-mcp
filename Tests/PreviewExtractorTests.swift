@@ -3,7 +3,6 @@ import XCMCPCore
 
 @Suite("PreviewExtractor Tests")
 struct PreviewExtractorTests {
-
     @Test("Single simple preview")
     func singleSimplePreview() {
         let source = """

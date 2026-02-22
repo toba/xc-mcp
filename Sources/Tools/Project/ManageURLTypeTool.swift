@@ -22,7 +22,8 @@ public struct ManageURLTypeTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -49,7 +50,8 @@ public struct ManageURLTypeTool: Sendable {
                     "role": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "CFBundleTypeRole: Editor, Viewer, Shell, or None"),
+                            "CFBundleTypeRole: Editor, Viewer, Shell, or None"
+                        ),
                     ]),
                     "icon_file": .object([
                         "type": .string("string"),
@@ -98,17 +100,20 @@ public struct ManageURLTypeTool: Sendable {
 
             // Resolve or materialize Info.plist
             var plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName)
+                xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName
+            )
 
             if plistPath == nil {
                 plistPath = try InfoPlistUtility.materializeInfoPlist(
                     xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
-                    projectPath: Path(projectURL.path))
+                    projectPath: Path(projectURL.path)
+                )
             }
 
             guard let resolvedPlistPath = plistPath else {
                 throw MCPError.internalError(
-                    "Failed to resolve or create Info.plist for target '\(targetName)'")
+                    "Failed to resolve or create Info.plist for target '\(targetName)'"
+                )
             }
 
             var plist = try InfoPlistUtility.readInfoPlist(path: resolvedPlistPath)
@@ -122,7 +127,8 @@ public struct ManageURLTypeTool: Sendable {
                     return CallTool.Result(
                         content: [
                             .text(
-                                "URL type '\(name)' already exists in target '\(targetName)'")
+                                "URL type '\(name)' already exists in target '\(targetName)'"
+                            )
                         ]
                     )
                 }
@@ -137,7 +143,8 @@ public struct ManageURLTypeTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Successfully added URL type '\(name)' to target '\(targetName)'")
+                            "Successfully added URL type '\(name)' to target '\(targetName)'"
+                        )
                     ]
                 )
 
@@ -150,7 +157,8 @@ public struct ManageURLTypeTool: Sendable {
                     return CallTool.Result(
                         content: [
                             .text(
-                                "URL type '\(name)' not found in target '\(targetName)'")
+                                "URL type '\(name)' not found in target '\(targetName)'"
+                            )
                         ]
                     )
                 }
@@ -179,7 +187,8 @@ public struct ManageURLTypeTool: Sendable {
                     return CallTool.Result(
                         content: [
                             .text(
-                                "URL type '\(name)' not found in target '\(targetName)'")
+                                "URL type '\(name)' not found in target '\(targetName)'"
+                            )
                         ]
                     )
                 }
@@ -208,7 +217,8 @@ public struct ManageURLTypeTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to manage URL type: \(error.localizedDescription)")
+                "Failed to manage URL type: \(error.localizedDescription)"
+            )
         }
     }
 

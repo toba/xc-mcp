@@ -53,14 +53,15 @@ enum IntegrationFixtures {
         guard
             let output = try? Process.run(
                 "/usr/bin/xcrun",
-                arguments: ["simctl", "list", "devices", "available", "-j"]),
+                arguments: ["simctl", "list", "devices", "available", "-j"]
+            ),
             let data = output.data(using: .utf8),
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
             let devices = json["devices"] as? [String: [[String: Any]]]
         else { return nil }
 
-        // Extract iOS version number from runtime key
-        // e.g. "com.apple.CoreSimulator.SimRuntime.iOS-18-5" -> 18
+        /// Extract iOS version number from runtime key
+        /// e.g. "com.apple.CoreSimulator.SimRuntime.iOS-18-5" -> 18
         func iosMajorVersion(_ runtime: String) -> Int? {
             guard runtime.contains("iOS") else { return nil }
             // Split on "-"; the part ending with "iOS" is followed by the major version

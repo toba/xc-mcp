@@ -28,7 +28,8 @@ public struct LaunchAppLogsSimTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "duration_seconds": .object([
                         "type": .string("integer"),
@@ -60,7 +61,8 @@ public struct LaunchAppLogsSimTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         let durationSeconds = min(60, max(1, arguments.getInt("duration_seconds") ?? 10))

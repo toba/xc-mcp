@@ -43,7 +43,8 @@ public struct XctraceListTool: Sendable {
 
         guard ["templates", "instruments", "devices"].contains(kind) else {
             throw MCPError.invalidParams(
-                "Invalid kind: \(kind). Use 'templates', 'instruments', or 'devices'.")
+                "Invalid kind: \(kind). Use 'templates', 'instruments', or 'devices'."
+            )
         }
 
         do {
@@ -59,7 +60,8 @@ public struct XctraceListTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to list \(kind): \(error.localizedDescription)")
+                "Failed to list \(kind): \(error.localizedDescription)"
+            )
         }
     }
 }

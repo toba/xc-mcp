@@ -7,7 +7,7 @@ import Testing
 @Suite("XctraceRecordTool Tests")
 struct XctraceRecordToolTests {
     @Test("Tool schema has correct name and description")
-    func testToolSchema() {
+    func toolSchema() {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
         let schema = tool.tool()
 
@@ -17,7 +17,7 @@ struct XctraceRecordToolTests {
     }
 
     @Test("Tool schema includes all expected parameters")
-    func testToolParameters() {
+    func toolParameters() {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
         let schema = tool.tool()
 
@@ -40,7 +40,7 @@ struct XctraceRecordToolTests {
     }
 
     @Test("Execute with no action throws invalidParams")
-    func testNoAction() async throws {
+    func noAction() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         await #expect(throws: MCPError.self) {
@@ -49,7 +49,7 @@ struct XctraceRecordToolTests {
     }
 
     @Test("Execute with invalid action throws invalidParams")
-    func testInvalidAction() async throws {
+    func invalidAction() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         await #expect(throws: MCPError.self) {
@@ -58,7 +58,7 @@ struct XctraceRecordToolTests {
     }
 
     @Test("Start without template throws invalidParams")
-    func testStartWithoutTemplate() async throws {
+    func startWithoutTemplate() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         await #expect(throws: MCPError.self) {
@@ -67,7 +67,7 @@ struct XctraceRecordToolTests {
     }
 
     @Test("Stop without session_id throws invalidParams")
-    func testStopWithoutSessionId() async throws {
+    func stopWithoutSessionId() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         await #expect(throws: MCPError.self) {
@@ -76,7 +76,7 @@ struct XctraceRecordToolTests {
     }
 
     @Test("Stop with invalid session_id throws invalidParams")
-    func testStopWithInvalidSessionId() async throws {
+    func stopWithInvalidSessionId() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         await #expect(throws: MCPError.self) {
@@ -88,7 +88,7 @@ struct XctraceRecordToolTests {
     }
 
     @Test("List with no active sessions returns empty message")
-    func testListEmpty() async throws {
+    func listEmpty() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         let result = try await tool.execute(arguments: ["action": .string("list")])
@@ -128,7 +128,7 @@ struct XctraceListToolTests {
     }
 
     @Test("Execute with no kind throws invalidParams")
-    func testNoKind() async throws {
+    func noKind() async throws {
         let tool = XctraceListTool()
 
         await #expect(throws: MCPError.self) {
@@ -137,7 +137,7 @@ struct XctraceListToolTests {
     }
 
     @Test("Execute with invalid kind throws invalidParams")
-    func testInvalidKind() async throws {
+    func invalidKind() async throws {
         let tool = XctraceListTool()
 
         await #expect(throws: MCPError.self) {
@@ -146,7 +146,7 @@ struct XctraceListToolTests {
     }
 
     @Test("List templates returns results")
-    func testListTemplates() async throws {
+    func listTemplates() async throws {
         let tool = XctraceListTool()
         let result = try await tool.execute(arguments: ["kind": .string("templates")])
 
@@ -188,7 +188,7 @@ struct XctraceExportToolTests {
     }
 
     @Test("Execute with no input_path throws invalidParams")
-    func testNoInputPath() async throws {
+    func noInputPath() async throws {
         let tool = XctraceExportTool()
 
         await #expect(throws: MCPError.self) {
@@ -197,7 +197,7 @@ struct XctraceExportToolTests {
     }
 
     @Test("Execute with invalid path throws error")
-    func testInvalidPath() async throws {
+    func invalidPath() async throws {
         let tool = XctraceExportTool()
 
         await #expect(throws: MCPError.self) {

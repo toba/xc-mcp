@@ -5,8 +5,7 @@ import XCMCPCore
 @testable import XCMCPTools
 
 struct PathUtilityTests {
-
-    @Test func testRelativePathResolution() throws {
+    @Test func relativePathResolution() throws {
         // Use current working directory as base path for testing
         let basePath = FileManager.default.currentDirectoryPath
         let pathUtility = PathUtility(basePath: basePath)
@@ -18,7 +17,7 @@ struct PathUtilityTests {
         #expect(resolved == "\(basePath)/MyApp.xcodeproj")
     }
 
-    @Test func testNestedRelativePathResolution() throws {
+    @Test func nestedRelativePathResolution() throws {
         let basePath = FileManager.default.currentDirectoryPath
         let pathUtility = PathUtility(basePath: basePath)
 
@@ -28,7 +27,7 @@ struct PathUtilityTests {
         #expect(resolved == "\(basePath)/Projects/MyApp.xcodeproj")
     }
 
-    @Test func testAbsolutePathWithinWorkspace() throws {
+    @Test func absolutePathWithinWorkspace() throws {
         let basePath = FileManager.default.currentDirectoryPath
         let pathUtility = PathUtility(basePath: basePath)
 
@@ -38,7 +37,7 @@ struct PathUtilityTests {
         #expect(resolved == "\(basePath)/MyApp.xcodeproj")
     }
 
-    @Test func testPathOutsideWorkspaceThrows() throws {
+    @Test func pathOutsideWorkspaceThrows() throws {
         let basePath = "/workspace"
         let pathUtility = PathUtility(basePath: basePath)
 
@@ -49,10 +48,11 @@ struct PathUtilityTests {
         }
     }
 
-    @Test func testDotDotPathResolution() throws {
+    @Test func dotDotPathResolution() throws {
         // Create a temporary subdirectory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let basePath = tempDir.appendingPathComponent("projects").path
         try FileManager.default.createDirectory(atPath: basePath, withIntermediateDirectories: true)

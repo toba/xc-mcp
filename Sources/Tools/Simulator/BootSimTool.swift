@@ -42,7 +42,8 @@ public struct BootSimTool: Sendable {
             let bootHints = NextStepHints.content(hints: [
                 NextStepHint(tool: "build_sim", description: "Build a project for the simulator"),
                 NextStepHint(
-                    tool: "build_run_sim", description: "Build and run an app on the simulator"),
+                    tool: "build_run_sim", description: "Build and run an app on the simulator"
+                ),
             ])
             if result.succeeded {
                 return CallTool.Result(
@@ -82,6 +83,7 @@ public struct BootSimTool: Sendable {
         }
 
         throw MCPError.invalidParams(
-            "Simulator not found: \(identifier). Use list_sims to see available simulators.")
+            "Simulator not found: \(identifier). Use list_sims to see available simulators."
+        )
     }
 }

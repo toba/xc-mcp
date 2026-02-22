@@ -95,12 +95,14 @@ public struct CreateXcodeprojTool: Sendable {
                 name: "Debug",
                 buildSettings: [
                     "ORGANIZATION_NAME": .string(organizationName)
-                ])
+                ]
+            )
             let releaseConfig = XCBuildConfiguration(
                 name: "Release",
                 buildSettings: [
                     "ORGANIZATION_NAME": .string(organizationName)
-                ])
+                ]
+            )
             pbxproj.add(object: debugConfig)
             pbxproj.add(object: releaseConfig)
 
@@ -118,14 +120,16 @@ public struct CreateXcodeprojTool: Sendable {
                     "PRODUCT_BUNDLE_IDENTIFIER": .string("\(bundleIdentifier).\(projectName)"),
                     "PRODUCT_NAME": .string("$(TARGET_NAME)"),
                     "SWIFT_VERSION": .string("5.0"),
-                ])
+                ]
+            )
             let targetReleaseConfig = XCBuildConfiguration(
                 name: "Release",
                 buildSettings: [
                     "PRODUCT_BUNDLE_IDENTIFIER": .string("\(bundleIdentifier).\(projectName)"),
                     "PRODUCT_NAME": .string("$(TARGET_NAME)"),
                     "SWIFT_VERSION": .string("5.0"),
-                ])
+                ]
+            )
             pbxproj.add(object: targetDebugConfig)
             pbxproj.add(object: targetReleaseConfig)
 
@@ -199,7 +203,8 @@ public struct CreateXcodeprojTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to create Xcode project: \(error.localizedDescription)")
+                "Failed to create Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

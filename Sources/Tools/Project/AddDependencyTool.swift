@@ -21,12 +21,14 @@ public struct AddDependencyTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target that will depend on another target"),
+                            "Name of the target that will depend on another target"
+                        ),
                     ]),
                     "dependency_name": .object([
                         "type": .string("string"),
@@ -46,7 +48,8 @@ public struct AddDependencyTool: Sendable {
             case let .string(dependencyName) = arguments["dependency_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, and dependency_name are required")
+                "project_path, target_name, and dependency_name are required"
+            )
         }
 
         do {
@@ -125,7 +128,8 @@ public struct AddDependencyTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add dependency to Xcode project: \(error.localizedDescription)")
+                "Failed to add dependency to Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

@@ -25,7 +25,8 @@ public struct ListSchemesTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."),
+                            "Path to the .xcodeproj file. Uses session default if not specified."
+                        ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
@@ -42,7 +43,8 @@ public struct ListSchemesTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments)
+            from: arguments
+        )
 
         do {
             let result = try await xcodebuildRunner.listSchemes(

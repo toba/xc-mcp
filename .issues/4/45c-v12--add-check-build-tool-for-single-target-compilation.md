@@ -1,11 +1,11 @@
 ---
 # 45c-v12
 title: Add check_build tool for single-target compilation
-status: in-progress
+status: completed
 type: feature
 priority: normal
 created_at: 2026-02-22T00:26:08Z
-updated_at: 2026-02-22T00:34:59Z
+updated_at: 2026-02-22T01:16:26Z
 ---
 
 ## Problem

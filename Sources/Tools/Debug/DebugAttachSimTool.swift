@@ -28,17 +28,20 @@ public struct DebugAttachSimTool: Sendable {
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app to debug."),
+                            "Bundle identifier of the app to debug."
+                        ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID to attach to. Alternative to bundle_id."),
+                            "Process ID to attach to. Alternative to bundle_id."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -82,7 +85,8 @@ public struct DebugAttachSimTool: Sendable {
                 // Register the bundle ID mapping
                 if let bundleId = arguments.getString("bundle_id") {
                     await LLDBSessionManager.shared.registerBundleId(
-                        bundleId, forPID: targetPID)
+                        bundleId, forPID: targetPID
+                    )
                 }
 
                 var message = "Successfully attached to process \(targetPID)\n\n"
@@ -110,10 +114,12 @@ public struct DebugAttachSimTool: Sendable {
         // First, try to get the app container to verify it's installed
         do {
             _ = try await simctlRunner.getAppContainer(
-                udid: simulator, bundleId: bundleId, container: "app")
+                udid: simulator, bundleId: bundleId, container: "app"
+            )
         } catch {
             throw MCPError.invalidParams(
-                "App '\(bundleId)' not found on simulator '\(simulator)'")
+                "App '\(bundleId)' not found on simulator '\(simulator)'"
+            )
         }
 
         // Use pgrep to find the process

@@ -22,6 +22,6 @@ extension Swift.Error {
         if let convertible = self as? MCPErrorConvertible {
             return convertible.toMCPError()
         }
-        return MCPError.internalError(self.localizedDescription)
+        return MCPError.internalError(localizedDescription)
     }
 }

@@ -66,7 +66,8 @@ struct MoveFileToolTests {
     func moveFile() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -76,7 +77,8 @@ struct MoveFileToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         // First add a file to move
         let addTool = AddFileTool(pathUtility: PathUtility(basePath: "/"))
@@ -134,7 +136,8 @@ struct MoveFileToolTests {
     func moveFileOnDisk() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -144,7 +147,8 @@ struct MoveFileToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         // First add a file to move
         let addTool = AddFileTool(pathUtility: PathUtility(basePath: "/"))
@@ -190,7 +194,8 @@ struct MoveFileToolTests {
     func moveNonExistentFile() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {

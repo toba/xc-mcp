@@ -6,7 +6,7 @@ import Testing
 @Suite("ScreenshotMacWindowTool Tests")
 struct ScreenshotMacWindowToolTests {
     @Test("Tool schema has correct name and description")
-    func testToolSchema() {
+    func toolSchema() {
         let tool = ScreenshotMacWindowTool()
         let schema = tool.tool()
 
@@ -16,7 +16,7 @@ struct ScreenshotMacWindowToolTests {
     }
 
     @Test("Tool schema includes all expected parameters")
-    func testToolParameters() {
+    func toolParameters() {
         let tool = ScreenshotMacWindowTool()
         let schema = tool.tool()
 
@@ -34,7 +34,7 @@ struct ScreenshotMacWindowToolTests {
     }
 
     @Test("Execute with no arguments throws invalidParams")
-    func testNoArguments() async throws {
+    func noArguments() async throws {
         let tool = ScreenshotMacWindowTool()
 
         await #expect(throws: MCPError.self) {

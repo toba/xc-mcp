@@ -22,12 +22,14 @@ public struct SetSimAppearanceTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "appearance": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Appearance mode: 'light' or 'dark'."),
+                            "Appearance mode: 'light' or 'dark'."
+                        ),
                         "enum": .array([.string("light"), .string("dark")]),
                     ]),
                 ]),
@@ -45,7 +47,8 @@ public struct SetSimAppearanceTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get appearance
@@ -56,12 +59,14 @@ public struct SetSimAppearanceTool: Sendable {
         let validAppearances = ["light", "dark"]
         guard validAppearances.contains(appearance.lowercased()) else {
             throw MCPError.invalidParams(
-                "Invalid appearance '\(appearance)'. Must be 'light' or 'dark'.")
+                "Invalid appearance '\(appearance)'. Must be 'light' or 'dark'."
+            )
         }
 
         do {
             let result = try await simctlRunner.setAppearance(
-                udid: simulator, appearance: appearance.lowercased())
+                udid: simulator, appearance: appearance.lowercased()
+            )
 
             if result.succeeded {
                 return CallTool.Result(

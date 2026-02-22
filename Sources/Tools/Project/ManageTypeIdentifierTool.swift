@@ -22,7 +22,8 @@ public struct ManageTypeIdentifierTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -36,7 +37,8 @@ public struct ManageTypeIdentifierTool: Sendable {
                     "kind": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Whether this is an exported or imported type identifier"),
+                            "Whether this is an exported or imported type identifier"
+                        ),
                         "enum": .array([.string("exported"), .string("imported")]),
                     ]),
                     "identifier": .object([
@@ -53,7 +55,8 @@ public struct ManageTypeIdentifierTool: Sendable {
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
                         "description": .string(
-                            "UTTypeConformsTo array (e.g. [\"com.apple.package\"])"),
+                            "UTTypeConformsTo array (e.g. [\"com.apple.package\"])"
+                        ),
                     ]),
                     "extensions": .object([
                         "type": .string("array"),
@@ -66,7 +69,8 @@ public struct ManageTypeIdentifierTool: Sendable {
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
                         "description": .string(
-                            "MIME types (maps to UTTypeTagSpecification[\"public.mime-type\"])"),
+                            "MIME types (maps to UTTypeTagSpecification[\"public.mime-type\"])"
+                        ),
                     ]),
                     "reference_url": .object([
                         "type": .string("string"),
@@ -99,7 +103,8 @@ public struct ManageTypeIdentifierTool: Sendable {
             case let .string(identifier) = arguments["identifier"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, action, kind, and identifier are required")
+                "project_path, target_name, action, kind, and identifier are required"
+            )
         }
 
         guard ["add", "update", "remove"].contains(action) else {
@@ -128,17 +133,20 @@ public struct ManageTypeIdentifierTool: Sendable {
 
             // Resolve or materialize Info.plist
             var plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName)
+                xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName
+            )
 
             if plistPath == nil {
                 plistPath = try InfoPlistUtility.materializeInfoPlist(
                     xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
-                    projectPath: Path(projectURL.path))
+                    projectPath: Path(projectURL.path)
+                )
             }
 
             guard let resolvedPlistPath = plistPath else {
                 throw MCPError.internalError(
-                    "Failed to resolve or create Info.plist for target '\(targetName)'")
+                    "Failed to resolve or create Info.plist for target '\(targetName)'"
+                )
             }
 
             var plist = try InfoPlistUtility.readInfoPlist(path: resolvedPlistPath)
@@ -242,7 +250,8 @@ public struct ManageTypeIdentifierTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to manage type identifier: \(error.localizedDescription)")
+                "Failed to manage type identifier: \(error.localizedDescription)"
+            )
         }
     }
 

@@ -21,7 +21,8 @@ public struct ListTargetsTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ])
                 ]),
                 "required": .array([.string("project_path")]),
@@ -59,7 +60,8 @@ public struct ListTargetsTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)")
+                "Failed to read Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

@@ -80,7 +80,8 @@ public struct XctraceExportTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to export trace: \(error.localizedDescription)")
+                "Failed to export trace: \(error.localizedDescription)"
+            )
         }
     }
 }

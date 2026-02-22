@@ -24,11 +24,11 @@ struct AddFolderToolTests {
     let pathUtility: PathUtility
 
     init() {
-        self.tempDir =
+        tempDir =
             FileManager.default.temporaryDirectory
             .appendingPathComponent("AddFolderToolTests-\(UUID().uuidString)")
             .path
-        self.pathUtility = PathUtility(basePath: tempDir)
+        pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
@@ -38,7 +38,8 @@ struct AddFolderToolTests {
 
         #expect(tool.tool().name == "add_synchronized_folder")
         #expect(
-            tool.tool().description == "Add a synchronized folder reference to an Xcode project")
+            tool.tool().description == "Add a synchronized folder reference to an Xcode project"
+        )
 
         let schema = tool.tool().inputSchema
         if case let .object(schemaDict) = schema {
@@ -100,7 +101,8 @@ struct AddFolderToolTests {
         // Create a test folder
         let folderPath = Path(tempDir) + "TestFolder"
         try FileManager.default.createDirectory(
-            atPath: folderPath.string, withIntermediateDirectories: true)
+            atPath: folderPath.string, withIntermediateDirectories: true
+        )
 
         // Execute the tool
         let result = try tool.execute(arguments: [
@@ -142,7 +144,8 @@ struct AddFolderToolTests {
         // Create a test folder
         let folderPath = Path(tempDir) + "TestFolder"
         try FileManager.default.createDirectory(
-            atPath: folderPath.string, withIntermediateDirectories: true)
+            atPath: folderPath.string, withIntermediateDirectories: true
+        )
 
         // Execute the tool
         let result = try tool.execute(arguments: [
@@ -172,12 +175,14 @@ struct AddFolderToolTests {
         // Create a test project with a target
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestTarget", at: projectPath)
+            name: "TestProject", targetName: "TestTarget", at: projectPath
+        )
 
         // Create a test folder
         let folderPath = Path(tempDir) + "TestFolder"
         try FileManager.default.createDirectory(
-            atPath: folderPath.string, withIntermediateDirectories: true)
+            atPath: folderPath.string, withIntermediateDirectories: true
+        )
 
         // Execute the tool
         let result = try tool.execute(arguments: [
@@ -232,7 +237,8 @@ struct AddFolderToolTests {
         // Create a file instead of a folder
         let filePath = Path(tempDir) + "TestFile.txt"
         try "test content".write(
-            to: URL(filePath: filePath.string), atomically: true, encoding: .utf8)
+            to: URL(filePath: filePath.string), atomically: true, encoding: .utf8
+        )
 
         // Try to add a file as a folder
         #expect(throws: MCPError.self) {
@@ -259,7 +265,8 @@ struct AddFolderToolTests {
         let domPath = Path(tempDir) + "DOM"
         let sourcesPath = domPath + "Sources"
         try FileManager.default.createDirectory(
-            atPath: sourcesPath.string, withIntermediateDirectories: true)
+            atPath: sourcesPath.string, withIntermediateDirectories: true
+        )
 
         // Load the project and add a group "DOM" with path = "DOM"
         let xcodeproj = try XcodeProj(path: projectPath)
@@ -297,6 +304,7 @@ struct AddFolderToolTests {
         // The key assertion: path should be relative to the parent group, not project root
         #expect(
             folderRef?.path == "Sources",
-            "Expected path to be 'Sources' relative to DOM group, not 'DOM/Sources'")
+            "Expected path to be 'Sources' relative to DOM group, not 'DOM/Sources'"
+        )
     }
 }

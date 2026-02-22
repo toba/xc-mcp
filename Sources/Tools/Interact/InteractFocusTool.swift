@@ -25,9 +25,11 @@ public struct InteractFocusTool: Sendable {
                             "element_id": .object([
                                 "type": .string("integer"),
                                 "description": .string(
-                                    "Optional element ID to focus after activating the app."),
+                                    "Optional element ID to focus after activating the app."
+                                ),
                             ])
-                        ]) { _, new in new }),
+                        ]) { _, new in new }
+                    ),
                     "required": .array([]),
                 ]
             )
@@ -50,12 +52,14 @@ public struct InteractFocusTool: Sendable {
             try interactRunner.ensureAccessibility()
             guard
                 let cached = await InteractSessionManager.shared.getElement(
-                    pid: pid, elementId: elementId)
+                    pid: pid, elementId: elementId
+                )
             else {
                 throw InteractError.elementNotFound(elementId)
             }
             AXUIElementSetAttributeValue(
-                cached.element, kAXFocusedAttribute as CFString, true as CFTypeRef)
+                cached.element, kAXFocusedAttribute as CFString, true as CFTypeRef
+            )
             result += " Focused element \(elementId)."
         }
 

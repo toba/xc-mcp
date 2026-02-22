@@ -22,12 +22,14 @@ public struct EraseSimTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "all": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, erases all simulators. Use with caution."),
+                            "If true, erases all simulators. Use with caution."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),

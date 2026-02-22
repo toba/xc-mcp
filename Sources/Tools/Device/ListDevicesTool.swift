@@ -35,7 +35,7 @@ public struct ListDevicesTool: Sendable {
     /// - Parameter arguments: Dictionary of arguments (none required).
     /// - Returns: The result containing list of devices or message if none found.
     /// - Throws: MCPError if device listing fails.
-    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+    public func execute(arguments _: [String: Value]) async throws -> CallTool.Result {
         do {
             let devices = try await deviceCtlRunner.listDevices()
 

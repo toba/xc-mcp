@@ -40,7 +40,8 @@ public struct XCStringsBatchUpdateTranslationsTool: Sendable {
                             "required": .array([.string("key"), .string("translations")]),
                         ]),
                         "description": .string(
-                            "Array of entries, each with a key and translations object"),
+                            "Array of entries, each with a key and translations object"
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("entries")]),
@@ -73,5 +74,4 @@ public struct XCStringsBatchUpdateTranslationsTool: Sendable {
             throw MCPError.invalidParams(error.localizedDescription)
         }
     }
-
 }

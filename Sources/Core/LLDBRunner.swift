@@ -28,7 +28,8 @@ private func openPTY() throws -> (primary: Int32, replica: Int32) {
     guard replica >= 0 else {
         close(primary)
         throw LLDBError.commandFailed(
-            "Failed to open replica PTY: \(String(cString: strerror(errno)))")
+            "Failed to open replica PTY: \(String(cString: strerror(errno)))"
+        )
     }
 
     // Disable echo and canonical mode on the replica so we don't get
@@ -70,7 +71,7 @@ public actor LLDBSession {
 
     /// Updates the target PID (e.g. after a `--waitfor` attach resolves).
     public func setTargetPID(_ pid: Int32) {
-        self.targetPID = pid
+        targetPID = pid
     }
 
     /// Creates a new persistent LLDB session attached to a process.
@@ -82,7 +83,7 @@ public actor LLDBSession {
     ///   - commandTimeout: Maximum time to wait for a command response (default 30s).
     /// - Throws: If LLDB fails to start or attach.
     public init(pid: Int32, commandTimeout: TimeInterval = 30) throws {
-        self.targetPID = pid
+        targetPID = pid
         self.commandTimeout = commandTimeout
 
         let proc = Process()
@@ -98,13 +99,13 @@ public actor LLDBSession {
         let stderrPipe = Pipe()
         proc.standardError = stderrPipe
 
-        self.process = proc
+        process = proc
         // Write to the primary side to send to LLDB's stdin
-        self.stdin = FileHandle(fileDescriptor: primaryFD, closeOnDealloc: false)
+        stdin = FileHandle(fileDescriptor: primaryFD, closeOnDealloc: false)
         // Read from the primary side to get LLDB's stdout
-        self.stdout = FileHandle(fileDescriptor: primaryFD, closeOnDealloc: false)
-        self.stderr = stderrPipe.fileHandleForReading
-        self.ptyFDs = [primaryFD, replicaFD]
+        stdout = FileHandle(fileDescriptor: primaryFD, closeOnDealloc: false)
+        stderr = stderrPipe.fileHandleForReading
+        ptyFDs = [primaryFD, replicaFD]
 
         try proc.run()
     }
@@ -147,7 +148,8 @@ public actor LLDBSession {
         // Set environment variables
         for (key, value) in environment {
             _ = try await sendCommand(
-                "settings set target.env-vars \(key)=\(value)")
+                "settings set target.env-vars \(key)=\(value)"
+            )
         }
 
         // Build launch command
@@ -164,12 +166,12 @@ public actor LLDBSession {
 
         // Parse PID from output like "Process 12345 launched"
         if let range = launchOutput.range(
-            of: #"Process (\d+) launched"#, options: .regularExpression)
-        {
+            of: #"Process (\d+) launched"#, options: .regularExpression
+        ) {
             let match = launchOutput[range]
             let digits = match.split(separator: " ")[1]
             if let pid = Int32(digits) {
-                self.targetPID = pid
+                targetPID = pid
             }
         }
 
@@ -187,7 +189,8 @@ public actor LLDBSession {
         }
         guard !isPoisoned else {
             throw LLDBError.commandFailed(
-                "LLDB session is poisoned by a previous timeout — session will be recreated")
+                "LLDB session is poisoned by a previous timeout — session will be recreated"
+            )
         }
 
         let commandData = Data((command + "\n").utf8)
@@ -209,7 +212,8 @@ public actor LLDBSession {
         }
         guard !isPoisoned else {
             throw LLDBError.commandFailed(
-                "LLDB session is poisoned by a previous timeout — session will be recreated")
+                "LLDB session is poisoned by a previous timeout — session will be recreated"
+            )
         }
 
         let commandData = Data((command + "\n").utf8)
@@ -224,8 +228,8 @@ public actor LLDBSession {
             try? stdin.write(contentsOf: quitData)
 
             // Give it a moment, then force kill
-            let fds = self.ptyFDs
-            let proc = self.process
+            let fds = ptyFDs
+            let proc = process
             Task {
                 try? await Task.sleep(for: .seconds(1))
                 if proc.isRunning {
@@ -280,7 +284,8 @@ public actor LLDBSession {
                         if accumulated.hasSuffix(promptMarker) {
                             // Strip the trailing prompt from the output
                             let endIndex = accumulated.index(
-                                accumulated.endIndex, offsetBy: -promptMarker.count)
+                                accumulated.endIndex, offsetBy: -promptMarker.count
+                            )
                             let result = String(accumulated[accumulated.startIndex..<endIndex])
                             let didResume = resumed.withLock { alreadyResumed -> Bool in
                                 if alreadyResumed { return false }
@@ -324,13 +329,15 @@ public actor LLDBSession {
                             "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
                     }
                     continuation.resume(
-                        throwing: LLDBError.commandFailed(detail))
+                        throwing: LLDBError.commandFailed(detail)
+                    )
                 }
             }
 
             DispatchQueue.global().async(execute: workItem)
             DispatchQueue.global().asyncAfter(
-                deadline: .now() + self.commandTimeout, execute: timeoutItem)
+                deadline: .now() + self.commandTimeout, execute: timeoutItem
+            )
 
             // Cancel timeout if work completes first
             workItem.notify(queue: .global()) {
@@ -442,7 +449,8 @@ public actor LLDBSessionManager {
 
         // Tell LLDB to wait for a process with this name to appear
         try await session.sendCommandNoWait(
-            "process attach --name \"\(executableName)\" --waitfor")
+            "process attach --name \"\(executableName)\" --waitfor"
+        )
 
         // Kill any existing instances of the app to avoid attaching to a stale process
         let pkill = Process()
@@ -487,8 +495,8 @@ public actor LLDBSessionManager {
 
         // Parse PID from attach output like "Process NNN stopped"
         if let range = attachOutput.range(
-            of: #"Process (\d+) stopped"#, options: .regularExpression)
-        {
+            of: #"Process (\d+) stopped"#, options: .regularExpression
+        ) {
             let match = attachOutput[range]
             let digits = match.split(separator: " ")[1]
             if let pid = Int32(digits) {
@@ -756,7 +764,8 @@ public struct LLDBRunner: Sendable {
     public func setBreakpoint(pid: Int32, file: String, line: Int) async throws -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let setOutput = try await session.sendCommand(
-            "breakpoint set --file \"\(file)\" --line \(line)")
+            "breakpoint set --file \"\(file)\" --line \(line)"
+        )
         let listOutput = try await session.sendCommand("breakpoint list")
         return LLDBResult(
             exitCode: 0,
@@ -940,7 +949,8 @@ public struct LLDBRunner: Sendable {
             if let condition {
                 // Extract watchpoint ID from output to apply condition
                 let modOutput = try await session.sendCommand(
-                    "watchpoint modify -c '\(condition)'")
+                    "watchpoint modify -c '\(condition)'"
+                )
                 output += "\n" + modOutput
             }
             let listOutput = try await session.sendCommand("watchpoint list")
@@ -1019,7 +1029,8 @@ public struct LLDBRunner: Sendable {
         default: fmt = "x"
         }
         let output = try await session.sendCommand(
-            "memory read --size \(size) --format \(fmt) --count \(count) \(address)")
+            "memory read --size \(size) --format \(fmt) --count \(count) \(address)"
+        )
         return LLDBResult(exitCode: 0, stdout: output, stderr: "")
     }
 
@@ -1045,7 +1056,8 @@ public struct LLDBRunner: Sendable {
         if let address {
             let verboseFlag = verbose ? " -v" : ""
             let output = try await session.sendCommand(
-                "image lookup --address \(address)\(verboseFlag)")
+                "image lookup --address \(address)\(verboseFlag)"
+            )
             outputs.append(output)
         }
 
@@ -1081,13 +1093,16 @@ public struct LLDBRunner: Sendable {
 
         if let address {
             let output = try await session.sendCommand(
-                "expr -l objc -O -- [(id)\(address) recursiveDescription]")
+                "expr -l objc -O -- [(id)\(address) recursiveDescription]"
+            )
             outputs.append(output)
             if constraints {
                 let hOutput = try await session.sendCommand(
-                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:0]")
+                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:0]"
+                )
                 let vOutput = try await session.sendCommand(
-                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:1]")
+                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:1]"
+                )
                 outputs.append("Horizontal constraints:\n" + hOutput)
                 outputs.append("Vertical constraints:\n" + vOutput)
             }
@@ -1156,7 +1171,8 @@ public struct LLDBRunner: Sendable {
 
             let tempDir = FileManager.default.temporaryDirectory
             let scriptPath = tempDir.appendingPathComponent(
-                "lldb_script_\(UUID().uuidString).lldb")
+                "lldb_script_\(UUID().uuidString).lldb"
+            )
 
             do {
                 let script = commands.joined(separator: "\n")
@@ -1207,9 +1223,9 @@ public enum LLDBError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-        case .commandFailed(let message):
+        case let .commandFailed(message):
             return "LLDB command failed: \(message)"
-        case .attachFailed(let message):
+        case let .attachFailed(message):
             return "Failed to attach to process: \(message)"
         case .noActiveSession:
             return "No active debug session"

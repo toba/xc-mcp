@@ -32,7 +32,8 @@ public struct SetSessionDefaultsTool: Sendable {
                     "package_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to a Swift package directory containing Package.swift."),
+                            "Path to a Swift package directory containing Package.swift."
+                        ),
                     ]),
                     "scheme": .object([
                         "type": .string("string"),
@@ -68,7 +69,8 @@ public struct SetSessionDefaultsTool: Sendable {
         // Validate that project and workspace are not both set
         if projectPath != nil && workspacePath != nil {
             throw MCPError.invalidParams(
-                "Cannot set both project_path and workspace_path. They are mutually exclusive.")
+                "Cannot set both project_path and workspace_path. They are mutually exclusive."
+            )
         }
 
         // Validate configuration if provided

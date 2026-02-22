@@ -22,17 +22,20 @@ public struct SetSimLocationTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "latitude": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Latitude coordinate (e.g., 37.7749 for San Francisco)."),
+                            "Latitude coordinate (e.g., 37.7749 for San Francisco)."
+                        ),
                     ]),
                     "longitude": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Longitude coordinate (e.g., -122.4194 for San Francisco)."),
+                            "Longitude coordinate (e.g., -122.4194 for San Francisco)."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("latitude"), .string("longitude")]),
@@ -49,7 +52,8 @@ public struct SetSimLocationTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get latitude

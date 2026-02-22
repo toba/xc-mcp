@@ -39,7 +39,8 @@ public struct SimulatorDevice: Sendable, Codable {
         state = try container.decode(String.self, forKey: .state)
         isAvailable = try container.decodeIfPresent(Bool.self, forKey: .isAvailable) ?? true
         deviceTypeIdentifier = try container.decodeIfPresent(
-            String.self, forKey: .deviceTypeIdentifier)
+            String.self, forKey: .deviceTypeIdentifier
+        )
         runtime = nil  // Runtime comes from the parent key, not the device object
     }
 
@@ -435,11 +436,11 @@ public enum SimctlError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-        case .commandFailed(let message):
+        case let .commandFailed(message):
             return "simctl command failed: \(message)"
         case .invalidOutput:
             return "simctl returned invalid output"
-        case .deviceNotFound(let udid):
+        case let .deviceNotFound(udid):
             return "Simulator device not found: \(udid)"
         }
     }

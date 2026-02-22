@@ -22,17 +22,20 @@ public struct StartSimLogCapTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to write logs to. Defaults to /tmp/sim_log_<udid>.log"),
+                            "Path to write logs to. Defaults to /tmp/sim_log_<udid>.log"
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional bundle identifier to filter logs to a specific app."),
+                            "Optional bundle identifier to filter logs to a specific app."
+                        ),
                     ]),
                     "predicate": .object([
                         "type": .string("string"),
@@ -55,7 +58,8 @@ public struct StartSimLogCapTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get output file

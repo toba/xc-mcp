@@ -21,7 +21,8 @@ public struct ListSwiftPackagesTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ])
                 ]),
                 "required": .array([.string("project_path")]),
@@ -50,7 +51,8 @@ public struct ListSwiftPackagesTool: Sendable {
             // List remote packages
             for remotePackage in project.remotePackages {
                 let requirement = formatVersionRequirement(
-                    remotePackage.versionRequirement ?? .exact("unknown"))
+                    remotePackage.versionRequirement ?? .exact("unknown")
+                )
                 let url = remotePackage.repositoryURL ?? "unknown"
                 packages.append("📦 \(url) (\(requirement))")
             }
@@ -76,7 +78,8 @@ public struct ListSwiftPackagesTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to list Swift Packages in Xcode project: \(error.localizedDescription)")
+                "Failed to list Swift Packages in Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 

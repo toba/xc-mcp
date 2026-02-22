@@ -5,9 +5,8 @@ import Testing
 
 @Suite("XCResultParser Tests")
 struct XCResultParserTests {
-
     @Test("Non-existent path returns nil")
-    func testNonExistentPath() {
+    func nonExistentPath() {
         let result = XCResultParser.parseTestResults(at: "/nonexistent/path.xcresult")
         #expect(result == nil)
     }
@@ -15,9 +14,8 @@ struct XCResultParserTests {
 
 @Suite("ErrorExtractor Infrastructure Warning Tests")
 struct ErrorExtractorInfrastructureTests {
-
     @Test("Detects testmanagerd SIGSEGV crash")
-    func testTestmanagerdSIGSEGV() throws {
+    func managerdSIGSEGV() throws {
         let stderr = """
             Testing started
             testmanagerd received SIGSEGV: pointer authentication failure
@@ -36,7 +34,7 @@ struct ErrorExtractorInfrastructureTests {
     }
 
     @Test("Detects testmanagerd EXC_BAD_ACCESS")
-    func testTestmanagerdExcBadAccess() throws {
+    func managerdExcBadAccess() throws {
         let stderr = "testmanagerd: EXC_BAD_ACCESS in HIServices"
         let result = try ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
@@ -52,7 +50,7 @@ struct ErrorExtractorInfrastructureTests {
     }
 
     @Test("Detects testmanagerd lost connection")
-    func testTestmanagerdLostConnection() throws {
+    func managerdLostConnection() throws {
         let stderr = "testmanagerd lost connection to test process"
         let result = try ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
@@ -68,7 +66,7 @@ struct ErrorExtractorInfrastructureTests {
     }
 
     @Test("No warning for clean stderr")
-    func testCleanStderr() throws {
+    func cleanStderr() throws {
         let stderr = "note: Using new build system"
         let result = try ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
@@ -84,7 +82,7 @@ struct ErrorExtractorInfrastructureTests {
     }
 
     @Test("No warning when stderr is nil")
-    func testNilStderr() throws {
+    func nilStderr() throws {
         let result = try ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
@@ -98,7 +96,7 @@ struct ErrorExtractorInfrastructureTests {
     }
 
     @Test("Failed tests throw MCPError with warning appended")
-    func testFailedWithWarning() {
+    func failedWithWarning() {
         #expect(throws: Error.self) {
             try ErrorExtractor.formatTestToolResult(
                 output: """
@@ -113,7 +111,7 @@ struct ErrorExtractorInfrastructureTests {
     }
 
     @Test("Detects IDETestRunnerDaemon crash")
-    func testIDETestRunnerDaemonCrash() throws {
+    func iDETestRunnerDaemonCrash() throws {
         let stderr = "IDETestRunnerDaemon crash report generated"
         let result = try ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",

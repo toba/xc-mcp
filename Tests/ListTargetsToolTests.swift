@@ -8,8 +8,7 @@ import XcodeProj
 @testable import XCMCPTools
 
 struct ListTargetsToolTests {
-
-    @Test func testListTargetsToolCreation() {
+    @Test func listTargetsToolCreation() {
         let tool = ListTargetsTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -17,7 +16,7 @@ struct ListTargetsToolTests {
         #expect(toolDefinition.description == "List all targets in an Xcode project")
     }
 
-    @Test func testListTargetsWithMissingProjectPath() throws {
+    @Test func listTargetsWithMissingProjectPath() throws {
         let tool = ListTargetsTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -25,7 +24,7 @@ struct ListTargetsToolTests {
         }
     }
 
-    @Test func testListTargetsWithInvalidProjectPath() throws {
+    @Test func listTargetsWithInvalidProjectPath() throws {
         let tool = ListTargetsTool(pathUtility: PathUtility(basePath: "/tmp"))
         let arguments: [String: Value] = [
             "project_path": Value.string("/nonexistent/path.xcodeproj")
@@ -36,10 +35,11 @@ struct ListTargetsToolTests {
         }
     }
 
-    @Test func testListTargetsWithEmptyProject() throws {
+    @Test func listTargetsWithEmptyProject() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let tool = ListTargetsTool(pathUtility: PathUtility(basePath: tempDir.path))

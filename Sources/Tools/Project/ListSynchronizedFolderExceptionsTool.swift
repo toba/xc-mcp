@@ -22,7 +22,8 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "folder_path": .object([
                         "type": .string("string"),
@@ -60,7 +61,8 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
             guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
             else {
                 throw MCPError.invalidParams(
-                    "Synchronized folder '\(folderPath)' not found in project")
+                    "Synchronized folder '\(folderPath)' not found in project"
+                )
             }
 
             let exceptions = syncGroup.exceptions ?? []
@@ -126,7 +128,8 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to list synchronized folder exceptions: \(error.localizedDescription)")
+                "Failed to list synchronized folder exceptions: \(error.localizedDescription)"
+            )
         }
     }
 }

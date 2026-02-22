@@ -34,7 +34,8 @@ public struct BuildSimTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."),
+                            "Path to the .xcodeproj file. Uses session default if not specified."
+                        ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
@@ -45,17 +46,20 @@ public struct BuildSimTool: Sendable {
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to build. Uses session default if not specified."),
+                            "The scheme to build. Uses session default if not specified."
+                        ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."),
+                            "Build configuration (Debug or Release). Defaults to Debug."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -71,7 +75,8 @@ public struct BuildSimTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments)
+            from: arguments
+        )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
@@ -96,9 +101,11 @@ public struct BuildSimTool: Sendable {
                         NextStepHints.content(hints: [
                             NextStepHint(
                                 tool: "launch_app_sim",
-                                description: "Launch the built app on the simulator"),
+                                description: "Launch the built app on the simulator"
+                            ),
                             NextStepHint(
-                                tool: "test_sim", description: "Run tests on the simulator"),
+                                tool: "test_sim", description: "Run tests on the simulator"
+                            ),
                         ]),
                     ]
                 )

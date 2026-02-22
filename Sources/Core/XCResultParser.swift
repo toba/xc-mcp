@@ -5,7 +5,6 @@ import Foundation
 /// Extracts complete failure messages and test output that may be truncated
 /// in xcodebuild's text output.
 public enum XCResultParser {
-
     /// Detailed test results extracted from an xcresult bundle.
     public struct TestResults: Sendable {
         /// Failed tests with complete failure messages.
@@ -137,7 +136,8 @@ public enum XCResultParser {
 
         guard let children = testCase["children"] as? [[String: Any]] else {
             return FailedTest(
-                test: testName, message: "Test failed", file: nil, line: nil, duration: duration)
+                test: testName, message: "Test failed", file: nil, line: nil, duration: duration
+            )
         }
 
         // Collect all failure messages and source references from children

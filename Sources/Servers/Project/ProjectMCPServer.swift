@@ -20,6 +20,13 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case removeTarget = "remove_target"
     case renameTarget = "rename_target"
     case renameScheme = "rename_scheme"
+    case createScheme = "create_scheme"
+    case validateScheme = "validate_scheme"
+    case createTestPlan = "create_test_plan"
+    case addTargetToTestPlan = "add_target_to_test_plan"
+    case removeTargetFromTestPlan = "remove_target_from_test_plan"
+    case addTestPlanToScheme = "add_test_plan_to_scheme"
+    case listTestPlans = "list_test_plans"
     case renameGroup = "rename_group"
     case addDependency = "add_dependency"
     case setBuildSetting = "set_build_setting"
@@ -120,6 +127,13 @@ public struct ProjectMCPServer: Sendable {
         let removeTargetTool = RemoveTargetTool(pathUtility: pathUtility)
         let renameTargetTool = RenameTargetTool(pathUtility: pathUtility)
         let renameSchemeTool = RenameSchemeTool(pathUtility: pathUtility)
+        let createSchemeTool = CreateSchemeTool(pathUtility: pathUtility)
+        let validateSchemeTool = ValidateSchemeTool(pathUtility: pathUtility)
+        let createTestPlanTool = CreateTestPlanTool(pathUtility: pathUtility)
+        let addTargetToTestPlanTool = AddTargetToTestPlanTool(pathUtility: pathUtility)
+        let removeTargetFromTestPlanTool = RemoveTargetFromTestPlanTool(pathUtility: pathUtility)
+        let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
+        let listTestPlansTool = ListTestPlansTool(pathUtility: pathUtility)
         let renameGroupTool = RenameGroupTool(pathUtility: pathUtility)
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
@@ -177,6 +191,13 @@ public struct ProjectMCPServer: Sendable {
                 removeTargetTool.tool(),
                 renameTargetTool.tool(),
                 renameSchemeTool.tool(),
+                createSchemeTool.tool(),
+                validateSchemeTool.tool(),
+                createTestPlanTool.tool(),
+                addTargetToTestPlanTool.tool(),
+                removeTargetFromTestPlanTool.tool(),
+                addTestPlanToSchemeTool.tool(),
+                listTestPlansTool.tool(),
                 renameGroupTool.tool(),
                 addDependencyTool.tool(),
                 setBuildSettingTool.tool(),
@@ -246,6 +267,20 @@ public struct ProjectMCPServer: Sendable {
                 return try renameTargetTool.execute(arguments: arguments)
             case .renameScheme:
                 return try renameSchemeTool.execute(arguments: arguments)
+            case .createScheme:
+                return try createSchemeTool.execute(arguments: arguments)
+            case .validateScheme:
+                return try validateSchemeTool.execute(arguments: arguments)
+            case .createTestPlan:
+                return try createTestPlanTool.execute(arguments: arguments)
+            case .addTargetToTestPlan:
+                return try addTargetToTestPlanTool.execute(arguments: arguments)
+            case .removeTargetFromTestPlan:
+                return try removeTargetFromTestPlanTool.execute(arguments: arguments)
+            case .addTestPlanToScheme:
+                return try addTestPlanToSchemeTool.execute(arguments: arguments)
+            case .listTestPlans:
+                return try listTestPlansTool.execute(arguments: arguments)
             case .renameGroup:
                 return try renameGroupTool.execute(arguments: arguments)
             case .addDependency:

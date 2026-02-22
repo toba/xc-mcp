@@ -62,14 +62,16 @@ public struct ScreenshotMacWindowTool: Sendable {
 
         if appName == nil && bundleId == nil && windowTitle == nil {
             throw MCPError.invalidParams(
-                "At least one of app_name, bundle_id, or window_title is required.")
+                "At least one of app_name, bundle_id, or window_title is required."
+            )
         }
 
         // Get available windows
         let availableContent: SCShareableContent
         do {
             availableContent = try await SCShareableContent.excludingDesktopWindows(
-                false, onScreenWindowsOnly: true)
+                false, onScreenWindowsOnly: true
+            )
         } catch {
             throw MCPError.internalError(
                 "Failed to get screen content. Ensure Screen Recording permission is granted in "
@@ -107,7 +109,8 @@ public struct ScreenshotMacWindowTool: Sendable {
             if let windowTitle { criteria.append("window_title='\(windowTitle)'") }
             throw MCPError.invalidParams(
                 "No window found matching \(criteria.joined(separator: ", ")). "
-                    + "Make sure the app is running and has a visible window.")
+                    + "Make sure the app is running and has a visible window."
+            )
         }
 
         // Capture the window
@@ -129,13 +132,16 @@ public struct ScreenshotMacWindowTool: Sendable {
                     } else {
                         continuation.resume(
                             throwing: MCPError.internalError(
-                                "Screenshot capture returned nil image."))
+                                "Screenshot capture returned nil image."
+                            )
+                        )
                     }
                 }
             }
         } catch {
             throw MCPError.internalError(
-                "Failed to capture window screenshot: \(error.localizedDescription)")
+                "Failed to capture window screenshot: \(error.localizedDescription)"
+            )
         }
 
         // Convert to PNG data
@@ -151,7 +157,8 @@ public struct ScreenshotMacWindowTool: Sendable {
                 try pngData.write(to: url)
             } catch {
                 throw MCPError.internalError(
-                    "Failed to save screenshot to '\(savePath)': \(error.localizedDescription)")
+                    "Failed to save screenshot to '\(savePath)': \(error.localizedDescription)"
+                )
             }
         }
 

@@ -30,7 +30,8 @@ public struct InteractFindTool: Sendable {
                             "title": .object([
                                 "type": .string("string"),
                                 "description": .string(
-                                    "Title text to match. Case-insensitive substring match."),
+                                    "Title text to match. Case-insensitive substring match."
+                                ),
                             ]),
                             "identifier": .object([
                                 "type": .string("string"),
@@ -41,14 +42,17 @@ public struct InteractFindTool: Sendable {
                             "value": .object([
                                 "type": .string("string"),
                                 "description": .string(
-                                    "Value to match. Case-insensitive substring match."),
+                                    "Value to match. Case-insensitive substring match."
+                                ),
                             ]),
                             "max_depth": .object([
                                 "type": .string("integer"),
                                 "description": .string(
-                                    "Maximum depth to search. Default 10."),
+                                    "Maximum depth to search. Default 10."
+                                ),
                             ]),
-                        ]) { _, new in new }),
+                        ]) { _, new in new }
+                    ),
                     "required": .array([]),
                 ]
             )
@@ -65,7 +69,8 @@ public struct InteractFindTool: Sendable {
 
         guard role != nil || title != nil || identifier != nil || value != nil else {
             throw MCPError.invalidParams(
-                "At least one search criterion (role, title, identifier, value) is required.")
+                "At least one search criterion (role, title, identifier, value) is required."
+            )
         }
 
         // Get full tree and cache it

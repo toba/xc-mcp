@@ -44,7 +44,8 @@ struct RemoveAppExtensionToolTests {
     func removeWidgetExtension() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
-                UUID().uuidString)
+                UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -53,7 +54,8 @@ struct RemoveAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         // First add an extension
         let addTool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -96,7 +98,8 @@ struct RemoveAppExtensionToolTests {
     func removeNonExistentExtension() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
-                UUID().uuidString)
+                UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -105,7 +108,8 @@ struct RemoveAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
         let result = try removeTool.execute(arguments: [
@@ -124,7 +128,8 @@ struct RemoveAppExtensionToolTests {
     func removeNonExtensionTargetFails() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
-                UUID().uuidString)
+                UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -133,7 +138,8 @@ struct RemoveAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
         let result = try removeTool.execute(arguments: [
@@ -152,7 +158,8 @@ struct RemoveAppExtensionToolTests {
     func removeExtensionCleansUpEmbedPhase() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
-                UUID().uuidString)
+                UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -161,7 +168,8 @@ struct RemoveAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         // Add an extension
         let addTool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -196,7 +204,8 @@ struct RemoveAppExtensionToolTests {
     func removeMultipleExtensions() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
-                UUID().uuidString)
+                UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -205,7 +214,8 @@ struct RemoveAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         // Add two extensions
         let addTool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))

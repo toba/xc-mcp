@@ -2,7 +2,6 @@ import Foundation
 
 /// Formats a `BuildResult` into concise, structured text for MCP tool output.
 public enum BuildResultFormatter {
-
     /// Formats a build result for display.
     ///
     /// Produces compact output like:
@@ -74,7 +73,8 @@ public enum BuildResultFormatter {
         // Coverage summary
         if let coverage = result.coverage {
             parts.append(
-                String(format: "Coverage: %.1f%%", coverage.lineCoverage))
+                String(format: "Coverage: %.1f%%", coverage.lineCoverage)
+            )
         }
 
         return parts.joined(separator: "\n\n")
@@ -94,7 +94,8 @@ public enum BuildResultFormatter {
         var details: [String] = []
         if result.summary.errors > 0 {
             details.append(
-                "\(result.summary.errors) error\(result.summary.errors == 1 ? "" : "s")")
+                "\(result.summary.errors) error\(result.summary.errors == 1 ? "" : "s")"
+            )
         }
         if result.summary.linkerErrors > 0 {
             details.append(
@@ -103,7 +104,8 @@ public enum BuildResultFormatter {
         }
         if result.summary.warnings > 0 {
             details.append(
-                "\(result.summary.warnings) warning\(result.summary.warnings == 1 ? "" : "s")")
+                "\(result.summary.warnings) warning\(result.summary.warnings == 1 ? "" : "s")"
+            )
         }
         if let buildTime = result.summary.buildTime {
             details.append(buildTime)

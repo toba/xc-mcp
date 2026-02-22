@@ -6,11 +6,13 @@ import Testing
 @Suite("Linker Error Tests")
 struct LinkerErrorTests {
     @Test("Parse undefined symbol linker error")
-    func testParseLinkerError() throws {
+    func parseLinkerError() throws {
         let parser = BuildOutputParser()
 
-        let fixtureURL = Bundle.module.url(
-            forResource: "linker-error-output", withExtension: "txt", subdirectory: "Fixtures")!
+        let fixtureURL = try #require(
+            Bundle.module.url(
+                forResource: "linker-error-output", withExtension: "txt", subdirectory: "Fixtures"
+            ))
         let input = try String(contentsOf: fixtureURL, encoding: .utf8)
 
         let result = parser.parse(input: input)
@@ -20,7 +22,7 @@ struct LinkerErrorTests {
     }
 
     @Test("Parse inline linker error")
-    func testParseInlineLinkerError() {
+    func parseInlineLinkerError() {
         let parser = BuildOutputParser()
         let input = """
             Undefined symbols for architecture arm64:
@@ -40,7 +42,7 @@ struct LinkerErrorTests {
     }
 
     @Test("Parse framework not found linker error")
-    func testFrameworkNotFound() {
+    func frameworkNotFound() {
         let parser = BuildOutputParser()
         let input = """
             ld: framework not found SomeFramework
@@ -55,7 +57,7 @@ struct LinkerErrorTests {
     }
 
     @Test("Parse library not found linker error")
-    func testLibraryNotFound() {
+    func libraryNotFound() {
         let parser = BuildOutputParser()
         let input = """
             ld: library not found for -lSomeLib
@@ -70,7 +72,7 @@ struct LinkerErrorTests {
     }
 
     @Test("Deduplicate linker errors")
-    func testDeduplicateLinkerErrors() {
+    func deduplicateLinkerErrors() {
         let parser = BuildOutputParser()
         let input = """
             Undefined symbols for architecture arm64:

@@ -27,7 +27,8 @@ public struct XCStringsCreateFileTool: Sendable {
                     "overwrite": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Overwrite existing file if it exists (default: false)"),
+                            "Overwrite existing file if it exists (default: false)"
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("file")]),
@@ -43,14 +44,16 @@ public struct XCStringsCreateFileTool: Sendable {
         do {
             let resolvedPath = try pathUtility.resolvePath(from: filePath)
             try XCStringsParser.createFile(
-                at: resolvedPath, sourceLanguage: sourceLanguage, overwrite: overwrite)
+                at: resolvedPath, sourceLanguage: sourceLanguage, overwrite: overwrite
+            )
 
             return CallTool.Result(
                 content: [
                     .text(
                         "Created xcstrings file at '\(resolvedPath)' with source language '\(sourceLanguage)'"
                     )
-                ])
+                ]
+            )
         } catch let error as XCStringsError {
             throw error.toMCPError()
         } catch let error as PathError {

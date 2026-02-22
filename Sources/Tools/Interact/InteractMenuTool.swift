@@ -27,7 +27,8 @@ public struct InteractMenuTool: Sendable {
                                     "Array of menu item titles to navigate, e.g. [\"File\", \"Save As...\"]."
                                 ),
                             ])
-                        ]) { _, new in new }),
+                        ]) { _, new in new }
+                    ),
                     "required": .array([.string("menu_path")]),
                 ]
             )
@@ -44,6 +45,7 @@ public struct InteractMenuTool: Sendable {
         try interactRunner.navigateMenu(pid: pid, menuPath: menuPath)
 
         return CallTool.Result(
-            content: [.text("Clicked menu: \(menuPath.joined(separator: " > "))")])
+            content: [.text("Clicked menu: \(menuPath.joined(separator: " > "))")]
+        )
     }
 }

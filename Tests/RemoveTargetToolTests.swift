@@ -41,7 +41,8 @@ struct RemoveTargetToolTests {
     func removeExistingTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -51,7 +52,8 @@ struct RemoveTargetToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         // Verify target exists
         var xcodeproj = try XcodeProj(path: projectPath)
@@ -84,7 +86,8 @@ struct RemoveTargetToolTests {
     func removeNonExistentTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -115,7 +118,8 @@ struct RemoveTargetToolTests {
     func removeTargetWithDependencies() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -125,7 +129,8 @@ struct RemoveTargetToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "MainApp", at: projectPath)
+            name: "TestProject", targetName: "MainApp", at: projectPath
+        )
 
         // Add another target
         let addTool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))

@@ -21,7 +21,8 @@ public struct RemoveSwiftPackageTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "package_url": .object([
                         "type": .string("string"),
@@ -30,7 +31,8 @@ public struct RemoveSwiftPackageTool: Sendable {
                     "remove_from_targets": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Whether to remove package from all targets (default: true)"),
+                            "Whether to remove package from all targets (default: true)"
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("package_url")]),
@@ -119,7 +121,8 @@ public struct RemoveSwiftPackageTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to remove Swift Package from Xcode project: \(error.localizedDescription)")
+                "Failed to remove Swift Package from Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

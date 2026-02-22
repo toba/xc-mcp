@@ -22,7 +22,8 @@ public struct KeyPressTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "key": .object([
                         "type": .string("string"),
@@ -45,7 +46,8 @@ public struct KeyPressTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get key
@@ -63,16 +65,19 @@ public struct KeyPressTool: Sendable {
                 result = try await simctlRunner.run(arguments: ["io", simulator, "button", "lock"])
             case "volumeup":
                 result = try await simctlRunner.run(
-                    arguments: ["io", simulator, "button", "volumeUp"])
+                    arguments: ["io", simulator, "button", "volumeUp"]
+                )
             case "volumedown":
                 result = try await simctlRunner.run(
-                    arguments: ["io", simulator, "button", "volumeDown"])
+                    arguments: ["io", simulator, "button", "volumeDown"]
+                )
             case "siri":
                 result = try await simctlRunner.run(arguments: ["io", simulator, "button", "siri"])
             default:
                 // For other keys, use keyboard key command
                 result = try await simctlRunner.run(
-                    arguments: ["io", simulator, "keyboard", "key", key])
+                    arguments: ["io", simulator, "keyboard", "key", key]
+                )
             }
 
             if result.succeeded {

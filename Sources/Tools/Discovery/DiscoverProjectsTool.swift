@@ -20,22 +20,26 @@ public struct DiscoverProjectsTool: Sendable {
                     "path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Directory path to search in. Defaults to the base path."),
+                            "Directory path to search in. Defaults to the base path."
+                        ),
                     ]),
                     "max_depth": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Maximum depth to search. Defaults to 3. Use 0 for no recursion."),
+                            "Maximum depth to search. Defaults to 3. Use 0 for no recursion."
+                        ),
                     ]),
                     "include_workspaces": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Include .xcworkspace files in results. Defaults to true."),
+                            "Include .xcworkspace files in results. Defaults to true."
+                        ),
                     ]),
                     "include_projects": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Include .xcodeproj files in results. Defaults to true."),
+                            "Include .xcodeproj files in results. Defaults to true."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -68,7 +72,7 @@ public struct DiscoverProjectsTool: Sendable {
         var workspaces: [String] = []
         var projects: [String] = []
 
-        // Recursive search function
+        /// Recursive search function
         func search(path: String, currentDepth: Int) {
             guard currentDepth <= maxDepth else { return }
 

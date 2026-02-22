@@ -20,22 +20,26 @@ public struct DebugMemoryTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."),
+                            "Process ID of the debugged process."
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."),
+                            "Bundle identifier of the app (uses registered session)."
+                        ),
                     ]),
                     "address": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Memory address to read (hex, e.g., '0x7fff5fbff8c0')."),
+                            "Memory address to read (hex, e.g., '0x7fff5fbff8c0')."
+                        ),
                     ]),
                     "count": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Number of items to read. Defaults to 16."),
+                            "Number of items to read. Defaults to 16."
+                        ),
                     ]),
                     "format": .object([
                         "type": .string("string"),
@@ -46,7 +50,8 @@ public struct DebugMemoryTool: Sendable {
                     "size": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Item size in bytes: 1, 2, 4, or 8. Defaults to 4."),
+                            "Item size in bytes: 1, 2, 4, or 8. Defaults to 4."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("address")]),

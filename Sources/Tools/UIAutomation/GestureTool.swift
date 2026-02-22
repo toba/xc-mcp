@@ -22,7 +22,8 @@ public struct GestureTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "preset": .object([
                         "type": .string("string"),
@@ -43,12 +44,14 @@ public struct GestureTool: Sendable {
                     "screen_width": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Screen width in points. Defaults to 393 (iPhone 15 Pro)."),
+                            "Screen width in points. Defaults to 393 (iPhone 15 Pro)."
+                        ),
                     ]),
                     "screen_height": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Screen height in points. Defaults to 852 (iPhone 15 Pro)."),
+                            "Screen height in points. Defaults to 852 (iPhone 15 Pro)."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("preset")]),
@@ -94,7 +97,8 @@ public struct GestureTool: Sendable {
                     "\(coords.startX)", "\(coords.startY)",
                     "\(coords.endX)", "\(coords.endY)",
                     "--duration", "\(coords.duration)",
-                ])
+                ]
+            )
 
             if result.succeeded {
                 return CallTool.Result(
@@ -105,9 +109,11 @@ public struct GestureTool: Sendable {
                         NextStepHints.content(hints: [
                             NextStepHint(
                                 tool: "screenshot",
-                                description: "Take a screenshot to verify the result"),
+                                description: "Take a screenshot to verify the result"
+                            ),
                             NextStepHint(
-                                tool: "gesture", description: "Perform another gesture preset"),
+                                tool: "gesture", description: "Perform another gesture preset"
+                            ),
                         ]),
                     ]
                 )
@@ -146,28 +152,36 @@ private enum GesturePreset: String, CaseIterable, Sendable {
         switch self {
         case .scrollUp:
             return SwipeCoordinates(
-                startX: 0.5 * w, startY: 0.7 * h, endX: 0.5 * w, endY: 0.3 * h, duration: 0.5)
+                startX: 0.5 * w, startY: 0.7 * h, endX: 0.5 * w, endY: 0.3 * h, duration: 0.5
+            )
         case .scrollDown:
             return SwipeCoordinates(
-                startX: 0.5 * w, startY: 0.3 * h, endX: 0.5 * w, endY: 0.7 * h, duration: 0.5)
+                startX: 0.5 * w, startY: 0.3 * h, endX: 0.5 * w, endY: 0.7 * h, duration: 0.5
+            )
         case .scrollLeft:
             return SwipeCoordinates(
-                startX: 0.8 * w, startY: 0.5 * h, endX: 0.2 * w, endY: 0.5 * h, duration: 0.5)
+                startX: 0.8 * w, startY: 0.5 * h, endX: 0.2 * w, endY: 0.5 * h, duration: 0.5
+            )
         case .scrollRight:
             return SwipeCoordinates(
-                startX: 0.2 * w, startY: 0.5 * h, endX: 0.8 * w, endY: 0.5 * h, duration: 0.5)
+                startX: 0.2 * w, startY: 0.5 * h, endX: 0.8 * w, endY: 0.5 * h, duration: 0.5
+            )
         case .swipeFromLeftEdge:
             return SwipeCoordinates(
-                startX: 0, startY: 0.5 * h, endX: 0.4 * w, endY: 0.5 * h, duration: 0.3)
+                startX: 0, startY: 0.5 * h, endX: 0.4 * w, endY: 0.5 * h, duration: 0.3
+            )
         case .swipeFromRightEdge:
             return SwipeCoordinates(
-                startX: w, startY: 0.5 * h, endX: 0.6 * w, endY: 0.5 * h, duration: 0.3)
+                startX: w, startY: 0.5 * h, endX: 0.6 * w, endY: 0.5 * h, duration: 0.3
+            )
         case .pullToRefresh:
             return SwipeCoordinates(
-                startX: 0.5 * w, startY: 0.15 * h, endX: 0.5 * w, endY: 0.6 * h, duration: 0.5)
+                startX: 0.5 * w, startY: 0.15 * h, endX: 0.5 * w, endY: 0.6 * h, duration: 0.5
+            )
         case .swipeDownToDismiss:
             return SwipeCoordinates(
-                startX: 0.5 * w, startY: 0.1 * h, endX: 0.5 * w, endY: 0.9 * h, duration: 0.5)
+                startX: 0.5 * w, startY: 0.1 * h, endX: 0.5 * w, endY: 0.9 * h, duration: 0.5
+            )
         }
     }
 }

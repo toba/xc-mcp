@@ -24,9 +24,11 @@ public struct InteractUITreeTool: Sendable {
                             "max_depth": .object([
                                 "type": .string("integer"),
                                 "description": .string(
-                                    "Maximum depth to traverse the element tree. Default 3."),
+                                    "Maximum depth to traverse the element tree. Default 3."
+                                ),
                             ])
-                        ]) { _, new in new }),
+                        ]) { _, new in new }
+                    ),
                     "required": .array([]),
                 ]
             )

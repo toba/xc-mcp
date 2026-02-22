@@ -22,12 +22,14 @@ public struct ListTypeIdentifiersTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target to list type identifiers for"),
+                            "Name of the target to list type identifiers for"
+                        ),
                     ]),
                     "kind": .object([
                         "type": .string("string"),
@@ -77,7 +79,8 @@ public struct ListTypeIdentifiersTool: Sendable {
 
             guard
                 let plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName)
+                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName
+                )
             else {
                 return CallTool.Result(
                     content: [
@@ -124,7 +127,8 @@ public struct ListTypeIdentifiersTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "No \(kindLabel) type identifiers found in target '\(targetName)'")
+                            "No \(kindLabel) type identifiers found in target '\(targetName)'"
+                        )
                     ]
                 )
             }
@@ -136,7 +140,8 @@ public struct ListTypeIdentifiersTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to list type identifiers: \(error.localizedDescription)")
+                "Failed to list type identifiers: \(error.localizedDescription)"
+            )
         }
     }
 

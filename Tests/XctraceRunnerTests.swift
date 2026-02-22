@@ -11,7 +11,7 @@ struct XctraceRunnerTests {
     }
 
     @Test("List templates returns output")
-    func testListTemplates() async throws {
+    func listTemplates() async throws {
         let runner = XctraceRunner()
         let result = try await runner.list(kind: "templates")
 
@@ -20,7 +20,7 @@ struct XctraceRunnerTests {
     }
 
     @Test("List instruments returns output")
-    func testListInstruments() async throws {
+    func listInstruments() async throws {
         let runner = XctraceRunner()
         let result = try await runner.list(kind: "instruments")
 
@@ -29,7 +29,7 @@ struct XctraceRunnerTests {
     }
 
     @Test("List devices returns output")
-    func testListDevices() async throws {
+    func listDevices() async throws {
         let runner = XctraceRunner()
         let result = try await runner.list(kind: "devices")
 
@@ -38,7 +38,7 @@ struct XctraceRunnerTests {
     }
 
     @Test("Export with invalid path fails gracefully")
-    func testExportInvalidPath() async throws {
+    func exportInvalidPath() async throws {
         let runner = XctraceRunner()
         let result = try await runner.export(
             inputPath: "/nonexistent/path.trace",
@@ -50,7 +50,7 @@ struct XctraceRunnerTests {
     }
 
     @Test("Run with invalid arguments fails gracefully")
-    func testRunInvalidArgs() async throws {
+    func runInvalidArgs() async throws {
         let runner = XctraceRunner()
         let result = try await runner.run(arguments: ["invalid-command-that-does-not-exist"])
 

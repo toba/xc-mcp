@@ -31,7 +31,8 @@ public struct GetMacBundleIdTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."),
+                            "Path to the .xcodeproj file. Uses session default if not specified."
+                        ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
@@ -48,7 +49,8 @@ public struct GetMacBundleIdTool: Sendable {
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."),
+                            "Build configuration (Debug or Release). Defaults to Debug."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -145,19 +147,22 @@ public struct GetMacBundleIdTool: Sendable {
 
         guard FileManager.default.fileExists(atPath: plistPath) else {
             throw MCPError.invalidParams(
-                "App bundle not found or invalid: \(appPath). Info.plist not found.")
+                "App bundle not found or invalid: \(appPath). Info.plist not found."
+            )
         }
 
         guard let plistData = FileManager.default.contents(atPath: plistPath),
             let plist = try? PropertyListSerialization.propertyList(
-                from: plistData, options: [], format: nil) as? [String: Any]
+                from: plistData, options: [], format: nil
+            ) as? [String: Any]
         else {
             throw MCPError.internalError("Failed to read Info.plist from \(appPath)")
         }
 
         guard let bundleId = plist["CFBundleIdentifier"] as? String else {
             throw MCPError.internalError(
-                "CFBundleIdentifier not found in Info.plist for \(appPath)")
+                "CFBundleIdentifier not found in Info.plist for \(appPath)"
+            )
         }
 
         var output = "Bundle identifier for '\(appPath)':\n"

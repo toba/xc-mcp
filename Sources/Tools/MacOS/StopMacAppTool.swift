@@ -20,12 +20,14 @@ public struct StopMacAppTool: Sendable {
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app to stop (e.g., 'com.example.MyApp')."),
+                            "Bundle identifier of the app to stop (e.g., 'com.example.MyApp')."
+                        ),
                     ]),
                     "app_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the app to stop (e.g., 'MyApp'). Alternative to bundle_id."),
+                            "Name of the app to stop (e.g., 'MyApp'). Alternative to bundle_id."
+                        ),
                     ]),
                     "force": .object([
                         "type": .string("boolean"),

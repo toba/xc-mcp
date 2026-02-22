@@ -9,11 +9,12 @@ import XCMCPCore
 /// Requires `scripts/fetch-fixtures.sh` to have been run first.
 @Suite(.enabled(if: IntegrationFixtures.available))
 struct DiscoveryToolIntegrationTests {
-
     @Test func discoverProjects_IceCubesApp() throws {
         let tool = DiscoverProjectsTool(
             pathUtility: PathUtility(
-                basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false))
+                basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false
+            )
+        )
         let result = try tool.execute(arguments: [
             "path": .string(IntegrationFixtures.iceCubesRepoDir)
         ])
@@ -25,7 +26,9 @@ struct DiscoveryToolIntegrationTests {
     @Test func discoverProjects_Alamofire() throws {
         let tool = DiscoverProjectsTool(
             pathUtility: PathUtility(
-                basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false))
+                basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false
+            )
+        )
         let result = try tool.execute(arguments: [
             "path": .string(IntegrationFixtures.alamofireRepoDir)
         ])
@@ -37,7 +40,9 @@ struct DiscoveryToolIntegrationTests {
     @Test func discoverProjects_SwiftFormat() throws {
         let tool = DiscoverProjectsTool(
             pathUtility: PathUtility(
-                basePath: IntegrationFixtures.swiftFormatRepoDir, sandboxEnabled: false))
+                basePath: IntegrationFixtures.swiftFormatRepoDir, sandboxEnabled: false
+            )
+        )
         let result = try tool.execute(arguments: [
             "path": .string(IntegrationFixtures.swiftFormatRepoDir)
         ])

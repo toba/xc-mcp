@@ -22,7 +22,8 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "folder_path": .object([
                         "type": .string("string"),
@@ -33,7 +34,8 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target whose exception set to modify or remove"),
+                            "Name of the target whose exception set to modify or remove"
+                        ),
                     ]),
                     "file_name": .object([
                         "type": .string("string"),
@@ -55,7 +57,8 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
             case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, folder_path, and target_name are required")
+                "project_path, folder_path, and target_name are required"
+            )
         }
 
         let fileName: String?
@@ -80,7 +83,8 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
             guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
             else {
                 throw MCPError.invalidParams(
-                    "Synchronized folder '\(folderPath)' not found in project")
+                    "Synchronized folder '\(folderPath)' not found in project"
+                )
             }
 
             // Find the exception set for this target
@@ -149,7 +153,8 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to remove synchronized folder exception: \(error.localizedDescription)")
+                "Failed to remove synchronized folder exception: \(error.localizedDescription)"
+            )
         }
     }
 }

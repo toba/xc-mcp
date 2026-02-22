@@ -20,22 +20,26 @@ public struct DebugWatchpointTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."),
+                            "Process ID of the debugged process."
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."),
+                            "Bundle identifier of the app (uses registered session)."
+                        ),
                     ]),
                     "action": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Action to perform: 'add', 'remove', or 'list'."),
+                            "Action to perform: 'add', 'remove', or 'list'."
+                        ),
                     ]),
                     "variable": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Variable name to watch (for add action)."),
+                            "Variable name to watch (for add action)."
+                        ),
                     ]),
                     "address": .object([
                         "type": .string("string"),
@@ -46,12 +50,14 @@ public struct DebugWatchpointTool: Sendable {
                     "watchpoint_id": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Watchpoint ID to remove (for remove action)."),
+                            "Watchpoint ID to remove (for remove action)."
+                        ),
                     ]),
                     "condition": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Condition expression for the watchpoint (for add action)."),
+                            "Condition expression for the watchpoint (for add action)."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("action")]),

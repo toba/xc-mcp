@@ -25,7 +25,8 @@ public struct InstallAppSimTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("app_path")]),

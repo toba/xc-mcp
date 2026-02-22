@@ -22,7 +22,7 @@ public struct DoctorTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async -> CallTool.Result {
+    public func execute(arguments _: [String: Value]) async -> CallTool.Result {
         var diagnostics: [String] = []
         diagnostics.append("=== Xcode MCP Doctor ===\n")
 
@@ -119,10 +119,12 @@ public struct DoctorTool: Sendable {
                 NextStepHints.content(hints: [
                     NextStepHint(
                         tool: "set_session_defaults",
-                        description: "Configure project, scheme, and device defaults"),
+                        description: "Configure project, scheme, and device defaults"
+                    ),
                     NextStepHint(
                         tool: "discover_projs",
-                        description: "Discover Xcode projects in the workspace"),
+                        description: "Discover Xcode projects in the workspace"
+                    ),
                 ]),
             ]
         )
@@ -139,7 +141,8 @@ public struct DoctorTool: Sendable {
 
             // Get Xcode version
             let versionResult = await runCommand(
-                "/usr/bin/xcodebuild", arguments: ["-version"])
+                "/usr/bin/xcodebuild", arguments: ["-version"]
+            )
             if versionResult.exitCode == 0 {
                 let version =
                     versionResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -167,7 +170,8 @@ public struct DoctorTool: Sendable {
                 results.append("[OK] Using Xcode's built-in developer tools")
             } else {
                 results.append(
-                    "[FAIL] Command Line Tools not found. Run: xcode-select --install")
+                    "[FAIL] Command Line Tools not found. Run: xcode-select --install"
+                )
             }
         }
 
@@ -184,12 +188,14 @@ public struct DoctorTool: Sendable {
 
             // Check if license is accepted
             let licenseCheck = await runCommand(
-                "/usr/bin/xcodebuild", arguments: ["-checkFirstLaunchStatus"])
+                "/usr/bin/xcodebuild", arguments: ["-checkFirstLaunchStatus"]
+            )
             if licenseCheck.exitCode == 0 {
                 results.append("[OK] Xcode license accepted")
             } else if licenseCheck.stderr.contains("license") {
                 results.append(
-                    "[FAIL] Xcode license not accepted. Run: sudo xcodebuild -license accept")
+                    "[FAIL] Xcode license not accepted. Run: sudo xcodebuild -license accept"
+                )
             }
         } else {
             results.append("[FAIL] xcodebuild not found")
@@ -207,7 +213,8 @@ public struct DoctorTool: Sendable {
 
             // Count available simulators
             let listResult = await runCommand(
-                "/usr/bin/xcrun", arguments: ["simctl", "list", "devices", "-j"])
+                "/usr/bin/xcrun", arguments: ["simctl", "list", "devices", "-j"]
+            )
             if listResult.exitCode == 0 {
                 // Count devices from JSON
                 let deviceCount =
@@ -303,7 +310,8 @@ public struct DoctorTool: Sendable {
                 if let freeSize = attrs[.systemFreeSize] as? Int64 {
                     let freeGB = Double(freeSize) / 1_073_741_824
                     results.append(
-                        String(format: "Disk free space: %.1f GB", freeGB))
+                        String(format: "Disk free space: %.1f GB", freeGB)
+                    )
                 }
                 // Count subdirectories to estimate project count
                 let contents = try fm.contentsOfDirectory(atPath: derivedDataPath)
@@ -324,7 +332,8 @@ public struct DoctorTool: Sendable {
     ) {
         do {
             let result = try ProcessResult.run(
-                command, arguments: arguments, mergeStderr: false)
+                command, arguments: arguments, mergeStderr: false
+            )
             return (result.exitCode, result.stdout, result.stderr)
         } catch {
             return (-1, "", error.localizedDescription)

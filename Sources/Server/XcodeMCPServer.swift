@@ -23,6 +23,13 @@ public enum ToolName: String, CaseIterable, Sendable {
     case removeTarget = "remove_target"
     case renameTarget = "rename_target"
     case renameScheme = "rename_scheme"
+    case createScheme = "create_scheme"
+    case validateScheme = "validate_scheme"
+    case createTestPlan = "create_test_plan"
+    case addTargetToTestPlan = "add_target_to_test_plan"
+    case removeTargetFromTestPlan = "remove_target_from_test_plan"
+    case addTestPlanToScheme = "add_test_plan_to_scheme"
+    case listTestPlans = "list_test_plans"
     case renameGroup = "rename_group"
     case addDependency = "add_dependency"
     case setBuildSetting = "set_build_setting"
@@ -81,7 +88,6 @@ public enum ToolName: String, CaseIterable, Sendable {
     case testDevice = "test_device"
 
     // macOS tools
-    case checkBuild = "check_build"
     case buildMacOS = "build_macos"
     case buildRunMacOS = "build_run_macos"
     case launchMacApp = "launch_mac_app"
@@ -177,7 +183,10 @@ public enum ToolName: String, CaseIterable, Sendable {
         // Project
         case .createXcodeproj, .listTargets, .listBuildConfigurations, .listFiles,
             .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
-            .addTarget, .removeTarget, .renameTarget, .renameScheme, .renameGroup,
+            .addTarget, .removeTarget, .renameTarget, .renameScheme, .createScheme,
+            .validateScheme, .createTestPlan, .addTargetToTestPlan,
+            .removeTargetFromTestPlan, .addTestPlanToScheme, .listTestPlans,
+            .renameGroup,
             .addDependency, .setBuildSetting,
             .addFramework,
             .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
@@ -203,7 +212,7 @@ public enum ToolName: String, CaseIterable, Sendable {
             .stopAppDevice, .getDeviceAppPath, .testDevice:
             return .device
         // macOS
-        case .checkBuild, .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
+        case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
             .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
             return .macos
         // Discovery
@@ -322,6 +331,13 @@ public struct XcodeMCPServer: Sendable {
         let removeTargetTool = RemoveTargetTool(pathUtility: pathUtility)
         let renameTargetTool = RenameTargetTool(pathUtility: pathUtility)
         let renameSchemeTool = RenameSchemeTool(pathUtility: pathUtility)
+        let createSchemeTool = CreateSchemeTool(pathUtility: pathUtility)
+        let validateSchemeTool = ValidateSchemeTool(pathUtility: pathUtility)
+        let createTestPlanTool = CreateTestPlanTool(pathUtility: pathUtility)
+        let addTargetToTestPlanTool = AddTargetToTestPlanTool(pathUtility: pathUtility)
+        let removeTargetFromTestPlanTool = RemoveTargetFromTestPlanTool(pathUtility: pathUtility)
+        let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
+        let listTestPlansTool = ListTestPlansTool(pathUtility: pathUtility)
         let renameGroupTool = RenameGroupTool(pathUtility: pathUtility)
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
@@ -421,9 +437,6 @@ public struct XcodeMCPServer: Sendable {
         )
 
         // Create macOS tools
-        let checkBuildTool = CheckBuildTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
-        )
         let buildMacOSTool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
         )
@@ -587,6 +600,13 @@ public struct XcodeMCPServer: Sendable {
             (.removeTarget, removeTargetTool.tool()),
             (.renameTarget, renameTargetTool.tool()),
             (.renameScheme, renameSchemeTool.tool()),
+            (.createScheme, createSchemeTool.tool()),
+            (.validateScheme, validateSchemeTool.tool()),
+            (.createTestPlan, createTestPlanTool.tool()),
+            (.addTargetToTestPlan, addTargetToTestPlanTool.tool()),
+            (.removeTargetFromTestPlan, removeTargetFromTestPlanTool.tool()),
+            (.addTestPlanToScheme, addTestPlanToSchemeTool.tool()),
+            (.listTestPlans, listTestPlansTool.tool()),
             (.renameGroup, renameGroupTool.tool()),
             (.addDependency, addDependencyTool.tool()),
             (.setBuildSetting, setBuildSettingTool.tool()),
@@ -641,7 +661,6 @@ public struct XcodeMCPServer: Sendable {
             (.getDeviceAppPath, getDeviceAppPathTool.tool()),
             (.testDevice, testDeviceTool.tool()),
             // macOS tools
-            (.checkBuild, checkBuildTool.tool()),
             (.buildMacOS, buildMacOSTool.tool()),
             (.buildRunMacOS, buildRunMacOSTool.tool()),
             (.launchMacApp, launchMacAppTool.tool()),
@@ -784,6 +803,20 @@ public struct XcodeMCPServer: Sendable {
                 return try renameTargetTool.execute(arguments: arguments)
             case .renameScheme:
                 return try renameSchemeTool.execute(arguments: arguments)
+            case .createScheme:
+                return try createSchemeTool.execute(arguments: arguments)
+            case .validateScheme:
+                return try validateSchemeTool.execute(arguments: arguments)
+            case .createTestPlan:
+                return try createTestPlanTool.execute(arguments: arguments)
+            case .addTargetToTestPlan:
+                return try addTargetToTestPlanTool.execute(arguments: arguments)
+            case .removeTargetFromTestPlan:
+                return try removeTargetFromTestPlanTool.execute(arguments: arguments)
+            case .addTestPlanToScheme:
+                return try addTestPlanToSchemeTool.execute(arguments: arguments)
+            case .listTestPlans:
+                return try listTestPlansTool.execute(arguments: arguments)
             case .renameGroup:
                 return try renameGroupTool.execute(arguments: arguments)
             case .addDependency:
@@ -899,8 +932,6 @@ public struct XcodeMCPServer: Sendable {
             case .testDevice:
                 return try await testDeviceTool.execute(arguments: arguments)
             // macOS tools
-            case .checkBuild:
-                return try await checkBuildTool.execute(arguments: arguments)
             case .buildMacOS:
                 return try await buildMacOSTool.execute(arguments: arguments)
             case .buildRunMacOS:

@@ -5,7 +5,7 @@ import Testing
 @Suite("BuildResultFormatter Tests")
 struct BuildResultFormatterTests {
     @Test("Format successful build")
-    func testFormatSuccessfulBuild() {
+    func formatSuccessfulBuild() {
         let result = BuildResult(
             status: "success",
             summary: BuildSummary(
@@ -22,7 +22,7 @@ struct BuildResultFormatterTests {
     }
 
     @Test("Format failed build with errors")
-    func testFormatFailedBuild() {
+    func formatFailedBuild() {
         let result = BuildResult(
             status: "failed",
             summary: BuildSummary(
@@ -31,7 +31,8 @@ struct BuildResultFormatterTests {
             errors: [
                 BuildError(
                     file: "Foo.swift", line: 42, message: "cannot convert 'Int' to 'String'",
-                    column: 10),
+                    column: 10
+                ),
                 BuildError(file: "Bar.swift", line: 15, message: "missing return", column: 5),
             ],
             warnings: [
@@ -50,7 +51,7 @@ struct BuildResultFormatterTests {
     }
 
     @Test("Format test results passed")
-    func testFormatTestResultsPassed() {
+    func formatTestResultsPassed() {
         let result = BuildResult(
             status: "success",
             summary: BuildSummary(
@@ -69,7 +70,7 @@ struct BuildResultFormatterTests {
     }
 
     @Test("Format test results with failures")
-    func testFormatTestResultsFailed() {
+    func formatTestResultsFailed() {
         let result = BuildResult(
             status: "failed",
             summary: BuildSummary(
@@ -81,9 +82,11 @@ struct BuildResultFormatterTests {
             failedTests: [
                 FailedTest(
                     test: "MyTests.testLogin", message: "Expected true, got false",
-                    file: "MyTests.swift", line: 55),
+                    file: "MyTests.swift", line: 55
+                ),
                 FailedTest(
-                    test: "MyTests.testLogout", message: "Timeout after 5.0s", file: nil, line: nil),
+                    test: "MyTests.testLogout", message: "Timeout after 5.0s", file: nil, line: nil
+                ),
             ]
         )
 
@@ -98,7 +101,7 @@ struct BuildResultFormatterTests {
     }
 
     @Test("Format linker errors")
-    func testFormatLinkerErrors() {
+    func formatLinkerErrors() {
         let result = BuildResult(
             status: "failed",
             summary: BuildSummary(
@@ -120,7 +123,7 @@ struct BuildResultFormatterTests {
     }
 
     @Test("Format coverage in test results")
-    func testFormatCoverageInTestResults() {
+    func formatCoverageInTestResults() {
         let result = BuildResult(
             status: "success",
             summary: BuildSummary(
@@ -138,7 +141,7 @@ struct BuildResultFormatterTests {
     }
 
     @Test("ErrorExtractor.extractBuildErrors integration")
-    func testErrorExtractorIntegration() {
+    func errorExtractorIntegration() {
         let output = """
             Building for debugging...
             main.swift:10:5: error: cannot find 'x' in scope
@@ -153,7 +156,7 @@ struct BuildResultFormatterTests {
     }
 
     @Test("ErrorExtractor.extractTestResults integration")
-    func testErrorExtractorTestResultsIntegration() {
+    func errorExtractorTestResultsIntegration() {
         let output = """
             Test Case 'MyTests.testA' passed (0.001 seconds).
             Test Case 'MyTests.testB' passed (0.002 seconds).

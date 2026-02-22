@@ -125,7 +125,8 @@ public enum XCStringsWriter {
             do {
                 result = try addTranslations(
                     to: result, key: entry.key, translations: entry.translations,
-                    allowOverwrite: allowOverwrite)
+                    allowOverwrite: allowOverwrite
+                )
                 succeeded += 1
             } catch {
                 errors.append(BatchWriteError(key: entry.key, error: error.localizedDescription))
@@ -148,7 +149,8 @@ public enum XCStringsWriter {
         for entry in entries {
             do {
                 result = try updateTranslations(
-                    in: result, key: entry.key, translations: entry.translations)
+                    in: result, key: entry.key, translations: entry.translations
+                )
                 succeeded += 1
             } catch {
                 errors.append(BatchWriteError(key: entry.key, error: error.localizedDescription))

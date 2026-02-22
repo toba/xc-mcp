@@ -419,7 +419,8 @@ public final class BuildOutputParser: @unchecked Sendable {
         if trimmed.hasPrefix("\"") && trimmed.contains("\", referenced from:") {
             if let endQuote = trimmed.range(of: "\", referenced from:") {
                 let symbol = String(
-                    trimmed[trimmed.index(after: trimmed.startIndex)..<endQuote.lowerBound])
+                    trimmed[trimmed.index(after: trimmed.startIndex)..<endQuote.lowerBound]
+                )
                 pendingLinkerSymbol = symbol
             }
             return true
@@ -484,7 +485,8 @@ public final class BuildOutputParser: @unchecked Sendable {
                 appendLinkerErrorIfNew(
                     LinkerError(
                         symbol: symbol, architecture: arch,
-                        conflictingFiles: pendingConflictingFiles)
+                        conflictingFiles: pendingConflictingFiles
+                    )
                 )
                 pendingDuplicateSymbol = nil
                 pendingConflictingFiles = []
@@ -706,7 +708,8 @@ public final class BuildOutputParser: @unchecked Sendable {
             {
                 let file = components[0..<(components.count - 2)].joined(separator: ":")
                 return BuildWarning(
-                    file: file, line: lineNum, message: message, column: colNum)
+                    file: file, line: lineNum, message: message, column: colNum
+                )
             } else if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
                 let file = components[0..<(components.count - 1)].joined(separator: ":")
                 return BuildWarning(file: file, line: lineNum, message: message)
@@ -849,24 +852,28 @@ public final class BuildOutputParser: @unchecked Sendable {
         {
             if let errorRange = line.range(of: ": error: -["),
                 let bracketEnd = line.range(
-                    of: "] : ", range: errorRange.upperBound..<line.endIndex)
+                    of: "] : ", range: errorRange.upperBound..<line.endIndex
+                )
             {
                 let beforeError = String(line[..<errorRange.lowerBound])
                 let testName = String(line[errorRange.upperBound..<bracketEnd.lowerBound])
                 let message = String(line[bracketEnd.upperBound...])
 
                 let components = beforeError.split(
-                    separator: ":", omittingEmptySubsequences: false)
+                    separator: ":", omittingEmptySubsequences: false
+                )
                 if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
                     let file = components[0..<(components.count - 1)].joined(separator: ":")
                     return FailedTest(
-                        test: testName, message: message, file: file, line: lineNum)
+                        test: testName, message: message, file: file, line: lineNum
+                    )
                 }
             }
 
             if let bracketStart = line.range(of: "-["),
                 let bracketEnd = line.range(
-                    of: "]", range: bracketStart.upperBound..<line.endIndex)
+                    of: "]", range: bracketStart.upperBound..<line.endIndex
+                )
             {
                 let testName = String(line[bracketStart.upperBound..<bracketEnd.lowerBound])
                 return FailedTest(
@@ -910,7 +917,8 @@ public final class BuildOutputParser: @unchecked Sendable {
 
             let message = duration.map { String(format: "%.3f seconds", $0) } ?? "failed"
             return FailedTest(
-                test: test, message: message, file: nil, line: nil, duration: duration)
+                test: test, message: message, file: nil, line: nil, duration: duration
+            )
         }
 
         // Swift Testing: <symbol> Test "name" recorded an issue at file:line:column: message
@@ -933,19 +941,22 @@ public final class BuildOutputParser: @unchecked Sendable {
                     remaining[remaining.index(remaining.startIndex, offsetBy: issueMarker.count)...]
                 )
                 let parts = afterIssue.split(
-                    separator: ":", maxSplits: 3, omittingEmptySubsequences: false)
+                    separator: ":", maxSplits: 3, omittingEmptySubsequences: false
+                )
                 if parts.count >= 4, let lineNum = Int(parts[1]) {
                     let file = String(parts[0])
                     let message = String(parts[3]).trimmingCharacters(in: .whitespaces)
                     return FailedTest(
-                        test: extracted.name, message: message, file: file, line: lineNum)
+                        test: extracted.name, message: message, file: file, line: lineNum
+                    )
                 }
             }
 
             let failedMarker = " failed after "
             if remaining.hasPrefix(failedMarker) {
                 let afterStr = remaining[
-                    remaining.index(remaining.startIndex, offsetBy: failedMarker.count)...]
+                    remaining.index(remaining.startIndex, offsetBy: failedMarker.count)...
+                ]
                 var duration: Double?
                 if let secondsRange = afterStr.range(of: " seconds") {
                     let durationStr = String(afterStr[..<secondsRange.lowerBound])
@@ -959,7 +970,8 @@ public final class BuildOutputParser: @unchecked Sendable {
 
                 return FailedTest(
                     test: extracted.name, message: "Test failed", file: nil, line: nil,
-                    duration: duration)
+                    duration: duration
+                )
             }
         }
 
@@ -1043,8 +1055,8 @@ public final class BuildOutputParser: @unchecked Sendable {
             }
 
             if let inRange = trimmedLine.range(
-                of: " in ", range: withRange.upperBound..<trimmedLine.endIndex)
-            {
+                of: " in ", range: withRange.upperBound..<trimmedLine.endIndex
+            ) {
                 let afterIn = trimmedLine[inRange.upperBound...]
                 if let parenStart = afterIn.range(of: " (") {
                     accumulateTestTime(String(afterIn[..<parenStart.lowerBound]))
@@ -1059,12 +1071,13 @@ public final class BuildOutputParser: @unchecked Sendable {
         // Format 1: Test run with N tests failed, M tests passed after X seconds.
         // Format 2: Test run with N test(s) in M suite(s) failed after X seconds with Y issue(s).
         if let testRunRange = line.range(of: "Test run with ") {
-
             // Format 1: "N tests failed, M tests passed after X seconds."
             if let failedRange = line.range(
-                of: " failed, ", range: testRunRange.upperBound..<line.endIndex),
+                of: " failed, ", range: testRunRange.upperBound..<line.endIndex
+            ),
                 let passedRange = line.range(
-                    of: " passed after ", range: failedRange.upperBound..<line.endIndex)
+                    of: " passed after ", range: failedRange.upperBound..<line.endIndex
+                )
             {
                 let beforeFailed = line[testRunRange.upperBound..<failedRange.lowerBound]
                 let failedCountStr = beforeFailed.split(separator: " ").first
@@ -1091,7 +1104,8 @@ public final class BuildOutputParser: @unchecked Sendable {
 
             // Format 2: "N test(s) in M suite(s) failed after X seconds with Y issue(s)."
             if let failedAfterRange = line.range(
-                of: " failed after ", range: testRunRange.upperBound..<line.endIndex),
+                of: " failed after ", range: testRunRange.upperBound..<line.endIndex
+            ),
                 line.contains(" issue")
             {
                 let beforeFailed = line[testRunRange.upperBound..<failedAfterRange.lowerBound]
@@ -1132,8 +1146,8 @@ public final class BuildOutputParser: @unchecked Sendable {
                     if total > 0 {
                         let afterPassed = line[passedAfter.upperBound...]
                         if let secondsRange = afterPassed.range(
-                            of: " seconds", options: .backwards)
-                        {
+                            of: " seconds", options: .backwards
+                        ) {
                             accumulateTestTime(String(afterPassed[..<secondsRange.lowerBound]))
                         } else {
                             accumulateTestTime(String(afterPassed))

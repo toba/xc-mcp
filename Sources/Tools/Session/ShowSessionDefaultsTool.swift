@@ -22,7 +22,7 @@ public struct ShowSessionDefaultsTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async -> CallTool.Result {
+    public func execute(arguments _: [String: Value]) async -> CallTool.Result {
         let summary = await sessionManager.summary()
         return CallTool.Result(
             content: [

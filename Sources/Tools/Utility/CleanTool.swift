@@ -24,7 +24,8 @@ public struct CleanTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."),
+                            "Path to the .xcodeproj file. Uses session default if not specified."
+                        ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
@@ -35,17 +36,20 @@ public struct CleanTool: Sendable {
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to clean. Uses session default if not specified."),
+                            "The scheme to clean. Uses session default if not specified."
+                        ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."),
+                            "Build configuration (Debug or Release). Defaults to Debug."
+                        ),
                     ]),
                     "derived_data": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Also delete DerivedData for this project. Defaults to false."),
+                            "Also delete DerivedData for this project. Defaults to false."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -55,7 +59,8 @@ public struct CleanTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments)
+            from: arguments
+        )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let cleanDerivedData = arguments.getBool("derived_data")
@@ -74,12 +79,14 @@ public struct CleanTool: Sendable {
 
             if result.succeeded || buildResult.status == "success" {
                 messages.append(
-                    "Clean succeeded for scheme '\(scheme)' (\(configuration) configuration)")
+                    "Clean succeeded for scheme '\(scheme)' (\(configuration) configuration)"
+                )
 
                 // Clean derived data if requested
                 if cleanDerivedData {
                     let derivedDataResult = try await cleanDerivedDataDirectory(
-                        projectPath: projectPath, workspacePath: workspacePath)
+                        projectPath: projectPath, workspacePath: workspacePath
+                    )
                     messages.append(derivedDataResult)
                 }
 
@@ -107,11 +114,13 @@ public struct CleanTool: Sendable {
         if let workspacePath {
             projectName =
                 URL(fileURLWithPath: workspacePath).lastPathComponent.replacingOccurrences(
-                    of: ".xcworkspace", with: "")
+                    of: ".xcworkspace", with: ""
+                )
         } else if let projectPath {
             projectName =
                 URL(fileURLWithPath: projectPath).lastPathComponent.replacingOccurrences(
-                    of: ".xcodeproj", with: "")
+                    of: ".xcodeproj", with: ""
+                )
         } else {
             return "Could not determine project name for DerivedData cleanup"
         }
@@ -143,5 +152,4 @@ public struct CleanTool: Sendable {
             return "Failed to clean DerivedData: \(error.localizedDescription)"
         }
     }
-
 }

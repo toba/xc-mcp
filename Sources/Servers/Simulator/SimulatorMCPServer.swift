@@ -26,13 +26,13 @@ public enum SimulatorToolName: String, CaseIterable, Sendable {
     case simStatusbar = "sim_statusbar"
 
     // UI Automation tools
-    case tap = "tap"
+    case tap
     case longPress = "long_press"
-    case swipe = "swipe"
+    case swipe
     case typeText = "type_text"
     case keyPress = "key_press"
-    case button = "button"
-    case screenshot = "screenshot"
+    case button
+    case screenshot
 
     // Logging tools
     case startSimLogCap = "start_sim_log_cap"
@@ -88,50 +88,65 @@ public struct SimulatorMCPServer: Sendable {
         let bootSimTool = BootSimTool(simctlRunner: simctlRunner)
         let openSimTool = OpenSimTool()
         let buildSimTool = BuildSimTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let buildRunSimTool = BuildRunSimTool(
             xcodebuildRunner: xcodebuildRunner,
             simctlRunner: simctlRunner,
             sessionManager: sessionManager
         )
         let installAppSimTool = InstallAppSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let launchAppSimTool = LaunchAppSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let stopAppSimTool = StopAppSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let getSimAppPathTool = GetSimAppPathTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let testSimTool = TestSimTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let recordSimVideoTool = RecordSimVideoTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let launchAppLogsSimTool = LaunchAppLogsSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let eraseSimTool = EraseSimTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let setSimLocationTool = SetSimLocationTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let resetSimLocationTool = ResetSimLocationTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let setSimAppearanceTool = SetSimAppearanceTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let simStatusBarTool = SimStatusBarTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
 
         // Create UI automation tools
         let tapTool = TapTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let longPressTool = LongPressTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let swipeTool = SwipeTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let typeTextTool = TypeTextTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let keyPressTool = KeyPressTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let buttonTool = ButtonTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let screenshotTool = ScreenshotTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
 
         // Create logging tools
         let startSimLogCapTool = StartSimLogCapTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager)
+            simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let stopSimLogCapTool = StopSimLogCapTool(sessionManager: sessionManager)
 
         // Create session tools
@@ -222,7 +237,6 @@ public struct SimulatorMCPServer: Sendable {
                 return try await setSimAppearanceTool.execute(arguments: arguments)
             case .simStatusbar:
                 return try await simStatusBarTool.execute(arguments: arguments)
-
             // UI Automation tools
             case .tap:
                 return try await tapTool.execute(arguments: arguments)
@@ -238,13 +252,11 @@ public struct SimulatorMCPServer: Sendable {
                 return try await buttonTool.execute(arguments: arguments)
             case .screenshot:
                 return try await screenshotTool.execute(arguments: arguments)
-
             // Logging tools
             case .startSimLogCap:
                 return try await startSimLogCapTool.execute(arguments: arguments)
             case .stopSimLogCap:
                 return try await stopSimLogCapTool.execute(arguments: arguments)
-
             // Session tools
             case .setSessionDefaults:
                 return try await setSessionDefaultsTool.execute(arguments: arguments)

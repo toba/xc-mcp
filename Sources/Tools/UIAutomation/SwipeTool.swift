@@ -22,32 +22,38 @@ public struct SwipeTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "start_x": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Starting X coordinate."),
+                            "Starting X coordinate."
+                        ),
                     ]),
                     "start_y": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Starting Y coordinate."),
+                            "Starting Y coordinate."
+                        ),
                     ]),
                     "end_x": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Ending X coordinate."),
+                            "Ending X coordinate."
+                        ),
                     ]),
                     "end_y": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Ending Y coordinate."),
+                            "Ending Y coordinate."
+                        ),
                     ]),
                     "duration": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Duration of the swipe in seconds. Defaults to 0.5."),
+                            "Duration of the swipe in seconds. Defaults to 0.5."
+                        ),
                     ]),
                 ]),
                 "required": .array([
@@ -66,7 +72,8 @@ public struct SwipeTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get coordinates
@@ -122,7 +129,8 @@ public struct SwipeTool: Sendable {
                     "io", simulator, "swipe",
                     "\(startX)", "\(startY)", "\(endX)", "\(endY)",
                     "--duration", "\(duration)",
-                ])
+                ]
+            )
 
             if result.succeeded {
                 return CallTool.Result(

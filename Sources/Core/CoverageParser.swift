@@ -4,7 +4,6 @@ import Foundation
 
 /// Parses code coverage data from `.xcresult` bundles and SPM `.profraw` files.
 public struct CoverageParser: Sendable {
-
     public init() {}
 
     // MARK: - Main Entry Point
@@ -15,12 +14,13 @@ public struct CoverageParser: Sendable {
         let fileManager = FileManager.default
         let coveragePath: String
 
-        if !path.isEmpty && fileManager.fileExists(atPath: path) {
+        if !path.isEmpty, fileManager.fileExists(atPath: path) {
             coveragePath = path
         } else {
             if let latestXCResult = findLatestXCResultInDerivedData(projectHint: targetFilter) {
                 return convertXCResultToJSON(
-                    xcresultPath: latestXCResult, targetFilter: targetFilter)
+                    xcresultPath: latestXCResult, targetFilter: targetFilter
+                )
             }
 
             let defaultPaths = [
@@ -69,19 +69,22 @@ public struct CoverageParser: Sendable {
             let xcresultBundles = findXCResultBundles(in: coveragePath)
             if let firstXCResult = xcresultBundles.first {
                 return convertXCResultToJSON(
-                    xcresultPath: firstXCResult, targetFilter: targetFilter)
+                    xcresultPath: firstXCResult, targetFilter: targetFilter
+                )
             }
 
             if let latestXCResult = findLatestXCResultInDerivedData() {
                 return convertXCResultToJSON(
-                    xcresultPath: latestXCResult, targetFilter: targetFilter)
+                    xcresultPath: latestXCResult, targetFilter: targetFilter
+                )
             }
 
             return nil
         } else {
             if coveragePath.hasSuffix(".xcresult") {
                 return convertXCResultToJSON(
-                    xcresultPath: coveragePath, targetFilter: targetFilter)
+                    xcresultPath: coveragePath, targetFilter: targetFilter
+                )
             } else {
                 return parseCoverageJSON(at: coveragePath, targetFilter: targetFilter)
             }
@@ -120,7 +123,8 @@ public struct CoverageParser: Sendable {
     private func findLatestXCResultInDerivedData(projectHint: String? = nil) -> String? {
         let homeDir = NSHomeDirectory()
         let derivedDataPath = (homeDir as NSString).appendingPathComponent(
-            "Library/Developer/Xcode/DerivedData")
+            "Library/Developer/Xcode/DerivedData"
+        )
 
         guard FileManager.default.fileExists(atPath: derivedDataPath) else {
             return nil
@@ -188,7 +192,8 @@ public struct CoverageParser: Sendable {
 
                 guard
                     let macosContents = try? FileManager.default.contentsOfDirectory(
-                        atPath: macosPath)
+                        atPath: macosPath
+                    )
                 else {
                     continue
                 }
@@ -308,7 +313,7 @@ public struct CoverageParser: Sendable {
             }
 
             if let filter = targetFilter, let name = targetName {
-                if !name.contains(filter) && !filter.contains(name) {
+                if !name.contains(filter), !filter.contains(name) {
                     continue
                 }
             }

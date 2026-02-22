@@ -46,19 +46,19 @@ public enum PreviewExtractor {
             }
 
             // Skip line comments
-            if chars[i] == "/" && i + 1 < count && chars[i + 1] == "/" {
+            if chars[i] == "/", i + 1 < count, chars[i + 1] == "/" {
                 i = skipLineComment(chars, from: i)
                 continue
             }
 
             // Skip block comments
-            if chars[i] == "/" && i + 1 < count && chars[i + 1] == "*" {
+            if chars[i] == "/", i + 1 < count, chars[i + 1] == "*" {
                 i = skipBlockComment(chars, from: i)
                 continue
             }
 
             // Look for #Preview
-            if chars[i] == "#" && matchesPreview(chars, at: i) {
+            if chars[i] == "#", matchesPreview(chars, at: i) {
                 i += 8  // skip "#Preview"
 
                 // Skip whitespace
@@ -66,7 +66,7 @@ public enum PreviewExtractor {
 
                 // Check for optional name: ("...")
                 var name: String?
-                if i < count && chars[i] == "(" {
+                if i < count, chars[i] == "(" {
                     let (extractedName, newIndex) = extractPreviewName(chars, from: i)
                     name = extractedName
                     i = newIndex
@@ -74,7 +74,7 @@ public enum PreviewExtractor {
                 }
 
                 // Expect opening brace
-                guard i < count && chars[i] == "{" else {
+                guard i < count, chars[i] == "{" else {
                     continue
                 }
 
@@ -83,7 +83,7 @@ public enum PreviewExtractor {
                 var depth = 1
                 var j = bodyStart
 
-                while j < count && depth > 0 {
+                while j < count, depth > 0 {
                     let c = chars[j]
 
                     if c == "\"" {
@@ -91,12 +91,12 @@ public enum PreviewExtractor {
                         continue
                     }
 
-                    if c == "/" && j + 1 < count && chars[j + 1] == "/" {
+                    if c == "/", j + 1 < count, chars[j + 1] == "/" {
                         j = skipLineComment(chars, from: j)
                         continue
                     }
 
-                    if c == "/" && j + 1 < count && chars[j + 1] == "*" {
+                    if c == "/", j + 1 < count, chars[j + 1] == "*" {
                         j = skipBlockComment(chars, from: j)
                         continue
                     }
@@ -323,7 +323,7 @@ public enum PreviewExtractor {
     private static func extractPreviewName(
         _ chars: [Unicode.Scalar], from index: Int
     ) -> (String?, Int) {
-        guard index < chars.count && chars[index] == "(" else {
+        guard index < chars.count, chars[index] == "(" else {
             return (nil, index)
         }
 
@@ -331,11 +331,11 @@ public enum PreviewExtractor {
         i = skipWhitespace(chars, from: i)
 
         // Look for string literal
-        guard i < chars.count && chars[i] == "\"" else {
+        guard i < chars.count, chars[i] == "\"" else {
             // Not a simple name — skip to closing paren
             var depth = 1
             var j = index + 1
-            while j < chars.count && depth > 0 {
+            while j < chars.count, depth > 0 {
                 if chars[j] == "(" { depth += 1 } else if chars[j] == ")" { depth -= 1 }
                 j += 1
             }
@@ -346,8 +346,8 @@ public enum PreviewExtractor {
         let stringStart = i + 1
         i = stringStart
         var nameScalars: [Unicode.Scalar] = []
-        while i < chars.count && chars[i] != "\"" {
-            if chars[i] == "\\" && i + 1 < chars.count {
+        while i < chars.count, chars[i] != "\"" {
+            if chars[i] == "\\", i + 1 < chars.count {
                 nameScalars.append(chars[i + 1])
                 i += 2
             } else {
@@ -359,7 +359,7 @@ public enum PreviewExtractor {
         if i < chars.count { i += 1 }  // skip closing quote
 
         // Skip to closing paren
-        while i < chars.count && chars[i] != ")" {
+        while i < chars.count, chars[i] != ")" {
             i += 1
         }
         if i < chars.count { i += 1 }  // skip closing paren

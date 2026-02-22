@@ -92,7 +92,8 @@ struct SetBuildSettingToolTests {
     func setBuildSettingForSpecificConfiguration() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -102,7 +103,8 @@ struct SetBuildSettingToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath)
+            name: "TestProject", targetName: "App", at: projectPath
+        )
 
         // Set build setting
         let tool = SetBuildSettingTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -143,7 +145,8 @@ struct SetBuildSettingToolTests {
     func setBuildSettingForAllConfigurations() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -153,7 +156,8 @@ struct SetBuildSettingToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath)
+            name: "TestProject", targetName: "App", at: projectPath
+        )
 
         // Set build setting for all configurations
         let tool = SetBuildSettingTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -194,7 +198,8 @@ struct SetBuildSettingToolTests {
     func setBuildSettingWithNonExistentTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -230,7 +235,8 @@ struct SetBuildSettingToolTests {
         // set_build_setting drops dstSubfolder fields from PBXCopyFilesBuildPhase sections
 
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -239,11 +245,12 @@ struct SetBuildSettingToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath)
+            name: "TestProject", targetName: "App", at: projectPath
+        )
 
         // Add a copy files build phase with dstSubfolderSpec = .resources
         let xcodeproj = try XcodeProj(path: projectPath)
-        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }!
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
 
         let copyPhase = PBXCopyFilesBuildPhase(
             dstPath: "styles",
@@ -256,7 +263,8 @@ struct SetBuildSettingToolTests {
 
         // Verify the phase was created correctly
         let verifyProject = try XcodeProj(path: projectPath)
-        let verifyTarget = verifyProject.pbxproj.nativeTargets.first { $0.name == "App" }!
+        let verifyTarget = try #require(
+            verifyProject.pbxproj.nativeTargets.first { $0.name == "App" })
         let verifyCopyPhase = verifyTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
             .first { $0.name == "Copy Styles" }
         #expect(verifyCopyPhase?.dstSubfolderSpec == .resources)
@@ -274,7 +282,8 @@ struct SetBuildSettingToolTests {
 
         // Verify the copy files phase still has the correct dstSubfolderSpec
         let updatedProject = try XcodeProj(path: projectPath)
-        let updatedTarget = updatedProject.pbxproj.nativeTargets.first { $0.name == "App" }!
+        let updatedTarget = try #require(
+            updatedProject.pbxproj.nativeTargets.first { $0.name == "App" })
         let updatedCopyPhase = updatedTarget.buildPhases
             .compactMap { $0 as? PBXCopyFilesBuildPhase }
             .first { $0.name == "Copy Styles" }
@@ -286,7 +295,8 @@ struct SetBuildSettingToolTests {
         )
         #expect(
             updatedCopyPhase?.dstPath == "styles",
-            "dstPath should remain 'styles' after set_build_setting")
+            "dstPath should remain 'styles' after set_build_setting"
+        )
     }
 
     @Test("set_build_setting preserves Xcode 26 string-based dstSubfolder on round-trip")
@@ -296,7 +306,8 @@ struct SetBuildSettingToolTests {
         // `dstSubfolderSpec = 7;` (numeric). XcodeProj drops the string variant.
 
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -306,7 +317,8 @@ struct SetBuildSettingToolTests {
         // Create a project normally first, then patch the pbxproj to use Xcode 26 format
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath)
+            name: "TestProject", targetName: "App", at: projectPath
+        )
 
         // Read the pbxproj and inject a PBXCopyFilesBuildPhase with string-based dstSubfolder
         let pbxprojPath = projectPath + "project.pbxproj"
@@ -332,22 +344,25 @@ struct SetBuildSettingToolTests {
         if content.contains("/* Begin PBXFileReference section */") {
             content = content.replacingOccurrences(
                 of: "/* Begin PBXFileReference section */",
-                with: copyPhaseBlock + "/* Begin PBXFileReference section */")
+                with: copyPhaseBlock + "/* Begin PBXFileReference section */"
+            )
         } else {
             content = content.replacingOccurrences(
                 of: "/* Begin PBXGroup section */",
-                with: copyPhaseBlock + "/* Begin PBXGroup section */")
+                with: copyPhaseBlock + "/* Begin PBXGroup section */"
+            )
         }
 
         // Add the copy phase ref to buildPhases array
         if let buildPhasesRange = content.range(of: "buildPhases = (") {
             let searchStart = buildPhasesRange.upperBound
             if let closingRange = content.range(
-                of: "\n\t\t\t);", range: searchStart..<content.endIndex)
-            {
+                of: "\n\t\t\t);", range: searchStart..<content.endIndex
+            ) {
                 content.insert(
                     contentsOf: "\n\t\t\t\t\(copyPhaseID) /* Copy Styles */,",
-                    at: closingRange.lowerBound)
+                    at: closingRange.lowerBound
+                )
             }
         }
 
@@ -380,7 +395,8 @@ struct SetBuildSettingToolTests {
     func setBuildSettingWithNonExistentConfiguration() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -390,7 +406,8 @@ struct SetBuildSettingToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath)
+            name: "TestProject", targetName: "App", at: projectPath
+        )
 
         let tool = SetBuildSettingTool(pathUtility: PathUtility(basePath: tempDir.path))
         let args: [String: Value] = [

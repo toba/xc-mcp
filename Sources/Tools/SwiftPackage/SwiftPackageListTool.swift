@@ -40,7 +40,8 @@ public struct SwiftPackageListTool: Sendable {
             packagePath = sessionPackagePath
         } else {
             throw MCPError.invalidParams(
-                "package_path is required. Set it with set_session_defaults or pass it directly.")
+                "package_path is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Verify Package.swift exists

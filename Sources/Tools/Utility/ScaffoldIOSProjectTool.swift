@@ -40,12 +40,14 @@ public struct ScaffoldIOSProjectTool: Sendable {
                     "deployment_target": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Minimum iOS version to support (e.g., '16.0'). Defaults to '17.0'."),
+                            "Minimum iOS version to support (e.g., '16.0'). Defaults to '17.0'."
+                        ),
                     ]),
                     "include_tests": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Include unit test and UI test targets. Defaults to true."),
+                            "Include unit test and UI test targets. Defaults to true."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("project_name"), .string("path")]),
@@ -75,7 +77,8 @@ public struct ScaffoldIOSProjectTool: Sendable {
 
         do {
             try fileManager.createDirectory(
-                atPath: projectDir, withIntermediateDirectories: true)
+                atPath: projectDir, withIntermediateDirectories: true
+            )
 
             // Create app source directory
             let appDir = URL(fileURLWithPath: projectDir).appendingPathComponent(projectName).path
@@ -107,11 +110,13 @@ public struct ScaffoldIOSProjectTool: Sendable {
                 "\(projectName).xcworkspace"
             ).path
             try createWorkspace(
-                at: workspacePath, projectName: projectName, projectPath: projectPath)
+                at: workspacePath, projectName: projectName, projectPath: projectPath
+            )
 
             // Create source files
             try createSourceFiles(
-                appDir: appDir, projectName: projectName, bundleIdPrefix: bundleIdPrefix)
+                appDir: appDir, projectName: projectName, bundleIdPrefix: bundleIdPrefix
+            )
 
             // Create Swift package for shared code
             let packageDir = URL(fileURLWithPath: projectDir).appendingPathComponent(
@@ -119,7 +124,8 @@ public struct ScaffoldIOSProjectTool: Sendable {
             ).path
             try createSwiftPackage(
                 at: packageDir, packageName: "\(projectName)Kit",
-                deploymentTarget: deploymentTarget)
+                deploymentTarget: deploymentTarget
+            )
 
             // Create test directories if needed
             if includeTests {
@@ -127,14 +133,16 @@ public struct ScaffoldIOSProjectTool: Sendable {
                     "\(projectName)Tests"
                 ).path
                 try fileManager.createDirectory(
-                    atPath: testDir, withIntermediateDirectories: true)
+                    atPath: testDir, withIntermediateDirectories: true
+                )
                 try createTestFile(at: testDir, projectName: projectName)
 
                 let uiTestDir = URL(fileURLWithPath: projectDir).appendingPathComponent(
                     "\(projectName)UITests"
                 ).path
                 try fileManager.createDirectory(
-                    atPath: uiTestDir, withIntermediateDirectories: true)
+                    atPath: uiTestDir, withIntermediateDirectories: true
+                )
                 try createUITestFile(at: uiTestDir, projectName: projectName)
             }
 
@@ -162,10 +170,10 @@ public struct ScaffoldIOSProjectTool: Sendable {
     private func createProject(
         pbxproj: PBXProj,
         projectName: String,
-        organizationName: String,
+        organizationName _: String,
         bundleIdPrefix: String,
         deploymentTarget: String,
-        includeTests: Bool
+        includeTests _: Bool
     ) throws -> PBXProject {
         // Create main group
         let mainGroup = PBXGroup(children: [], sourceTree: .group)
@@ -175,11 +183,15 @@ public struct ScaffoldIOSProjectTool: Sendable {
         let debugConfig = XCBuildConfiguration(
             name: "Debug",
             buildSettings: createProjectBuildSettings(
-                debug: true, deploymentTarget: deploymentTarget))
+                debug: true, deploymentTarget: deploymentTarget
+            )
+        )
         let releaseConfig = XCBuildConfiguration(
             name: "Release",
             buildSettings: createProjectBuildSettings(
-                debug: false, deploymentTarget: deploymentTarget))
+                debug: false, deploymentTarget: deploymentTarget
+            )
+        )
         pbxproj.add(object: debugConfig)
         pbxproj.add(object: releaseConfig)
 
@@ -216,11 +228,11 @@ public struct ScaffoldIOSProjectTool: Sendable {
 
     private func createAppTarget(
         pbxproj: PBXProj,
-        project: PBXProject,
+        project _: PBXProject,
         projectName: String,
         bundleIdPrefix: String,
         deploymentTarget: String,
-        mainGroup: PBXGroup
+        mainGroup _: PBXGroup
     ) -> PBXNativeTarget {
         // Create source build phase
         let sourcesBuildPhase = PBXSourcesBuildPhase(files: [])
@@ -312,7 +324,7 @@ public struct ScaffoldIOSProjectTool: Sendable {
 
     private func createAppTargetBuildSettings(
         debug: Bool,
-        productName: String,
+        productName _: String,
         bundleId: String,
         deploymentTarget: String
     ) -> BuildSettings {
@@ -348,12 +360,14 @@ public struct ScaffoldIOSProjectTool: Sendable {
         return settings
     }
 
-    private func createWorkspace(at path: String, projectName: String, projectPath: String) throws {
+    private func createWorkspace(at path: String, projectName: String, projectPath _: String) throws
+    {
         let workspaceDataPath = URL(fileURLWithPath: path).appendingPathComponent(
             "contents.xcworkspacedata"
         ).path
         try FileManager.default.createDirectory(
-            atPath: path, withIntermediateDirectories: true)
+            atPath: path, withIntermediateDirectories: true
+        )
 
         let content = """
             <?xml version="1.0" encoding="UTF-8"?>
@@ -370,7 +384,7 @@ public struct ScaffoldIOSProjectTool: Sendable {
         try content.write(toFile: workspaceDataPath, atomically: true, encoding: .utf8)
     }
 
-    private func createSourceFiles(appDir: String, projectName: String, bundleIdPrefix: String)
+    private func createSourceFiles(appDir: String, projectName: String, bundleIdPrefix _: String)
         throws
     {
         // Create App.swift
@@ -389,7 +403,8 @@ public struct ScaffoldIOSProjectTool: Sendable {
         try appContent.write(
             toFile: URL(fileURLWithPath: appDir).appendingPathComponent("\(projectName)App.swift")
                 .path,
-            atomically: true, encoding: .utf8)
+            atomically: true, encoding: .utf8
+        )
 
         // Create ContentView.swift
         let contentViewContent = """
@@ -413,7 +428,8 @@ public struct ScaffoldIOSProjectTool: Sendable {
             """
         try contentViewContent.write(
             toFile: URL(fileURLWithPath: appDir).appendingPathComponent("ContentView.swift").path,
-            atomically: true, encoding: .utf8)
+            atomically: true, encoding: .utf8
+        )
     }
 
     private func createSwiftPackage(at path: String, packageName: String, deploymentTarget: String)
@@ -452,7 +468,8 @@ public struct ScaffoldIOSProjectTool: Sendable {
             """
         try packageContent.write(
             toFile: URL(fileURLWithPath: path).appendingPathComponent("Package.swift").path,
-            atomically: true, encoding: .utf8)
+            atomically: true, encoding: .utf8
+        )
 
         // Create Sources directory
         let sourcesDir = URL(fileURLWithPath: path).appendingPathComponent("Sources/\(packageName)")
@@ -470,7 +487,8 @@ public struct ScaffoldIOSProjectTool: Sendable {
         try sourceContent.write(
             toFile: URL(fileURLWithPath: sourcesDir).appendingPathComponent("\(packageName).swift")
                 .path,
-            atomically: true, encoding: .utf8)
+            atomically: true, encoding: .utf8
+        )
 
         // Create Tests directory
         let testsDir = URL(fileURLWithPath: path).appendingPathComponent(
@@ -490,7 +508,8 @@ public struct ScaffoldIOSProjectTool: Sendable {
             toFile: URL(fileURLWithPath: testsDir).appendingPathComponent(
                 "\(packageName)Tests.swift"
             ).path,
-            atomically: true, encoding: .utf8)
+            atomically: true, encoding: .utf8
+        )
     }
 
     private func createTestFile(at testDir: String, projectName: String) throws {
@@ -507,7 +526,8 @@ public struct ScaffoldIOSProjectTool: Sendable {
             toFile: URL(fileURLWithPath: testDir).appendingPathComponent(
                 "\(projectName)Tests.swift"
             ).path,
-            atomically: true, encoding: .utf8)
+            atomically: true, encoding: .utf8
+        )
     }
 
     private func createUITestFile(at uiTestDir: String, projectName: String) throws {
@@ -531,6 +551,7 @@ public struct ScaffoldIOSProjectTool: Sendable {
             toFile: URL(fileURLWithPath: uiTestDir).appendingPathComponent(
                 "\(projectName)UITests.swift"
             ).path,
-            atomically: true, encoding: .utf8)
+            atomically: true, encoding: .utf8
+        )
     }
 }

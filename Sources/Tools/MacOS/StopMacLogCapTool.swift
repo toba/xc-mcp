@@ -20,12 +20,14 @@ public struct StopMacLogCapTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the log capture process to stop."),
+                            "Process ID of the log capture process to stop."
+                        ),
                     ]),
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional path to the log file to return the last N lines from."),
+                            "Optional path to the log file to return the last N lines from."
+                        ),
                     ]),
                     "tail_lines": .object([
                         "type": .string("integer"),
@@ -49,7 +51,8 @@ public struct StopMacLogCapTool: Sendable {
                 try ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
             } else {
                 _ = try? ProcessResult.run(
-                    "/usr/bin/pkill", arguments: ["-f", "/usr/bin/log stream"])
+                    "/usr/bin/pkill", arguments: ["-f", "/usr/bin/log stream"]
+                )
             }
 
             var message = "Stopped log capture"

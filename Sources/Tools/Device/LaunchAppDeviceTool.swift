@@ -29,7 +29,8 @@ public struct LaunchAppDeviceTool: Sendable {
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device UDID. Uses session default if not specified."),
+                            "Device UDID. Uses session default if not specified."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("bundle_id")]),

@@ -24,9 +24,11 @@ public struct InteractGetValueTool: Sendable {
                             "element_id": .object([
                                 "type": .string("integer"),
                                 "description": .string(
-                                    "Element ID from interact_ui_tree."),
+                                    "Element ID from interact_ui_tree."
+                                ),
                             ])
-                        ]) { _, new in new }),
+                        ]) { _, new in new }
+                    ),
                     "required": .array([.string("element_id")]),
                 ]
             )
@@ -43,7 +45,8 @@ public struct InteractGetValueTool: Sendable {
 
         guard
             let cached = await InteractSessionManager.shared.getElement(
-                pid: pid, elementId: elementId)
+                pid: pid, elementId: elementId
+            )
         else {
             throw InteractError.elementNotFound(elementId)
         }

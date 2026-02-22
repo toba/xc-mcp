@@ -26,7 +26,8 @@ public struct ListSimsTool: Sendable {
                     "booted_only": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, only show booted simulators. Defaults to false."),
+                            "If true, only show booted simulators. Defaults to false."
+                        ),
                     ]),
                     "runtime_filter": .object([
                         "type": .string("string"),

@@ -20,12 +20,14 @@ public struct SyncXcodeDefaultsTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."),
+                            "Path to the .xcodeproj file. Uses session default if not specified."
+                        ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."),
+                            "Path to the .xcworkspace file. Uses session default if not specified."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),

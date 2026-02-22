@@ -22,7 +22,8 @@ public struct ScreenshotTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "output_path": .object([
                         "type": .string("string"),
@@ -33,7 +34,8 @@ public struct ScreenshotTool: Sendable {
                     "format": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Image format: 'png' or 'jpeg'. Defaults to 'png'."),
+                            "Image format: 'png' or 'jpeg'. Defaults to 'png'."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -50,7 +52,8 @@ public struct ScreenshotTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get output path
@@ -96,13 +99,17 @@ public struct ScreenshotTool: Sendable {
                         NextStepHints.content(hints: [
                             NextStepHint(
                                 tool: "tap",
-                                description: "Tap a UI element (provide x, y coordinates)"),
+                                description: "Tap a UI element (provide x, y coordinates)"
+                            ),
                             NextStepHint(
-                                tool: "swipe", description: "Swipe on the simulator screen"),
+                                tool: "swipe", description: "Swipe on the simulator screen"
+                            ),
                             NextStepHint(
-                                tool: "gesture", description: "Perform a named gesture preset"),
+                                tool: "gesture", description: "Perform a named gesture preset"
+                            ),
                             NextStepHint(
-                                tool: "screenshot", description: "Take another screenshot"),
+                                tool: "screenshot", description: "Take another screenshot"
+                            ),
                         ]),
                     ]
                 )

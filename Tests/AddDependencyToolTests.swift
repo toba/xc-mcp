@@ -66,7 +66,8 @@ struct AddDependencyToolTests {
     func addDependencyBetweenTargets() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -76,7 +77,8 @@ struct AddDependencyToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath)
+            name: "TestProject", targetName: "App", at: projectPath
+        )
 
         // Add a framework target
         let addTargetTool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -121,7 +123,8 @@ struct AddDependencyToolTests {
     func addDuplicateDependency() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -131,7 +134,8 @@ struct AddDependencyToolTests {
         // Create a test project with targets
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath)
+            name: "TestProject", targetName: "App", at: projectPath
+        )
 
         // Add a framework target
         let addTargetTool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -168,7 +172,8 @@ struct AddDependencyToolTests {
     func addDependencyWithNonExistentTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -200,7 +205,8 @@ struct AddDependencyToolTests {
     func addDependencyWithNonExistentDependency() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -210,7 +216,8 @@ struct AddDependencyToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath)
+            name: "TestProject", targetName: "App", at: projectPath
+        )
 
         let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
         let args: [String: Value] = [

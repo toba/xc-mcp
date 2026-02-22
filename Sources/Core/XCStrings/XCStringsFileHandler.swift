@@ -55,7 +55,7 @@ public struct XCStringsFileHandler: Sendable {
     public func create(sourceLanguage: String, overwrite: Bool = false) throws(XCStringsError) {
         let url = URL(fileURLWithPath: path)
 
-        if !overwrite && FileManager.default.fileExists(atPath: path) {
+        if !overwrite, FileManager.default.fileExists(atPath: path) {
             throw XCStringsError.fileAlreadyExists(path: path)
         }
 

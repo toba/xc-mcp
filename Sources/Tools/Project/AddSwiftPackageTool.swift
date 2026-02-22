@@ -21,7 +21,8 @@ public struct AddSwiftPackageTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "package_url": .object([
                         "type": .string("string"),
@@ -141,7 +142,8 @@ public struct AddSwiftPackageTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add Swift Package to Xcode project: \(error.localizedDescription)")
+                "Failed to add Swift Package to Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 
@@ -153,27 +155,33 @@ public struct AddSwiftPackageTool: Sendable {
         // Parse different requirement formats
         if trimmed.hasPrefix("from:") {
             let version = String(trimmed.dropFirst(5)).trimmingCharacters(
-                in: .whitespacesAndNewlines)
+                in: .whitespacesAndNewlines
+            )
             return .upToNextMajorVersion(version)
         } else if trimmed.hasPrefix("upToNextMajor:") {
             let version = String(trimmed.dropFirst(14)).trimmingCharacters(
-                in: .whitespacesAndNewlines)
+                in: .whitespacesAndNewlines
+            )
             return .upToNextMajorVersion(version)
         } else if trimmed.hasPrefix("upToNextMinor:") {
             let version = String(trimmed.dropFirst(14)).trimmingCharacters(
-                in: .whitespacesAndNewlines)
+                in: .whitespacesAndNewlines
+            )
             return .upToNextMinorVersion(version)
         } else if trimmed.hasPrefix("branch:") {
             let branch = String(trimmed.dropFirst(7)).trimmingCharacters(
-                in: .whitespacesAndNewlines)
+                in: .whitespacesAndNewlines
+            )
             return .branch(branch)
         } else if trimmed.hasPrefix("revision:") {
             let revision = String(trimmed.dropFirst(9)).trimmingCharacters(
-                in: .whitespacesAndNewlines)
+                in: .whitespacesAndNewlines
+            )
             return .revision(revision)
         } else if trimmed.hasPrefix("exact:") {
             let version = String(trimmed.dropFirst(6)).trimmingCharacters(
-                in: .whitespacesAndNewlines)
+                in: .whitespacesAndNewlines
+            )
             return .exact(version)
         } else {
             // Default to exact version if just a version number

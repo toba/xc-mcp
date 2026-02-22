@@ -20,7 +20,8 @@ public struct StopDeviceLogCapTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the log capture process to stop."),
+                            "Process ID of the log capture process to stop."
+                        ),
                     ]),
                     "device": .object([
                         "type": .string("string"),
@@ -31,7 +32,8 @@ public struct StopDeviceLogCapTool: Sendable {
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional path to the log file to return the last N lines from."),
+                            "Optional path to the log file to return the last N lines from."
+                        ),
                     ]),
                     "tail_lines": .object([
                         "type": .string("integer"),
@@ -69,10 +71,12 @@ public struct StopDeviceLogCapTool: Sendable {
             } else if let device {
                 _ = try? ProcessResult.run(
                     "/usr/bin/pkill",
-                    arguments: ["-f", "devicectl.*\(device).*syslog"])
+                    arguments: ["-f", "devicectl.*\(device).*syslog"]
+                )
                 _ = try? ProcessResult.run(
                     "/usr/bin/pkill",
-                    arguments: ["-f", "devicectl device info syslog.*\(device)"])
+                    arguments: ["-f", "devicectl device info syslog.*\(device)"]
+                )
             }
 
             var message = "Stopped log capture"

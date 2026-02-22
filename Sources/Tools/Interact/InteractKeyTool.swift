@@ -22,7 +22,8 @@ public struct InteractKeyTool: Sendable {
                     "key": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Key name to press (e.g., 'return', 'a', 'f5', 'space', 'tab')."),
+                            "Key name to press (e.g., 'return', 'a', 'f5', 'space', 'tab')."
+                        ),
                     ]),
                     "modifiers": .object([
                         "type": .string("array"),

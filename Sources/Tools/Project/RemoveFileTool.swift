@@ -10,6 +10,7 @@ public struct RemoveFileTool: Sendable {
     public init(pathUtility: PathUtility) {
         self.pathUtility = pathUtility
     }
+
     public func tool() -> Tool {
         Tool(
             name: "remove_file",
@@ -20,12 +21,14 @@ public struct RemoveFileTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "file_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the file to remove (relative to project root or absolute)"),
+                            "Path to the file to remove (relative to project root or absolute)"
+                        ),
                     ]),
                     "remove_from_disk": .object([
                         "type": .string("boolean"),
@@ -109,7 +112,7 @@ public struct RemoveFileTool: Sendable {
                 }
             }
 
-            // Remove from project groups
+            /// Remove from project groups
             func removeFromGroup(_ group: PBXGroup) -> Bool {
                 let children = group.children
                 if let index = children.firstIndex(where: { element in
@@ -169,7 +172,8 @@ public struct RemoveFileTool: Sendable {
             }
         } catch {
             throw MCPError.internalError(
-                "Failed to remove file from Xcode project: \(error.localizedDescription)")
+                "Failed to remove file from Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

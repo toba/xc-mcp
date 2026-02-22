@@ -63,7 +63,8 @@ public struct XCStringsAddTranslationsTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text("Translations added successfully for \(translations.count) languages")
-                ])
+                ]
+            )
         } catch let error as XCStringsError {
             throw error.toMCPError()
         } catch let error as PathError {

@@ -34,7 +34,8 @@ public struct BuildDebugMacOSTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."),
+                            "Path to the .xcodeproj file. Uses session default if not specified."
+                        ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
@@ -45,12 +46,14 @@ public struct BuildDebugMacOSTool: Sendable {
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to build. Uses session default if not specified."),
+                            "The scheme to build. Uses session default if not specified."
+                        ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."),
+                            "Build configuration (Debug or Release). Defaults to Debug."
+                        ),
                     ]),
                     "arch": .object([
                         "type": .string("string"),
@@ -67,12 +70,14 @@ public struct BuildDebugMacOSTool: Sendable {
                         "type": .string("object"),
                         "additionalProperties": .object(["type": .string("string")]),
                         "description": .string(
-                            "Additional environment variables to set (key-value pairs)."),
+                            "Additional environment variables to set (key-value pairs)."
+                        ),
                     ]),
                     "stop_at_entry": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Stop at the entry point before running. Defaults to false."),
+                            "Stop at the entry point before running. Defaults to false."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -82,7 +87,8 @@ public struct BuildDebugMacOSTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments)
+            from: arguments
+        )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let arch = arguments.getString("arch")
@@ -109,7 +115,8 @@ public struct BuildDebugMacOSTool: Sendable {
             )
 
             let bundleId = extractBuildSetting(
-                "PRODUCT_BUNDLE_IDENTIFIER", from: buildSettings.stdout)
+                "PRODUCT_BUNDLE_IDENTIFIER", from: buildSettings.stdout
+            )
 
             // Kill any existing session for this bundle ID
             if let bundleId {
@@ -148,11 +155,13 @@ public struct BuildDebugMacOSTool: Sendable {
             // Step 3: Extract paths from build settings
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {
                 throw MCPError.internalError(
-                    "Could not determine app path from build settings.")
+                    "Could not determine app path from build settings."
+                )
             }
 
             let builtProductsDir = extractBuildSetting(
-                "BUILT_PRODUCTS_DIR", from: buildSettings.stdout)
+                "BUILT_PRODUCTS_DIR", from: buildSettings.stdout
+            )
 
             // Extract executable name from the app bundle name
             let appName =
@@ -167,7 +176,8 @@ public struct BuildDebugMacOSTool: Sendable {
             // Solution: inject LSEnvironment into Info.plist + add the
             // allow-dyld-environment-variables entitlement, then re-sign.
             try prepareAppForDebugLaunch(
-                appPath: appPath, builtProductsDir: builtProductsDir)
+                appPath: appPath, builtProductsDir: builtProductsDir
+            )
 
             // Step 5: Launch via /usr/bin/open + LLDB --waitfor attach
             let (launchResult, pid) = try await lldbRunner.launchViaOpenAndAttach(
@@ -233,7 +243,8 @@ public struct BuildDebugMacOSTool: Sendable {
         // Step 1: Symlink frameworks from BUILT_PRODUCTS_DIR into the app bundle
         let builtProductsURL = URL(fileURLWithPath: dir)
         let contents = try fm.contentsOfDirectory(
-            at: builtProductsURL, includingPropertiesForKeys: nil)
+            at: builtProductsURL, includingPropertiesForKeys: nil
+        )
 
         var modified = false
         for item in contents where item.pathExtension == "framework" {
@@ -283,7 +294,8 @@ public struct BuildDebugMacOSTool: Sendable {
         let output =
             String(
                 data: otoolOut.fileHandleForReading.readDataToEndOfFile(),
-                encoding: .utf8) ?? ""
+                encoding: .utf8
+            ) ?? ""
 
         let prefix = "/Library/Frameworks/"
         var changes: [(old: String, new: String)] = []
@@ -322,7 +334,8 @@ public struct BuildDebugMacOSTool: Sendable {
             let errStr =
                 String(
                     data: installErr.fileHandleForReading.readDataToEndOfFile(),
-                    encoding: .utf8) ?? ""
+                    encoding: .utf8
+                ) ?? ""
             Self.logger.warning("install_name_tool failed for \(binaryPath): \(errStr)")
             return false
         }
@@ -345,7 +358,8 @@ public struct BuildDebugMacOSTool: Sendable {
         let identityStr =
             String(
                 data: identityOut.fileHandleForReading.readDataToEndOfFile(),
-                encoding: .utf8) ?? ""
+                encoding: .utf8
+            ) ?? ""
 
         var signingIdentity = "-"
         for line in identityStr.components(separatedBy: .newlines)
@@ -419,5 +433,4 @@ public struct BuildDebugMacOSTool: Sendable {
 
         return nil
     }
-
 }

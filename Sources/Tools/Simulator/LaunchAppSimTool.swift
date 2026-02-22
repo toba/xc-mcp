@@ -27,7 +27,8 @@ public struct LaunchAppSimTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "wait_for_debugger": .object([
                         "type": .string("boolean"),
@@ -74,12 +75,15 @@ public struct LaunchAppSimTool: Sendable {
                     NextStepHints.content(hints: [
                         NextStepHint(
                             tool: "screenshot",
-                            description: "Take a screenshot to verify the result"),
+                            description: "Take a screenshot to verify the result"
+                        ),
                         NextStepHint(
-                            tool: "tap", description: "Tap a UI element (provide x, y coordinates)"),
+                            tool: "tap", description: "Tap a UI element (provide x, y coordinates)"
+                        ),
                         NextStepHint(
                             tool: "debug_attach_sim",
-                            description: "Attach the debugger to the running app"),
+                            description: "Attach the debugger to the running app"
+                        ),
                     ]),
                 ])
             } else {
@@ -91,5 +95,4 @@ public struct LaunchAppSimTool: Sendable {
             throw error.asMCPError()
         }
     }
-
 }

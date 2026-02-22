@@ -20,17 +20,20 @@ public struct DebugStackTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."),
+                            "Process ID of the debugged process."
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."),
+                            "Bundle identifier of the app (uses registered session)."
+                        ),
                     ]),
                     "thread": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Thread index to get stack for. Omit to get all threads."),
+                            "Thread index to get stack for. Omit to get all threads."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),

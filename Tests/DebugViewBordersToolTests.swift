@@ -6,7 +6,7 @@ import Testing
 @Suite("DebugViewBordersTool Tests")
 struct DebugViewBordersToolTests {
     @Test("Tool schema has correct name and description")
-    func testToolSchema() {
+    func toolSchema() {
         let tool = DebugViewBordersTool()
         let schema = tool.tool()
 
@@ -16,7 +16,7 @@ struct DebugViewBordersToolTests {
     }
 
     @Test("Tool schema includes all expected parameters")
-    func testToolParameters() {
+    func toolParameters() {
         let tool = DebugViewBordersTool()
         let schema = tool.tool()
 
@@ -35,7 +35,7 @@ struct DebugViewBordersToolTests {
     }
 
     @Test("Execute with no pid or bundle_id throws invalidParams")
-    func testNoPidOrBundleId() async throws {
+    func noPidOrBundleId() async throws {
         let tool = DebugViewBordersTool()
 
         await #expect(throws: MCPError.self) {
@@ -44,7 +44,7 @@ struct DebugViewBordersToolTests {
     }
 
     @Test("Execute with missing enabled throws invalidParams")
-    func testMissingEnabled() async throws {
+    func missingEnabled() async throws {
         let tool = DebugViewBordersTool()
 
         await #expect(throws: MCPError.self) {

@@ -21,7 +21,8 @@ public struct RemoveGroupTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "group_name": .object([
                         "type": .string("string"),
@@ -74,7 +75,8 @@ public struct RemoveGroupTool: Sendable {
             for component in pathComponents.dropLast() {
                 guard
                     let childGroup = parentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                        where: { $0.name == component || $0.path == component })
+                        where: { $0.name == component || $0.path == component }
+                    )
                 else {
                     return CallTool.Result(
                         content: [
@@ -90,7 +92,8 @@ public struct RemoveGroupTool: Sendable {
             let targetName = pathComponents.last!
             guard
                 let targetGroup = parentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                    where: { $0.name == targetName || $0.path == targetName })
+                    where: { $0.name == targetName || $0.path == targetName }
+                )
             else {
                 return CallTool.Result(
                     content: [.text("Group '\(groupName)' not found in project")]
@@ -129,7 +132,8 @@ public struct RemoveGroupTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to remove group from Xcode project: \(error.localizedDescription)")
+                "Failed to remove group from Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 

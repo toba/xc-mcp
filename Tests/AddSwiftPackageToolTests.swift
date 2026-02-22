@@ -16,7 +16,7 @@ struct PackageRequirementTestCase: Sendable {
     init(_ packageUrl: String, _ requirementInput: String, _ expectedDescription: String) {
         self.packageUrl = packageUrl
         self.requirementInput = requirementInput
-        self.expectedRequirementDescription = expectedDescription
+        expectedRequirementDescription = expectedDescription
     }
 }
 
@@ -96,7 +96,8 @@ struct AddSwiftPackageToolTests {
     @Test("Add Swift Package with requirement", arguments: requirementCases)
     func addSwiftPackageWithRequirement(_ testCase: PackageRequirementTestCase) throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -141,7 +142,8 @@ struct AddSwiftPackageToolTests {
     @Test("Add Swift Package to specific target")
     func addSwiftPackageToSpecificTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -150,7 +152,8 @@ struct AddSwiftPackageToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
         let args: [String: Value] = [
@@ -186,7 +189,8 @@ struct AddSwiftPackageToolTests {
     @Test("Add duplicate Swift Package")
     func addDuplicateSwiftPackage() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -219,7 +223,8 @@ struct AddSwiftPackageToolTests {
     @Test("Add package with invalid target")
     func addPackageWithInvalidTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {

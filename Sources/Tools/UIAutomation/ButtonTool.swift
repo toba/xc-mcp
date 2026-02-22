@@ -22,7 +22,8 @@ public struct ButtonTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "button_name": .object([
                         "type": .string("string"),
@@ -45,7 +46,8 @@ public struct ButtonTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get button name
@@ -70,7 +72,8 @@ public struct ButtonTool: Sendable {
 
         do {
             let result = try await simctlRunner.run(
-                arguments: ["io", simulator, "button", normalizedButton])
+                arguments: ["io", simulator, "button", normalizedButton]
+            )
 
             if result.succeeded {
                 return CallTool.Result(

@@ -40,7 +40,8 @@ struct RemoveGroupToolTests {
     @Test("Remove empty group")
     func removeEmptyGroup() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -79,7 +80,8 @@ struct RemoveGroupToolTests {
     @Test("Remove non-existent group")
     func removeNonExistentGroup() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -105,7 +107,8 @@ struct RemoveGroupToolTests {
     @Test("Remove group with children fails without recursive")
     func removeGroupWithChildrenFailsWithoutRecursive() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -145,7 +148,8 @@ struct RemoveGroupToolTests {
     @Test("Remove group with children recursively")
     func removeGroupWithChildrenRecursively() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -190,7 +194,8 @@ struct RemoveGroupToolTests {
     @Test("Remove group by path")
     func removeGroupByPath() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {

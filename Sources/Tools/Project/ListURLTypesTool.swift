@@ -22,7 +22,8 @@ public struct ListURLTypesTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -56,7 +57,8 @@ public struct ListURLTypesTool: Sendable {
 
             guard
                 let plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName)
+                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName
+                )
             else {
                 return CallTool.Result(
                     content: [
@@ -113,7 +115,8 @@ public struct ListURLTypesTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to list URL types: \(error.localizedDescription)")
+                "Failed to list URL types: \(error.localizedDescription)"
+            )
         }
     }
 }

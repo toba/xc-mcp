@@ -25,7 +25,7 @@ public enum DebugToolName: String, CaseIterable, Sendable {
     case debugViewBorders = "debug_view_borders"
     case debugProcessStatus = "debug_process_status"
 
-    // macOS tools
+    /// macOS tools
     case screenshotMacWindow = "screenshot_mac_window"
 
     // Session tools
@@ -84,9 +84,11 @@ public struct DebugMCPServer: Sendable {
         let xcodebuildRunner = XcodebuildRunner()
         let buildDebugMacOSTool = BuildDebugMacOSTool(
             xcodebuildRunner: xcodebuildRunner, lldbRunner: lldbRunner,
-            sessionManager: sessionManager)
+            sessionManager: sessionManager
+        )
         let debugAttachSimTool = DebugAttachSimTool(
-            lldbRunner: lldbRunner, simctlRunner: simctlRunner, sessionManager: sessionManager)
+            lldbRunner: lldbRunner, simctlRunner: simctlRunner, sessionManager: sessionManager
+        )
         let debugDetachTool = DebugDetachTool(lldbRunner: lldbRunner)
         let debugBreakpointAddTool = DebugBreakpointAddTool(lldbRunner: lldbRunner)
         let debugBreakpointRemoveTool = DebugBreakpointRemoveTool(lldbRunner: lldbRunner)
@@ -187,11 +189,9 @@ public struct DebugMCPServer: Sendable {
                 return try await debugViewBordersTool.execute(arguments: arguments)
             case .debugProcessStatus:
                 return try await debugProcessStatusTool.execute(arguments: arguments)
-
             // macOS tools
             case .screenshotMacWindow:
                 return try await screenshotMacWindowTool.execute(arguments: arguments)
-
             // Session tools
             case .setSessionDefaults:
                 return try await setSessionDefaultsTool.execute(arguments: arguments)

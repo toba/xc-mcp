@@ -28,7 +28,7 @@ struct ProductTypeTestCase: Sendable {
     ) {
         self.targetName = targetName
         self.productTypeString = productTypeString
-        self.expectedProductTypeRawValue = expectedProductType.rawValue
+        expectedProductTypeRawValue = expectedProductType.rawValue
         self.platform = platform
         self.deploymentTarget = deploymentTarget
     }
@@ -103,7 +103,8 @@ struct AddTargetToolTests {
     static let productTypeCases: [ProductTypeTestCase] = [
         ProductTypeTestCase("NewApp", "app", .application),
         ProductTypeTestCase(
-            "MyFramework", "framework", .framework, platform: "iOS", deploymentTarget: "15.0"),
+            "MyFramework", "framework", .framework, platform: "iOS", deploymentTarget: "15.0"
+        ),
         ProductTypeTestCase("MyAppTests", "unitTestBundle", .unitTestBundle),
         ProductTypeTestCase("StaticFramework", "staticFramework", .staticFramework),
         ProductTypeTestCase("MyXCFramework", "xcFramework", .xcFramework),
@@ -117,7 +118,8 @@ struct AddTargetToolTests {
     @Test("Add target with product type", arguments: productTypeCases)
     func addTargetWithProductType(_ testCase: ProductTypeTestCase) throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -161,7 +163,8 @@ struct AddTargetToolTests {
         #expect(productRef?.sourceTree == .buildProductsDir)
         #expect(productRef?.includeInIndex == false)
         #expect(
-            productRef?.explicitFileType == testCase.expectedProductType.explicitFileType)
+            productRef?.explicitFileType == testCase.expectedProductType.explicitFileType
+        )
 
         // Verify product is in Products group
         let productsGroup = xcodeproj.pbxproj.rootObject?.productsGroup
@@ -175,14 +178,16 @@ struct AddTargetToolTests {
             }
             #expect(
                 buildConfig?.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"]?.stringValue
-                    == deploymentTarget)
+                    == deploymentTarget
+            )
         }
     }
 
     @Test("Add application target verifies build phases")
     func addApplicationTargetVerifiesBuildPhases() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -227,7 +232,8 @@ struct AddTargetToolTests {
     @Test("Add duplicate target")
     func addDuplicateTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -236,7 +242,8 @@ struct AddTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         let tool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
         let args: [String: Value] = [
@@ -258,7 +265,8 @@ struct AddTargetToolTests {
     @Test("Add target with invalid product type")
     func addTargetWithInvalidProductType() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {

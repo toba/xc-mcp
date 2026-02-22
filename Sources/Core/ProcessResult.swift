@@ -104,7 +104,9 @@ extension ProcessResult {
 
     /// Discards the result. Useful for fire-and-forget commands like `kill` or `pkill`.
     @discardableResult
-    public func ignore() -> ProcessResult { self }
+    public func ignore() -> ProcessResult {
+        self
+    }
 }
 
 // MARK: - Simctl Helpers
@@ -125,7 +127,8 @@ public enum FileUtility {
     public static func readTailLines(path: String, count: Int = 50) -> String? {
         guard
             let result = try? ProcessResult.run(
-                "/usr/bin/tail", arguments: ["-n", "\(count)", path], mergeStderr: false),
+                "/usr/bin/tail", arguments: ["-n", "\(count)", path], mergeStderr: false
+            ),
             !result.stdout.isEmpty
         else {
             return nil

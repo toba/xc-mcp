@@ -77,17 +77,20 @@ public struct XctraceRecordTool: Sendable {
                     "attach_pid": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Attach to a running process by PID."),
+                            "Attach to a running process by PID."
+                        ),
                     ]),
                     "attach_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Attach to a running process by name."),
+                            "Attach to a running process by name."
+                        ),
                     ]),
                     "all_processes": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Record system-wide across all processes. Default: false."),
+                            "Record system-wide across all processes. Default: false."
+                        ),
                     ]),
                     "session_id": .object([
                         "type": .string("string"),
@@ -115,7 +118,8 @@ public struct XctraceRecordTool: Sendable {
             return try await listRecordings()
         default:
             throw MCPError.invalidParams(
-                "Invalid action: \(action). Use 'start', 'stop', or 'list'.")
+                "Invalid action: \(action). Use 'start', 'stop', or 'list'."
+            )
         }
     }
 
@@ -154,7 +158,8 @@ public struct XctraceRecordTool: Sendable {
             let sessionId = UUID().uuidString
 
             await TraceRecordingManager.shared.startRecording(
-                sessionId: sessionId, process: process, outputPath: outputPath)
+                sessionId: sessionId, process: process, outputPath: outputPath
+            )
 
             return CallTool.Result(
                 content: [
@@ -171,7 +176,8 @@ public struct XctraceRecordTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to start xctrace recording: \(error.localizedDescription)")
+                "Failed to start xctrace recording: \(error.localizedDescription)"
+            )
         }
     }
 

@@ -22,47 +22,56 @@ public struct SimStatusBarTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "time": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Time to display (e.g., '9:41' for classic Apple time)."),
+                            "Time to display (e.g., '9:41' for classic Apple time)."
+                        ),
                     ]),
                     "battery_level": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Battery level percentage (0-100)."),
+                            "Battery level percentage (0-100)."
+                        ),
                     ]),
                     "battery_state": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Battery state: 'charging', 'charged', or 'discharging'."),
+                            "Battery state: 'charging', 'charged', or 'discharging'."
+                        ),
                     ]),
                     "cellular_mode": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Cellular mode: 'notSupported', 'searching', 'failed', 'active'."),
+                            "Cellular mode: 'notSupported', 'searching', 'failed', 'active'."
+                        ),
                     ]),
                     "cellular_bars": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Cellular signal bars (0-4)."),
+                            "Cellular signal bars (0-4)."
+                        ),
                     ]),
                     "wifi_mode": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "WiFi mode: 'searching', 'failed', 'active'."),
+                            "WiFi mode: 'searching', 'failed', 'active'."
+                        ),
                     ]),
                     "wifi_bars": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "WiFi signal bars (0-3)."),
+                            "WiFi signal bars (0-3)."
+                        ),
                     ]),
                     "clear": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Clear all status bar overrides and return to normal."),
+                            "Clear all status bar overrides and return to normal."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -79,7 +88,8 @@ public struct SimStatusBarTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Check if we should clear
@@ -132,12 +142,14 @@ public struct SimStatusBarTool: Sendable {
 
         if options.isEmpty {
             throw MCPError.invalidParams(
-                "At least one status bar option is required, or use 'clear: true' to reset.")
+                "At least one status bar option is required, or use 'clear: true' to reset."
+            )
         }
 
         do {
             let result = try await simctlRunner.overrideStatusBar(
-                udid: simulator, options: options)
+                udid: simulator, options: options
+            )
 
             if result.succeeded {
                 let optionsList = options.keys.sorted().joined(separator: ", ")

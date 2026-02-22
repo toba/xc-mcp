@@ -22,7 +22,7 @@ public struct ClearSessionDefaultsTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async -> CallTool.Result {
+    public func execute(arguments _: [String: Value]) async -> CallTool.Result {
         await sessionManager.clear()
         return CallTool.Result(
             content: [

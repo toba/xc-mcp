@@ -177,22 +177,22 @@ public struct LinkerError: Sendable {
         self.architecture = architecture
         self.referencedFrom = referencedFrom
         self.message = message
-        self.conflictingFiles = []
+        conflictingFiles = []
     }
 
     public init(message: String) {
-        self.symbol = ""
-        self.architecture = ""
-        self.referencedFrom = ""
+        symbol = ""
+        architecture = ""
+        referencedFrom = ""
         self.message = message
-        self.conflictingFiles = []
+        conflictingFiles = []
     }
 
     public init(symbol: String, architecture: String, conflictingFiles: [String]) {
         self.symbol = symbol
         self.architecture = architecture
-        self.referencedFrom = ""
-        self.message = ""
+        referencedFrom = ""
+        message = ""
         self.conflictingFiles = conflictingFiles
     }
 }

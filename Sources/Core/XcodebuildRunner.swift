@@ -199,8 +199,11 @@ public struct XcodebuildRunner: Sendable {
     ///
     /// Unlike ``build(projectPath:workspacePath:scheme:destination:configuration:additionalArguments:timeout:onProgress:)``
     /// which builds an entire scheme, this method uses `-target` to compile a single target.
-    /// This is useful for fast type-checking of auxiliary targets (e.g. test support modules)
-    /// without building the full dependency graph of a scheme.
+    ///
+    /// - Warning: The `-target` flag does not resolve Swift Package Manager dependencies or
+    ///   cross-project references. On projects that use SPM packages, builds will fail with
+    ///   cascading "missing module" errors. Prefer `-scheme` based builds for real projects.
+    ///   This method is retained as a general-purpose runner primitive.
     ///
     /// - Parameters:
     ///   - projectPath: Path to the .xcodeproj file (mutually exclusive with workspacePath).

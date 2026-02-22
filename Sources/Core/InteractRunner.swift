@@ -54,23 +54,23 @@ public enum InteractError: LocalizedError, Sendable, MCPErrorConvertible {
         case .accessibilityNotTrusted:
             return
                 "Accessibility permission not granted. Go to System Settings > Privacy & Security > Accessibility and add this app."
-        case .appNotFound(let desc):
+        case let .appNotFound(desc):
             return "Application not found: \(desc)"
-        case .elementNotFound(let id):
+        case let .elementNotFound(id):
             return
                 "Element with ID \(id) not found in cache. Call interact_ui_tree first to refresh."
-        case .elementNotFoundByQuery(let query):
+        case let .elementNotFoundByQuery(query):
             return "No element found matching: \(query)"
-        case .actionFailed(let msg):
+        case let .actionFailed(msg):
             return "Action failed: \(msg)"
-        case .setValueFailed(let msg):
+        case let .setValueFailed(msg):
             return "Set value failed: \(msg)"
-        case .menuItemNotFound(let path):
+        case let .menuItemNotFound(path):
             return "Menu item not found: \(path)"
-        case .invalidKeyName(let name):
+        case let .invalidKeyName(name):
             return
                 "Invalid key name: \(name). Use names like 'return', 'tab', 'escape', 'space', 'a'-'z', '0'-'9', 'f1'-'f12', 'up', 'down', 'left', 'right', 'delete', 'home', 'end', 'pageup', 'pagedown'."
-        case .noCache(let pid):
+        case let .noCache(pid):
             return
                 "No cached element tree for PID \(pid). Call interact_ui_tree first."
         }
@@ -142,7 +142,8 @@ public struct InteractRunner: Sendable {
             return app.processIdentifier
         }
         throw InteractError.appNotFound(
-            "Provide at least one of: pid, bundle_id, or app_name")
+            "Provide at least one of: pid, bundle_id, or app_name"
+        )
     }
 
     /// Resolves the target PID from MCP tool arguments.
@@ -166,7 +167,8 @@ public struct InteractRunner: Sendable {
         var results: [(InteractElement, SendableAXUIElement)] = []
         var nextId = 0
         traverseElement(
-            appElement, depth: 0, maxDepth: maxDepth, nextId: &nextId, results: &results)
+            appElement, depth: 0, maxDepth: maxDepth, nextId: &nextId, results: &results
+        )
         return results
     }
 
@@ -186,7 +188,8 @@ public struct InteractRunner: Sendable {
         if depth < maxDepth {
             var childrenRef: CFTypeRef?
             let err = AXUIElementCopyAttributeValue(
-                element, kAXChildrenAttribute as CFString, &childrenRef)
+                element, kAXChildrenAttribute as CFString, &childrenRef
+            )
             if err == .success, let cfArray = childrenRef as? [AXUIElement] {
                 children = cfArray
             }
@@ -212,7 +215,8 @@ public struct InteractRunner: Sendable {
 
         for child in children {
             traverseElement(
-                child, depth: depth + 1, maxDepth: maxDepth, nextId: &nextId, results: &results)
+                child, depth: depth + 1, maxDepth: maxDepth, nextId: &nextId, results: &results
+            )
         }
     }
 
@@ -321,7 +325,8 @@ public struct InteractRunner: Sendable {
         let err = AXUIElementPerformAction(element, action as CFString)
         guard err == .success else {
             throw InteractError.actionFailed(
-                "\(action) failed with error code \(err.rawValue)")
+                "\(action) failed with error code \(err.rawValue)"
+            )
         }
     }
 
@@ -332,10 +337,12 @@ public struct InteractRunner: Sendable {
         AXUIElementSetAttributeValue(element, kAXFocusedAttribute as CFString, true as CFTypeRef)
 
         let err = AXUIElementSetAttributeValue(
-            element, kAXValueAttribute as CFString, value as CFTypeRef)
+            element, kAXValueAttribute as CFString, value as CFTypeRef
+        )
         guard err == .success else {
             throw InteractError.setValueFailed(
-                "Failed to set value with error code \(err.rawValue)")
+                "Failed to set value with error code \(err.rawValue)"
+            )
         }
     }
 
@@ -348,7 +355,8 @@ public struct InteractRunner: Sendable {
         // Get menu bar
         var menuBarRef: CFTypeRef?
         let err = AXUIElementCopyAttributeValue(
-            appElement, kAXMenuBarAttribute as CFString, &menuBarRef)
+            appElement, kAXMenuBarAttribute as CFString, &menuBarRef
+        )
         guard err == .success, let menuBar = menuBarRef else {
             throw InteractError.menuItemNotFound("Cannot access menu bar")
         }
@@ -360,7 +368,8 @@ public struct InteractRunner: Sendable {
             guard let child = findChildByTitle(currentElement, title: itemName) else {
                 let traversed = menuPath[0..<index].joined(separator: " > ")
                 throw InteractError.menuItemNotFound(
-                    "'\(itemName)' not found" + (traversed.isEmpty ? "" : " after \(traversed)"))
+                    "'\(itemName)' not found" + (traversed.isEmpty ? "" : " after \(traversed)")
+                )
             }
 
             if index < menuPath.count - 1 {
@@ -371,7 +380,8 @@ public struct InteractRunner: Sendable {
                 // Navigate into the opened submenu's children
                 var submenuRef: CFTypeRef?
                 if AXUIElementCopyAttributeValue(
-                    child, kAXChildrenAttribute as CFString, &submenuRef) == .success,
+                    child, kAXChildrenAttribute as CFString, &submenuRef
+                ) == .success,
                     let submenuChildren = submenuRef as? [AXUIElement],
                     let submenu = submenuChildren.first
                 {
@@ -506,7 +516,8 @@ public struct InteractRunner: Sendable {
             "bundle_id": .object([
                 "type": .string("string"),
                 "description": .string(
-                    "Bundle identifier of the target application (e.g., 'com.apple.finder')."),
+                    "Bundle identifier of the target application (e.g., 'com.apple.finder')."
+                ),
             ]),
             "app_name": .object([
                 "type": .string("string"),

@@ -66,21 +66,28 @@ public struct DeviceMCPServer: Sendable {
         // Create device tools
         let listDevicesTool = ListDevicesTool(deviceCtlRunner: deviceCtlRunner)
         let buildDeviceTool = BuildDeviceTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let installAppDeviceTool = InstallAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager)
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+        )
         let launchAppDeviceTool = LaunchAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager)
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+        )
         let stopAppDeviceTool = StopAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager)
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+        )
         let getDeviceAppPathTool = GetDeviceAppPathTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager)
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+        )
         let testDeviceTool = TestDeviceTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
 
         // Create logging tools
         let startDeviceLogCapTool = StartDeviceLogCapTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager)
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+        )
         let stopDeviceLogCapTool = StopDeviceLogCapTool(sessionManager: sessionManager)
 
         // Create session tools
@@ -133,13 +140,11 @@ public struct DeviceMCPServer: Sendable {
                 return try await getDeviceAppPathTool.execute(arguments: arguments)
             case .testDevice:
                 return try await testDeviceTool.execute(arguments: arguments)
-
             // Logging tools
             case .startDeviceLogCap:
                 return try await startDeviceLogCapTool.execute(arguments: arguments)
             case .stopDeviceLogCap:
                 return try await stopDeviceLogCapTool.execute(arguments: arguments)
-
             // Session tools
             case .setSessionDefaults:
                 return try await setSessionDefaultsTool.execute(arguments: arguments)

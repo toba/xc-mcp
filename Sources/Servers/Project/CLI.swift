@@ -33,7 +33,8 @@ struct ProjectServerCLI: AsyncParsableCommand {
     var verbose: Bool = false
 
     @Flag(
-        name: .long, help: "Disable path sandboxing (allow access to paths outside base directory)")
+        name: .long, help: "Disable path sandboxing (allow access to paths outside base directory)"
+    )
     var noSandbox: Bool = false
 
     mutating func run() async throws {

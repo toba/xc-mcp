@@ -13,13 +13,13 @@ struct ListSynchronizedFolderExceptionsToolTests {
     let pathUtility: PathUtility
 
     init() {
-        self.tempDir =
+        tempDir =
             FileManager.default.temporaryDirectory
             .appendingPathComponent(
                 "ListSyncFolderExceptionsToolTests-\(UUID().uuidString)"
             )
             .path
-        self.pathUtility = PathUtility(basePath: tempDir)
+        pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
@@ -60,7 +60,8 @@ struct ListSynchronizedFolderExceptionsToolTests {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithSyncFolder(
             name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
-            at: projectPath)
+            at: projectPath
+        )
 
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
@@ -81,7 +82,8 @@ struct ListSynchronizedFolderExceptionsToolTests {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithSyncFolder(
             name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
-            membershipExceptions: ["File1.swift", "File2.swift"], at: projectPath)
+            membershipExceptions: ["File1.swift", "File2.swift"], at: projectPath
+        )
 
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
@@ -104,24 +106,27 @@ struct ListSynchronizedFolderExceptionsToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath)
+            name: "TestProject", targetName: "AppTarget", at: projectPath
+        )
 
         // Add a second target
         let xcodeproj = try XcodeProj(path: projectPath)
-        let project = try xcodeproj.pbxproj.rootProject()!
-        let secondTarget = PBXNativeTarget(
-            name: "TestTarget", buildConfigurationList: project.buildConfigurationList!)
+        let project = try #require(try xcodeproj.pbxproj.rootProject())
+        let secondTarget = try PBXNativeTarget(
+            name: "TestTarget", buildConfigurationList: #require(project.buildConfigurationList)
+        )
         xcodeproj.pbxproj.add(object: secondTarget)
         project.targets.append(secondTarget)
 
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "Sources", name: "Sources")
+            sourceTree: .group, path: "Sources", name: "Sources"
+        )
         xcodeproj.pbxproj.add(object: syncGroup)
         if let mainGroup = project.mainGroup {
             mainGroup.children.append(syncGroup)
         }
 
-        let target1 = xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" }!
+        let target1 = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" })
         let exception1 = PBXFileSystemSynchronizedBuildFileExceptionSet(
             target: target1,
             membershipExceptions: ["File1.swift"],
@@ -166,7 +171,8 @@ struct ListSynchronizedFolderExceptionsToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath)
+            name: "TestProject", targetName: "AppTarget", at: projectPath
+        )
 
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [

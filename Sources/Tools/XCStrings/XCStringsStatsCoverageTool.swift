@@ -24,7 +24,8 @@ public struct XCStringsStatsCoverageTool: Sendable {
                     "compact": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, only show languages under 100% coverage (default: true)"),
+                            "If true, only show languages under 100% coverage (default: true)"
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("file")]),

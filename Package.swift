@@ -2,7 +2,7 @@
 
 import PackageDescription
 
-// Shared Swift settings for all targets
+/// Shared Swift settings for all targets
 let sharedSwiftSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
     .enableExperimentalFeature("StrictConcurrency"),
@@ -11,7 +11,7 @@ let sharedSwiftSettings: [SwiftSetting] = [
 let package = Package(
     name: "xc-mcp",
     platforms: [
-        .macOS(.v15)
+        .macOS(.v15),
     ],
     products: [
         // Monolithic server (all tools)
@@ -37,16 +37,18 @@ let package = Package(
     ],
     targets: [
         // MARK: - Shared Core Library
+
         .target(
             name: "XCMCPCore",
             dependencies: [
-                .product(name: "MCP", package: "swift-sdk")
+                .product(name: "MCP", package: "swift-sdk"),
             ],
             path: "Sources/Core",
             swiftSettings: sharedSwiftSettings
         ),
 
         // MARK: - Shared Tools Library
+
         .target(
             name: "XCMCPTools",
             dependencies: [
@@ -59,6 +61,7 @@ let package = Package(
         ),
 
         // MARK: - Monolithic Server (all tools)
+
         .executableTarget(
             name: "xc-mcp",
             dependencies: [
@@ -183,6 +186,7 @@ let package = Package(
         ),
 
         // MARK: - Tests
+
         .testTarget(
             name: "xc-mcp-tests",
             dependencies: [
@@ -191,7 +195,7 @@ let package = Package(
             ],
             path: "Tests",
             resources: [
-                .copy("Fixtures")
+                .copy("Fixtures"),
             ],
             swiftSettings: sharedSwiftSettings
         ),

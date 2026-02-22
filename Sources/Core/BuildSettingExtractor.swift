@@ -67,7 +67,7 @@ public enum BuildSettingExtractor {
                     .replacingOccurrences(of: ",", with: "")
                     .replacingOccurrences(of: " = ", with: "")
                     .trimmingCharacters(in: .whitespaces)
-                if !cleaned.isEmpty && !cleaned.hasPrefix("$") {
+                if !cleaned.isEmpty, !cleaned.hasPrefix("$") {
                     return cleaned
                 }
             }
@@ -117,7 +117,7 @@ public enum BuildSettingExtractor {
         var fullProductName: String?
 
         for line in lines {
-            if line.contains("TARGET_BUILD_DIR") && !line.contains("EFFECTIVE") {
+            if line.contains("TARGET_BUILD_DIR"), !line.contains("EFFECTIVE") {
                 if let equalsRange = line.range(of: " = ") {
                     targetBuildDir = String(line[equalsRange.upperBound...])
                         .trimmingCharacters(in: .whitespaces)

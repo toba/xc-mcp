@@ -48,7 +48,8 @@ public struct RecordSimVideoTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "output_path": .object([
                         "type": .string("string"),
@@ -59,7 +60,8 @@ public struct RecordSimVideoTool: Sendable {
                     "session_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Session ID returned from 'start' action. Required for 'stop' action."),
+                            "Session ID returned from 'start' action. Required for 'stop' action."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("action")]),
@@ -81,7 +83,8 @@ public struct RecordSimVideoTool: Sendable {
             return try await listRecordings()
         default:
             throw MCPError.invalidParams(
-                "Invalid action: \(action). Use 'start', 'stop', or 'list'.")
+                "Invalid action: \(action). Use 'start', 'stop', or 'list'."
+            )
         }
     }
 
@@ -98,16 +101,19 @@ public struct RecordSimVideoTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         do {
             let process = try await simctlRunner.recordVideo(
-                udid: simulator, outputPath: outputPath)
+                udid: simulator, outputPath: outputPath
+            )
             let sessionId = UUID().uuidString
 
             await VideoRecordingManager.shared.startRecording(
-                sessionId: sessionId, process: process)
+                sessionId: sessionId, process: process
+            )
 
             return CallTool.Result(
                 content: [

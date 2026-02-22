@@ -22,7 +22,6 @@ public struct XcodeStateResult: Sendable {
 
 /// Reads the active scheme and run destination from Xcode's UserInterfaceState.xcuserstate.
 public enum XcodeStateReader {
-
     /// Reads Xcode IDE state for the given project or workspace path.
     ///
     /// Finds the xcuserstate file, converts it from binary plist via plutil,
@@ -55,7 +54,8 @@ public enum XcodeStateReader {
         )
         guard convertResult.exitCode == 0 else {
             return XcodeStateResult(
-                error: "plutil conversion failed: \(convertResult.stderr)")
+                error: "plutil conversion failed: \(convertResult.stderr)"
+            )
         }
 
         // Parse the XML plist
@@ -66,7 +66,8 @@ public enum XcodeStateReader {
         do {
             guard
                 let plist = try PropertyListSerialization.propertyList(
-                    from: data, format: nil) as? [String: Any],
+                    from: data, format: nil
+                ) as? [String: Any],
                 let objects = plist["$objects"] as? [Any]
             else {
                 return XcodeStateResult(error: "Unexpected plist structure (not NSKeyedArchiver)")
@@ -86,7 +87,8 @@ public enum XcodeStateReader {
         if path.hasSuffix(".xcworkspace") {
             // Workspace-level state
             candidates.append(
-                "\(path)/xcuserdata/\(username).xcuserdatad/UserInterfaceState.xcuserstate")
+                "\(path)/xcuserdata/\(username).xcuserdatad/UserInterfaceState.xcuserstate"
+            )
         } else if path.hasSuffix(".xcodeproj") {
             // Project workspace state
             candidates.append(
@@ -94,7 +96,8 @@ public enum XcodeStateReader {
             )
             // Also check project-level xcuserdata
             candidates.append(
-                "\(path)/xcuserdata/\(username).xcuserdatad/UserInterfaceState.xcuserstate")
+                "\(path)/xcuserdata/\(username).xcuserdatad/UserInterfaceState.xcuserstate"
+            )
         }
 
         return candidates
@@ -168,7 +171,8 @@ public enum XcodeStateReader {
         }
 
         return XcodeStateResult(
-            scheme: scheme, simulatorUDID: simulatorUDID, simulatorName: simulatorName)
+            scheme: scheme, simulatorUDID: simulatorUDID, simulatorName: simulatorName
+        )
     }
 
     /// Resolves a plist value that may be a UID reference into the $objects array.
@@ -206,11 +210,13 @@ public enum XcodeStateReader {
             process.waitUntilExit()
             let out =
                 String(
-                    data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)
+                    data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8
+                )
                 ?? ""
             let err =
                 String(
-                    data: stderrPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)
+                    data: stderrPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8
+                )
                 ?? ""
             return (process.terminationStatus, out, err)
         } catch {

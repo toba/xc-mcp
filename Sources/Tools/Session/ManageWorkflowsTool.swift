@@ -20,7 +20,8 @@ public struct ManageWorkflowsTool: Sendable {
                     "action": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Action to perform: enable, disable, list, or reset."),
+                            "Action to perform: enable, disable, list, or reset."
+                        ),
                         "enum": .array([
                             .string("enable"), .string("disable"),
                             .string("list"), .string("reset"),
@@ -69,7 +70,8 @@ public struct ManageWorkflowsTool: Sendable {
         case "enable":
             guard !workflowNames.isEmpty else {
                 throw MCPError.invalidParams(
-                    "workflows array is required for enable action")
+                    "workflows array is required for enable action"
+                )
             }
             var enabled: [String] = []
             for name in workflowNames {
@@ -83,14 +85,16 @@ public struct ManageWorkflowsTool: Sendable {
             }
             return (
                 CallTool.Result(
-                    content: [.text("Enabled workflows: \(enabled.joined(separator: ", "))")]),
+                    content: [.text("Enabled workflows: \(enabled.joined(separator: ", "))")]
+                ),
                 true
             )
 
         case "disable":
             guard !workflowNames.isEmpty else {
                 throw MCPError.invalidParams(
-                    "workflows array is required for disable action")
+                    "workflows array is required for disable action"
+                )
             }
             var disabled: [String] = []
             for name in workflowNames {
@@ -104,7 +108,8 @@ public struct ManageWorkflowsTool: Sendable {
             }
             return (
                 CallTool.Result(
-                    content: [.text("Disabled workflows: \(disabled.joined(separator: ", "))")]),
+                    content: [.text("Disabled workflows: \(disabled.joined(separator: ", "))")]
+                ),
                 true
             )
 
@@ -117,7 +122,8 @@ public struct ManageWorkflowsTool: Sendable {
 
         default:
             throw MCPError.invalidParams(
-                "Unknown action '\(action)'. Use: enable, disable, list, or reset.")
+                "Unknown action '\(action)'. Use: enable, disable, list, or reset."
+            )
         }
     }
 }

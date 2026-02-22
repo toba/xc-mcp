@@ -21,7 +21,8 @@ public struct RemoveTargetTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -102,7 +103,7 @@ public struct RemoveTargetTool: Sendable {
             if let project = try xcodeproj.pbxproj.rootProject(),
                 let mainGroup = project.mainGroup
             {
-                // Find and remove target folder
+                /// Find and remove target folder
                 func removeTargetGroup(from group: PBXGroup) {
                     group.children.removeAll { element in
                         if let groupElement = element as? PBXGroup,
@@ -137,7 +138,8 @@ public struct RemoveTargetTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to remove target from Xcode project: \(error.localizedDescription)")
+                "Failed to remove target from Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

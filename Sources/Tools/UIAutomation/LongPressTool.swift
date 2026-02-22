@@ -22,22 +22,26 @@ public struct LongPressTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "x": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "X coordinate of the long press location."),
+                            "X coordinate of the long press location."
+                        ),
                     ]),
                     "y": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Y coordinate of the long press location."),
+                            "Y coordinate of the long press location."
+                        ),
                     ]),
                     "duration": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Duration of the long press in seconds. Defaults to 1.0."),
+                            "Duration of the long press in seconds. Defaults to 1.0."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("x"), .string("y")]),
@@ -54,7 +58,8 @@ public struct LongPressTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get coordinates
@@ -92,7 +97,8 @@ public struct LongPressTool: Sendable {
                     "io", simulator, "touch",
                     "\(x)", "\(y)",
                     "--duration", "\(duration)",
-                ])
+                ]
+            )
 
             if result.succeeded {
                 return CallTool.Result(

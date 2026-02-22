@@ -22,12 +22,14 @@ public struct TypeTextTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "text": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Text to type."),
+                            "Text to type."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("text")]),
@@ -44,7 +46,8 @@ public struct TypeTextTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.")
+                "simulator is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get text
@@ -55,7 +58,8 @@ public struct TypeTextTool: Sendable {
         do {
             // Use simctl io to send keyboard input
             let result = try await simctlRunner.run(
-                arguments: ["io", simulator, "keyboard", "text", text])
+                arguments: ["io", simulator, "keyboard", "text", text]
+            )
 
             if result.succeeded {
                 let truncatedText = text.count > 20 ? String(text.prefix(20)) + "..." : text

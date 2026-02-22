@@ -13,13 +13,13 @@ struct RemoveSynchronizedFolderExceptionToolTests {
     let pathUtility: PathUtility
 
     init() {
-        self.tempDir =
+        tempDir =
             FileManager.default.temporaryDirectory
             .appendingPathComponent(
                 "RemoveSyncFolderExceptionToolTests-\(UUID().uuidString)"
             )
             .path
-        self.pathUtility = PathUtility(basePath: tempDir)
+        pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
@@ -63,7 +63,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithSyncFolder(
             name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
-            membershipExceptions: ["File1.swift", "File2.swift"], at: projectPath)
+            membershipExceptions: ["File1.swift", "File2.swift"], at: projectPath
+        )
 
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
@@ -93,7 +94,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithSyncFolder(
             name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
-            membershipExceptions: ["File1.swift", "File2.swift"], at: projectPath)
+            membershipExceptions: ["File1.swift", "File2.swift"], at: projectPath
+        )
 
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
@@ -122,7 +124,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithSyncFolder(
             name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
-            membershipExceptions: ["OnlyFile.swift"], at: projectPath)
+            membershipExceptions: ["OnlyFile.swift"], at: projectPath
+        )
 
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
@@ -147,7 +150,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath)
+            name: "TestProject", targetName: "AppTarget", at: projectPath
+        )
 
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
@@ -165,7 +169,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithSyncFolder(
             name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
-            at: projectPath)
+            at: projectPath
+        )
 
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
@@ -183,7 +188,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithSyncFolder(
             name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
-            membershipExceptions: ["File1.swift"], at: projectPath)
+            membershipExceptions: ["File1.swift"], at: projectPath
+        )
 
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [

@@ -103,7 +103,8 @@ public struct AddAppExtensionTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "extension_name": .object([
                         "type": .string("string"),
@@ -118,7 +119,8 @@ public struct AddAppExtensionTool: Sendable {
                     "host_target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the host app target to embed the extension in"),
+                            "Name of the host app target to embed the extension in"
+                        ),
                     ]),
                     "bundle_identifier": .object([
                         "type": .string("string"),
@@ -129,7 +131,8 @@ public struct AddAppExtensionTool: Sendable {
                     "platform": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Platform (iOS, macOS, tvOS, watchOS) - optional, defaults to iOS"),
+                            "Platform (iOS, macOS, tvOS, watchOS) - optional, defaults to iOS"
+                        ),
                     ]),
                     "deployment_target": .object([
                         "type": .string("string"),
@@ -232,7 +235,8 @@ public struct AddAppExtensionTool: Sendable {
                     "MARKETING_VERSION": .string("1.0"),
                     "SKIP_INSTALL": .string("YES"),
                     "DEBUG_INFORMATION_FORMAT": .string("dwarf"),
-                ])
+                ]
+            )
 
             let extensionReleaseConfig = XCBuildConfiguration(
                 name: "Release",
@@ -249,7 +253,8 @@ public struct AddAppExtensionTool: Sendable {
                     "SKIP_INSTALL": .string("YES"),
                     "DEBUG_INFORMATION_FORMAT": .string("dwarf-with-dsym"),
                     "COPY_PHASE_STRIP": .string("NO"),
-                ])
+                ]
+            )
 
             // Add deployment target if specified
             if let deploymentTarget {
@@ -378,7 +383,8 @@ public struct AddAppExtensionTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to create App Extension in Xcode project: \(error.localizedDescription)")
+                "Failed to create App Extension in Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

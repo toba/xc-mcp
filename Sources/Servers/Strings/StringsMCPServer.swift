@@ -104,7 +104,8 @@ public struct StringsMCPServer: Sendable {
         let batchCheckKeysTool = XCStringsBatchCheckKeysTool(pathUtility: pathUtility)
         let batchAddTranslationsTool = XCStringsBatchAddTranslationsTool(pathUtility: pathUtility)
         let batchUpdateTranslationsTool = XCStringsBatchUpdateTranslationsTool(
-            pathUtility: pathUtility)
+            pathUtility: pathUtility
+        )
         let checkCoverageTool = XCStringsCheckCoverageTool(pathUtility: pathUtility)
 
         // Register tools/list handler

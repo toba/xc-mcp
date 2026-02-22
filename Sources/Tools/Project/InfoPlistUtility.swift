@@ -64,7 +64,8 @@ public enum InfoPlistUtility {
 
         guard
             let plist = try PropertyListSerialization.propertyList(
-                from: data, options: .mutableContainersAndLeaves, format: nil) as? [String: Any]
+                from: data, options: .mutableContainersAndLeaves, format: nil
+            ) as? [String: Any]
         else {
             throw MCPError.internalError("Info.plist at \(path) is not a dictionary")
         }
@@ -80,7 +81,8 @@ public enum InfoPlistUtility {
     /// - Throws: `MCPError` if serialization or writing fails.
     public static func writeInfoPlist(_ plist: [String: Any], toPath path: String) throws {
         let data = try PropertyListSerialization.data(
-            fromPropertyList: plist, format: .xml, options: 0)
+            fromPropertyList: plist, format: .xml, options: 0
+        )
         try data.write(to: URL(fileURLWithPath: path))
     }
 
@@ -118,7 +120,8 @@ public enum InfoPlistUtility {
         // Create directory if needed
         let plistDir = URL(fileURLWithPath: plistAbsolutePath).deletingLastPathComponent().path
         try FileManager.default.createDirectory(
-            atPath: plistDir, withIntermediateDirectories: true)
+            atPath: plistDir, withIntermediateDirectories: true
+        )
 
         // Write an empty plist
         let emptyPlist: [String: Any] = [:]

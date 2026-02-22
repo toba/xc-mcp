@@ -22,12 +22,14 @@ public struct GetSimAppPathTool: Sendable {
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The bundle identifier of the app (e.g., 'com.example.MyApp')."),
+                            "The bundle identifier of the app (e.g., 'com.example.MyApp')."
+                        ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."),
+                            "Simulator UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "container": .object([
                         "type": .string("string"),
@@ -62,7 +64,8 @@ public struct GetSimAppPathTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to get app container path: \(error.localizedDescription)")
+                "Failed to get app container path: \(error.localizedDescription)"
+            )
         }
     }
 }

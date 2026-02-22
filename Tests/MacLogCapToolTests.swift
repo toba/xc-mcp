@@ -9,7 +9,7 @@ struct StartMacLogCapToolTests {
     let sessionManager = SessionManager()
 
     @Test("Tool schema has correct name and properties")
-    func testToolSchema() {
+    func toolSchema() {
         let tool = StartMacLogCapTool(sessionManager: sessionManager)
         let schema = tool.tool()
 
@@ -18,7 +18,7 @@ struct StartMacLogCapToolTests {
     }
 
     @Test("Tool schema includes all expected parameters")
-    func testToolParameters() {
+    func toolParameters() {
         let tool = StartMacLogCapTool(sessionManager: sessionManager)
         let schema = tool.tool()
 

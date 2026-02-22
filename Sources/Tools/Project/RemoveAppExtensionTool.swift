@@ -22,7 +22,8 @@ public struct RemoveAppExtensionTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "extension_name": .object([
                         "type": .string("string"),
@@ -149,7 +150,8 @@ public struct RemoveAppExtensionTool: Sendable {
                 let mainGroup = project.mainGroup
             {
                 removeExtensionGroup(
-                    from: mainGroup, extensionName: extensionName, xcodeproj: xcodeproj)
+                    from: mainGroup, extensionName: extensionName, xcodeproj: xcodeproj
+                )
             }
 
             // Remove the target itself
@@ -167,7 +169,8 @@ public struct RemoveAppExtensionTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to remove App Extension from Xcode project: \(error.localizedDescription)")
+                "Failed to remove App Extension from Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 
@@ -188,7 +191,8 @@ public struct RemoveAppExtensionTool: Sendable {
         for child in group.children {
             if let childGroup = child as? PBXGroup {
                 removeExtensionGroup(
-                    from: childGroup, extensionName: extensionName, xcodeproj: xcodeproj)
+                    from: childGroup, extensionName: extensionName, xcodeproj: xcodeproj
+                )
             }
         }
     }

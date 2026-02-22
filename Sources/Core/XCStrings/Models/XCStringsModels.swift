@@ -254,7 +254,7 @@ public struct StaleKeysResult: Codable, Sendable {
     public init(file: String, staleKeys: [String]) {
         self.file = file
         self.staleKeys = staleKeys
-        self.count = staleKeys.count
+        count = staleKeys.count
     }
 }
 
@@ -265,7 +265,7 @@ public struct BatchStaleKeysSummary: Codable, Sendable {
 
     public init(files: [StaleKeysResult]) {
         self.files = files
-        self.totalStaleKeys = files.reduce(0) { $0 + $1.count }
+        totalStaleKeys = files.reduce(0) { $0 + $1.count }
     }
 }
 
@@ -279,8 +279,8 @@ public struct BatchCheckKeysResult: Codable, Sendable {
 
     public init(results: [String: Bool]) {
         self.results = results
-        self.existCount = results.values.filter(\.self).count
-        self.missingCount = results.values.filter { !$0 }.count
+        existCount = results.values.filter(\.self).count
+        missingCount = results.values.filter { !$0 }.count
     }
 }
 
@@ -331,14 +331,14 @@ public struct CompactStatsInfo: Codable, Sendable {
     public let completeCount: Int
 
     public init(from stats: StatsInfo) {
-        self.totalKeys = stats.totalKeys
-        self.sourceLanguage = stats.sourceLanguage
-        self.totalLanguages = stats.languages.count
+        totalKeys = stats.totalKeys
+        sourceLanguage = stats.sourceLanguage
+        totalLanguages = stats.languages.count
 
         let incomplete = stats.coverageByLanguage.filter { $0.value.coveragePercent < 100 }
-        self.allComplete = incomplete.isEmpty
-        self.incompleteLanguages = incomplete.isEmpty ? nil : incomplete
-        self.completeCount = stats.coverageByLanguage.count - incomplete.count
+        allComplete = incomplete.isEmpty
+        incompleteLanguages = incomplete.isEmpty ? nil : incomplete
+        completeCount = stats.coverageByLanguage.count - incomplete.count
     }
 }
 
@@ -352,14 +352,14 @@ public struct CompactFileCoverageSummary: Codable, Sendable {
     public let completeCount: Int
 
     public init(from summary: FileCoverageSummary) {
-        self.file = summary.file
-        self.totalKeys = summary.totalKeys
-        self.totalLanguages = summary.languages.count
+        file = summary.file
+        totalKeys = summary.totalKeys
+        totalLanguages = summary.languages.count
 
         let incomplete = summary.languages.filter { $0.value < 100 }
-        self.allComplete = incomplete.isEmpty
-        self.incompleteLanguages = incomplete.isEmpty ? nil : incomplete
-        self.completeCount = summary.languages.count - incomplete.count
+        allComplete = incomplete.isEmpty
+        incompleteLanguages = incomplete.isEmpty ? nil : incomplete
+        completeCount = summary.languages.count - incomplete.count
     }
 }
 
@@ -369,8 +369,8 @@ public struct CompactBatchCoverageSummary: Codable, Sendable {
     public let aggregated: CompactAggregatedCoverage
 
     public init(from batch: BatchCoverageSummary) {
-        self.files = batch.files.map { CompactFileCoverageSummary(from: $0) }
-        self.aggregated = CompactAggregatedCoverage(from: batch.aggregated)
+        files = batch.files.map { CompactFileCoverageSummary(from: $0) }
+        aggregated = CompactAggregatedCoverage(from: batch.aggregated)
     }
 }
 
@@ -384,13 +384,13 @@ public struct CompactAggregatedCoverage: Codable, Sendable {
     public let completeCount: Int
 
     public init(from agg: AggregatedCoverage) {
-        self.totalFiles = agg.totalFiles
-        self.totalKeys = agg.totalKeys
-        self.totalLanguages = agg.averageCoverageByLanguage.count
+        totalFiles = agg.totalFiles
+        totalKeys = agg.totalKeys
+        totalLanguages = agg.averageCoverageByLanguage.count
 
         let incomplete = agg.averageCoverageByLanguage.filter { $0.value < 100 }
-        self.allComplete = incomplete.isEmpty
-        self.incompleteLanguages = incomplete.isEmpty ? nil : incomplete
-        self.completeCount = agg.averageCoverageByLanguage.count - incomplete.count
+        allComplete = incomplete.isEmpty
+        incompleteLanguages = incomplete.isEmpty ? nil : incomplete
+        completeCount = agg.averageCoverageByLanguage.count - incomplete.count
     }
 }

@@ -1,10 +1,11 @@
 ---
 # r5e-pdy
 title: Add in-place target renaming tool
-status: ready
+status: completed
 type: feature
+priority: normal
 created_at: 2026-02-21T21:49:58Z
-updated_at: 2026-02-21T21:49:58Z
+updated_at: 2026-02-22T01:16:34Z
 ---
 
 ## Problem

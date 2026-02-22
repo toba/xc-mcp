@@ -26,7 +26,8 @@ public struct SwiftPackageStopTool: Sendable {
                     "executable": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the executable to stop. Required to identify the process."),
+                            "Name of the executable to stop. Required to identify the process."
+                        ),
                     ]),
                     "signal": .object([
                         "type": .string("string"),
@@ -55,13 +56,15 @@ public struct SwiftPackageStopTool: Sendable {
 
         do {
             let result = try ProcessResult.run(
-                "/usr/bin/pkill", arguments: [signalArg, "-f", executable], mergeStderr: false)
+                "/usr/bin/pkill", arguments: [signalArg, "-f", executable], mergeStderr: false
+            )
 
             if result.succeeded {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Successfully sent \(signal) signal to process '\(executable)'")
+                            "Successfully sent \(signal) signal to process '\(executable)'"
+                        )
                     ]
                 )
             } else if result.exitCode == 1 {

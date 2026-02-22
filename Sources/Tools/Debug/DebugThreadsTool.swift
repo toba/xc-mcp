@@ -20,17 +20,20 @@ public struct DebugThreadsTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."),
+                            "Process ID of the debugged process."
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."),
+                            "Bundle identifier of the app (uses registered session)."
+                        ),
                     ]),
                     "select": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Thread index to switch to."),
+                            "Thread index to switch to."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -55,7 +58,8 @@ public struct DebugThreadsTool: Sendable {
 
         do {
             let result = try await lldbRunner.listThreads(
-                pid: targetPID, selectIndex: selectIndex)
+                pid: targetPID, selectIndex: selectIndex
+            )
 
             var message = "Threads for process \(targetPID):\n\n\(result.output)"
             return CallTool.Result(content: [.text(message)])

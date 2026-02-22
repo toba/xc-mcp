@@ -20,12 +20,14 @@ public struct DebugDetachTool: Sendable {
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app to detach from."),
+                            "Bundle identifier of the app to detach from."
+                        ),
                     ]),
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID to detach from."),
+                            "Process ID to detach from."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -42,7 +44,8 @@ public struct DebugDetachTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either bundle_id (with active session) or pid is required")
+                "Either bundle_id (with active session) or pid is required"
+            )
         }
 
         do {

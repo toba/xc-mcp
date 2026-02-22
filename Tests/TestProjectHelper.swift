@@ -85,13 +85,15 @@ enum TestProjectHelper {
             buildSettings: [
                 "PRODUCT_NAME": .string(targetName),
                 "BUNDLE_IDENTIFIER": .string("com.example.\(targetName)"),
-            ])
+            ]
+        )
         let targetReleaseConfig = XCBuildConfiguration(
             name: "Release",
             buildSettings: [
                 "PRODUCT_NAME": .string(targetName),
                 "BUNDLE_IDENTIFIER": .string("com.example.\(targetName)"),
-            ])
+            ]
+        )
         pbxproj.add(object: targetDebugConfig)
         pbxproj.add(object: targetReleaseConfig)
 
@@ -157,7 +159,8 @@ enum TestProjectHelper {
 
         let xcodeproj = try XcodeProj(path: path)
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: folderPath, name: folderPath)
+            sourceTree: .group, path: folderPath, name: folderPath
+        )
         xcodeproj.pbxproj.add(object: syncGroup)
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(syncGroup)

@@ -216,11 +216,11 @@ public enum DeviceCtlError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-        case .commandFailed(let message):
+        case let .commandFailed(message):
             return "devicectl command failed: \(message)"
         case .invalidOutput:
             return "devicectl returned invalid output"
-        case .deviceNotFound(let udid):
+        case let .deviceNotFound(udid):
             return "Device not found: \(udid)"
         }
     }

@@ -10,7 +10,6 @@ import XCMCPCore
 /// Requires `scripts/fetch-fixtures.sh` to have been run first.
 @Suite(.enabled(if: IntegrationFixtures.available), .serialized)
 struct BuildRunScreenshotIntegrationTests {
-
     // MARK: - Shared infrastructure
 
     private let sessionManager = SessionManager()
@@ -23,11 +22,12 @@ struct BuildRunScreenshotIntegrationTests {
     func build_Alamofire_iOS() async throws {
         let tool = BuildSimTool(
             xcodebuildRunner: xcodebuildRunner,
-            sessionManager: sessionManager)
+            sessionManager: sessionManager
+        )
         let result = try await tool.execute(arguments: [
             "project_path": .string(IntegrationFixtures.alamofireProjectPath),
             "scheme": .string("Alamofire iOS"),
-            "simulator": .string(IntegrationFixtures.simulatorUDID!),
+            "simulator": .string(#require(IntegrationFixtures.simulatorUDID)),
         ])
 
         let content = textContent(result)
@@ -38,7 +38,8 @@ struct BuildRunScreenshotIntegrationTests {
     func build_Alamofire_macOS() async throws {
         let tool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner,
-            sessionManager: sessionManager)
+            sessionManager: sessionManager
+        )
         let result = try await tool.execute(arguments: [
             "project_path": .string(IntegrationFixtures.alamofireProjectPath),
             "scheme": .string("Alamofire macOS"),
@@ -49,6 +50,7 @@ struct BuildRunScreenshotIntegrationTests {
     }
 
     // MARK: - SwiftFormat — build only (macOS)
+
     // Build-only because "SwiftFormat for Xcode" is a source editor extension host
     // with no meaningful window to screenshot, and launching it triggers a TCC dialog.
 
@@ -56,7 +58,8 @@ struct BuildRunScreenshotIntegrationTests {
     func build_SwiftFormat_macOS() async throws {
         let tool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner,
-            sessionManager: sessionManager)
+            sessionManager: sessionManager
+        )
         let result = try await tool.execute(arguments: [
             "project_path": .string(IntegrationFixtures.swiftFormatProjectPath),
             "scheme": .string("SwiftFormat for Xcode"),
@@ -67,13 +70,14 @@ struct BuildRunScreenshotIntegrationTests {
     }
 
     // MARK: - IceCubesApp — build, run, screenshot (simulator)
+
     // Must run before previewCapture so SPM packages are resolved in DerivedData.
     // The preview host scheme can't resolve transitive local package dependencies
     // from a completely clean DerivedData.
 
     @Test(.enabled(if: IntegrationFixtures.simulatorAvailable), .timeLimit(.minutes(10)))
     func buildRunScreenshot_IceCubesApp_sim() async throws {
-        let simulatorUDID = IntegrationFixtures.simulatorUDID!
+        let simulatorUDID = try #require(IntegrationFixtures.simulatorUDID)
 
         // 1. Boot simulator
         let bootTool = BootSimTool(simctlRunner: simctlRunner)
@@ -85,7 +89,8 @@ struct BuildRunScreenshotIntegrationTests {
         let buildRunTool = BuildRunSimTool(
             xcodebuildRunner: xcodebuildRunner,
             simctlRunner: simctlRunner,
-            sessionManager: sessionManager)
+            sessionManager: sessionManager
+        )
         let buildResult = try await buildRunTool.execute(arguments: [
             "project_path": .string(IntegrationFixtures.iceCubesProjectPath),
             "scheme": .string("IceCubesApp"),
@@ -104,7 +109,8 @@ struct BuildRunScreenshotIntegrationTests {
             + "icecubes_screenshot_\(ProcessInfo.processInfo.globallyUniqueString).png"
         let screenshotTool = ScreenshotTool(
             simctlRunner: simctlRunner,
-            sessionManager: sessionManager)
+            sessionManager: sessionManager
+        )
         let screenshotResult = try await screenshotTool.execute(arguments: [
             "simulator": .string(simulatorUDID),
             "output_path": .string(savePath),
@@ -129,20 +135,23 @@ struct BuildRunScreenshotIntegrationTests {
     }
 
     // MARK: - IceCubesApp — preview capture
+
     // Runs after buildRunScreenshot which populates DerivedData with resolved
     // SPM packages. The preview host scheme needs these cached packages.
 
     @Test(.enabled(if: IntegrationFixtures.simulatorAvailable), .timeLimit(.minutes(10)))
     func previewCapture_IceCubesApp() async throws {
-        let simulatorUDID = IntegrationFixtures.simulatorUDID!
+        let simulatorUDID = try #require(IntegrationFixtures.simulatorUDID)
         let pathUtility = PathUtility(
-            basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false)
+            basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false
+        )
 
         let tool = PreviewCaptureTool(
             xcodebuildRunner: xcodebuildRunner,
             simctlRunner: simctlRunner,
             pathUtility: pathUtility,
-            sessionManager: sessionManager)
+            sessionManager: sessionManager
+        )
 
         let result = try await tool.execute(arguments: [
             "file_path": .string(IntegrationFixtures.iceCubesPreviewFilePath),

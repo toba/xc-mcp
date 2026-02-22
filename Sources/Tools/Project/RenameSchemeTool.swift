@@ -54,7 +54,7 @@ public struct RenameSchemeTool: Sendable {
         let newFilename = "\(newName).xcscheme"
 
         // Check that new name doesn't already exist
-        let schemeDirs = collectSchemeDirs(projectPath: resolvedProjectPath)
+        let schemeDirs = SchemePathResolver.schemeDirs(for: resolvedProjectPath)
         for dir in schemeDirs {
             let newPath = "\(dir)/\(newFilename)"
             if fm.fileExists(atPath: newPath) {
@@ -89,27 +89,5 @@ public struct RenameSchemeTool: Sendable {
         return CallTool.Result(
             content: [.text("Scheme '\(schemeName)' not found in project")]
         )
-    }
-
-    private func collectSchemeDirs(projectPath: String) -> [String] {
-        let fm = FileManager.default
-        var dirs: [String] = []
-
-        let sharedDir = "\(projectPath)/xcshareddata/xcschemes"
-        if fm.fileExists(atPath: sharedDir) {
-            dirs.append(sharedDir)
-        }
-
-        let userdataDir = "\(projectPath)/xcuserdata"
-        if let userDirs = try? fm.contentsOfDirectory(atPath: userdataDir) {
-            for userDir in userDirs {
-                let userSchemeDir = "\(userdataDir)/\(userDir)/xcschemes"
-                if fm.fileExists(atPath: userSchemeDir) {
-                    dirs.append(userSchemeDir)
-                }
-            }
-        }
-
-        return dirs
     }
 }

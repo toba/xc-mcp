@@ -24,12 +24,14 @@ public struct GetDeviceAppPathTool: Sendable {
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The bundle identifier of the app (e.g., 'com.example.MyApp')."),
+                            "The bundle identifier of the app (e.g., 'com.example.MyApp')."
+                        ),
                     ]),
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device UDID. Uses session default if not specified."),
+                            "Device UDID. Uses session default if not specified."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("bundle_id")]),
@@ -50,7 +52,8 @@ public struct GetDeviceAppPathTool: Sendable {
             device = sessionDevice
         } else {
             throw MCPError.invalidParams(
-                "device is required. Set it with set_session_defaults or pass it directly.")
+                "device is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         do {
@@ -60,7 +63,8 @@ public struct GetDeviceAppPathTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "App info for '\(bundleId)' on device '\(device)':\n\n\(result.stdout)")
+                            "App info for '\(bundleId)' on device '\(device)':\n\n\(result.stdout)"
+                        )
                     ]
                 )
             } else {

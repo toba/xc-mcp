@@ -21,7 +21,8 @@ public struct AddBuildPhaseTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -48,7 +49,8 @@ public struct AddBuildPhaseTool: Sendable {
                     "files": .object([
                         "type": .string("array"),
                         "description": .string(
-                            "Array of file paths to copy (for copy_files phase)"),
+                            "Array of file paths to copy (for copy_files phase)"
+                        ),
                     ]),
                 ]),
                 "required": .array([
@@ -66,7 +68,8 @@ public struct AddBuildPhaseTool: Sendable {
             case let .string(phaseType) = arguments["phase_type"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, phase_name, and phase_type are required")
+                "project_path, target_name, phase_name, and phase_type are required"
+            )
         }
 
         do {
@@ -159,7 +162,8 @@ public struct AddBuildPhaseTool: Sendable {
 
             default:
                 throw MCPError.invalidParams(
-                    "Invalid phase_type: \(phaseType). Must be one of: run_script, copy_files")
+                    "Invalid phase_type: \(phaseType). Must be one of: run_script, copy_files"
+                )
             }
 
             // Save project
@@ -174,7 +178,8 @@ public struct AddBuildPhaseTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add build phase to Xcode project: \(error.localizedDescription)")
+                "Failed to add build phase to Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

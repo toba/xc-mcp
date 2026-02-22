@@ -20,12 +20,14 @@ public struct StartMacLogCapTool: Sendable {
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional bundle identifier to filter logs to a specific app."),
+                            "Optional bundle identifier to filter logs to a specific app."
+                        ),
                     ]),
                     "process_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional process name to filter logs to a specific process."),
+                            "Optional process name to filter logs to a specific process."
+                        ),
                     ]),
                     "subsystem": .object([
                         "type": .string("string"),
@@ -42,7 +44,8 @@ public struct StartMacLogCapTool: Sendable {
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to write logs to. Defaults to /tmp/mac_log_<identifier>.log"),
+                            "Path to write logs to. Defaults to /tmp/mac_log_<identifier>.log"
+                        ),
                     ]),
                 ]),
                 "required": .array([]),

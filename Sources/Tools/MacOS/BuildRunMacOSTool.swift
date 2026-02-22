@@ -25,7 +25,8 @@ public struct BuildRunMacOSTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."),
+                            "Path to the .xcodeproj file. Uses session default if not specified."
+                        ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
@@ -36,12 +37,14 @@ public struct BuildRunMacOSTool: Sendable {
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to build. Uses session default if not specified."),
+                            "The scheme to build. Uses session default if not specified."
+                        ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."),
+                            "Build configuration (Debug or Release). Defaults to Debug."
+                        ),
                     ]),
                     "arch": .object([
                         "type": .string("string"),
@@ -62,7 +65,8 @@ public struct BuildRunMacOSTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments)
+            from: arguments
+        )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let arch = arguments.getString("arch")
@@ -100,7 +104,8 @@ public struct BuildRunMacOSTool: Sendable {
 
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {
                 throw MCPError.internalError(
-                    "Could not determine app path from build settings.")
+                    "Could not determine app path from build settings."
+                )
             }
 
             // Step 3: Launch app using open command

@@ -27,7 +27,8 @@ struct RemoveSwiftPackageToolTests {
 
         #expect(toolDefinition.name == "remove_swift_package")
         #expect(
-            toolDefinition.description == "Remove a Swift Package dependency from an Xcode project")
+            toolDefinition.description == "Remove a Swift Package dependency from an Xcode project"
+        )
     }
 
     static let missingParamCases: [RemoveSwiftPackageMissingParamTestCase] = [
@@ -55,7 +56,8 @@ struct RemoveSwiftPackageToolTests {
     @Test("Remove non-existent package")
     func removeNonExistentPackage() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -83,7 +85,8 @@ struct RemoveSwiftPackageToolTests {
     @Test("Remove existing package from project")
     func removeExistingPackageFromProject() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -131,7 +134,8 @@ struct RemoveSwiftPackageToolTests {
     @Test("Remove package from project and targets")
     func removePackageFromProjectAndTargets() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -140,7 +144,8 @@ struct RemoveSwiftPackageToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         // Add a package to a specific target
         let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -189,7 +194,8 @@ struct RemoveSwiftPackageToolTests {
     @Test("Remove package but keep target dependencies")
     func removePackageButKeepTargetDependencies() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -198,14 +204,16 @@ struct RemoveSwiftPackageToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath)
+            name: "TestProject", targetName: "TestApp", at: projectPath
+        )
 
         // Add a package to a specific target
         let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
         _ = try addTool.execute(arguments: [
             "project_path": Value.string(projectPath.string),
             "package_url": Value.string(
-                "https://github.com/pointfreeco/swift-composable-architecture.git"),
+                "https://github.com/pointfreeco/swift-composable-architecture.git"
+            ),
             "requirement": Value.string("1.0.0"),
             "target_name": Value.string("TestApp"),
             "product_name": Value.string("ComposableArchitecture"),
@@ -216,7 +224,8 @@ struct RemoveSwiftPackageToolTests {
         let args: [String: Value] = [
             "project_path": Value.string(projectPath.string),
             "package_url": Value.string(
-                "https://github.com/pointfreeco/swift-composable-architecture.git"),
+                "https://github.com/pointfreeco/swift-composable-architecture.git"
+            ),
             "remove_from_targets": Value.bool(false),
         ]
 
@@ -242,7 +251,8 @@ struct RemoveSwiftPackageToolTests {
     @Test("Remove multiple packages")
     func removeMultiplePackages() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -285,6 +295,7 @@ struct RemoveSwiftPackageToolTests {
         #expect(updatedProject?.remotePackages.count == 1)
         #expect(
             updatedProject?.remotePackages.first?.repositoryURL
-                == "https://github.com/apple/swift-collections.git")
+                == "https://github.com/apple/swift-collections.git"
+        )
     }
 }

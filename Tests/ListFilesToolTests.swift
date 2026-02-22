@@ -8,17 +8,17 @@ import XcodeProj
 @testable import XCMCPTools
 
 struct ListFilesToolTests {
-
-    @Test func testListFilesToolCreation() {
+    @Test func listFilesToolCreation() {
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: "/workspace"))
         let toolDefinition = tool.tool()
 
         #expect(toolDefinition.name == "list_files")
         #expect(
-            toolDefinition.description == "List all files in a specific target of an Xcode project")
+            toolDefinition.description == "List all files in a specific target of an Xcode project"
+        )
     }
 
-    @Test func testListFilesWithMissingParameters() throws {
+    @Test func listFilesWithMissingParameters() throws {
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         #expect(throws: MCPError.self) {
@@ -30,7 +30,7 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func testListFilesWithInvalidProjectPath() throws {
+    @Test func listFilesWithInvalidProjectPath() throws {
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: "/workspace"))
         let arguments: [String: Value] = [
             "project_path": Value.string("/nonexistent/path.xcodeproj"),
@@ -42,10 +42,11 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func testListFilesWithEmptyTarget() throws {
+    @Test func listFilesWithEmptyTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -57,7 +58,8 @@ struct ListFilesToolTests {
         // Create a test project with target using XcodeProj
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestProject", at: projectPath)
+            name: "TestProject", targetName: "TestProject", at: projectPath
+        )
 
         // List files in the target
         let listArguments: [String: Value] = [
@@ -76,10 +78,11 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func testListFilesWithInvalidTarget() throws {
+    @Test func listFilesWithInvalidTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -91,7 +94,8 @@ struct ListFilesToolTests {
         // Create a test project with target using XcodeProj
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestProject", at: projectPath)
+            name: "TestProject", targetName: "TestProject", at: projectPath
+        )
 
         // List files with invalid target name
         let listArguments: [String: Value] = [
@@ -104,10 +108,11 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func testListFilesWithSourceFiles() throws {
+    @Test func listFilesWithSourceFiles() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -119,17 +124,20 @@ struct ListFilesToolTests {
         // Create a test project with target using XcodeProj
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestProject", at: projectPath)
+            name: "TestProject", targetName: "TestProject", at: projectPath
+        )
 
         // Add a source file to the project
         let sourceFilePath = tempDir.path + "/TestFile.swift"
         try "// Test file content".write(
-            to: URL(filePath: sourceFilePath), atomically: true, encoding: .utf8)
+            to: URL(filePath: sourceFilePath), atomically: true, encoding: .utf8
+        )
 
         let xcodeproj = try XcodeProj(path: projectPath)
-        let target = xcodeproj.pbxproj.nativeTargets.first!
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first)
         let fileReference = PBXFileReference(
-            sourceTree: .group, name: "TestFile.swift", path: "TestFile.swift")
+            sourceTree: .group, name: "TestFile.swift", path: "TestFile.swift"
+        )
         xcodeproj.pbxproj.add(object: fileReference)
 
         let buildFile = PBXBuildFile(file: fileReference)
@@ -160,9 +168,10 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func testListFilesWithSynchronizedFolder() throws {
+    @Test func listFilesWithSynchronizedFolder() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -173,15 +182,17 @@ struct ListFilesToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestProject", at: projectPath)
+            name: "TestProject", targetName: "TestProject", at: projectPath
+        )
 
         let xcodeproj = try XcodeProj(path: projectPath)
-        let target = xcodeproj.pbxproj.nativeTargets.first!
-        let mainGroup = xcodeproj.pbxproj.rootObject!.mainGroup!
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first)
+        let mainGroup = try #require(xcodeproj.pbxproj.rootObject?.mainGroup)
 
         // Add a synchronized root group
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "App/Sources")
+            sourceTree: .group, path: "App/Sources"
+        )
         xcodeproj.pbxproj.add(object: syncGroup)
         mainGroup.children.append(syncGroup)
         target.fileSystemSynchronizedGroups = [syncGroup]
@@ -202,9 +213,10 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func testListFilesWithSynchronizedFolderExceptions() throws {
+    @Test func listFilesWithSynchronizedFolderExceptions() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -215,15 +227,17 @@ struct ListFilesToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestProject", at: projectPath)
+            name: "TestProject", targetName: "TestProject", at: projectPath
+        )
 
         let xcodeproj = try XcodeProj(path: projectPath)
-        let target = xcodeproj.pbxproj.nativeTargets.first!
-        let mainGroup = xcodeproj.pbxproj.rootObject!.mainGroup!
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first)
+        let mainGroup = try #require(xcodeproj.pbxproj.rootObject?.mainGroup)
 
         // Add a synchronized root group with exceptions
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "App/Sources")
+            sourceTree: .group, path: "App/Sources"
+        )
         xcodeproj.pbxproj.add(object: syncGroup)
         mainGroup.children.append(syncGroup)
         target.fileSystemSynchronizedGroups = [syncGroup]

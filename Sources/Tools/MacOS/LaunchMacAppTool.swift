@@ -20,7 +20,8 @@ public struct LaunchMacAppTool: Sendable {
                     "app_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .app bundle to launch (e.g., '/path/to/MyApp.app')."),
+                            "Path to the .app bundle to launch (e.g., '/path/to/MyApp.app')."
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -122,10 +123,12 @@ public struct LaunchMacAppTool: Sendable {
                     NextStepHints.content(hints: [
                         NextStepHint(
                             tool: "screenshot_mac_window",
-                            description: "Take a screenshot of a macOS window"),
+                            description: "Take a screenshot of a macOS window"
+                        ),
                         NextStepHint(
                             tool: "interact_ui_tree",
-                            description: "Inspect the app's accessibility UI tree"),
+                            description: "Inspect the app's accessibility UI tree"
+                        ),
                     ]),
                 ])
             } else {

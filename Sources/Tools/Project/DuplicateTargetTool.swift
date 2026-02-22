@@ -21,7 +21,8 @@ public struct DuplicateTargetTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "source_target": .object([
                         "type": .string("string"),
@@ -49,7 +50,8 @@ public struct DuplicateTargetTool: Sendable {
             case let .string(newTargetName) = arguments["new_target_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, source_target, and new_target_name are required")
+                "project_path, source_target, and new_target_name are required"
+            )
         }
 
         let newBundleIdentifier: String?
@@ -104,12 +106,14 @@ public struct DuplicateTargetTool: Sendable {
                         infoPlist.contains(sourceTargetName)
                     {
                         let newInfoPlist = infoPlist.replacingOccurrences(
-                            of: sourceTargetName, with: newTargetName)
+                            of: sourceTargetName, with: newTargetName
+                        )
                         newBuildSettings["INFOPLIST_FILE"] = .string(newInfoPlist)
                     }
 
                     let newConfig = XCBuildConfiguration(
-                        name: sourceConfig.name, buildSettings: newBuildSettings)
+                        name: sourceConfig.name, buildSettings: newBuildSettings
+                    )
                     xcodeproj.pbxproj.add(object: newConfig)
                     return newConfig
                 } ?? []
@@ -222,7 +226,8 @@ public struct DuplicateTargetTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to duplicate target in Xcode project: \(error.localizedDescription)")
+                "Failed to duplicate target in Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

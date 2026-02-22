@@ -6,7 +6,7 @@ import Testing
 @Suite("BuildOutputParser Tests")
 struct BuildOutputParserTests {
     @Test("Parse single error")
-    func testParseError() {
+    func parseError() {
         let parser = BuildOutputParser()
         let input = """
             main.swift:15:5: error: use of undeclared identifier 'unknown'
@@ -25,7 +25,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse successful build")
-    func testParseSuccessfulBuild() {
+    func parseSuccessfulBuild() {
         let parser = BuildOutputParser()
         let input = """
             Building for debugging...
@@ -41,7 +41,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse failing test")
-    func testFailingTest() {
+    func failingTest() {
         let parser = BuildOutputParser()
         let input = """
             Test Case 'LoginTests.testInvalidCredentials' failed (0.045 seconds).
@@ -58,7 +58,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse multiple errors")
-    func testMultipleErrors() {
+    func multipleErrors() {
         let parser = BuildOutputParser()
         let input = """
             UserService.swift:45:12: error: cannot find 'invalidFunction' in scope
@@ -74,7 +74,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse build time extraction")
-    func testBuildTimeExtraction() {
+    func buildTimeExtraction() {
         let parser = BuildOutputParser()
         let input = """
             Building for debugging...
@@ -86,7 +86,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse compile error with file and line")
-    func testParseCompileError() {
+    func parseCompileError() {
         let parser = BuildOutputParser()
         let input = """
             UserManager.swift:42:10: error: cannot find 'undefinedVariable' in scope
@@ -104,7 +104,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Passed test count from Executed summary")
-    func testPassedTestCountFromExecutedSummary() {
+    func passedTestCountFromExecutedSummary() {
         let parser = BuildOutputParser()
         let input = """
             Test Case 'SampleTests.testExample' passed (0.001 seconds).
@@ -119,7 +119,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Combined XCTest and Swift Testing counts")
-    func testCombinedXCTestAndSwiftTestingCounts() {
+    func combinedXCTestAndSwiftTestingCounts() {
         let parser = BuildOutputParser()
         let input = """
             Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
@@ -140,7 +140,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Combined test time accumulation")
-    func testCombinedTestTimeAccumulation() {
+    func combinedTestTimeAccumulation() {
         let parser = BuildOutputParser()
         let input = """
             Executed 100 tests, with 0 failures (0 unexpected) in 2.500 (2.600) seconds
@@ -154,7 +154,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Swift compiler visual error lines are filtered")
-    func testSwiftCompilerVisualErrorLinesAreFiltered() {
+    func swiftCompilerVisualErrorLinesAreFiltered() {
         let parser = BuildOutputParser()
         let input = """
             /Users/test/project/Tests/TestFile.swift:16:34: error: missing argument for parameter 'fragments' in call
@@ -176,7 +176,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse warnings")
-    func testParseWarning() {
+    func parseWarning() {
         let parser = BuildOutputParser()
         let input = """
             AppDelegate.swift:67:8: warning: unused variable 'config'
@@ -192,7 +192,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Deduplicate identical errors")
-    func testParseDuplicateErrors() {
+    func parseDuplicateErrors() {
         let parser = BuildOutputParser()
         let input = """
             /path/to/File.swift:10:5: error: use of undeclared identifier
@@ -207,7 +207,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Swift Testing summary passed")
-    func testSwiftTestingSummaryPassed() {
+    func swiftTestingSummaryPassed() {
         let parser = BuildOutputParser()
         let input = """
             ✓ Test "test1" passed after 0.022 seconds.
@@ -225,7 +225,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse TEST FAILED flag")
-    func testParseTestFailed() {
+    func parseTestFailed() {
         let parser = BuildOutputParser()
         let input = """
             Test Case '-[TestProjectTests.TestProjectTests testExample]' started.
@@ -239,7 +239,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("TEST FAILED with passed tests is success")
-    func testParseTestFailedWithPassedTests() {
+    func parseTestFailedWithPassedTests() {
         let parser = BuildOutputParser()
         let input = """
             Building for testing...
@@ -258,7 +258,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse fatal error")
-    func testParseFatalError() {
+    func parseFatalError() {
         let parser = BuildOutputParser()
         let input = "TestProjectTests/TestProjectTests.swift:5: Fatal error"
 
@@ -272,7 +272,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Slow test detection")
-    func testSlowTestDetection() {
+    func slowTestDetection() {
         let parser = BuildOutputParser()
         let input = """
             Test Case 'SampleTests.testFast' passed (0.1 seconds).
@@ -287,7 +287,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Flaky test detection")
-    func testFlakyTestDetection() {
+    func flakyTestDetection() {
         let parser = BuildOutputParser()
         let input = """
             Test Case 'SampleTests.testFlakyTest' passed (0.1 seconds).
@@ -302,7 +302,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse executable from RegisterWithLaunchServices")
-    func testParseExecutable() {
+    func parseExecutable() {
         let parser = BuildOutputParser()
         let input = """
             RegisterWithLaunchServices /path/to/MyApp.app (in target 'MyApp' from project 'MyProject')
@@ -317,7 +317,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse parallel test format")
-    func testParseParallelTestingPassedFormat() {
+    func parseParallelTestingPassedFormat() {
         let parser = BuildOutputParser()
         let input = """
             Test case 'MenuBarFeatureTests.testExample()' passed on 'My Mac - App (Dev) (51424)' (0.565 seconds)
@@ -334,7 +334,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Parse parallel test failure")
-    func testParseParallelTestingFailedFormat() {
+    func parseParallelTestingFailedFormat() {
         let parser = BuildOutputParser()
         let input = """
             Test case 'PublishingServiceTests.testProcessEntry()' failed on 'My Mac - App (Dev) (51424)' (0.070 seconds)
@@ -351,7 +351,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Swift Testing unquoted function names")
-    func testSwiftTestingUnquotedFunctionNames() {
+    func swiftTestingUnquotedFunctionNames() {
         let parser = BuildOutputParser()
         let input = """
             ◇ Test functionName() recorded an issue at /path/to/File.swift:42:10: expected true
@@ -370,7 +370,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Swift Testing non-standard symbols")
-    func testSwiftTestingNonStandardSymbols() {
+    func swiftTestingNonStandardSymbols() {
         let parser = BuildOutputParser()
         let input = """
             ◇ Test "test1" passed after 0.010 seconds.
@@ -386,7 +386,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Swift Testing failure summary with suites and issues")
-    func testSwiftTestingFailureSummaryWithSuitesAndIssues() {
+    func swiftTestingFailureSummaryWithSuitesAndIssues() {
         let parser = BuildOutputParser()
         let input = """
             ✘ Test "failingTest" recorded an issue at /path/File.swift:10:5: assertion failed
@@ -402,7 +402,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Swift Testing failure summary singular test and issue")
-    func testSwiftTestingFailureSummarySingular() {
+    func swiftTestingFailureSummarySingular() {
         let parser = BuildOutputParser()
         let input = """
             Test run with 1 test in 1 suite failed after 0.500 seconds with 1 issue.
@@ -415,7 +415,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Swift Testing mixed quoted and unquoted formats")
-    func testSwiftTestingMixedFormats() {
+    func swiftTestingMixedFormats() {
         let parser = BuildOutputParser()
         let input = """
             􀟈  Test shouldPass() started.
@@ -439,7 +439,7 @@ struct BuildOutputParserTests {
     }
 
     @Test("Swift Testing passed with unquoted function name")
-    func testSwiftTestingPassedUnquotedFunctionName() {
+    func swiftTestingPassedUnquotedFunctionName() {
         let parser = BuildOutputParser()
         let input = """
             ✓ Test myTestFunction() passed after 0.050 seconds.
@@ -456,13 +456,18 @@ struct BuildOutputParserTests {
         "Real-world Swift Testing output",
         .enabled(
             if: Bundle.module.url(
-                forResource: "swift-testing-output", withExtension: "txt", subdirectory: "Fixtures")
-                != nil))
-    func testRealWorldSwiftTestingOutput() throws {
+                forResource: "swift-testing-output", withExtension: "txt", subdirectory: "Fixtures"
+            )
+                != nil
+        )
+    )
+    func realWorldSwiftTestingOutput() throws {
         let parser = BuildOutputParser()
 
-        let fixtureURL = Bundle.module.url(
-            forResource: "swift-testing-output", withExtension: "txt", subdirectory: "Fixtures")!
+        let fixtureURL = try #require(
+            Bundle.module.url(
+                forResource: "swift-testing-output", withExtension: "txt", subdirectory: "Fixtures"
+            ))
         let input = try String(contentsOf: fixtureURL, encoding: .utf8)
 
         let result = parser.parse(input: input)
@@ -478,12 +483,17 @@ struct BuildOutputParserTests {
         "Large real-world build output",
         .enabled(
             if: Bundle.module.url(
-                forResource: "build", withExtension: "txt", subdirectory: "Fixtures") != nil))
-    func testLargeRealWorldBuildOutput() throws {
+                forResource: "build", withExtension: "txt", subdirectory: "Fixtures"
+            ) != nil
+        )
+    )
+    func largeRealWorldBuildOutput() throws {
         let parser = BuildOutputParser()
 
-        let fixtureURL = Bundle.module.url(
-            forResource: "build", withExtension: "txt", subdirectory: "Fixtures")!
+        let fixtureURL = try #require(
+            Bundle.module.url(
+                forResource: "build", withExtension: "txt", subdirectory: "Fixtures"
+            ))
         let input = try String(contentsOf: fixtureURL, encoding: .utf8)
 
         let result = parser.parse(input: input)

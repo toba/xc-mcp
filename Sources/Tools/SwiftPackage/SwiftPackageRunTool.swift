@@ -51,7 +51,8 @@ public struct SwiftPackageRunTool: Sendable {
             packagePath = sessionPackagePath
         } else {
             throw MCPError.invalidParams(
-                "package_path is required. Set it with set_session_defaults or pass it directly.")
+                "package_path is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get executable name if specified
@@ -93,7 +94,8 @@ public struct SwiftPackageRunTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Execution failed (exit code \(result.exitCode)):\n\(result.output)")
+                    "Execution failed (exit code \(result.exitCode)):\n\(result.output)"
+                )
             }
         } catch {
             throw error.asMCPError()

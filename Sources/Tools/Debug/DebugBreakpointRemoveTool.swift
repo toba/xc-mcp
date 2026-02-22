@@ -20,17 +20,20 @@ public struct DebugBreakpointRemoveTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."),
+                            "Process ID of the debugged process."
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."),
+                            "Bundle identifier of the app (uses registered session)."
+                        ),
                     ]),
                     "breakpoint_id": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "ID of the breakpoint to remove."),
+                            "ID of the breakpoint to remove."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("breakpoint_id")]),
@@ -59,7 +62,8 @@ public struct DebugBreakpointRemoveTool: Sendable {
 
         do {
             let result = try await lldbRunner.deleteBreakpoint(
-                pid: targetPID, breakpointId: breakpointId)
+                pid: targetPID, breakpointId: breakpointId
+            )
 
             var message = "Breakpoint \(breakpointId) removed"
             message += "\n\n\(result.output)"

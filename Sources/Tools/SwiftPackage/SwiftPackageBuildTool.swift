@@ -28,13 +28,15 @@ public struct SwiftPackageBuildTool: Sendable {
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration: 'debug' or 'release'. Defaults to 'debug'."),
+                            "Build configuration: 'debug' or 'release'. Defaults to 'debug'."
+                        ),
                         "enum": .array([.string("debug"), .string("release")]),
                     ]),
                     "product": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Specific product to build. If not specified, builds all products."),
+                            "Specific product to build. If not specified, builds all products."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),

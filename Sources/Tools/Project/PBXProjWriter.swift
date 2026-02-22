@@ -88,7 +88,8 @@ public enum PBXProjWriter {
             // Build a regex to find this object's block
             guard
                 let blockRegex = try? Regex(
-                    "\(objectID)\\s+/\\*[^*]*\\*/\\s*=\\s*\\{[^}]*\\}")
+                    "\(objectID)\\s+/\\*[^*]*\\*/\\s*=\\s*\\{[^}]*\\}"
+                )
             else {
                 continue
             }
@@ -107,7 +108,8 @@ public enum PBXProjWriter {
             // Find the dstPath line within this block and insert dstSubfolder after it
             guard
                 let dstPathRegex = try? Regex(
-                    "\(objectID)\\s+/\\*[^*]*\\*/\\s*=\\s*\\{[^}]*?dstPath\\s*=\\s*[^;]*;")
+                    "\(objectID)\\s+/\\*[^*]*\\*/\\s*=\\s*\\{[^}]*?dstPath\\s*=\\s*[^;]*;"
+                )
             else {
                 continue
             }

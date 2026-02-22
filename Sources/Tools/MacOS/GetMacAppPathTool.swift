@@ -49,7 +49,8 @@ public struct GetMacAppPathTool: Sendable {
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."),
+                            "Build configuration (Debug or Release). Defaults to Debug."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -187,7 +188,8 @@ public struct GetMacAppPathTool: Sendable {
         let plistPath = "\(appPath)/Contents/Info.plist"
         guard let plistData = FileManager.default.contents(atPath: plistPath),
             let plist = try? PropertyListSerialization.propertyList(
-                from: plistData, options: [], format: nil) as? [String: Any],
+                from: plistData, options: [], format: nil
+            ) as? [String: Any],
             let bundleId = plist["CFBundleIdentifier"] as? String
         else {
             return nil

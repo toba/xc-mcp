@@ -66,15 +66,20 @@ public struct SwiftMCPServer: Sendable {
 
         // Create Swift package tools
         let swiftPackageBuildTool = SwiftPackageBuildTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager)
+            swiftRunner: swiftRunner, sessionManager: sessionManager
+        )
         let swiftPackageTestTool = SwiftPackageTestTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager)
+            swiftRunner: swiftRunner, sessionManager: sessionManager
+        )
         let swiftPackageRunTool = SwiftPackageRunTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager)
+            swiftRunner: swiftRunner, sessionManager: sessionManager
+        )
         let swiftPackageCleanTool = SwiftPackageCleanTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager)
+            swiftRunner: swiftRunner, sessionManager: sessionManager
+        )
         let swiftPackageListTool = SwiftPackageListTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager)
+            swiftRunner: swiftRunner, sessionManager: sessionManager
+        )
         let swiftPackageStopTool = SwiftPackageStopTool(sessionManager: sessionManager)
 
         // Create session tools
@@ -119,7 +124,6 @@ public struct SwiftMCPServer: Sendable {
                 return try await swiftPackageListTool.execute(arguments: arguments)
             case .swiftPackageStop:
                 return try await swiftPackageStopTool.execute(arguments: arguments)
-
             // Session tools
             case .setSessionDefaults:
                 return try await setSessionDefaultsTool.execute(arguments: arguments)

@@ -21,7 +21,8 @@ public struct AddFrameworkTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -53,7 +54,8 @@ public struct AddFrameworkTool: Sendable {
             case let .string(frameworkName) = arguments["framework_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, and framework_name are required")
+                "project_path, target_name, and framework_name are required"
+            )
         }
 
         let embed: Bool
@@ -124,7 +126,8 @@ public struct AddFrameworkTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Framework '\(frameworkName)' already exists in target '\(targetName)'")
+                            "Framework '\(frameworkName)' already exists in target '\(targetName)'"
+                        )
                     ]
                 )
             }
@@ -210,7 +213,8 @@ public struct AddFrameworkTool: Sendable {
                 // Create build file for embedding
                 let embedBuildFile = PBXBuildFile(
                     file: frameworkFileRef,
-                    settings: ["ATTRIBUTES": ["CodeSignOnCopy", "RemoveHeadersOnCopy"]])
+                    settings: ["ATTRIBUTES": ["CodeSignOnCopy", "RemoveHeadersOnCopy"]]
+                )
                 xcodeproj.pbxproj.add(object: embedBuildFile)
                 embedPhase?.files?.append(embedBuildFile)
             }
@@ -228,7 +232,8 @@ public struct AddFrameworkTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add framework to Xcode project: \(error.localizedDescription)")
+                "Failed to add framework to Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

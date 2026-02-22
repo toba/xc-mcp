@@ -22,7 +22,8 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "folder_path": .object([
                         "type": .string("string"),
@@ -33,7 +34,8 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target to unlink from the synchronized folder"),
+                            "Name of the target to unlink from the synchronized folder"
+                        ),
                     ]),
                 ]),
                 "required": .array([
@@ -49,7 +51,8 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
             case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, folder_path, and target_name are required")
+                "project_path, folder_path, and target_name are required"
+            )
         }
 
         do {
@@ -67,7 +70,8 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
             guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
             else {
                 throw MCPError.invalidParams(
-                    "Synchronized folder '\(folderPath)' not found in project")
+                    "Synchronized folder '\(folderPath)' not found in project"
+                )
             }
 
             // Find the target
@@ -132,7 +136,8 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to remove target from synchronized folder: \(error.localizedDescription)")
+                "Failed to remove target from synchronized folder: \(error.localizedDescription)"
+            )
         }
     }
 }

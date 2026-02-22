@@ -7,7 +7,7 @@ public struct XCStringsStatsCalculator: Sendable {
 
     public init(file: XCStringsFile) {
         self.file = file
-        self.reader = XCStringsReader(file: file)
+        reader = XCStringsReader(file: file)
     }
 
     /// Get overall statistics

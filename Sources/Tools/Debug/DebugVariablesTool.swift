@@ -20,17 +20,20 @@ public struct DebugVariablesTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."),
+                            "Process ID of the debugged process."
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."),
+                            "Bundle identifier of the app (uses registered session)."
+                        ),
                     ]),
                     "frame": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Stack frame index. Defaults to 0 (current frame)."),
+                            "Stack frame index. Defaults to 0 (current frame)."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),

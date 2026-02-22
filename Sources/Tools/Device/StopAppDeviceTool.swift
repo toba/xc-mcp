@@ -24,12 +24,14 @@ public struct StopAppDeviceTool: Sendable {
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The bundle identifier of the app to stop (e.g., 'com.example.MyApp')."),
+                            "The bundle identifier of the app to stop (e.g., 'com.example.MyApp')."
+                        ),
                     ]),
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device UDID. Uses session default if not specified."),
+                            "Device UDID. Uses session default if not specified."
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("bundle_id")]),
@@ -52,7 +54,8 @@ public struct StopAppDeviceTool: Sendable {
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to stop app: \(result.errorOutput)")
+                    "Failed to stop app: \(result.errorOutput)"
+                )
             }
         } catch {
             throw error.asMCPError()

@@ -25,7 +25,8 @@ public struct GetAppBundleIdTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."),
+                            "Path to the .xcodeproj file. Uses session default if not specified."
+                        ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
@@ -42,7 +43,8 @@ public struct GetAppBundleIdTool: Sendable {
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."),
+                            "Build configuration (Debug or Release). Defaults to Debug."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -74,7 +76,8 @@ public struct GetAppBundleIdTool: Sendable {
             scheme = sessionScheme
         } else {
             throw MCPError.invalidParams(
-                "scheme is required. Set it with set_session_defaults or pass it directly.")
+                "scheme is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get configuration

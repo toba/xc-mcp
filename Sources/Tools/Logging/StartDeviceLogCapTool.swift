@@ -24,17 +24,20 @@ public struct StartDeviceLogCapTool: Sendable {
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device UDID or name. Uses session default if not specified."),
+                            "Device UDID or name. Uses session default if not specified."
+                        ),
                     ]),
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to write logs to. Defaults to /tmp/device_log_<udid>.log"),
+                            "Path to write logs to. Defaults to /tmp/device_log_<udid>.log"
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional bundle identifier to filter logs to a specific app."),
+                            "Optional bundle identifier to filter logs to a specific app."
+                        ),
                     ]),
                     "predicate": .object([
                         "type": .string("string"),
@@ -57,7 +60,8 @@ public struct StartDeviceLogCapTool: Sendable {
             device = sessionDevice
         } else {
             throw MCPError.invalidParams(
-                "device is required. Set it with set_session_defaults or pass it directly.")
+                "device is required. Set it with set_session_defaults or pass it directly."
+            )
         }
 
         // Get output file

@@ -6,7 +6,7 @@ import Testing
 @Suite("CoverageParser Tests")
 struct CoverageParserTests {
     @Test("Coverage data structures")
-    func testCodeCoverageDataStructures() {
+    func codeCoverageDataStructures() {
         let fileCoverage = FileCoverage(
             path: "/path/to/file.swift",
             name: "file.swift",
@@ -27,7 +27,7 @@ struct CoverageParserTests {
     }
 
     @Test("Parse xcodebuild coverage JSON format")
-    func testParseXcodebuildCoverageFormat() throws {
+    func parseXcodebuildCoverageFormat() throws {
         let xcodebuildJSON = """
             {
               "targets": [{
@@ -52,7 +52,8 @@ struct CoverageParserTests {
 
         let tempDir = FileManager.default.temporaryDirectory
         let testFile = tempDir.appendingPathComponent(
-            "xcodebuild-coverage-\(UUID().uuidString).json")
+            "xcodebuild-coverage-\(UUID().uuidString).json"
+        )
         try xcodebuildJSON.write(to: testFile, atomically: true, encoding: .utf8)
 
         defer {
@@ -68,7 +69,7 @@ struct CoverageParserTests {
     }
 
     @Test("Parse SPM coverage JSON format")
-    func testParseSPMCoverageFormat() throws {
+    func parseSPMCoverageFormat() throws {
         let spmJSON = """
             {
               "data": [{
@@ -113,7 +114,7 @@ struct CoverageParserTests {
     }
 
     @Test("Invalid JSON returns nil")
-    func testInvalidJSONReturnsNil() throws {
+    func invalidJSONReturnsNil() throws {
         let invalidJSON = """
             {
               "invalid": "format"
@@ -134,7 +135,7 @@ struct CoverageParserTests {
     }
 
     @Test("Empty files array returns nil")
-    func testEmptyFilesArrayReturnsNil() throws {
+    func emptyFilesArrayReturnsNil() throws {
         let emptyJSON = """
             {
               "data": [{
@@ -157,7 +158,7 @@ struct CoverageParserTests {
     }
 
     @Test("Coverage target filtering")
-    func testCoverageTargetFiltering() throws {
+    func coverageTargetFiltering() throws {
         let xcodebuildJSON = """
             {
               "targets": [
@@ -205,7 +206,7 @@ struct CoverageParserTests {
     }
 
     @Test("Coverage excludes test bundles")
-    func testCoverageExcludesTestBundles() throws {
+    func coverageExcludesTestBundles() throws {
         let xcodebuildJSON = """
             {
               "targets": [
@@ -237,7 +238,8 @@ struct CoverageParserTests {
 
         let tempDir = FileManager.default.temporaryDirectory
         let testFile = tempDir.appendingPathComponent(
-            "exclude-tests-coverage-\(UUID().uuidString).json")
+            "exclude-tests-coverage-\(UUID().uuidString).json"
+        )
         try xcodebuildJSON.write(to: testFile, atomically: true, encoding: .utf8)
 
         defer {
@@ -254,7 +256,7 @@ struct CoverageParserTests {
     }
 
     @Test("Non-existent path returns nil")
-    func testNonExistentPathReturnsNil() {
+    func nonExistentPathReturnsNil() {
         let parser = CoverageParser()
         let coverage = parser.parseCoverageFromPath("/nonexistent/path/to/coverage.json")
         #expect(coverage == nil)

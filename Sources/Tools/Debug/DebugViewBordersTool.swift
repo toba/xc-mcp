@@ -20,22 +20,26 @@ public struct DebugViewBordersTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."),
+                            "Process ID of the debugged process."
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."),
+                            "Bundle identifier of the app (uses registered session)."
+                        ),
                     ]),
                     "enabled": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Whether to enable or disable view borders."),
+                            "Whether to enable or disable view borders."
+                        ),
                     ]),
                     "border_width": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Border width in points. Defaults to 2.0."),
+                            "Border width in points. Defaults to 2.0."
+                        ),
                     ]),
                     "color": .object([
                         "type": .string("string"),

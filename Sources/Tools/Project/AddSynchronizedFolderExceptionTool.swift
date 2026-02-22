@@ -22,7 +22,8 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "folder_path": .object([
                         "type": .string("string"),
@@ -33,7 +34,8 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target to exclude files from"),
+                            "Name of the target to exclude files from"
+                        ),
                     ]),
                     "files": .object([
                         "type": .string("array"),
@@ -60,7 +62,8 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
             case let .array(filesArray) = arguments["files"]
         else {
             throw MCPError.invalidParams(
-                "project_path, folder_path, target_name, and files are required")
+                "project_path, folder_path, target_name, and files are required"
+            )
         }
 
         let files = filesArray.compactMap { value -> String? in
@@ -87,7 +90,8 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
             guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
             else {
                 throw MCPError.invalidParams(
-                    "Synchronized folder '\(folderPath)' not found in project")
+                    "Synchronized folder '\(folderPath)' not found in project"
+                )
             }
 
             // Find the target
@@ -131,7 +135,8 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to add synchronized folder exception: \(error.localizedDescription)")
+                "Failed to add synchronized folder exception: \(error.localizedDescription)"
+            )
         }
     }
 }

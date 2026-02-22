@@ -22,7 +22,8 @@ public struct RemoveFolderTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "folder_path": .object([
                         "type": .string("string"),

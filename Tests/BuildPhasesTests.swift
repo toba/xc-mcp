@@ -5,7 +5,7 @@ import Testing
 @Suite("Build Phases Tests")
 struct BuildPhasesTests {
     @Test("PhaseScriptExecution failure basic")
-    func testPhaseScriptExecutionFailureBasic() {
+    func phaseScriptExecutionFailureBasic() {
         let parser = BuildOutputParser()
         let output = """
             /bin/sh -c /Users/test/DerivedData/Build/Script.sh
@@ -25,7 +25,7 @@ struct BuildPhasesTests {
     }
 
     @Test("PhaseScriptExecution with multiple errors")
-    func testPhaseScriptExecutionWithMultipleErrors() {
+    func phaseScriptExecutionWithMultipleErrors() {
         let parser = BuildOutputParser()
         let output = """
             Build started...
@@ -47,7 +47,7 @@ struct BuildPhasesTests {
     }
 
     @Test("PhaseScriptExecution with no context")
-    func testPhaseScriptExecutionWithNoContext() {
+    func phaseScriptExecutionWithNoContext() {
         let parser = BuildOutputParser()
         let output = """
             Command PhaseScriptExecution failed with a nonzero exit code
@@ -60,7 +60,7 @@ struct BuildPhasesTests {
     }
 
     @Test("Build succeeded does not create phase error")
-    func testBuildSucceededDoesNotCreatePhaseError() {
+    func buildSucceededDoesNotCreatePhaseError() {
         let parser = BuildOutputParser()
         let output = """
             Running phase script...

@@ -21,7 +21,8 @@ public struct MoveFileTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "old_path": .object([
                         "type": .string("string"),
@@ -34,7 +35,8 @@ public struct MoveFileTool: Sendable {
                     "move_on_disk": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Whether to also move the file on disk (optional, defaults to false)"),
+                            "Whether to also move the file on disk (optional, defaults to false)"
+                        ),
                     ]),
                 ]),
                 "required": .array([
@@ -105,7 +107,8 @@ public struct MoveFileTool: Sendable {
                     let newParentDir = newURL.deletingLastPathComponent()
                     if !FileManager.default.fileExists(atPath: newParentDir.path) {
                         try FileManager.default.createDirectory(
-                            at: newParentDir, withIntermediateDirectories: true)
+                            at: newParentDir, withIntermediateDirectories: true
+                        )
                     }
 
                     // Move the file
@@ -128,7 +131,8 @@ public struct MoveFileTool: Sendable {
             }
         } catch {
             throw MCPError.internalError(
-                "Failed to move file in Xcode project: \(error.localizedDescription)")
+                "Failed to move file in Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

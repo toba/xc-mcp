@@ -21,7 +21,8 @@ public struct ListCopyFilesPhases: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -98,7 +99,8 @@ public struct ListCopyFilesPhases: Sendable {
             ])
         } catch {
             throw MCPError.internalError(
-                "Failed to list copy files phases: \(error.localizedDescription)")
+                "Failed to list copy files phases: \(error.localizedDescription)"
+            )
         }
     }
 

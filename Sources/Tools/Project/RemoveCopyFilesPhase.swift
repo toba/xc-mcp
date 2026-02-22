@@ -21,7 +21,8 @@ public struct RemoveCopyFilesPhase: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -73,7 +74,8 @@ public struct RemoveCopyFilesPhase: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Copy Files phase '\(phaseName)' not found in target '\(targetName)'")
+                            "Copy Files phase '\(phaseName)' not found in target '\(targetName)'"
+                        )
                     ]
                 )
             }
@@ -83,7 +85,8 @@ public struct RemoveCopyFilesPhase: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Copy Files phase '\(phaseName)' not found in target '\(targetName)'")
+                            "Copy Files phase '\(phaseName)' not found in target '\(targetName)'"
+                        )
                     ]
                 )
             }
@@ -114,7 +117,8 @@ public struct RemoveCopyFilesPhase: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to remove copy files phase: \(error.localizedDescription)")
+                "Failed to remove copy files phase: \(error.localizedDescription)"
+            )
         }
     }
 }

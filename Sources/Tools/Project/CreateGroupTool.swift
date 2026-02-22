@@ -21,7 +21,8 @@ public struct CreateGroupTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "group_name": .object([
                         "type": .string("string"),
@@ -30,7 +31,8 @@ public struct CreateGroupTool: Sendable {
                     "parent_group": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the parent group (optional, defaults to main group)"),
+                            "Name of the parent group (optional, defaults to main group)"
+                        ),
                     ]),
                     "path": .object([
                         "type": .string("string"),
@@ -100,8 +102,8 @@ public struct CreateGroupTool: Sendable {
                 var currentGroup: PBXGroup = mainGroup
                 for component in pathComponents {
                     if let childGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                        where: { $0.name == component || $0.path == component })
-                    {
+                        where: { $0.name == component || $0.path == component }
+                    ) {
                         currentGroup = childGroup
                     } else {
                         throw MCPError.invalidParams(
@@ -135,7 +137,8 @@ public struct CreateGroupTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to create group in Xcode project: \(error.localizedDescription)")
+                "Failed to create group in Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

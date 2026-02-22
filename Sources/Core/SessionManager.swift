@@ -164,7 +164,8 @@ public actor SessionManager {
             return session
         }
         throw MCPError.invalidParams(
-            "simulator is required. Set it with set_session_defaults or pass it directly.")
+            "simulator is required. Set it with set_session_defaults or pass it directly."
+        )
     }
 
     /// Resolves the device UDID from arguments or session defaults.
@@ -180,7 +181,8 @@ public actor SessionManager {
             return session
         }
         throw MCPError.invalidParams(
-            "device is required. Set it with set_session_defaults or pass it directly.")
+            "device is required. Set it with set_session_defaults or pass it directly."
+        )
     }
 
     /// Resolves the scheme from arguments or session defaults.
@@ -196,7 +198,8 @@ public actor SessionManager {
             return session
         }
         throw MCPError.invalidParams(
-            "scheme is required. Set it with set_session_defaults or pass it directly.")
+            "scheme is required. Set it with set_session_defaults or pass it directly."
+        )
     }
 
     /// Resolves the build configuration from arguments or session defaults.
@@ -222,7 +225,7 @@ public actor SessionManager {
     ) {
         let project = arguments.getString("project_path") ?? projectPath
         let workspace = arguments.getString("workspace_path") ?? workspacePath
-        if project == nil && workspace == nil {
+        if project == nil, workspace == nil {
             throw MCPError.invalidParams(
                 "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly."
             )
@@ -243,6 +246,7 @@ public actor SessionManager {
             return session
         }
         throw MCPError.invalidParams(
-            "package_path is required. Set it with set_session_defaults or pass it directly.")
+            "package_path is required. Set it with set_session_defaults or pass it directly."
+        )
     }
 }

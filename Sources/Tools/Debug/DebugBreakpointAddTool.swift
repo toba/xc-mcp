@@ -20,27 +20,32 @@ public struct DebugBreakpointAddTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."),
+                            "Process ID of the debugged process."
+                        ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."),
+                            "Bundle identifier of the app (uses registered session)."
+                        ),
                     ]),
                     "symbol": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Function or method name to break at (e.g., 'viewDidLoad')."),
+                            "Function or method name to break at (e.g., 'viewDidLoad')."
+                        ),
                     ]),
                     "file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Source file path for file:line breakpoint."),
+                            "Source file path for file:line breakpoint."
+                        ),
                     ]),
                     "line": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Line number for file:line breakpoint."),
+                            "Line number for file:line breakpoint."
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -70,7 +75,8 @@ public struct DebugBreakpointAddTool: Sendable {
         // Validate we have a location
         if symbol == nil && (file == nil || line == nil) {
             throw MCPError.invalidParams(
-                "Either 'symbol' or both 'file' and 'line' are required to set a breakpoint")
+                "Either 'symbol' or both 'file' and 'line' are required to set a breakpoint"
+            )
         }
 
         do {

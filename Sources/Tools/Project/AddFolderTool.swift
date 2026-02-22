@@ -21,12 +21,14 @@ public struct AddFolderTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "folder_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the folder to add (relative to project root or absolute)"),
+                            "Path to the folder to add (relative to project root or absolute)"
+                        ),
                     ]),
                     "group_name": .object([
                         "type": .string("string"),
@@ -37,7 +39,8 @@ public struct AddFolderTool: Sendable {
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target to add the folder to (optional)"),
+                            "Name of the target to add the folder to (optional)"
+                        ),
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("folder_path")]),
@@ -77,8 +80,8 @@ public struct AddFolderTool: Sendable {
             // Verify that the path is actually a directory
             var isDirectory: ObjCBool = false
             if !FileManager.default.fileExists(
-                atPath: resolvedFolderPath, isDirectory: &isDirectory)
-            {
+                atPath: resolvedFolderPath, isDirectory: &isDirectory
+            ) {
                 throw MCPError.invalidParams("Folder does not exist at path: \(folderPath)")
             }
             if !isDirectory.boolValue {
@@ -102,12 +105,13 @@ public struct AddFolderTool: Sendable {
                 var currentGroup: PBXGroup = mainGroup
                 for component in pathComponents {
                     if let childGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                        where: { $0.name == component || $0.path == component })
-                    {
+                        where: { $0.name == component || $0.path == component }
+                    ) {
                         currentGroup = childGroup
                     } else {
                         throw MCPError.invalidParams(
-                            "Group '\(groupName)' not found in project (failed at '\(component)')")
+                            "Group '\(groupName)' not found in project (failed at '\(component)')"
+                        )
                     }
                 }
                 targetGroup = currentGroup
@@ -192,7 +196,8 @@ public struct AddFolderTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add folder to Xcode project: \(error.localizedDescription)")
+                "Failed to add folder to Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

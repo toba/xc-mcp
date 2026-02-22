@@ -21,7 +21,8 @@ public struct AddTargetTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -40,7 +41,8 @@ public struct AddTargetTool: Sendable {
                     "platform": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Platform (iOS, macOS, tvOS, watchOS) - optional, defaults to iOS)"),
+                            "Platform (iOS, macOS, tvOS, watchOS) - optional, defaults to iOS)"
+                        ),
                     ]),
                     "deployment_target": .object([
                         "type": .string("string"),
@@ -62,7 +64,8 @@ public struct AddTargetTool: Sendable {
             case let .string(bundleIdentifier) = arguments["bundle_identifier"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, product_type, and bundle_identifier are required")
+                "project_path, target_name, product_type, and bundle_identifier are required"
+            )
         }
 
         let platform: String
@@ -171,7 +174,8 @@ public struct AddTargetTool: Sendable {
                     "INFOPLIST_FILE": .string("\(targetName)/Info.plist"),
                     "SWIFT_VERSION": .string("5.0"),
                     "TARGETED_DEVICE_FAMILY": .string(platform == "iOS" ? "1,2" : "1"),
-                ])
+                ]
+            )
 
             let targetReleaseConfig = XCBuildConfiguration(
                 name: "Release",
@@ -181,7 +185,8 @@ public struct AddTargetTool: Sendable {
                     "INFOPLIST_FILE": .string("\(targetName)/Info.plist"),
                     "SWIFT_VERSION": .string("5.0"),
                     "TARGETED_DEVICE_FAMILY": .string(platform == "iOS" ? "1,2" : "1"),
-                ])
+                ]
+            )
 
             // Add deployment target if specified
             if let deploymentTarget {
@@ -270,7 +275,8 @@ public struct AddTargetTool: Sendable {
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to create target in Xcode project: \(error.localizedDescription)")
+                "Failed to create target in Xcode project: \(error.localizedDescription)"
+            )
         }
     }
 }

@@ -16,7 +16,8 @@ struct ListSwiftPackagesToolTests {
 
         #expect(toolDefinition.name == "list_swift_packages")
         #expect(
-            toolDefinition.description == "List all Swift Package dependencies in an Xcode project")
+            toolDefinition.description == "List all Swift Package dependencies in an Xcode project"
+        )
     }
 
     @Test("List packages with missing project path")
@@ -31,7 +32,8 @@ struct ListSwiftPackagesToolTests {
     @Test("List packages from empty project")
     func listPackagesFromEmptyProject() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -58,7 +60,8 @@ struct ListSwiftPackagesToolTests {
     @Test("List packages with remote packages")
     func listPackagesWithRemotePackages() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -117,7 +120,8 @@ struct ListSwiftPackagesToolTests {
     @Test("List packages with local packages")
     func listPackagesWithLocalPackages() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {
@@ -160,7 +164,8 @@ struct ListSwiftPackagesToolTests {
     @Test("List packages with mixed remote and local packages")
     func listPackagesWithMixedPackages() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString)
+            UUID().uuidString
+        )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         defer {

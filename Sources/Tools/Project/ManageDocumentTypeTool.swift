@@ -22,7 +22,8 @@ public struct ManageDocumentTypeTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -49,12 +50,14 @@ public struct ManageDocumentTypeTool: Sendable {
                     "role": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "CFBundleTypeRole: Editor, Viewer, Shell, QLGenerator, or None"),
+                            "CFBundleTypeRole: Editor, Viewer, Shell, QLGenerator, or None"
+                        ),
                     ]),
                     "handler_rank": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "LSHandlerRank: Owner, Default, Alternate, or None"),
+                            "LSHandlerRank: Owner, Default, Alternate, or None"
+                        ),
                     ]),
                     "document_class": .object([
                         "type": .string("string"),
@@ -111,17 +114,20 @@ public struct ManageDocumentTypeTool: Sendable {
 
             // Resolve or materialize Info.plist
             var plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName)
+                xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName
+            )
 
             if plistPath == nil {
                 plistPath = try InfoPlistUtility.materializeInfoPlist(
                     xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
-                    projectPath: Path(projectURL.path))
+                    projectPath: Path(projectURL.path)
+                )
             }
 
             guard let resolvedPlistPath = plistPath else {
                 throw MCPError.internalError(
-                    "Failed to resolve or create Info.plist for target '\(targetName)'")
+                    "Failed to resolve or create Info.plist for target '\(targetName)'"
+                )
             }
 
             var plist = try InfoPlistUtility.readInfoPlist(path: resolvedPlistPath)
@@ -135,7 +141,8 @@ public struct ManageDocumentTypeTool: Sendable {
                     return CallTool.Result(
                         content: [
                             .text(
-                                "Document type '\(name)' already exists in target '\(targetName)'")
+                                "Document type '\(name)' already exists in target '\(targetName)'"
+                            )
                         ]
                     )
                 }
@@ -150,7 +157,8 @@ public struct ManageDocumentTypeTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Successfully added document type '\(name)' to target '\(targetName)'")
+                            "Successfully added document type '\(name)' to target '\(targetName)'"
+                        )
                     ]
                 )
 
@@ -163,7 +171,8 @@ public struct ManageDocumentTypeTool: Sendable {
                     return CallTool.Result(
                         content: [
                             .text(
-                                "Document type '\(name)' not found in target '\(targetName)'")
+                                "Document type '\(name)' not found in target '\(targetName)'"
+                            )
                         ]
                     )
                 }
@@ -192,7 +201,8 @@ public struct ManageDocumentTypeTool: Sendable {
                     return CallTool.Result(
                         content: [
                             .text(
-                                "Document type '\(name)' not found in target '\(targetName)'")
+                                "Document type '\(name)' not found in target '\(targetName)'"
+                            )
                         ]
                     )
                 }
@@ -221,7 +231,8 @@ public struct ManageDocumentTypeTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to manage document type: \(error.localizedDescription)")
+                "Failed to manage document type: \(error.localizedDescription)"
+            )
         }
     }
 

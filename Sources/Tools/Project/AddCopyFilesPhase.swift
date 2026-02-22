@@ -22,7 +22,8 @@ public struct AddCopyFilesPhase: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"),
+                            "Path to the .xcodeproj file (relative to current directory)"
+                        ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
@@ -41,7 +42,8 @@ public struct AddCopyFilesPhase: Sendable {
                     "subpath": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional subpath within the destination folder"),
+                            "Optional subpath within the destination folder"
+                        ),
                     ]),
                 ]),
                 "required": .array([
@@ -59,7 +61,8 @@ public struct AddCopyFilesPhase: Sendable {
             case let .string(destination) = arguments["destination"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, phase_name, and destination are required")
+                "project_path, target_name, phase_name, and destination are required"
+            )
         }
 
         let subpath: String
@@ -122,7 +125,8 @@ public struct AddCopyFilesPhase: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to add copy files phase: \(error.localizedDescription)")
+                "Failed to add copy files phase: \(error.localizedDescription)"
+            )
         }
     }
 

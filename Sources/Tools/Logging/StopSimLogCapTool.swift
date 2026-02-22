@@ -20,7 +20,8 @@ public struct StopSimLogCapTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the log capture process to stop."),
+                            "Process ID of the log capture process to stop."
+                        ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
@@ -31,7 +32,8 @@ public struct StopSimLogCapTool: Sendable {
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional path to the log file to return the last N lines from."),
+                            "Optional path to the log file to return the last N lines from."
+                        ),
                     ]),
                     "tail_lines": .object([
                         "type": .string("integer"),
@@ -61,7 +63,8 @@ public struct StopSimLogCapTool: Sendable {
         // Must have either pid or simulator
         if pid == nil && simulator == nil {
             throw MCPError.invalidParams(
-                "Either pid or simulator is required to stop log capture.")
+                "Either pid or simulator is required to stop log capture."
+            )
         }
 
         do {
@@ -70,10 +73,12 @@ public struct StopSimLogCapTool: Sendable {
             } else if let simulator {
                 _ = try? ProcessResult.run(
                     "/usr/bin/pkill",
-                    arguments: ["-f", "simctl spawn \(simulator) log stream"])
+                    arguments: ["-f", "simctl spawn \(simulator) log stream"]
+                )
                 _ = try? ProcessResult.run(
                     "/usr/bin/pkill",
-                    arguments: ["-f", "xcrun simctl.*\(simulator).*log stream"])
+                    arguments: ["-f", "xcrun simctl.*\(simulator).*log stream"]
+                )
             }
 
             var message = "Stopped log capture"
