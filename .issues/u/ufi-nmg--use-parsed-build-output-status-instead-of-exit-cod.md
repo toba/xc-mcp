@@ -1,10 +1,11 @@
 ---
 # ufi-nmg
 title: Use parsed build output status instead of exit code alone to determine build success
-status: ready
+status: completed
 type: bug
+priority: normal
 created_at: 2026-02-21T23:54:43Z
-updated_at: 2026-02-21T23:54:43Z
+updated_at: 2026-02-22T00:03:16Z
 ---
 
 ## Problem
@@ -47,10 +48,14 @@ if result.succeeded || buildResult.status == "success" {
 
 Apply the same fix to all build tools that use `result.succeeded`:
 
-- [ ] `BuildMacOSTool.swift`
-- [ ] `BuildRunMacOSTool.swift`
-- [ ] `BuildSimTool.swift`
-- [ ] `BuildDeviceTool.swift`
-- [ ] `BuildDebugMacOSTool.swift`
-- [ ] `SwiftPackageBuildTool.swift`
-- [ ] `CleanTool.swift`
+- [x] `BuildMacOSTool.swift`
+- [x] `BuildRunMacOSTool.swift`
+- [x] `BuildSimTool.swift`
+- [x] `BuildDeviceTool.swift`
+- [x] `BuildDebugMacOSTool.swift`
+- [x] `SwiftPackageBuildTool.swift`
+- [x] `CleanTool.swift`
+
+## Summary of Changes
+
+All 7 build tools now consult `ErrorExtractor.parseBuildOutput()` to check the parsed build status alongside the process exit code. If either `result.succeeded` or `buildResult.status == "success"`, the tool reports success. Error paths reuse the already-parsed `BuildResult` via `BuildResultFormatter.formatBuildResult()` instead of re-parsing with `extractBuildErrors`. 528 tests pass.
