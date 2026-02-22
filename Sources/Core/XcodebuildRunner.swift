@@ -195,6 +195,54 @@ public struct XcodebuildRunner: Sendable {
         return try await run(arguments: args, timeout: timeout, onProgress: onProgress)
     }
 
+    /// Builds a single target for a specific destination.
+    ///
+    /// Unlike ``build(projectPath:workspacePath:scheme:destination:configuration:additionalArguments:timeout:onProgress:)``
+    /// which builds an entire scheme, this method uses `-target` to compile a single target.
+    /// This is useful for fast type-checking of auxiliary targets (e.g. test support modules)
+    /// without building the full dependency graph of a scheme.
+    ///
+    /// - Parameters:
+    ///   - projectPath: Path to the .xcodeproj file (mutually exclusive with workspacePath).
+    ///   - workspacePath: Path to the .xcworkspace file (mutually exclusive with projectPath).
+    ///   - target: The target to build.
+    ///   - destination: The build destination (e.g., "platform=macOS").
+    ///   - configuration: Build configuration (Debug or Release). Defaults to Debug.
+    ///   - additionalArguments: Extra arguments to pass to xcodebuild.
+    ///   - timeout: Maximum time to wait for the build to complete.
+    ///   - onProgress: Optional callback invoked with output lines as they arrive.
+    /// - Returns: The build result containing exit code and output.
+    /// - Throws: An error if the process fails to launch.
+    public func buildTarget(
+        projectPath: String? = nil,
+        workspacePath: String? = nil,
+        target: String,
+        destination: String,
+        configuration: String = "Debug",
+        additionalArguments: [String] = [],
+        timeout: TimeInterval = defaultTimeout,
+        onProgress: (@Sendable (String) -> Void)? = nil
+    ) async throws -> XcodebuildResult {
+        var args: [String] = []
+
+        if let workspacePath {
+            args += ["-workspace", workspacePath]
+        } else if let projectPath {
+            args += ["-project", projectPath]
+        }
+
+        args += [
+            "-target", target,
+            "-destination", destination,
+            "-configuration", configuration,
+            "build",
+        ]
+
+        args += additionalArguments
+
+        return try await run(arguments: args, timeout: timeout, onProgress: onProgress)
+    }
+
     /// Builds and runs tests for a scheme.
     ///
     /// - Parameters:

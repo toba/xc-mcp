@@ -7,6 +7,7 @@ import XCMCPTools
 /// All available tool names exposed by the xc-build MCP server.
 public enum BuildToolName: String, CaseIterable, Sendable {
     // macOS tools
+    case checkBuild = "check_build"
     case buildMacOS = "build_macos"
     case buildRunMacOS = "build_run_macos"
     case launchMacApp = "launch_mac_app"
@@ -84,6 +85,9 @@ public struct BuildMCPServer: Sendable {
         let sessionManager = SessionManager()
 
         // Create macOS tools
+        let checkBuildTool = CheckBuildTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let buildMacOSTool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
         )
@@ -136,6 +140,7 @@ public struct BuildMCPServer: Sendable {
         await server.withMethodHandler(ListTools.self) { _ in
             ListTools.Result(tools: [
                 // macOS tools
+                checkBuildTool.tool(),
                 buildMacOSTool.tool(),
                 buildRunMacOSTool.tool(),
                 launchMacAppTool.tool(),
@@ -173,6 +178,8 @@ public struct BuildMCPServer: Sendable {
 
             switch toolName {
             // macOS tools
+            case .checkBuild:
+                return try await checkBuildTool.execute(arguments: arguments)
             case .buildMacOS:
                 return try await buildMacOSTool.execute(arguments: arguments)
             case .buildRunMacOS:

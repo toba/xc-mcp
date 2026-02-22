@@ -81,6 +81,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case testDevice = "test_device"
 
     // macOS tools
+    case checkBuild = "check_build"
     case buildMacOS = "build_macos"
     case buildRunMacOS = "build_run_macos"
     case launchMacApp = "launch_mac_app"
@@ -202,7 +203,7 @@ public enum ToolName: String, CaseIterable, Sendable {
             .stopAppDevice, .getDeviceAppPath, .testDevice:
             return .device
         // macOS
-        case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
+        case .checkBuild, .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
             .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
             return .macos
         // Discovery
@@ -420,6 +421,9 @@ public struct XcodeMCPServer: Sendable {
         )
 
         // Create macOS tools
+        let checkBuildTool = CheckBuildTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+        )
         let buildMacOSTool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
         )
@@ -637,6 +641,7 @@ public struct XcodeMCPServer: Sendable {
             (.getDeviceAppPath, getDeviceAppPathTool.tool()),
             (.testDevice, testDeviceTool.tool()),
             // macOS tools
+            (.checkBuild, checkBuildTool.tool()),
             (.buildMacOS, buildMacOSTool.tool()),
             (.buildRunMacOS, buildRunMacOSTool.tool()),
             (.launchMacApp, launchMacAppTool.tool()),
@@ -894,6 +899,8 @@ public struct XcodeMCPServer: Sendable {
             case .testDevice:
                 return try await testDeviceTool.execute(arguments: arguments)
             // macOS tools
+            case .checkBuild:
+                return try await checkBuildTool.execute(arguments: arguments)
             case .buildMacOS:
                 return try await buildMacOSTool.execute(arguments: arguments)
             case .buildRunMacOS:
