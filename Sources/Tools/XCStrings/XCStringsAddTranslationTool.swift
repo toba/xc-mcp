@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsAddTranslationTool: Sendable {
     private let pathUtility: PathUtility
@@ -36,7 +36,7 @@ public struct XCStringsAddTranslationTool: Sendable {
                 "required": .array([
                     .string("file"), .string("key"), .string("language"), .string("value"),
                 ]),
-            ])
+            ]),
         )
     }
 

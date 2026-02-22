@@ -1,6 +1,6 @@
-import ArgumentParser
-import Foundation
 import Logging
+import Foundation
+import ArgumentParser
 
 /// Command-line interface for the xc-project MCP server.
 ///
@@ -23,7 +23,7 @@ import Logging
 struct ProjectServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-project",
-        abstract: "MCP server for Xcode project file manipulation (23 tools, ~5K tokens)"
+        abstract: "MCP server for Xcode project file manipulation (23 tools, ~5K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")
@@ -33,7 +33,7 @@ struct ProjectServerCLI: AsyncParsableCommand {
     var verbose: Bool = false
 
     @Flag(
-        name: .long, help: "Disable path sandboxing (allow access to paths outside base directory)"
+        name: .long, help: "Disable path sandboxing (allow access to paths outside base directory)",
     )
     var noSandbox: Bool = false
 
@@ -52,7 +52,7 @@ struct ProjectServerCLI: AsyncParsableCommand {
         let server = ProjectMCPServer(
             basePath: resolvedBasePath,
             sandboxEnabled: !noSandbox,
-            logger: logger
+            logger: logger,
         )
         try await server.run()
     }

@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public enum ExtensionType: String, CaseIterable, Sendable {
     case widget
@@ -26,61 +26,61 @@ public enum ExtensionType: String, CaseIterable, Sendable {
         } else {
             // Handle alternative naming conventions
             switch lowercased {
-            case "notificationservice":
-                self = .notificationService
-            case "notificationcontent":
-                self = .notificationContent
-            case "fileprovider":
-                self = .fileProvider
-            case "intentsui":
-                self = .intentsUI
-            case "photoediting":
-                self = .photoEditing
-            case "documentprovider":
-                self = .documentProvider
-            default:
-                return nil
+                case "notificationservice":
+                    self = .notificationService
+                case "notificationcontent":
+                    self = .notificationContent
+                case "fileprovider":
+                    self = .fileProvider
+                case "intentsui":
+                    self = .intentsUI
+                case "photoediting":
+                    self = .photoEditing
+                case "documentprovider":
+                    self = .documentProvider
+                default:
+                    return nil
             }
         }
     }
 
     public var productType: PBXProductType {
         switch self {
-        case .intents:
-            return .intentsServiceExtension
-        default:
-            return .appExtension
+            case .intents:
+                return .intentsServiceExtension
+            default:
+                return .appExtension
         }
     }
 
     public var extensionPointIdentifier: String {
         switch self {
-        case .widget:
-            return "com.apple.widgetkit-extension"
-        case .notificationService:
-            return "com.apple.usernotifications.service"
-        case .notificationContent:
-            return "com.apple.usernotifications.content-extension"
-        case .share:
-            return "com.apple.share-services"
-        case .today:
-            return "com.apple.widget-extension"
-        case .action:
-            return "com.apple.ui-services"
-        case .fileProvider:
-            return "com.apple.fileprovider-nonui"
-        case .intents:
-            return "com.apple.intents-service"
-        case .intentsUI:
-            return "com.apple.intents-ui-service"
-        case .keyboard:
-            return "com.apple.keyboard-service"
-        case .photoEditing:
-            return "com.apple.photo-editing"
-        case .documentProvider:
-            return "com.apple.fileprovider-ui"
-        case .custom:
-            return ""
+            case .widget:
+                return "com.apple.widgetkit-extension"
+            case .notificationService:
+                return "com.apple.usernotifications.service"
+            case .notificationContent:
+                return "com.apple.usernotifications.content-extension"
+            case .share:
+                return "com.apple.share-services"
+            case .today:
+                return "com.apple.widget-extension"
+            case .action:
+                return "com.apple.ui-services"
+            case .fileProvider:
+                return "com.apple.fileprovider-nonui"
+            case .intents:
+                return "com.apple.intents-service"
+            case .intentsUI:
+                return "com.apple.intents-ui-service"
+            case .keyboard:
+                return "com.apple.keyboard-service"
+            case .photoEditing:
+                return "com.apple.photo-editing"
+            case .documentProvider:
+                return "com.apple.fileprovider-ui"
+            case .custom:
+                return ""
         }
     }
 }
@@ -96,14 +96,14 @@ public struct AddAppExtensionTool: Sendable {
         Tool(
             name: "add_app_extension",
             description:
-                "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, and other extension types.",
+            "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, and other extension types.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "extension_name": .object([
@@ -113,25 +113,25 @@ public struct AddAppExtensionTool: Sendable {
                     "extension_type": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Type of extension (widget, notification_service, notification_content, share, today, action, file_provider, intents, intents_ui, custom)"
+                            "Type of extension (widget, notification_service, notification_content, share, today, action, file_provider, intents, intents_ui, custom)",
                         ),
                     ]),
                     "host_target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the host app target to embed the extension in"
+                            "Name of the host app target to embed the extension in",
                         ),
                     ]),
                     "bundle_identifier": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier for the extension (should be a child of the host app's bundle identifier)"
+                            "Bundle identifier for the extension (should be a child of the host app's bundle identifier)",
                         ),
                     ]),
                     "platform": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Platform (iOS, macOS, tvOS, watchOS) - optional, defaults to iOS"
+                            "Platform (iOS, macOS, tvOS, watchOS) - optional, defaults to iOS",
                         ),
                     ]),
                     "deployment_target": .object([
@@ -144,19 +144,19 @@ public struct AddAppExtensionTool: Sendable {
                     .string("extension_type"), .string("host_target_name"),
                     .string("bundle_identifier"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(extensionName) = arguments["extension_name"],
-            case let .string(extensionTypeString) = arguments["extension_type"],
-            case let .string(hostTargetName) = arguments["host_target_name"],
-            case let .string(bundleIdentifier) = arguments["bundle_identifier"]
+              case let .string(extensionName) = arguments["extension_name"],
+              case let .string(extensionTypeString) = arguments["extension_type"],
+              case let .string(hostTargetName) = arguments["host_target_name"],
+              case let .string(bundleIdentifier) = arguments["bundle_identifier"]
         else {
             throw MCPError.invalidParams(
-                "project_path, extension_name, extension_type, host_target_name, and bundle_identifier are required"
+                "project_path, extension_name, extension_type, host_target_name, and bundle_identifier are required",
             )
         }
 
@@ -191,8 +191,8 @@ public struct AddAppExtensionTool: Sendable {
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == extensionName }) {
                 return CallTool.Result(
                     content: [
-                        .text("Extension target '\(extensionName)' already exists in project")
-                    ]
+                        .text("Extension target '\(extensionName)' already exists in project"),
+                    ],
                 )
             }
 
@@ -204,8 +204,8 @@ public struct AddAppExtensionTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Host target '\(hostTargetName)' not found in project")
-                    ]
+                        .text("Host target '\(hostTargetName)' not found in project"),
+                    ],
                 )
             }
 
@@ -214,9 +214,9 @@ public struct AddAppExtensionTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Host target '\(hostTargetName)' is not an application. App Extensions can only be embedded in applications."
-                        )
-                    ]
+                            "Host target '\(hostTargetName)' is not an application. App Extensions can only be embedded in applications.",
+                        ),
+                    ],
                 )
             }
 
@@ -235,7 +235,7 @@ public struct AddAppExtensionTool: Sendable {
                     "MARKETING_VERSION": .string("1.0"),
                     "SKIP_INSTALL": .string("YES"),
                     "DEBUG_INFORMATION_FORMAT": .string("dwarf"),
-                ]
+                ],
             )
 
             let extensionReleaseConfig = XCBuildConfiguration(
@@ -253,18 +253,18 @@ public struct AddAppExtensionTool: Sendable {
                     "SKIP_INSTALL": .string("YES"),
                     "DEBUG_INFORMATION_FORMAT": .string("dwarf-with-dsym"),
                     "COPY_PHASE_STRIP": .string("NO"),
-                ]
+                ],
             )
 
             // Add deployment target if specified
             if let deploymentTarget {
                 let deploymentKey =
                     switch platform {
-                    case "iOS": "IPHONEOS_DEPLOYMENT_TARGET"
-                    case "macOS": "MACOSX_DEPLOYMENT_TARGET"
-                    case "tvOS": "TVOS_DEPLOYMENT_TARGET"
-                    case "watchOS": "WATCHOS_DEPLOYMENT_TARGET"
-                    default: throw MCPError.invalidParams("Unknown platform: \(platform)")
+                        case "iOS": "IPHONEOS_DEPLOYMENT_TARGET"
+                        case "macOS": "MACOSX_DEPLOYMENT_TARGET"
+                        case "tvOS": "TVOS_DEPLOYMENT_TARGET"
+                        case "watchOS": "WATCHOS_DEPLOYMENT_TARGET"
+                        default: throw MCPError.invalidParams("Unknown platform: \(platform)")
                     }
                 extensionDebugConfig.buildSettings[deploymentKey] = .string(deploymentTarget)
                 extensionReleaseConfig.buildSettings[deploymentKey] = .string(deploymentTarget)
@@ -276,7 +276,7 @@ public struct AddAppExtensionTool: Sendable {
             // Create extension configuration list
             let extensionConfigurationList = XCConfigurationList(
                 buildConfigurations: [extensionDebugConfig, extensionReleaseConfig],
-                defaultConfigurationName: "Release"
+                defaultConfigurationName: "Release",
             )
             xcodeproj.pbxproj.add(object: extensionConfigurationList)
 
@@ -295,7 +295,7 @@ public struct AddAppExtensionTool: Sendable {
                 name: extensionName,
                 buildConfigurationList: extensionConfigurationList,
                 buildPhases: [sourcesBuildPhase, frameworksBuildPhase, resourcesBuildPhase],
-                productType: productType
+                productType: productType,
             )
             extensionTarget.productName = extensionName
             xcodeproj.pbxproj.add(object: extensionTarget)
@@ -305,14 +305,14 @@ public struct AddAppExtensionTool: Sendable {
                 sourceTree: .buildProductsDir,
                 explicitFileType: "wrapper.app-extension",
                 path: "\(extensionName).appex",
-                includeInIndex: false
+                includeInIndex: false,
             )
             xcodeproj.pbxproj.add(object: productReference)
             extensionTarget.product = productReference
 
             // Add product to Products group
             if let project = xcodeproj.pbxproj.rootObject,
-                let productsGroup = project.productsGroup
+               let productsGroup = project.productsGroup
             {
                 productsGroup.children.append(productReference)
             }
@@ -324,7 +324,7 @@ public struct AddAppExtensionTool: Sendable {
 
             // Create extension folder in main group
             if let project = try xcodeproj.pbxproj.rootProject(),
-                let mainGroup = project.mainGroup
+               let mainGroup = project.mainGroup
             {
                 let extensionGroup = PBXGroup(sourceTree: .group, name: extensionName)
                 xcodeproj.pbxproj.add(object: extensionGroup)
@@ -335,7 +335,7 @@ public struct AddAppExtensionTool: Sendable {
             let containerProxy = PBXContainerItemProxy(
                 containerPortal: .project(xcodeproj.pbxproj.rootObject!),
                 proxyType: .nativeTarget,
-                remoteInfo: extensionName
+                remoteInfo: extensionName,
             )
             containerProxy.remoteGlobalID = .object(extensionTarget)
             xcodeproj.pbxproj.add(object: containerProxy)
@@ -343,7 +343,7 @@ public struct AddAppExtensionTool: Sendable {
             let targetDependency = PBXTargetDependency(
                 name: extensionName,
                 target: extensionTarget,
-                targetProxy: containerProxy
+                targetProxy: containerProxy,
             )
             xcodeproj.pbxproj.add(object: targetDependency)
             hostTarget.dependencies.append(targetDependency)
@@ -351,7 +351,7 @@ public struct AddAppExtensionTool: Sendable {
             // Create build file for embedding
             let buildFile = PBXBuildFile(
                 file: productReference,
-                settings: ["ATTRIBUTES": ["RemoveHeadersOnCopy"]]
+                settings: ["ATTRIBUTES": ["RemoveHeadersOnCopy"]],
             )
             xcodeproj.pbxproj.add(object: buildFile)
 
@@ -363,7 +363,7 @@ public struct AddAppExtensionTool: Sendable {
                 embedPhase = PBXCopyFilesBuildPhase(
                     dstPath: "",
                     dstSubfolderSpec: .plugins,
-                    name: "Embed App Extensions"
+                    name: "Embed App Extensions",
                 )
                 xcodeproj.pbxproj.add(object: embedPhase!)
                 hostTarget.buildPhases.append(embedPhase!)
@@ -377,13 +377,13 @@ public struct AddAppExtensionTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully created App Extension '\(extensionName)' (\(extensionTypeString)) with bundle identifier '\(bundleIdentifier)' and embedded it in '\(hostTargetName)'"
-                    )
-                ]
+                        "Successfully created App Extension '\(extensionName)' (\(extensionTypeString)) with bundle identifier '\(bundleIdentifier)' and embedded it in '\(hostTargetName)'",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to create App Extension in Xcode project: \(error.localizedDescription)"
+                "Failed to create App Extension in Xcode project: \(error.localizedDescription)",
             )
         }
     }

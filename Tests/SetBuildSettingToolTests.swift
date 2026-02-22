@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
@@ -37,7 +36,7 @@ struct SetBuildSettingToolTests {
                 "configuration": Value.string("Debug"),
                 "setting_name": Value.string("SWIFT_VERSION"),
                 "setting_value": Value.string("5.0"),
-            ]
+            ],
         ),
         SetBuildSettingMissingParamTestCase(
             "Missing target_name",
@@ -46,7 +45,7 @@ struct SetBuildSettingToolTests {
                 "configuration": Value.string("Debug"),
                 "setting_name": Value.string("SWIFT_VERSION"),
                 "setting_value": Value.string("5.0"),
-            ]
+            ],
         ),
         SetBuildSettingMissingParamTestCase(
             "Missing configuration",
@@ -55,7 +54,7 @@ struct SetBuildSettingToolTests {
                 "target_name": Value.string("App"),
                 "setting_name": Value.string("SWIFT_VERSION"),
                 "setting_value": Value.string("5.0"),
-            ]
+            ],
         ),
         SetBuildSettingMissingParamTestCase(
             "Missing setting_name",
@@ -64,7 +63,7 @@ struct SetBuildSettingToolTests {
                 "target_name": Value.string("App"),
                 "configuration": Value.string("Debug"),
                 "setting_value": Value.string("5.0"),
-            ]
+            ],
         ),
         SetBuildSettingMissingParamTestCase(
             "Missing setting_value",
@@ -73,7 +72,7 @@ struct SetBuildSettingToolTests {
                 "target_name": Value.string("App"),
                 "configuration": Value.string("Debug"),
                 "setting_name": Value.string("SWIFT_VERSION"),
-            ]
+            ],
         ),
     ]
 
@@ -92,7 +91,7 @@ struct SetBuildSettingToolTests {
     func setBuildSettingForSpecificConfiguration() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -103,7 +102,7 @@ struct SetBuildSettingToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Set build setting
@@ -145,7 +144,7 @@ struct SetBuildSettingToolTests {
     func setBuildSettingForAllConfigurations() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -156,7 +155,7 @@ struct SetBuildSettingToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Set build setting for all configurations
@@ -198,7 +197,7 @@ struct SetBuildSettingToolTests {
     func setBuildSettingWithNonExistentTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -235,7 +234,7 @@ struct SetBuildSettingToolTests {
         // set_build_setting drops dstSubfolder fields from PBXCopyFilesBuildPhase sections
 
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -245,7 +244,7 @@ struct SetBuildSettingToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a copy files build phase with dstSubfolderSpec = .resources
@@ -255,7 +254,7 @@ struct SetBuildSettingToolTests {
         let copyPhase = PBXCopyFilesBuildPhase(
             dstPath: "styles",
             dstSubfolderSpec: .resources,
-            name: "Copy Styles"
+            name: "Copy Styles",
         )
         xcodeproj.pbxproj.add(object: copyPhase)
         target.buildPhases.append(copyPhase)
@@ -264,7 +263,8 @@ struct SetBuildSettingToolTests {
         // Verify the phase was created correctly
         let verifyProject = try XcodeProj(path: projectPath)
         let verifyTarget = try #require(
-            verifyProject.pbxproj.nativeTargets.first { $0.name == "App" })
+            verifyProject.pbxproj.nativeTargets.first { $0.name == "App" },
+        )
         let verifyCopyPhase = verifyTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
             .first { $0.name == "Copy Styles" }
         #expect(verifyCopyPhase?.dstSubfolderSpec == .resources)
@@ -283,7 +283,8 @@ struct SetBuildSettingToolTests {
         // Verify the copy files phase still has the correct dstSubfolderSpec
         let updatedProject = try XcodeProj(path: projectPath)
         let updatedTarget = try #require(
-            updatedProject.pbxproj.nativeTargets.first { $0.name == "App" })
+            updatedProject.pbxproj.nativeTargets.first { $0.name == "App" },
+        )
         let updatedCopyPhase = updatedTarget.buildPhases
             .compactMap { $0 as? PBXCopyFilesBuildPhase }
             .first { $0.name == "Copy Styles" }
@@ -291,11 +292,11 @@ struct SetBuildSettingToolTests {
         #expect(updatedCopyPhase != nil, "Copy phase should still exist after set_build_setting")
         #expect(
             updatedCopyPhase?.dstSubfolderSpec == .resources,
-            "dstSubfolderSpec should remain .resources after set_build_setting (was \(String(describing: updatedCopyPhase?.dstSubfolderSpec)))"
+            "dstSubfolderSpec should remain .resources after set_build_setting (was \(String(describing: updatedCopyPhase?.dstSubfolderSpec)))",
         )
         #expect(
             updatedCopyPhase?.dstPath == "styles",
-            "dstPath should remain 'styles' after set_build_setting"
+            "dstPath should remain 'styles' after set_build_setting",
         )
     }
 
@@ -306,7 +307,7 @@ struct SetBuildSettingToolTests {
         // `dstSubfolderSpec = 7;` (numeric). XcodeProj drops the string variant.
 
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -317,7 +318,7 @@ struct SetBuildSettingToolTests {
         // Create a project normally first, then patch the pbxproj to use Xcode 26 format
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Read the pbxproj and inject a PBXCopyFilesBuildPhase with string-based dstSubfolder
@@ -327,29 +328,29 @@ struct SetBuildSettingToolTests {
         // Insert a CopyFiles phase using Xcode 26 string format (dstSubfolder, not dstSubfolderSpec)
         let copyPhaseID = "AABBCCDD00112233EEFF4455"
         let copyPhaseBlock = """
-            /* Begin PBXCopyFilesBuildPhase section */
-            \t\t\(copyPhaseID) /* Copy Styles */ = {
-            \t\t\tisa = PBXCopyFilesBuildPhase;
-            \t\t\tdstPath = styles;
-            \t\t\tdstSubfolder = Resources;
-            \t\t\tfiles = (
-            \t\t\t);
-            \t\t\tname = "Copy Styles";
-            \t\t};
-            /* End PBXCopyFilesBuildPhase section */
+        /* Begin PBXCopyFilesBuildPhase section */
+        \t\t\(copyPhaseID) /* Copy Styles */ = {
+        \t\t\tisa = PBXCopyFilesBuildPhase;
+        \t\t\tdstPath = styles;
+        \t\t\tdstSubfolder = Resources;
+        \t\t\tfiles = (
+        \t\t\t);
+        \t\t\tname = "Copy Styles";
+        \t\t};
+        /* End PBXCopyFilesBuildPhase section */
 
-            """
+        """
 
         // Insert the section before PBXFileReference or before PBXGroup
         if content.contains("/* Begin PBXFileReference section */") {
             content = content.replacingOccurrences(
                 of: "/* Begin PBXFileReference section */",
-                with: copyPhaseBlock + "/* Begin PBXFileReference section */"
+                with: copyPhaseBlock + "/* Begin PBXFileReference section */",
             )
         } else {
             content = content.replacingOccurrences(
                 of: "/* Begin PBXGroup section */",
-                with: copyPhaseBlock + "/* Begin PBXGroup section */"
+                with: copyPhaseBlock + "/* Begin PBXGroup section */",
             )
         }
 
@@ -357,11 +358,11 @@ struct SetBuildSettingToolTests {
         if let buildPhasesRange = content.range(of: "buildPhases = (") {
             let searchStart = buildPhasesRange.upperBound
             if let closingRange = content.range(
-                of: "\n\t\t\t);", range: searchStart..<content.endIndex
+                of: "\n\t\t\t);", range: searchStart ..< content.endIndex,
             ) {
                 content.insert(
                     contentsOf: "\n\t\t\t\t\(copyPhaseID) /* Copy Styles */,",
-                    at: closingRange.lowerBound
+                    at: closingRange.lowerBound,
                 )
             }
         }
@@ -387,7 +388,7 @@ struct SetBuildSettingToolTests {
         let afterContent = try String(contentsOfFile: pbxprojPath.string, encoding: .utf8)
         #expect(
             afterContent.contains("dstSubfolder = Resources;"),
-            "dstSubfolder = Resources should be preserved after set_build_setting round-trip"
+            "dstSubfolder = Resources should be preserved after set_build_setting round-trip",
         )
     }
 
@@ -395,7 +396,7 @@ struct SetBuildSettingToolTests {
     func setBuildSettingWithNonExistentConfiguration() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -406,7 +407,7 @@ struct SetBuildSettingToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = SetBuildSettingTool(pathUtility: PathUtility(basePath: tempDir.path))

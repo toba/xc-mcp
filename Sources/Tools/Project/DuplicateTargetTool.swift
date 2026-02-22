@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct DuplicateTargetTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct DuplicateTargetTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "source_target": .object([
@@ -40,17 +40,17 @@ public struct DuplicateTargetTool: Sendable {
                 "required": .array([
                     .string("project_path"), .string("source_target"), .string("new_target_name"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(sourceTargetName) = arguments["source_target"],
-            case let .string(newTargetName) = arguments["new_target_name"]
+              case let .string(sourceTargetName) = arguments["source_target"],
+              case let .string(newTargetName) = arguments["new_target_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, source_target, and new_target_name are required"
+                "project_path, source_target, and new_target_name are required",
             )
         }
 
@@ -76,8 +76,8 @@ public struct DuplicateTargetTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Source target '\(sourceTargetName)' not found in project")
-                    ]
+                        .text("Source target '\(sourceTargetName)' not found in project"),
+                    ],
                 )
             }
 
@@ -85,8 +85,8 @@ public struct DuplicateTargetTool: Sendable {
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == newTargetName }) {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(newTargetName)' already exists in project")
-                    ]
+                        .text("Target '\(newTargetName)' already exists in project"),
+                    ],
                 )
             }
 
@@ -103,16 +103,16 @@ public struct DuplicateTargetTool: Sendable {
 
                     // Update info plist if it references the target name
                     if let infoPlist = newBuildSettings["INFOPLIST_FILE"]?.stringValue,
-                        infoPlist.contains(sourceTargetName)
+                       infoPlist.contains(sourceTargetName)
                     {
                         let newInfoPlist = infoPlist.replacingOccurrences(
-                            of: sourceTargetName, with: newTargetName
+                            of: sourceTargetName, with: newTargetName,
                         )
                         newBuildSettings["INFOPLIST_FILE"] = .string(newInfoPlist)
                     }
 
                     let newConfig = XCBuildConfiguration(
-                        name: sourceConfig.name, buildSettings: newBuildSettings
+                        name: sourceConfig.name, buildSettings: newBuildSettings,
                     )
                     xcodeproj.pbxproj.add(object: newConfig)
                     return newConfig
@@ -121,7 +121,7 @@ public struct DuplicateTargetTool: Sendable {
             let newConfigList = XCConfigurationList(
                 buildConfigurations: newBuildConfigurations,
                 defaultConfigurationName: sourceTarget.buildConfigurationList?
-                    .defaultConfigurationName ?? "Release"
+                    .defaultConfigurationName ?? "Release",
             )
             xcodeproj.pbxproj.add(object: newConfigList)
 
@@ -146,7 +146,7 @@ public struct DuplicateTargetTool: Sendable {
                         inputPaths: shellScriptPhase.inputPaths,
                         outputPaths: shellScriptPhase.outputPaths,
                         shellPath: shellScriptPhase.shellPath ?? "/bin/sh",
-                        shellScript: shellScriptPhase.shellScript
+                        shellScript: shellScriptPhase.shellScript,
                     )
                     xcodeproj.pbxproj.add(object: newPhase)
                     return newPhase
@@ -155,7 +155,7 @@ public struct DuplicateTargetTool: Sendable {
                         dstPath: copyFilesPhase.dstPath,
                         dstSubfolderSpec: copyFilesPhase.dstSubfolderSpec,
                         name: copyFilesPhase.name,
-                        files: copyFilesPhase.files ?? []
+                        files: copyFilesPhase.files ?? [],
                     )
                     xcodeproj.pbxproj.add(object: newPhase)
                     return newPhase
@@ -168,7 +168,7 @@ public struct DuplicateTargetTool: Sendable {
                 name: newTargetName,
                 buildConfigurationList: newConfigList,
                 buildPhases: newBuildPhases,
-                productType: sourceTarget.productType
+                productType: sourceTarget.productType,
             )
             newTarget.productName = newTargetName
 
@@ -180,7 +180,7 @@ public struct DuplicateTargetTool: Sendable {
                         containerPortal: .project(xcodeproj.pbxproj.rootObject!),
                         remoteGlobalID: .object(dependencyTarget),
                         proxyType: .nativeTarget,
-                        remoteInfo: dependencyTarget.name
+                        remoteInfo: dependencyTarget.name,
                     )
                     xcodeproj.pbxproj.add(object: newProxy)
 
@@ -188,7 +188,7 @@ public struct DuplicateTargetTool: Sendable {
                     let newDependency = PBXTargetDependency(
                         name: sourceDependency.name,
                         target: dependencyTarget,
-                        targetProxy: newProxy
+                        targetProxy: newProxy,
                     )
                     xcodeproj.pbxproj.add(object: newDependency)
                     newTarget.dependencies.append(newDependency)
@@ -204,7 +204,7 @@ public struct DuplicateTargetTool: Sendable {
 
             // Create target folder in main group
             if let project = try xcodeproj.pbxproj.rootProject(),
-                let mainGroup = project.mainGroup
+               let mainGroup = project.mainGroup
             {
                 let targetGroup = PBXGroup(sourceTree: .group, name: newTargetName)
                 xcodeproj.pbxproj.add(object: targetGroup)
@@ -216,17 +216,17 @@ public struct DuplicateTargetTool: Sendable {
 
             let bundleIdText =
                 newBundleIdentifier != nil
-                ? " with bundle identifier '\(newBundleIdentifier!)'" : ""
+                    ? " with bundle identifier '\(newBundleIdentifier!)'" : ""
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully duplicated target '\(sourceTargetName)' as '\(newTargetName)'\(bundleIdText)"
-                    )
-                ]
+                        "Successfully duplicated target '\(sourceTargetName)' as '\(newTargetName)'\(bundleIdText)",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to duplicate target in Xcode project: \(error.localizedDescription)"
+                "Failed to duplicate target in Xcode project: \(error.localizedDescription)",
             )
         }
     }

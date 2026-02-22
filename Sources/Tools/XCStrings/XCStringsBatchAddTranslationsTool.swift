@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsBatchAddTranslationsTool: Sendable {
     private let pathUtility: PathUtility
@@ -13,7 +13,7 @@ public struct XCStringsBatchAddTranslationsTool: Sendable {
         Tool(
             name: "xcstrings_batch_add_translations",
             description:
-                "Add translations for multiple keys at once. Each entry specifies a key and its language-value pairs.",
+            "Add translations for multiple keys at once. Each entry specifies a key and its language-value pairs.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -33,19 +33,19 @@ public struct XCStringsBatchAddTranslationsTool: Sendable {
                                 "translations": .object([
                                     "type": .string("object"),
                                     "description": .string(
-                                        "Object mapping language codes to translation values"
+                                        "Object mapping language codes to translation values",
                                     ),
                                 ]),
                             ]),
                             "required": .array([.string("key"), .string("translations")]),
                         ]),
                         "description": .string(
-                            "Array of entries, each with a key and translations object"
+                            "Array of entries, each with a key and translations object",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("entries")]),
-            ])
+            ]),
         )
     }
 

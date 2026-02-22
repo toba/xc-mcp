@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsDeleteKeyTool: Sendable {
     private let pathUtility: PathUtility
@@ -26,7 +26,7 @@ public struct XCStringsDeleteKeyTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("key")]),
-            ])
+            ]),
         )
     }
 

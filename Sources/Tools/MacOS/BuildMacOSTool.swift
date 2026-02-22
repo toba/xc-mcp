@@ -1,13 +1,13 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct BuildMacOSTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager
+        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
@@ -17,50 +17,50 @@ public struct BuildMacOSTool: Sendable {
         Tool(
             name: "build_macos",
             description:
-                "Build an Xcode project or workspace for macOS.",
+            "Build an Xcode project or workspace for macOS.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."
+                            "Path to the .xcodeproj file. Uses session default if not specified.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
+                            "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to build. Uses session default if not specified."
+                            "The scheme to build. Uses session default if not specified.",
                         ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."
+                            "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
                     "arch": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture."
+                            "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments
+            from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
@@ -77,7 +77,7 @@ public struct BuildMacOSTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 destination: destination,
-                configuration: configuration
+                configuration: configuration,
             )
 
             let buildResult = ErrorExtractor.parseBuildOutput(result.output)
@@ -88,11 +88,11 @@ public struct BuildMacOSTool: Sendable {
                         .text("Build succeeded for scheme '\(scheme)' on macOS"),
                         NextStepHints.content(hints: [
                             NextStepHint(
-                                tool: "launch_mac_app", description: "Launch the built macOS app"
+                                tool: "launch_mac_app", description: "Launch the built macOS app",
                             ),
                             NextStepHint(tool: "test_macos", description: "Run tests on macOS"),
                         ]),
-                    ]
+                    ],
                 )
             } else {
                 let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)

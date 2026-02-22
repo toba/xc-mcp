@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct RemoveSwiftPackageTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct RemoveSwiftPackageTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "package_url": .object([
@@ -31,18 +31,18 @@ public struct RemoveSwiftPackageTool: Sendable {
                     "remove_from_targets": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Whether to remove package from all targets (default: true)"
+                            "Whether to remove package from all targets (default: true)",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("package_url")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(packageURL) = arguments["package_url"]
+              case let .string(packageURL) = arguments["package_url"]
         else {
             throw MCPError.invalidParams("project_path and package_url are required")
         }
@@ -73,8 +73,8 @@ public struct RemoveSwiftPackageTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Swift Package '\(packageURL)' not found in project")
-                    ]
+                        .text("Swift Package '\(packageURL)' not found in project"),
+                    ],
                 )
             }
 
@@ -116,12 +116,12 @@ public struct RemoveSwiftPackageTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(message)
-                ]
+                    .text(message),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to remove Swift Package from Xcode project: \(error.localizedDescription)"
+                "Failed to remove Swift Package from Xcode project: \(error.localizedDescription)",
             )
         }
     }

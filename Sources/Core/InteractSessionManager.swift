@@ -1,5 +1,5 @@
-import ApplicationServices
 import Foundation
+import ApplicationServices
 
 /// Caches AXUIElement references between interact tool calls.
 ///

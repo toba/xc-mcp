@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
@@ -35,21 +34,21 @@ struct MoveFileToolTests {
             [
                 "old_path": Value.string("old.swift"),
                 "new_path": Value.string("new.swift"),
-            ]
+            ],
         ),
         MoveFileMissingParamTestCase(
             "Missing old_path",
             [
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "new_path": Value.string("new.swift"),
-            ]
+            ],
         ),
         MoveFileMissingParamTestCase(
             "Missing new_path",
             [
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "old_path": Value.string("old.swift"),
-            ]
+            ],
         ),
     ]
 
@@ -66,7 +65,7 @@ struct MoveFileToolTests {
     func moveFile() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -77,7 +76,7 @@ struct MoveFileToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         // First add a file to move
@@ -136,7 +135,7 @@ struct MoveFileToolTests {
     func moveFileOnDisk() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -147,7 +146,7 @@ struct MoveFileToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         // First add a file to move
@@ -194,7 +193,7 @@ struct MoveFileToolTests {
     func moveNonExistentFile() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 

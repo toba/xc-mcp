@@ -1,11 +1,11 @@
-import AppKit
-import CoreGraphics
-import Foundation
 import MCP
+import AppKit
 import PathKit
-import ScreenCaptureKit
 import XCMCPCore
 import XcodeProj
+import Foundation
+import CoreGraphics
+import ScreenCaptureKit
 
 /// Captures a screenshot of a SwiftUI `#Preview` block by building and running
 /// a temporary host app on the iOS Simulator.
@@ -24,7 +24,7 @@ public struct PreviewCaptureTool: Sendable {
         xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
         simctlRunner: SimctlRunner = SimctlRunner(),
         pathUtility: PathUtility,
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.simctlRunner = simctlRunner
@@ -36,61 +36,61 @@ public struct PreviewCaptureTool: Sendable {
         Tool(
             name: "preview_capture",
             description:
-                "Capture a screenshot of a SwiftUI #Preview block. Extracts the preview body from a Swift source file, builds a temporary host app that renders it on the iOS Simulator, and returns a screenshot. Cleans up the temporary target afterward.",
+            "Capture a screenshot of a SwiftUI #Preview block. Extracts the preview body from a Swift source file, builds a temporary host app that renders it on the iOS Simulator, and returns a screenshot. Cleans up the temporary target afterward.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "file_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the Swift source file containing a #Preview block."
+                            "Path to the Swift source file containing a #Preview block.",
                         ),
                     ]),
                     "preview_index": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Which preview to capture if the file has multiple #Preview blocks (0-based). Defaults to 0."
+                            "Which preview to capture if the file has multiple #Preview blocks (0-based). Defaults to 0.",
                         ),
                     ]),
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."
+                            "Path to the .xcodeproj file. Uses session default if not specified.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
+                            "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."
+                            "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
                     "save_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional path to also save the screenshot PNG to disk."
+                            "Optional path to also save the screenshot PNG to disk.",
                         ),
                     ]),
                     "render_delay": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Seconds to wait after launch before capturing screenshot. Defaults to 2.0."
+                            "Seconds to wait after launch before capturing screenshot. Defaults to 2.0.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("file_path")]),
-            ])
+            ]),
         )
     }
 
@@ -107,7 +107,7 @@ public struct PreviewCaptureTool: Sendable {
             let filePath = try arguments.getRequiredString("file_path")
             let previewIndex = arguments.getInt("preview_index") ?? 0
             let (projectPath, _) = try await sessionManager.resolveBuildPaths(
-                from: arguments
+                from: arguments,
             )
             let simulator: String?
             if let explicitSim = arguments.getString("simulator") {
@@ -122,7 +122,7 @@ public struct PreviewCaptureTool: Sendable {
             // We need a project path for target injection
             guard let projPath = projectPath else {
                 throw MCPError.invalidParams(
-                    "preview_capture requires a project_path (not just a workspace). Set it with set_session_defaults or pass it directly."
+                    "preview_capture requires a project_path (not just a workspace). Set it with set_session_defaults or pass it directly.",
                 )
             }
 
@@ -137,13 +137,13 @@ public struct PreviewCaptureTool: Sendable {
 
             guard !previews.isEmpty else {
                 throw MCPError.invalidParams(
-                    "No #Preview blocks found in \(filePath). Check that the file contains a #Preview { ... } macro."
+                    "No #Preview blocks found in \(filePath). Check that the file contains a #Preview { ... } macro.",
                 )
             }
 
-            guard previewIndex >= 0 && previewIndex < previews.count else {
+            guard previewIndex >= 0, previewIndex < previews.count else {
                 throw MCPError.invalidParams(
-                    "preview_index \(previewIndex) is out of range. File has \(previews.count) preview(s) (0-\(previews.count - 1))."
+                    "preview_index \(previewIndex) is out of range. File has \(previews.count) preview(s) (0-\(previews.count - 1)).",
                 )
             }
 
@@ -157,7 +157,7 @@ public struct PreviewCaptureTool: Sendable {
             let projectDir = projectURL.deletingLastPathComponent().path
             let (sourceTarget, isAppTarget) = findOwningTarget(
                 for: resolvedFilePath, in: xcodeproj,
-                projectDir: projectDir
+                projectDir: projectDir,
             )
 
             // If no native target owns the file, check if it lives in a local Swift package
@@ -166,7 +166,7 @@ public struct PreviewCaptureTool: Sendable {
             var deploymentTarget = extractDeploymentTarget(from: sourceTarget)
             if sourceTarget == nil {
                 if let pkgInfo = findLocalPackageModule(
-                    for: resolvedFilePath, in: xcodeproj, projectDir: projectDir
+                    for: resolvedFilePath, in: xcodeproj, projectDir: projectDir,
                 ) {
                     moduleName = pkgInfo.moduleName
                     localPackageProductName = pkgInfo.productName
@@ -176,8 +176,8 @@ public struct PreviewCaptureTool: Sendable {
                     FileHandle.standardError.write(
                         Data(
                             "[preview_capture] File belongs to local package module: \(pkgInfo.moduleName) (iOS \(pkgInfo.deploymentTarget ?? "unspecified"))\n"
-                                .utf8
-                        )
+                                .utf8,
+                        ),
                     )
                 }
             }
@@ -192,13 +192,13 @@ public struct PreviewCaptureTool: Sendable {
             let tempDirectory = "/tmp/PreviewHost_\(uuid)"
             tempDir = tempDirectory
             try FileManager.default.createDirectory(
-                atPath: tempDirectory, withIntermediateDirectories: true
+                atPath: tempDirectory, withIntermediateDirectories: true,
             )
 
             let hostSourcePath = "\(tempDirectory)/PreviewHostApp.swift"
             let hostSource = generateHostSource(
                 previewBody: previewBody,
-                moduleName: isAppTarget ? nil : moduleName
+                moduleName: isAppTarget ? nil : moduleName,
             )
             try hostSource.write(toFile: hostSourcePath, atomically: true, encoding: .utf8)
 
@@ -218,7 +218,7 @@ public struct PreviewCaptureTool: Sendable {
                 let strippedSource = PreviewExtractor.stripPreviewBlocks(from: source)
                 let strippedPath = "\(tempDirectory)/\(sourceURL.lastPathComponent)"
                 try strippedSource.write(
-                    toFile: strippedPath, atomically: true, encoding: .utf8
+                    toFile: strippedPath, atomically: true, encoding: .utf8,
                 )
                 additionalSourcePaths = [strippedPath]
             }
@@ -247,12 +247,12 @@ public struct PreviewCaptureTool: Sendable {
                 isAppTarget: isAppTarget,
                 deploymentTarget: deploymentTarget,
                 importedModules: importedModules,
-                localPackageProductName: localPackageProductName
+                localPackageProductName: localPackageProductName,
             )
 
             // Step 6: Determine platform and build
             schemePath = try createTemporaryScheme(
-                projectPath: resolvedPath, targetName: targetName
+                projectPath: resolvedPath, targetName: targetName,
             )
 
             // Try iOS Simulator first if a simulator is specified, fall back to macOS
@@ -300,25 +300,25 @@ public struct PreviewCaptureTool: Sendable {
             // them as standalone dylibs.
             await cleanEmptyFrameworkStubs(
                 projectPath: resolvedPath, targetName: targetName,
-                destination: destination, configuration: previewConfig
+                destination: destination, configuration: previewConfig,
             )
 
             var buildResult = try await runBuildTolerant(
-                arguments: buildArgs(destination), timeout: 300
+                arguments: buildArgs(destination), timeout: 300,
             )
 
             // If iOS Simulator build failed, fall back to macOS
-            if !buildResult.succeeded && !isMacOS {
+            if !buildResult.succeeded, !isMacOS {
                 FileHandle.standardError.write(
                     Data(
                         "[preview_capture] iOS Sim build failed, falling back to macOS. Error: \(buildResult.output.suffix(500))\n"
-                            .utf8
-                    )
+                            .utf8,
+                    ),
                 )
                 destination = "platform=macOS"
                 isMacOS = true
                 buildResult = try await runBuildTolerant(
-                    arguments: buildArgs(destination), timeout: 300
+                    arguments: buildArgs(destination), timeout: 300,
                 )
             }
 
@@ -330,7 +330,7 @@ public struct PreviewCaptureTool: Sendable {
             // Step 7: Find built app and embed missing frameworks
             let appPath = try await findBuiltAppPath(
                 projectPath: resolvedPath, targetName: targetName,
-                destination: destination, configuration: previewConfig
+                destination: destination, configuration: previewConfig,
             )
 
             // Ensure all frameworks from the build products dir are embedded
@@ -361,7 +361,7 @@ public struct PreviewCaptureTool: Sendable {
                 let appName = appURL.deletingPathExtension().lastPathComponent
                 let execPath =
                     appURL
-                    .appendingPathComponent("Contents/MacOS/\(appName)").path
+                        .appendingPathComponent("Contents/MacOS/\(appName)").path
                 let buildProductsDir = appURL.deletingLastPathComponent().path
 
                 let launchProcess = Process()
@@ -382,13 +382,13 @@ public struct PreviewCaptureTool: Sendable {
                     let launchErr =
                         String(
                             data: launchPipe.fileHandleForReading.readDataToEndOfFile(),
-                            encoding: .utf8
+                            encoding: .utf8,
                         ) ?? ""
                     FileHandle.standardError.write(
                         Data(
                             "[preview_capture] Binary launch failed (\(launchProcess.terminationStatus)): \(launchErr.suffix(500))\n"
-                                .utf8
-                        )
+                                .utf8,
+                        ),
                     )
                 }
 
@@ -405,13 +405,13 @@ public struct PreviewCaptureTool: Sendable {
                 let pgrepOut =
                     String(
                         data: pgrepPipe.fileHandleForReading.readDataToEndOfFile(),
-                        encoding: .utf8
+                        encoding: .utf8,
                     ) ?? ""
                 FileHandle.standardError.write(
                     Data(
                         "[preview_capture] pgrep for \(bundleId): \(pgrepOut.isEmpty ? "NOT RUNNING" : pgrepOut.trimmingCharacters(in: .whitespacesAndNewlines))\n"
-                            .utf8
-                    )
+                            .utf8,
+                    ),
                 )
 
                 screenshotData = try await captureMacOSWindow(bundleId: bundleId)
@@ -427,20 +427,20 @@ public struct PreviewCaptureTool: Sendable {
                 let sim = simulator!
 
                 let installResult = try await simctlRunner.install(
-                    udid: sim, appPath: appPath
+                    udid: sim, appPath: appPath,
                 )
                 if !installResult.succeeded {
                     throw MCPError.internalError(
-                        "Failed to install preview app: \(installResult.errorOutput)"
+                        "Failed to install preview app: \(installResult.errorOutput)",
                     )
                 }
 
                 let launchResult = try await simctlRunner.launch(
-                    udid: sim, bundleId: bundleId
+                    udid: sim, bundleId: bundleId,
                 )
                 if !launchResult.succeeded {
                     throw MCPError.internalError(
-                        "Failed to launch preview app: \(launchResult.errorOutput)"
+                        "Failed to launch preview app: \(launchResult.errorOutput)",
                     )
                 }
 
@@ -448,18 +448,18 @@ public struct PreviewCaptureTool: Sendable {
                 // via simctl (launch alone may leave app behind springboard)
                 try await Task.sleep(for: .seconds(1.0))
                 _ = try? await simctlRunner.launch(
-                    udid: sim, bundleId: bundleId
+                    udid: sim, bundleId: bundleId,
                 )
 
                 try await Task.sleep(for: .seconds(renderDelay))
 
                 let screenshotPath = "\(tempDirectory)/preview.png"
                 let screenshotResult = try await simctlRunner.screenshot(
-                    udid: sim, outputPath: screenshotPath
+                    udid: sim, outputPath: screenshotPath,
                 )
                 if !screenshotResult.succeeded {
                     throw MCPError.internalError(
-                        "Failed to capture screenshot: \(screenshotResult.errorOutput)"
+                        "Failed to capture screenshot: \(screenshotResult.errorOutput)",
                     )
                 }
 
@@ -475,7 +475,7 @@ public struct PreviewCaptureTool: Sendable {
                 // Allow absolute paths without base-path restriction
                 let resolvedSavePath =
                     savePath.hasPrefix("/")
-                    ? savePath : try pathUtility.resolvePath(from: savePath)
+                        ? savePath : try pathUtility.resolvePath(from: savePath)
                 try screenshotData.write(to: URL(fileURLWithPath: resolvedSavePath))
             }
 
@@ -497,13 +497,13 @@ public struct PreviewCaptureTool: Sendable {
             // Cleanup
             cleanup(
                 projectPath: resolvedProjectPath, targetName: injectedTargetName,
-                tempDir: tempDir, schemePath: schemePath, xcconfigPath: xcconfigPath
+                tempDir: tempDir, schemePath: schemePath, xcconfigPath: xcconfigPath,
             )
             return result
         } catch {
             cleanup(
                 projectPath: resolvedProjectPath, targetName: injectedTargetName,
-                tempDir: tempDir, schemePath: schemePath, xcconfigPath: xcconfigPath
+                tempDir: tempDir, schemePath: schemePath, xcconfigPath: xcconfigPath,
             )
             throw error.asMCPError()
         }
@@ -513,7 +513,7 @@ public struct PreviewCaptureTool: Sendable {
 
     /// Finds the native target that owns the given source file.
     private func findOwningTarget(
-        for filePath: String, in xcodeproj: XcodeProj, projectDir: String
+        for filePath: String, in xcodeproj: XcodeProj, projectDir: String,
     ) -> (PBXNativeTarget?, Bool) {
         // First try: check explicit source build phase files
         for target in xcodeproj.pbxproj.nativeTargets {
@@ -522,7 +522,7 @@ public struct PreviewCaptureTool: Sendable {
                 for file in sourcesPhase.files ?? [] {
                     guard let fileRef = file.file else { continue }
                     if let fullPath = try? fileRef.fullPath(sourceRoot: Path(projectDir)),
-                        fullPath.string == filePath || filePath.hasSuffix(fullPath.string)
+                       fullPath.string == filePath || filePath.hasSuffix(fullPath.string)
                     {
                         let isApp = target.productType == .application
                         return (target, isApp)
@@ -551,7 +551,7 @@ public struct PreviewCaptureTool: Sendable {
     /// Finds a local Swift package module that owns the given file path.
     /// Returns the inferred module name, product name, and iOS deployment target.
     private func findLocalPackageModule(
-        for filePath: String, in xcodeproj: XcodeProj, projectDir: String
+        for filePath: String, in xcodeproj: XcodeProj, projectDir: String,
     ) -> (moduleName: String, productName: String, deploymentTarget: String?)? {
         let fm = FileManager.default
 
@@ -633,7 +633,7 @@ public struct PreviewCaptureTool: Sendable {
     private func inferModuleName(relativePath: String, packageDir: String) -> String {
         let components = relativePath.split(separator: "/")
         // Convention: Sources/<TargetName>/...
-        if components.count >= 2 && components[0] == "Sources" {
+        if components.count >= 2, components[0] == "Sources" {
             return String(components[1])
         }
         // Fallback: use the package directory name
@@ -645,7 +645,7 @@ public struct PreviewCaptureTool: Sendable {
     private func collectAppSourceFiles(
         target: PBXNativeTarget,
         xcodeproj _: XcodeProj,
-        projectDir: String
+        projectDir: String,
     ) -> [String] {
         var sourceFiles: [String] = []
         let fm = FileManager.default
@@ -663,7 +663,7 @@ public struct PreviewCaptureTool: Sendable {
                     let fullPath = "\(dirPath)/\(relativePath)"
                     // Skip files with @main to avoid duplicate entry points
                     if let contents = try? String(contentsOfFile: fullPath, encoding: .utf8),
-                        contents.contains("@main")
+                       contents.contains("@main")
                     {
                         continue
                     }
@@ -677,12 +677,12 @@ public struct PreviewCaptureTool: Sendable {
             guard let sourcesPhase = buildPhase as? PBXSourcesBuildPhase else { continue }
             for file in sourcesPhase.files ?? [] {
                 guard let fileRef = file.file,
-                    let fullPath = try? fileRef.fullPath(sourceRoot: Path(projectDir))
+                      let fullPath = try? fileRef.fullPath(sourceRoot: Path(projectDir))
                 else { continue }
                 let path = fullPath.string
                 guard path.hasSuffix(".swift") else { continue }
                 if let contents = try? String(contentsOfFile: path, encoding: .utf8),
-                    contents.contains("@main")
+                   contents.contains("@main")
                 {
                     continue
                 }
@@ -699,15 +699,15 @@ public struct PreviewCaptureTool: Sendable {
     private func collectTransitiveDependencies(
         of target: PBXNativeTarget,
         in xcodeproj: XcodeProj,
-        collected: inout [PBXNativeTarget]
+        collected: inout [PBXNativeTarget],
     ) {
         for dep in target.dependencies {
             if dep.target == nil {
                 FileHandle.standardError.write(
                     Data(
                         "[preview_capture]   dep of \(target.name): target=nil, proxy=\(dep.targetProxy?.remoteInfo ?? "nil")\n"
-                            .utf8
-                    )
+                            .utf8,
+                    ),
                 )
             }
             guard let depTarget = dep.target as? PBXNativeTarget else { continue }
@@ -717,14 +717,14 @@ public struct PreviewCaptureTool: Sendable {
             {
                 collected.append(depTarget)
                 collectTransitiveDependencies(
-                    of: depTarget, in: xcodeproj, collected: &collected
+                    of: depTarget, in: xcodeproj, collected: &collected,
                 )
             } else {
                 FileHandle.standardError.write(
                     Data(
                         "[preview_capture]   skipping \(depTarget.name) (productType=\(depTarget.productType?.rawValue ?? "nil"))\n"
-                            .utf8
-                    )
+                            .utf8,
+                    ),
                 )
             }
         }
@@ -742,8 +742,8 @@ public struct PreviewCaptureTool: Sendable {
                 // Handle `import Module` and `@testable import Module`
                 let moduleName =
                     rest.split(separator: ".").first
-                    .map(String.init) ?? String(rest)
-                if !moduleName.isEmpty && !moduleName.hasPrefix("@") {
+                        .map(String.init) ?? String(rest)
+                if !moduleName.isEmpty, !moduleName.hasPrefix("@") {
                     modules.insert(moduleName)
                 }
             } else if trimmed.hasPrefix("@testable import ") {
@@ -751,7 +751,7 @@ public struct PreviewCaptureTool: Sendable {
                     .trimmingCharacters(in: .whitespaces)
                 let moduleName =
                     rest.split(separator: ".").first
-                    .map(String.init) ?? String(rest)
+                        .map(String.init) ?? String(rest)
                 if !moduleName.isEmpty {
                     modules.insert(moduleName)
                 }
@@ -766,8 +766,8 @@ public struct PreviewCaptureTool: Sendable {
         for config in configList.buildConfigurations {
             if let value = config.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"] {
                 switch value {
-                case let .string(s): return s
-                default: continue
+                    case let .string(s): return s
+                    default: continue
                 }
             }
         }
@@ -792,7 +792,7 @@ public struct PreviewCaptureTool: Sendable {
         // Fall back to the first app target's deployment target
         for target in project.targets {
             guard let nativeTarget = target as? PBXNativeTarget,
-                nativeTarget.productType == .application
+                  nativeTarget.productType == .application
             else { continue }
             if let dt = extractDeploymentTarget(from: nativeTarget) {
                 return dt
@@ -814,7 +814,7 @@ public struct PreviewCaptureTool: Sendable {
     /// A top-level function avoids this depth.
     private func generateHostSource(
         previewBody: String,
-        moduleName: String? = nil
+        moduleName: String? = nil,
     ) -> String {
         var lines: [String] = []
         lines.append("import SwiftUI")
@@ -862,7 +862,7 @@ public struct PreviewCaptureTool: Sendable {
         isAppTarget: Bool,
         deploymentTarget: String?,
         importedModules: Set<String> = [],
-        localPackageProductName: String? = nil
+        localPackageProductName: String? = nil,
     ) throws {
         let projectURL = URL(fileURLWithPath: projectPath)
 
@@ -916,7 +916,7 @@ public struct PreviewCaptureTool: Sendable {
         // because xcodebuild resolves available destinations from the
         // project file before applying overrides.
         debugSettings["SUPPORTED_PLATFORMS"] = .string(
-            "iphoneos iphonesimulator macosx"
+            "iphoneos iphonesimulator macosx",
         )
 
         if let deploymentTarget, debugSettings["IPHONEOS_DEPLOYMENT_TARGET"] == nil {
@@ -932,7 +932,7 @@ public struct PreviewCaptureTool: Sendable {
 
         let configList = XCConfigurationList(
             buildConfigurations: [debugConfig, releaseConfig],
-            defaultConfigurationName: "Debug"
+            defaultConfigurationName: "Debug",
         )
         xcodeproj.pbxproj.add(object: configList)
 
@@ -942,7 +942,7 @@ public struct PreviewCaptureTool: Sendable {
 
         // Add host source file
         let hostFileRef = PBXFileReference(
-            sourceTree: .absolute, name: "PreviewHostApp.swift", path: hostSourcePath
+            sourceTree: .absolute, name: "PreviewHostApp.swift", path: hostSourcePath,
         )
         xcodeproj.pbxproj.add(object: hostFileRef)
         let hostBuildFile = PBXBuildFile(file: hostFileRef)
@@ -953,7 +953,7 @@ public struct PreviewCaptureTool: Sendable {
         for path in additionalSourcePaths {
             let fileName = URL(fileURLWithPath: path).lastPathComponent
             let fileRef = PBXFileReference(
-                sourceTree: .absolute, name: fileName, path: path
+                sourceTree: .absolute, name: fileName, path: path,
             )
             xcodeproj.pbxproj.add(object: fileRef)
             let buildFile = PBXBuildFile(file: fileRef)
@@ -974,7 +974,7 @@ public struct PreviewCaptureTool: Sendable {
             name: targetName,
             buildConfigurationList: configList,
             buildPhases: [sourcesBuildPhase, frameworksBuildPhase, resourcesBuildPhase],
-            productType: .application
+            productType: .application,
         )
         target.productName = targetName
         xcodeproj.pbxproj.add(object: target)
@@ -988,14 +988,14 @@ public struct PreviewCaptureTool: Sendable {
 
             // For framework targets, include the source framework itself
             if !isAppTarget,
-                sourceTarget.productType == .framework
-                    || sourceTarget.productType == .staticFramework
+               sourceTarget.productType == .framework
+               || sourceTarget.productType == .staticFramework
             {
                 frameworkDeps.append(sourceTarget)
             }
 
             collectTransitiveDependencies(
-                of: sourceTarget, in: xcodeproj, collected: &frameworkDeps
+                of: sourceTarget, in: xcodeproj, collected: &frameworkDeps,
             )
 
             // Filter framework deps to only those whose module is imported.
@@ -1011,8 +1011,8 @@ public struct PreviewCaptureTool: Sendable {
                     FileHandle.standardError.write(
                         Data(
                             "[preview_capture] Filtered \(before) framework deps to \(frameworkDeps.count) based on imports: \(importedModules.sorted())\n"
-                                .utf8
-                        )
+                                .utf8,
+                        ),
                     )
                 }
             }
@@ -1020,8 +1020,8 @@ public struct PreviewCaptureTool: Sendable {
             FileHandle.standardError.write(
                 Data(
                     "[preview_capture] sourceTarget: \(sourceTarget.name) (isApp=\(isAppTarget)), frameworkDeps: \(frameworkDeps.map(\.name))\n"
-                        .utf8
-                )
+                        .utf8,
+                ),
             )
             for fw in frameworkDeps {
                 let pkgDeps = fw.packageProductDependencies ?? []
@@ -1029,8 +1029,8 @@ public struct PreviewCaptureTool: Sendable {
                     FileHandle.standardError.write(
                         Data(
                             "[preview_capture]   \(fw.name) SPM deps: \(pkgDeps.map(\.productName))\n"
-                                .utf8
-                        )
+                                .utf8,
+                        ),
                     )
                 }
             }
@@ -1039,7 +1039,7 @@ public struct PreviewCaptureTool: Sendable {
                 // Embed frameworks phase
                 let embedPhase = PBXCopyFilesBuildPhase(
                     dstSubfolderSpec: .frameworks,
-                    name: "Embed Frameworks"
+                    name: "Embed Frameworks",
                 )
                 xcodeproj.pbxproj.add(object: embedPhase)
                 target.buildPhases.append(embedPhase)
@@ -1048,7 +1048,7 @@ public struct PreviewCaptureTool: Sendable {
                     guard let product = fwTarget.product else { continue }
                     guard
                         fwTarget.productType == .framework
-                            || fwTarget.productType == .staticFramework
+                        || fwTarget.productType == .staticFramework
                     else { continue }
 
                     // Add dependency
@@ -1064,7 +1064,7 @@ public struct PreviewCaptureTool: Sendable {
                     // Embed
                     let embedFile = PBXBuildFile(
                         file: product,
-                        settings: ["ATTRIBUTES": ["CodeSignOnCopy", "RemoveHeadersOnCopy"]]
+                        settings: ["ATTRIBUTES": ["CodeSignOnCopy", "RemoveHeadersOnCopy"]],
                     )
                     xcodeproj.pbxproj.add(object: embedFile)
                     embedPhase.files?.append(embedFile)
@@ -1079,7 +1079,9 @@ public struct PreviewCaptureTool: Sendable {
             let allTargets = [sourceTarget].compactMap(\.self) + frameworkDeps
             for srcTarget in allTargets {
                 for dep in srcTarget.packageProductDependencies ?? []
-                where !collectedPackageDeps.contains(where: { $0.productName == dep.productName }) {
+                    where !collectedPackageDeps
+                    .contains(where: { $0.productName == dep.productName })
+                {
                     collectedPackageDeps.append(dep)
                 }
             }
@@ -1090,12 +1092,12 @@ public struct PreviewCaptureTool: Sendable {
                     FileHandle.standardError.write(
                         Data(
                             "[preview_capture]   adding SPM dep: \(pkgDep.productName), package=\(pkgDep.package?.name ?? pkgDep.package?.repositoryURL ?? "nil")\n"
-                                .utf8
-                        )
+                                .utf8,
+                        ),
                     )
                     let newPkgDep = XCSwiftPackageProductDependency(
                         productName: pkgDep.productName,
-                        package: pkgDep.package
+                        package: pkgDep.package,
                     )
                     xcodeproj.pbxproj.add(object: newPkgDep)
                     newPkgDeps.append(newPkgDep)
@@ -1117,7 +1119,7 @@ public struct PreviewCaptureTool: Sendable {
 
             for bundleTarget in xcodeproj.pbxproj.nativeTargets {
                 if bundleTarget.productType == .bundle,
-                    moduleResourceBundlePatterns.contains(bundleTarget.name)
+                   moduleResourceBundlePatterns.contains(bundleTarget.name)
                 {
                     let bundleDep = PBXTargetDependency(target: bundleTarget)
                     xcodeproj.pbxproj.add(object: bundleDep)
@@ -1138,12 +1140,12 @@ public struct PreviewCaptureTool: Sendable {
             FileHandle.standardError.write(
                 Data(
                     "[preview_capture] Adding local package product dependency: \(productName)\n"
-                        .utf8
-                )
+                        .utf8,
+                ),
             )
             let pkgDep = XCSwiftPackageProductDependency(
                 productName: productName,
-                package: nil
+                package: nil,
             )
             xcodeproj.pbxproj.add(object: pkgDep)
 
@@ -1176,8 +1178,8 @@ public struct PreviewCaptureTool: Sendable {
         let contentsDir = appURL.appendingPathComponent("Contents")
         let frameworksDir =
             fm.fileExists(atPath: contentsDir.path)
-            ? contentsDir.appendingPathComponent("Frameworks")
-            : appURL.appendingPathComponent("Frameworks")
+                ? contentsDir.appendingPathComponent("Frameworks")
+                : appURL.appendingPathComponent("Frameworks")
         let buildProductsDir = appURL.deletingLastPathComponent()
 
         // Ensure Frameworks/ exists
@@ -1215,7 +1217,7 @@ public struct PreviewCaptureTool: Sendable {
         projectPath: String,
         targetName: String,
         destination: String,
-        configuration: String
+        configuration: String,
     ) async {
         // Get the build products dir via -showBuildSettings
         let args = [
@@ -1226,7 +1228,7 @@ public struct PreviewCaptureTool: Sendable {
             "-showBuildSettings",
         ]
         guard let settingsResult = try? await xcodebuildRunner.run(arguments: args),
-            settingsResult.succeeded
+              settingsResult.succeeded
         else { return }
 
         var builtProductsDir: String?
@@ -1253,42 +1255,42 @@ public struct PreviewCaptureTool: Sendable {
             let hasVersionedBinary = fm.fileExists(atPath: versionedBinary)
             let hasFlatBinary: Bool
             if hasVersionedBinary {
-                hasFlatBinary = false  // versioned layout, don't check flat
+                hasFlatBinary = false // versioned layout, don't check flat
             } else {
                 // For flat layout, check it's a real file not a symlink to Versions/
                 var isDir: ObjCBool = false
                 let exists = fm.fileExists(atPath: flatBinary, isDirectory: &isDir)
                 hasFlatBinary =
                     exists && !isDir.boolValue
-                    && (try? fm.destinationOfSymbolicLink(atPath: flatBinary)) == nil
+                        && (try? fm.destinationOfSymbolicLink(atPath: flatBinary)) == nil
             }
 
             if !hasVersionedBinary, !hasFlatBinary {
                 FileHandle.standardError.write(
                     Data(
-                        "[preview_capture] Removing empty framework stub: \(item)\n".utf8
-                    )
+                        "[preview_capture] Removing empty framework stub: \(item)\n".utf8,
+                    ),
                 )
                 try? fm.removeItem(atPath: fwPath)
 
                 // Also remove cached intermediates so the build system re-links
                 // the framework target from scratch.
                 let intermediatesDir = URL(fileURLWithPath: productsDir)
-                    .deletingLastPathComponent()  // Products/
-                    .deletingLastPathComponent()  // Build/
+                    .deletingLastPathComponent() // Products/
+                    .deletingLastPathComponent() // Build/
                     .appendingPathComponent("Intermediates.noindex")
                 let projectName = URL(fileURLWithPath: projectPath)
                     .deletingPathExtension().lastPathComponent
                 let buildDir =
                     intermediatesDir
-                    .appendingPathComponent("\(projectName).build")
-                    .appendingPathComponent(configuration)
-                    .appendingPathComponent("\(name).build")
+                        .appendingPathComponent("\(projectName).build")
+                        .appendingPathComponent(configuration)
+                        .appendingPathComponent("\(name).build")
                 if fm.fileExists(atPath: buildDir.path) {
                     FileHandle.standardError.write(
                         Data(
-                            "[preview_capture] Removing intermediates: \(name).build\n".utf8
-                        )
+                            "[preview_capture] Removing intermediates: \(name).build\n".utf8,
+                        ),
                     )
                     try? fm.removeItem(at: buildDir)
                 }
@@ -1297,11 +1299,11 @@ public struct PreviewCaptureTool: Sendable {
     }
 
     private func runBuildTolerant(
-        arguments: [String], timeout: TimeInterval
+        arguments: [String], timeout: TimeInterval,
     ) async throws -> XcodebuildResult {
         do {
             return try await xcodebuildRunner.run(
-                arguments: arguments, timeout: timeout, onProgress: nil
+                arguments: arguments, timeout: timeout, onProgress: nil,
             )
         } catch let error as XcodebuildError {
             let output = error.partialOutput
@@ -1330,12 +1332,13 @@ public struct PreviewCaptureTool: Sendable {
         let availableContent: SCShareableContent
         do {
             availableContent = try await SCShareableContent.excludingDesktopWindows(
-                false, onScreenWindowsOnly: true
+                false, onScreenWindowsOnly: true,
             )
         } catch {
             throw MCPError.internalError(
                 "Failed to get screen content. Ensure Screen Recording permission is granted in "
-                    + "System Settings > Privacy & Security > Screen Recording. Error: \(error.localizedDescription)"
+                    +
+                    "System Settings > Privacy & Security > Screen Recording. Error: \(error.localizedDescription)",
             )
         }
 
@@ -1348,7 +1351,7 @@ public struct PreviewCaptureTool: Sendable {
         guard let targetWindow = matchingWindows.first else {
             throw MCPError.internalError(
                 "No window found for preview app (bundle ID: \(bundleId)). "
-                    + "The app may have failed to launch or display a window."
+                    + "The app may have failed to launch or display a window.",
             )
         }
 
@@ -1359,7 +1362,7 @@ public struct PreviewCaptureTool: Sendable {
 
         let cgImage: CGImage = try await withCheckedThrowingContinuation { continuation in
             SCScreenshotManager.captureImage(
-                contentFilter: filter, configuration: config
+                contentFilter: filter, configuration: config,
             ) { image, error in
                 if let error {
                     continuation.resume(throwing: error)
@@ -1368,8 +1371,8 @@ public struct PreviewCaptureTool: Sendable {
                 } else {
                     continuation.resume(
                         throwing: MCPError.internalError(
-                            "Screenshot capture returned nil image."
-                        )
+                            "Screenshot capture returned nil image.",
+                        ),
                     )
                 }
             }
@@ -1386,21 +1389,21 @@ public struct PreviewCaptureTool: Sendable {
     /// Creates a temporary .xcscheme file for the preview host target.
     /// Returns the full path to the scheme file so it can be deleted after build.
     private func createTemporaryScheme(
-        projectPath: String, targetName: String
+        projectPath: String, targetName: String,
     ) throws -> String {
         let projectURL = URL(fileURLWithPath: projectPath)
         let schemesDir =
             projectURL
-            .appendingPathComponent("xcshareddata")
-            .appendingPathComponent("xcschemes")
+                .appendingPathComponent("xcshareddata")
+                .appendingPathComponent("xcschemes")
 
         try FileManager.default.createDirectory(
-            at: schemesDir, withIntermediateDirectories: true
+            at: schemesDir, withIntermediateDirectories: true,
         )
 
         let schemePath =
             schemesDir
-            .appendingPathComponent("\(targetName).xcscheme").path
+                .appendingPathComponent("\(targetName).xcscheme").path
 
         // Find the target's UUID in the pbxproj
         let xcodeproj = try XcodeProj(path: Path(projectPath))
@@ -1411,51 +1414,51 @@ public struct PreviewCaptureTool: Sendable {
         let projectName = projectURL.deletingPathExtension().lastPathComponent
 
         let buildRef = """
-                        <BuildableReference
-                           BuildableIdentifier = "primary"
-                           BlueprintIdentifier = "\(blueprintId)"
-                           BuildableName = "\(targetName).app"
-                           BlueprintName = "\(targetName)"
-                           ReferencedContainer = "container:\(projectName).xcodeproj">
-                        </BuildableReference>
-            """
+                    <BuildableReference
+                       BuildableIdentifier = "primary"
+                       BlueprintIdentifier = "\(blueprintId)"
+                       BuildableName = "\(targetName).app"
+                       BlueprintName = "\(targetName)"
+                       ReferencedContainer = "container:\(projectName).xcodeproj">
+                    </BuildableReference>
+        """
 
         let schemeXML = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <Scheme
-               LastUpgradeVersion = "2600"
-               version = "2.1">
-               <BuildAction
-                  parallelizeBuildables = "YES"
-                  buildImplicitDependencies = "YES">
-                  <BuildActionEntries>
-                     <BuildActionEntry
-                        buildForTesting = "NO"
-                        buildForRunning = "YES"
-                        buildForProfiling = "NO"
-                        buildForArchiving = "NO"
-                        buildForAnalyzing = "NO">
-            \(buildRef)
-                     </BuildActionEntry>
-                  </BuildActionEntries>
-               </BuildAction>
-               <LaunchAction
-                  buildConfiguration = "Release"
-                  selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
-                  selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-                  launchStyle = "0"
-                  useCustomWorkingDirectory = "NO"
-                  ignoresPersistentStateOnLaunch = "NO"
-                  debugDocumentVersioning = "YES"
-                  debugServiceExtension = "internal"
-                  allowLocationSimulation = "YES">
-                  <BuildableProductRunnable
-                     runnableDebuggingMode = "0">
-            \(buildRef)
-                  </BuildableProductRunnable>
-               </LaunchAction>
-            </Scheme>
-            """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Scheme
+           LastUpgradeVersion = "2600"
+           version = "2.1">
+           <BuildAction
+              parallelizeBuildables = "YES"
+              buildImplicitDependencies = "YES">
+              <BuildActionEntries>
+                 <BuildActionEntry
+                    buildForTesting = "NO"
+                    buildForRunning = "YES"
+                    buildForProfiling = "NO"
+                    buildForArchiving = "NO"
+                    buildForAnalyzing = "NO">
+        \(buildRef)
+                 </BuildActionEntry>
+              </BuildActionEntries>
+           </BuildAction>
+           <LaunchAction
+              buildConfiguration = "Release"
+              selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+              selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+              launchStyle = "0"
+              useCustomWorkingDirectory = "NO"
+              ignoresPersistentStateOnLaunch = "NO"
+              debugDocumentVersioning = "YES"
+              debugServiceExtension = "internal"
+              allowLocationSimulation = "YES">
+              <BuildableProductRunnable
+                 runnableDebuggingMode = "0">
+        \(buildRef)
+              </BuildableProductRunnable>
+           </LaunchAction>
+        </Scheme>
+        """
 
         try schemeXML.write(toFile: schemePath, atomically: true, encoding: .utf8)
         return schemePath
@@ -1466,7 +1469,7 @@ public struct PreviewCaptureTool: Sendable {
         projectPath: String,
         targetName: String,
         destination: String,
-        configuration: String
+        configuration: String,
     ) async throws -> String {
         let args = [
             "-project", projectPath,
@@ -1479,7 +1482,7 @@ public struct PreviewCaptureTool: Sendable {
 
         guard settingsResult.succeeded else {
             throw MCPError.internalError(
-                "Failed to get build settings: \(settingsResult.stderr)"
+                "Failed to get build settings: \(settingsResult.stderr)",
             )
         }
 
@@ -1498,14 +1501,14 @@ public struct PreviewCaptureTool: Sendable {
 
         guard let dir = builtProductsDir, let name = productName else {
             throw MCPError.internalError(
-                "Could not determine build products directory for target '\(targetName)'"
+                "Could not determine build products directory for target '\(targetName)'",
             )
         }
 
         let appPath = "\(dir)/\(name)"
         guard FileManager.default.fileExists(atPath: appPath) else {
             throw MCPError.internalError(
-                "Built app not found at \(appPath)"
+                "Built app not found at \(appPath)",
             )
         }
 
@@ -1519,7 +1522,7 @@ public struct PreviewCaptureTool: Sendable {
         targetName: String?,
         tempDir: String?,
         schemePath: String? = nil,
-        xcconfigPath: String? = nil
+        xcconfigPath: String? = nil,
     ) {
         // Remove injected target from project
         if let projectPath, let targetName {
@@ -1578,7 +1581,7 @@ public struct PreviewCaptureTool: Sendable {
                 // Remove product reference
                 if let productRef = target.product {
                     if let project = xcodeproj.pbxproj.rootObject,
-                        let productsGroup = project.productsGroup
+                       let productsGroup = project.productsGroup
                     {
                         productsGroup.children.removeAll { $0 == productRef }
                     }
@@ -1592,7 +1595,7 @@ public struct PreviewCaptureTool: Sendable {
 
                 // Remove target group if exists
                 if let project = try? xcodeproj.pbxproj.rootProject(),
-                    let mainGroup = project.mainGroup
+                   let mainGroup = project.mainGroup
                 {
                     mainGroup.children.removeAll { element in
                         if let group = element as? PBXGroup, group.name == targetName {

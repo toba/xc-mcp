@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugStackTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -13,31 +13,31 @@ public struct DebugStackTool: Sendable {
         Tool(
             name: "debug_stack",
             description:
-                "Get the current call stack (backtrace) of a debugged process.",
+            "Get the current call stack (backtrace) of a debugged process.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."
+                            "Process ID of the debugged process.",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."
+                            "Bundle identifier of the app (uses registered session).",
                         ),
                     ]),
                     "thread": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Thread index to get stack for. Omit to get all threads."
+                            "Thread index to get stack for. Omit to get all threads.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -51,7 +51,7 @@ public struct DebugStackTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required"
+                "Either pid or bundle_id (with active session) is required",
             )
         }
 

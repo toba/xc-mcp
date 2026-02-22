@@ -57,7 +57,7 @@ public final class BuildOutputParser: @unchecked Sendable {
         input: String,
         coverage: CodeCoverage? = nil,
         slowThreshold: Double? = nil,
-        parseBuildInfo: Bool = false
+        parseBuildInfo: Bool = false,
     ) -> BuildResult {
         resetState()
         shouldParseBuildInfo = parseBuildInfo
@@ -69,25 +69,25 @@ public final class BuildOutputParser: @unchecked Sendable {
             if line.contains("Command PhaseScriptExecution failed with a nonzero exit") {
                 var contextLines: [String] = []
                 let startIndex = max(0, index - 3)
-                for contextIdx in startIndex..<index {
+                for contextIdx in startIndex ..< index {
                     let contextLine = lines[contextIdx].trimmingCharacters(in: .whitespaces)
                     if contextLine.isEmpty || contextLine.hasPrefix("Warning:")
                         || contextLine.hasPrefix("Run script build phase")
                     {
                         continue
                     }
-                    if contextLine.contains(": warning:") && !contextLine.contains("error:") {
+                    if contextLine.contains(": warning:"), !contextLine.contains("error:") {
                         continue
                     }
                     contextLines.append(contextLine)
                 }
 
                 if !contextLines.isEmpty, let lastIndex = errors.indices.last,
-                    errors[lastIndex].message == line
+                   errors[lastIndex].message == line
                 {
                     let combinedMessage = contextLines.joined(separator: " ") + " " + line
                     errors[lastIndex] = BuildError(
-                        file: nil, line: nil, message: combinedMessage
+                        file: nil, line: nil, message: combinedMessage,
                     )
                 }
             }
@@ -132,14 +132,14 @@ public final class BuildOutputParser: @unchecked Sendable {
             let hasPassedTests = (computedPassedTests ?? 0) > 0
 
             switch (hasActualFailures, testRunFailed, hasPassedTests) {
-            case (true, _, _):
-                return "failed"
-            case (false, true, true):
-                return "success"
-            case (false, true, false):
-                return "failed"
-            case (false, false, _):
-                return "success"
+                case (true, _, _):
+                    return "failed"
+                case (false, true, true):
+                    return "success"
+                case (false, true, false):
+                    return "failed"
+                case (false, false, _):
+                    return "success"
             }
         }()
 
@@ -152,8 +152,8 @@ public final class BuildOutputParser: @unchecked Sendable {
 
         let formattedTestTime: String? =
             testTimeAccumulator > 0
-            ? String(format: "%.3fs", testTimeAccumulator)
-            : nil
+                ? String(format: "%.3fs", testTimeAccumulator)
+                : nil
 
         let summary = BuildSummary(
             errors: errors.count,
@@ -166,23 +166,23 @@ public final class BuildOutputParser: @unchecked Sendable {
             coveragePercent: coverage?.lineCoverage,
             slowTests: slowTests.isEmpty ? nil : slowTests.count,
             flakyTests: flakyTests.isEmpty ? nil : flakyTests.count,
-            executables: executables.isEmpty ? nil : executables.count
+            executables: executables.isEmpty ? nil : executables.count,
         )
 
         let buildInfo: BuildInfo? =
             parseBuildInfo
-            ? {
-                let targets = targetOrder.map { targetName in
-                    TargetBuildInfo(
-                        name: targetName,
-                        duration: targetDurations[targetName],
-                        phases: targetPhases[targetName] ?? [],
-                        dependsOn: targetDependencies[targetName] ?? []
-                    )
-                }
-                let slowestTargets = computeSlowestTargets(targets: targets, limit: 5)
-                return BuildInfo(targets: targets, slowestTargets: slowestTargets)
-            }() : nil
+                ? {
+                    let targets = targetOrder.map { targetName in
+                        TargetBuildInfo(
+                            name: targetName,
+                            duration: targetDurations[targetName],
+                            phases: targetPhases[targetName] ?? [],
+                            dependsOn: targetDependencies[targetName] ?? [],
+                        )
+                    }
+                    let slowestTargets = computeSlowestTargets(targets: targets, limit: 5)
+                    return BuildInfo(targets: targets, slowestTargets: slowestTargets)
+                }() : nil
 
         return BuildResult(
             status: status,
@@ -195,7 +195,7 @@ public final class BuildOutputParser: @unchecked Sendable {
             slowTests: slowTests,
             flakyTests: flakyTests,
             buildInfo: buildInfo,
-            executables: executables
+            executables: executables,
         )
     }
 
@@ -233,8 +233,8 @@ public final class BuildOutputParser: @unchecked Sendable {
 
         let sorted =
             targets
-            .filter { $0.duration != nil }
-            .sorted { parseDuration($0.duration) > parseDuration($1.duration) }
+                .filter { $0.duration != nil }
+                .sorted { parseDuration($0.duration) > parseDuration($1.duration) }
 
         return Array(sorted.prefix(limit).map(\.name))
     }
@@ -305,18 +305,18 @@ public final class BuildOutputParser: @unchecked Sendable {
         // Fast path checks
         let containsRelevant =
             line.contains("error:") || line.contains("warning:") || line.contains("failed")
-            || line.contains("passed")
-            || line.contains("✘") || line.contains("✓") || line.contains("❌")
-            || line.contains("Test ") || line.contains("recorded an issue")
-            || line.contains("Build succeeded")
-            || line.contains("Build failed") || line.contains("Executed")
-            || line.contains("] Testing ")
-            || line.contains("BUILD SUCCEEDED") || line.contains("BUILD FAILED")
-            || line.contains("TEST FAILED")
-            || line.contains("Build complete!")
-            || line.hasPrefix("RegisterWithLaunchServices")
-            || line.hasPrefix("Validate") || line.contains("Fatal error")
-            || (line.hasPrefix("/") && line.contains(".swift:"))
+                || line.contains("passed")
+                || line.contains("✘") || line.contains("✓") || line.contains("❌")
+                || line.contains("Test ") || line.contains("recorded an issue")
+                || line.contains("Build succeeded")
+                || line.contains("Build failed") || line.contains("Executed")
+                || line.contains("] Testing ")
+                || line.contains("BUILD SUCCEEDED") || line.contains("BUILD FAILED")
+                || line.contains("TEST FAILED")
+                || line.contains("Build complete!")
+                || line.hasPrefix("RegisterWithLaunchServices")
+                || line.hasPrefix("Validate") || line.contains("Fatal error")
+                || (line.hasPrefix("/") && line.contains(".swift:"))
 
         if !containsRelevant {
             return
@@ -325,11 +325,11 @@ public final class BuildOutputParser: @unchecked Sendable {
         // Parse parallel test scheduling: [N/TOTAL] Testing Module.Class/method
         if line.contains("] Testing ") {
             if let bracketStart = line.firstIndex(of: "["),
-                let slashIndex = line[bracketStart...].firstIndex(of: "/"),
-                let bracketEnd = line[slashIndex...].firstIndex(of: "]")
+               let slashIndex = line[bracketStart...].firstIndex(of: "/"),
+               let bracketEnd = line[slashIndex...].firstIndex(of: "]")
             {
-                let numStr = line[line.index(after: bracketStart)..<slashIndex]
-                let totalStr = line[line.index(after: slashIndex)..<bracketEnd]
+                let numStr = line[line.index(after: bracketStart) ..< slashIndex]
+                let totalStr = line[line.index(after: slashIndex) ..< bracketEnd]
                 if Int(numStr) != nil, let total = Int(totalStr) {
                     if parallelTestsTotalCount == nil {
                         parallelTestsTotalCount = total
@@ -372,7 +372,7 @@ public final class BuildOutputParser: @unchecked Sendable {
                             message: mergedMessage,
                             file: mergedFile,
                             line: mergedLine,
-                            duration: mergedDuration
+                            duration: mergedDuration,
                         )
                     }
                 }
@@ -419,7 +419,7 @@ public final class BuildOutputParser: @unchecked Sendable {
         if trimmed.hasPrefix("\"") && trimmed.contains("\", referenced from:") {
             if let endQuote = trimmed.range(of: "\", referenced from:") {
                 let symbol = String(
-                    trimmed[trimmed.index(after: trimmed.startIndex)..<endQuote.lowerBound]
+                    trimmed[trimmed.index(after: trimmed.startIndex) ..< endQuote.lowerBound],
                 )
                 pendingLinkerSymbol = symbol
             }
@@ -427,12 +427,12 @@ public final class BuildOutputParser: @unchecked Sendable {
         }
 
         if let symbol = pendingLinkerSymbol, let arch = currentLinkerArchitecture,
-            trimmed.contains(" in ") && (trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a"))
+           trimmed.contains(" in ") && (trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a"))
         {
             if let inRange = trimmed.range(of: " in ") {
                 let referencedFrom = String(trimmed[inRange.upperBound...])
                 appendLinkerErrorIfNew(
-                    LinkerError(symbol: symbol, architecture: arch, referencedFrom: referencedFrom)
+                    LinkerError(symbol: symbol, architecture: arch, referencedFrom: referencedFrom),
                 )
                 pendingLinkerSymbol = nil
             }
@@ -455,8 +455,8 @@ public final class BuildOutputParser: @unchecked Sendable {
             let quoteChar: Character = trimmed.hasPrefix("duplicate symbol '") ? "'" : "\""
             let afterPrefix =
                 trimmed.hasPrefix("duplicate symbol '")
-                ? trimmed.dropFirst("duplicate symbol '".count)
-                : trimmed.dropFirst("duplicate symbol \"".count)
+                    ? trimmed.dropFirst("duplicate symbol '".count)
+                    : trimmed.dropFirst("duplicate symbol \"".count)
             if let endQuote = afterPrefix.firstIndex(of: quoteChar) {
                 pendingDuplicateSymbol = String(afterPrefix[..<endQuote])
                 pendingConflictingFiles = []
@@ -464,19 +464,19 @@ public final class BuildOutputParser: @unchecked Sendable {
             return true
         }
 
-        if pendingDuplicateSymbol != nil && (trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a"))
-            && (line.hasPrefix("    ") || line.hasPrefix("\t"))
+        if pendingDuplicateSymbol != nil, trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a"),
+           line.hasPrefix("    ") || line.hasPrefix("\t")
         {
             pendingConflictingFiles.append(trimmed)
             return true
         }
 
-        if trimmed.hasPrefix("ld: building for ") && trimmed.contains("but linking") {
+        if trimmed.hasPrefix("ld: building for "), trimmed.contains("but linking") {
             appendLinkerErrorIfNew(LinkerError(message: trimmed))
             return true
         }
 
-        if trimmed.hasPrefix("ld: ") && trimmed.contains("duplicate symbol") {
+        if trimmed.hasPrefix("ld: "), trimmed.contains("duplicate symbol") {
             if let symbol = pendingDuplicateSymbol {
                 var arch = ""
                 if let archRange = trimmed.range(of: "for architecture ") {
@@ -485,8 +485,8 @@ public final class BuildOutputParser: @unchecked Sendable {
                 appendLinkerErrorIfNew(
                     LinkerError(
                         symbol: symbol, architecture: arch,
-                        conflictingFiles: pendingConflictingFiles
-                    )
+                        conflictingFiles: pendingConflictingFiles,
+                    ),
                 )
                 pendingDuplicateSymbol = nil
                 pendingConflictingFiles = []
@@ -502,7 +502,7 @@ public final class BuildOutputParser: @unchecked Sendable {
     }
 
     private func normalizeTestName(_ testName: String) -> String {
-        if testName.hasPrefix("-[") && testName.hasSuffix("]") {
+        if testName.hasPrefix("-["), testName.hasSuffix("]") {
             return String(testName.dropFirst(2).dropLast(1))
         }
         return testName
@@ -521,11 +521,11 @@ public final class BuildOutputParser: @unchecked Sendable {
         if line[startIndex] == "\"" {
             let afterQuote = line.index(after: startIndex)
             guard afterQuote < line.endIndex,
-                let closingQuote = line[afterQuote...].firstIndex(of: "\"")
+                  let closingQuote = line[afterQuote...].firstIndex(of: "\"")
             else {
                 return nil
             }
-            let name = String(line[afterQuote..<closingQuote])
+            let name = String(line[afterQuote ..< closingQuote])
             return (name, line.index(after: closingQuote))
         }
 
@@ -535,7 +535,7 @@ public final class BuildOutputParser: @unchecked Sendable {
         let endMarkers = [" recorded", " failed", " passed", " started"]
         for marker in endMarkers {
             if let markerRange = afterTest.range(of: marker) {
-                let name = String(line[startIndex..<markerRange.lowerBound])
+                let name = String(line[startIndex ..< markerRange.lowerBound])
                     .trimmingCharacters(in: .whitespaces)
                 guard !name.isEmpty else { return nil }
                 return (name, markerRange.lowerBound)
@@ -580,24 +580,24 @@ public final class BuildOutputParser: @unchecked Sendable {
             {
                 return true
             }
-            if trimmed.hasPrefix("\"") && trimmed.contains("\" :") {
+            if trimmed.hasPrefix("\""), trimmed.contains("\" :") {
                 return true
             }
         }
 
         if line.contains("error:") {
-            if trimmed.hasPrefix("\"") && trimmed.contains(":") {
+            if trimmed.hasPrefix("\""), trimmed.contains(":") {
                 return true
             }
-            if (line.hasPrefix(" ") || line.hasPrefix("\t")) && trimmed.hasPrefix("\"") {
+            if line.hasPrefix(" ") || line.hasPrefix("\t"), trimmed.hasPrefix("\"") {
                 return true
             }
             if !trimmed.hasPrefix("error:") {
                 let hasQuotedStrings = line.contains("\"") && line.contains(":")
                 let hasEscapedContent = line.contains("\\") && line.contains("\"")
-                if hasEscapedContent && hasQuotedStrings && !line.contains("file:")
-                    && !line.contains(".swift:") && !line.contains(".m:")
-                    && !line.contains(".h:")
+                if hasEscapedContent, hasQuotedStrings, !line.contains("file:"),
+                   !line.contains(".swift:"), !line.contains(".m:"),
+                   !line.contains(".h:")
                 {
                     return true
                 }
@@ -636,12 +636,12 @@ public final class BuildOutputParser: @unchecked Sendable {
 
             let components = beforeError.split(separator: ":", omittingEmptySubsequences: false)
             if components.count >= 3, let lineNum = Int(components[components.count - 2]),
-                let colNum = Int(components[components.count - 1])
+               let colNum = Int(components[components.count - 1])
             {
-                let file = components[0..<(components.count - 2)].joined(separator: ":")
+                let file = components[0 ..< (components.count - 2)].joined(separator: ":")
                 return BuildError(file: file, line: lineNum, message: message, column: colNum)
             } else if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
-                let file = components[0..<(components.count - 1)].joined(separator: ":")
+                let file = components[0 ..< (components.count - 1)].joined(separator: ":")
                 return BuildError(file: file, line: lineNum, message: message)
             } else {
                 return BuildError(file: beforeError, line: nil, message: message)
@@ -655,7 +655,7 @@ public final class BuildOutputParser: @unchecked Sendable {
 
             let components = beforeError.split(separator: ":", omittingEmptySubsequences: false)
             if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
-                let file = components[0..<(components.count - 1)].joined(separator: ":")
+                let file = components[0 ..< (components.count - 1)].joined(separator: ":")
                 return BuildError(file: file, line: lineNum, message: message)
             } else {
                 return BuildError(file: beforeError, line: nil, message: message)
@@ -667,7 +667,7 @@ public final class BuildOutputParser: @unchecked Sendable {
             let beforeFatal = String(line.dropLast(": Fatal error".count))
             let components = beforeFatal.split(separator: ":", omittingEmptySubsequences: false)
             if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
-                let file = components[0..<(components.count - 1)].joined(separator: ":")
+                let file = components[0 ..< (components.count - 1)].joined(separator: ":")
                 return BuildError(file: file, line: lineNum, message: "Fatal error")
             }
         }
@@ -704,14 +704,14 @@ public final class BuildOutputParser: @unchecked Sendable {
 
             let components = beforeWarning.split(separator: ":", omittingEmptySubsequences: false)
             if components.count >= 3, let lineNum = Int(components[components.count - 2]),
-                let colNum = Int(components[components.count - 1])
+               let colNum = Int(components[components.count - 1])
             {
-                let file = components[0..<(components.count - 2)].joined(separator: ":")
+                let file = components[0 ..< (components.count - 2)].joined(separator: ":")
                 return BuildWarning(
-                    file: file, line: lineNum, message: message, column: colNum
+                    file: file, line: lineNum, message: message, column: colNum,
                 )
             } else if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
-                let file = components[0..<(components.count - 1)].joined(separator: ":")
+                let file = components[0 ..< (components.count - 1)].joined(separator: ":")
                 return BuildWarning(file: file, line: lineNum, message: message)
             } else {
                 return BuildWarning(file: beforeWarning, line: nil, message: message)
@@ -753,8 +753,8 @@ public final class BuildOutputParser: @unchecked Sendable {
         }
 
         guard lineNumEnd > afterColon.startIndex,
-            lineNumEnd < afterColon.endIndex,
-            afterColon[lineNumEnd] == " "
+              lineNumEnd < afterColon.endIndex,
+              afterColon[lineNumEnd] == " "
         else {
             return nil
         }
@@ -798,18 +798,18 @@ public final class BuildOutputParser: @unchecked Sendable {
         let isParallelPassed = line.hasPrefix("Test case '") && line.contains("' passed on '")
 
         if isStandardPassed || isParallelPassed {
-            let prefixLength = 11  // "Test Case '" or "Test case '"
+            let prefixLength = 11 // "Test Case '" or "Test case '"
             let startIndex = line.index(line.startIndex, offsetBy: prefixLength)
 
             let passedPattern = isParallelPassed ? "' passed on '" : "' passed ("
             guard let endQuote = line.range(of: passedPattern) else { return false }
-            let testName = String(line[startIndex..<endQuote.lowerBound])
+            let testName = String(line[startIndex ..< endQuote.lowerBound])
 
             var duration: Double?
             if let lastParen = line.range(of: "(", options: .backwards),
-                let secondsEnd = line.range(of: " seconds", options: .backwards)
+               let secondsEnd = line.range(of: " seconds", options: .backwards)
             {
-                let durationStr = String(line[lastParen.upperBound..<secondsEnd.lowerBound])
+                let durationStr = String(line[lastParen.upperBound ..< secondsEnd.lowerBound])
                 duration = Double(durationStr)
             }
 
@@ -851,42 +851,42 @@ public final class BuildOutputParser: @unchecked Sendable {
             || line.contains("XCTAssertFalse failed")
         {
             if let errorRange = line.range(of: ": error: -["),
-                let bracketEnd = line.range(
-                    of: "] : ", range: errorRange.upperBound..<line.endIndex
-                )
+               let bracketEnd = line.range(
+                   of: "] : ", range: errorRange.upperBound ..< line.endIndex,
+               )
             {
                 let beforeError = String(line[..<errorRange.lowerBound])
-                let testName = String(line[errorRange.upperBound..<bracketEnd.lowerBound])
+                let testName = String(line[errorRange.upperBound ..< bracketEnd.lowerBound])
                 let message = String(line[bracketEnd.upperBound...])
 
                 let components = beforeError.split(
-                    separator: ":", omittingEmptySubsequences: false
+                    separator: ":", omittingEmptySubsequences: false,
                 )
                 if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
-                    let file = components[0..<(components.count - 1)].joined(separator: ":")
+                    let file = components[0 ..< (components.count - 1)].joined(separator: ":")
                     return FailedTest(
-                        test: testName, message: message, file: file, line: lineNum
+                        test: testName, message: message, file: file, line: lineNum,
                     )
                 }
             }
 
             if let bracketStart = line.range(of: "-["),
-                let bracketEnd = line.range(
-                    of: "]", range: bracketStart.upperBound..<line.endIndex
-                )
+               let bracketEnd = line.range(
+                   of: "]", range: bracketStart.upperBound ..< line.endIndex,
+               )
             {
-                let testName = String(line[bracketStart.upperBound..<bracketEnd.lowerBound])
+                let testName = String(line[bracketStart.upperBound ..< bracketEnd.lowerBound])
                 return FailedTest(
                     test: testName,
                     message: line.trimmingCharacters(in: .whitespaces),
-                    file: nil, line: nil
+                    file: nil, line: nil,
                 )
             }
 
             return FailedTest(
                 test: "Test assertion",
                 message: line.trimmingCharacters(in: .whitespaces),
-                file: nil, line: nil
+                file: nil, line: nil,
             )
         }
 
@@ -900,13 +900,13 @@ public final class BuildOutputParser: @unchecked Sendable {
 
             let failedPattern = isParallelFailed ? "' failed on '" : "' failed ("
             guard let endQuote = line.range(of: failedPattern) else { return nil }
-            let test = String(line[startIndex..<endQuote.lowerBound])
+            let test = String(line[startIndex ..< endQuote.lowerBound])
 
             var duration: Double?
             if let lastParen = line.range(of: "(", options: .backwards),
-                let secondsEnd = line.range(of: " seconds", options: .backwards)
+               let secondsEnd = line.range(of: " seconds", options: .backwards)
             {
-                let durationStr = String(line[lastParen.upperBound..<secondsEnd.lowerBound])
+                let durationStr = String(line[lastParen.upperBound ..< secondsEnd.lowerBound])
                 duration = Double(durationStr)
             }
 
@@ -917,7 +917,7 @@ public final class BuildOutputParser: @unchecked Sendable {
 
             let message = duration.map { String(format: "%.3f seconds", $0) } ?? "failed"
             return FailedTest(
-                test: test, message: message, file: nil, line: nil, duration: duration
+                test: test, message: message, file: nil, line: nil, duration: duration,
             )
         }
 
@@ -938,16 +938,19 @@ public final class BuildOutputParser: @unchecked Sendable {
             let issueMarker = " recorded an issue at "
             if remaining.hasPrefix(issueMarker) {
                 let afterIssue = String(
-                    remaining[remaining.index(remaining.startIndex, offsetBy: issueMarker.count)...]
+                    remaining[remaining.index(
+                        remaining.startIndex,
+                        offsetBy: issueMarker.count,
+                    )...],
                 )
                 let parts = afterIssue.split(
-                    separator: ":", maxSplits: 3, omittingEmptySubsequences: false
+                    separator: ":", maxSplits: 3, omittingEmptySubsequences: false,
                 )
                 if parts.count >= 4, let lineNum = Int(parts[1]) {
                     let file = String(parts[0])
                     let message = String(parts[3]).trimmingCharacters(in: .whitespaces)
                     return FailedTest(
-                        test: extracted.name, message: message, file: file, line: lineNum
+                        test: extracted.name, message: message, file: file, line: lineNum,
                     )
                 }
             }
@@ -955,7 +958,7 @@ public final class BuildOutputParser: @unchecked Sendable {
             let failedMarker = " failed after "
             if remaining.hasPrefix(failedMarker) {
                 let afterStr = remaining[
-                    remaining.index(remaining.startIndex, offsetBy: failedMarker.count)...
+                    remaining.index(remaining.startIndex, offsetBy: failedMarker.count)...,
                 ]
                 var duration: Double?
                 if let secondsRange = afterStr.range(of: " seconds") {
@@ -970,28 +973,28 @@ public final class BuildOutputParser: @unchecked Sendable {
 
                 return FailedTest(
                     test: extracted.name, message: "Test failed", file: nil, line: nil,
-                    duration: duration
+                    duration: duration,
                 )
             }
         }
 
         // ❌ testname (message)
         if line.hasPrefix("❌ "), let parenStart = line.range(of: " ("),
-            let parenEnd = line.range(of: ")", options: .backwards)
+           let parenEnd = line.range(of: ")", options: .backwards)
         {
             let startIndex = line.index(line.startIndex, offsetBy: 2)
-            let test = String(line[startIndex..<parenStart.lowerBound])
-            let message = String(line[parenStart.upperBound..<parenEnd.lowerBound])
+            let test = String(line[startIndex ..< parenStart.lowerBound])
+            let message = String(line[parenStart.upperBound ..< parenEnd.lowerBound])
             return FailedTest(test: test, message: message, file: nil, line: nil)
         }
 
         // testname (message) failed
         if line.hasSuffix(") failed") || line.hasSuffix(") failed."),
-            let parenStart = line.range(of: " ("),
-            let parenEnd = line.range(of: ") failed", options: .backwards)
+           let parenStart = line.range(of: " ("),
+           let parenEnd = line.range(of: ") failed", options: .backwards)
         {
             let test = String(line[..<parenStart.lowerBound])
-            let message = String(line[parenStart.upperBound..<parenEnd.lowerBound])
+            let message = String(line[parenStart.upperBound ..< parenEnd.lowerBound])
             return FailedTest(test: test, message: message, file: nil, line: nil)
         }
 
@@ -1001,10 +1004,10 @@ public final class BuildOutputParser: @unchecked Sendable {
     private func parseBuildAndTestTime(_ line: String) {
         if line.contains("** BUILD SUCCEEDED **") || line.contains("** BUILD FAILED **") {
             if let bracketStart = line.range(of: "[", options: .backwards),
-                let bracketEnd = line.range(of: "]", options: .backwards),
-                bracketStart.lowerBound < bracketEnd.lowerBound
+               let bracketEnd = line.range(of: "]", options: .backwards),
+               bracketStart.lowerBound < bracketEnd.lowerBound
             {
-                buildTime = String(line[bracketStart.upperBound..<bracketEnd.lowerBound])
+                buildTime = String(line[bracketStart.upperBound ..< bracketEnd.lowerBound])
             }
             return
         }
@@ -1016,10 +1019,10 @@ public final class BuildOutputParser: @unchecked Sendable {
 
         if line.hasPrefix("Build complete!") {
             if let parenStart = line.range(of: "("),
-                let parenEnd = line.range(of: ")"),
-                parenStart.lowerBound < parenEnd.lowerBound
+               let parenEnd = line.range(of: ")"),
+               parenStart.lowerBound < parenEnd.lowerBound
             {
-                buildTime = String(line[parenStart.upperBound..<parenEnd.lowerBound])
+                buildTime = String(line[parenStart.upperBound ..< parenEnd.lowerBound])
             }
             return
         }
@@ -1038,7 +1041,7 @@ public final class BuildOutputParser: @unchecked Sendable {
         let trimmedLine = line.trimmingCharacters(in: .whitespaces)
         if trimmedLine.hasPrefix("Executed "), let withRange = trimmedLine.range(of: ", with ") {
             let afterExecuted = trimmedLine[
-                trimmedLine.index(trimmedLine.startIndex, offsetBy: 9)..<withRange.lowerBound
+                trimmedLine.index(trimmedLine.startIndex, offsetBy: 9) ..< withRange.lowerBound,
             ]
             let testCountStr = afterExecuted.split(separator: " ").first
             if let testCountStr, let total = Int(testCountStr) {
@@ -1055,7 +1058,7 @@ public final class BuildOutputParser: @unchecked Sendable {
             }
 
             if let inRange = trimmedLine.range(
-                of: " in ", range: withRange.upperBound..<trimmedLine.endIndex
+                of: " in ", range: withRange.upperBound ..< trimmedLine.endIndex,
             ) {
                 let afterIn = trimmedLine[inRange.upperBound...]
                 if let parenStart = afterIn.range(of: " (") {
@@ -1073,22 +1076,22 @@ public final class BuildOutputParser: @unchecked Sendable {
         if let testRunRange = line.range(of: "Test run with ") {
             // Format 1: "N tests failed, M tests passed after X seconds."
             if let failedRange = line.range(
-                of: " failed, ", range: testRunRange.upperBound..<line.endIndex
+                of: " failed, ", range: testRunRange.upperBound ..< line.endIndex,
             ),
                 let passedRange = line.range(
-                    of: " passed after ", range: failedRange.upperBound..<line.endIndex
+                    of: " passed after ", range: failedRange.upperBound ..< line.endIndex,
                 )
             {
-                let beforeFailed = line[testRunRange.upperBound..<failedRange.lowerBound]
+                let beforeFailed = line[testRunRange.upperBound ..< failedRange.lowerBound]
                 let failedCountStr = beforeFailed.split(separator: " ").first
                 if let failedCountStr, let failedCount = Int(failedCountStr) {
                     swiftTestingFailedCount = failedCount
                 }
 
-                let beforePassed = line[failedRange.upperBound..<passedRange.lowerBound]
+                let beforePassed = line[failedRange.upperBound ..< passedRange.lowerBound]
                 let passedCountStr = beforePassed.split(separator: " ").first
                 if let passedCountStr, let passedCount = Int(passedCountStr),
-                    let failedCount = swiftTestingFailedCount
+                   let failedCount = swiftTestingFailedCount
                 {
                     swiftTestingExecutedCount = passedCount + failedCount
                 }
@@ -1104,11 +1107,11 @@ public final class BuildOutputParser: @unchecked Sendable {
 
             // Format 2: "N test(s) in M suite(s) failed after X seconds with Y issue(s)."
             if let failedAfterRange = line.range(
-                of: " failed after ", range: testRunRange.upperBound..<line.endIndex
+                of: " failed after ", range: testRunRange.upperBound ..< line.endIndex,
             ),
                 line.contains(" issue")
             {
-                let beforeFailed = line[testRunRange.upperBound..<failedAfterRange.lowerBound]
+                let beforeFailed = line[testRunRange.upperBound ..< failedAfterRange.lowerBound]
                 let testCountStr = beforeFailed.split(separator: " ").first
                 if let testCountStr, let total = Int(testCountStr) {
                     swiftTestingExecutedCount = total
@@ -1137,7 +1140,7 @@ public final class BuildOutputParser: @unchecked Sendable {
 
             // Swift Testing passed: Test run with N tests in M suites passed after X seconds.
             if let passedAfter = line.range(of: " passed after ") {
-                let afterPrefix = line[testRunRange.upperBound..<passedAfter.lowerBound]
+                let afterPrefix = line[testRunRange.upperBound ..< passedAfter.lowerBound]
                 let testCountStr = afterPrefix.split(separator: " ").first
                 if let testCountStr, let total = Int(testCountStr) {
                     swiftTestingExecutedCount = total
@@ -1146,7 +1149,7 @@ public final class BuildOutputParser: @unchecked Sendable {
                     if total > 0 {
                         let afterPassed = line[passedAfter.upperBound...]
                         if let secondsRange = afterPassed.range(
-                            of: " seconds", options: .backwards
+                            of: " seconds", options: .backwards,
                         ) {
                             accumulateTestTime(String(afterPassed[..<secondsRange.lowerBound]))
                         } else {
@@ -1207,7 +1210,7 @@ public final class BuildOutputParser: @unchecked Sendable {
         }
 
         if line.contains("SwiftDriver"), line.contains("Compilation"),
-            let target = extractTarget(from: line)
+           let target = extractTarget(from: line)
         {
             return ("SwiftCompilation", target)
         }
@@ -1248,7 +1251,7 @@ public final class BuildOutputParser: @unchecked Sendable {
     private func parseDependencyGraph(_ line: String) -> Bool {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
 
-        if trimmed.hasPrefix("Target '") && trimmed.contains("' in project '") {
+        if trimmed.hasPrefix("Target '"), trimmed.contains("' in project '") {
             let afterTarget = trimmed.dropFirst("Target '".count)
             if let endQuote = afterTarget.range(of: "'") {
                 let targetName = String(afterTarget[..<endQuote.lowerBound])
@@ -1293,10 +1296,10 @@ public final class BuildOutputParser: @unchecked Sendable {
                 let targetName = String(afterBuildTarget[..<ofProjectRange.lowerBound])
 
                 if let parenStart = line.range(of: "(", options: .backwards),
-                    let parenEnd = line.range(of: ")", options: .backwards),
-                    parenStart.lowerBound < parenEnd.lowerBound
+                   let parenEnd = line.range(of: ")", options: .backwards),
+                   parenStart.lowerBound < parenEnd.lowerBound
                 {
-                    let duration = String(line[parenStart.upperBound..<parenEnd.lowerBound])
+                    let duration = String(line[parenStart.upperBound ..< parenEnd.lowerBound])
                     return (targetName, duration)
                 }
             }
@@ -1308,10 +1311,10 @@ public final class BuildOutputParser: @unchecked Sendable {
                 let targetName = String(afterPrefix[..<endQuote.lowerBound])
 
                 if let parenStart = line.range(of: "(", options: .backwards),
-                    let parenEnd = line.range(of: ")", options: .backwards),
-                    parenStart.lowerBound < parenEnd.lowerBound
+                   let parenEnd = line.range(of: ")", options: .backwards),
+                   parenStart.lowerBound < parenEnd.lowerBound
                 {
-                    let duration = String(line[parenStart.upperBound..<parenEnd.lowerBound])
+                    let duration = String(line[parenStart.upperBound ..< parenEnd.lowerBound])
                     return (targetName, duration)
                 }
             }

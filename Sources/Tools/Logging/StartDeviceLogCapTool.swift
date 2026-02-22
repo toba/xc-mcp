@@ -1,13 +1,13 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct StartDeviceLogCapTool: Sendable {
     private let deviceCtlRunner: DeviceCtlRunner
     private let sessionManager: SessionManager
 
     public init(
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager
+        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
     ) {
         self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
@@ -17,37 +17,37 @@ public struct StartDeviceLogCapTool: Sendable {
         Tool(
             name: "start_device_log_cap",
             description:
-                "Start capturing logs from a physical device. Logs are written to a file and can be stopped with stop_device_log_cap.",
+            "Start capturing logs from a physical device. Logs are written to a file and can be stopped with stop_device_log_cap.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device UDID or name. Uses session default if not specified."
+                            "Device UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to write logs to. Defaults to /tmp/device_log_<udid>.log"
+                            "Path to write logs to. Defaults to /tmp/device_log_<udid>.log",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional bundle identifier to filter logs to a specific app."
+                            "Optional bundle identifier to filter logs to a specific app.",
                         ),
                     ]),
                     "predicate": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional predicate to filter logs (e.g., 'subsystem == \"com.apple.example\"')."
+                            "Optional predicate to filter logs (e.g., 'subsystem == \"com.apple.example\"').",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -60,7 +60,7 @@ public struct StartDeviceLogCapTool: Sendable {
             device = sessionDevice
         } else {
             throw MCPError.invalidParams(
-                "device is required. Set it with set_session_defaults or pass it directly."
+                "device is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 

@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
@@ -32,11 +31,11 @@ struct RemoveFileToolTests {
     static let missingParamCases: [RemoveFileMissingParamTestCase] = [
         RemoveFileMissingParamTestCase(
             "Missing project_path",
-            ["file_path": Value.string("test.swift")]
+            ["file_path": Value.string("test.swift")],
         ),
         RemoveFileMissingParamTestCase(
             "Missing file_path",
-            ["project_path": Value.string("/path/to/project.xcodeproj")]
+            ["project_path": Value.string("/path/to/project.xcodeproj")],
         ),
     ]
 
@@ -53,7 +52,7 @@ struct RemoveFileToolTests {
     func removeFile() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -64,7 +63,7 @@ struct RemoveFileToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         // First add a file to remove
@@ -120,7 +119,7 @@ struct RemoveFileToolTests {
     func removeFileFromDisk() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -131,7 +130,7 @@ struct RemoveFileToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         // First add a file to remove
@@ -169,7 +168,7 @@ struct RemoveFileToolTests {
     func removeNonExistentFile() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 

@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct TapTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,31 +15,31 @@ public struct TapTool: Sendable {
         Tool(
             name: "tap",
             description:
-                "Simulate a tap at a specific coordinate on a simulator screen.",
+            "Simulate a tap at a specific coordinate on a simulator screen.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "x": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "X coordinate of the tap location."
+                            "X coordinate of the tap location.",
                         ),
                     ]),
                     "y": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Y coordinate of the tap location."
+                            "Y coordinate of the tap location.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("x"), .string("y")]),
-            ])
+            ]),
         )
     }
 
@@ -52,7 +52,7 @@ public struct TapTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -78,30 +78,30 @@ public struct TapTool: Sendable {
         do {
             // Use simctl io to send touch event
             let result = try await simctlRunner.run(
-                arguments: ["io", simulator, "tap", "\(x)", "\(y)"]
+                arguments: ["io", simulator, "tap", "\(x)", "\(y)"],
             )
 
             if result.succeeded {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Tapped at (\(Int(x)), \(Int(y))) on simulator '\(simulator)'"
+                            "Tapped at (\(Int(x)), \(Int(y))) on simulator '\(simulator)'",
                         ),
                         NextStepHints.content(hints: [
                             NextStepHint(
                                 tool: "screenshot",
-                                description: "Take a screenshot to verify the result"
+                                description: "Take a screenshot to verify the result",
                             ),
                             NextStepHint(tool: "tap", description: "Tap another UI element"),
                             NextStepHint(
-                                tool: "type_text", description: "Type text into a focused field"
+                                tool: "type_text", description: "Type text into a focused field",
                             ),
                         ]),
-                    ]
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to tap: \(result.errorOutput)"
+                    "Failed to tap: \(result.errorOutput)",
                 )
             }
         } catch {

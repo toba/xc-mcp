@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct InstallAppSimTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -25,12 +25,12 @@ public struct InstallAppSimTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("app_path")]),
-            ])
+            ]),
         )
     }
 
@@ -45,13 +45,13 @@ public struct InstallAppSimTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Successfully installed app at '\(appPath)' on simulator '\(simulator)'"
-                        )
-                    ]
+                            "Successfully installed app at '\(appPath)' on simulator '\(simulator)'",
+                        ),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to install app: \(result.errorOutput)"
+                    "Failed to install app: \(result.errorOutput)",
                 )
             }
         } catch {

@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsBatchCheckKeysTool: Sendable {
     private let pathUtility: PathUtility
@@ -28,12 +28,12 @@ public struct XCStringsBatchCheckKeysTool: Sendable {
                     "language": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional language to check translations for"
+                            "Optional language to check translations for",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("keys")]),
-            ])
+            ]),
         )
     }
 

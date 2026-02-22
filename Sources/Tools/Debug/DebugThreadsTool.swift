@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugThreadsTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -13,31 +13,31 @@ public struct DebugThreadsTool: Sendable {
         Tool(
             name: "debug_threads",
             description:
-                "List threads in a debugged process. Optionally select a thread to switch to.",
+            "List threads in a debugged process. Optionally select a thread to switch to.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."
+                            "Process ID of the debugged process.",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."
+                            "Bundle identifier of the app (uses registered session).",
                         ),
                     ]),
                     "select": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Thread index to switch to."
+                            "Thread index to switch to.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -50,7 +50,7 @@ public struct DebugThreadsTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required"
+                "Either pid or bundle_id (with active session) is required",
             )
         }
 
@@ -58,7 +58,7 @@ public struct DebugThreadsTool: Sendable {
 
         do {
             let result = try await lldbRunner.listThreads(
-                pid: targetPID, selectIndex: selectIndex
+                pid: targetPID, selectIndex: selectIndex,
             )
 
             var message = "Threads for process \(targetPID):\n\n\(result.output)"

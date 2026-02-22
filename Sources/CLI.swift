@@ -1,6 +1,6 @@
-import ArgumentParser
-import Foundation
 import Logging
+import Foundation
+import ArgumentParser
 
 /// Command-line interface for the Xcode MCP server.
 ///
@@ -23,7 +23,7 @@ import Logging
 struct XcodeMCPServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-mcp",
-        abstract: "MCP server for Xcode project manipulation, building, and testing"
+        abstract: "MCP server for Xcode project manipulation, building, and testing",
     )
 
     /// The base path for the server to operate in.

@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct StartSimLogCapTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,37 +15,37 @@ public struct StartSimLogCapTool: Sendable {
         Tool(
             name: "start_sim_log_cap",
             description:
-                "Start capturing logs from a simulator. Logs are written to a file and can be stopped with stop_sim_log_cap.",
+            "Start capturing logs from a simulator. Logs are written to a file and can be stopped with stop_sim_log_cap.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to write logs to. Defaults to /tmp/sim_log_<udid>.log"
+                            "Path to write logs to. Defaults to /tmp/sim_log_<udid>.log",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional bundle identifier to filter logs to a specific app."
+                            "Optional bundle identifier to filter logs to a specific app.",
                         ),
                     ]),
                     "predicate": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional predicate to filter logs (e.g., 'subsystem == \"com.apple.example\"')."
+                            "Optional predicate to filter logs (e.g., 'subsystem == \"com.apple.example\"').",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -58,7 +58,7 @@ public struct StartSimLogCapTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 

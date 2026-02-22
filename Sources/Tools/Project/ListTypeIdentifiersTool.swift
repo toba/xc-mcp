@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ListTypeIdentifiersTool: Sendable {
     private let pathUtility: PathUtility
@@ -15,26 +15,26 @@ public struct ListTypeIdentifiersTool: Sendable {
         Tool(
             name: "list_type_identifiers",
             description:
-                "List exported and/or imported type identifiers (UTExportedTypeDeclarations / UTImportedTypeDeclarations) from a target's Info.plist",
+            "List exported and/or imported type identifiers (UTExportedTypeDeclarations / UTImportedTypeDeclarations) from a target's Info.plist",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target to list type identifiers for"
+                            "Name of the target to list type identifiers for",
                         ),
                     ]),
                     "kind": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Which type identifiers to list: exported, imported, or all (default: all)"
+                            "Which type identifiers to list: exported, imported, or all (default: all)",
                         ),
                         "enum": .array([
                             .string("exported"), .string("imported"), .string("all"),
@@ -42,13 +42,13 @@ public struct ListTypeIdentifiersTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("target_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"]
+              case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams("project_path and target_name are required")
         }
@@ -73,21 +73,21 @@ public struct ListTypeIdentifiersTool: Sendable {
 
             guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")]
+                    content: [.text("Target '\(targetName)' not found in project")],
                 )
             }
 
             guard
                 let plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName
+                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
                 )
             else {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "No Info.plist found for target '\(targetName)'. The target may use a generated Info.plist with no physical file."
-                        )
-                    ]
+                            "No Info.plist found for target '\(targetName)'. The target may use a generated Info.plist with no physical file.",
+                        ),
+                    ],
                 )
             }
 
@@ -98,7 +98,7 @@ public struct ListTypeIdentifiersTool: Sendable {
 
             if kind == "exported" || kind == "all" {
                 if let exported = plist["UTExportedTypeDeclarations"] as? [[String: Any]],
-                    !exported.isEmpty
+                   !exported.isEmpty
                 {
                     foundAny = true
                     output += "Exported Type Identifiers in target '\(targetName)':\n"
@@ -108,7 +108,7 @@ public struct ListTypeIdentifiersTool: Sendable {
 
             if kind == "imported" || kind == "all" {
                 if let imported = plist["UTImportedTypeDeclarations"] as? [[String: Any]],
-                    !imported.isEmpty
+                   !imported.isEmpty
                 {
                     foundAny = true
                     if !output.isEmpty { output += "\n" }
@@ -120,27 +120,27 @@ public struct ListTypeIdentifiersTool: Sendable {
             if !foundAny {
                 let kindLabel: String
                 switch kind {
-                case "exported": kindLabel = "exported"
-                case "imported": kindLabel = "imported"
-                default: kindLabel = "exported or imported"
+                    case "exported": kindLabel = "exported"
+                    case "imported": kindLabel = "imported"
+                    default: kindLabel = "exported or imported"
                 }
                 return CallTool.Result(
                     content: [
                         .text(
-                            "No \(kindLabel) type identifiers found in target '\(targetName)'"
-                        )
-                    ]
+                            "No \(kindLabel) type identifiers found in target '\(targetName)'",
+                        ),
+                    ],
                 )
             }
 
             return CallTool.Result(content: [
-                .text(output.trimmingCharacters(in: .whitespacesAndNewlines))
+                .text(output.trimmingCharacters(in: .whitespacesAndNewlines)),
             ])
         } catch let error as MCPError {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to list type identifiers: \(error.localizedDescription)"
+                "Failed to list type identifiers: \(error.localizedDescription)",
             )
         }
     }
@@ -160,7 +160,7 @@ public struct ListTypeIdentifiersTool: Sendable {
             }
             if let tagSpec = uti["UTTypeTagSpecification"] as? [String: Any] {
                 if let extensions = tagSpec["public.filename-extension"] as? [String],
-                    !extensions.isEmpty
+                   !extensions.isEmpty
                 {
                     output += "   Extensions: \(extensions.joined(separator: ", "))\n"
                 } else if let ext = tagSpec["public.filename-extension"] as? String {

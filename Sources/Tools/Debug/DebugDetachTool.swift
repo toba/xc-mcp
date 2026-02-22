@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugDetachTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -13,25 +13,25 @@ public struct DebugDetachTool: Sendable {
         Tool(
             name: "debug_detach",
             description:
-                "Detach the LLDB debugger from a process.",
+            "Detach the LLDB debugger from a process.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app to detach from."
+                            "Bundle identifier of the app to detach from.",
                         ),
                     ]),
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID to detach from."
+                            "Process ID to detach from.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -44,7 +44,7 @@ public struct DebugDetachTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either bundle_id (with active session) or pid is required"
+                "Either bundle_id (with active session) or pid is required",
             )
         }
 

@@ -1,7 +1,7 @@
-import Foundation
-import Logging
 import MCP
+import Logging
 import XCMCPCore
+import Foundation
 import XCMCPTools
 
 /// All available tool names exposed by the xc-device MCP server.
@@ -55,7 +55,7 @@ public struct DeviceMCPServer: Sendable {
         let server = Server(
             name: "xc-device",
             version: "1.0.0",
-            capabilities: .init(tools: .init())
+            capabilities: .init(tools: .init()),
         )
 
         // Create utilities
@@ -66,27 +66,27 @@ public struct DeviceMCPServer: Sendable {
         // Create device tools
         let listDevicesTool = ListDevicesTool(deviceCtlRunner: deviceCtlRunner)
         let buildDeviceTool = BuildDeviceTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let installAppDeviceTool = InstallAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
         )
         let launchAppDeviceTool = LaunchAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
         )
         let stopAppDeviceTool = StopAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
         )
         let getDeviceAppPathTool = GetDeviceAppPathTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
         )
         let testDeviceTool = TestDeviceTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
 
         // Create logging tools
         let startDeviceLogCapTool = StartDeviceLogCapTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
         )
         let stopDeviceLogCapTool = StopDeviceLogCapTool(sessionManager: sessionManager)
 
@@ -120,41 +120,42 @@ public struct DeviceMCPServer: Sendable {
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = DeviceToolName(rawValue: params.name) else {
                 let hint = ServerToolDirectory.hint(for: params.name, currentServer: "xc-device")
-                let message = hint.map { "Unknown tool: \(params.name). \($0)" }
-                    ?? "Unknown tool: \(params.name)"
+                let message =
+                    hint.map { "Unknown tool: \(params.name). \($0)" }
+                        ?? "Unknown tool: \(params.name)"
                 throw MCPError.methodNotFound(message)
             }
 
             let arguments = params.arguments ?? [:]
 
             switch toolName {
-            // Device tools
-            case .listDevices:
-                return try await listDevicesTool.execute(arguments: arguments)
-            case .buildDevice:
-                return try await buildDeviceTool.execute(arguments: arguments)
-            case .installAppDevice:
-                return try await installAppDeviceTool.execute(arguments: arguments)
-            case .launchAppDevice:
-                return try await launchAppDeviceTool.execute(arguments: arguments)
-            case .stopAppDevice:
-                return try await stopAppDeviceTool.execute(arguments: arguments)
-            case .getDeviceAppPath:
-                return try await getDeviceAppPathTool.execute(arguments: arguments)
-            case .testDevice:
-                return try await testDeviceTool.execute(arguments: arguments)
-            // Logging tools
-            case .startDeviceLogCap:
-                return try await startDeviceLogCapTool.execute(arguments: arguments)
-            case .stopDeviceLogCap:
-                return try await stopDeviceLogCapTool.execute(arguments: arguments)
-            // Session tools
-            case .setSessionDefaults:
-                return try await setSessionDefaultsTool.execute(arguments: arguments)
-            case .showSessionDefaults:
-                return try await showSessionDefaultsTool.execute(arguments: arguments)
-            case .clearSessionDefaults:
-                return try await clearSessionDefaultsTool.execute(arguments: arguments)
+                // Device tools
+                case .listDevices:
+                    return try await listDevicesTool.execute(arguments: arguments)
+                case .buildDevice:
+                    return try await buildDeviceTool.execute(arguments: arguments)
+                case .installAppDevice:
+                    return try await installAppDeviceTool.execute(arguments: arguments)
+                case .launchAppDevice:
+                    return try await launchAppDeviceTool.execute(arguments: arguments)
+                case .stopAppDevice:
+                    return try await stopAppDeviceTool.execute(arguments: arguments)
+                case .getDeviceAppPath:
+                    return try await getDeviceAppPathTool.execute(arguments: arguments)
+                case .testDevice:
+                    return try await testDeviceTool.execute(arguments: arguments)
+                // Logging tools
+                case .startDeviceLogCap:
+                    return try await startDeviceLogCapTool.execute(arguments: arguments)
+                case .stopDeviceLogCap:
+                    return try await stopDeviceLogCapTool.execute(arguments: arguments)
+                // Session tools
+                case .setSessionDefaults:
+                    return try await setSessionDefaultsTool.execute(arguments: arguments)
+                case .showSessionDefaults:
+                    return try await showSessionDefaultsTool.execute(arguments: arguments)
+                case .clearSessionDefaults:
+                    return try await clearSessionDefaultsTool.execute(arguments: arguments)
             }
         }
 

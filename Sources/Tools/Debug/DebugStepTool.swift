@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugStepTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -13,31 +13,31 @@ public struct DebugStepTool: Sendable {
         Tool(
             name: "debug_step",
             description:
-                "Step through code execution in a debugged process.",
+            "Step through code execution in a debugged process.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."
+                            "Process ID of the debugged process.",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."
+                            "Bundle identifier of the app (uses registered session).",
                         ),
                     ]),
                     "mode": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Step mode: 'in' (step into), 'over' (step over), 'out' (step out), or 'instruction' (single instruction)."
+                            "Step mode: 'in' (step into), 'over' (step over), 'out' (step out), or 'instruction' (single instruction).",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("mode")]),
-            ])
+            ]),
         )
     }
 
@@ -50,7 +50,7 @@ public struct DebugStepTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required"
+                "Either pid or bundle_id (with active session) is required",
             )
         }
 
@@ -58,7 +58,7 @@ public struct DebugStepTool: Sendable {
 
         guard ["in", "over", "out", "instruction"].contains(mode) else {
             throw MCPError.invalidParams(
-                "mode must be 'in', 'over', 'out', or 'instruction'"
+                "mode must be 'in', 'over', 'out', or 'instruction'",
             )
         }
 
@@ -67,11 +67,11 @@ public struct DebugStepTool: Sendable {
 
             let modeDesc: String
             switch mode {
-            case "in": modeDesc = "Stepped into"
-            case "over": modeDesc = "Stepped over"
-            case "out": modeDesc = "Stepped out"
-            case "instruction": modeDesc = "Stepped instruction"
-            default: modeDesc = "Stepped"
+                case "in": modeDesc = "Stepped into"
+                case "over": modeDesc = "Stepped over"
+                case "out": modeDesc = "Stepped out"
+                case "instruction": modeDesc = "Stepped instruction"
+                default: modeDesc = "Stepped"
             }
 
             let message = "\(modeDesc):\n\n\(result.output)"

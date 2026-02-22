@@ -19,7 +19,7 @@ public struct CoverageParser: Sendable {
         } else {
             if let latestXCResult = findLatestXCResultInDerivedData(projectHint: targetFilter) {
                 return convertXCResultToJSON(
-                    xcresultPath: latestXCResult, targetFilter: targetFilter
+                    xcresultPath: latestXCResult, targetFilter: targetFilter,
                 )
             }
 
@@ -69,13 +69,13 @@ public struct CoverageParser: Sendable {
             let xcresultBundles = findXCResultBundles(in: coveragePath)
             if let firstXCResult = xcresultBundles.first {
                 return convertXCResultToJSON(
-                    xcresultPath: firstXCResult, targetFilter: targetFilter
+                    xcresultPath: firstXCResult, targetFilter: targetFilter,
                 )
             }
 
             if let latestXCResult = findLatestXCResultInDerivedData() {
                 return convertXCResultToJSON(
-                    xcresultPath: latestXCResult, targetFilter: targetFilter
+                    xcresultPath: latestXCResult, targetFilter: targetFilter,
                 )
             }
 
@@ -83,7 +83,7 @@ public struct CoverageParser: Sendable {
         } else {
             if coveragePath.hasSuffix(".xcresult") {
                 return convertXCResultToJSON(
-                    xcresultPath: coveragePath, targetFilter: targetFilter
+                    xcresultPath: coveragePath, targetFilter: targetFilter,
                 )
             } else {
                 return parseCoverageJSON(at: coveragePath, targetFilter: targetFilter)
@@ -123,7 +123,7 @@ public struct CoverageParser: Sendable {
     private func findLatestXCResultInDerivedData(projectHint: String? = nil) -> String? {
         let homeDir = NSHomeDirectory()
         let derivedDataPath = (homeDir as NSString).appendingPathComponent(
-            "Library/Developer/Xcode/DerivedData"
+            "Library/Developer/Xcode/DerivedData",
         )
 
         guard FileManager.default.fileExists(atPath: derivedDataPath) else {
@@ -134,9 +134,9 @@ public struct CoverageParser: Sendable {
         if let hint = projectHint {
             let projectDirs =
                 (try? FileManager.default.contentsOfDirectory(atPath: derivedDataPath))?
-                .filter { $0.hasPrefix("\(hint)-") || $0.hasPrefix("\(hint)Tests-") }
-                .map { (derivedDataPath as NSString).appendingPathComponent($0) }
-                .filter { FileManager.default.fileExists(atPath: $0) }
+                    .filter { $0.hasPrefix("\(hint)-") || $0.hasPrefix("\(hint)Tests-") }
+                    .map { (derivedDataPath as NSString).appendingPathComponent($0) }
+                    .filter { FileManager.default.fileExists(atPath: $0) }
 
             guard let dirs = projectDirs, !dirs.isEmpty else {
                 return nil
@@ -162,7 +162,7 @@ public struct CoverageParser: Sendable {
 
         for path in paths {
             if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
-                let modDate = attrs[.modificationDate] as? Date
+               let modDate = attrs[.modificationDate] as? Date
             {
                 if newestDate == nil || modDate > newestDate! {
                     newestDate = modDate
@@ -178,7 +178,7 @@ public struct CoverageParser: Sendable {
         let buildDir = ".build"
 
         guard FileManager.default.fileExists(atPath: buildDir),
-            let enumerator = FileManager.default.enumerator(atPath: buildDir)
+              let enumerator = FileManager.default.enumerator(atPath: buildDir)
         else {
             return nil
         }
@@ -192,7 +192,7 @@ public struct CoverageParser: Sendable {
 
                 guard
                     let macosContents = try? FileManager.default.contentsOfDirectory(
-                        atPath: macosPath
+                        atPath: macosPath,
                     )
                 else {
                     continue
@@ -203,8 +203,8 @@ public struct CoverageParser: Sendable {
                     var isDirectory: ObjCBool = false
 
                     if FileManager.default.fileExists(atPath: itemPath, isDirectory: &isDirectory),
-                        !isDirectory.boolValue,
-                        !item.hasSuffix(".dSYM")
+                       !isDirectory.boolValue,
+                       !item.hasSuffix(".dSYM")
                     {
                         return itemPath
                     }
@@ -264,7 +264,7 @@ public struct CoverageParser: Sendable {
         }
 
         guard let jsonData = jsonOutput.data(using: .utf8),
-            let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+              let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
         else {
             return nil
         }
@@ -347,8 +347,8 @@ public struct CoverageParser: Sendable {
                         name: name,
                         lineCoverage: lineCoverage,
                         coveredLines: covered,
-                        executableLines: executable
-                    )
+                        executableLines: executable,
+                    ),
                 )
 
                 totalCovered += covered
@@ -368,8 +368,8 @@ public struct CoverageParser: Sendable {
 
     private static func parseSPMFormat(json: [String: Any]) -> CodeCoverage? {
         guard let dataArray = json["data"] as? [[String: Any]],
-            let firstData = dataArray.first,
-            let filesArray = firstData["files"] as? [[String: Any]]
+              let firstData = dataArray.first,
+              let filesArray = firstData["files"] as? [[String: Any]]
         else {
             return nil
         }
@@ -380,10 +380,10 @@ public struct CoverageParser: Sendable {
 
         for fileData in filesArray {
             guard let filename = fileData["filename"] as? String,
-                let summary = fileData["summary"] as? [String: Any],
-                let lines = summary["lines"] as? [String: Any],
-                let covered = lines["covered"] as? Int,
-                let count = lines["count"] as? Int
+                  let summary = fileData["summary"] as? [String: Any],
+                  let lines = summary["lines"] as? [String: Any],
+                  let covered = lines["covered"] as? Int,
+                  let count = lines["count"] as? Int
             else {
                 continue
             }
@@ -397,8 +397,8 @@ public struct CoverageParser: Sendable {
                     name: name,
                     lineCoverage: coverage,
                     coveredLines: covered,
-                    executableLines: count
-                )
+                    executableLines: count,
+                ),
             )
 
             totalCovered += covered

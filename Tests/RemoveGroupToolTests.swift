@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("RemoveGroupTool Tests")
@@ -32,7 +31,8 @@ struct RemoveGroupToolTests {
         let tool = RemoveGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: ["project_path": Value.string("/path/to/project.xcodeproj")]
+            try tool.execute(
+                arguments: ["project_path": Value.string("/path/to/project.xcodeproj")],
             )
         }
     }
@@ -40,7 +40,7 @@ struct RemoveGroupToolTests {
     @Test("Remove empty group")
     func removeEmptyGroup() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -80,7 +80,7 @@ struct RemoveGroupToolTests {
     @Test("Remove non-existent group")
     func removeNonExistentGroup() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -107,7 +107,7 @@ struct RemoveGroupToolTests {
     @Test("Remove group with children fails without recursive")
     func removeGroupWithChildrenFailsWithoutRecursive() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -148,7 +148,7 @@ struct RemoveGroupToolTests {
     @Test("Remove group with children recursively")
     func removeGroupWithChildrenRecursively() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -194,7 +194,7 @@ struct RemoveGroupToolTests {
     @Test("Remove group by path")
     func removeGroupByPath() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 

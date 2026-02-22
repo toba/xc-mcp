@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for extension type tests
@@ -45,7 +44,8 @@ struct AddAppExtensionToolTests {
         #expect(toolDefinition.name == "add_app_extension")
         #expect(
             toolDefinition.description
-                == "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, and other extension types."
+                ==
+                "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, and other extension types.",
         )
     }
 
@@ -57,7 +57,7 @@ struct AddAppExtensionToolTests {
                 "extension_type": Value.string("widget"),
                 "host_target_name": Value.string("TestApp"),
                 "bundle_identifier": Value.string("com.test.mywidget"),
-            ]
+            ],
         ),
         AppExtensionMissingParamTestCase(
             "Missing extension_name",
@@ -66,7 +66,7 @@ struct AddAppExtensionToolTests {
                 "extension_type": Value.string("widget"),
                 "host_target_name": Value.string("TestApp"),
                 "bundle_identifier": Value.string("com.test.mywidget"),
-            ]
+            ],
         ),
         AppExtensionMissingParamTestCase(
             "Missing extension_type",
@@ -75,7 +75,7 @@ struct AddAppExtensionToolTests {
                 "extension_name": Value.string("MyWidget"),
                 "host_target_name": Value.string("TestApp"),
                 "bundle_identifier": Value.string("com.test.mywidget"),
-            ]
+            ],
         ),
         AppExtensionMissingParamTestCase(
             "Missing host_target_name",
@@ -84,7 +84,7 @@ struct AddAppExtensionToolTests {
                 "extension_name": Value.string("MyWidget"),
                 "extension_type": Value.string("widget"),
                 "bundle_identifier": Value.string("com.test.mywidget"),
-            ]
+            ],
         ),
         AppExtensionMissingParamTestCase(
             "Missing bundle_identifier",
@@ -93,7 +93,7 @@ struct AddAppExtensionToolTests {
                 "extension_name": Value.string("MyWidget"),
                 "extension_type": Value.string("widget"),
                 "host_target_name": Value.string("TestApp"),
-            ]
+            ],
         ),
     ]
 
@@ -116,7 +116,7 @@ struct AddAppExtensionToolTests {
     @Test("Add extension type", arguments: extensionTypeCases)
     func addExtensionType(_ testCase: ExtensionTypeTestCase) throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString
+            component: UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -126,7 +126,7 @@ struct AddAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         let tool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -157,7 +157,7 @@ struct AddAppExtensionToolTests {
     @Test("Add widget extension verifies embedding")
     func addWidgetExtensionVerifiesEmbedding() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString
+            component: UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -167,7 +167,7 @@ struct AddAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         let tool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -208,7 +208,7 @@ struct AddAppExtensionToolTests {
     @Test("Add extension with deployment target")
     func addExtensionWithDeploymentTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString
+            component: UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -218,7 +218,7 @@ struct AddAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         let tool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -246,14 +246,14 @@ struct AddAppExtensionToolTests {
             $0.name == "Debug"
         }
         #expect(
-            buildConfig?.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"]?.stringValue == "17.0"
+            buildConfig?.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"]?.stringValue == "17.0",
         )
     }
 
     @Test("Add duplicate extension")
     func addDuplicateExtension() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString
+            component: UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -263,7 +263,7 @@ struct AddAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         let tool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -291,7 +291,7 @@ struct AddAppExtensionToolTests {
     @Test("Add extension with non-existent host target")
     func addExtensionWithNonExistentHostTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString
+            component: UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -323,7 +323,7 @@ struct AddAppExtensionToolTests {
     @Test("Add extension with invalid extension type")
     func addExtensionWithInvalidExtensionType() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString
+            component: UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -333,7 +333,7 @@ struct AddAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         let tool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -353,7 +353,7 @@ struct AddAppExtensionToolTests {
     @Test("Add extension to non-application target")
     func addExtensionToNonApplicationTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString
+            component: UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 

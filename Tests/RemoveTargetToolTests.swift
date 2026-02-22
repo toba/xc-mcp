@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("RemoveTargetTool Tests")
@@ -32,7 +31,8 @@ struct RemoveTargetToolTests {
         let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: ["project_path": Value.string("/path/to/project.xcodeproj")]
+            try tool.execute(
+                arguments: ["project_path": Value.string("/path/to/project.xcodeproj")],
             )
         }
     }
@@ -41,7 +41,7 @@ struct RemoveTargetToolTests {
     func removeExistingTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -52,7 +52,7 @@ struct RemoveTargetToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         // Verify target exists
@@ -86,7 +86,7 @@ struct RemoveTargetToolTests {
     func removeNonExistentTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -118,7 +118,7 @@ struct RemoveTargetToolTests {
     func removeTargetWithDependencies() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -129,7 +129,7 @@ struct RemoveTargetToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "MainApp", at: projectPath
+            name: "TestProject", targetName: "MainApp", at: projectPath,
         )
 
         // Add another target

@@ -11,7 +11,7 @@ public struct XcodeStateResult: Sendable {
         scheme: String? = nil,
         simulatorUDID: String? = nil,
         simulatorName: String? = nil,
-        error: String? = nil
+        error: String? = nil,
     ) {
         self.scheme = scheme
         self.simulatorUDID = simulatorUDID
@@ -38,7 +38,7 @@ public enum XcodeStateReader {
         else {
             return XcodeStateResult(
                 error:
-                    "No UserInterfaceState.xcuserstate found for user '\(username)'. Tried:\n\(candidates.joined(separator: "\n"))"
+                "No UserInterfaceState.xcuserstate found for user '\(username)'. Tried:\n\(candidates.joined(separator: "\n"))",
             )
         }
 
@@ -50,11 +50,11 @@ public enum XcodeStateReader {
 
         let convertResult = runProcess(
             "/usr/bin/plutil",
-            arguments: ["-convert", "xml1", "-o", tempPath, statePath]
+            arguments: ["-convert", "xml1", "-o", tempPath, statePath],
         )
         guard convertResult.exitCode == 0 else {
             return XcodeStateResult(
-                error: "plutil conversion failed: \(convertResult.stderr)"
+                error: "plutil conversion failed: \(convertResult.stderr)",
             )
         }
 
@@ -66,7 +66,7 @@ public enum XcodeStateReader {
         do {
             guard
                 let plist = try PropertyListSerialization.propertyList(
-                    from: data, format: nil
+                    from: data, format: nil,
                 ) as? [String: Any],
                 let objects = plist["$objects"] as? [Any]
             else {
@@ -87,16 +87,16 @@ public enum XcodeStateReader {
         if path.hasSuffix(".xcworkspace") {
             // Workspace-level state
             candidates.append(
-                "\(path)/xcuserdata/\(username).xcuserdatad/UserInterfaceState.xcuserstate"
+                "\(path)/xcuserdata/\(username).xcuserdatad/UserInterfaceState.xcuserstate",
             )
         } else if path.hasSuffix(".xcodeproj") {
             // Project workspace state
             candidates.append(
-                "\(path)/project.xcworkspace/xcuserdata/\(username).xcuserdatad/UserInterfaceState.xcuserstate"
+                "\(path)/project.xcworkspace/xcuserdata/\(username).xcuserdatad/UserInterfaceState.xcuserstate",
             )
             // Also check project-level xcuserdata
             candidates.append(
-                "\(path)/xcuserdata/\(username).xcuserdatad/UserInterfaceState.xcuserstate"
+                "\(path)/xcuserdata/\(username).xcuserdatad/UserInterfaceState.xcuserstate",
             )
         }
 
@@ -115,16 +115,16 @@ public enum XcodeStateReader {
 
             // Check for scheme reference class
             if let className = resolveString(dict["$class"], in: objects),
-                className.contains("SchemeReference") || className.contains("IDERunContextState")
+               className.contains("SchemeReference") || className.contains("IDERunContextState")
             {
                 // Look for a string key that holds the scheme name
                 if let nameRef = dict["schemeName"], let name = resolveString(nameRef, in: objects),
-                    !name.isEmpty
+                   !name.isEmpty
                 {
                     scheme = name
                 }
                 if let nameRef = dict["name"], let name = resolveString(nameRef, in: objects),
-                    !name.isEmpty, scheme == nil
+                   !name.isEmpty, scheme == nil
                 {
                     scheme = name
                 }
@@ -132,16 +132,16 @@ public enum XcodeStateReader {
 
             // Look for run destination with UDID
             if let className = resolveString(dict["$class"], in: objects),
-                className.contains("RunDestination") || className.contains("DeviceState")
+               className.contains("RunDestination") || className.contains("DeviceState")
             {
                 if let udidRef = dict["deviceIdentifier"],
-                    let udid = resolveString(udidRef, in: objects),
-                    isUDID(udid)
+                   let udid = resolveString(udidRef, in: objects),
+                   isUDID(udid)
                 {
                     simulatorUDID = udid
                 }
                 if let nameRef = dict["name"], let name = resolveString(nameRef, in: objects),
-                    !name.isEmpty
+                   !name.isEmpty
                 {
                     simulatorName = name
                 }
@@ -151,10 +151,10 @@ public enum XcodeStateReader {
             if let str = obj as? String, isUDID(str), simulatorUDID == nil {
                 // Check if nearby objects mention simulator
                 let nearbyRange =
-                    max(0, index - 5)..<min(objects.count, index + 5)
+                    max(0, index - 5) ..< min(objects.count, index + 5)
                 for nearby in nearbyRange {
                     if let nearStr = objects[nearby] as? String,
-                        nearStr.lowercased().contains("simulator")
+                       nearStr.lowercased().contains("simulator")
                     {
                         simulatorUDID = str
                         break
@@ -163,15 +163,15 @@ public enum XcodeStateReader {
             }
         }
 
-        if scheme == nil && simulatorUDID == nil {
+        if scheme == nil, simulatorUDID == nil {
             return XcodeStateResult(
                 error:
-                    "Could not find scheme or destination in Xcode state. The project may not have been opened in Xcode recently."
+                "Could not find scheme or destination in Xcode state. The project may not have been opened in Xcode recently.",
             )
         }
 
         return XcodeStateResult(
-            scheme: scheme, simulatorUDID: simulatorUDID, simulatorName: simulatorName
+            scheme: scheme, simulatorUDID: simulatorUDID, simulatorName: simulatorName,
         )
     }
 
@@ -182,7 +182,7 @@ public enum XcodeStateReader {
         }
         // NSKeyedArchiver uses CF$UID references
         if let dict = value as? [String: Any], let uid = dict["CF$UID"] as? Int,
-            uid < objects.count
+           uid < objects.count
         {
             return objects[uid] as? String
         }
@@ -196,7 +196,7 @@ public enum XcodeStateReader {
     }
 
     private static func runProcess(_ path: String, arguments: [String]) -> (
-        exitCode: Int32, stdout: String, stderr: String
+        exitCode: Int32, stdout: String, stderr: String,
     ) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: path)
@@ -210,12 +210,12 @@ public enum XcodeStateReader {
             process.waitUntilExit()
             let out =
                 String(
-                    data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8
+                    data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8,
                 )
                 ?? ""
             let err =
                 String(
-                    data: stderrPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8
+                    data: stderrPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8,
                 )
                 ?? ""
             return (process.terminationStatus, out, err)

@@ -59,7 +59,7 @@ public enum PreviewExtractor {
 
             // Look for #Preview
             if chars[i] == "#", matchesPreview(chars, at: i) {
-                i += 8  // skip "#Preview"
+                i += 8 // skip "#Preview"
 
                 // Skip whitespace
                 i = skipWhitespace(chars, from: i)
@@ -113,7 +113,7 @@ public enum PreviewExtractor {
                 }
 
                 if depth == 0 {
-                    let bodyScalars = chars[bodyStart..<j]
+                    let bodyScalars = chars[bodyStart ..< j]
                     let body = String(String.UnicodeScalarView(bodyScalars))
                     previews.append(Preview(name: name, body: body))
                     i = j + 1
@@ -145,54 +145,54 @@ public enum PreviewExtractor {
             // Skip string literals
             if chars[i] == "\"" {
                 let end = skipStringLiteral(chars, from: i)
-                result.append(contentsOf: chars[i..<end])
+                result.append(contentsOf: chars[i ..< end])
                 i = end
                 continue
             }
 
             // Skip line comments
-            if chars[i] == "/" && i + 1 < count && chars[i + 1] == "/" {
+            if chars[i] == "/", i + 1 < count, chars[i + 1] == "/" {
                 let end = skipLineComment(chars, from: i)
-                result.append(contentsOf: chars[i..<end])
+                result.append(contentsOf: chars[i ..< end])
                 i = end
                 continue
             }
 
             // Skip block comments
-            if chars[i] == "/" && i + 1 < count && chars[i + 1] == "*" {
+            if chars[i] == "/", i + 1 < count, chars[i + 1] == "*" {
                 let end = skipBlockComment(chars, from: i)
-                result.append(contentsOf: chars[i..<end])
+                result.append(contentsOf: chars[i ..< end])
                 i = end
                 continue
             }
 
             // Detect #Preview and skip the entire block
-            if chars[i] == "#" && matchesPreview(chars, at: i) {
-                var j = i + 8  // skip "#Preview"
+            if chars[i] == "#", matchesPreview(chars, at: i) {
+                var j = i + 8 // skip "#Preview"
                 j = skipWhitespace(chars, from: j)
 
                 // Skip optional parenthesized arguments
-                if j < count && chars[j] == "(" {
+                if j < count, chars[j] == "(" {
                     let (_, afterParen) = extractPreviewName(chars, from: j)
                     j = afterParen
                     j = skipWhitespace(chars, from: j)
                 }
 
                 // Skip the brace-balanced body
-                if j < count && chars[j] == "{" {
+                if j < count, chars[j] == "{" {
                     var depth = 1
                     j += 1
-                    while j < count && depth > 0 {
+                    while j < count, depth > 0 {
                         let c = chars[j]
                         if c == "\"" {
                             j = skipStringLiteral(chars, from: j)
                             continue
                         }
-                        if c == "/" && j + 1 < count && chars[j + 1] == "/" {
+                        if c == "/", j + 1 < count, chars[j + 1] == "/" {
                             j = skipLineComment(chars, from: j)
                             continue
                         }
-                        if c == "/" && j + 1 < count && chars[j + 1] == "*" {
+                        if c == "/", j + 1 < count, chars[j + 1] == "*" {
                             j = skipBlockComment(chars, from: j)
                             continue
                         }
@@ -200,7 +200,7 @@ public enum PreviewExtractor {
                         j += 1
                     }
                     // Skip trailing newline after closing brace
-                    if j < count && chars[j] == "\n" { j += 1 }
+                    if j < count, chars[j] == "\n" { j += 1 }
                     i = j
                     continue
                 }
@@ -217,11 +217,11 @@ public enum PreviewExtractor {
 
     /// Checks if `#Preview` keyword starts at the given index.
     private static func matchesPreview(
-        _ chars: [Unicode.Scalar], at index: Int
+        _ chars: [Unicode.Scalar], at index: Int,
     ) -> Bool {
         let keyword: [Unicode.Scalar] = Array("#Preview".unicodeScalars)
         guard index + keyword.count <= chars.count else { return false }
-        for k in 0..<keyword.count where chars[index + k] != keyword[k] {
+        for k in 0 ..< keyword.count where chars[index + k] != keyword[k] {
             return false
         }
         // Must not be followed by an alphanumeric (to avoid matching #PreviewFoo)
@@ -237,10 +237,10 @@ public enum PreviewExtractor {
 
     /// Skips whitespace and newlines, returning the new index.
     private static func skipWhitespace(
-        _ chars: [Unicode.Scalar], from index: Int
+        _ chars: [Unicode.Scalar], from index: Int,
     ) -> Int {
         var i = index
-        while i < chars.count && CharacterSet.whitespacesAndNewlines.contains(chars[i]) {
+        while i < chars.count, CharacterSet.whitespacesAndNewlines.contains(chars[i]) {
             i += 1
         }
         return i
@@ -249,15 +249,15 @@ public enum PreviewExtractor {
     /// Skips a string literal (handles multiline `"""` and escaped quotes).
     /// Returns the index after the closing quote.
     private static func skipStringLiteral(
-        _ chars: [Unicode.Scalar], from index: Int
+        _ chars: [Unicode.Scalar], from index: Int,
     ) -> Int {
-        guard index < chars.count && chars[index] == "\"" else { return index + 1 }
+        guard index < chars.count, chars[index] == "\"" else { return index + 1 }
 
         // Check for multiline string literal """
-        if index + 2 < chars.count && chars[index + 1] == "\"" && chars[index + 2] == "\"" {
+        if index + 2 < chars.count, chars[index + 1] == "\"", chars[index + 2] == "\"" {
             var i = index + 3
             while i + 2 < chars.count {
-                if chars[i] == "\"" && chars[i + 1] == "\"" && chars[i + 2] == "\"" {
+                if chars[i] == "\"", chars[i + 1] == "\"", chars[i + 2] == "\"" {
                     return i + 3
                 }
                 if chars[i] == "\\" {
@@ -288,10 +288,10 @@ public enum PreviewExtractor {
 
     /// Skips a line comment (`//...`), returning the index after the newline.
     private static func skipLineComment(
-        _ chars: [Unicode.Scalar], from index: Int
+        _ chars: [Unicode.Scalar], from index: Int,
     ) -> Int {
         var i = index + 2
-        while i < chars.count && chars[i] != "\n" {
+        while i < chars.count, chars[i] != "\n" {
             i += 1
         }
         return i < chars.count ? i + 1 : i
@@ -300,15 +300,15 @@ public enum PreviewExtractor {
     /// Skips a block comment (`/* ... */`), handling nested block comments.
     /// Returns the index after the closing `*/`.
     private static func skipBlockComment(
-        _ chars: [Unicode.Scalar], from index: Int
+        _ chars: [Unicode.Scalar], from index: Int,
     ) -> Int {
         var i = index + 2
         var depth = 1
-        while i + 1 < chars.count && depth > 0 {
-            if chars[i] == "/" && chars[i + 1] == "*" {
+        while i + 1 < chars.count, depth > 0 {
+            if chars[i] == "/", chars[i + 1] == "*" {
                 depth += 1
                 i += 2
-            } else if chars[i] == "*" && chars[i + 1] == "/" {
+            } else if chars[i] == "*", chars[i + 1] == "/" {
                 depth -= 1
                 i += 2
             } else {
@@ -321,7 +321,7 @@ public enum PreviewExtractor {
     /// Extracts the preview name from `("name")` syntax.
     /// Returns the name (or nil) and the index after the closing paren.
     private static func extractPreviewName(
-        _ chars: [Unicode.Scalar], from index: Int
+        _ chars: [Unicode.Scalar], from index: Int,
     ) -> (String?, Int) {
         guard index < chars.count, chars[index] == "(" else {
             return (nil, index)
@@ -356,13 +356,13 @@ public enum PreviewExtractor {
             }
         }
 
-        if i < chars.count { i += 1 }  // skip closing quote
+        if i < chars.count { i += 1 } // skip closing quote
 
         // Skip to closing paren
         while i < chars.count, chars[i] != ")" {
             i += 1
         }
-        if i < chars.count { i += 1 }  // skip closing paren
+        if i < chars.count { i += 1 } // skip closing paren
 
         let name = String(String.UnicodeScalarView(nameScalars))
         return (name, i)

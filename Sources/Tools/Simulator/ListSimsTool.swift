@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct ListSimsTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -13,31 +13,31 @@ public struct ListSimsTool: Sendable {
         Tool(
             name: "list_sims",
             description:
-                "List all available iOS/tvOS/watchOS simulators with their UDIDs, names, states, and runtimes.",
+            "List all available iOS/tvOS/watchOS simulators with their UDIDs, names, states, and runtimes.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "available_only": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, only show available (non-unavailable) simulators. Defaults to true."
+                            "If true, only show available (non-unavailable) simulators. Defaults to true.",
                         ),
                     ]),
                     "booted_only": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, only show booted simulators. Defaults to false."
+                            "If true, only show booted simulators. Defaults to false.",
                         ),
                     ]),
                     "runtime_filter": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Filter by runtime (e.g., 'iOS', 'tvOS', 'watchOS'). Case-insensitive partial match."
+                            "Filter by runtime (e.g., 'iOS', 'tvOS', 'watchOS'). Case-insensitive partial match.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -77,7 +77,7 @@ public struct ListSimsTool: Sendable {
             // Format output
             if devices.isEmpty {
                 return CallTool.Result(
-                    content: [.text("No simulators found matching the specified criteria.")]
+                    content: [.text("No simulators found matching the specified criteria.")],
                 )
             }
 
@@ -107,7 +107,7 @@ public struct ListSimsTool: Sendable {
         // Convert "com.apple.CoreSimulator.SimRuntime.iOS-17-0" to "iOS 17.0"
         if let match = runtime.range(
             of: #"SimRuntime\.([a-zA-Z]+)-(\d+)-(\d+)"#,
-            options: .regularExpression
+            options: .regularExpression,
         ) {
             let matched = String(runtime[match])
             let components = matched.replacingOccurrences(of: "SimRuntime.", with: "")

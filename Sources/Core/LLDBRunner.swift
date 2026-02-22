@@ -1,5 +1,5 @@
-import Foundation
 import MCP
+import Foundation
 import Synchronization
 
 /// Opens a pseudo-TTY pair and returns (primary, replica) file descriptors.
@@ -28,7 +28,7 @@ private func openPTY() throws -> (primary: Int32, replica: Int32) {
     guard replica >= 0 else {
         close(primary)
         throw LLDBError.commandFailed(
-            "Failed to open replica PTY: \(String(cString: strerror(errno)))"
+            "Failed to open replica PTY: \(String(cString: strerror(errno)))",
         )
     }
 
@@ -137,7 +137,7 @@ public actor LLDBSession {
         executablePath: String,
         environment: [String: String] = [:],
         arguments: [String] = [],
-        stopAtEntry: Bool = false
+        stopAtEntry: Bool = false,
     ) async throws -> String {
         // Wait for initial prompt
         _ = try await readUntilPrompt()
@@ -148,7 +148,7 @@ public actor LLDBSession {
         // Set environment variables
         for (key, value) in environment {
             _ = try await sendCommand(
-                "settings set target.env-vars \(key)=\(value)"
+                "settings set target.env-vars \(key)=\(value)",
             )
         }
 
@@ -166,7 +166,7 @@ public actor LLDBSession {
 
         // Parse PID from output like "Process 12345 launched"
         if let range = launchOutput.range(
-            of: #"Process (\d+) launched"#, options: .regularExpression
+            of: #"Process (\d+) launched"#, options: .regularExpression,
         ) {
             let match = launchOutput[range]
             let digits = match.split(separator: " ")[1]
@@ -189,7 +189,7 @@ public actor LLDBSession {
         }
         guard !isPoisoned else {
             throw LLDBError.commandFailed(
-                "LLDB session is poisoned by a previous timeout — session will be recreated"
+                "LLDB session is poisoned by a previous timeout — session will be recreated",
             )
         }
 
@@ -212,7 +212,7 @@ public actor LLDBSession {
         }
         guard !isPoisoned else {
             throw LLDBError.commandFailed(
-                "LLDB session is poisoned by a previous timeout — session will be recreated"
+                "LLDB session is poisoned by a previous timeout — session will be recreated",
             )
         }
 
@@ -284,9 +284,9 @@ public actor LLDBSession {
                         if accumulated.hasSuffix(promptMarker) {
                             // Strip the trailing prompt from the output
                             let endIndex = accumulated.index(
-                                accumulated.endIndex, offsetBy: -promptMarker.count
+                                accumulated.endIndex, offsetBy: -promptMarker.count,
                             )
-                            let result = String(accumulated[accumulated.startIndex..<endIndex])
+                            let result = String(accumulated[accumulated.startIndex ..< endIndex])
                             let didResume = resumed.withLock { alreadyResumed -> Bool in
                                 if alreadyResumed { return false }
                                 alreadyResumed = true
@@ -324,19 +324,19 @@ public actor LLDBSession {
                         let maxChars = 2000
                         let truncated =
                             partial.count > maxChars
-                            ? "...\(partial.suffix(maxChars))" : partial
+                                ? "...\(partial.suffix(maxChars))" : partial
                         detail =
                             "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
                     }
                     continuation.resume(
-                        throwing: LLDBError.commandFailed(detail)
+                        throwing: LLDBError.commandFailed(detail),
                     )
                 }
             }
 
             DispatchQueue.global().async(execute: workItem)
             DispatchQueue.global().asyncAfter(
-                deadline: .now() + self.commandTimeout, execute: timeoutItem
+                deadline: .now() + self.commandTimeout, execute: timeoutItem,
             )
 
             // Cancel timeout if work completes first
@@ -404,14 +404,14 @@ public actor LLDBSessionManager {
         environment: [String: String] = [:],
         arguments: [String] = [],
         stopAtEntry: Bool = false,
-        commandTimeout: TimeInterval = 30
+        commandTimeout: TimeInterval = 30,
     ) async throws -> LLDBSession {
         let session = try LLDBSession(pid: 0, commandTimeout: commandTimeout)
         try await session.launch(
             executablePath: executablePath,
             environment: environment,
             arguments: arguments,
-            stopAtEntry: stopAtEntry
+            stopAtEntry: stopAtEntry,
         )
         let pid = await session.targetPID
         if pid > 0 {
@@ -439,7 +439,7 @@ public actor LLDBSessionManager {
         executableName: String,
         arguments: [String] = [],
         environment: [String: String] = [:],
-        stopAtEntry: Bool = false
+        stopAtEntry: Bool = false,
     ) async throws -> LLDBSession {
         // Create a session with a long timeout — waitfor blocks until the process appears
         let session = try LLDBSession(pid: 0, commandTimeout: 120)
@@ -449,7 +449,7 @@ public actor LLDBSessionManager {
 
         // Tell LLDB to wait for a process with this name to appear
         try await session.sendCommandNoWait(
-            "process attach --name \"\(executableName)\" --waitfor"
+            "process attach --name \"\(executableName)\" --waitfor",
         )
 
         // Kill any existing instances of the app to avoid attaching to a stale process
@@ -486,7 +486,7 @@ public actor LLDBSessionManager {
         guard openProcess.terminationStatus == 0 else {
             await session.terminate()
             throw LLDBError.commandFailed(
-                "Failed to launch app via /usr/bin/open (exit code \(openProcess.terminationStatus))"
+                "Failed to launch app via /usr/bin/open (exit code \(openProcess.terminationStatus))",
             )
         }
 
@@ -495,7 +495,7 @@ public actor LLDBSessionManager {
 
         // Parse PID from attach output like "Process NNN stopped"
         if let range = attachOutput.range(
-            of: #"Process (\d+) stopped"#, options: .regularExpression
+            of: #"Process (\d+) stopped"#, options: .regularExpression,
         ) {
             let match = attachOutput[range]
             let digits = match.split(separator: " ")[1]
@@ -656,14 +656,14 @@ public struct LLDBRunner: Sendable {
         executablePath: String,
         environment: [String: String] = [:],
         arguments: [String] = [],
-        stopAtEntry: Bool = false
+        stopAtEntry: Bool = false,
     ) async throws -> (result: LLDBResult, pid: Int32) {
         let session = try await LLDBSessionManager.shared.createLaunchSession(
             executablePath: executablePath,
             environment: environment,
             arguments: arguments,
             stopAtEntry: stopAtEntry,
-            commandTimeout: Self.launchCommandTimeout
+            commandTimeout: Self.launchCommandTimeout,
         )
         let pid = await session.targetPID
         let statusOutput = try await session.sendCommand("process status")
@@ -688,14 +688,14 @@ public struct LLDBRunner: Sendable {
         executableName: String,
         arguments: [String] = [],
         environment: [String: String] = [:],
-        stopAtEntry: Bool = false
+        stopAtEntry: Bool = false,
     ) async throws -> (result: LLDBResult, pid: Int32) {
         let session = try await LLDBSessionManager.shared.createOpenAndAttachSession(
             appPath: appPath,
             executableName: executableName,
             arguments: arguments,
             environment: environment,
-            stopAtEntry: stopAtEntry
+            stopAtEntry: stopAtEntry,
         )
         let pid = await session.targetPID
         // Get status — if process is running (not stopped), this will time out,
@@ -716,7 +716,7 @@ public struct LLDBRunner: Sendable {
     public func attachToProcess(_ processName: String) async throws -> LLDBResult {
         // For name-based attach, we need a temporary batch approach since
         // we don't know the PID upfront. Use the old batch method.
-        return try await runBatch(commands: [
+        try await runBatch(commands: [
             "process attach --name \"\(processName)\"",
             "process status",
         ])
@@ -750,7 +750,7 @@ public struct LLDBRunner: Sendable {
         return LLDBResult(
             exitCode: 0,
             stdout: setOutput + "\n" + listOutput,
-            stderr: ""
+            stderr: "",
         )
     }
 
@@ -764,13 +764,13 @@ public struct LLDBRunner: Sendable {
     public func setBreakpoint(pid: Int32, file: String, line: Int) async throws -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let setOutput = try await session.sendCommand(
-            "breakpoint set --file \"\(file)\" --line \(line)"
+            "breakpoint set --file \"\(file)\" --line \(line)",
         )
         let listOutput = try await session.sendCommand("breakpoint list")
         return LLDBResult(
             exitCode: 0,
             stdout: setOutput + "\n" + listOutput,
-            stderr: ""
+            stderr: "",
         )
     }
 
@@ -797,7 +797,7 @@ public struct LLDBRunner: Sendable {
         return LLDBResult(
             exitCode: 0,
             stdout: deleteOutput + "\n" + listOutput,
-            stderr: ""
+            stderr: "",
         )
     }
 
@@ -816,8 +816,8 @@ public struct LLDBRunner: Sendable {
         return LLDBResult(
             exitCode: 0,
             stdout:
-                "Process \(pid) resumed. Use debug_stack or debug_variables when the process stops at a breakpoint.",
-            stderr: ""
+            "Process \(pid) resumed. Use debug_stack or debug_variables when the process stops at a breakpoint.",
+            stderr: "",
         )
     }
 
@@ -852,7 +852,7 @@ public struct LLDBRunner: Sendable {
         return LLDBResult(
             exitCode: 0,
             stdout: selectOutput + "\n" + varsOutput,
-            stderr: ""
+            stderr: "",
         )
     }
 
@@ -880,7 +880,7 @@ public struct LLDBRunner: Sendable {
         pid: Int32,
         expression: String,
         language: String?,
-        objectDescription: Bool
+        objectDescription: Bool,
     ) async throws -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let command: String
@@ -910,7 +910,7 @@ public struct LLDBRunner: Sendable {
             return LLDBResult(
                 exitCode: 0,
                 stdout: listOutput + "\n" + selectOutput + "\n" + infoOutput,
-                stderr: ""
+                stderr: "",
             )
         }
         return LLDBResult(exitCode: 0, stdout: listOutput, stderr: "")
@@ -932,48 +932,51 @@ public struct LLDBRunner: Sendable {
         variable: String?,
         address: String?,
         watchpointId: Int?,
-        condition: String?
+        condition: String?,
     ) async throws -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         switch action {
-        case "add":
-            let setOutput: String
-            if let variable {
-                setOutput = try await session.sendCommand("watchpoint set variable \(variable)")
-            } else if let address {
-                setOutput = try await session.sendCommand("watchpoint set expression -- \(address)")
-            } else {
-                throw LLDBError.commandFailed("Either 'variable' or 'address' is required for add")
-            }
-            var output = setOutput
-            if let condition {
-                // Extract watchpoint ID from output to apply condition
-                let modOutput = try await session.sendCommand(
-                    "watchpoint modify -c '\(condition)'"
+            case "add":
+                let setOutput: String
+                if let variable {
+                    setOutput = try await session.sendCommand("watchpoint set variable \(variable)")
+                } else if let address {
+                    setOutput = try await session
+                        .sendCommand("watchpoint set expression -- \(address)")
+                } else {
+                    throw LLDBError
+                        .commandFailed("Either 'variable' or 'address' is required for add")
+                }
+                var output = setOutput
+                if let condition {
+                    // Extract watchpoint ID from output to apply condition
+                    let modOutput = try await session.sendCommand(
+                        "watchpoint modify -c '\(condition)'",
+                    )
+                    output += "\n" + modOutput
+                }
+                let listOutput = try await session.sendCommand("watchpoint list")
+                return LLDBResult(exitCode: 0, stdout: output + "\n" + listOutput, stderr: "")
+
+            case "remove":
+                guard let watchpointId else {
+                    throw LLDBError.commandFailed("watchpoint_id is required for remove")
+                }
+                let deleteOutput = try await session
+                    .sendCommand("watchpoint delete \(watchpointId)")
+                let listOutput = try await session.sendCommand("watchpoint list")
+                return LLDBResult(
+                    exitCode: 0,
+                    stdout: deleteOutput + "\n" + listOutput,
+                    stderr: "",
                 )
-                output += "\n" + modOutput
-            }
-            let listOutput = try await session.sendCommand("watchpoint list")
-            return LLDBResult(exitCode: 0, stdout: output + "\n" + listOutput, stderr: "")
 
-        case "remove":
-            guard let watchpointId else {
-                throw LLDBError.commandFailed("watchpoint_id is required for remove")
-            }
-            let deleteOutput = try await session.sendCommand("watchpoint delete \(watchpointId)")
-            let listOutput = try await session.sendCommand("watchpoint list")
-            return LLDBResult(
-                exitCode: 0,
-                stdout: deleteOutput + "\n" + listOutput,
-                stderr: ""
-            )
+            case "list":
+                let output = try await session.sendCommand("watchpoint list")
+                return LLDBResult(exitCode: 0, stdout: output, stderr: "")
 
-        case "list":
-            let output = try await session.sendCommand("watchpoint list")
-            return LLDBResult(exitCode: 0, stdout: output, stderr: "")
-
-        default:
-            throw LLDBError.commandFailed("Unknown watchpoint action: \(action)")
+            default:
+                throw LLDBError.commandFailed("Unknown watchpoint action: \(action)")
         }
     }
 
@@ -987,19 +990,19 @@ public struct LLDBRunner: Sendable {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let command: String
         switch mode {
-        case "in": command = "thread step-in"
-        case "over": command = "thread step-over"
-        case "out": command = "thread step-out"
-        case "instruction": command = "thread step-inst"
-        default:
-            throw LLDBError.commandFailed("Unknown step mode: \(mode)")
+            case "in": command = "thread step-in"
+            case "over": command = "thread step-over"
+            case "out": command = "thread step-out"
+            case "instruction": command = "thread step-inst"
+            default:
+                throw LLDBError.commandFailed("Unknown step mode: \(mode)")
         }
         let stepOutput = try await session.sendCommand(command)
         let frameOutput = try await session.sendCommand("frame info")
         return LLDBResult(
             exitCode: 0,
             stdout: stepOutput + "\n" + frameOutput,
-            stderr: ""
+            stderr: "",
         )
     }
 
@@ -1017,19 +1020,19 @@ public struct LLDBRunner: Sendable {
         address: String,
         count: Int,
         format: String,
-        size: Int
+        size: Int,
     ) async throws -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let fmt: String
         switch format {
-        case "hex": fmt = "x"
-        case "bytes": fmt = "Y"
-        case "ascii": fmt = "c"
-        case "instruction": fmt = "i"
-        default: fmt = "x"
+            case "hex": fmt = "x"
+            case "bytes": fmt = "Y"
+            case "ascii": fmt = "c"
+            case "instruction": fmt = "i"
+            default: fmt = "x"
         }
         let output = try await session.sendCommand(
-            "memory read --size \(size) --format \(fmt) --count \(count) \(address)"
+            "memory read --size \(size) --format \(fmt) --count \(count) \(address)",
         )
         return LLDBResult(exitCode: 0, stdout: output, stderr: "")
     }
@@ -1048,7 +1051,7 @@ public struct LLDBRunner: Sendable {
         address: String?,
         name: String?,
         type: String?,
-        verbose: Bool
+        verbose: Bool,
     ) async throws -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         var outputs: [String] = []
@@ -1056,7 +1059,7 @@ public struct LLDBRunner: Sendable {
         if let address {
             let verboseFlag = verbose ? " -v" : ""
             let output = try await session.sendCommand(
-                "image lookup --address \(address)\(verboseFlag)"
+                "image lookup --address \(address)\(verboseFlag)",
             )
             outputs.append(output)
         }
@@ -1086,34 +1089,34 @@ public struct LLDBRunner: Sendable {
         pid: Int32,
         platform: String,
         address: String?,
-        constraints: Bool
+        constraints: Bool,
     ) async throws -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         var outputs: [String] = []
 
         if let address {
             let output = try await session.sendCommand(
-                "expr -l objc -O -- [(id)\(address) recursiveDescription]"
+                "expr -l objc -O -- [(id)\(address) recursiveDescription]",
             )
             outputs.append(output)
             if constraints {
                 let hOutput = try await session.sendCommand(
-                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:0]"
+                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:0]",
                 )
                 let vOutput = try await session.sendCommand(
-                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:1]"
+                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:1]",
                 )
                 outputs.append("Horizontal constraints:\n" + hOutput)
                 outputs.append("Vertical constraints:\n" + vOutput)
             }
         } else if platform == "macos" {
             let output = try await session.sendCommand(
-                "expr -l objc -O -- [[[NSApplication sharedApplication] mainWindow] contentView]._subtreeDescription"
+                "expr -l objc -O -- [[[NSApplication sharedApplication] mainWindow] contentView]._subtreeDescription",
             )
             outputs.append(output)
         } else {
             let output = try await session.sendCommand(
-                "expr -l objc -O -- [[[UIApplication sharedApplication] keyWindow] recursiveDescription]"
+                "expr -l objc -O -- [[[UIApplication sharedApplication] keyWindow] recursiveDescription]",
             )
             outputs.append(output)
         }
@@ -1136,7 +1139,7 @@ public struct LLDBRunner: Sendable {
         pid: Int32,
         enabled: Bool,
         borderWidth: Double,
-        nsColorSelector: String
+        nsColorSelector: String,
     ) async throws -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
 
@@ -1171,7 +1174,7 @@ public struct LLDBRunner: Sendable {
 
             let tempDir = FileManager.default.temporaryDirectory
             let scriptPath = tempDir.appendingPathComponent(
-                "lldb_script_\(UUID().uuidString).lldb"
+                "lldb_script_\(UUID().uuidString).lldb",
             )
 
             do {
@@ -1199,7 +1202,7 @@ public struct LLDBRunner: Sendable {
                 let result = LLDBResult(
                     exitCode: process.terminationStatus,
                     stdout: stdout,
-                    stderr: stderr
+                    stderr: stderr,
                 )
                 continuation.resume(returning: result)
             } catch {
@@ -1223,21 +1226,21 @@ public enum LLDBError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-        case let .commandFailed(message):
-            return "LLDB command failed: \(message)"
-        case let .attachFailed(message):
-            return "Failed to attach to process: \(message)"
-        case .noActiveSession:
-            return "No active debug session"
+            case let .commandFailed(message):
+                return "LLDB command failed: \(message)"
+            case let .attachFailed(message):
+                return "Failed to attach to process: \(message)"
+            case .noActiveSession:
+                return "No active debug session"
         }
     }
 
     public func toMCPError() -> MCPError {
         switch self {
-        case .noActiveSession:
-            return .invalidParams(errorDescription ?? "No active debug session")
-        case .commandFailed, .attachFailed:
-            return .internalError(errorDescription ?? "Debug operation failed")
+            case .noActiveSession:
+                return .invalidParams(errorDescription ?? "No active debug session")
+            case .commandFailed, .attachFailed:
+                return .internalError(errorDescription ?? "Debug operation failed")
         }
     }
 }

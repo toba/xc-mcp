@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsDeleteTranslationsTool: Sendable {
     private let pathUtility: PathUtility
@@ -28,12 +28,12 @@ public struct XCStringsDeleteTranslationsTool: Sendable {
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
                         "description": .string(
-                            "Array of language codes to delete, e.g. [\"ja\", \"en\", \"fr\"]"
+                            "Array of language codes to delete, e.g. [\"ja\", \"en\", \"fr\"]",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("key"), .string("languages")]),
-            ])
+            ]),
         )
     }
 
@@ -53,8 +53,8 @@ public struct XCStringsDeleteTranslationsTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Translations deleted successfully for \(languages.count) languages")
-                ]
+                    .text("Translations deleted successfully for \(languages.count) languages"),
+                ],
             )
         } catch let error as XCStringsError {
             throw error.toMCPError()

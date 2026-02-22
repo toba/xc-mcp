@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsBatchListStaleTool: Sendable {
     private let pathUtility: PathUtility
@@ -13,7 +13,7 @@ public struct XCStringsBatchListStaleTool: Sendable {
         Tool(
             name: "xcstrings_batch_list_stale",
             description:
-                "List keys with extractionState 'stale' across multiple xcstrings files",
+            "List keys with extractionState 'stale' across multiple xcstrings files",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -21,10 +21,10 @@ public struct XCStringsBatchListStaleTool: Sendable {
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
                         "description": .string("Array of paths to xcstrings files"),
-                    ])
+                    ]),
                 ]),
                 "required": .array([.string("files")]),
-            ])
+            ]),
         )
     }
 

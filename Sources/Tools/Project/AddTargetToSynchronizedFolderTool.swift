@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct AddTargetToSynchronizedFolderTool: Sendable {
     private let pathUtility: PathUtility
@@ -15,43 +15,43 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
         Tool(
             name: "add_target_to_synchronized_folder",
             description:
-                "Add an existing synchronized folder to a target's file system synchronized groups (for sharing a folder between multiple targets)",
+            "Add an existing synchronized folder to a target's file system synchronized groups (for sharing a folder between multiple targets)",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "folder_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path of the synchronized folder within the project (e.g., 'Sources' or 'App/Sources')"
+                            "Path of the synchronized folder within the project (e.g., 'Sources' or 'App/Sources')",
                         ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target to add the synchronized folder to"
+                            "Name of the target to add the synchronized folder to",
                         ),
                     ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("folder_path"), .string("target_name"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(folderPath) = arguments["folder_path"],
-            case let .string(targetName) = arguments["target_name"]
+              case let .string(folderPath) = arguments["folder_path"],
+              case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, folder_path, and target_name are required"
+                "project_path, folder_path, and target_name are required",
             )
         }
 
@@ -62,7 +62,7 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
 
             // Find the synchronized folder by walking the group hierarchy
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                let mainGroup = project.mainGroup
+                  let mainGroup = project.mainGroup
             else {
                 throw MCPError.internalError("Main group not found in project")
             }
@@ -70,7 +70,7 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
             guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
             else {
                 throw MCPError.invalidParams(
-                    "Synchronized folder '\(folderPath)' not found in project"
+                    "Synchronized folder '\(folderPath)' not found in project",
                 )
             }
 
@@ -85,14 +85,14 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
 
             // Check if already added (idempotency)
             if let existing = target.fileSystemSynchronizedGroups,
-                existing.contains(where: { $0 === syncGroup })
+               existing.contains(where: { $0 === syncGroup })
             {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Synchronized folder '\(folderPath)' is already in target '\(targetName)'"
-                        )
-                    ]
+                            "Synchronized folder '\(folderPath)' is already in target '\(targetName)'",
+                        ),
+                    ],
                 )
             }
 
@@ -108,15 +108,15 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully added synchronized folder '\(folderPath)' to target '\(targetName)'"
-                    )
-                ]
+                        "Successfully added synchronized folder '\(folderPath)' to target '\(targetName)'",
+                    ),
+                ],
             )
         } catch let error as MCPError {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to add target to synchronized folder: \(error.localizedDescription)"
+                "Failed to add target to synchronized folder: \(error.localizedDescription)",
             )
         }
     }

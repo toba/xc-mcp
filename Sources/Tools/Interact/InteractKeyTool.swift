@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct InteractKeyTool: Sendable {
     private let interactRunner: InteractRunner
@@ -13,7 +13,7 @@ public struct InteractKeyTool: Sendable {
         Tool(
             name: "interact_key",
             description:
-                "Send a keyboard event via CGEvent. Supports key names like 'return', 'tab', 'escape', "
+            "Send a keyboard event via CGEvent. Supports key names like 'return', 'tab', 'escape', "
                 + "'space', 'a'-'z', '0'-'9', 'f1'-'f12', 'up', 'down', 'left', 'right', 'delete', etc. "
                 + "Optional modifier keys: 'command', 'shift', 'option', 'control'.",
             inputSchema: .object([
@@ -22,19 +22,19 @@ public struct InteractKeyTool: Sendable {
                     "key": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Key name to press (e.g., 'return', 'a', 'f5', 'space', 'tab')."
+                            "Key name to press (e.g., 'return', 'a', 'f5', 'space', 'tab').",
                         ),
                     ]),
                     "modifiers": .object([
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
                         "description": .string(
-                            "Modifier keys to hold during the key press (e.g., ['command', 'shift'])."
+                            "Modifier keys to hold during the key press (e.g., ['command', 'shift']).",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("key")]),
-            ])
+            ]),
         )
     }
 

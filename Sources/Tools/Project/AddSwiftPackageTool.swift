@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct AddSwiftPackageTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct AddSwiftPackageTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "package_url": .object([
@@ -31,7 +31,7 @@ public struct AddSwiftPackageTool: Sendable {
                     "requirement": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Version requirement (e.g., '1.0.0', 'from: 1.0.0', 'upToNextMajor: 1.0.0', 'branch: main')"
+                            "Version requirement (e.g., '1.0.0', 'from: 1.0.0', 'upToNextMajor: 1.0.0', 'branch: main')",
                         ),
                     ]),
                     "target_name": .object([
@@ -46,14 +46,14 @@ public struct AddSwiftPackageTool: Sendable {
                 "required": .array([
                     .string("project_path"), .string("package_url"), .string("requirement"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(packageURL) = arguments["package_url"],
-            case let .string(requirement) = arguments["requirement"]
+              case let .string(packageURL) = arguments["package_url"],
+              case let .string(requirement) = arguments["requirement"]
         else {
             throw MCPError.invalidParams("project_path, package_url, and requirement are required")
         }
@@ -81,19 +81,19 @@ public struct AddSwiftPackageTool: Sendable {
 
             // Check if package already exists
             if let project = try xcodeproj.pbxproj.rootProject(),
-                project.remotePackages.contains(where: { $0.repositoryURL == packageURL })
+               project.remotePackages.contains(where: { $0.repositoryURL == packageURL })
             {
                 return CallTool.Result(
                     content: [
-                        .text("Swift Package '\(packageURL)' already exists in project")
-                    ]
+                        .text("Swift Package '\(packageURL)' already exists in project"),
+                    ],
                 )
             }
 
             // Create Swift Package reference
             let packageRef = XCRemoteSwiftPackageReference(
                 repositoryURL: packageURL,
-                versionRequirement: parseRequirement(requirement)
+                versionRequirement: parseRequirement(requirement),
             )
             xcodeproj.pbxproj.add(object: packageRef)
 
@@ -115,7 +115,7 @@ public struct AddSwiftPackageTool: Sendable {
                 // Create product dependency
                 let productDependency = XCSwiftPackageProductDependency(
                     productName: productName ?? "Unknown",
-                    package: packageRef
+                    package: packageRef,
                 )
                 xcodeproj.pbxproj.add(object: productDependency)
 
@@ -137,12 +137,12 @@ public struct AddSwiftPackageTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(message)
-                ]
+                    .text(message),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add Swift Package to Xcode project: \(error.localizedDescription)"
+                "Failed to add Swift Package to Xcode project: \(error.localizedDescription)",
             )
         }
     }
@@ -155,32 +155,32 @@ public struct AddSwiftPackageTool: Sendable {
         // Parse different requirement formats
         if trimmed.hasPrefix("from:") {
             let version = String(trimmed.dropFirst(5)).trimmingCharacters(
-                in: .whitespacesAndNewlines
+                in: .whitespacesAndNewlines,
             )
             return .upToNextMajorVersion(version)
         } else if trimmed.hasPrefix("upToNextMajor:") {
             let version = String(trimmed.dropFirst(14)).trimmingCharacters(
-                in: .whitespacesAndNewlines
+                in: .whitespacesAndNewlines,
             )
             return .upToNextMajorVersion(version)
         } else if trimmed.hasPrefix("upToNextMinor:") {
             let version = String(trimmed.dropFirst(14)).trimmingCharacters(
-                in: .whitespacesAndNewlines
+                in: .whitespacesAndNewlines,
             )
             return .upToNextMinorVersion(version)
         } else if trimmed.hasPrefix("branch:") {
             let branch = String(trimmed.dropFirst(7)).trimmingCharacters(
-                in: .whitespacesAndNewlines
+                in: .whitespacesAndNewlines,
             )
             return .branch(branch)
         } else if trimmed.hasPrefix("revision:") {
             let revision = String(trimmed.dropFirst(9)).trimmingCharacters(
-                in: .whitespacesAndNewlines
+                in: .whitespacesAndNewlines,
             )
             return .revision(revision)
         } else if trimmed.hasPrefix("exact:") {
             let version = String(trimmed.dropFirst(6)).trimmingCharacters(
-                in: .whitespacesAndNewlines
+                in: .whitespacesAndNewlines,
             )
             return .exact(version)
         } else {

@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("CopyFilesPhaseTools Tests")
@@ -36,7 +35,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("ListCopyFilesPhases with no phases")
     func listCopyFilesPhasesEmpty() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -46,7 +45,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = ListCopyFilesPhases(pathUtility: PathUtility(basePath: tempDir.path))
@@ -65,7 +64,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("ListCopyFilesPhases with existing phases")
     func listCopyFilesPhasesWithPhases() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -75,7 +74,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a copy files phase manually
@@ -84,7 +83,7 @@ struct CopyFilesPhaseToolsTests {
         let copyPhase = PBXCopyFilesBuildPhase(
             dstPath: "styles",
             dstSubfolderSpec: .resources,
-            name: "Copy Styles"
+            name: "Copy Styles",
         )
         xcodeproj.pbxproj.add(object: copyPhase)
         target.buildPhases.append(copyPhase)
@@ -108,7 +107,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("ListCopyFilesPhases with non-existent target")
     func listCopyFilesPhasesNonExistentTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -118,7 +117,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = ListCopyFilesPhases(pathUtility: PathUtility(basePath: tempDir.path))
@@ -162,7 +161,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("AddCopyFilesPhase creates phase successfully")
     func addCopyFilesPhaseSuccess() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -172,7 +171,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = AddCopyFilesPhase(pathUtility: PathUtility(basePath: tempDir.path))
@@ -205,7 +204,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("AddCopyFilesPhase with invalid destination")
     func addCopyFilesPhaseInvalidDestination() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -215,7 +214,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = AddCopyFilesPhase(pathUtility: PathUtility(basePath: tempDir.path))
@@ -233,7 +232,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("AddCopyFilesPhase duplicate phase name")
     func addCopyFilesPhaseDuplicate() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -243,7 +242,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = AddCopyFilesPhase(pathUtility: PathUtility(basePath: tempDir.path))
@@ -299,7 +298,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("AddToCopyFilesPhase adds files successfully")
     func addToCopyFilesPhaseSuccess() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -309,7 +308,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Create a test file
@@ -360,7 +359,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("AddToCopyFilesPhase with non-existent phase")
     func addToCopyFilesPhaseNonExistentPhase() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -370,7 +369,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = AddToCopyFilesPhase(pathUtility: PathUtility(basePath: tempDir.path))
@@ -391,7 +390,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("AddToCopyFilesPhase with file not in project")
     func addToCopyFilesPhaseFileNotInProject() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -401,7 +400,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Create copy files phase
@@ -456,7 +455,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("RemoveCopyFilesPhase removes phase successfully")
     func removeCopyFilesPhaseSuccess() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -466,7 +465,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Create copy files phase
@@ -508,7 +507,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("RemoveCopyFilesPhase with non-existent phase")
     func removeCopyFilesPhaseNonExistent() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -518,7 +517,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = RemoveCopyFilesPhase(pathUtility: PathUtility(basePath: tempDir.path))
@@ -538,7 +537,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("RemoveCopyFilesPhase with non-existent target")
     func removeCopyFilesPhaseNonExistentTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -548,7 +547,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = RemoveCopyFilesPhase(pathUtility: PathUtility(basePath: tempDir.path))
@@ -570,7 +569,7 @@ struct CopyFilesPhaseToolsTests {
     @Test("Full workflow: create, add files, list, remove")
     func fullWorkflow() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -580,7 +579,7 @@ struct CopyFilesPhaseToolsTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Create test files
@@ -683,7 +682,7 @@ struct CopyFilesPhaseToolsTests {
 
         for (destString, expectedSubfolder) in destinations {
             let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-                UUID().uuidString
+                UUID().uuidString,
             )
             try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -693,7 +692,7 @@ struct CopyFilesPhaseToolsTests {
 
             let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
             try TestProjectHelper.createTestProjectWithTarget(
-                name: "TestProject", targetName: "App", at: projectPath
+                name: "TestProject", targetName: "App", at: projectPath,
             )
 
             let tool = AddCopyFilesPhase(pathUtility: PathUtility(basePath: tempDir.path))
@@ -711,7 +710,7 @@ struct CopyFilesPhaseToolsTests {
 
             #expect(
                 copyPhase?.dstSubfolderSpec == expectedSubfolder,
-                "Destination '\(destString)' should map to \(expectedSubfolder)"
+                "Destination '\(destString)' should map to \(expectedSubfolder)",
             )
         }
     }

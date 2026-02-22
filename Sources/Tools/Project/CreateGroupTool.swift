@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct CreateGroupTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct CreateGroupTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "group_name": .object([
@@ -31,24 +31,24 @@ public struct CreateGroupTool: Sendable {
                     "parent_group": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the parent group (optional, defaults to main group)"
+                            "Name of the parent group (optional, defaults to main group)",
                         ),
                     ]),
                     "path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Relative path from parent group to the directory this group represents on disk. Required when the group should correspond to an actual directory (Relative to Group). Typically set to the same value as group_name (e.g., group_name='Models', path='Models'). If omitted, the group will be virtual (no corresponding directory on disk). Note: The directory is NOT created automatically; you must create it beforehand."
+                            "Relative path from parent group to the directory this group represents on disk. Required when the group should correspond to an actual directory (Relative to Group). Typically set to the same value as group_name (e.g., group_name='Models', path='Models'). If omitted, the group will be virtual (no corresponding directory on disk). Note: The directory is NOT created automatically; you must create it beforehand.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("group_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(groupName) = arguments["group_name"]
+              case let .string(groupName) = arguments["group_name"]
         else {
             throw MCPError.invalidParams("project_path and group_name are required")
         }
@@ -78,8 +78,8 @@ public struct CreateGroupTool: Sendable {
             if xcodeproj.pbxproj.groups.contains(where: { $0.name == groupName }) {
                 return CallTool.Result(
                     content: [
-                        .text("Group '\(groupName)' already exists in project")
-                    ]
+                        .text("Group '\(groupName)' already exists in project"),
+                    ],
                 )
             }
 
@@ -94,7 +94,7 @@ public struct CreateGroupTool: Sendable {
                 let pathComponents = parentGroupName.split(separator: "/").map(String.init)
 
                 guard let project = try xcodeproj.pbxproj.rootProject(),
-                    let mainGroup = project.mainGroup
+                      let mainGroup = project.mainGroup
                 else {
                     throw MCPError.internalError("Main group not found in project")
                 }
@@ -102,12 +102,12 @@ public struct CreateGroupTool: Sendable {
                 var currentGroup: PBXGroup = mainGroup
                 for component in pathComponents {
                     if let childGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                        where: { $0.name == component || $0.path == component }
+                        where: { $0.name == component || $0.path == component },
                     ) {
                         currentGroup = childGroup
                     } else {
                         throw MCPError.invalidParams(
-                            "Parent group '\(parentGroupName)' not found in project (failed at '\(component)')"
+                            "Parent group '\(parentGroupName)' not found in project (failed at '\(component)')",
                         )
                     }
                 }
@@ -115,7 +115,7 @@ public struct CreateGroupTool: Sendable {
             } else {
                 // Use main group
                 guard let project = try xcodeproj.pbxproj.rootProject(),
-                    let mainGroup = project.mainGroup
+                      let mainGroup = project.mainGroup
                 else {
                     throw MCPError.internalError("Main group not found in project")
                 }
@@ -131,13 +131,13 @@ public struct CreateGroupTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully created group '\(groupName)' in \(parentGroupName ?? "main group")"
-                    )
-                ]
+                        "Successfully created group '\(groupName)' in \(parentGroupName ?? "main group")",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to create group in Xcode project: \(error.localizedDescription)"
+                "Failed to create group in Xcode project: \(error.localizedDescription)",
             )
         }
     }

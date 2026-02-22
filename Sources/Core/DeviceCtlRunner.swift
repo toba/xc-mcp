@@ -1,5 +1,5 @@
-import Foundation
 import MCP
+import Foundation
 
 /// Information about a connected physical device.
 ///
@@ -26,7 +26,7 @@ public struct ConnectedDevice: Sendable {
         name: String,
         deviceType: String,
         osVersion: String,
-        connectionType: String
+        connectionType: String,
     ) {
         self.udid = udid
         self.name = name
@@ -89,7 +89,7 @@ public struct DeviceCtlRunner: Sendable {
                 let result = DeviceCtlResult(
                     exitCode: process.terminationStatus,
                     stdout: stdout,
-                    stderr: stderr
+                    stderr: stderr,
                 )
                 continuation.resume(returning: result)
             } catch {
@@ -165,8 +165,8 @@ public struct DeviceCtlRunner: Sendable {
         }
 
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let result = json["result"] as? [String: Any],
-            let devices = result["devices"] as? [[String: Any]]
+              let result = json["result"] as? [String: Any],
+              let devices = result["devices"] as? [[String: Any]]
         else {
             throw DeviceCtlError.invalidOutput
         }
@@ -185,7 +185,7 @@ public struct DeviceCtlRunner: Sendable {
 
             let deviceType =
                 (deviceProperties["productType"] as? String)
-                ?? (deviceProperties["deviceType"] as? String) ?? "Unknown"
+                    ?? (deviceProperties["deviceType"] as? String) ?? "Unknown"
             let osVersion = (deviceProperties["osVersionNumber"] as? String) ?? "Unknown"
             let connectionType = (connectionProperties["transportType"] as? String) ?? "Unknown"
 
@@ -194,7 +194,7 @@ public struct DeviceCtlRunner: Sendable {
                 name: name,
                 deviceType: deviceType,
                 osVersion: osVersion,
-                connectionType: connectionType
+                connectionType: connectionType,
             )
             connectedDevices.append(connectedDevice)
         }
@@ -216,21 +216,21 @@ public enum DeviceCtlError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-        case let .commandFailed(message):
-            return "devicectl command failed: \(message)"
-        case .invalidOutput:
-            return "devicectl returned invalid output"
-        case let .deviceNotFound(udid):
-            return "Device not found: \(udid)"
+            case let .commandFailed(message):
+                return "devicectl command failed: \(message)"
+            case .invalidOutput:
+                return "devicectl returned invalid output"
+            case let .deviceNotFound(udid):
+                return "Device not found: \(udid)"
         }
     }
 
     public func toMCPError() -> MCPError {
         switch self {
-        case .deviceNotFound:
-            return .invalidParams(errorDescription ?? "Device not found")
-        case .commandFailed, .invalidOutput:
-            return .internalError(errorDescription ?? "Device operation failed")
+            case .deviceNotFound:
+                return .invalidParams(errorDescription ?? "Device not found")
+            case .commandFailed, .invalidOutput:
+                return .internalError(errorDescription ?? "Device operation failed")
         }
     }
 }

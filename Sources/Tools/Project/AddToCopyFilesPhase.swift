@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct AddToCopyFilesPhase: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct AddToCopyFilesPhase: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -35,10 +35,10 @@ public struct AddToCopyFilesPhase: Sendable {
                     "files": .object([
                         "type": .string("array"),
                         "description": .string(
-                            "Array of file paths to add (must already exist in project)"
+                            "Array of file paths to add (must already exist in project)",
                         ),
                         "items": .object([
-                            "type": .string("string")
+                            "type": .string("string"),
                         ]),
                     ]),
                 ]),
@@ -46,18 +46,18 @@ public struct AddToCopyFilesPhase: Sendable {
                     .string("project_path"), .string("target_name"), .string("phase_name"),
                     .string("files"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"],
-            case let .string(phaseName) = arguments["phase_name"],
-            case let .array(filesArray) = arguments["files"]
+              case let .string(targetName) = arguments["target_name"],
+              case let .string(phaseName) = arguments["phase_name"],
+              case let .array(filesArray) = arguments["files"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, phase_name, and files are required"
+                "project_path, target_name, phase_name, and files are required",
             )
         }
 
@@ -71,22 +71,23 @@ public struct AddToCopyFilesPhase: Sendable {
                 let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
             else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")]
+                    content: [.text("Target '\(targetName)' not found in project")],
                 )
             }
 
             // Find the copy files phase by name
             guard
-                let copyFilesPhase = target.buildPhases.compactMap({ $0 as? PBXCopyFilesBuildPhase }
+                let copyFilesPhase = target.buildPhases.compactMap(
+                    { $0 as? PBXCopyFilesBuildPhase },
                 )
                 .first(where: { $0.name == phaseName })
             else {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Copy Files phase '\(phaseName)' not found in target '\(targetName)'"
-                        )
-                    ]
+                            "Copy Files phase '\(phaseName)' not found in target '\(targetName)'",
+                        ),
+                    ],
                 )
             }
 
@@ -155,7 +156,7 @@ public struct AddToCopyFilesPhase: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to add files to copy files phase: \(error.localizedDescription)"
+                "Failed to add files to copy files phase: \(error.localizedDescription)",
             )
         }
     }

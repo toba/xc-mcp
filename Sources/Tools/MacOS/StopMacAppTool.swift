@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct StopMacAppTool: Sendable {
     private let sessionManager: SessionManager
@@ -13,31 +13,31 @@ public struct StopMacAppTool: Sendable {
         Tool(
             name: "stop_mac_app",
             description:
-                "Stop (terminate) a running macOS app by its bundle identifier or app name.",
+            "Stop (terminate) a running macOS app by its bundle identifier or app name.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app to stop (e.g., 'com.example.MyApp')."
+                            "Bundle identifier of the app to stop (e.g., 'com.example.MyApp').",
                         ),
                     ]),
                     "app_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the app to stop (e.g., 'MyApp'). Alternative to bundle_id."
+                            "Name of the app to stop (e.g., 'MyApp'). Alternative to bundle_id.",
                         ),
                     ]),
                     "force": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, forcefully terminates the app (SIGKILL). Defaults to false (SIGTERM)."
+                            "If true, forcefully terminates the app (SIGKILL). Defaults to false (SIGTERM).",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -46,7 +46,7 @@ public struct StopMacAppTool: Sendable {
         let appName = arguments.getString("app_name")
 
         // Validate we have either bundle_id or app_name
-        if bundleId == nil && appName == nil {
+        if bundleId == nil, appName == nil {
             throw MCPError.invalidParams("Either bundle_id or app_name is required.")
         }
 
@@ -95,7 +95,7 @@ public struct StopMacAppTool: Sendable {
                     || result.exitCode == 1
                 {
                     return CallTool.Result(
-                        content: [.text("App '\(identifier)' was not running")]
+                        content: [.text("App '\(identifier)' was not running")],
                     )
                 }
 

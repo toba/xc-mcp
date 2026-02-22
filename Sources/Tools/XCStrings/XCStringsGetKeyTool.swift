@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsGetKeyTool: Sendable {
     private let pathUtility: PathUtility
@@ -30,7 +30,7 @@ public struct XCStringsGetKeyTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("key")]),
-            ])
+            ]),
         )
     }
 

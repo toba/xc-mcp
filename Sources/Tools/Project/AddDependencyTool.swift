@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct AddDependencyTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,13 +21,13 @@ public struct AddDependencyTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target that will depend on another target"
+                            "Name of the target that will depend on another target",
                         ),
                     ]),
                     "dependency_name": .object([
@@ -38,17 +38,17 @@ public struct AddDependencyTool: Sendable {
                 "required": .array([
                     .string("project_path"), .string("target_name"), .string("dependency_name"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"],
-            case let .string(dependencyName) = arguments["dependency_name"]
+              case let .string(targetName) = arguments["target_name"],
+              case let .string(dependencyName) = arguments["dependency_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, and dependency_name are required"
+                "project_path, target_name, and dependency_name are required",
             )
         }
 
@@ -65,8 +65,8 @@ public struct AddDependencyTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project")
-                    ]
+                        .text("Target '\(targetName)' not found in project"),
+                    ],
                 )
             }
 
@@ -78,8 +78,8 @@ public struct AddDependencyTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Dependency target '\(dependencyName)' not found in project")
-                    ]
+                        .text("Dependency target '\(dependencyName)' not found in project"),
+                    ],
                 )
             }
 
@@ -91,8 +91,8 @@ public struct AddDependencyTool: Sendable {
             if dependencyExists {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' already depends on '\(dependencyName)'")
-                    ]
+                        .text("Target '\(targetName)' already depends on '\(dependencyName)'"),
+                    ],
                 )
             }
 
@@ -101,7 +101,7 @@ public struct AddDependencyTool: Sendable {
                 containerPortal: .project(xcodeproj.pbxproj.rootObject!),
                 remoteGlobalID: .object(dependencyTarget),
                 proxyType: .nativeTarget,
-                remoteInfo: dependencyName
+                remoteInfo: dependencyName,
             )
             xcodeproj.pbxproj.add(object: containerItemProxy)
 
@@ -109,7 +109,7 @@ public struct AddDependencyTool: Sendable {
             let targetDependency = PBXTargetDependency(
                 name: dependencyName,
                 target: dependencyTarget,
-                targetProxy: containerItemProxy
+                targetProxy: containerItemProxy,
             )
             xcodeproj.pbxproj.add(object: targetDependency)
 
@@ -122,13 +122,13 @@ public struct AddDependencyTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully added dependency '\(dependencyName)' to target '\(targetName)'"
-                    )
-                ]
+                        "Successfully added dependency '\(dependencyName)' to target '\(targetName)'",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add dependency to Xcode project: \(error.localizedDescription)"
+                "Failed to add dependency to Xcode project: \(error.localizedDescription)",
             )
         }
     }

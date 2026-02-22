@@ -1,6 +1,6 @@
-import ArgumentParser
-import Foundation
 import Logging
+import Foundation
+import ArgumentParser
 
 /// Command-line interface for the xc-swift MCP server.
 ///
@@ -23,7 +23,7 @@ import Logging
 struct SwiftServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-swift",
-        abstract: "MCP server for Swift Package Manager operations (6 tools, ~1.5K tokens)"
+        abstract: "MCP server for Swift Package Manager operations (6 tools, ~1.5K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")

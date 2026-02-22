@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ListDocumentTypesTool: Sendable {
     private let pathUtility: PathUtility
@@ -15,14 +15,14 @@ public struct ListDocumentTypesTool: Sendable {
         Tool(
             name: "list_document_types",
             description:
-                "List all document types (CFBundleDocumentTypes) declared in a target's Info.plist",
+            "List all document types (CFBundleDocumentTypes) declared in a target's Info.plist",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -31,13 +31,13 @@ public struct ListDocumentTypesTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("target_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"]
+              case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams("project_path and target_name are required")
         }
@@ -51,33 +51,33 @@ public struct ListDocumentTypesTool: Sendable {
 
             guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")]
+                    content: [.text("Target '\(targetName)' not found in project")],
                 )
             }
 
             guard
                 let plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName
+                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
                 )
             else {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "No Info.plist found for target '\(targetName)'. The target may use a generated Info.plist with no physical file."
-                        )
-                    ]
+                            "No Info.plist found for target '\(targetName)'. The target may use a generated Info.plist with no physical file.",
+                        ),
+                    ],
                 )
             }
 
             let plist = try InfoPlistUtility.readInfoPlist(path: plistPath)
 
             guard let documentTypes = plist["CFBundleDocumentTypes"] as? [[String: Any]],
-                !documentTypes.isEmpty
+                  !documentTypes.isEmpty
             else {
                 return CallTool.Result(
                     content: [
-                        .text("No document types (CFBundleDocumentTypes) found in '\(targetName)'")
-                    ]
+                        .text("No document types (CFBundleDocumentTypes) found in '\(targetName)'"),
+                    ],
                 )
             }
 
@@ -88,7 +88,7 @@ public struct ListDocumentTypesTool: Sendable {
                 output += "\n\(index + 1). \(name)\n"
 
                 if let contentTypes = docType["LSItemContentTypes"] as? [String],
-                    !contentTypes.isEmpty
+                   !contentTypes.isEmpty
                 {
                     output += "   Content Types: \(contentTypes.joined(separator: ", "))\n"
                 }
@@ -121,13 +121,13 @@ public struct ListDocumentTypesTool: Sendable {
             }
 
             return CallTool.Result(content: [
-                .text(output.trimmingCharacters(in: .whitespacesAndNewlines))
+                .text(output.trimmingCharacters(in: .whitespacesAndNewlines)),
             ])
         } catch let error as MCPError {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to list document types: \(error.localizedDescription)"
+                "Failed to list document types: \(error.localizedDescription)",
             )
         }
     }

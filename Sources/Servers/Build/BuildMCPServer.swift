@@ -1,7 +1,7 @@
-import Foundation
-import Logging
 import MCP
+import Logging
 import XCMCPCore
+import Foundation
 import XCMCPTools
 
 /// All available tool names exposed by the xc-build MCP server.
@@ -75,7 +75,7 @@ public struct BuildMCPServer: Sendable {
         let server = Server(
             name: "xc-build",
             version: "1.0.0",
-            capabilities: .init(tools: .init())
+            capabilities: .init(tools: .init()),
         )
 
         // Create utilities
@@ -85,18 +85,18 @@ public struct BuildMCPServer: Sendable {
 
         // Create macOS tools
         let buildMacOSTool = BuildMacOSTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let buildRunMacOSTool = BuildRunMacOSTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let launchMacAppTool = LaunchMacAppTool(sessionManager: sessionManager)
         let stopMacAppTool = StopMacAppTool(sessionManager: sessionManager)
         let getMacAppPathTool = GetMacAppPathTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let testMacOSTool = TestMacOSTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let startMacLogCapTool = StartMacLogCapTool(sessionManager: sessionManager)
         let stopMacLogCapTool = StopMacLogCapTool(sessionManager: sessionManager)
@@ -104,24 +104,24 @@ public struct BuildMCPServer: Sendable {
         // Create discovery tools
         let discoverProjsTool = DiscoverProjectsTool(pathUtility: pathUtility)
         let listSchemesTool = ListSchemesTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let showBuildSettingsTool = ShowBuildSettingsTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let getAppBundleIdTool = GetAppBundleIdTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let getMacBundleIdTool = GetMacBundleIdTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let listTestPlanTargetsTool = ListTestPlanTargetsTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
 
         // Create utility tools
         let cleanTool = CleanTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let doctorTool = DoctorTool(sessionManager: sessionManager)
         let scaffoldIOSTool = ScaffoldIOSProjectTool(pathUtility: pathUtility)
@@ -167,60 +167,61 @@ public struct BuildMCPServer: Sendable {
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = BuildToolName(rawValue: params.name) else {
                 let hint = ServerToolDirectory.hint(for: params.name, currentServer: "xc-build")
-                let message = hint.map { "Unknown tool: \(params.name). \($0)" }
-                    ?? "Unknown tool: \(params.name)"
+                let message =
+                    hint.map { "Unknown tool: \(params.name). \($0)" }
+                        ?? "Unknown tool: \(params.name)"
                 throw MCPError.methodNotFound(message)
             }
 
             let arguments = params.arguments ?? [:]
 
             switch toolName {
-            // macOS tools
-            case .buildMacOS:
-                return try await buildMacOSTool.execute(arguments: arguments)
-            case .buildRunMacOS:
-                return try await buildRunMacOSTool.execute(arguments: arguments)
-            case .launchMacApp:
-                return try await launchMacAppTool.execute(arguments: arguments)
-            case .stopMacApp:
-                return try await stopMacAppTool.execute(arguments: arguments)
-            case .getMacAppPath:
-                return try await getMacAppPathTool.execute(arguments: arguments)
-            case .testMacOS:
-                return try await testMacOSTool.execute(arguments: arguments)
-            case .startMacLogCap:
-                return try await startMacLogCapTool.execute(arguments: arguments)
-            case .stopMacLogCap:
-                return try await stopMacLogCapTool.execute(arguments: arguments)
-            // Discovery tools
-            case .discoverProjs:
-                return try discoverProjsTool.execute(arguments: arguments)
-            case .listSchemes:
-                return try await listSchemesTool.execute(arguments: arguments)
-            case .showBuildSettings:
-                return try await showBuildSettingsTool.execute(arguments: arguments)
-            case .getAppBundleId:
-                return try await getAppBundleIdTool.execute(arguments: arguments)
-            case .getMacBundleId:
-                return try await getMacBundleIdTool.execute(arguments: arguments)
-            case .listTestPlanTargets:
-                return try await listTestPlanTargetsTool.execute(arguments: arguments)
-            // Utility tools
-            case .clean:
-                return try await cleanTool.execute(arguments: arguments)
-            case .doctor:
-                return try await doctorTool.execute(arguments: arguments)
-            case .scaffoldIOS:
-                return try scaffoldIOSTool.execute(arguments: arguments)
-            case .scaffoldMacOS:
-                return try scaffoldMacOSTool.execute(arguments: arguments)
-            // Session tools
-            case .setSessionDefaults:
-                return try await setSessionDefaultsTool.execute(arguments: arguments)
-            case .showSessionDefaults:
-                return try await showSessionDefaultsTool.execute(arguments: arguments)
-            case .clearSessionDefaults:
-                return try await clearSessionDefaultsTool.execute(arguments: arguments)
+                // macOS tools
+                case .buildMacOS:
+                    return try await buildMacOSTool.execute(arguments: arguments)
+                case .buildRunMacOS:
+                    return try await buildRunMacOSTool.execute(arguments: arguments)
+                case .launchMacApp:
+                    return try await launchMacAppTool.execute(arguments: arguments)
+                case .stopMacApp:
+                    return try await stopMacAppTool.execute(arguments: arguments)
+                case .getMacAppPath:
+                    return try await getMacAppPathTool.execute(arguments: arguments)
+                case .testMacOS:
+                    return try await testMacOSTool.execute(arguments: arguments)
+                case .startMacLogCap:
+                    return try await startMacLogCapTool.execute(arguments: arguments)
+                case .stopMacLogCap:
+                    return try await stopMacLogCapTool.execute(arguments: arguments)
+                // Discovery tools
+                case .discoverProjs:
+                    return try discoverProjsTool.execute(arguments: arguments)
+                case .listSchemes:
+                    return try await listSchemesTool.execute(arguments: arguments)
+                case .showBuildSettings:
+                    return try await showBuildSettingsTool.execute(arguments: arguments)
+                case .getAppBundleId:
+                    return try await getAppBundleIdTool.execute(arguments: arguments)
+                case .getMacBundleId:
+                    return try await getMacBundleIdTool.execute(arguments: arguments)
+                case .listTestPlanTargets:
+                    return try await listTestPlanTargetsTool.execute(arguments: arguments)
+                // Utility tools
+                case .clean:
+                    return try await cleanTool.execute(arguments: arguments)
+                case .doctor:
+                    return try await doctorTool.execute(arguments: arguments)
+                case .scaffoldIOS:
+                    return try scaffoldIOSTool.execute(arguments: arguments)
+                case .scaffoldMacOS:
+                    return try scaffoldMacOSTool.execute(arguments: arguments)
+                // Session tools
+                case .setSessionDefaults:
+                    return try await setSessionDefaultsTool.execute(arguments: arguments)
+                case .showSessionDefaults:
+                    return try await showSessionDefaultsTool.execute(arguments: arguments)
+                case .clearSessionDefaults:
+                    return try await clearSessionDefaultsTool.execute(arguments: arguments)
             }
         }
 

@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("RemoveTargetFromSynchronizedFolderTool Tests")
@@ -15,10 +14,10 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
     init() {
         tempDir =
             FileManager.default.temporaryDirectory
-            .appendingPathComponent(
-                "RemoveTargetFromSyncFolderToolTests-\(UUID().uuidString)"
-            )
-            .path
+                .appendingPathComponent(
+                    "RemoveTargetFromSyncFolderToolTests-\(UUID().uuidString)",
+                )
+                .path
         pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
@@ -63,7 +62,7 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithSyncFolder(
             name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
-            at: projectPath
+            at: projectPath,
         )
 
         // Remove target from sync folder
@@ -94,7 +93,7 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithSyncFolder(
             name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
-            membershipExceptions: ["SomeFile.swift"], at: projectPath
+            membershipExceptions: ["SomeFile.swift"], at: projectPath,
         )
 
         // Remove target
@@ -125,13 +124,13 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         // Add a sync folder but don't link it to the target
         let xcodeproj = try XcodeProj(path: projectPath)
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "Sources", name: "Sources"
+            sourceTree: .group, path: "Sources", name: "Sources",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
@@ -158,7 +157,7 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         #expect(throws: MCPError.self) {
@@ -176,13 +175,13 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         // Add a sync folder
         let xcodeproj = try XcodeProj(path: projectPath)
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "Sources", name: "Sources"
+            sourceTree: .group, path: "Sources", name: "Sources",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {

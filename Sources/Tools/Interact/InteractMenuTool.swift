@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct InteractMenuTool: Sendable {
     private let interactRunner: InteractRunner
@@ -13,8 +13,9 @@ public struct InteractMenuTool: Sendable {
         Tool(
             name: "interact_menu",
             description:
-                "Navigate and click a menu bar item in a macOS application by path. "
-                + "Provide a menu path array like [\"File\", \"Export\", \"PDF\"] to open submenus and click the final item.",
+            "Navigate and click a menu bar item in a macOS application by path. "
+                +
+                "Provide a menu path array like [\"File\", \"Export\", \"PDF\"] to open submenus and click the final item.",
             inputSchema: .object(
                 [
                     "type": .string("object"),
@@ -24,14 +25,14 @@ public struct InteractMenuTool: Sendable {
                                 "type": .string("array"),
                                 "items": .object(["type": .string("string")]),
                                 "description": .string(
-                                    "Array of menu item titles to navigate, e.g. [\"File\", \"Save As...\"]."
+                                    "Array of menu item titles to navigate, e.g. [\"File\", \"Save As...\"].",
                                 ),
-                            ])
-                        ]) { _, new in new }
+                            ]),
+                        ]) { _, new in new },
                     ),
                     "required": .array([.string("menu_path")]),
-                ]
-            )
+                ],
+            ),
         )
     }
 
@@ -45,7 +46,7 @@ public struct InteractMenuTool: Sendable {
         try interactRunner.navigateMenu(pid: pid, menuPath: menuPath)
 
         return CallTool.Result(
-            content: [.text("Clicked menu: \(menuPath.joined(separator: " > "))")]
+            content: [.text("Clicked menu: \(menuPath.joined(separator: " > "))")],
         )
     }
 }

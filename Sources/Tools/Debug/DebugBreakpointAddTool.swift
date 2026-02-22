@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugBreakpointAddTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -13,43 +13,43 @@ public struct DebugBreakpointAddTool: Sendable {
         Tool(
             name: "debug_breakpoint_add",
             description:
-                "Add a breakpoint to a debugging session.",
+            "Add a breakpoint to a debugging session.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."
+                            "Process ID of the debugged process.",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."
+                            "Bundle identifier of the app (uses registered session).",
                         ),
                     ]),
                     "symbol": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Function or method name to break at (e.g., 'viewDidLoad')."
+                            "Function or method name to break at (e.g., 'viewDidLoad').",
                         ),
                     ]),
                     "file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Source file path for file:line breakpoint."
+                            "Source file path for file:line breakpoint.",
                         ),
                     ]),
                     "line": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Line number for file:line breakpoint."
+                            "Line number for file:line breakpoint.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -63,7 +63,7 @@ public struct DebugBreakpointAddTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required"
+                "Either pid or bundle_id (with active session) is required",
             )
         }
 
@@ -73,9 +73,9 @@ public struct DebugBreakpointAddTool: Sendable {
         let line = arguments.getInt("line")
 
         // Validate we have a location
-        if symbol == nil && (file == nil || line == nil) {
+        if symbol == nil, file == nil || line == nil {
             throw MCPError.invalidParams(
-                "Either 'symbol' or both 'file' and 'line' are required to set a breakpoint"
+                "Either 'symbol' or both 'file' and 'line' are required to set a breakpoint",
             )
         }
 

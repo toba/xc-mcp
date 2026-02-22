@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
@@ -35,21 +34,21 @@ struct AddFrameworkToolTests {
             [
                 "target_name": Value.string("App"),
                 "framework_name": Value.string("UIKit"),
-            ]
+            ],
         ),
         AddFrameworkMissingParamTestCase(
             "Missing target_name",
             [
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "framework_name": Value.string("UIKit"),
-            ]
+            ],
         ),
         AddFrameworkMissingParamTestCase(
             "Missing framework_name",
             [
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "target_name": Value.string("App"),
-            ]
+            ],
         ),
     ]
 
@@ -66,7 +65,7 @@ struct AddFrameworkToolTests {
     func addSystemFramework() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -77,7 +76,7 @@ struct AddFrameworkToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add system framework
@@ -118,7 +117,7 @@ struct AddFrameworkToolTests {
     func addCustomFrameworkWithoutEmbedding() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -129,7 +128,7 @@ struct AddFrameworkToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add custom framework
@@ -156,7 +155,7 @@ struct AddFrameworkToolTests {
     func addCustomFrameworkWithEmbedding() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -167,7 +166,7 @@ struct AddFrameworkToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add custom framework with embedding
@@ -208,7 +207,7 @@ struct AddFrameworkToolTests {
     func addDuplicateFramework() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -219,7 +218,7 @@ struct AddFrameworkToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -247,7 +246,7 @@ struct AddFrameworkToolTests {
     func addFrameworkToNonExistentTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -279,7 +278,7 @@ struct AddFrameworkToolTests {
     @Test("Reuses existing BUILT_PRODUCTS_DIR file reference instead of creating duplicate")
     func reusesBuiltProductsRef() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -291,7 +290,7 @@ struct AddFrameworkToolTests {
         // creates a BUILT_PRODUCTS_DIR file reference
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a product file reference with BUILT_PRODUCTS_DIR (simulating a framework target)
@@ -300,7 +299,7 @@ struct AddFrameworkToolTests {
             sourceTree: .buildProductsDir,
             explicitFileType: "wrapper.framework",
             path: "Core.framework",
-            includeInIndex: false
+            includeInIndex: false,
         )
         xcodeproj.pbxproj.add(object: productRef)
 

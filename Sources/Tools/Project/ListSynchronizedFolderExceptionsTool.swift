@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ListSynchronizedFolderExceptionsTool: Sendable {
     private let pathUtility: PathUtility
@@ -15,33 +15,33 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
         Tool(
             name: "list_synchronized_folder_exceptions",
             description:
-                "List all exception sets on a synchronized folder, showing target names and excluded files",
+            "List all exception sets on a synchronized folder, showing target names and excluded files",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "folder_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path of the synchronized folder within the project (e.g., 'Sources' or 'App/Sources')"
+                            "Path of the synchronized folder within the project (e.g., 'Sources' or 'App/Sources')",
                         ),
                     ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("folder_path"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(folderPath) = arguments["folder_path"]
+              case let .string(folderPath) = arguments["folder_path"]
         else {
             throw MCPError.invalidParams("project_path and folder_path are required")
         }
@@ -53,7 +53,7 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
 
             // Find the synchronized folder
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                let mainGroup = project.mainGroup
+                  let mainGroup = project.mainGroup
             else {
                 throw MCPError.internalError("Main group not found in project")
             }
@@ -61,7 +61,7 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
             guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
             else {
                 throw MCPError.invalidParams(
-                    "Synchronized folder '\(folderPath)' not found in project"
+                    "Synchronized folder '\(folderPath)' not found in project",
                 )
             }
 
@@ -71,9 +71,9 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "No exception sets on synchronized folder '\(folderPath)'"
-                        )
-                    ]
+                            "No exception sets on synchronized folder '\(folderPath)'",
+                        ),
+                    ],
                 )
             }
 
@@ -85,7 +85,7 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
             for exception in exceptions {
                 guard
                     let exceptionSet = exception
-                        as? PBXFileSystemSynchronizedBuildFileExceptionSet
+                    as? PBXFileSystemSynchronizedBuildFileExceptionSet
                 else {
                     lines.append("Unknown exception set type: \(type(of: exception))")
                     lines.append("")
@@ -96,7 +96,7 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
                 lines.append("Target: \(targetName)")
 
                 if let membershipExceptions = exceptionSet.membershipExceptions,
-                    !membershipExceptions.isEmpty
+                   !membershipExceptions.isEmpty
                 {
                     lines.append("  Membership exceptions:")
                     for file in membershipExceptions.sorted() {
@@ -122,13 +122,13 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
             }
 
             return CallTool.Result(
-                content: [.text(lines.joined(separator: "\n"))]
+                content: [.text(lines.joined(separator: "\n"))],
             )
         } catch let error as MCPError {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to list synchronized folder exceptions: \(error.localizedDescription)"
+                "Failed to list synchronized folder exceptions: \(error.localizedDescription)",
             )
         }
     }

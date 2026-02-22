@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct GetMacAppPathTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -8,7 +8,7 @@ public struct GetMacAppPathTool: Sendable {
 
     public init(
         xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
@@ -18,43 +18,43 @@ public struct GetMacAppPathTool: Sendable {
         Tool(
             name: "get_mac_app_path",
             description:
-                "Get the path to a built macOS app. Can find the app by bundle ID in Applications, or by build settings for the current project.",
+            "Get the path to a built macOS app. Can find the app by bundle ID in Applications, or by build settings for the current project.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier to search for in /Applications and ~/Applications."
+                            "Bundle identifier to search for in /Applications and ~/Applications.",
                         ),
                     ]),
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Used to find the built app from build settings."
+                            "Path to the .xcodeproj file. Used to find the built app from build settings.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Used to find the built app from build settings."
+                            "Path to the .xcworkspace file. Used to find the built app from build settings.",
                         ),
                     ]),
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to get the app path for. Uses session default if not specified."
+                            "The scheme to get the app path for. Uses session default if not specified.",
                         ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."
+                            "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -66,12 +66,12 @@ public struct GetMacAppPathTool: Sendable {
             if let appPath = findAppByBundleId(bundleId) {
                 return CallTool.Result(
                     content: [
-                        .text("App path for '\(bundleId)':\n\(appPath)")
-                    ]
+                        .text("App path for '\(bundleId)':\n\(appPath)"),
+                    ],
                 )
             }
             throw MCPError.internalError(
-                "Could not find app with bundle identifier '\(bundleId)' in Applications directories."
+                "Could not find app with bundle identifier '\(bundleId)' in Applications directories.",
             )
         }
 
@@ -98,7 +98,7 @@ public struct GetMacAppPathTool: Sendable {
             scheme = sessionScheme
         } else {
             throw MCPError.invalidParams(
-                "scheme is required when using build settings. Set it with set_session_defaults or pass it directly."
+                "scheme is required when using build settings. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -113,9 +113,9 @@ public struct GetMacAppPathTool: Sendable {
         }
 
         // Validate we have either project or workspace
-        if projectPath == nil && workspacePath == nil {
+        if projectPath == nil, workspacePath == nil {
             throw MCPError.invalidParams(
-                "Either bundle_id, project_path, or workspace_path is required."
+                "Either bundle_id, project_path, or workspace_path is required.",
             )
         }
 
@@ -124,26 +124,26 @@ public struct GetMacAppPathTool: Sendable {
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
-                configuration: configuration
+                configuration: configuration,
             )
 
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {
                 throw MCPError.internalError(
-                    "Could not determine app path from build settings. Make sure the project has been built."
+                    "Could not determine app path from build settings. Make sure the project has been built.",
                 )
             }
 
             // Verify the app exists
             if !FileManager.default.fileExists(atPath: appPath) {
                 throw MCPError.internalError(
-                    "App not found at expected path: \(appPath). Build the project first with build_macos."
+                    "App not found at expected path: \(appPath). Build the project first with build_macos.",
                 )
             }
 
             return CallTool.Result(
                 content: [
-                    .text("App path for scheme '\(scheme)':\n\(appPath)")
-                ]
+                    .text("App path for scheme '\(scheme)':\n\(appPath)"),
+                ],
             )
         } catch {
             throw error.asMCPError()
@@ -187,10 +187,10 @@ public struct GetMacAppPathTool: Sendable {
     private func getBundleIdentifier(forApp appPath: String) -> String? {
         let plistPath = "\(appPath)/Contents/Info.plist"
         guard let plistData = FileManager.default.contents(atPath: plistPath),
-            let plist = try? PropertyListSerialization.propertyList(
-                from: plistData, options: [], format: nil
-            ) as? [String: Any],
-            let bundleId = plist["CFBundleIdentifier"] as? String
+              let plist = try? PropertyListSerialization.propertyList(
+                  from: plistData, options: [], format: nil,
+              ) as? [String: Any],
+              let bundleId = plist["CFBundleIdentifier"] as? String
         else {
             return nil
         }

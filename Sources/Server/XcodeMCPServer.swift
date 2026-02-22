@@ -1,7 +1,7 @@
-import Foundation
-import Logging
 import MCP
+import Logging
 import XCMCPCore
+import Foundation
 import XCMCPTools
 
 /// All available tool names exposed by the MCP server.
@@ -28,8 +28,11 @@ public enum ToolName: String, CaseIterable, Sendable {
     case createTestPlan = "create_test_plan"
     case addTargetToTestPlan = "add_target_to_test_plan"
     case removeTargetFromTestPlan = "remove_target_from_test_plan"
+    case setTestPlanTargetEnabled = "set_test_plan_target_enabled"
     case addTestPlanToScheme = "add_test_plan_to_scheme"
+    case removeTestPlanFromScheme = "remove_test_plan_from_scheme"
     case listTestPlans = "list_test_plans"
+    case setTestTargetApplication = "set_test_target_application"
     case renameGroup = "rename_group"
     case addDependency = "add_dependency"
     case setBuildSetting = "set_build_setting"
@@ -180,73 +183,75 @@ public enum ToolName: String, CaseIterable, Sendable {
     /// The workflow category this tool belongs to.
     public var workflow: Workflow {
         switch self {
-        // Project
-        case .createXcodeproj, .listTargets, .listBuildConfigurations, .listFiles,
-            .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
-            .addTarget, .removeTarget, .renameTarget, .renameScheme, .createScheme,
-            .validateScheme, .createTestPlan, .addTargetToTestPlan,
-            .removeTargetFromTestPlan, .addTestPlanToScheme, .listTestPlans,
-            .renameGroup,
-            .addDependency, .setBuildSetting,
-            .addFramework,
-            .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
-            .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
-            .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
-            .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
-            .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
-            .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
-            .manageTypeIdentifier, .listURLTypes, .manageURLType:
-            return .project
-        // Session
-        case .setSessionDefaults, .showSessionDefaults, .clearSessionDefaults,
-            .syncXcodeDefaults, .manageWorkflows:
-            return .session
-        // Simulator
-        case .listSims, .bootSim, .openSim, .buildSim, .buildRunSim, .installAppSim,
-            .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
-            .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
-            .resetSimLocation, .setSimAppearance, .simStatusbar:
-            return .simulator
-        // Device
-        case .listDevices, .buildDevice, .installAppDevice, .launchAppDevice,
-            .stopAppDevice, .getDeviceAppPath, .testDevice:
-            return .device
-        // macOS
-        case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
-            .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
-            return .macos
-        // Discovery
-        case .discoverProjs, .listSchemes, .showBuildSettings, .getAppBundleId,
-            .getMacBundleId, .listTestPlanTargets:
-            return .discovery
-        // Logging
-        case .startSimLogCap, .stopSimLogCap, .startDeviceLogCap, .stopDeviceLogCap:
-            return .logging
-        // Debug
-        case .buildDebugMacOS, .debugAttachSim, .debugDetach, .debugBreakpointAdd,
-            .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
-            .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
-            .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
-            .debugViewBorders, .debugProcessStatus:
-            return .debug
-        // UI Automation
-        case .tap, .longPress, .swipe, .gesture, .typeText, .keyPress, .button,
-            .screenshot:
-            return .uiAutomation
-        // Interact
-        case .interactUITree, .interactClick, .interactSetValue, .interactGetValue,
-            .interactMenu, .interactFocus, .interactKey, .interactFind:
-            return .interact
-        // Swift Package
-        case .swiftPackageBuild, .swiftPackageTest, .swiftPackageRun, .swiftPackageClean,
-            .swiftPackageList, .swiftPackageStop:
-            return .swiftPackage
-        // Instruments
-        case .xctraceRecord, .xctraceList, .xctraceExport:
-            return .instruments
-        // Utility
-        case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS:
-            return .utility
+            // Project
+            case .createXcodeproj, .listTargets, .listBuildConfigurations, .listFiles,
+                 .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
+                 .addTarget, .removeTarget, .renameTarget, .renameScheme, .createScheme,
+                 .validateScheme, .createTestPlan, .addTargetToTestPlan,
+                 .removeTargetFromTestPlan, .setTestPlanTargetEnabled,
+                 .addTestPlanToScheme, .removeTestPlanFromScheme,
+                 .listTestPlans, .setTestTargetApplication,
+                 .renameGroup,
+                 .addDependency, .setBuildSetting,
+                 .addFramework,
+                 .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
+                 .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
+                 .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
+                 .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
+                 .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
+                 .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
+                 .manageTypeIdentifier, .listURLTypes, .manageURLType:
+                return .project
+            // Session
+            case .setSessionDefaults, .showSessionDefaults, .clearSessionDefaults,
+                 .syncXcodeDefaults, .manageWorkflows:
+                return .session
+            // Simulator
+            case .listSims, .bootSim, .openSim, .buildSim, .buildRunSim, .installAppSim,
+                 .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
+                 .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
+                 .resetSimLocation, .setSimAppearance, .simStatusbar:
+                return .simulator
+            // Device
+            case .listDevices, .buildDevice, .installAppDevice, .launchAppDevice,
+                 .stopAppDevice, .getDeviceAppPath, .testDevice:
+                return .device
+            // macOS
+            case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
+                 .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
+                return .macos
+            // Discovery
+            case .discoverProjs, .listSchemes, .showBuildSettings, .getAppBundleId,
+                 .getMacBundleId, .listTestPlanTargets:
+                return .discovery
+            // Logging
+            case .startSimLogCap, .stopSimLogCap, .startDeviceLogCap, .stopDeviceLogCap:
+                return .logging
+            // Debug
+            case .buildDebugMacOS, .debugAttachSim, .debugDetach, .debugBreakpointAdd,
+                 .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
+                 .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
+                 .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
+                 .debugViewBorders, .debugProcessStatus:
+                return .debug
+            // UI Automation
+            case .tap, .longPress, .swipe, .gesture, .typeText, .keyPress, .button,
+                 .screenshot:
+                return .uiAutomation
+            // Interact
+            case .interactUITree, .interactClick, .interactSetValue, .interactGetValue,
+                 .interactMenu, .interactFocus, .interactKey, .interactFind:
+                return .interact
+            // Swift Package
+            case .swiftPackageBuild, .swiftPackageTest, .swiftPackageRun, .swiftPackageClean,
+                 .swiftPackageList, .swiftPackageStop:
+                return .swiftPackage
+            // Instruments
+            case .xctraceRecord, .xctraceList, .xctraceExport:
+                return .instruments
+            // Utility
+            case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS:
+                return .utility
         }
     }
 }
@@ -305,7 +310,7 @@ public struct XcodeMCPServer: Sendable {
         let server = Server(
             name: "xcode-mcp-server",
             version: "1.0.0",
-            capabilities: .init(tools: .init(listChanged: true))
+            capabilities: .init(tools: .init(listChanged: true)),
         )
 
         // Workflow manager
@@ -336,8 +341,11 @@ public struct XcodeMCPServer: Sendable {
         let createTestPlanTool = CreateTestPlanTool(pathUtility: pathUtility)
         let addTargetToTestPlanTool = AddTargetToTestPlanTool(pathUtility: pathUtility)
         let removeTargetFromTestPlanTool = RemoveTargetFromTestPlanTool(pathUtility: pathUtility)
+        let setTestPlanTargetEnabledTool = SetTestPlanTargetEnabledTool(pathUtility: pathUtility)
         let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
+        let removeTestPlanFromSchemeTool = RemoveTestPlanFromSchemeTool(pathUtility: pathUtility)
         let listTestPlansTool = ListTestPlansTool(pathUtility: pathUtility)
+        let setTestTargetApplicationTool = SetTestTargetApplicationTool(pathUtility: pathUtility)
         let renameGroupTool = RenameGroupTool(pathUtility: pathUtility)
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
@@ -350,10 +358,10 @@ public struct XcodeMCPServer: Sendable {
         let listGroupsTool = ListGroupsTool(pathUtility: pathUtility)
         let addSynchronizedFolderTool = AddFolderTool(pathUtility: pathUtility)
         let addTargetToSynchronizedFolderTool = AddTargetToSynchronizedFolderTool(
-            pathUtility: pathUtility
+            pathUtility: pathUtility,
         )
         let addSynchronizedFolderExceptionTool = AddSynchronizedFolderExceptionTool(
-            pathUtility: pathUtility
+            pathUtility: pathUtility,
         )
         let addAppExtensionTool = AddAppExtensionTool(pathUtility: pathUtility)
         let removeAppExtensionTool = RemoveAppExtensionTool(pathUtility: pathUtility)
@@ -380,76 +388,76 @@ public struct XcodeMCPServer: Sendable {
         let bootSimTool = BootSimTool(simctlRunner: simctlRunner)
         let openSimTool = OpenSimTool()
         let buildSimTool = BuildSimTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let buildRunSimTool = BuildRunSimTool(
             xcodebuildRunner: xcodebuildRunner,
             simctlRunner: simctlRunner,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
         )
         let installAppSimTool = InstallAppSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let launchAppSimTool = LaunchAppSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let stopAppSimTool = StopAppSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let getSimAppPathTool = GetSimAppPathTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let testSimTool = TestSimTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let recordSimVideoTool = RecordSimVideoTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let launchAppLogsSimTool = LaunchAppLogsSimTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let previewCaptureTool = PreviewCaptureTool(
             xcodebuildRunner: xcodebuildRunner,
             simctlRunner: simctlRunner,
             pathUtility: pathUtility,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
         )
 
         // Create device tools
         let listDevicesTool = ListDevicesTool(deviceCtlRunner: deviceCtlRunner)
         let buildDeviceTool = BuildDeviceTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let installAppDeviceTool = InstallAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
         )
         let launchAppDeviceTool = LaunchAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
         )
         let stopAppDeviceTool = StopAppDeviceTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
         )
         let getDeviceAppPathTool = GetDeviceAppPathTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
         )
         let testDeviceTool = TestDeviceTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
 
         // Create macOS tools
         let buildMacOSTool = BuildMacOSTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let buildRunMacOSTool = BuildRunMacOSTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let launchMacAppTool = LaunchMacAppTool(sessionManager: sessionManager)
         let stopMacAppTool = StopMacAppTool(sessionManager: sessionManager)
         let getMacAppPathTool = GetMacAppPathTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let testMacOSTool = TestMacOSTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let startMacLogCapTool = StartMacLogCapTool(sessionManager: sessionManager)
         let stopMacLogCapTool = StopMacLogCapTool(sessionManager: sessionManager)
@@ -458,54 +466,54 @@ public struct XcodeMCPServer: Sendable {
         // Create discovery tools
         let discoverProjsTool = DiscoverProjectsTool(pathUtility: pathUtility)
         let listSchemesTool = ListSchemesTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let showBuildSettingsTool = ShowBuildSettingsTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let getAppBundleIdTool = GetAppBundleIdTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let getMacBundleIdTool = GetMacBundleIdTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let listTestPlanTargetsTool = ListTestPlanTargetsTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
 
         // Create logging tools
         let startSimLogCapTool = StartSimLogCapTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let stopSimLogCapTool = StopSimLogCapTool(sessionManager: sessionManager)
         let startDeviceLogCapTool = StartDeviceLogCapTool(
-            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
         )
         let stopDeviceLogCapTool = StopDeviceLogCapTool(sessionManager: sessionManager)
 
         // Create extended simulator tools
         let eraseSimTool = EraseSimTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let setSimLocationTool = SetSimLocationTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let resetSimLocationTool = ResetSimLocationTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let setSimAppearanceTool = SetSimAppearanceTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let simStatusBarTool = SimStatusBarTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
 
         // Create debug tools
         let lldbRunner = LLDBRunner()
         let buildDebugMacOSTool = BuildDebugMacOSTool(
             xcodebuildRunner: xcodebuildRunner, lldbRunner: lldbRunner,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
         )
         let debugAttachSimTool = DebugAttachSimTool(
-            lldbRunner: lldbRunner, simctlRunner: simctlRunner, sessionManager: sessionManager
+            lldbRunner: lldbRunner, simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let debugDetachTool = DebugDetachTool(lldbRunner: lldbRunner)
         let debugBreakpointAddTool = DebugBreakpointAddTool(lldbRunner: lldbRunner)
@@ -527,7 +535,7 @@ public struct XcodeMCPServer: Sendable {
         // Create UI automation tools
         let tapTool = TapTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let longPressTool = LongPressTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let swipeTool = SwipeTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let gestureTool = GestureTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
@@ -535,25 +543,25 @@ public struct XcodeMCPServer: Sendable {
         let keyPressTool = KeyPressTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let buttonTool = ButtonTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let screenshotTool = ScreenshotTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
 
         // Create Swift Package Manager tools
         let swiftRunner = SwiftRunner()
         let swiftPackageBuildTool = SwiftPackageBuildTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
         let swiftPackageTestTool = SwiftPackageTestTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
         let swiftPackageRunTool = SwiftPackageRunTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
         let swiftPackageCleanTool = SwiftPackageCleanTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
         let swiftPackageListTool = SwiftPackageListTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
         let swiftPackageStopTool = SwiftPackageStopTool(sessionManager: sessionManager)
 
@@ -571,14 +579,14 @@ public struct XcodeMCPServer: Sendable {
         // Create instruments tools
         let xctraceRunner = XctraceRunner()
         let xctraceRecordTool = XctraceRecordTool(
-            xctraceRunner: xctraceRunner, sessionManager: sessionManager
+            xctraceRunner: xctraceRunner, sessionManager: sessionManager,
         )
         let xctraceListTool = XctraceListTool(xctraceRunner: xctraceRunner)
         let xctraceExportTool = XctraceExportTool(xctraceRunner: xctraceRunner)
 
         // Create utility tools
         let cleanTool = CleanTool(
-            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let doctorTool = DoctorTool(sessionManager: sessionManager)
         let scaffoldIOSTool = ScaffoldIOSProjectTool(pathUtility: pathUtility)
@@ -605,8 +613,11 @@ public struct XcodeMCPServer: Sendable {
             (.createTestPlan, createTestPlanTool.tool()),
             (.addTargetToTestPlan, addTargetToTestPlanTool.tool()),
             (.removeTargetFromTestPlan, removeTargetFromTestPlanTool.tool()),
+            (.setTestPlanTargetEnabled, setTestPlanTargetEnabledTool.tool()),
             (.addTestPlanToScheme, addTestPlanToSchemeTool.tool()),
+            (.removeTestPlanFromScheme, removeTestPlanFromSchemeTool.tool()),
             (.listTestPlans, listTestPlansTool.tool()),
+            (.setTestTargetApplication, setTestTargetApplicationTool.tool()),
             (.renameGroup, renameGroupTool.tool()),
             (.addDependency, addDependencyTool.tool()),
             (.setBuildSetting, setBuildSettingTool.tool()),
@@ -768,7 +779,7 @@ public struct XcodeMCPServer: Sendable {
                 let enabled = await workflowManager.isEnabled(toolName.workflow)
                 if !enabled {
                     throw MCPError.invalidRequest(
-                        "Tool '\(params.name)' is disabled. Its workflow '\(toolName.workflow.rawValue)' is currently disabled. Use manage_workflows to re-enable it."
+                        "Tool '\(params.name)' is disabled. Its workflow '\(toolName.workflow.rawValue)' is currently disabled. Use manage_workflows to re-enable it.",
                     )
                 }
             }
@@ -776,313 +787,319 @@ public struct XcodeMCPServer: Sendable {
             let arguments = params.arguments ?? [:]
 
             switch toolName {
-            // Project tools
-            case .createXcodeproj:
-                return try createXcodeprojTool.execute(arguments: arguments)
-            case .listTargets:
-                return try listTargetsTool.execute(arguments: arguments)
-            case .listBuildConfigurations:
-                return try listBuildConfigurationsTool.execute(arguments: arguments)
-            case .listFiles:
-                return try listFilesTool.execute(arguments: arguments)
-            case .getBuildSettings:
-                return try getBuildSettingsTool.execute(arguments: arguments)
-            case .addFile:
-                return try addFileTool.execute(arguments: arguments)
-            case .removeFile:
-                return try removeFileTool.execute(arguments: arguments)
-            case .moveFile:
-                return try moveFileTool.execute(arguments: arguments)
-            case .createGroup:
-                return try createGroupTool.execute(arguments: arguments)
-            case .addTarget:
-                return try addTargetTool.execute(arguments: arguments)
-            case .removeTarget:
-                return try removeTargetTool.execute(arguments: arguments)
-            case .renameTarget:
-                return try renameTargetTool.execute(arguments: arguments)
-            case .renameScheme:
-                return try renameSchemeTool.execute(arguments: arguments)
-            case .createScheme:
-                return try createSchemeTool.execute(arguments: arguments)
-            case .validateScheme:
-                return try validateSchemeTool.execute(arguments: arguments)
-            case .createTestPlan:
-                return try createTestPlanTool.execute(arguments: arguments)
-            case .addTargetToTestPlan:
-                return try addTargetToTestPlanTool.execute(arguments: arguments)
-            case .removeTargetFromTestPlan:
-                return try removeTargetFromTestPlanTool.execute(arguments: arguments)
-            case .addTestPlanToScheme:
-                return try addTestPlanToSchemeTool.execute(arguments: arguments)
-            case .listTestPlans:
-                return try listTestPlansTool.execute(arguments: arguments)
-            case .renameGroup:
-                return try renameGroupTool.execute(arguments: arguments)
-            case .addDependency:
-                return try addDependencyTool.execute(arguments: arguments)
-            case .setBuildSetting:
-                return try setBuildSettingTool.execute(arguments: arguments)
-            case .addFramework:
-                return try addFrameworkTool.execute(arguments: arguments)
-            case .addBuildPhase:
-                return try addBuildPhaseTool.execute(arguments: arguments)
-            case .duplicateTarget:
-                return try duplicateTargetTool.execute(arguments: arguments)
-            case .addSwiftPackage:
-                return try addSwiftPackageTool.execute(arguments: arguments)
-            case .listSwiftPackages:
-                return try listSwiftPackagesTool.execute(arguments: arguments)
-            case .removeSwiftPackage:
-                return try removeSwiftPackageTool.execute(arguments: arguments)
-            case .listGroups:
-                return try listGroupsTool.execute(arguments: arguments)
-            case .addSynchronizedFolder:
-                return try addSynchronizedFolderTool.execute(arguments: arguments)
-            case .addTargetToSynchronizedFolder:
-                return try addTargetToSynchronizedFolderTool.execute(arguments: arguments)
-            case .addSynchronizedFolderException:
-                return try addSynchronizedFolderExceptionTool.execute(arguments: arguments)
-            case .addAppExtension:
-                return try addAppExtensionTool.execute(arguments: arguments)
-            case .removeAppExtension:
-                return try removeAppExtensionTool.execute(arguments: arguments)
-            case .listCopyFilesPhases:
-                return try listCopyFilesPhases.execute(arguments: arguments)
-            case .addCopyFilesPhase:
-                return try addCopyFilesPhase.execute(arguments: arguments)
-            case .addToCopyFilesPhase:
-                return try addToCopyFilesPhase.execute(arguments: arguments)
-            case .removeCopyFilesPhase:
-                return try removeCopyFilesPhase.execute(arguments: arguments)
-            case .listDocumentTypes:
-                return try listDocumentTypesTool.execute(arguments: arguments)
-            case .manageDocumentType:
-                return try manageDocumentTypeTool.execute(arguments: arguments)
-            case .listTypeIdentifiers:
-                return try listTypeIdentifiersTool.execute(arguments: arguments)
-            case .manageTypeIdentifier:
-                return try manageTypeIdentifierTool.execute(arguments: arguments)
-            case .listURLTypes:
-                return try listURLTypesTool.execute(arguments: arguments)
-            case .manageURLType:
-                return try manageURLTypeTool.execute(arguments: arguments)
-            // Session tools
-            case .setSessionDefaults:
-                return try await setSessionDefaultsTool.execute(arguments: arguments)
-            case .showSessionDefaults:
-                return try await showSessionDefaultsTool.execute(arguments: arguments)
-            case .clearSessionDefaults:
-                return try await clearSessionDefaultsTool.execute(arguments: arguments)
-            case .syncXcodeDefaults:
-                return try await syncXcodeDefaultsTool.execute(arguments: arguments)
-            case .manageWorkflows:
-                let (result, changed) = try await manageWorkflowsTool.execute(
-                    arguments: arguments
-                )
-                if changed {
-                    try await server.notify(
-                        Message<ToolListChangedNotification>(
-                            method: ToolListChangedNotification.name,
-                            params: Empty()
-                        )
+                // Project tools
+                case .createXcodeproj:
+                    return try createXcodeprojTool.execute(arguments: arguments)
+                case .listTargets:
+                    return try listTargetsTool.execute(arguments: arguments)
+                case .listBuildConfigurations:
+                    return try listBuildConfigurationsTool.execute(arguments: arguments)
+                case .listFiles:
+                    return try listFilesTool.execute(arguments: arguments)
+                case .getBuildSettings:
+                    return try getBuildSettingsTool.execute(arguments: arguments)
+                case .addFile:
+                    return try addFileTool.execute(arguments: arguments)
+                case .removeFile:
+                    return try removeFileTool.execute(arguments: arguments)
+                case .moveFile:
+                    return try moveFileTool.execute(arguments: arguments)
+                case .createGroup:
+                    return try createGroupTool.execute(arguments: arguments)
+                case .addTarget:
+                    return try addTargetTool.execute(arguments: arguments)
+                case .removeTarget:
+                    return try removeTargetTool.execute(arguments: arguments)
+                case .renameTarget:
+                    return try renameTargetTool.execute(arguments: arguments)
+                case .renameScheme:
+                    return try renameSchemeTool.execute(arguments: arguments)
+                case .createScheme:
+                    return try createSchemeTool.execute(arguments: arguments)
+                case .validateScheme:
+                    return try validateSchemeTool.execute(arguments: arguments)
+                case .createTestPlan:
+                    return try createTestPlanTool.execute(arguments: arguments)
+                case .addTargetToTestPlan:
+                    return try addTargetToTestPlanTool.execute(arguments: arguments)
+                case .removeTargetFromTestPlan:
+                    return try removeTargetFromTestPlanTool.execute(arguments: arguments)
+                case .setTestPlanTargetEnabled:
+                    return try setTestPlanTargetEnabledTool.execute(arguments: arguments)
+                case .addTestPlanToScheme:
+                    return try addTestPlanToSchemeTool.execute(arguments: arguments)
+                case .removeTestPlanFromScheme:
+                    return try removeTestPlanFromSchemeTool.execute(arguments: arguments)
+                case .listTestPlans:
+                    return try listTestPlansTool.execute(arguments: arguments)
+                case .setTestTargetApplication:
+                    return try setTestTargetApplicationTool.execute(arguments: arguments)
+                case .renameGroup:
+                    return try renameGroupTool.execute(arguments: arguments)
+                case .addDependency:
+                    return try addDependencyTool.execute(arguments: arguments)
+                case .setBuildSetting:
+                    return try setBuildSettingTool.execute(arguments: arguments)
+                case .addFramework:
+                    return try addFrameworkTool.execute(arguments: arguments)
+                case .addBuildPhase:
+                    return try addBuildPhaseTool.execute(arguments: arguments)
+                case .duplicateTarget:
+                    return try duplicateTargetTool.execute(arguments: arguments)
+                case .addSwiftPackage:
+                    return try addSwiftPackageTool.execute(arguments: arguments)
+                case .listSwiftPackages:
+                    return try listSwiftPackagesTool.execute(arguments: arguments)
+                case .removeSwiftPackage:
+                    return try removeSwiftPackageTool.execute(arguments: arguments)
+                case .listGroups:
+                    return try listGroupsTool.execute(arguments: arguments)
+                case .addSynchronizedFolder:
+                    return try addSynchronizedFolderTool.execute(arguments: arguments)
+                case .addTargetToSynchronizedFolder:
+                    return try addTargetToSynchronizedFolderTool.execute(arguments: arguments)
+                case .addSynchronizedFolderException:
+                    return try addSynchronizedFolderExceptionTool.execute(arguments: arguments)
+                case .addAppExtension:
+                    return try addAppExtensionTool.execute(arguments: arguments)
+                case .removeAppExtension:
+                    return try removeAppExtensionTool.execute(arguments: arguments)
+                case .listCopyFilesPhases:
+                    return try listCopyFilesPhases.execute(arguments: arguments)
+                case .addCopyFilesPhase:
+                    return try addCopyFilesPhase.execute(arguments: arguments)
+                case .addToCopyFilesPhase:
+                    return try addToCopyFilesPhase.execute(arguments: arguments)
+                case .removeCopyFilesPhase:
+                    return try removeCopyFilesPhase.execute(arguments: arguments)
+                case .listDocumentTypes:
+                    return try listDocumentTypesTool.execute(arguments: arguments)
+                case .manageDocumentType:
+                    return try manageDocumentTypeTool.execute(arguments: arguments)
+                case .listTypeIdentifiers:
+                    return try listTypeIdentifiersTool.execute(arguments: arguments)
+                case .manageTypeIdentifier:
+                    return try manageTypeIdentifierTool.execute(arguments: arguments)
+                case .listURLTypes:
+                    return try listURLTypesTool.execute(arguments: arguments)
+                case .manageURLType:
+                    return try manageURLTypeTool.execute(arguments: arguments)
+                // Session tools
+                case .setSessionDefaults:
+                    return try await setSessionDefaultsTool.execute(arguments: arguments)
+                case .showSessionDefaults:
+                    return try await showSessionDefaultsTool.execute(arguments: arguments)
+                case .clearSessionDefaults:
+                    return try await clearSessionDefaultsTool.execute(arguments: arguments)
+                case .syncXcodeDefaults:
+                    return try await syncXcodeDefaultsTool.execute(arguments: arguments)
+                case .manageWorkflows:
+                    let (result, changed) = try await manageWorkflowsTool.execute(
+                        arguments: arguments,
                     )
-                }
-                return result
-            // Simulator tools
-            case .listSims:
-                return try await listSimsTool.execute(arguments: arguments)
-            case .bootSim:
-                return try await bootSimTool.execute(arguments: arguments)
-            case .openSim:
-                return try await openSimTool.execute(arguments: arguments)
-            case .buildSim:
-                return try await buildSimTool.execute(arguments: arguments)
-            case .buildRunSim:
-                return try await buildRunSimTool.execute(arguments: arguments)
-            case .installAppSim:
-                return try await installAppSimTool.execute(arguments: arguments)
-            case .launchAppSim:
-                return try await launchAppSimTool.execute(arguments: arguments)
-            case .stopAppSim:
-                return try await stopAppSimTool.execute(arguments: arguments)
-            case .getSimAppPath:
-                return try await getSimAppPathTool.execute(arguments: arguments)
-            case .testSim:
-                return try await testSimTool.execute(arguments: arguments)
-            case .recordSimVideo:
-                return try await recordSimVideoTool.execute(arguments: arguments)
-            case .launchAppLogsSim:
-                return try await launchAppLogsSimTool.execute(arguments: arguments)
-            case .previewCapture:
-                return try await previewCaptureTool.execute(arguments: arguments)
-            // Device tools
-            case .listDevices:
-                return try await listDevicesTool.execute(arguments: arguments)
-            case .buildDevice:
-                return try await buildDeviceTool.execute(arguments: arguments)
-            case .installAppDevice:
-                return try await installAppDeviceTool.execute(arguments: arguments)
-            case .launchAppDevice:
-                return try await launchAppDeviceTool.execute(arguments: arguments)
-            case .stopAppDevice:
-                return try await stopAppDeviceTool.execute(arguments: arguments)
-            case .getDeviceAppPath:
-                return try await getDeviceAppPathTool.execute(arguments: arguments)
-            case .testDevice:
-                return try await testDeviceTool.execute(arguments: arguments)
-            // macOS tools
-            case .buildMacOS:
-                return try await buildMacOSTool.execute(arguments: arguments)
-            case .buildRunMacOS:
-                return try await buildRunMacOSTool.execute(arguments: arguments)
-            case .launchMacApp:
-                return try await launchMacAppTool.execute(arguments: arguments)
-            case .stopMacApp:
-                return try await stopMacAppTool.execute(arguments: arguments)
-            case .getMacAppPath:
-                return try await getMacAppPathTool.execute(arguments: arguments)
-            case .testMacOS:
-                return try await testMacOSTool.execute(arguments: arguments)
-            case .startMacLogCap:
-                return try await startMacLogCapTool.execute(arguments: arguments)
-            case .stopMacLogCap:
-                return try await stopMacLogCapTool.execute(arguments: arguments)
-            case .screenshotMacWindow:
-                return try await screenshotMacWindowTool.execute(arguments: arguments)
-            // Discovery tools
-            case .discoverProjs:
-                return try discoverProjsTool.execute(arguments: arguments)
-            case .listSchemes:
-                return try await listSchemesTool.execute(arguments: arguments)
-            case .showBuildSettings:
-                return try await showBuildSettingsTool.execute(arguments: arguments)
-            case .getAppBundleId:
-                return try await getAppBundleIdTool.execute(arguments: arguments)
-            case .getMacBundleId:
-                return try await getMacBundleIdTool.execute(arguments: arguments)
-            case .listTestPlanTargets:
-                return try await listTestPlanTargetsTool.execute(arguments: arguments)
-            // Logging tools
-            case .startSimLogCap:
-                return try await startSimLogCapTool.execute(arguments: arguments)
-            case .stopSimLogCap:
-                return try await stopSimLogCapTool.execute(arguments: arguments)
-            case .startDeviceLogCap:
-                return try await startDeviceLogCapTool.execute(arguments: arguments)
-            case .stopDeviceLogCap:
-                return try await stopDeviceLogCapTool.execute(arguments: arguments)
-            // Extended simulator tools
-            case .eraseSims:
-                return try await eraseSimTool.execute(arguments: arguments)
-            case .setSimLocation:
-                return try await setSimLocationTool.execute(arguments: arguments)
-            case .resetSimLocation:
-                return try await resetSimLocationTool.execute(arguments: arguments)
-            case .setSimAppearance:
-                return try await setSimAppearanceTool.execute(arguments: arguments)
-            case .simStatusbar:
-                return try await simStatusBarTool.execute(arguments: arguments)
-            // Debug tools
-            case .buildDebugMacOS:
-                return try await buildDebugMacOSTool.execute(arguments: arguments)
-            case .debugAttachSim:
-                return try await debugAttachSimTool.execute(arguments: arguments)
-            case .debugDetach:
-                return try await debugDetachTool.execute(arguments: arguments)
-            case .debugBreakpointAdd:
-                return try await debugBreakpointAddTool.execute(arguments: arguments)
-            case .debugBreakpointRemove:
-                return try await debugBreakpointRemoveTool.execute(arguments: arguments)
-            case .debugContinue:
-                return try await debugContinueTool.execute(arguments: arguments)
-            case .debugStack:
-                return try await debugStackTool.execute(arguments: arguments)
-            case .debugVariables:
-                return try await debugVariablesTool.execute(arguments: arguments)
-            case .debugLLDBCommand:
-                return try await debugLLDBCommandTool.execute(arguments: arguments)
-            case .debugEvaluate:
-                return try await debugEvaluateTool.execute(arguments: arguments)
-            case .debugThreads:
-                return try await debugThreadsTool.execute(arguments: arguments)
-            case .debugWatchpoint:
-                return try await debugWatchpointTool.execute(arguments: arguments)
-            case .debugStep:
-                return try await debugStepTool.execute(arguments: arguments)
-            case .debugMemory:
-                return try await debugMemoryTool.execute(arguments: arguments)
-            case .debugSymbolLookup:
-                return try await debugSymbolLookupTool.execute(arguments: arguments)
-            case .debugViewHierarchy:
-                return try await debugViewHierarchyTool.execute(arguments: arguments)
-            case .debugViewBorders:
-                return try await debugViewBordersTool.execute(arguments: arguments)
-            case .debugProcessStatus:
-                return try await debugProcessStatusTool.execute(arguments: arguments)
-            // UI Automation tools
-            case .tap:
-                return try await tapTool.execute(arguments: arguments)
-            case .longPress:
-                return try await longPressTool.execute(arguments: arguments)
-            case .swipe:
-                return try await swipeTool.execute(arguments: arguments)
-            case .gesture:
-                return try await gestureTool.execute(arguments: arguments)
-            case .typeText:
-                return try await typeTextTool.execute(arguments: arguments)
-            case .keyPress:
-                return try await keyPressTool.execute(arguments: arguments)
-            case .button:
-                return try await buttonTool.execute(arguments: arguments)
-            case .screenshot:
-                return try await screenshotTool.execute(arguments: arguments)
-            // Swift Package Manager tools
-            case .swiftPackageBuild:
-                return try await swiftPackageBuildTool.execute(arguments: arguments)
-            case .swiftPackageTest:
-                return try await swiftPackageTestTool.execute(arguments: arguments)
-            case .swiftPackageRun:
-                return try await swiftPackageRunTool.execute(arguments: arguments)
-            case .swiftPackageClean:
-                return try await swiftPackageCleanTool.execute(arguments: arguments)
-            case .swiftPackageList:
-                return try await swiftPackageListTool.execute(arguments: arguments)
-            case .swiftPackageStop:
-                return try await swiftPackageStopTool.execute(arguments: arguments)
-            // Interact tools
-            case .interactUITree:
-                return try await interactUITreeTool.execute(arguments: arguments)
-            case .interactClick:
-                return try await interactClickTool.execute(arguments: arguments)
-            case .interactSetValue:
-                return try await interactSetValueTool.execute(arguments: arguments)
-            case .interactGetValue:
-                return try await interactGetValueTool.execute(arguments: arguments)
-            case .interactMenu:
-                return try interactMenuTool.execute(arguments: arguments)
-            case .interactFocus:
-                return try await interactFocusTool.execute(arguments: arguments)
-            case .interactKey:
-                return try interactKeyTool.execute(arguments: arguments)
-            case .interactFind:
-                return try await interactFindTool.execute(arguments: arguments)
-            // Instruments tools
-            case .xctraceRecord:
-                return try await xctraceRecordTool.execute(arguments: arguments)
-            case .xctraceList:
-                return try await xctraceListTool.execute(arguments: arguments)
-            case .xctraceExport:
-                return try await xctraceExportTool.execute(arguments: arguments)
-            // Utility tools
-            case .clean:
-                return try await cleanTool.execute(arguments: arguments)
-            case .doctor:
-                return try await doctorTool.execute(arguments: arguments)
-            case .scaffoldIOS:
-                return try scaffoldIOSTool.execute(arguments: arguments)
-            case .scaffoldMacOS:
-                return try scaffoldMacOSTool.execute(arguments: arguments)
+                    if changed {
+                        try await server.notify(
+                            Message<ToolListChangedNotification>(
+                                method: ToolListChangedNotification.name,
+                                params: Empty(),
+                            ),
+                        )
+                    }
+                    return result
+                // Simulator tools
+                case .listSims:
+                    return try await listSimsTool.execute(arguments: arguments)
+                case .bootSim:
+                    return try await bootSimTool.execute(arguments: arguments)
+                case .openSim:
+                    return try await openSimTool.execute(arguments: arguments)
+                case .buildSim:
+                    return try await buildSimTool.execute(arguments: arguments)
+                case .buildRunSim:
+                    return try await buildRunSimTool.execute(arguments: arguments)
+                case .installAppSim:
+                    return try await installAppSimTool.execute(arguments: arguments)
+                case .launchAppSim:
+                    return try await launchAppSimTool.execute(arguments: arguments)
+                case .stopAppSim:
+                    return try await stopAppSimTool.execute(arguments: arguments)
+                case .getSimAppPath:
+                    return try await getSimAppPathTool.execute(arguments: arguments)
+                case .testSim:
+                    return try await testSimTool.execute(arguments: arguments)
+                case .recordSimVideo:
+                    return try await recordSimVideoTool.execute(arguments: arguments)
+                case .launchAppLogsSim:
+                    return try await launchAppLogsSimTool.execute(arguments: arguments)
+                case .previewCapture:
+                    return try await previewCaptureTool.execute(arguments: arguments)
+                // Device tools
+                case .listDevices:
+                    return try await listDevicesTool.execute(arguments: arguments)
+                case .buildDevice:
+                    return try await buildDeviceTool.execute(arguments: arguments)
+                case .installAppDevice:
+                    return try await installAppDeviceTool.execute(arguments: arguments)
+                case .launchAppDevice:
+                    return try await launchAppDeviceTool.execute(arguments: arguments)
+                case .stopAppDevice:
+                    return try await stopAppDeviceTool.execute(arguments: arguments)
+                case .getDeviceAppPath:
+                    return try await getDeviceAppPathTool.execute(arguments: arguments)
+                case .testDevice:
+                    return try await testDeviceTool.execute(arguments: arguments)
+                // macOS tools
+                case .buildMacOS:
+                    return try await buildMacOSTool.execute(arguments: arguments)
+                case .buildRunMacOS:
+                    return try await buildRunMacOSTool.execute(arguments: arguments)
+                case .launchMacApp:
+                    return try await launchMacAppTool.execute(arguments: arguments)
+                case .stopMacApp:
+                    return try await stopMacAppTool.execute(arguments: arguments)
+                case .getMacAppPath:
+                    return try await getMacAppPathTool.execute(arguments: arguments)
+                case .testMacOS:
+                    return try await testMacOSTool.execute(arguments: arguments)
+                case .startMacLogCap:
+                    return try await startMacLogCapTool.execute(arguments: arguments)
+                case .stopMacLogCap:
+                    return try await stopMacLogCapTool.execute(arguments: arguments)
+                case .screenshotMacWindow:
+                    return try await screenshotMacWindowTool.execute(arguments: arguments)
+                // Discovery tools
+                case .discoverProjs:
+                    return try discoverProjsTool.execute(arguments: arguments)
+                case .listSchemes:
+                    return try await listSchemesTool.execute(arguments: arguments)
+                case .showBuildSettings:
+                    return try await showBuildSettingsTool.execute(arguments: arguments)
+                case .getAppBundleId:
+                    return try await getAppBundleIdTool.execute(arguments: arguments)
+                case .getMacBundleId:
+                    return try await getMacBundleIdTool.execute(arguments: arguments)
+                case .listTestPlanTargets:
+                    return try await listTestPlanTargetsTool.execute(arguments: arguments)
+                // Logging tools
+                case .startSimLogCap:
+                    return try await startSimLogCapTool.execute(arguments: arguments)
+                case .stopSimLogCap:
+                    return try await stopSimLogCapTool.execute(arguments: arguments)
+                case .startDeviceLogCap:
+                    return try await startDeviceLogCapTool.execute(arguments: arguments)
+                case .stopDeviceLogCap:
+                    return try await stopDeviceLogCapTool.execute(arguments: arguments)
+                // Extended simulator tools
+                case .eraseSims:
+                    return try await eraseSimTool.execute(arguments: arguments)
+                case .setSimLocation:
+                    return try await setSimLocationTool.execute(arguments: arguments)
+                case .resetSimLocation:
+                    return try await resetSimLocationTool.execute(arguments: arguments)
+                case .setSimAppearance:
+                    return try await setSimAppearanceTool.execute(arguments: arguments)
+                case .simStatusbar:
+                    return try await simStatusBarTool.execute(arguments: arguments)
+                // Debug tools
+                case .buildDebugMacOS:
+                    return try await buildDebugMacOSTool.execute(arguments: arguments)
+                case .debugAttachSim:
+                    return try await debugAttachSimTool.execute(arguments: arguments)
+                case .debugDetach:
+                    return try await debugDetachTool.execute(arguments: arguments)
+                case .debugBreakpointAdd:
+                    return try await debugBreakpointAddTool.execute(arguments: arguments)
+                case .debugBreakpointRemove:
+                    return try await debugBreakpointRemoveTool.execute(arguments: arguments)
+                case .debugContinue:
+                    return try await debugContinueTool.execute(arguments: arguments)
+                case .debugStack:
+                    return try await debugStackTool.execute(arguments: arguments)
+                case .debugVariables:
+                    return try await debugVariablesTool.execute(arguments: arguments)
+                case .debugLLDBCommand:
+                    return try await debugLLDBCommandTool.execute(arguments: arguments)
+                case .debugEvaluate:
+                    return try await debugEvaluateTool.execute(arguments: arguments)
+                case .debugThreads:
+                    return try await debugThreadsTool.execute(arguments: arguments)
+                case .debugWatchpoint:
+                    return try await debugWatchpointTool.execute(arguments: arguments)
+                case .debugStep:
+                    return try await debugStepTool.execute(arguments: arguments)
+                case .debugMemory:
+                    return try await debugMemoryTool.execute(arguments: arguments)
+                case .debugSymbolLookup:
+                    return try await debugSymbolLookupTool.execute(arguments: arguments)
+                case .debugViewHierarchy:
+                    return try await debugViewHierarchyTool.execute(arguments: arguments)
+                case .debugViewBorders:
+                    return try await debugViewBordersTool.execute(arguments: arguments)
+                case .debugProcessStatus:
+                    return try await debugProcessStatusTool.execute(arguments: arguments)
+                // UI Automation tools
+                case .tap:
+                    return try await tapTool.execute(arguments: arguments)
+                case .longPress:
+                    return try await longPressTool.execute(arguments: arguments)
+                case .swipe:
+                    return try await swipeTool.execute(arguments: arguments)
+                case .gesture:
+                    return try await gestureTool.execute(arguments: arguments)
+                case .typeText:
+                    return try await typeTextTool.execute(arguments: arguments)
+                case .keyPress:
+                    return try await keyPressTool.execute(arguments: arguments)
+                case .button:
+                    return try await buttonTool.execute(arguments: arguments)
+                case .screenshot:
+                    return try await screenshotTool.execute(arguments: arguments)
+                // Swift Package Manager tools
+                case .swiftPackageBuild:
+                    return try await swiftPackageBuildTool.execute(arguments: arguments)
+                case .swiftPackageTest:
+                    return try await swiftPackageTestTool.execute(arguments: arguments)
+                case .swiftPackageRun:
+                    return try await swiftPackageRunTool.execute(arguments: arguments)
+                case .swiftPackageClean:
+                    return try await swiftPackageCleanTool.execute(arguments: arguments)
+                case .swiftPackageList:
+                    return try await swiftPackageListTool.execute(arguments: arguments)
+                case .swiftPackageStop:
+                    return try await swiftPackageStopTool.execute(arguments: arguments)
+                // Interact tools
+                case .interactUITree:
+                    return try await interactUITreeTool.execute(arguments: arguments)
+                case .interactClick:
+                    return try await interactClickTool.execute(arguments: arguments)
+                case .interactSetValue:
+                    return try await interactSetValueTool.execute(arguments: arguments)
+                case .interactGetValue:
+                    return try await interactGetValueTool.execute(arguments: arguments)
+                case .interactMenu:
+                    return try interactMenuTool.execute(arguments: arguments)
+                case .interactFocus:
+                    return try await interactFocusTool.execute(arguments: arguments)
+                case .interactKey:
+                    return try interactKeyTool.execute(arguments: arguments)
+                case .interactFind:
+                    return try await interactFindTool.execute(arguments: arguments)
+                // Instruments tools
+                case .xctraceRecord:
+                    return try await xctraceRecordTool.execute(arguments: arguments)
+                case .xctraceList:
+                    return try await xctraceListTool.execute(arguments: arguments)
+                case .xctraceExport:
+                    return try await xctraceExportTool.execute(arguments: arguments)
+                // Utility tools
+                case .clean:
+                    return try await cleanTool.execute(arguments: arguments)
+                case .doctor:
+                    return try await doctorTool.execute(arguments: arguments)
+                case .scaffoldIOS:
+                    return try scaffoldIOSTool.execute(arguments: arguments)
+                case .scaffoldMacOS:
+                    return try scaffoldMacOSTool.execute(arguments: arguments)
             }
         }
 

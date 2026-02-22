@@ -1,5 +1,5 @@
-import Foundation
 import MCP
+import Foundation
 
 /// Holds all session defaults as a single value type.
 ///
@@ -54,7 +54,7 @@ public actor SessionManager {
         scheme: String? = nil,
         simulatorUDID: String? = nil,
         deviceUDID: String? = nil,
-        configuration: String? = nil
+        configuration: String? = nil,
     ) {
         if let projectPath {
             self.projectPath = projectPath
@@ -145,7 +145,7 @@ public actor SessionManager {
             scheme: scheme,
             simulatorUDID: simulatorUDID,
             deviceUDID: deviceUDID,
-            configuration: configuration
+            configuration: configuration,
         )
     }
 
@@ -164,7 +164,7 @@ public actor SessionManager {
             return session
         }
         throw MCPError.invalidParams(
-            "simulator is required. Set it with set_session_defaults or pass it directly."
+            "simulator is required. Set it with set_session_defaults or pass it directly.",
         )
     }
 
@@ -181,7 +181,7 @@ public actor SessionManager {
             return session
         }
         throw MCPError.invalidParams(
-            "device is required. Set it with set_session_defaults or pass it directly."
+            "device is required. Set it with set_session_defaults or pass it directly.",
         )
     }
 
@@ -198,7 +198,7 @@ public actor SessionManager {
             return session
         }
         throw MCPError.invalidParams(
-            "scheme is required. Set it with set_session_defaults or pass it directly."
+            "scheme is required. Set it with set_session_defaults or pass it directly.",
         )
     }
 
@@ -210,7 +210,7 @@ public actor SessionManager {
     /// - Returns: The resolved configuration.
     public func resolveConfiguration(
         from arguments: [String: Value],
-        default defaultValue: String = "Debug"
+        default defaultValue: String = "Debug",
     ) -> String {
         arguments.getString("configuration") ?? configuration ?? defaultValue
     }
@@ -221,13 +221,13 @@ public actor SessionManager {
     /// - Returns: A tuple containing the resolved project and workspace paths.
     /// - Throws: MCPError.invalidParams if neither project nor workspace is available.
     public func resolveBuildPaths(from arguments: [String: Value]) throws(MCPError) -> (
-        project: String?, workspace: String?
+        project: String?, workspace: String?,
     ) {
         let project = arguments.getString("project_path") ?? projectPath
         let workspace = arguments.getString("workspace_path") ?? workspacePath
         if project == nil, workspace == nil {
             throw MCPError.invalidParams(
-                "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly."
+                "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly.",
             )
         }
         return (project, workspace)
@@ -246,7 +246,7 @@ public actor SessionManager {
             return session
         }
         throw MCPError.invalidParams(
-            "package_path is required. Set it with set_session_defaults or pass it directly."
+            "package_path is required. Set it with set_session_defaults or pass it directly.",
         )
     }
 }

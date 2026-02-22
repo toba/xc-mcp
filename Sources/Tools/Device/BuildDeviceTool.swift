@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct BuildDeviceTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -8,7 +8,7 @@ public struct BuildDeviceTool: Sendable {
 
     public init(
         xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
@@ -18,50 +18,50 @@ public struct BuildDeviceTool: Sendable {
         Tool(
             name: "build_device",
             description:
-                "Build an Xcode project or workspace for a connected iOS/tvOS/watchOS device.",
+            "Build an Xcode project or workspace for a connected iOS/tvOS/watchOS device.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."
+                            "Path to the .xcodeproj file. Uses session default if not specified.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
+                            "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to build. Uses session default if not specified."
+                            "The scheme to build. Uses session default if not specified.",
                         ),
                     ]),
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device UDID. Uses session default if not specified."
+                            "Device UDID. Uses session default if not specified.",
                         ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."
+                            "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments
+            from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let device = try await sessionManager.resolveDevice(from: arguments)
@@ -75,7 +75,7 @@ public struct BuildDeviceTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 destination: destination,
-                configuration: configuration
+                configuration: configuration,
             )
 
             let buildResult = ErrorExtractor.parseBuildOutput(result.output)
@@ -83,8 +83,8 @@ public struct BuildDeviceTool: Sendable {
             if result.succeeded || buildResult.status == "success" {
                 return CallTool.Result(
                     content: [
-                        .text("Build succeeded for scheme '\(scheme)' on device '\(device)'")
-                    ]
+                        .text("Build succeeded for scheme '\(scheme)' on device '\(device)'"),
+                    ],
                 )
             } else {
                 let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)

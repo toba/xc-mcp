@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ListSwiftPackagesTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,12 +21,12 @@ public struct ListSwiftPackagesTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
-                    ])
+                    ]),
                 ]),
                 "required": .array([.string("project_path")]),
-            ])
+            ]),
         )
     }
 
@@ -51,7 +51,7 @@ public struct ListSwiftPackagesTool: Sendable {
             // List remote packages
             for remotePackage in project.remotePackages {
                 let requirement = formatVersionRequirement(
-                    remotePackage.versionRequirement ?? .exact("unknown")
+                    remotePackage.versionRequirement ?? .exact("unknown"),
                 )
                 let url = remotePackage.repositoryURL ?? "unknown"
                 packages.append("📦 \(url) (\(requirement))")
@@ -65,42 +65,42 @@ public struct ListSwiftPackagesTool: Sendable {
             if packages.isEmpty {
                 return CallTool.Result(
                     content: [
-                        .text("No Swift Package dependencies found in project")
-                    ]
+                        .text("No Swift Package dependencies found in project"),
+                    ],
                 )
             }
 
             let packageList = packages.joined(separator: "\n")
             return CallTool.Result(
                 content: [
-                    .text("Swift Package dependencies:\n\(packageList)")
-                ]
+                    .text("Swift Package dependencies:\n\(packageList)"),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to list Swift Packages in Xcode project: \(error.localizedDescription)"
+                "Failed to list Swift Packages in Xcode project: \(error.localizedDescription)",
             )
         }
     }
 
     private func formatVersionRequirement(
-        _ requirement: XCRemoteSwiftPackageReference.VersionRequirement
+        _ requirement: XCRemoteSwiftPackageReference.VersionRequirement,
     )
         -> String
     {
         switch requirement {
-        case let .exact(version):
-            return "exact: \(version)"
-        case let .upToNextMajorVersion(version):
-            return "from: \(version)"
-        case let .upToNextMinorVersion(version):
-            return "upToNextMinor: \(version)"
-        case let .range(from, to):
-            return "range: \(from) - \(to)"
-        case let .branch(branch):
-            return "branch: \(branch)"
-        case let .revision(revision):
-            return "revision: \(revision)"
+            case let .exact(version):
+                return "exact: \(version)"
+            case let .upToNextMajorVersion(version):
+                return "from: \(version)"
+            case let .upToNextMinorVersion(version):
+                return "upToNextMinor: \(version)"
+            case let .range(from, to):
+                return "range: \(from) - \(to)"
+            case let .branch(branch):
+                return "branch: \(branch)"
+            case let .revision(revision):
+                return "revision: \(revision)"
         }
     }
 }

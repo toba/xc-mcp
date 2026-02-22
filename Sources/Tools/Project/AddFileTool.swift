@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 /// MCP tool for adding files to an Xcode project.
 ///
@@ -29,19 +29,19 @@ public struct AddFileTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "file_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the file to add (relative to project root or absolute)"
+                            "Path to the file to add (relative to project root or absolute)",
                         ),
                     ]),
                     "group_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the group to add the file to (optional, defaults to main group)"
+                            "Name of the group to add the file to (optional, defaults to main group)",
                         ),
                     ]),
                     "target_name": .object([
@@ -50,7 +50,7 @@ public struct AddFileTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("file_path")]),
-            ])
+            ]),
         )
     }
 
@@ -61,7 +61,7 @@ public struct AddFileTool: Sendable {
     /// - Throws: MCPError if required parameters are missing or file addition fails.
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(filePath) = arguments["file_path"]
+              case let .string(filePath) = arguments["file_path"]
         else {
             throw MCPError.invalidParams("project_path and file_path are required")
         }
@@ -98,7 +98,7 @@ public struct AddFileTool: Sendable {
             let fileReference = PBXFileReference(
                 sourceTree: .group,
                 name: fileName,
-                path: relativePath
+                path: relativePath,
             )
             xcodeproj.pbxproj.add(object: fileReference)
 
@@ -116,7 +116,7 @@ public struct AddFileTool: Sendable {
             } else {
                 // Use main group
                 guard let project = try xcodeproj.pbxproj.rootProject(),
-                    let mainGroup = project.mainGroup
+                      let mainGroup = project.mainGroup
                 else {
                     throw MCPError.internalError("Main group not found in project")
                 }
@@ -191,12 +191,12 @@ public struct AddFileTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Successfully added file '\(fileName)'\(targetInfo)\(groupInfo)")
-                ]
+                    .text("Successfully added file '\(fileName)'\(targetInfo)\(groupInfo)"),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add file to Xcode project: \(error.localizedDescription)"
+                "Failed to add file to Xcode project: \(error.localizedDescription)",
             )
         }
     }

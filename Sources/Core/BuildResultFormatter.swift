@@ -73,7 +73,7 @@ public enum BuildResultFormatter {
         // Coverage summary
         if let coverage = result.coverage {
             parts.append(
-                String(format: "Coverage: %.1f%%", coverage.lineCoverage)
+                String(format: "Coverage: %.1f%%", coverage.lineCoverage),
             )
         }
 
@@ -94,17 +94,17 @@ public enum BuildResultFormatter {
         var details: [String] = []
         if result.summary.errors > 0 {
             details.append(
-                "\(result.summary.errors) error\(result.summary.errors == 1 ? "" : "s")"
+                "\(result.summary.errors) error\(result.summary.errors == 1 ? "" : "s")",
             )
         }
         if result.summary.linkerErrors > 0 {
             details.append(
-                "\(result.summary.linkerErrors) linker error\(result.summary.linkerErrors == 1 ? "" : "s")"
+                "\(result.summary.linkerErrors) linker error\(result.summary.linkerErrors == 1 ? "" : "s")",
             )
         }
         if result.summary.warnings > 0 {
             details.append(
-                "\(result.summary.warnings) warning\(result.summary.warnings == 1 ? "" : "s")"
+                "\(result.summary.warnings) warning\(result.summary.warnings == 1 ? "" : "s")",
             )
         }
         if let buildTime = result.summary.buildTime {
@@ -123,7 +123,7 @@ public enum BuildResultFormatter {
         let passed = result.summary.passedTests ?? 0
         let failed = result.summary.failedTests
 
-        if failed == 0 && passed > 0 {
+        if failed == 0, passed > 0 {
             header = "Tests passed"
         } else if failed > 0 {
             header = "Tests failed"
@@ -155,7 +155,7 @@ public enum BuildResultFormatter {
         var lines = ["Errors:"]
         for error in errors {
             lines.append(
-                "  \(formatLocation(file: error.file, line: error.line, column: error.column))\(error.message)"
+                "  \(formatLocation(file: error.file, line: error.line, column: error.column))\(error.message)",
             )
         }
         return lines.joined(separator: "\n")
@@ -188,7 +188,7 @@ public enum BuildResultFormatter {
         var lines = ["Warnings:"]
         for warning in warnings {
             lines.append(
-                "  \(formatLocation(file: warning.file, line: warning.line, column: warning.column))\(warning.message)"
+                "  \(formatLocation(file: warning.file, line: warning.line, column: warning.column))\(warning.message)",
             )
         }
         return lines.joined(separator: "\n")

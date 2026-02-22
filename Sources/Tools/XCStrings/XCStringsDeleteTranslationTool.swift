@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsDeleteTranslationTool: Sendable {
     private let pathUtility: PathUtility
@@ -30,7 +30,7 @@ public struct XCStringsDeleteTranslationTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("key"), .string("language")]),
-            ])
+            ]),
         )
     }
 
@@ -45,7 +45,7 @@ public struct XCStringsDeleteTranslationTool: Sendable {
             try await parser.deleteTranslation(key: key, language: language)
 
             return CallTool.Result(
-                content: [.text("Translation for '\(language)' deleted successfully")]
+                content: [.text("Translation for '\(language)' deleted successfully")],
             )
         } catch let error as XCStringsError {
             throw error.toMCPError()

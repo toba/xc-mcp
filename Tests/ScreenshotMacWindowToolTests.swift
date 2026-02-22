@@ -1,6 +1,5 @@
 import MCP
 import Testing
-
 @testable import XCMCPTools
 
 @Suite("ScreenshotMacWindowTool Tests")
@@ -21,7 +20,7 @@ struct ScreenshotMacWindowToolTests {
         let schema = tool.tool()
 
         guard case let .object(inputSchema) = schema.inputSchema,
-            case let .object(properties) = inputSchema["properties"]
+              case let .object(properties) = inputSchema["properties"]
         else {
             Issue.record("Expected object input schema with properties")
             return

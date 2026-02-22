@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugAttachSimTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -10,7 +10,7 @@ public struct DebugAttachSimTool: Sendable {
     public init(
         lldbRunner: LLDBRunner = LLDBRunner(),
         simctlRunner: SimctlRunner = SimctlRunner(),
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
     ) {
         self.lldbRunner = lldbRunner
         self.simctlRunner = simctlRunner
@@ -21,31 +21,31 @@ public struct DebugAttachSimTool: Sendable {
         Tool(
             name: "debug_attach_sim",
             description:
-                "Attach LLDB debugger to a running app on a simulator.",
+            "Attach LLDB debugger to a running app on a simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app to debug."
+                            "Bundle identifier of the app to debug.",
                         ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID to attach to. Alternative to bundle_id."
+                            "Process ID to attach to. Alternative to bundle_id.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -66,7 +66,7 @@ public struct DebugAttachSimTool: Sendable {
                 simulator = sessionSimulator
             } else {
                 throw MCPError.invalidParams(
-                    "simulator is required when using bundle_id. Set it with set_session_defaults or pass it directly."
+                    "simulator is required when using bundle_id. Set it with set_session_defaults or pass it directly.",
                 )
             }
 
@@ -85,7 +85,7 @@ public struct DebugAttachSimTool: Sendable {
                 // Register the bundle ID mapping
                 if let bundleId = arguments.getString("bundle_id") {
                     await LLDBSessionManager.shared.registerBundleId(
-                        bundleId, forPID: targetPID
+                        bundleId, forPID: targetPID,
                     )
                 }
 
@@ -101,7 +101,7 @@ public struct DebugAttachSimTool: Sendable {
                 ])
             } else {
                 throw MCPError.internalError(
-                    "Failed to attach to process: \(result.errorOutput)"
+                    "Failed to attach to process: \(result.errorOutput)",
                 )
             }
         } catch {
@@ -114,11 +114,11 @@ public struct DebugAttachSimTool: Sendable {
         // First, try to get the app container to verify it's installed
         do {
             _ = try await simctlRunner.getAppContainer(
-                udid: simulator, bundleId: bundleId, container: "app"
+                udid: simulator, bundleId: bundleId, container: "app",
             )
         } catch {
             throw MCPError.invalidParams(
-                "App '\(bundleId)' not found on simulator '\(simulator)'"
+                "App '\(bundleId)' not found on simulator '\(simulator)'",
             )
         }
 
@@ -128,11 +128,11 @@ public struct DebugAttachSimTool: Sendable {
 
         guard
             let pidString = output.trimmingCharacters(in: .whitespacesAndNewlines)
-                .components(separatedBy: .newlines).first,
+            .components(separatedBy: .newlines).first,
             let pid = Int32(pidString)
         else {
             throw MCPError.internalError(
-                "App '\(bundleId)' is not running on simulator '\(simulator)'. Launch it first with launch_app_sim."
+                "App '\(bundleId)' is not running on simulator '\(simulator)'. Launch it first with launch_app_sim.",
             )
         }
 

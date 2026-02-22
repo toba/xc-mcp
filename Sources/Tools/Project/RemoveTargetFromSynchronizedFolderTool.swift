@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
     private let pathUtility: PathUtility
@@ -15,43 +15,43 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
         Tool(
             name: "remove_target_from_synchronized_folder",
             description:
-                "Remove a target's reference to a synchronized folder (unlink a shared folder from a target)",
+            "Remove a target's reference to a synchronized folder (unlink a shared folder from a target)",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "folder_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path of the synchronized folder within the project (e.g., 'Sources' or 'App/Sources')"
+                            "Path of the synchronized folder within the project (e.g., 'Sources' or 'App/Sources')",
                         ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target to unlink from the synchronized folder"
+                            "Name of the target to unlink from the synchronized folder",
                         ),
                     ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("folder_path"), .string("target_name"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(folderPath) = arguments["folder_path"],
-            case let .string(targetName) = arguments["target_name"]
+              case let .string(folderPath) = arguments["folder_path"],
+              case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, folder_path, and target_name are required"
+                "project_path, folder_path, and target_name are required",
             )
         }
 
@@ -62,7 +62,7 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
 
             // Find the synchronized folder
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                let mainGroup = project.mainGroup
+                  let mainGroup = project.mainGroup
             else {
                 throw MCPError.internalError("Main group not found in project")
             }
@@ -70,7 +70,7 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
             guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
             else {
                 throw MCPError.invalidParams(
-                    "Synchronized folder '\(folderPath)' not found in project"
+                    "Synchronized folder '\(folderPath)' not found in project",
                 )
             }
 
@@ -85,14 +85,14 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
 
             // Check if target actually references this sync group
             guard let syncGroups = target.fileSystemSynchronizedGroups,
-                syncGroups.contains(where: { $0 === syncGroup })
+                  syncGroups.contains(where: { $0 === syncGroup })
             else {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Target '\(targetName)' does not reference synchronized folder '\(folderPath)'"
-                        )
-                    ]
+                            "Target '\(targetName)' does not reference synchronized folder '\(folderPath)'",
+                        ),
+                    ],
                 )
             }
 
@@ -128,15 +128,15 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully removed target '\(targetName)' from synchronized folder '\(folderPath)'"
-                    )
-                ]
+                        "Successfully removed target '\(targetName)' from synchronized folder '\(folderPath)'",
+                    ),
+                ],
             )
         } catch let error as MCPError {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to remove target from synchronized folder: \(error.localizedDescription)"
+                "Failed to remove target from synchronized folder: \(error.localizedDescription)",
             )
         }
     }

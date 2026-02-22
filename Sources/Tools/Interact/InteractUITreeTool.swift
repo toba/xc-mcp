@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct InteractUITreeTool: Sendable {
     private let interactRunner: InteractRunner
@@ -13,9 +13,10 @@ public struct InteractUITreeTool: Sendable {
         Tool(
             name: "interact_ui_tree",
             description:
-                "Get the UI element tree of a macOS application using the Accessibility API. "
+            "Get the UI element tree of a macOS application using the Accessibility API. "
                 + "Returns a hierarchical tree of UI elements with assigned IDs for use with other interact_ tools. "
-                + "Requires Accessibility permission in System Settings > Privacy & Security > Accessibility.",
+                +
+                "Requires Accessibility permission in System Settings > Privacy & Security > Accessibility.",
             inputSchema: .object(
                 [
                     "type": .string("object"),
@@ -24,14 +25,14 @@ public struct InteractUITreeTool: Sendable {
                             "max_depth": .object([
                                 "type": .string("integer"),
                                 "description": .string(
-                                    "Maximum depth to traverse the element tree. Default 3."
+                                    "Maximum depth to traverse the element tree. Default 3.",
                                 ),
-                            ])
-                        ]) { _, new in new }
+                            ]),
+                        ]) { _, new in new },
                     ),
                     "required": .array([]),
-                ]
-            )
+                ],
+            ),
         )
     }
 

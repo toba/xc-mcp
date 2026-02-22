@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct SwiftPackageCleanTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -15,19 +15,19 @@ public struct SwiftPackageCleanTool: Sendable {
         Tool(
             name: "swift_package_clean",
             description:
-                "Clean build artifacts for a Swift package. Removes the .build directory.",
+            "Clean build artifacts for a Swift package. Removes the .build directory.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "package_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified."
+                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
                         ),
-                    ])
+                    ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -40,17 +40,17 @@ public struct SwiftPackageCleanTool: Sendable {
             packagePath = sessionPackagePath
         } else {
             throw MCPError.invalidParams(
-                "package_path is required. Set it with set_session_defaults or pass it directly."
+                "package_path is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift"
+            "Package.swift",
         ).path
         guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
             throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path."
+                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
             )
         }
 
@@ -59,7 +59,7 @@ public struct SwiftPackageCleanTool: Sendable {
 
             if result.succeeded {
                 return CallTool.Result(
-                    content: [.text("Package cleaned successfully at \(packagePath)")]
+                    content: [.text("Package cleaned successfully at \(packagePath)")],
                 )
             } else {
                 throw MCPError.internalError("Clean failed:\n\(result.output)")

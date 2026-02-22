@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct GetAppBundleIdTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -8,7 +8,7 @@ public struct GetAppBundleIdTool: Sendable {
 
     public init(
         xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
@@ -18,37 +18,37 @@ public struct GetAppBundleIdTool: Sendable {
         Tool(
             name: "get_app_bundle_id",
             description:
-                "Get the bundle identifier for an iOS/tvOS/watchOS app target from build settings.",
+            "Get the bundle identifier for an iOS/tvOS/watchOS app target from build settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."
+                            "Path to the .xcodeproj file. Uses session default if not specified.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
+                            "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to get the bundle ID for. Uses session default if not specified."
+                            "The scheme to get the bundle ID for. Uses session default if not specified.",
                         ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."
+                            "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -76,7 +76,7 @@ public struct GetAppBundleIdTool: Sendable {
             scheme = sessionScheme
         } else {
             throw MCPError.invalidParams(
-                "scheme is required. Set it with set_session_defaults or pass it directly."
+                "scheme is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -91,9 +91,9 @@ public struct GetAppBundleIdTool: Sendable {
         }
 
         // Validate we have either project or workspace
-        if projectPath == nil && workspacePath == nil {
+        if projectPath == nil, workspacePath == nil {
             throw MCPError.invalidParams(
-                "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly."
+                "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -102,13 +102,13 @@ public struct GetAppBundleIdTool: Sendable {
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
-                configuration: configuration
+                configuration: configuration,
             )
 
             if result.succeeded {
                 guard let bundleId = extractBundleId(from: result.stdout) else {
                     throw MCPError.internalError(
-                        "Could not find PRODUCT_BUNDLE_IDENTIFIER in build settings for scheme '\(scheme)'"
+                        "Could not find PRODUCT_BUNDLE_IDENTIFIER in build settings for scheme '\(scheme)'",
                     )
                 }
 
@@ -123,7 +123,7 @@ public struct GetAppBundleIdTool: Sendable {
                 return CallTool.Result(content: [.text(output)])
             } else {
                 throw MCPError.internalError(
-                    "Failed to get build settings: \(result.errorOutput)"
+                    "Failed to get build settings: \(result.errorOutput)",
                 )
             }
         } catch {

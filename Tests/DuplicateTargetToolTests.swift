@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("DuplicateTargetTool Tests")
@@ -51,7 +50,7 @@ struct DuplicateTargetToolTests {
     func duplicateExistingTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -62,7 +61,7 @@ struct DuplicateTargetToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Duplicate the target
@@ -99,7 +98,7 @@ struct DuplicateTargetToolTests {
     func duplicateTargetWithNewBundleIdentifier() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -110,7 +109,7 @@ struct DuplicateTargetToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Duplicate the target with new bundle identifier
@@ -137,7 +136,7 @@ struct DuplicateTargetToolTests {
         let newTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppStaging" }
         let buildConfig = newTarget?.buildConfigurationList?.buildConfigurations.first
         #expect(
-            buildConfig?.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.test.app.staging"
+            buildConfig?.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.test.app.staging",
         )
         #expect(buildConfig?.buildSettings["PRODUCT_NAME"]?.stringValue == "AppStaging")
     }
@@ -146,7 +145,7 @@ struct DuplicateTargetToolTests {
     func duplicateNonExistentTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -179,7 +178,7 @@ struct DuplicateTargetToolTests {
     func duplicateToExistingTargetName() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -190,7 +189,7 @@ struct DuplicateTargetToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add another target
@@ -224,7 +223,7 @@ struct DuplicateTargetToolTests {
     func duplicateTargetWithDependencies() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -235,7 +234,7 @@ struct DuplicateTargetToolTests {
         // Create a test project with targets
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a framework target

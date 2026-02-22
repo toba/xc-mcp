@@ -1,7 +1,6 @@
-import Foundation
 import Testing
 import XCMCPCore
-
+import Foundation
 @testable import XCMCPTools
 
 struct PathUtilityTests {
@@ -51,7 +50,7 @@ struct PathUtilityTests {
     @Test func dotDotPathResolution() throws {
         // Create a temporary subdirectory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         let basePath = tempDir.appendingPathComponent("projects").path
@@ -64,7 +63,7 @@ struct PathUtilityTests {
         let pathUtility = PathUtility(basePath: basePath)
 
         // This should resolve to basePath/MyApp.xcodeproj
-        let relativePath = "MyApp.xcodeproj"  // Use simple relative path instead of ./
+        let relativePath = "MyApp.xcodeproj" // Use simple relative path instead of ./
         let resolved = try pathUtility.resolvePath(from: relativePath)
 
         #expect(resolved == "\(basePath)/MyApp.xcodeproj")

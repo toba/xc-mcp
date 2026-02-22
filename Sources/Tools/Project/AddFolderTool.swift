@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct AddFolderTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,36 +21,36 @@ public struct AddFolderTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "folder_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the folder to add (relative to project root or absolute)"
+                            "Path to the folder to add (relative to project root or absolute)",
                         ),
                     ]),
                     "group_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the group to add the folder to (optional, defaults to main group)"
+                            "Name of the group to add the folder to (optional, defaults to main group)",
                         ),
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the target to add the folder to (optional)"
+                            "Name of the target to add the folder to (optional)",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("folder_path")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(folderPath) = arguments["folder_path"]
+              case let .string(folderPath) = arguments["folder_path"]
         else {
             throw MCPError.invalidParams("project_path and folder_path are required")
         }
@@ -80,7 +80,7 @@ public struct AddFolderTool: Sendable {
             // Verify that the path is actually a directory
             var isDirectory: ObjCBool = false
             if !FileManager.default.fileExists(
-                atPath: resolvedFolderPath, isDirectory: &isDirectory
+                atPath: resolvedFolderPath, isDirectory: &isDirectory,
             ) {
                 throw MCPError.invalidParams("Folder does not exist at path: \(folderPath)")
             }
@@ -97,7 +97,7 @@ public struct AddFolderTool: Sendable {
                 let pathComponents = groupName.split(separator: "/").map(String.init)
 
                 guard let project = try xcodeproj.pbxproj.rootProject(),
-                    let mainGroup = project.mainGroup
+                      let mainGroup = project.mainGroup
                 else {
                     throw MCPError.internalError("Main group not found in project")
                 }
@@ -105,12 +105,12 @@ public struct AddFolderTool: Sendable {
                 var currentGroup: PBXGroup = mainGroup
                 for component in pathComponents {
                     if let childGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                        where: { $0.name == component || $0.path == component }
+                        where: { $0.name == component || $0.path == component },
                     ) {
                         currentGroup = childGroup
                     } else {
                         throw MCPError.invalidParams(
-                            "Group '\(groupName)' not found in project (failed at '\(component)')"
+                            "Group '\(groupName)' not found in project (failed at '\(component)')",
                         )
                     }
                 }
@@ -118,7 +118,7 @@ public struct AddFolderTool: Sendable {
             } else {
                 // Use main group
                 guard let project = try xcodeproj.pbxproj.rootProject(),
-                    let mainGroup = project.mainGroup
+                      let mainGroup = project.mainGroup
                 else {
                     throw MCPError.internalError("Main group not found in project")
                 }
@@ -155,7 +155,7 @@ public struct AddFolderTool: Sendable {
             let folderReference = PBXFileSystemSynchronizedRootGroup(
                 sourceTree: .group,
                 path: relativePath,
-                name: folderName
+                name: folderName,
             )
             xcodeproj.pbxproj.add(object: folderReference)
 
@@ -190,13 +190,13 @@ public struct AddFolderTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully added folder reference '\(folderName)'\(targetInfo)\(groupInfo)"
-                    )
-                ]
+                        "Successfully added folder reference '\(folderName)'\(targetInfo)\(groupInfo)",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add folder to Xcode project: \(error.localizedDescription)"
+                "Failed to add folder to Xcode project: \(error.localizedDescription)",
             )
         }
     }

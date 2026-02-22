@@ -60,7 +60,7 @@ public struct SwiftRunner: Sendable {
                 let result = SwiftResult(
                     exitCode: process.terminationStatus,
                     stdout: stdout,
-                    stderr: stderr
+                    stderr: stderr,
                 )
                 continuation.resume(returning: result)
             } catch {
@@ -79,7 +79,7 @@ public struct SwiftRunner: Sendable {
     public func build(
         packagePath: String,
         configuration: String = "debug",
-        product: String? = nil
+        product: String? = nil,
     ) async throws -> SwiftResult {
         var args = ["build", "-c", configuration]
         if let product {
@@ -96,7 +96,7 @@ public struct SwiftRunner: Sendable {
     /// - Returns: The test result containing exit code and output.
     public func test(
         packagePath: String,
-        filter: String? = nil
+        filter: String? = nil,
     ) async throws -> SwiftResult {
         var args = ["test"]
         if let filter {
@@ -115,7 +115,7 @@ public struct SwiftRunner: Sendable {
     public func runExecutable(
         packagePath: String,
         executableName: String? = nil,
-        arguments: [String] = []
+        arguments: [String] = [],
     ) async throws -> SwiftResult {
         var args = ["run"]
         if let executableName {

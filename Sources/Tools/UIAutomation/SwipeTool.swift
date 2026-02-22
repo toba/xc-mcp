@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct SwipeTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,51 +15,51 @@ public struct SwipeTool: Sendable {
         Tool(
             name: "swipe",
             description:
-                "Simulate a swipe gesture on a simulator screen.",
+            "Simulate a swipe gesture on a simulator screen.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "start_x": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Starting X coordinate."
+                            "Starting X coordinate.",
                         ),
                     ]),
                     "start_y": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Starting Y coordinate."
+                            "Starting Y coordinate.",
                         ),
                     ]),
                     "end_x": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Ending X coordinate."
+                            "Ending X coordinate.",
                         ),
                     ]),
                     "end_y": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Ending Y coordinate."
+                            "Ending Y coordinate.",
                         ),
                     ]),
                     "duration": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Duration of the swipe in seconds. Defaults to 0.5."
+                            "Duration of the swipe in seconds. Defaults to 0.5.",
                         ),
                     ]),
                 ]),
                 "required": .array([
                     .string("start_x"), .string("start_y"), .string("end_x"), .string("end_y"),
                 ]),
-            ])
+            ]),
         )
     }
 
@@ -72,7 +72,7 @@ public struct SwipeTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -129,20 +129,20 @@ public struct SwipeTool: Sendable {
                     "io", simulator, "swipe",
                     "\(startX)", "\(startY)", "\(endX)", "\(endY)",
                     "--duration", "\(duration)",
-                ]
+                ],
             )
 
             if result.succeeded {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Swiped from (\(Int(startX)), \(Int(startY))) to (\(Int(endX)), \(Int(endY))) on simulator '\(simulator)'"
-                        )
-                    ]
+                            "Swiped from (\(Int(startX)), \(Int(startY))) to (\(Int(endX)), \(Int(endY))) on simulator '\(simulator)'",
+                        ),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to swipe: \(result.errorOutput)"
+                    "Failed to swipe: \(result.errorOutput)",
                 )
             }
         } catch {

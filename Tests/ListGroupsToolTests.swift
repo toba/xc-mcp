@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 struct ListGroupsToolTests {
@@ -14,8 +13,8 @@ struct ListGroupsToolTests {
     init() {
         tempDir =
             FileManager.default.temporaryDirectory
-            .appendingPathComponent("ListGroupsToolTests-\(UUID().uuidString)")
-            .path
+                .appendingPathComponent("ListGroupsToolTests-\(UUID().uuidString)")
+                .path
         pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
@@ -27,7 +26,8 @@ struct ListGroupsToolTests {
         #expect(tool.tool().name == "list_groups")
         #expect(
             tool.tool().description
-                == "List all groups, folder references, and file system synchronized groups in an Xcode project"
+                ==
+                "List all groups, folder references, and file system synchronized groups in an Xcode project",
         )
 
         let schema = tool.tool().inputSchema
@@ -55,7 +55,7 @@ struct ListGroupsToolTests {
         // Invalid parameter types
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
-                "project_path": Value.bool(true)
+                "project_path": Value.bool(true),
             ])
         }
     }
@@ -70,13 +70,13 @@ struct ListGroupsToolTests {
 
         // Execute the tool
         let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string)
+            "project_path": Value.string(projectPath.string),
         ])
 
         // Verify the result
         if case let .text(message) = result.content.first {
             #expect(
-                message.contains("Groups, folder references, and synchronized groups in project:")
+                message.contains("Groups, folder references, and synchronized groups in project:"),
             )
             // The default project should contain at least a Products group
             #expect(message.contains("Products"))
@@ -119,13 +119,13 @@ struct ListGroupsToolTests {
 
         // Execute the tool
         let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string)
+            "project_path": Value.string(projectPath.string),
         ])
 
         // Verify the result
         if case let .text(message) = result.content.first {
             #expect(
-                message.contains("Groups, folder references, and synchronized groups in project:")
+                message.contains("Groups, folder references, and synchronized groups in project:"),
             )
             #expect(message.contains("- TopLevel"))
             #expect(message.contains("- TopLevel/Nested"))
@@ -158,7 +158,7 @@ struct ListGroupsToolTests {
         pbxproj.add(object: buildConfig)
 
         let configList = XCConfigurationList(
-            buildConfigurations: [buildConfig], defaultConfigurationName: "Debug"
+            buildConfigurations: [buildConfig], defaultConfigurationName: "Debug",
         )
         pbxproj.add(object: configList)
 
@@ -172,7 +172,7 @@ struct ListGroupsToolTests {
             mainGroup: mainGroup,
             developmentRegion: "en",
             knownRegions: ["en", "Base"],
-            productsGroup: productsGroup
+            productsGroup: productsGroup,
         )
         pbxproj.add(object: project)
         pbxproj.rootObject = project
@@ -185,13 +185,13 @@ struct ListGroupsToolTests {
 
         // Execute the tool
         let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string)
+            "project_path": Value.string(projectPath.string),
         ])
 
         // Verify the result
         if case let .text(message) = result.content.first {
             #expect(
-                message.contains("Groups, folder references, and synchronized groups in project:")
+                message.contains("Groups, folder references, and synchronized groups in project:"),
             )
             #expect(message.contains("- Products"))
         } else {
@@ -206,7 +206,7 @@ struct ListGroupsToolTests {
         // Try to list groups from a non-existent project
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
-                "project_path": Value.string("/path/that/does/not/exist.xcodeproj")
+                "project_path": Value.string("/path/that/does/not/exist.xcodeproj"),
             ])
         }
     }
@@ -233,13 +233,13 @@ struct ListGroupsToolTests {
 
         // Execute the tool
         let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string)
+            "project_path": Value.string(projectPath.string),
         ])
 
         // Verify the result
         if case let .text(message) = result.content.first {
             #expect(
-                message.contains("Groups, folder references, and synchronized groups in project:")
+                message.contains("Groups, folder references, and synchronized groups in project:"),
             )
             #expect(message.contains("- Sources"))
         } else {

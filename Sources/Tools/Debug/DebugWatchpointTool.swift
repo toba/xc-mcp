@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugWatchpointTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -13,55 +13,55 @@ public struct DebugWatchpointTool: Sendable {
         Tool(
             name: "debug_watchpoint",
             description:
-                "Manage watchpoints (data breakpoints) on a debugged process. Add, remove, or list watchpoints.",
+            "Manage watchpoints (data breakpoints) on a debugged process. Add, remove, or list watchpoints.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."
+                            "Process ID of the debugged process.",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."
+                            "Bundle identifier of the app (uses registered session).",
                         ),
                     ]),
                     "action": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Action to perform: 'add', 'remove', or 'list'."
+                            "Action to perform: 'add', 'remove', or 'list'.",
                         ),
                     ]),
                     "variable": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Variable name to watch (for add action)."
+                            "Variable name to watch (for add action).",
                         ),
                     ]),
                     "address": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Memory address in hex to watch (for add action, alternative to variable)."
+                            "Memory address in hex to watch (for add action, alternative to variable).",
                         ),
                     ]),
                     "watchpoint_id": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Watchpoint ID to remove (for remove action)."
+                            "Watchpoint ID to remove (for remove action).",
                         ),
                     ]),
                     "condition": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Condition expression for the watchpoint (for add action)."
+                            "Condition expression for the watchpoint (for add action).",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("action")]),
-            ])
+            ]),
         )
     }
 
@@ -74,7 +74,7 @@ public struct DebugWatchpointTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required"
+                "Either pid or bundle_id (with active session) is required",
             )
         }
 
@@ -91,19 +91,19 @@ public struct DebugWatchpointTool: Sendable {
                 variable: variable,
                 address: address,
                 watchpointId: watchpointId,
-                condition: condition
+                condition: condition,
             )
 
             var message: String
             switch action {
-            case "add":
-                message = "Watchpoint added:\n\n\(result.output)"
-            case "remove":
-                message = "Watchpoint removed:\n\n\(result.output)"
-            case "list":
-                message = "Watchpoints:\n\n\(result.output)"
-            default:
-                message = result.output
+                case "add":
+                    message = "Watchpoint added:\n\n\(result.output)"
+                case "remove":
+                    message = "Watchpoint removed:\n\n\(result.output)"
+                case "list":
+                    message = "Watchpoints:\n\n\(result.output)"
+                default:
+                    message = result.output
             }
 
             return CallTool.Result(content: [.text(message)])

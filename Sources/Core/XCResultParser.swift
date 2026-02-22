@@ -49,7 +49,7 @@ public enum XCResultParser {
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
             guard !data.isEmpty,
-                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { return nil }
             return json
         } catch {
@@ -66,7 +66,7 @@ public enum XCResultParser {
         guard let testNodes = json["testNodes"] as? [[String: Any]] else {
             return TestResults(
                 failures: [], passedCount: 0, failedCount: 0,
-                duration: nil, testOutput: nil
+                duration: nil, testOutput: nil,
             )
         }
 
@@ -82,7 +82,7 @@ public enum XCResultParser {
             from: testNodes,
             failures: &failures,
             passedCount: &passedCount,
-            failedCount: &failedCount
+            failedCount: &failedCount,
         )
 
         // Collect test output from attachment nodes
@@ -93,7 +93,7 @@ public enum XCResultParser {
             passedCount: passedCount,
             failedCount: failedCount,
             duration: totalDuration,
-            testOutput: testOutput
+            testOutput: testOutput,
         )
     }
 
@@ -101,7 +101,7 @@ public enum XCResultParser {
         from nodes: [[String: Any]],
         failures: inout [FailedTest],
         passedCount: inout Int,
-        failedCount: inout Int
+        failedCount: inout Int,
     ) {
         for node in nodes {
             let nodeType = node["nodeType"] as? String ?? ""
@@ -124,7 +124,7 @@ public enum XCResultParser {
                     from: children,
                     failures: &failures,
                     passedCount: &passedCount,
-                    failedCount: &failedCount
+                    failedCount: &failedCount,
                 )
             }
         }
@@ -136,7 +136,7 @@ public enum XCResultParser {
 
         guard let children = testCase["children"] as? [[String: Any]] else {
             return FailedTest(
-                test: testName, message: "Test failed", file: nil, line: nil, duration: duration
+                test: testName, message: "Test failed", file: nil, line: nil, duration: duration,
             )
         }
 
@@ -149,7 +149,7 @@ public enum XCResultParser {
             from: children,
             messages: &messages,
             file: &file,
-            line: &line
+            line: &line,
         )
 
         let message = messages.isEmpty ? "Test failed" : messages.joined(separator: "; ")
@@ -159,7 +159,7 @@ public enum XCResultParser {
             message: message,
             file: file,
             line: line,
-            duration: duration
+            duration: duration,
         )
     }
 
@@ -167,7 +167,7 @@ public enum XCResultParser {
         from nodes: [[String: Any]],
         messages: inout [String],
         file: inout String?,
-        line: inout Int?
+        line: inout Int?,
     ) {
         for node in nodes {
             let nodeType = node["nodeType"] as? String ?? ""
@@ -195,7 +195,7 @@ public enum XCResultParser {
                     from: children,
                     messages: &messages,
                     file: &file,
-                    line: &line
+                    line: &line,
                 )
             }
         }
@@ -209,7 +209,7 @@ public enum XCResultParser {
 
     private static func collectOutputNodes(
         from nodes: [[String: Any]],
-        outputs: inout [String]
+        outputs: inout [String],
     ) {
         for node in nodes {
             let nodeType = node["nodeType"] as? String ?? ""
@@ -217,7 +217,7 @@ public enum XCResultParser {
             // Attachments with "Standard Output" or similar names contain test stdout
             if nodeType == "Attachment" {
                 if let name = node["name"] as? String,
-                    name.localizedCaseInsensitiveContains("output")
+                   name.localizedCaseInsensitiveContains("output")
                 {
                     if let details = node["details"] as? String, !details.isEmpty {
                         outputs.append(details)

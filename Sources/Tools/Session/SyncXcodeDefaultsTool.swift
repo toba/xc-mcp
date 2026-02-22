@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct SyncXcodeDefaultsTool: Sendable {
     private let sessionManager: SessionManager
@@ -13,25 +13,25 @@ public struct SyncXcodeDefaultsTool: Sendable {
         Tool(
             name: "sync_xcode_defaults",
             description:
-                "Read the active scheme and run destination from Xcode's IDE state and apply them as session defaults. Requires the project to have been opened in Xcode.",
+            "Read the active scheme and run destination from Xcode's IDE state and apply them as session defaults. Requires the project to have been opened in Xcode.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."
+                            "Path to the .xcodeproj file. Uses session default if not specified.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
+                            "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -53,20 +53,20 @@ public struct SyncXcodeDefaultsTool: Sendable {
         let targetPath = workspacePath ?? projectPath
         guard let targetPath else {
             throw MCPError.invalidParams(
-                "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly."
+                "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
         let state = XcodeStateReader.readState(projectOrWorkspacePath: targetPath)
 
-        if let error = state.error, state.scheme == nil && state.simulatorUDID == nil {
+        if let error = state.error, state.scheme == nil, state.simulatorUDID == nil {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Could not sync Xcode state: \(error)\n\nUse set_session_defaults to configure manually."
-                    )
+                        "Could not sync Xcode state: \(error)\n\nUse set_session_defaults to configure manually.",
+                    ),
                 ],
-                isError: true
+                isError: true,
             )
         }
 
@@ -86,7 +86,7 @@ public struct SyncXcodeDefaultsTool: Sendable {
         // Also ensure the project path is set
         let hasProjectPath = await sessionManager.projectPath != nil
         let hasWorkspacePath = await sessionManager.workspacePath != nil
-        if !hasProjectPath && !hasWorkspacePath {
+        if !hasProjectPath, !hasWorkspacePath {
             if targetPath.hasSuffix(".xcworkspace") {
                 await sessionManager.setDefaults(workspacePath: targetPath)
                 synced.append("Workspace: \(targetPath)")

@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugLLDBCommandTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -13,31 +13,31 @@ public struct DebugLLDBCommandTool: Sendable {
         Tool(
             name: "debug_lldb_command",
             description:
-                "Execute a custom LLDB command on a debugged process.",
+            "Execute a custom LLDB command on a debugged process.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."
+                            "Process ID of the debugged process.",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."
+                            "Bundle identifier of the app (uses registered session).",
                         ),
                     ]),
                     "command": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "LLDB command to execute (e.g., 'po self', 'expr myVar = 5')."
+                            "LLDB command to execute (e.g., 'po self', 'expr myVar = 5').",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("command")]),
-            ])
+            ]),
         )
     }
 
@@ -51,7 +51,7 @@ public struct DebugLLDBCommandTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required"
+                "Either pid or bundle_id (with active session) is required",
             )
         }
 

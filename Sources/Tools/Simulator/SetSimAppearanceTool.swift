@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct SetSimAppearanceTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,26 +15,26 @@ public struct SetSimAppearanceTool: Sendable {
         Tool(
             name: "set_sim_appearance",
             description:
-                "Set the appearance mode (light/dark) on a simulator.",
+            "Set the appearance mode (light/dark) on a simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "appearance": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Appearance mode: 'light' or 'dark'."
+                            "Appearance mode: 'light' or 'dark'.",
                         ),
                         "enum": .array([.string("light"), .string("dark")]),
                     ]),
                 ]),
                 "required": .array([.string("appearance")]),
-            ])
+            ]),
         )
     }
 
@@ -47,7 +47,7 @@ public struct SetSimAppearanceTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -59,26 +59,26 @@ public struct SetSimAppearanceTool: Sendable {
         let validAppearances = ["light", "dark"]
         guard validAppearances.contains(appearance.lowercased()) else {
             throw MCPError.invalidParams(
-                "Invalid appearance '\(appearance)'. Must be 'light' or 'dark'."
+                "Invalid appearance '\(appearance)'. Must be 'light' or 'dark'.",
             )
         }
 
         do {
             let result = try await simctlRunner.setAppearance(
-                udid: simulator, appearance: appearance.lowercased()
+                udid: simulator, appearance: appearance.lowercased(),
             )
 
             if result.succeeded {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Successfully set appearance to '\(appearance)' on simulator '\(simulator)'"
-                        )
-                    ]
+                            "Successfully set appearance to '\(appearance)' on simulator '\(simulator)'",
+                        ),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to set appearance: \(result.errorOutput)"
+                    "Failed to set appearance: \(result.errorOutput)",
                 )
             }
         } catch {

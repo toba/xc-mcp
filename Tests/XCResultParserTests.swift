@@ -1,7 +1,6 @@
-import Foundation
 import Testing
-
 @testable import XCMCPCore
+import Foundation
 
 @Suite("XCResultParser Tests")
 struct XCResultParserTests {
@@ -17,14 +16,14 @@ struct ErrorExtractorInfrastructureTests {
     @Test("Detects testmanagerd SIGSEGV crash")
     func managerdSIGSEGV() throws {
         let stderr = """
-            Testing started
-            testmanagerd received SIGSEGV: pointer authentication failure
-            """
+        Testing started
+        testmanagerd received SIGSEGV: pointer authentication failure
+        """
         let result = try ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
             context: "scheme 'Foo' on macOS",
-            stderr: stderr
+            stderr: stderr,
         )
         let text = result.content.compactMap {
             if case let .text(t) = $0 { return t }
@@ -40,7 +39,7 @@ struct ErrorExtractorInfrastructureTests {
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
             context: "scheme 'Foo' on macOS",
-            stderr: stderr
+            stderr: stderr,
         )
         let text = result.content.compactMap {
             if case let .text(t) = $0 { return t }
@@ -56,7 +55,7 @@ struct ErrorExtractorInfrastructureTests {
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
             context: "scheme 'Foo' on macOS",
-            stderr: stderr
+            stderr: stderr,
         )
         let text = result.content.compactMap {
             if case let .text(t) = $0 { return t }
@@ -72,7 +71,7 @@ struct ErrorExtractorInfrastructureTests {
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
             context: "scheme 'Foo' on macOS",
-            stderr: stderr
+            stderr: stderr,
         )
         let text = result.content.compactMap {
             if case let .text(t) = $0 { return t }
@@ -86,7 +85,7 @@ struct ErrorExtractorInfrastructureTests {
         let result = try ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
-            context: "scheme 'Foo' on macOS"
+            context: "scheme 'Foo' on macOS",
         )
         let text = result.content.compactMap {
             if case let .text(t) = $0 { return t }
@@ -100,12 +99,12 @@ struct ErrorExtractorInfrastructureTests {
         #expect(throws: Error.self) {
             try ErrorExtractor.formatTestToolResult(
                 output: """
-                    Test Case 'FooTests.testBar' failed (0.5 seconds)
-                    Executed 1 test, with 1 failure in 0.5 seconds
-                    """,
+                Test Case 'FooTests.testBar' failed (0.5 seconds)
+                Executed 1 test, with 1 failure in 0.5 seconds
+                """,
                 succeeded: false,
                 context: "scheme 'Foo' on macOS",
-                stderr: "testmanagerd received SIGSEGV"
+                stderr: "testmanagerd received SIGSEGV",
             )
         }
     }
@@ -117,7 +116,7 @@ struct ErrorExtractorInfrastructureTests {
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
             context: "scheme 'Foo' on macOS",
-            stderr: stderr
+            stderr: stderr,
         )
         let text = result.content.compactMap {
             if case let .text(t) = $0 { return t }

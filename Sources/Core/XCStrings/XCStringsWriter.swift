@@ -8,7 +8,7 @@ public enum XCStringsWriter {
         key: String,
         language: String,
         value: String,
-        allowOverwrite: Bool = false
+        allowOverwrite: Bool = false,
     ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
@@ -25,7 +25,7 @@ public enum XCStringsWriter {
         }
 
         result.strings[key]?.localizations?[language] = Localization(
-            stringUnit: StringUnit(state: "translated", value: value)
+            stringUnit: StringUnit(state: "translated", value: value),
         )
 
         return result
@@ -36,7 +36,7 @@ public enum XCStringsWriter {
         to file: XCStringsFile,
         key: String,
         translations: [String: String],
-        allowOverwrite: Bool = false
+        allowOverwrite: Bool = false,
     ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
@@ -54,7 +54,7 @@ public enum XCStringsWriter {
             }
 
             result.strings[key]?.localizations?[language] = Localization(
-                stringUnit: StringUnit(state: "translated", value: value)
+                stringUnit: StringUnit(state: "translated", value: value),
             )
         }
 
@@ -66,7 +66,7 @@ public enum XCStringsWriter {
         in file: XCStringsFile,
         key: String,
         language: String,
-        value: String
+        value: String,
     ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
@@ -79,7 +79,7 @@ public enum XCStringsWriter {
         }
 
         result.strings[key]?.localizations?[language] = Localization(
-            stringUnit: StringUnit(state: "translated", value: value)
+            stringUnit: StringUnit(state: "translated", value: value),
         )
 
         return result
@@ -89,7 +89,7 @@ public enum XCStringsWriter {
     public static func updateTranslations(
         in file: XCStringsFile,
         key: String,
-        translations: [String: String]
+        translations: [String: String],
     ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
@@ -103,7 +103,7 @@ public enum XCStringsWriter {
             }
 
             result.strings[key]?.localizations?[language] = Localization(
-                stringUnit: StringUnit(state: "translated", value: value)
+                stringUnit: StringUnit(state: "translated", value: value),
             )
         }
 
@@ -114,7 +114,7 @@ public enum XCStringsWriter {
     public static func addTranslationsBatch(
         to file: XCStringsFile,
         entries: [BatchTranslationEntry],
-        allowOverwrite: Bool = false
+        allowOverwrite: Bool = false,
     ) -> (file: XCStringsFile, result: BatchWriteResult) {
         var result = file
         var succeeded = 0
@@ -125,7 +125,7 @@ public enum XCStringsWriter {
             do {
                 result = try addTranslations(
                     to: result, key: entry.key, translations: entry.translations,
-                    allowOverwrite: allowOverwrite
+                    allowOverwrite: allowOverwrite,
                 )
                 succeeded += 1
             } catch {
@@ -139,7 +139,7 @@ public enum XCStringsWriter {
     /// Update translations for multiple keys atomically
     public static func updateTranslationsBatch(
         in file: XCStringsFile,
-        entries: [BatchTranslationEntry]
+        entries: [BatchTranslationEntry],
     ) -> (file: XCStringsFile, result: BatchWriteResult) {
         var result = file
         var succeeded = 0
@@ -149,7 +149,7 @@ public enum XCStringsWriter {
         for entry in entries {
             do {
                 result = try updateTranslations(
-                    in: result, key: entry.key, translations: entry.translations
+                    in: result, key: entry.key, translations: entry.translations,
                 )
                 succeeded += 1
             } catch {
@@ -164,7 +164,7 @@ public enum XCStringsWriter {
     public static func renameKey(
         in file: XCStringsFile,
         from oldKey: String,
-        to newKey: String
+        to newKey: String,
     ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
@@ -185,7 +185,7 @@ public enum XCStringsWriter {
     /// Delete a key entirely
     public static func deleteKey(
         from file: XCStringsFile,
-        key: String
+        key: String,
     ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
@@ -202,7 +202,7 @@ public enum XCStringsWriter {
     public static func deleteTranslation(
         from file: XCStringsFile,
         key: String,
-        language: String
+        language: String,
     ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 
@@ -223,7 +223,7 @@ public enum XCStringsWriter {
     public static func deleteTranslations(
         from file: XCStringsFile,
         key: String,
-        languages: [String]
+        languages: [String],
     ) throws(XCStringsError) -> XCStringsFile {
         var result = file
 

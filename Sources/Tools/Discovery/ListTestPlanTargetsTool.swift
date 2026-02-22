@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct ListTestPlanTargetsTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -8,7 +8,7 @@ public struct ListTestPlanTargetsTool: Sendable {
 
     public init(
         xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
@@ -18,37 +18,37 @@ public struct ListTestPlanTargetsTool: Sendable {
         Tool(
             name: "list_test_plan_targets",
             description:
-                "List test plans and their test targets for a scheme. Returns target names usable with only_testing.",
+            "List test plans and their test targets for a scheme. Returns target names usable with only_testing.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."
+                            "Path to the .xcodeproj file. Uses session default if not specified.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
+                            "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to query for test plans. Uses session default if not specified."
+                            "The scheme to query for test plans. Uses session default if not specified.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments
+            from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
 
@@ -62,21 +62,21 @@ public struct ListTestPlanTargetsTool: Sendable {
             projectRoot = parent.isEmpty ? "." : parent
         } else {
             throw MCPError.invalidParams(
-                "Either project_path or workspace_path is required"
+                "Either project_path or workspace_path is required",
             )
         }
 
         do {
             // Get test plan names from xcodebuild
             let testPlanNames = try await fetchTestPlanNames(
-                projectPath: projectPath, workspacePath: workspacePath, scheme: scheme
+                projectPath: projectPath, workspacePath: workspacePath, scheme: scheme,
             )
 
             if testPlanNames.isEmpty {
                 return CallTool.Result(
                     content: [
-                        .text("No test plans found for scheme '\(scheme)'.")
-                    ]
+                        .text("No test plans found for scheme '\(scheme)'."),
+                    ],
                 )
             }
 
@@ -85,13 +85,14 @@ public struct ListTestPlanTargetsTool: Sendable {
             for planName in testPlanNames {
                 output += "\n  \(planName):\n"
                 let targets = findTestPlanTargets(
-                    planName: planName, searchRoot: projectRoot
+                    planName: planName, searchRoot: projectRoot,
                 )
                 if targets.isEmpty {
                     output += "    (no targets found — .xctestplan file may be missing)\n"
                 } else {
                     for target in targets {
-                        output += "    - \(target)\n"
+                        let suffix = target.enabled ? "" : " (disabled)"
+                        output += "    - \(target.name)\(suffix)\n"
                     }
                 }
             }
@@ -104,7 +105,7 @@ public struct ListTestPlanTargetsTool: Sendable {
 
     /// Runs `xcodebuild -showTestPlans` to get test plan names for a scheme.
     private func fetchTestPlanNames(
-        projectPath: String?, workspacePath: String?, scheme: String
+        projectPath: String?, workspacePath: String?, scheme: String,
     ) async throws -> [String] {
         var args: [String] = []
 
@@ -120,14 +121,14 @@ public struct ListTestPlanTargetsTool: Sendable {
 
         guard result.succeeded else {
             throw MCPError.internalError(
-                "Failed to get test plans for scheme '\(scheme)': \(result.errorOutput)"
+                "Failed to get test plans for scheme '\(scheme)': \(result.errorOutput)",
             )
         }
 
         // Parse JSON output to extract test plan names
         guard let data = result.stdout.data(using: .utf8),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let testPlans = json["testPlans"] as? [[String: Any]]
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let testPlans = json["testPlans"] as? [[String: Any]]
         else {
             return []
         }
@@ -135,39 +136,17 @@ public struct ListTestPlanTargetsTool: Sendable {
         return testPlans.compactMap { $0["name"] as? String }
     }
 
-    /// Finds and parses a `.xctestplan` file to extract test target names.
-    package func findTestPlanTargets(planName: String, searchRoot: String) -> [String] {
-        let fm = FileManager.default
+    /// Finds and parses a `.xctestplan` file to extract test target names and enabled status.
+    package func findTestPlanTargets(planName: String, searchRoot: String) -> [(
+        name: String, enabled: Bool,
+    )] {
         let planFileName = "\(planName).xctestplan"
-
-        // Search recursively for the .xctestplan file
-        guard let enumerator = fm.enumerator(atPath: searchRoot) else {
+        let files = TestPlanFile.findFiles(under: searchRoot)
+        guard let match = files.first(where: {
+            URL(fileURLWithPath: $0.path).lastPathComponent == planFileName
+        }) else {
             return []
         }
-
-        var planPath: String?
-        while let path = enumerator.nextObject() as? String {
-            if (path as NSString).lastPathComponent == planFileName {
-                planPath = (searchRoot as NSString).appendingPathComponent(path)
-                break
-            }
-        }
-
-        guard let planPath,
-            let data = fm.contents(atPath: planPath),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let testTargets = json["testTargets"] as? [[String: Any]]
-        else {
-            return []
-        }
-
-        return testTargets.compactMap { entry -> String? in
-            guard let target = entry["target"] as? [String: Any],
-                let name = target["name"] as? String
-            else {
-                return nil
-            }
-            return name
-        }
+        return TestPlanFile.targetEntries(from: match.json)
     }
 }

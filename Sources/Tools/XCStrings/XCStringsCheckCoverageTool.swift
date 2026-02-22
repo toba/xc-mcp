@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsCheckCoverageTool: Sendable {
     private let pathUtility: PathUtility
@@ -13,7 +13,7 @@ public struct XCStringsCheckCoverageTool: Sendable {
         Tool(
             name: "xcstrings_check_coverage",
             description:
-                "Check translation coverage for a specific key, showing which languages have translations and which are missing",
+            "Check translation coverage for a specific key, showing which languages have translations and which are missing",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -27,7 +27,7 @@ public struct XCStringsCheckCoverageTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("key")]),
-            ])
+            ]),
         )
     }
 

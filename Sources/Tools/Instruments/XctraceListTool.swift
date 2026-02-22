@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 /// Lists available Instruments templates, instruments, or devices.
 ///
@@ -17,7 +17,7 @@ public struct XctraceListTool: Sendable {
         Tool(
             name: "xctrace_list",
             description:
-                "List available Instruments templates, instruments, or devices via xctrace.",
+            "List available Instruments templates, instruments, or devices via xctrace.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -27,12 +27,12 @@ public struct XctraceListTool: Sendable {
                             .string("templates"), .string("instruments"), .string("devices"),
                         ]),
                         "description": .string(
-                            "What to list: 'templates' for profiling templates, 'instruments' for available instruments, 'devices' for connected devices."
+                            "What to list: 'templates' for profiling templates, 'instruments' for available instruments, 'devices' for connected devices.",
                         ),
-                    ])
+                    ]),
                 ]),
                 "required": .array([.string("kind")]),
-            ])
+            ]),
         )
     }
 
@@ -43,7 +43,7 @@ public struct XctraceListTool: Sendable {
 
         guard ["templates", "instruments", "devices"].contains(kind) else {
             throw MCPError.invalidParams(
-                "Invalid kind: \(kind). Use 'templates', 'instruments', or 'devices'."
+                "Invalid kind: \(kind). Use 'templates', 'instruments', or 'devices'.",
             )
         }
 
@@ -60,7 +60,7 @@ public struct XctraceListTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to list \(kind): \(error.localizedDescription)"
+                "Failed to list \(kind): \(error.localizedDescription)",
             )
         }
     }

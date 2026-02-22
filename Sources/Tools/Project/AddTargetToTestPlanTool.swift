@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct AddTargetToTestPlanTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct AddTargetToTestPlanTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (for target UUID lookup)"
+                            "Path to the .xcodeproj file (for target UUID lookup)",
                         ),
                     ]),
                     "test_plan_path": .object([
@@ -36,17 +36,17 @@ public struct AddTargetToTestPlanTool: Sendable {
                 "required": .array([
                     .string("project_path"), .string("test_plan_path"), .string("target_name"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(testPlanPath) = arguments["test_plan_path"],
-            case let .string(targetName) = arguments["target_name"]
+              case let .string(testPlanPath) = arguments["test_plan_path"],
+              case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, test_plan_path, and target_name are required"
+                "project_path, test_plan_path, and target_name are required",
             )
         }
 
@@ -63,7 +63,7 @@ public struct AddTargetToTestPlanTool: Sendable {
                 })
             else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")]
+                    content: [.text("Target '\(targetName)' not found in project")],
                 )
             }
 
@@ -76,19 +76,19 @@ public struct AddTargetToTestPlanTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Target '\(targetName)' is already in the test plan"
-                        )
-                    ]
+                            "Target '\(targetName)' is already in the test plan",
+                        ),
+                    ],
                 )
             }
 
-            let containerPath = "container:\(projectURL.lastPathComponent)"
+            let containerPath = TestPlanFile.containerPath(for: projectURL)
             let entry: [String: Any] = [
                 "target": [
                     "containerPath": containerPath,
                     "identifier": target.uuid,
                     "name": targetName,
-                ] as [String: Any]
+                ] as [String: Any],
             ]
             testTargets.append(entry)
             json["testTargets"] = testTargets
@@ -98,13 +98,13 @@ public struct AddTargetToTestPlanTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Added target '\(targetName)' to test plan at \(resolvedTestPlanPath)"
-                    )
-                ]
+                        "Added target '\(targetName)' to test plan at \(resolvedTestPlanPath)",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add target to test plan: \(error.localizedDescription)"
+                "Failed to add target to test plan: \(error.localizedDescription)",
             )
         }
     }

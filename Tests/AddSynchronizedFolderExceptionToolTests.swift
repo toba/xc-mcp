@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("AddSynchronizedFolderExceptionTool Tests")
@@ -15,10 +14,10 @@ struct AddSynchronizedFolderExceptionToolTests {
     init() {
         tempDir =
             FileManager.default.temporaryDirectory
-            .appendingPathComponent(
-                "AddSyncFolderExceptionToolTests-\(UUID().uuidString)"
-            )
-            .path
+                .appendingPathComponent(
+                    "AddSyncFolderExceptionToolTests-\(UUID().uuidString)",
+                )
+                .path
         pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
@@ -63,7 +62,7 @@ struct AddSynchronizedFolderExceptionToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         #expect(throws: MCPError.self) {
@@ -82,13 +81,13 @@ struct AddSynchronizedFolderExceptionToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         // Add a sync folder
         let xcodeproj = try XcodeProj(path: projectPath)
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "Sources", name: "Sources"
+            sourceTree: .group, path: "Sources", name: "Sources",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
@@ -132,7 +131,7 @@ struct AddSynchronizedFolderExceptionToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         #expect(throws: MCPError.self) {
@@ -151,13 +150,13 @@ struct AddSynchronizedFolderExceptionToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         // Add a sync folder
         let xcodeproj = try XcodeProj(path: projectPath)
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "Sources", name: "Sources"
+            sourceTree: .group, path: "Sources", name: "Sources",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {

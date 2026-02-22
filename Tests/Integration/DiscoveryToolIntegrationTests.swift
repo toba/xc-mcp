@@ -1,8 +1,7 @@
-import Foundation
 import MCP
 import Testing
 import XCMCPCore
-
+import Foundation
 @testable import XCMCPTools
 
 /// Integration tests for project discovery against real open-source repos.
@@ -12,11 +11,11 @@ struct DiscoveryToolIntegrationTests {
     @Test func discoverProjects_IceCubesApp() throws {
         let tool = DiscoverProjectsTool(
             pathUtility: PathUtility(
-                basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false
-            )
+                basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
+            ),
         )
         let result = try tool.execute(arguments: [
-            "path": .string(IntegrationFixtures.iceCubesRepoDir)
+            "path": .string(IntegrationFixtures.iceCubesRepoDir),
         ])
 
         let content = textContent(result)
@@ -26,11 +25,11 @@ struct DiscoveryToolIntegrationTests {
     @Test func discoverProjects_Alamofire() throws {
         let tool = DiscoverProjectsTool(
             pathUtility: PathUtility(
-                basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false
-            )
+                basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false,
+            ),
         )
         let result = try tool.execute(arguments: [
-            "path": .string(IntegrationFixtures.alamofireRepoDir)
+            "path": .string(IntegrationFixtures.alamofireRepoDir),
         ])
 
         let content = textContent(result)
@@ -40,11 +39,11 @@ struct DiscoveryToolIntegrationTests {
     @Test func discoverProjects_SwiftFormat() throws {
         let tool = DiscoverProjectsTool(
             pathUtility: PathUtility(
-                basePath: IntegrationFixtures.swiftFormatRepoDir, sandboxEnabled: false
-            )
+                basePath: IntegrationFixtures.swiftFormatRepoDir, sandboxEnabled: false,
+            ),
         )
         let result = try tool.execute(arguments: [
-            "path": .string(IntegrationFixtures.swiftFormatRepoDir)
+            "path": .string(IntegrationFixtures.swiftFormatRepoDir),
         ])
 
         let content = textContent(result)

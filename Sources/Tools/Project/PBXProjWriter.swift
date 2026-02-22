@@ -1,7 +1,7 @@
-import Foundation
 import PathKit
-import RegexBuilder
 import XcodeProj
+import Foundation
+import RegexBuilder
 
 /// Workaround for tuist/XcodeProj#1034: Xcode 26 uses `dstSubfolder` (string)
 /// instead of `dstSubfolderSpec` (numeric) in PBXCopyFilesBuildPhase. XcodeProj 9.7.2
@@ -15,9 +15,9 @@ public enum PBXProjWriter {
     public static func write(_ xcodeproj: XcodeProj, to path: Path) throws {
         // 1. Snapshot dstSubfolder entries from existing file on disk
         let pbxprojPath = path + "project.pbxproj"
-        let existingEntries: [String: String]  // objectID -> dstSubfolder value
+        let existingEntries: [String: String] // objectID -> dstSubfolder value
         if pbxprojPath.exists,
-            let content = try? String(contentsOfFile: pbxprojPath.string, encoding: .utf8)
+           let content = try? String(contentsOfFile: pbxprojPath.string, encoding: .utf8)
         {
             existingEntries = parseDstSubfolderEntries(from: content)
         } else {
@@ -88,7 +88,7 @@ public enum PBXProjWriter {
             // Build a regex to find this object's block
             guard
                 let blockRegex = try? Regex(
-                    "\(objectID)\\s+/\\*[^*]*\\*/\\s*=\\s*\\{[^}]*\\}"
+                    "\(objectID)\\s+/\\*[^*]*\\*/\\s*=\\s*\\{[^}]*\\}",
                 )
             else {
                 continue
@@ -108,7 +108,7 @@ public enum PBXProjWriter {
             // Find the dstPath line within this block and insert dstSubfolder after it
             guard
                 let dstPathRegex = try? Regex(
-                    "\(objectID)\\s+/\\*[^*]*\\*/\\s*=\\s*\\{[^}]*?dstPath\\s*=\\s*[^;]*;"
+                    "\(objectID)\\s+/\\*[^*]*\\*/\\s*=\\s*\\{[^}]*?dstPath\\s*=\\s*[^;]*;",
                 )
             else {
                 continue

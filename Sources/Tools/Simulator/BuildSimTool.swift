@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 /// MCP tool for building Xcode projects for the iOS/tvOS/watchOS Simulator.
 ///
@@ -16,7 +16,7 @@ public struct BuildSimTool: Sendable {
     ///   - xcodebuildRunner: Runner for executing xcodebuild commands.
     ///   - sessionManager: Manager for session state and defaults.
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager
+        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
@@ -27,43 +27,43 @@ public struct BuildSimTool: Sendable {
         Tool(
             name: "build_sim",
             description:
-                "Build an Xcode project or workspace for the iOS/tvOS/watchOS Simulator.",
+            "Build an Xcode project or workspace for the iOS/tvOS/watchOS Simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."
+                            "Path to the .xcodeproj file. Uses session default if not specified.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
+                            "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to build. Uses session default if not specified."
+                            "The scheme to build. Uses session default if not specified.",
                         ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."
+                            "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -75,7 +75,7 @@ public struct BuildSimTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments
+            from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
@@ -89,7 +89,7 @@ public struct BuildSimTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 destination: destination,
-                configuration: configuration
+                configuration: configuration,
             )
 
             let buildResult = ErrorExtractor.parseBuildOutput(result.output)
@@ -101,13 +101,13 @@ public struct BuildSimTool: Sendable {
                         NextStepHints.content(hints: [
                             NextStepHint(
                                 tool: "launch_app_sim",
-                                description: "Launch the built app on the simulator"
+                                description: "Launch the built app on the simulator",
                             ),
                             NextStepHint(
-                                tool: "test_sim", description: "Run tests on the simulator"
+                                tool: "test_sim", description: "Run tests on the simulator",
                             ),
                         ]),
-                    ]
+                    ],
                 )
             } else {
                 let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)

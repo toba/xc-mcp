@@ -8,10 +8,10 @@ enum IntegrationFixtures {
         let file = URL(fileURLWithPath: #filePath)
         return
             file
-            .deletingLastPathComponent()  // Integration/
-            .deletingLastPathComponent()  // Tests/
-            .deletingLastPathComponent()  // project root
-            .path
+                .deletingLastPathComponent() // Integration/
+                .deletingLastPathComponent() // Tests/
+                .deletingLastPathComponent() // project root
+                .path
     }()
 
     static let reposDir = "\(projectRoot)/fixtures/repos"
@@ -53,7 +53,7 @@ enum IntegrationFixtures {
         guard
             let output = try? Process.run(
                 "/usr/bin/xcrun",
-                arguments: ["simctl", "list", "devices", "available", "-j"]
+                arguments: ["simctl", "list", "devices", "available", "-j"],
             ),
             let data = output.data(using: .utf8),
             let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

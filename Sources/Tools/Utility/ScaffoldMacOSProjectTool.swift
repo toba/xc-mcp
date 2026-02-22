@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ScaffoldMacOSProjectTool: Sendable {
     private let pathUtility: PathUtility
@@ -15,7 +15,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         Tool(
             name: "scaffold_macos_project",
             description:
-                "Create a new macOS project with a modern workspace + Swift Package Manager architecture. Creates a workspace containing the main app project and a local Swift package for shared code.",
+            "Create a new macOS project with a modern workspace + Swift Package Manager architecture. Creates a workspace containing the main app project and a local Swift package for shared code.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -34,24 +34,24 @@ public struct ScaffoldMacOSProjectTool: Sendable {
                     "bundle_identifier": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier prefix (e.g., com.example). The app will use this prefix + project name."
+                            "Bundle identifier prefix (e.g., com.example). The app will use this prefix + project name.",
                         ),
                     ]),
                     "deployment_target": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Minimum macOS version to support (e.g., '13.0'). Defaults to '14.0'."
+                            "Minimum macOS version to support (e.g., '13.0'). Defaults to '14.0'.",
                         ),
                     ]),
                     "include_tests": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Include unit test and UI test targets. Defaults to true."
+                            "Include unit test and UI test targets. Defaults to true.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("project_name"), .string("path")]),
-            ])
+            ]),
         )
     }
 
@@ -77,7 +77,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
 
         do {
             try fileManager.createDirectory(
-                atPath: projectDir, withIntermediateDirectories: true
+                atPath: projectDir, withIntermediateDirectories: true,
             )
 
             // Create app source directory
@@ -86,7 +86,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
 
             // Create the Xcode project
             let projectPath = URL(fileURLWithPath: projectDir).appendingPathComponent(
-                "\(projectName).xcodeproj"
+                "\(projectName).xcodeproj",
             ).path
             let pbxproj = PBXProj()
             let project = try createProject(
@@ -95,7 +95,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
                 organizationName: organizationName,
                 bundleIdPrefix: bundleIdPrefix,
                 deploymentTarget: deploymentTarget,
-                includeTests: includeTests
+                includeTests: includeTests,
             )
             pbxproj.add(object: project)
             pbxproj.rootObject = project
@@ -107,41 +107,41 @@ public struct ScaffoldMacOSProjectTool: Sendable {
 
             // Create workspace
             let workspacePath = URL(fileURLWithPath: projectDir).appendingPathComponent(
-                "\(projectName).xcworkspace"
+                "\(projectName).xcworkspace",
             ).path
             try createWorkspace(
-                at: workspacePath, projectName: projectName, projectPath: projectPath
+                at: workspacePath, projectName: projectName, projectPath: projectPath,
             )
 
             // Create source files
             try createSourceFiles(
-                appDir: appDir, projectName: projectName, bundleIdPrefix: bundleIdPrefix
+                appDir: appDir, projectName: projectName, bundleIdPrefix: bundleIdPrefix,
             )
 
             // Create Swift package for shared code
             let packageDir = URL(fileURLWithPath: projectDir).appendingPathComponent(
-                "\(projectName)Kit"
+                "\(projectName)Kit",
             ).path
             try createSwiftPackage(
                 at: packageDir, packageName: "\(projectName)Kit",
-                deploymentTarget: deploymentTarget
+                deploymentTarget: deploymentTarget,
             )
 
             // Create test directories if needed
             if includeTests {
                 let testDir = URL(fileURLWithPath: projectDir).appendingPathComponent(
-                    "\(projectName)Tests"
+                    "\(projectName)Tests",
                 ).path
                 try fileManager.createDirectory(
-                    atPath: testDir, withIntermediateDirectories: true
+                    atPath: testDir, withIntermediateDirectories: true,
                 )
                 try createTestFile(at: testDir, projectName: projectName)
 
                 let uiTestDir = URL(fileURLWithPath: projectDir).appendingPathComponent(
-                    "\(projectName)UITests"
+                    "\(projectName)UITests",
                 ).path
                 try fileManager.createDirectory(
-                    atPath: uiTestDir, withIntermediateDirectories: true
+                    atPath: uiTestDir, withIntermediateDirectories: true,
                 )
                 try createUITestFile(at: uiTestDir, projectName: projectName)
             }
@@ -173,7 +173,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         organizationName _: String,
         bundleIdPrefix: String,
         deploymentTarget: String,
-        includeTests _: Bool
+        includeTests _: Bool,
     ) throws -> PBXProject {
         // Create main group
         let mainGroup = PBXGroup(children: [], sourceTree: .group)
@@ -183,21 +183,21 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         let debugConfig = XCBuildConfiguration(
             name: "Debug",
             buildSettings: createProjectBuildSettings(
-                debug: true, deploymentTarget: deploymentTarget
-            )
+                debug: true, deploymentTarget: deploymentTarget,
+            ),
         )
         let releaseConfig = XCBuildConfiguration(
             name: "Release",
             buildSettings: createProjectBuildSettings(
-                debug: false, deploymentTarget: deploymentTarget
-            )
+                debug: false, deploymentTarget: deploymentTarget,
+            ),
         )
         pbxproj.add(object: debugConfig)
         pbxproj.add(object: releaseConfig)
 
         let configList = XCConfigurationList(
             buildConfigurations: [debugConfig, releaseConfig],
-            defaultConfigurationName: "Release"
+            defaultConfigurationName: "Release",
         )
         pbxproj.add(object: configList)
 
@@ -209,7 +209,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
             preferredProjectObjectVersion: 56,
             minimizedProjectReferenceProxies: 0,
             mainGroup: mainGroup,
-            developmentRegion: "en"
+            developmentRegion: "en",
         )
 
         // Create app target
@@ -219,7 +219,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
             projectName: projectName,
             bundleIdPrefix: bundleIdPrefix,
             deploymentTarget: deploymentTarget,
-            mainGroup: mainGroup
+            mainGroup: mainGroup,
         )
         project.targets.append(appTarget)
 
@@ -232,7 +232,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         projectName: String,
         bundleIdPrefix: String,
         deploymentTarget: String,
-        mainGroup _: PBXGroup
+        mainGroup _: PBXGroup,
     ) -> PBXNativeTarget {
         // Create source build phase
         let sourcesBuildPhase = PBXSourcesBuildPhase(files: [])
@@ -254,8 +254,8 @@ public struct ScaffoldMacOSProjectTool: Sendable {
                 debug: true,
                 productName: projectName,
                 bundleId: bundleId,
-                deploymentTarget: deploymentTarget
-            )
+                deploymentTarget: deploymentTarget,
+            ),
         )
         let releaseConfig = XCBuildConfiguration(
             name: "Release",
@@ -263,15 +263,15 @@ public struct ScaffoldMacOSProjectTool: Sendable {
                 debug: false,
                 productName: projectName,
                 bundleId: bundleId,
-                deploymentTarget: deploymentTarget
-            )
+                deploymentTarget: deploymentTarget,
+            ),
         )
         pbxproj.add(object: debugConfig)
         pbxproj.add(object: releaseConfig)
 
         let configList = XCConfigurationList(
             buildConfigurations: [debugConfig, releaseConfig],
-            defaultConfigurationName: "Release"
+            defaultConfigurationName: "Release",
         )
         pbxproj.add(object: configList)
 
@@ -280,7 +280,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
             name: projectName,
             buildConfigurationList: configList,
             buildPhases: [sourcesBuildPhase, frameworksBuildPhase, resourcesBuildPhase],
-            productType: .application
+            productType: .application,
         )
         pbxproj.add(object: target)
 
@@ -326,7 +326,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         debug: Bool,
         productName: String,
         bundleId: String,
-        deploymentTarget: String
+        deploymentTarget: String,
     ) -> BuildSettings {
         var settings: BuildSettings = [
             "ASSETCATALOG_COMPILER_APPICON_NAME": .string("AppIcon"),
@@ -357,24 +357,24 @@ public struct ScaffoldMacOSProjectTool: Sendable {
     private func createWorkspace(at path: String, projectName: String, projectPath _: String) throws
     {
         let workspaceDataPath = URL(fileURLWithPath: path).appendingPathComponent(
-            "contents.xcworkspacedata"
+            "contents.xcworkspacedata",
         ).path
         try FileManager.default.createDirectory(
-            atPath: path, withIntermediateDirectories: true
+            atPath: path, withIntermediateDirectories: true,
         )
 
         let content = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <Workspace
-               version = "1.0">
-               <FileRef
-                  location = "group:\(projectName).xcodeproj">
-               </FileRef>
-               <FileRef
-                  location = "group:\(projectName)Kit">
-               </FileRef>
-            </Workspace>
-            """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Workspace
+           version = "1.0">
+           <FileRef
+              location = "group:\(projectName).xcodeproj">
+           </FileRef>
+           <FileRef
+              location = "group:\(projectName)Kit">
+           </FileRef>
+        </Workspace>
+        """
         try content.write(toFile: workspaceDataPath, atomically: true, encoding: .utf8)
     }
 
@@ -383,64 +383,64 @@ public struct ScaffoldMacOSProjectTool: Sendable {
     {
         // Create App.swift
         let appContent = """
-            import SwiftUI
+        import SwiftUI
 
-            @main
-            struct \(projectName)App: App {
-                var body: some Scene {
-                    WindowGroup {
-                        ContentView()
-                    }
+        @main
+        struct \(projectName)App: App {
+            var body: some Scene {
+                WindowGroup {
+                    ContentView()
                 }
             }
-            """
+        }
+        """
         try appContent.write(
             toFile: URL(fileURLWithPath: appDir).appendingPathComponent("\(projectName)App.swift")
                 .path,
-            atomically: true, encoding: .utf8
+            atomically: true, encoding: .utf8,
         )
 
         // Create ContentView.swift
         let contentViewContent = """
-            import SwiftUI
+        import SwiftUI
 
-            struct ContentView: View {
-                var body: some View {
-                    VStack {
-                        Image(systemName: "globe")
-                            .imageScale(.large)
-                            .foregroundStyle(.tint)
-                        Text("Hello, world!")
-                    }
-                    .padding()
+        struct ContentView: View {
+            var body: some View {
+                VStack {
+                    Image(systemName: "globe")
+                        .imageScale(.large)
+                        .foregroundStyle(.tint)
+                    Text("Hello, world!")
                 }
+                .padding()
             }
+        }
 
-            #Preview {
-                ContentView()
-            }
-            """
+        #Preview {
+            ContentView()
+        }
+        """
         try contentViewContent.write(
             toFile: URL(fileURLWithPath: appDir).appendingPathComponent("ContentView.swift").path,
-            atomically: true, encoding: .utf8
+            atomically: true, encoding: .utf8,
         )
 
         // Create entitlements file
         let entitlementsContent = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-                <key>com.apple.security.app-sandbox</key>
-                <true/>
-            </dict>
-            </plist>
-            """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>com.apple.security.app-sandbox</key>
+            <true/>
+        </dict>
+        </plist>
+        """
         try entitlementsContent.write(
             toFile: URL(fileURLWithPath: appDir).appendingPathComponent(
-                "\(projectName).entitlements"
+                "\(projectName).entitlements",
             ).path,
-            atomically: true, encoding: .utf8
+            atomically: true, encoding: .utf8,
         )
     }
 
@@ -452,35 +452,35 @@ public struct ScaffoldMacOSProjectTool: Sendable {
 
         // Create Package.swift
         let packageContent = """
-            // swift-tools-version: 5.9
+        // swift-tools-version: 5.9
 
-            import PackageDescription
+        import PackageDescription
 
-            let package = Package(
-                name: "\(packageName)",
-                platforms: [
-                    .macOS(.v\(deploymentTarget.replacingOccurrences(of: ".", with: "_").prefix(2)))
-                ],
-                products: [
-                    .library(
-                        name: "\(packageName)",
-                        targets: ["\(packageName)"]
-                    ),
-                ],
-                targets: [
-                    .target(
-                        name: "\(packageName)"
-                    ),
-                    .testTarget(
-                        name: "\(packageName)Tests",
-                        dependencies: ["\(packageName)"]
-                    ),
-                ]
-            )
-            """
+        let package = Package(
+            name: "\(packageName)",
+            platforms: [
+                .macOS(.v\(deploymentTarget.replacingOccurrences(of: ".", with: "_").prefix(2)))
+            ],
+            products: [
+                .library(
+                    name: "\(packageName)",
+                    targets: ["\(packageName)"]
+                ),
+            ],
+            targets: [
+                .target(
+                    name: "\(packageName)"
+                ),
+                .testTarget(
+                    name: "\(packageName)Tests",
+                    dependencies: ["\(packageName)"]
+                ),
+            ]
+        )
+        """
         try packageContent.write(
             toFile: URL(fileURLWithPath: path).appendingPathComponent("Package.swift").path,
-            atomically: true, encoding: .utf8
+            atomically: true, encoding: .utf8,
         )
 
         // Create Sources directory
@@ -489,81 +489,81 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         try fileManager.createDirectory(atPath: sourcesDir, withIntermediateDirectories: true)
 
         let sourceContent = """
-            import Foundation
+        import Foundation
 
-            /// Shared utilities and models for \(packageName)
-            public enum \(packageName) {
-                public static let version = "1.0.0"
-            }
-            """
+        /// Shared utilities and models for \(packageName)
+        public enum \(packageName) {
+            public static let version = "1.0.0"
+        }
+        """
         try sourceContent.write(
             toFile: URL(fileURLWithPath: sourcesDir).appendingPathComponent("\(packageName).swift")
                 .path,
-            atomically: true, encoding: .utf8
+            atomically: true, encoding: .utf8,
         )
 
         // Create Tests directory
         let testsDir = URL(fileURLWithPath: path).appendingPathComponent(
-            "Tests/\(packageName)Tests"
+            "Tests/\(packageName)Tests",
         ).path
         try fileManager.createDirectory(atPath: testsDir, withIntermediateDirectories: true)
 
         let testContent = """
-            import Testing
-            @testable import \(packageName)
+        import Testing
+        @testable import \(packageName)
 
-            @Test func testVersion() {
-                #expect(\(packageName).version == "1.0.0")
-            }
-            """
+        @Test func testVersion() {
+            #expect(\(packageName).version == "1.0.0")
+        }
+        """
         try testContent.write(
             toFile: URL(fileURLWithPath: testsDir).appendingPathComponent(
-                "\(packageName)Tests.swift"
+                "\(packageName)Tests.swift",
             ).path,
-            atomically: true, encoding: .utf8
+            atomically: true, encoding: .utf8,
         )
     }
 
     private func createTestFile(at testDir: String, projectName: String) throws {
         let content = """
-            import Testing
-            @testable import \(projectName)
+        import Testing
+        @testable import \(projectName)
 
-            @Test func testExample() {
-                // Add your test here
-                #expect(true)
-            }
-            """
+        @Test func testExample() {
+            // Add your test here
+            #expect(true)
+        }
+        """
         try content.write(
             toFile: URL(fileURLWithPath: testDir).appendingPathComponent(
-                "\(projectName)Tests.swift"
+                "\(projectName)Tests.swift",
             ).path,
-            atomically: true, encoding: .utf8
+            atomically: true, encoding: .utf8,
         )
     }
 
     private func createUITestFile(at uiTestDir: String, projectName: String) throws {
         let content = """
-            import XCTest
+        import XCTest
 
-            final class \(projectName)UITests: XCTestCase {
-                override func setUpWithError() throws {
-                    continueAfterFailure = false
-                }
-
-                func testLaunch() throws {
-                    let app = XCUIApplication()
-                    app.launch()
-
-                    // Add your UI test assertions here
-                }
+        final class \(projectName)UITests: XCTestCase {
+            override func setUpWithError() throws {
+                continueAfterFailure = false
             }
-            """
+
+            func testLaunch() throws {
+                let app = XCUIApplication()
+                app.launch()
+
+                // Add your UI test assertions here
+            }
+        }
+        """
         try content.write(
             toFile: URL(fileURLWithPath: uiTestDir).appendingPathComponent(
-                "\(projectName)UITests.swift"
+                "\(projectName)UITests.swift",
             ).path,
-            atomically: true, encoding: .utf8
+            atomically: true, encoding: .utf8,
         )
     }
 }

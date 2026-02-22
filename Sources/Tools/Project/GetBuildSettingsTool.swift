@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct GetBuildSettingsTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct GetBuildSettingsTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -31,18 +31,18 @@ public struct GetBuildSettingsTool: Sendable {
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration name (optional, defaults to Debug)"
+                            "Build configuration name (optional, defaults to Debug)",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("target_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"]
+              case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams("project_path and target_name are required")
         }
@@ -71,7 +71,7 @@ public struct GetBuildSettingsTool: Sendable {
             // Get the build configuration for the target
             guard let configList = target.buildConfigurationList else {
                 throw MCPError.invalidParams(
-                    "Target '\(targetName)' has no build configuration list"
+                    "Target '\(targetName)' has no build configuration list",
                 )
             }
 
@@ -81,7 +81,7 @@ public struct GetBuildSettingsTool: Sendable {
                 })
             else {
                 throw MCPError.invalidParams(
-                    "Configuration '\(configurationName)' not found for target '\(targetName)'"
+                    "Configuration '\(configurationName)' not found for target '\(targetName)'",
                 )
             }
 
@@ -90,28 +90,28 @@ public struct GetBuildSettingsTool: Sendable {
             for (key, value) in config.buildSettings.sorted(by: { $0.key < $1.key }) {
                 let valueString: String
                 switch value {
-                case let .string(str):
-                    valueString = str
-                case let .array(arr):
-                    valueString = arr.joined(separator: " ")
+                    case let .string(str):
+                        valueString = str
+                    case let .array(arr):
+                        valueString = arr.joined(separator: " ")
                 }
                 settingsList.append("  \(key) = \(valueString)")
             }
 
             let result =
                 settingsList.isEmpty
-                ? "No build settings found." : settingsList.joined(separator: "\n")
+                    ? "No build settings found." : settingsList.joined(separator: "\n")
 
             return CallTool.Result(
                 content: [
                     .text(
-                        "Build settings for target '\(targetName)' (\(configurationName)):\n\(result)"
-                    )
-                ]
+                        "Build settings for target '\(targetName)' (\(configurationName)):\n\(result)",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)"
+                "Failed to read Xcode project: \(error.localizedDescription)",
             )
         }
     }

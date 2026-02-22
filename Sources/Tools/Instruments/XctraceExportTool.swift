@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 /// Exports data from Instruments `.trace` files.
 ///
@@ -23,7 +23,7 @@ public struct XctraceExportTool: Sendable {
         Tool(
             name: "xctrace_export",
             description:
-                "Export data from an Instruments .trace file as XML. Use toc=true to see available tables, then use xpath to query specific data.",
+            "Export data from an Instruments .trace file as XML. Use toc=true to see available tables, then use xpath to query specific data.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -34,18 +34,18 @@ public struct XctraceExportTool: Sendable {
                     "xpath": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "XPath query for specific data tables (e.g., '/trace-toc/run/data/table[@schema=\"time-profile\"]')."
+                            "XPath query for specific data tables (e.g., '/trace-toc/run/data/table[@schema=\"time-profile\"]').",
                         ),
                     ]),
                     "toc": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Show the table of contents of the trace file. Default: false. Used when xpath is not provided."
+                            "Show the table of contents of the trace file. Default: false. Used when xpath is not provided.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("input_path")]),
-            ])
+            ]),
         )
     }
 
@@ -60,14 +60,14 @@ public struct XctraceExportTool: Sendable {
         if case let .bool(value) = arguments["toc"] {
             toc = value
         } else {
-            toc = xpath == nil  // Default to toc when no xpath provided
+            toc = xpath == nil // Default to toc when no xpath provided
         }
 
         do {
             let result = try await xctraceRunner.export(
                 inputPath: inputPath,
                 xpath: xpath,
-                toc: toc
+                toc: toc,
             )
 
             guard result.succeeded else {
@@ -80,7 +80,7 @@ public struct XctraceExportTool: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to export trace: \(error.localizedDescription)"
+                "Failed to export trace: \(error.localizedDescription)",
             )
         }
     }

@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugEvaluateTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -13,43 +13,43 @@ public struct DebugEvaluateTool: Sendable {
         Tool(
             name: "debug_evaluate",
             description:
-                "Evaluate an expression in the context of a debugged process. Wraps po, p, and expr commands.",
+            "Evaluate an expression in the context of a debugged process. Wraps po, p, and expr commands.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "expression": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Expression to evaluate."
+                            "Expression to evaluate.",
                         ),
                     ]),
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."
+                            "Process ID of the debugged process.",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."
+                            "Bundle identifier of the app (uses registered session).",
                         ),
                     ]),
                     "language": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Language for expression evaluation: 'swift' or 'objc'. Omit for auto-detection."
+                            "Language for expression evaluation: 'swift' or 'objc'. Omit for auto-detection.",
                         ),
                     ]),
                     "object_description": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Use 'po' (print object description) instead of 'p'. Defaults to true."
+                            "Use 'po' (print object description) instead of 'p'. Defaults to true.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("expression")]),
-            ])
+            ]),
         )
     }
 
@@ -62,7 +62,7 @@ public struct DebugEvaluateTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required"
+                "Either pid or bundle_id (with active session) is required",
             )
         }
 
@@ -75,7 +75,7 @@ public struct DebugEvaluateTool: Sendable {
                 pid: targetPID,
                 expression: expression,
                 language: language,
-                objectDescription: objectDescription
+                objectDescription: objectDescription,
             )
 
             var message = "Expression result:\n\n\(result.output)"

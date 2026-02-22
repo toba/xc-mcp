@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct SwiftPackageStopTool: Sendable {
     private let sessionManager: SessionManager
@@ -13,32 +13,32 @@ public struct SwiftPackageStopTool: Sendable {
         Tool(
             name: "swift_package_stop",
             description:
-                "Stop a running Swift package executable that was started via swift_package_run. Uses process termination to stop the executable.",
+            "Stop a running Swift package executable that was started via swift_package_run. Uses process termination to stop the executable.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "package_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the Swift package directory. Uses session default if not specified."
+                            "Path to the Swift package directory. Uses session default if not specified.",
                         ),
                     ]),
                     "executable": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the executable to stop. Required to identify the process."
+                            "Name of the executable to stop. Required to identify the process.",
                         ),
                     ]),
                     "signal": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Signal to send: 'TERM' (graceful) or 'KILL' (force). Defaults to 'TERM'."
+                            "Signal to send: 'TERM' (graceful) or 'KILL' (force). Defaults to 'TERM'.",
                         ),
                         "enum": .array([.string("TERM"), .string("KILL")]),
                     ]),
                 ]),
                 "required": .array([.string("executable")]),
-            ])
+            ]),
         )
     }
 
@@ -56,16 +56,16 @@ public struct SwiftPackageStopTool: Sendable {
 
         do {
             let result = try ProcessResult.run(
-                "/usr/bin/pkill", arguments: [signalArg, "-f", executable], mergeStderr: false
+                "/usr/bin/pkill", arguments: [signalArg, "-f", executable], mergeStderr: false,
             )
 
             if result.succeeded {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Successfully sent \(signal) signal to process '\(executable)'"
-                        )
-                    ]
+                            "Successfully sent \(signal) signal to process '\(executable)'",
+                        ),
+                    ],
                 )
             } else if result.exitCode == 1 {
                 // pkill returns 1 when no process found

@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct SetSessionDefaultsTool: Sendable {
     private let sessionManager: SessionManager
@@ -13,26 +13,26 @@ public struct SetSessionDefaultsTool: Sendable {
         Tool(
             name: "set_session_defaults",
             description:
-                "Set default project, scheme, simulator, or device for the session. These defaults will be used by build and run tools when not explicitly specified.",
+            "Set default project, scheme, simulator, or device for the session. These defaults will be used by build and run tools when not explicitly specified.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the Xcode project (.xcodeproj). Mutually exclusive with workspace_path."
+                            "Path to the Xcode project (.xcodeproj). Mutually exclusive with workspace_path.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the Xcode workspace (.xcworkspace). Mutually exclusive with project_path."
+                            "Path to the Xcode workspace (.xcworkspace). Mutually exclusive with project_path.",
                         ),
                     ]),
                     "package_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to a Swift package directory containing Package.swift."
+                            "Path to a Swift package directory containing Package.swift.",
                         ),
                     ]),
                     "scheme": .object([
@@ -53,7 +53,7 @@ public struct SetSessionDefaultsTool: Sendable {
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -67,9 +67,9 @@ public struct SetSessionDefaultsTool: Sendable {
         let configuration = arguments.getString("configuration")
 
         // Validate that project and workspace are not both set
-        if projectPath != nil && workspacePath != nil {
+        if projectPath != nil, workspacePath != nil {
             throw MCPError.invalidParams(
-                "Cannot set both project_path and workspace_path. They are mutually exclusive."
+                "Cannot set both project_path and workspace_path. They are mutually exclusive.",
             )
         }
 
@@ -78,7 +78,7 @@ public struct SetSessionDefaultsTool: Sendable {
             let validConfigs = ["Debug", "Release"]
             if !validConfigs.contains(config) {
                 throw MCPError.invalidParams(
-                    "Invalid configuration '\(config)'. Must be one of: \(validConfigs.joined(separator: ", "))"
+                    "Invalid configuration '\(config)'. Must be one of: \(validConfigs.joined(separator: ", "))",
                 )
             }
         }
@@ -90,7 +90,7 @@ public struct SetSessionDefaultsTool: Sendable {
             scheme: scheme,
             simulatorUDID: simulatorUDID,
             deviceUDID: deviceUDID,
-            configuration: configuration
+            configuration: configuration,
         )
 
         let summary = await sessionManager.summary()
@@ -102,7 +102,7 @@ public struct SetSessionDefaultsTool: Sendable {
                     NextStepHint(tool: "build_macos", description: "Build for macOS"),
                     NextStepHint(tool: "list_schemes", description: "List available schemes"),
                 ]),
-            ]
+            ],
         )
     }
 }

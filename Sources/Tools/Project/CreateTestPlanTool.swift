@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct CreateTestPlanTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct CreateTestPlanTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "name": .object([
@@ -31,7 +31,7 @@ public struct CreateTestPlanTool: Sendable {
                     "output_directory": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Directory to write the test plan file (defaults to project parent directory)"
+                            "Directory to write the test plan file (defaults to project parent directory)",
                         ),
                     ]),
                     "test_targets": .object([
@@ -45,13 +45,13 @@ public struct CreateTestPlanTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(name) = arguments["name"]
+              case let .string(name) = arguments["name"]
         else {
             throw MCPError.invalidParams("project_path and name are required")
         }
@@ -72,7 +72,7 @@ public struct CreateTestPlanTool: Sendable {
         // Check if file already exists
         if FileManager.default.fileExists(atPath: outputPath) {
             return CallTool.Result(
-                content: [.text("Test plan '\(name).xctestplan' already exists at \(outputPath)")]
+                content: [.text("Test plan '\(name).xctestplan' already exists at \(outputPath)")],
             )
         }
 
@@ -106,19 +106,18 @@ public struct CreateTestPlanTool: Sendable {
                 else {
                     return CallTool.Result(
                         content: [
-                            .text("Test target '\(targetName)' not found in project")
-                        ]
+                            .text("Test target '\(targetName)' not found in project"),
+                        ],
                     )
                 }
 
-                let containerPath =
-                    "container:\(projectURL.lastPathComponent)"
+                let containerPath = TestPlanFile.containerPath(for: projectURL)
                 let entry: [String: Any] = [
                     "target": [
                         "containerPath": containerPath,
                         "identifier": target.uuid,
                         "name": targetName,
-                    ] as [String: Any]
+                    ] as [String: Any],
                 ]
                 testTargetEntries.append(entry)
             }
@@ -135,7 +134,7 @@ public struct CreateTestPlanTool: Sendable {
                         "id": UUID().uuidString,
                         "name": "Test Scheme Action",
                         "options": [:] as [String: Any],
-                    ] as [String: Any]
+                    ] as [String: Any],
                 ],
                 "defaultOptions": defaultOptions,
                 "testTargets": testTargetEntries,
@@ -152,7 +151,7 @@ public struct CreateTestPlanTool: Sendable {
             return CallTool.Result(content: [.text(summary)])
         } catch {
             throw MCPError.internalError(
-                "Failed to create test plan: \(error.localizedDescription)"
+                "Failed to create test plan: \(error.localizedDescription)",
             )
         }
     }

@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugVariablesTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -13,31 +13,31 @@ public struct DebugVariablesTool: Sendable {
         Tool(
             name: "debug_variables",
             description:
-                "Get local variables in the current stack frame of a debugged process.",
+            "Get local variables in the current stack frame of a debugged process.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."
+                            "Process ID of the debugged process.",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."
+                            "Bundle identifier of the app (uses registered session).",
                         ),
                     ]),
                     "frame": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Stack frame index. Defaults to 0 (current frame)."
+                            "Stack frame index. Defaults to 0 (current frame).",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -51,7 +51,7 @@ public struct DebugVariablesTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required"
+                "Either pid or bundle_id (with active session) is required",
             )
         }
 

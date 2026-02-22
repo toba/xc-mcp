@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for parameterized product type tests
@@ -24,7 +23,7 @@ struct ProductTypeTestCase: Sendable {
         _ productTypeString: String,
         _ expectedProductType: PBXProductType,
         platform: String? = nil,
-        deploymentTarget: String? = nil
+        deploymentTarget: String? = nil,
     ) {
         self.targetName = targetName
         self.productTypeString = productTypeString
@@ -63,7 +62,7 @@ struct AddTargetToolTests {
                 "target_name": Value.string("NewTarget"),
                 "product_type": Value.string("app"),
                 "bundle_identifier": Value.string("com.test.newtarget"),
-            ]
+            ],
         ),
         MissingParamTestCase(
             "Missing target_name",
@@ -71,7 +70,7 @@ struct AddTargetToolTests {
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "product_type": Value.string("app"),
                 "bundle_identifier": Value.string("com.test.newtarget"),
-            ]
+            ],
         ),
         MissingParamTestCase(
             "Missing product_type",
@@ -79,7 +78,7 @@ struct AddTargetToolTests {
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "target_name": Value.string("NewTarget"),
                 "bundle_identifier": Value.string("com.test.newtarget"),
-            ]
+            ],
         ),
         MissingParamTestCase(
             "Missing bundle_identifier",
@@ -87,7 +86,7 @@ struct AddTargetToolTests {
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "target_name": Value.string("NewTarget"),
                 "product_type": Value.string("app"),
-            ]
+            ],
         ),
     ]
 
@@ -103,7 +102,7 @@ struct AddTargetToolTests {
     static let productTypeCases: [ProductTypeTestCase] = [
         ProductTypeTestCase("NewApp", "app", .application),
         ProductTypeTestCase(
-            "MyFramework", "framework", .framework, platform: "iOS", deploymentTarget: "15.0"
+            "MyFramework", "framework", .framework, platform: "iOS", deploymentTarget: "15.0",
         ),
         ProductTypeTestCase("MyAppTests", "unitTestBundle", .unitTestBundle),
         ProductTypeTestCase("StaticFramework", "staticFramework", .staticFramework),
@@ -118,7 +117,7 @@ struct AddTargetToolTests {
     @Test("Add target with product type", arguments: productTypeCases)
     func addTargetWithProductType(_ testCase: ProductTypeTestCase) throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -163,7 +162,7 @@ struct AddTargetToolTests {
         #expect(productRef?.sourceTree == .buildProductsDir)
         #expect(productRef?.includeInIndex == false)
         #expect(
-            productRef?.explicitFileType == testCase.expectedProductType.explicitFileType
+            productRef?.explicitFileType == testCase.expectedProductType.explicitFileType,
         )
 
         // Verify product is in Products group
@@ -178,7 +177,7 @@ struct AddTargetToolTests {
             }
             #expect(
                 buildConfig?.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"]?.stringValue
-                    == deploymentTarget
+                    == deploymentTarget,
             )
         }
     }
@@ -186,7 +185,7 @@ struct AddTargetToolTests {
     @Test("Add application target verifies build phases")
     func addApplicationTargetVerifiesBuildPhases() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -232,7 +231,7 @@ struct AddTargetToolTests {
     @Test("Add duplicate target")
     func addDuplicateTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -242,7 +241,7 @@ struct AddTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         let tool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -265,7 +264,7 @@ struct AddTargetToolTests {
     @Test("Add target with invalid product type")
     func addTargetWithInvalidProductType() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 

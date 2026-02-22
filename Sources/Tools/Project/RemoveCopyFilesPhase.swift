@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct RemoveCopyFilesPhase: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct RemoveCopyFilesPhase: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -36,14 +36,14 @@ public struct RemoveCopyFilesPhase: Sendable {
                 "required": .array([
                     .string("project_path"), .string("target_name"), .string("phase_name"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"],
-            case let .string(phaseName) = arguments["phase_name"]
+              case let .string(targetName) = arguments["target_name"],
+              case let .string(phaseName) = arguments["phase_name"]
         else {
             throw MCPError.invalidParams("project_path, target_name, and phase_name are required")
         }
@@ -58,7 +58,7 @@ public struct RemoveCopyFilesPhase: Sendable {
                 let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
             else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")]
+                    content: [.text("Target '\(targetName)' not found in project")],
                 )
             }
 
@@ -74,9 +74,9 @@ public struct RemoveCopyFilesPhase: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Copy Files phase '\(phaseName)' not found in target '\(targetName)'"
-                        )
-                    ]
+                            "Copy Files phase '\(phaseName)' not found in target '\(targetName)'",
+                        ),
+                    ],
                 )
             }
 
@@ -85,9 +85,9 @@ public struct RemoveCopyFilesPhase: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Copy Files phase '\(phaseName)' not found in target '\(targetName)'"
-                        )
-                    ]
+                            "Copy Files phase '\(phaseName)' not found in target '\(targetName)'",
+                        ),
+                    ],
                 )
             }
 
@@ -109,15 +109,15 @@ public struct RemoveCopyFilesPhase: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully removed Copy Files phase '\(phaseName)' from target '\(targetName)'"
-                    )
-                ]
+                        "Successfully removed Copy Files phase '\(phaseName)' from target '\(targetName)'",
+                    ),
+                ],
             )
         } catch let error as MCPError {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to remove copy files phase: \(error.localizedDescription)"
+                "Failed to remove copy files phase: \(error.localizedDescription)",
             )
         }
     }

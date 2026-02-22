@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("CreateGroupTool Tests")
@@ -32,7 +31,8 @@ struct CreateGroupToolTests {
         let tool = CreateGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: ["project_path": Value.string("/path/to/project.xcodeproj")]
+            try tool.execute(
+                arguments: ["project_path": Value.string("/path/to/project.xcodeproj")],
             )
         }
     }
@@ -41,7 +41,7 @@ struct CreateGroupToolTests {
     func createGroupInMainGroup() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -80,7 +80,7 @@ struct CreateGroupToolTests {
     func createGroupWithPath() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -120,7 +120,7 @@ struct CreateGroupToolTests {
     func createGroupInParentGroup() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -176,7 +176,7 @@ struct CreateGroupToolTests {
     func createDuplicateGroup() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -212,7 +212,7 @@ struct CreateGroupToolTests {
     func createGroupWithNonExistentParent() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 

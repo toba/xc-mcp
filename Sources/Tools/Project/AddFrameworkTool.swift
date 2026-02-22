@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct AddFrameworkTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct AddFrameworkTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -31,30 +31,30 @@ public struct AddFrameworkTool: Sendable {
                     "framework_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the framework to add (e.g., UIKit, Foundation, or path to custom framework)"
+                            "Name of the framework to add (e.g., UIKit, Foundation, or path to custom framework)",
                         ),
                     ]),
                     "embed": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Whether to embed the framework (for custom frameworks, optional, defaults to false)"
+                            "Whether to embed the framework (for custom frameworks, optional, defaults to false)",
                         ),
                     ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("target_name"), .string("framework_name"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"],
-            case let .string(frameworkName) = arguments["framework_name"]
+              case let .string(targetName) = arguments["target_name"],
+              case let .string(frameworkName) = arguments["framework_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, and framework_name are required"
+                "project_path, target_name, and framework_name are required",
             )
         }
 
@@ -78,14 +78,15 @@ public struct AddFrameworkTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project")
-                    ]
+                        .text("Target '\(targetName)' not found in project"),
+                    ],
                 )
             }
 
             // Find or create frameworks build phase
             let frameworksBuildPhase: PBXFrameworksBuildPhase
-            if let existingPhase = target.buildPhases.first(where: { $0 is PBXFrameworksBuildPhase }
+            if let existingPhase = target.buildPhases.first(
+                where: { $0 is PBXFrameworksBuildPhase },
             ) as? PBXFrameworksBuildPhase {
                 frameworksBuildPhase = existingPhase
             } else {
@@ -110,7 +111,7 @@ public struct AddFrameworkTool: Sendable {
                 // Use relative path from project for file reference
                 frameworkPath =
                     pathUtility.makeRelativePath(from: resolvedFrameworkPath)
-                    ?? resolvedFrameworkPath
+                        ?? resolvedFrameworkPath
             }
 
             // Check if framework already exists
@@ -126,9 +127,9 @@ public struct AddFrameworkTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Framework '\(frameworkName)' already exists in target '\(targetName)'"
-                        )
-                    ]
+                            "Framework '\(frameworkName)' already exists in target '\(targetName)'",
+                        ),
+                    ],
                 )
             }
 
@@ -139,7 +140,7 @@ public struct AddFrameworkTool: Sendable {
                     sourceTree: .sdkRoot,
                     name: frameworkFileName,
                     lastKnownFileType: "wrapper.framework",
-                    path: frameworkPath
+                    path: frameworkPath,
                 )
                 xcodeproj.pbxproj.add(object: frameworkFileRef)
             } else if let existingRef = xcodeproj.pbxproj.fileReferences.first(where: {
@@ -153,7 +154,7 @@ public struct AddFrameworkTool: Sendable {
                     sourceTree: .group,
                     name: frameworkFileName,
                     lastKnownFileType: "wrapper.framework",
-                    path: frameworkPath
+                    path: frameworkPath,
                 )
                 xcodeproj.pbxproj.add(object: frameworkFileRef)
             }
@@ -161,18 +162,18 @@ public struct AddFrameworkTool: Sendable {
             // Add to frameworks group unless reusing an existing product reference
             if frameworkFileRef.sourceTree != .buildProductsDir {
                 if let project = xcodeproj.pbxproj.rootObject,
-                    let frameworksGroup = project.mainGroup?.children.first(where: { element in
-                        if let group = element as? PBXGroup {
-                            return group.name == "Frameworks"
-                        }
-                        return false
-                    }) as? PBXGroup
+                   let frameworksGroup = project.mainGroup?.children.first(where: { element in
+                       if let group = element as? PBXGroup {
+                           return group.name == "Frameworks"
+                       }
+                       return false
+                   }) as? PBXGroup
                 {
                     frameworksGroup.children.append(frameworkFileRef)
                 } else {
                     // Create Frameworks group if it doesn't exist
                     if let project = try xcodeproj.pbxproj.rootProject(),
-                        let mainGroup = project.mainGroup
+                       let mainGroup = project.mainGroup
                     {
                         let frameworksGroup = PBXGroup(sourceTree: .group, name: "Frameworks")
                         xcodeproj.pbxproj.add(object: frameworksGroup)
@@ -188,12 +189,12 @@ public struct AddFrameworkTool: Sendable {
             frameworksBuildPhase.files?.append(buildFile)
 
             // If embed is requested and it's a custom framework, add to embed frameworks phase
-            if embed && !isSystemFramework {
+            if embed, !isSystemFramework {
                 // Find or create embed frameworks build phase
                 var embedPhase: PBXCopyFilesBuildPhase?
                 for phase in target.buildPhases {
                     if let copyPhase = phase as? PBXCopyFilesBuildPhase,
-                        copyPhase.dstSubfolderSpec == .frameworks
+                       copyPhase.dstSubfolderSpec == .frameworks
                     {
                         embedPhase = copyPhase
                         break
@@ -204,7 +205,7 @@ public struct AddFrameworkTool: Sendable {
                     embedPhase = PBXCopyFilesBuildPhase(
                         dstPath: "",
                         dstSubfolderSpec: .frameworks,
-                        name: "Embed Frameworks"
+                        name: "Embed Frameworks",
                     )
                     xcodeproj.pbxproj.add(object: embedPhase!)
                     target.buildPhases.append(embedPhase!)
@@ -213,7 +214,7 @@ public struct AddFrameworkTool: Sendable {
                 // Create build file for embedding
                 let embedBuildFile = PBXBuildFile(
                     file: frameworkFileRef,
-                    settings: ["ATTRIBUTES": ["CodeSignOnCopy", "RemoveHeadersOnCopy"]]
+                    settings: ["ATTRIBUTES": ["CodeSignOnCopy", "RemoveHeadersOnCopy"]],
                 )
                 xcodeproj.pbxproj.add(object: embedBuildFile)
                 embedPhase?.files?.append(embedBuildFile)
@@ -226,13 +227,13 @@ public struct AddFrameworkTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully added framework '\(frameworkName)' to target '\(targetName)'\(embedText)"
-                    )
-                ]
+                        "Successfully added framework '\(frameworkName)' to target '\(targetName)'\(embedText)",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add framework to Xcode project: \(error.localizedDescription)"
+                "Failed to add framework to Xcode project: \(error.localizedDescription)",
             )
         }
     }

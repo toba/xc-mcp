@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct SwiftPackageRunTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -15,20 +15,20 @@ public struct SwiftPackageRunTool: Sendable {
         Tool(
             name: "swift_package_run",
             description:
-                "Run an executable from a Swift package. Builds the package if needed and runs the specified executable.",
+            "Run an executable from a Swift package. Builds the package if needed and runs the specified executable.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "package_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified."
+                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
                         ),
                     ]),
                     "executable": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the executable to run. If not specified, runs the default executable."
+                            "Name of the executable to run. If not specified, runs the default executable.",
                         ),
                     ]),
                     "arguments": .object([
@@ -38,7 +38,7 @@ public struct SwiftPackageRunTool: Sendable {
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -51,7 +51,7 @@ public struct SwiftPackageRunTool: Sendable {
             packagePath = sessionPackagePath
         } else {
             throw MCPError.invalidParams(
-                "package_path is required. Set it with set_session_defaults or pass it directly."
+                "package_path is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -63,11 +63,11 @@ public struct SwiftPackageRunTool: Sendable {
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift"
+            "Package.swift",
         ).path
         guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
             throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path."
+                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
             )
         }
 
@@ -75,7 +75,7 @@ public struct SwiftPackageRunTool: Sendable {
             let result = try await swiftRunner.runExecutable(
                 packagePath: packagePath,
                 executableName: executable,
-                arguments: execArgs
+                arguments: execArgs,
             )
 
             if result.succeeded {
@@ -90,11 +90,11 @@ public struct SwiftPackageRunTool: Sendable {
                 }
 
                 return CallTool.Result(
-                    content: [.text(message)]
+                    content: [.text(message)],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Execution failed (exit code \(result.exitCode)):\n\(result.output)"
+                    "Execution failed (exit code \(result.exitCode)):\n\(result.output)",
                 )
             }
         } catch {

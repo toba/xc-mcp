@@ -1,13 +1,13 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct TestMacOSTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager
+        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
@@ -17,7 +17,7 @@ public struct TestMacOSTool: Sendable {
         Tool(
             name: "test_macos",
             description:
-                "Run tests for an Xcode project or workspace on macOS.",
+            "Run tests for an Xcode project or workspace on macOS.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -25,44 +25,44 @@ public struct TestMacOSTool: Sendable {
                         "project_path": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "Path to the .xcodeproj file. Uses session default if not specified."
+                                "Path to the .xcodeproj file. Uses session default if not specified.",
                             ),
                         ]),
                         "workspace_path": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "Path to the .xcworkspace file. Uses session default if not specified."
+                                "Path to the .xcworkspace file. Uses session default if not specified.",
                             ),
                         ]),
                         "scheme": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "The scheme to test. Uses session default if not specified."
+                                "The scheme to test. Uses session default if not specified.",
                             ),
                         ]),
                         "configuration": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "Build configuration (Debug or Release). Defaults to Debug."
+                                "Build configuration (Debug or Release). Defaults to Debug.",
                             ),
                         ]),
                         "arch": .object([
                             "type": .string("string"),
                             "description": .string(
-                                "Architecture to test on (arm64 or x86_64). Defaults to the current machine's architecture."
+                                "Architecture to test on (arm64 or x86_64). Defaults to the current machine's architecture.",
                             ),
                         ]),
-                    ].merging([String: Value].testSchemaProperties) { _, new in new }
+                    ].merging([String: Value].testSchemaProperties) { _, new in new },
                 ),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments
+            from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
@@ -90,7 +90,7 @@ public struct TestMacOSTool: Sendable {
                 skipTesting: testParams.skipTesting,
                 enableCodeCoverage: testParams.enableCodeCoverage,
                 resultBundlePath: resultBundlePath,
-                timeout: TimeInterval(testParams.timeout ?? 300)
+                timeout: TimeInterval(testParams.timeout ?? 300),
             )
 
             defer {
@@ -103,7 +103,7 @@ public struct TestMacOSTool: Sendable {
                 output: result.output, succeeded: result.succeeded,
                 context: "scheme '\(scheme)' on macOS",
                 xcresultPath: resultBundlePath,
-                stderr: result.stderr
+                stderr: result.stderr,
             )
         } catch {
             if isTemporaryBundle {

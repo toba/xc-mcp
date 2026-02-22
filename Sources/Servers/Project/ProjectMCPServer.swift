@@ -1,7 +1,7 @@
-import Foundation
-import Logging
 import MCP
+import Logging
 import XCMCPCore
+import Foundation
 import XCMCPTools
 
 /// All available tool names exposed by the xc-project MCP server.
@@ -25,8 +25,11 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case createTestPlan = "create_test_plan"
     case addTargetToTestPlan = "add_target_to_test_plan"
     case removeTargetFromTestPlan = "remove_target_from_test_plan"
+    case setTestPlanTargetEnabled = "set_test_plan_target_enabled"
     case addTestPlanToScheme = "add_test_plan_to_scheme"
+    case removeTestPlanFromScheme = "remove_test_plan_from_scheme"
     case listTestPlans = "list_test_plans"
+    case setTestTargetApplication = "set_test_target_application"
     case renameGroup = "rename_group"
     case addDependency = "add_dependency"
     case setBuildSetting = "set_build_setting"
@@ -106,7 +109,7 @@ public struct ProjectMCPServer: Sendable {
         let server = Server(
             name: "xc-project",
             version: "1.0.0",
-            capabilities: .init(tools: .init())
+            capabilities: .init(tools: .init()),
         )
 
         // Create path utility
@@ -132,8 +135,11 @@ public struct ProjectMCPServer: Sendable {
         let createTestPlanTool = CreateTestPlanTool(pathUtility: pathUtility)
         let addTargetToTestPlanTool = AddTargetToTestPlanTool(pathUtility: pathUtility)
         let removeTargetFromTestPlanTool = RemoveTargetFromTestPlanTool(pathUtility: pathUtility)
+        let setTestPlanTargetEnabledTool = SetTestPlanTargetEnabledTool(pathUtility: pathUtility)
         let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
+        let removeTestPlanFromSchemeTool = RemoveTestPlanFromSchemeTool(pathUtility: pathUtility)
         let listTestPlansTool = ListTestPlansTool(pathUtility: pathUtility)
+        let setTestTargetApplicationTool = SetTestTargetApplicationTool(pathUtility: pathUtility)
         let renameGroupTool = RenameGroupTool(pathUtility: pathUtility)
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
@@ -155,19 +161,19 @@ public struct ProjectMCPServer: Sendable {
         let listURLTypesTool = ListURLTypesTool(pathUtility: pathUtility)
         let manageURLTypeTool = ManageURLTypeTool(pathUtility: pathUtility)
         let addTargetToSynchronizedFolderTool = AddTargetToSynchronizedFolderTool(
-            pathUtility: pathUtility
+            pathUtility: pathUtility,
         )
         let removeTargetFromSynchronizedFolderTool = RemoveTargetFromSynchronizedFolderTool(
-            pathUtility: pathUtility
+            pathUtility: pathUtility,
         )
         let addSynchronizedFolderExceptionTool = AddSynchronizedFolderExceptionTool(
-            pathUtility: pathUtility
+            pathUtility: pathUtility,
         )
         let removeSynchronizedFolderExceptionTool = RemoveSynchronizedFolderExceptionTool(
-            pathUtility: pathUtility
+            pathUtility: pathUtility,
         )
         let listSynchronizedFolderExceptionsTool = ListSynchronizedFolderExceptionsTool(
-            pathUtility: pathUtility
+            pathUtility: pathUtility,
         )
         let listCopyFilesPhases = ListCopyFilesPhases(pathUtility: pathUtility)
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
@@ -196,8 +202,11 @@ public struct ProjectMCPServer: Sendable {
                 createTestPlanTool.tool(),
                 addTargetToTestPlanTool.tool(),
                 removeTargetFromTestPlanTool.tool(),
+                setTestPlanTargetEnabledTool.tool(),
                 addTestPlanToSchemeTool.tool(),
+                removeTestPlanFromSchemeTool.tool(),
                 listTestPlansTool.tool(),
+                setTestTargetApplicationTool.tool(),
                 renameGroupTool.tool(),
                 addDependencyTool.tool(),
                 setBuildSettingTool.tool(),
@@ -234,114 +243,121 @@ public struct ProjectMCPServer: Sendable {
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = ProjectToolName(rawValue: params.name) else {
                 let hint = ServerToolDirectory.hint(for: params.name, currentServer: "xc-project")
-                let message = hint.map { "Unknown tool: \(params.name). \($0)" }
-                    ?? "Unknown tool: \(params.name)"
+                let message =
+                    hint.map { "Unknown tool: \(params.name). \($0)" }
+                        ?? "Unknown tool: \(params.name)"
                 throw MCPError.methodNotFound(message)
             }
 
             let arguments = params.arguments ?? [:]
 
             switch toolName {
-            case .createXcodeproj:
-                return try createXcodeprojTool.execute(arguments: arguments)
-            case .listTargets:
-                return try listTargetsTool.execute(arguments: arguments)
-            case .listBuildConfigurations:
-                return try listBuildConfigurationsTool.execute(arguments: arguments)
-            case .listFiles:
-                return try listFilesTool.execute(arguments: arguments)
-            case .getBuildSettings:
-                return try getBuildSettingsTool.execute(arguments: arguments)
-            case .addFile:
-                return try addFileTool.execute(arguments: arguments)
-            case .removeFile:
-                return try removeFileTool.execute(arguments: arguments)
-            case .moveFile:
-                return try moveFileTool.execute(arguments: arguments)
-            case .createGroup:
-                return try createGroupTool.execute(arguments: arguments)
-            case .removeGroup:
-                return try removeGroupTool.execute(arguments: arguments)
-            case .addTarget:
-                return try addTargetTool.execute(arguments: arguments)
-            case .removeTarget:
-                return try removeTargetTool.execute(arguments: arguments)
-            case .renameTarget:
-                return try renameTargetTool.execute(arguments: arguments)
-            case .renameScheme:
-                return try renameSchemeTool.execute(arguments: arguments)
-            case .createScheme:
-                return try createSchemeTool.execute(arguments: arguments)
-            case .validateScheme:
-                return try validateSchemeTool.execute(arguments: arguments)
-            case .createTestPlan:
-                return try createTestPlanTool.execute(arguments: arguments)
-            case .addTargetToTestPlan:
-                return try addTargetToTestPlanTool.execute(arguments: arguments)
-            case .removeTargetFromTestPlan:
-                return try removeTargetFromTestPlanTool.execute(arguments: arguments)
-            case .addTestPlanToScheme:
-                return try addTestPlanToSchemeTool.execute(arguments: arguments)
-            case .listTestPlans:
-                return try listTestPlansTool.execute(arguments: arguments)
-            case .renameGroup:
-                return try renameGroupTool.execute(arguments: arguments)
-            case .addDependency:
-                return try addDependencyTool.execute(arguments: arguments)
-            case .setBuildSetting:
-                return try setBuildSettingTool.execute(arguments: arguments)
-            case .addFramework:
-                return try addFrameworkTool.execute(arguments: arguments)
-            case .addBuildPhase:
-                return try addBuildPhaseTool.execute(arguments: arguments)
-            case .duplicateTarget:
-                return try duplicateTargetTool.execute(arguments: arguments)
-            case .addSwiftPackage:
-                return try addSwiftPackageTool.execute(arguments: arguments)
-            case .listSwiftPackages:
-                return try listSwiftPackagesTool.execute(arguments: arguments)
-            case .removeSwiftPackage:
-                return try removeSwiftPackageTool.execute(arguments: arguments)
-            case .listGroups:
-                return try listGroupsTool.execute(arguments: arguments)
-            case .addSynchronizedFolder:
-                return try addSynchronizedFolderTool.execute(arguments: arguments)
-            case .removeSynchronizedFolder:
-                return try removeSynchronizedFolderTool.execute(arguments: arguments)
-            case .addAppExtension:
-                return try addAppExtensionTool.execute(arguments: arguments)
-            case .removeAppExtension:
-                return try removeAppExtensionTool.execute(arguments: arguments)
-            case .listDocumentTypes:
-                return try listDocumentTypesTool.execute(arguments: arguments)
-            case .manageDocumentType:
-                return try manageDocumentTypeTool.execute(arguments: arguments)
-            case .listTypeIdentifiers:
-                return try listTypeIdentifiersTool.execute(arguments: arguments)
-            case .manageTypeIdentifier:
-                return try manageTypeIdentifierTool.execute(arguments: arguments)
-            case .listURLTypes:
-                return try listURLTypesTool.execute(arguments: arguments)
-            case .manageURLType:
-                return try manageURLTypeTool.execute(arguments: arguments)
-            case .addTargetToSynchronizedFolder:
-                return try addTargetToSynchronizedFolderTool.execute(arguments: arguments)
-            case .removeTargetFromSynchronizedFolder:
-                return try removeTargetFromSynchronizedFolderTool.execute(arguments: arguments)
-            case .addSynchronizedFolderException:
-                return try addSynchronizedFolderExceptionTool.execute(arguments: arguments)
-            case .removeSynchronizedFolderException:
-                return try removeSynchronizedFolderExceptionTool.execute(arguments: arguments)
-            case .listSynchronizedFolderExceptions:
-                return try listSynchronizedFolderExceptionsTool.execute(arguments: arguments)
-            case .listCopyFilesPhases:
-                return try listCopyFilesPhases.execute(arguments: arguments)
-            case .addCopyFilesPhase:
-                return try addCopyFilesPhase.execute(arguments: arguments)
-            case .addToCopyFilesPhase:
-                return try addToCopyFilesPhase.execute(arguments: arguments)
-            case .removeCopyFilesPhase:
-                return try removeCopyFilesPhase.execute(arguments: arguments)
+                case .createXcodeproj:
+                    return try createXcodeprojTool.execute(arguments: arguments)
+                case .listTargets:
+                    return try listTargetsTool.execute(arguments: arguments)
+                case .listBuildConfigurations:
+                    return try listBuildConfigurationsTool.execute(arguments: arguments)
+                case .listFiles:
+                    return try listFilesTool.execute(arguments: arguments)
+                case .getBuildSettings:
+                    return try getBuildSettingsTool.execute(arguments: arguments)
+                case .addFile:
+                    return try addFileTool.execute(arguments: arguments)
+                case .removeFile:
+                    return try removeFileTool.execute(arguments: arguments)
+                case .moveFile:
+                    return try moveFileTool.execute(arguments: arguments)
+                case .createGroup:
+                    return try createGroupTool.execute(arguments: arguments)
+                case .removeGroup:
+                    return try removeGroupTool.execute(arguments: arguments)
+                case .addTarget:
+                    return try addTargetTool.execute(arguments: arguments)
+                case .removeTarget:
+                    return try removeTargetTool.execute(arguments: arguments)
+                case .renameTarget:
+                    return try renameTargetTool.execute(arguments: arguments)
+                case .renameScheme:
+                    return try renameSchemeTool.execute(arguments: arguments)
+                case .createScheme:
+                    return try createSchemeTool.execute(arguments: arguments)
+                case .validateScheme:
+                    return try validateSchemeTool.execute(arguments: arguments)
+                case .createTestPlan:
+                    return try createTestPlanTool.execute(arguments: arguments)
+                case .addTargetToTestPlan:
+                    return try addTargetToTestPlanTool.execute(arguments: arguments)
+                case .removeTargetFromTestPlan:
+                    return try removeTargetFromTestPlanTool.execute(arguments: arguments)
+                case .setTestPlanTargetEnabled:
+                    return try setTestPlanTargetEnabledTool.execute(arguments: arguments)
+                case .addTestPlanToScheme:
+                    return try addTestPlanToSchemeTool.execute(arguments: arguments)
+                case .removeTestPlanFromScheme:
+                    return try removeTestPlanFromSchemeTool.execute(arguments: arguments)
+                case .listTestPlans:
+                    return try listTestPlansTool.execute(arguments: arguments)
+                case .setTestTargetApplication:
+                    return try setTestTargetApplicationTool.execute(arguments: arguments)
+                case .renameGroup:
+                    return try renameGroupTool.execute(arguments: arguments)
+                case .addDependency:
+                    return try addDependencyTool.execute(arguments: arguments)
+                case .setBuildSetting:
+                    return try setBuildSettingTool.execute(arguments: arguments)
+                case .addFramework:
+                    return try addFrameworkTool.execute(arguments: arguments)
+                case .addBuildPhase:
+                    return try addBuildPhaseTool.execute(arguments: arguments)
+                case .duplicateTarget:
+                    return try duplicateTargetTool.execute(arguments: arguments)
+                case .addSwiftPackage:
+                    return try addSwiftPackageTool.execute(arguments: arguments)
+                case .listSwiftPackages:
+                    return try listSwiftPackagesTool.execute(arguments: arguments)
+                case .removeSwiftPackage:
+                    return try removeSwiftPackageTool.execute(arguments: arguments)
+                case .listGroups:
+                    return try listGroupsTool.execute(arguments: arguments)
+                case .addSynchronizedFolder:
+                    return try addSynchronizedFolderTool.execute(arguments: arguments)
+                case .removeSynchronizedFolder:
+                    return try removeSynchronizedFolderTool.execute(arguments: arguments)
+                case .addAppExtension:
+                    return try addAppExtensionTool.execute(arguments: arguments)
+                case .removeAppExtension:
+                    return try removeAppExtensionTool.execute(arguments: arguments)
+                case .listDocumentTypes:
+                    return try listDocumentTypesTool.execute(arguments: arguments)
+                case .manageDocumentType:
+                    return try manageDocumentTypeTool.execute(arguments: arguments)
+                case .listTypeIdentifiers:
+                    return try listTypeIdentifiersTool.execute(arguments: arguments)
+                case .manageTypeIdentifier:
+                    return try manageTypeIdentifierTool.execute(arguments: arguments)
+                case .listURLTypes:
+                    return try listURLTypesTool.execute(arguments: arguments)
+                case .manageURLType:
+                    return try manageURLTypeTool.execute(arguments: arguments)
+                case .addTargetToSynchronizedFolder:
+                    return try addTargetToSynchronizedFolderTool.execute(arguments: arguments)
+                case .removeTargetFromSynchronizedFolder:
+                    return try removeTargetFromSynchronizedFolderTool.execute(arguments: arguments)
+                case .addSynchronizedFolderException:
+                    return try addSynchronizedFolderExceptionTool.execute(arguments: arguments)
+                case .removeSynchronizedFolderException:
+                    return try removeSynchronizedFolderExceptionTool.execute(arguments: arguments)
+                case .listSynchronizedFolderExceptions:
+                    return try listSynchronizedFolderExceptionsTool.execute(arguments: arguments)
+                case .listCopyFilesPhases:
+                    return try listCopyFilesPhases.execute(arguments: arguments)
+                case .addCopyFilesPhase:
+                    return try addCopyFilesPhase.execute(arguments: arguments)
+                case .addToCopyFilesPhase:
+                    return try addToCopyFilesPhase.execute(arguments: arguments)
+                case .removeCopyFilesPhase:
+                    return try removeCopyFilesPhase.execute(arguments: arguments)
             }
         }
 

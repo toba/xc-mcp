@@ -1,6 +1,6 @@
+import MCP
 import AppKit
 import Foundation
-import MCP
 import ScreenCaptureKit
 
 public struct ScreenshotMacWindowTool: Sendable {
@@ -10,38 +10,39 @@ public struct ScreenshotMacWindowTool: Sendable {
         Tool(
             name: "screenshot_mac_window",
             description:
-                "Take a screenshot of a macOS application window using ScreenCaptureKit. "
-                + "Returns the image inline as base64 PNG. Requires Screen Recording permission in System Settings.",
+            "Take a screenshot of a macOS application window using ScreenCaptureKit. "
+                +
+                "Returns the image inline as base64 PNG. Requires Screen Recording permission in System Settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "app_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Application name to match (e.g., 'Finder', 'Safari'). Matches against the owning application's name."
+                            "Application name to match (e.g., 'Finder', 'Safari'). Matches against the owning application's name.",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier to match (e.g., 'com.apple.finder'). Matches against the owning application's bundle identifier."
+                            "Bundle identifier to match (e.g., 'com.apple.finder'). Matches against the owning application's bundle identifier.",
                         ),
                     ]),
                     "window_title": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Window title to match. Matches against the window's title."
+                            "Window title to match. Matches against the window's title.",
                         ),
                     ]),
                     "save_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional file path to also save the screenshot as a PNG file."
+                            "Optional file path to also save the screenshot as a PNG file.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -60,9 +61,9 @@ public struct ScreenshotMacWindowTool: Sendable {
         let windowTitle = arguments.getString("window_title")
         let savePath = arguments.getString("save_path")
 
-        if appName == nil && bundleId == nil && windowTitle == nil {
+        if appName == nil, bundleId == nil, windowTitle == nil {
             throw MCPError.invalidParams(
-                "At least one of app_name, bundle_id, or window_title is required."
+                "At least one of app_name, bundle_id, or window_title is required.",
             )
         }
 
@@ -70,12 +71,13 @@ public struct ScreenshotMacWindowTool: Sendable {
         let availableContent: SCShareableContent
         do {
             availableContent = try await SCShareableContent.excludingDesktopWindows(
-                false, onScreenWindowsOnly: true
+                false, onScreenWindowsOnly: true,
             )
         } catch {
             throw MCPError.internalError(
                 "Failed to get screen content. Ensure Screen Recording permission is granted in "
-                    + "System Settings > Privacy & Security > Screen Recording. Error: \(error.localizedDescription)"
+                    +
+                    "System Settings > Privacy & Security > Screen Recording. Error: \(error.localizedDescription)",
             )
         }
 
@@ -109,7 +111,7 @@ public struct ScreenshotMacWindowTool: Sendable {
             if let windowTitle { criteria.append("window_title='\(windowTitle)'") }
             throw MCPError.invalidParams(
                 "No window found matching \(criteria.joined(separator: ", ")). "
-                    + "Make sure the app is running and has a visible window."
+                    + "Make sure the app is running and has a visible window.",
             )
         }
 
@@ -123,7 +125,7 @@ public struct ScreenshotMacWindowTool: Sendable {
         do {
             cgImage = try await withCheckedThrowingContinuation { continuation in
                 SCScreenshotManager.captureImage(
-                    contentFilter: filter, configuration: config
+                    contentFilter: filter, configuration: config,
                 ) { image, error in
                     if let error {
                         continuation.resume(throwing: error)
@@ -132,15 +134,15 @@ public struct ScreenshotMacWindowTool: Sendable {
                     } else {
                         continuation.resume(
                             throwing: MCPError.internalError(
-                                "Screenshot capture returned nil image."
-                            )
+                                "Screenshot capture returned nil image.",
+                            ),
                         )
                     }
                 }
             }
         } catch {
             throw MCPError.internalError(
-                "Failed to capture window screenshot: \(error.localizedDescription)"
+                "Failed to capture window screenshot: \(error.localizedDescription)",
             )
         }
 
@@ -157,7 +159,7 @@ public struct ScreenshotMacWindowTool: Sendable {
                 try pngData.write(to: url)
             } catch {
                 throw MCPError.internalError(
-                    "Failed to save screenshot to '\(savePath)': \(error.localizedDescription)"
+                    "Failed to save screenshot to '\(savePath)': \(error.localizedDescription)",
                 )
             }
         }
@@ -167,7 +169,7 @@ public struct ScreenshotMacWindowTool: Sendable {
         let windowInfo = targetWindow.title ?? "untitled"
         let appInfo =
             targetWindow.owningApplication?.applicationName
-            ?? targetWindow.owningApplication?.bundleIdentifier ?? "unknown"
+                ?? targetWindow.owningApplication?.bundleIdentifier ?? "unknown"
 
         var description =
             "Screenshot of '\(appInfo)' window '\(windowInfo)' (\(cgImage.width)x\(cgImage.height) px)"
@@ -179,7 +181,7 @@ public struct ScreenshotMacWindowTool: Sendable {
             content: [
                 .image(data: base64, mimeType: "image/png", metadata: nil),
                 .text(description),
-            ]
+            ],
         )
     }
 }

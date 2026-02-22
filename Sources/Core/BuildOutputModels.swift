@@ -26,7 +26,7 @@ public struct BuildResult: Sendable {
         slowTests: [SlowTest] = [],
         flakyTests: [String] = [],
         buildInfo: BuildInfo? = nil,
-        executables: [Executable] = []
+        executables: [Executable] = [],
     ) {
         self.status = status
         self.summary = summary
@@ -66,7 +66,7 @@ public struct BuildSummary: Sendable {
         coveragePercent: Double? = nil,
         slowTests: Int? = nil,
         flakyTests: Int? = nil,
-        executables: Int? = nil
+        executables: Int? = nil,
     ) {
         self.errors = errors
         self.warnings = warnings
@@ -110,7 +110,8 @@ public struct BuildWarning: Sendable {
     public let column: Int?
 
     public init(
-        file: String?, line: Int?, message: String, type: WarningType = .compile, column: Int? = nil
+        file: String?, line: Int?, message: String, type: WarningType = .compile,
+        column: Int? = nil,
     ) {
         self.file = file
         self.line = line
@@ -154,7 +155,7 @@ public struct FileCoverage: Sendable {
     public let executableLines: Int
 
     public init(
-        path: String, name: String, lineCoverage: Double, coveredLines: Int, executableLines: Int
+        path: String, name: String, lineCoverage: Double, coveredLines: Int, executableLines: Int,
     ) {
         self.path = path
         self.name = name
@@ -224,7 +225,7 @@ public struct TargetBuildInfo: Sendable {
     public let dependsOn: [String]
 
     public init(
-        name: String, duration: String? = nil, phases: [String] = [], dependsOn: [String] = []
+        name: String, duration: String? = nil, phases: [String] = [], dependsOn: [String] = [],
     ) {
         self.name = name
         self.duration = duration

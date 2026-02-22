@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 /// MCP tool for listing connected physical iOS/tvOS/watchOS devices.
 ///
@@ -21,12 +21,12 @@ public struct ListDevicesTool: Sendable {
         Tool(
             name: "list_devices",
             description:
-                "List all connected iOS/tvOS/watchOS devices with their UDIDs and details.",
+            "List all connected iOS/tvOS/watchOS devices with their UDIDs and details.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([:]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -43,9 +43,9 @@ public struct ListDevicesTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "No connected devices found. Make sure your device is connected and trusted."
-                        )
-                    ]
+                            "No connected devices found. Make sure your device is connected and trusted.",
+                        ),
+                    ],
                 )
             }
 

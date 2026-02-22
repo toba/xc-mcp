@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsBatchStatsCoverageTool: Sendable {
     private let pathUtility: PathUtility
@@ -13,7 +13,7 @@ public struct XCStringsBatchStatsCoverageTool: Sendable {
         Tool(
             name: "xcstrings_batch_stats_coverage",
             description:
-                "Get token-efficient coverage statistics for multiple xcstrings files at once. Returns compact summary with coverage percentages per language for each file and aggregated totals. Use compact mode to only show languages under 100%.",
+            "Get token-efficient coverage statistics for multiple xcstrings files at once. Returns compact summary with coverage percentages per language for each file and aggregated totals. Use compact mode to only show languages under 100%.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -25,12 +25,12 @@ public struct XCStringsBatchStatsCoverageTool: Sendable {
                     "compact": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, only show languages under 100% coverage (default: true)"
+                            "If true, only show languages under 100% coverage (default: true)",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("files")]),
-            ])
+            ]),
         )
     }
 

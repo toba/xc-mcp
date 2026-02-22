@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsListStaleTool: Sendable {
     private let pathUtility: PathUtility
@@ -13,17 +13,17 @@ public struct XCStringsListStaleTool: Sendable {
         Tool(
             name: "xcstrings_list_stale",
             description:
-                "List keys with extractionState 'stale' (potentially unused) in an xcstrings file",
+            "List keys with extractionState 'stale' (potentially unused) in an xcstrings file",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "file": .object([
                         "type": .string("string"),
                         "description": .string("Path to the xcstrings file"),
-                    ])
+                    ]),
                 ]),
                 "required": .array([.string("file")]),
-            ])
+            ]),
         )
     }
 

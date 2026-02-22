@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct LongPressTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,37 +15,37 @@ public struct LongPressTool: Sendable {
         Tool(
             name: "long_press",
             description:
-                "Simulate a long press at a specific coordinate on a simulator screen.",
+            "Simulate a long press at a specific coordinate on a simulator screen.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "x": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "X coordinate of the long press location."
+                            "X coordinate of the long press location.",
                         ),
                     ]),
                     "y": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Y coordinate of the long press location."
+                            "Y coordinate of the long press location.",
                         ),
                     ]),
                     "duration": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Duration of the long press in seconds. Defaults to 1.0."
+                            "Duration of the long press in seconds. Defaults to 1.0.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("x"), .string("y")]),
-            ])
+            ]),
         )
     }
 
@@ -58,7 +58,7 @@ public struct LongPressTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -97,20 +97,20 @@ public struct LongPressTool: Sendable {
                     "io", simulator, "touch",
                     "\(x)", "\(y)",
                     "--duration", "\(duration)",
-                ]
+                ],
             )
 
             if result.succeeded {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Long pressed at (\(Int(x)), \(Int(y))) for \(duration)s on simulator '\(simulator)'"
-                        )
-                    ]
+                            "Long pressed at (\(Int(x)), \(Int(y))) for \(duration)s on simulator '\(simulator)'",
+                        ),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to long press: \(result.errorOutput)"
+                    "Failed to long press: \(result.errorOutput)",
                 )
             }
         } catch {

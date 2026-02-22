@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsRenameKeyTool: Sendable {
     private let pathUtility: PathUtility
@@ -30,7 +30,7 @@ public struct XCStringsRenameKeyTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("oldKey"), .string("newKey")]),
-            ])
+            ]),
         )
     }
 
@@ -45,7 +45,7 @@ public struct XCStringsRenameKeyTool: Sendable {
             try await parser.renameKey(from: oldKey, to: newKey)
 
             return CallTool.Result(
-                content: [.text("Key renamed from '\(oldKey)' to '\(newKey)' successfully")]
+                content: [.text("Key renamed from '\(oldKey)' to '\(newKey)' successfully")],
             )
         } catch let error as XCStringsError {
             throw error.toMCPError()

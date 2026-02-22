@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct RemoveFileTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,30 +21,30 @@ public struct RemoveFileTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "file_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the file to remove (relative to project root or absolute)"
+                            "Path to the file to remove (relative to project root or absolute)",
                         ),
                     ]),
                     "remove_from_disk": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Whether to also delete the file from disk (optional, defaults to false)"
+                            "Whether to also delete the file from disk (optional, defaults to false)",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("file_path")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(filePath) = arguments["file_path"]
+              case let .string(filePath) = arguments["file_path"]
         else {
             throw MCPError.invalidParams("project_path and file_path are required")
         }
@@ -138,7 +138,7 @@ public struct RemoveFileTool: Sendable {
             }
 
             if let project = xcodeproj.pbxproj.rootObject,
-                let mainGroup = project.mainGroup
+               let mainGroup = project.mainGroup
             {
                 if removeFromGroup(mainGroup) {
                     fileRemoved = true
@@ -159,20 +159,20 @@ public struct RemoveFileTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Successfully removed \(fileName) from project. Removed from targets: \(removedFromTargets.joined(separator: ", "))"
-                        )
-                    ]
+                            "Successfully removed \(fileName) from project. Removed from targets: \(removedFromTargets.joined(separator: ", "))",
+                        ),
+                    ],
                 )
             } else {
                 return CallTool.Result(
                     content: [
-                        .text("File not found in project: \(fileName)")
-                    ]
+                        .text("File not found in project: \(fileName)"),
+                    ],
                 )
             }
         } catch {
             throw MCPError.internalError(
-                "Failed to remove file from Xcode project: \(error.localizedDescription)"
+                "Failed to remove file from Xcode project: \(error.localizedDescription)",
             )
         }
     }

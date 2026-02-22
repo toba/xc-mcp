@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct BuildRunMacOSTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -8,7 +8,7 @@ public struct BuildRunMacOSTool: Sendable {
 
     public init(
         xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
@@ -18,38 +18,38 @@ public struct BuildRunMacOSTool: Sendable {
         Tool(
             name: "build_run_macos",
             description:
-                "Build and run an Xcode project or workspace on macOS. This combines build_macos and launch_mac_app into a single operation.",
+            "Build and run an Xcode project or workspace on macOS. This combines build_macos and launch_mac_app into a single operation.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."
+                            "Path to the .xcodeproj file. Uses session default if not specified.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
+                            "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to build. Uses session default if not specified."
+                            "The scheme to build. Uses session default if not specified.",
                         ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."
+                            "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
                     "arch": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture."
+                            "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture.",
                         ),
                     ]),
                     "args": .object([
@@ -59,13 +59,13 @@ public struct BuildRunMacOSTool: Sendable {
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments
+            from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
@@ -84,12 +84,12 @@ public struct BuildRunMacOSTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 destination: destination,
-                configuration: configuration
+                configuration: configuration,
             )
 
             let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)
 
-            if !buildResult.succeeded && parsedBuild.status != "success" {
+            if !buildResult.succeeded, parsedBuild.status != "success" {
                 let errorOutput = BuildResultFormatter.formatBuildResult(parsedBuild)
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
@@ -99,12 +99,12 @@ public struct BuildRunMacOSTool: Sendable {
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
-                configuration: configuration
+                configuration: configuration,
             )
 
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {
                 throw MCPError.internalError(
-                    "Could not determine app path from build settings."
+                    "Could not determine app path from build settings.",
                 )
             }
 

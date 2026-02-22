@@ -11,8 +11,10 @@ public enum ServerToolDirectory {
 
     private static let toolToServer: [String: String] = {
         var map = [String: String]()
-        map.reserveCapacity(buildTools.count + simulatorTools.count + debugTools.count
-            + projectTools.count + deviceTools.count + swiftTools.count + stringsTools.count)
+        map.reserveCapacity(
+            buildTools.count + simulatorTools.count + debugTools.count
+                + projectTools.count + deviceTools.count + swiftTools.count + stringsTools.count,
+        )
         for name in buildTools {
             map[name] = "xc-build"
         }
@@ -74,7 +76,9 @@ public enum ServerToolDirectory {
         "create_group", "remove_group", "add_target", "remove_target",
         "rename_target", "rename_scheme", "create_scheme", "validate_scheme",
         "create_test_plan", "add_target_to_test_plan", "remove_target_from_test_plan",
-        "add_test_plan_to_scheme", "list_test_plans", "rename_group",
+        "set_test_plan_target_enabled", "add_test_plan_to_scheme",
+        "remove_test_plan_from_scheme", "list_test_plans",
+        "set_test_target_application", "rename_group",
         "add_dependency", "set_build_setting", "add_framework", "add_build_phase",
         "duplicate_target", "add_swift_package", "list_swift_packages",
         "remove_swift_package", "list_groups",

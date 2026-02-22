@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct AddCopyFilesPhase: Sendable {
     private let pathUtility: PathUtility
@@ -15,14 +15,14 @@ public struct AddCopyFilesPhase: Sendable {
         Tool(
             name: "add_copy_files_phase",
             description:
-                "Create a new Copy Files build phase with a destination",
+            "Create a new Copy Files build phase with a destination",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -36,13 +36,13 @@ public struct AddCopyFilesPhase: Sendable {
                     "destination": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Destination folder (resources, frameworks, executables, plugins, shared_support, wrapper, products_directory)"
+                            "Destination folder (resources, frameworks, executables, plugins, shared_support, wrapper, products_directory)",
                         ),
                     ]),
                     "subpath": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional subpath within the destination folder"
+                            "Optional subpath within the destination folder",
                         ),
                     ]),
                 ]),
@@ -50,18 +50,18 @@ public struct AddCopyFilesPhase: Sendable {
                     .string("project_path"), .string("target_name"), .string("phase_name"),
                     .string("destination"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"],
-            case let .string(phaseName) = arguments["phase_name"],
-            case let .string(destination) = arguments["destination"]
+              case let .string(targetName) = arguments["target_name"],
+              case let .string(phaseName) = arguments["phase_name"],
+              case let .string(destination) = arguments["destination"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, phase_name, and destination are required"
+                "project_path, target_name, phase_name, and destination are required",
             )
         }
 
@@ -82,7 +82,7 @@ public struct AddCopyFilesPhase: Sendable {
                 let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
             else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")]
+                    content: [.text("Target '\(targetName)' not found in project")],
                 )
             }
 
@@ -96,9 +96,9 @@ public struct AddCopyFilesPhase: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Copy Files phase '\(phaseName)' already exists in target '\(targetName)'"
-                        )
-                    ]
+                            "Copy Files phase '\(phaseName)' already exists in target '\(targetName)'",
+                        ),
+                    ],
                 )
             }
 
@@ -106,7 +106,7 @@ public struct AddCopyFilesPhase: Sendable {
             let copyFilesPhase = PBXCopyFilesBuildPhase(
                 dstPath: subpath,
                 dstSubfolderSpec: dstSubfolderSpec,
-                name: phaseName
+                name: phaseName,
             )
             xcodeproj.pbxproj.add(object: copyFilesPhase)
             target.buildPhases.append(copyFilesPhase)
@@ -125,31 +125,31 @@ public struct AddCopyFilesPhase: Sendable {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to add copy files phase: \(error.localizedDescription)"
+                "Failed to add copy files phase: \(error.localizedDescription)",
             )
         }
     }
 
     private func mapDestination(_ destination: String) throws -> PBXCopyFilesBuildPhase.SubFolder {
         switch destination.lowercased() {
-        case "resources":
-            return .resources
-        case "frameworks":
-            return .frameworks
-        case "executables":
-            return .executables
-        case "plugins":
-            return .plugins
-        case "shared_support":
-            return .sharedSupport
-        case "wrapper":
-            return .wrapper
-        case "products_directory":
-            return .productsDirectory
-        default:
-            throw MCPError.invalidParams(
-                "Invalid destination: \(destination). Must be one of: resources, frameworks, executables, plugins, shared_support, wrapper, products_directory"
-            )
+            case "resources":
+                return .resources
+            case "frameworks":
+                return .frameworks
+            case "executables":
+                return .executables
+            case "plugins":
+                return .plugins
+            case "shared_support":
+                return .sharedSupport
+            case "wrapper":
+                return .wrapper
+            case "products_directory":
+                return .productsDirectory
+            default:
+                throw MCPError.invalidParams(
+                    "Invalid destination: \(destination). Must be one of: resources, frameworks, executables, plugins, shared_support, wrapper, products_directory",
+                )
         }
     }
 }

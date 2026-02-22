@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("ListSwiftPackagesTool Tests")
@@ -16,7 +15,7 @@ struct ListSwiftPackagesToolTests {
 
         #expect(toolDefinition.name == "list_swift_packages")
         #expect(
-            toolDefinition.description == "List all Swift Package dependencies in an Xcode project"
+            toolDefinition.description == "List all Swift Package dependencies in an Xcode project",
         )
     }
 
@@ -32,7 +31,7 @@ struct ListSwiftPackagesToolTests {
     @Test("List packages from empty project")
     func listPackagesFromEmptyProject() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -45,7 +44,7 @@ struct ListSwiftPackagesToolTests {
 
         let tool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: tempDir.path))
         let args: [String: Value] = [
-            "project_path": Value.string(projectPath.string)
+            "project_path": Value.string(projectPath.string),
         ]
 
         let result = try tool.execute(arguments: args)
@@ -60,7 +59,7 @@ struct ListSwiftPackagesToolTests {
     @Test("List packages with remote packages")
     func listPackagesWithRemotePackages() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -98,7 +97,7 @@ struct ListSwiftPackagesToolTests {
         // Now list the packages
         let listTool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: tempDir.path))
         let args: [String: Value] = [
-            "project_path": Value.string(projectPath.string)
+            "project_path": Value.string(projectPath.string),
         ]
 
         let result = try listTool.execute(arguments: args)
@@ -120,7 +119,7 @@ struct ListSwiftPackagesToolTests {
     @Test("List packages with local packages")
     func listPackagesWithLocalPackages() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -147,7 +146,7 @@ struct ListSwiftPackagesToolTests {
         // Now list the packages
         let listTool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: tempDir.path))
         let args: [String: Value] = [
-            "project_path": Value.string(projectPath.string)
+            "project_path": Value.string(projectPath.string),
         ]
 
         let result = try listTool.execute(arguments: args)
@@ -164,7 +163,7 @@ struct ListSwiftPackagesToolTests {
     @Test("List packages with mixed remote and local packages")
     func listPackagesWithMixedPackages() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -199,7 +198,7 @@ struct ListSwiftPackagesToolTests {
         // Now list the packages
         let listTool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: tempDir.path))
         let args: [String: Value] = [
-            "project_path": Value.string(projectPath.string)
+            "project_path": Value.string(projectPath.string),
         ]
 
         let result = try listTool.execute(arguments: args)

@@ -9,7 +9,8 @@ public struct XCStringsFile: Codable, Sendable {
     public var version: String
 
     public init(
-        sourceLanguage: String = "en", strings: [String: StringEntry] = [:], version: String = "1.0"
+        sourceLanguage: String = "en", strings: [String: StringEntry] = [:],
+        version: String = "1.0",
     ) {
         self.sourceLanguage = sourceLanguage
         self.strings = strings
@@ -26,7 +27,7 @@ public struct StringEntry: Codable, Sendable {
     public init(
         comment: String? = nil,
         extractionState: String? = nil,
-        localizations: [String: Localization]? = nil
+        localizations: [String: Localization]? = nil,
     ) {
         self.comment = comment
         self.extractionState = extractionState
@@ -82,7 +83,7 @@ public struct PluralVariation: Codable, Sendable {
         two: StringUnit? = nil,
         few: StringUnit? = nil,
         many: StringUnit? = nil,
-        other: StringUnit? = nil
+        other: StringUnit? = nil,
     ) {
         self.zero = zero
         self.one = one
@@ -106,7 +107,7 @@ public struct DeviceVariation: Codable, Sendable {
         ipad: StringUnit? = nil,
         mac: StringUnit? = nil,
         applewatch: StringUnit? = nil,
-        appletv: StringUnit? = nil
+        appletv: StringUnit? = nil,
     ) {
         self.iphone = iphone
         self.ipad = ipad
@@ -162,7 +163,7 @@ public struct CoverageInfo: Codable, Sendable {
         key: String,
         translatedLanguages: [String],
         missingLanguages: [String],
-        coveragePercent: Double
+        coveragePercent: Double,
     ) {
         self.key = key
         self.translatedLanguages = translatedLanguages
@@ -182,7 +183,7 @@ public struct StatsInfo: Codable, Sendable {
         totalKeys: Int,
         sourceLanguage: String,
         languages: [String],
-        coverageByLanguage: [String: LanguageStats]
+        coverageByLanguage: [String: LanguageStats],
     ) {
         self.totalKeys = totalKeys
         self.sourceLanguage = sourceLanguage
@@ -280,7 +281,7 @@ public struct BatchCheckKeysResult: Codable, Sendable {
     public init(results: [String: Bool]) {
         self.results = results
         existCount = results.values.filter(\.self).count
-        missingCount = results.values.filter { !$0 }.count
+        missingCount = results.values.count(where: { !$0 })
     }
 }
 

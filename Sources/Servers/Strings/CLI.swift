@@ -1,6 +1,6 @@
-import ArgumentParser
-import Foundation
 import Logging
+import Foundation
+import ArgumentParser
 
 /// Command-line interface for the xc-strings MCP server.
 ///
@@ -24,7 +24,7 @@ struct StringsServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-strings",
         abstract:
-            "MCP server for Xcode String Catalog (.xcstrings) file manipulation (18 tools, ~6K tokens)"
+        "MCP server for Xcode String Catalog (.xcstrings) file manipulation (18 tools, ~6K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")
@@ -34,7 +34,7 @@ struct StringsServerCLI: AsyncParsableCommand {
     var verbose: Bool = false
 
     @Flag(
-        name: .long, help: "Disable path sandboxing (allow access to paths outside base directory)"
+        name: .long, help: "Disable path sandboxing (allow access to paths outside base directory)",
     )
     var noSandbox: Bool = false
 
@@ -53,7 +53,7 @@ struct StringsServerCLI: AsyncParsableCommand {
         let server = StringsMCPServer(
             basePath: resolvedBasePath,
             sandboxEnabled: !noSandbox,
-            logger: logger
+            logger: logger,
         )
         try await server.run()
     }

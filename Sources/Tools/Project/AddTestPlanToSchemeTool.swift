@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct AddTestPlanToSchemeTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct AddTestPlanToSchemeTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "scheme_name": .object([
@@ -40,17 +40,17 @@ public struct AddTestPlanToSchemeTool: Sendable {
                 "required": .array([
                     .string("project_path"), .string("scheme_name"), .string("test_plan_path"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(schemeName) = arguments["scheme_name"],
-            case let .string(testPlanPath) = arguments["test_plan_path"]
+              case let .string(schemeName) = arguments["scheme_name"],
+              case let .string(testPlanPath) = arguments["test_plan_path"]
         else {
             throw MCPError.invalidParams(
-                "project_path, scheme_name, and test_plan_path are required"
+                "project_path, scheme_name, and test_plan_path are required",
             )
         }
 
@@ -66,53 +66,45 @@ public struct AddTestPlanToSchemeTool: Sendable {
 
         guard FileManager.default.fileExists(atPath: resolvedTestPlanPath) else {
             return CallTool.Result(
-                content: [.text("Test plan file not found at \(resolvedTestPlanPath)")]
+                content: [.text("Test plan file not found at \(resolvedTestPlanPath)")],
             )
         }
 
         guard
             let schemePath = SchemePathResolver.findScheme(
-                named: schemeName, in: resolvedProjectPath
+                named: schemeName, in: resolvedProjectPath,
             )
         else {
             return CallTool.Result(
                 content: [
-                    .text("Scheme '\(schemeName)' not found in project")
-                ]
+                    .text("Scheme '\(schemeName)' not found in project"),
+                ],
             )
         }
 
         do {
             let scheme = try XCScheme(pathString: schemePath)
 
-            // Compute relative path from project parent directory
-            let projectDir = URL(fileURLWithPath: resolvedProjectPath)
-                .deletingLastPathComponent().path
-            let relativePath: String
-            if resolvedTestPlanPath.hasPrefix(projectDir) {
-                relativePath = String(resolvedTestPlanPath.dropFirst(projectDir.count + 1))
-            } else {
-                relativePath = resolvedTestPlanPath
-            }
-
-            let reference = "container:\(relativePath)"
+            let reference = SchemePathResolver.containerReference(
+                for: resolvedTestPlanPath, relativeTo: resolvedProjectPath,
+            )
 
             // Check for duplicate
             if let existingPlans = scheme.testAction?.testPlans,
-                existingPlans.contains(where: { $0.reference == reference })
+               existingPlans.contains(where: { $0.reference == reference })
             {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Test plan is already referenced in scheme '\(schemeName)'"
-                        )
-                    ]
+                            "Test plan is already referenced in scheme '\(schemeName)'",
+                        ),
+                    ],
                 )
             }
 
             let testPlanRef = XCScheme.TestPlanReference(
                 reference: reference,
-                default: isDefault
+                default: isDefault,
             )
 
             if let testAction = scheme.testAction {
@@ -129,7 +121,7 @@ public struct AddTestPlanToSchemeTool: Sendable {
                 let testAction = XCScheme.TestAction(
                     buildConfiguration: scheme.launchAction?.buildConfiguration ?? "Debug",
                     macroExpansion: nil,
-                    testPlans: [testPlanRef]
+                    testPlans: [testPlanRef],
                 )
                 scheme.testAction = testAction
             }
@@ -139,13 +131,13 @@ public struct AddTestPlanToSchemeTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Added test plan to scheme '\(schemeName)'\(isDefault ? " (set as default)" : "")"
-                    )
-                ]
+                        "Added test plan to scheme '\(schemeName)'\(isDefault ? " (set as default)" : "")",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to add test plan to scheme: \(error.localizedDescription)"
+                "Failed to add test plan to scheme: \(error.localizedDescription)",
             )
         }
     }

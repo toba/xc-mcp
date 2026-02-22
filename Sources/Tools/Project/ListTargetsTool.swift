@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ListTargetsTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,12 +21,12 @@ public struct ListTargetsTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
-                    ])
+                    ]),
                 ]),
                 "required": .array([.string("project_path")]),
-            ])
+            ]),
         )
     }
 
@@ -51,16 +51,16 @@ public struct ListTargetsTool: Sendable {
 
             let result =
                 targetList.isEmpty
-                ? "No targets found in the project." : targetList.joined(separator: "\n")
+                    ? "No targets found in the project." : targetList.joined(separator: "\n")
 
             return CallTool.Result(
                 content: [
-                    .text("Targets in \(projectURL.lastPathComponent):\n\(result)")
-                ]
+                    .text("Targets in \(projectURL.lastPathComponent):\n\(result)"),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)"
+                "Failed to read Xcode project: \(error.localizedDescription)",
             )
         }
     }

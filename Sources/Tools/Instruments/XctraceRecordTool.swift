@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 /// Tracks active trace recording sessions.
 actor TraceRecordingManager {
@@ -13,11 +13,11 @@ actor TraceRecordingManager {
     }
 
     func stopRecording(sessionId: String) -> (process: Process, outputPath: String)? {
-        return activeSessions.removeValue(forKey: sessionId)
+        activeSessions.removeValue(forKey: sessionId)
     }
 
     func getActiveSessions() -> [(id: String, outputPath: String)] {
-        return activeSessions.map { (id: $0.key, outputPath: $0.value.outputPath) }
+        activeSessions.map { (id: $0.key, outputPath: $0.value.outputPath) }
     }
 }
 
@@ -39,7 +39,7 @@ public struct XctraceRecordTool: Sendable {
         Tool(
             name: "xctrace_record",
             description:
-                "Start or stop an Instruments trace recording using xctrace. Use action 'start' to begin profiling with a template (e.g., Time Profiler, Allocations), 'stop' to end a recording, or 'list' to show active sessions.",
+            "Start or stop an Instruments trace recording using xctrace. Use action 'start' to begin profiling with a template (e.g., Time Profiler, Allocations), 'stop' to end a recording, or 'list' to show active sessions.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -47,60 +47,60 @@ public struct XctraceRecordTool: Sendable {
                         "type": .string("string"),
                         "enum": .array([.string("start"), .string("stop"), .string("list")]),
                         "description": .string(
-                            "Action to perform: 'start' to begin recording, 'stop' to end recording, 'list' to show active recordings."
+                            "Action to perform: 'start' to begin recording, 'stop' to end recording, 'list' to show active recordings.",
                         ),
                     ]),
                     "template": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Instruments template name (e.g., 'Time Profiler', 'Allocations', 'Leaks'). Required for 'start' action. Use xctrace_list to see available templates."
+                            "Instruments template name (e.g., 'Time Profiler', 'Allocations', 'Leaks'). Required for 'start' action. Use xctrace_list to see available templates.",
                         ),
                     ]),
                     "output_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path for the output .trace file. Defaults to /tmp/trace_<timestamp>.trace if not specified."
+                            "Path for the output .trace file. Defaults to /tmp/trace_<timestamp>.trace if not specified.",
                         ),
                     ]),
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device name or UDID to record on. Omit to record on the local Mac."
+                            "Device name or UDID to record on. Omit to record on the local Mac.",
                         ),
                     ]),
                     "time_limit": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Auto-stop duration (e.g., '30s', '5m', '1h'). Recording stops automatically after this duration."
+                            "Auto-stop duration (e.g., '30s', '5m', '1h'). Recording stops automatically after this duration.",
                         ),
                     ]),
                     "attach_pid": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Attach to a running process by PID."
+                            "Attach to a running process by PID.",
                         ),
                     ]),
                     "attach_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Attach to a running process by name."
+                            "Attach to a running process by name.",
                         ),
                     ]),
                     "all_processes": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Record system-wide across all processes. Default: false."
+                            "Record system-wide across all processes. Default: false.",
                         ),
                     ]),
                     "session_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Session ID returned from 'start' action. Required for 'stop' action."
+                            "Session ID returned from 'start' action. Required for 'stop' action.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("action")]),
-            ])
+            ]),
         )
     }
 
@@ -110,16 +110,16 @@ public struct XctraceRecordTool: Sendable {
         }
 
         switch action {
-        case "start":
-            return try await startRecording(arguments: arguments)
-        case "stop":
-            return try await stopRecording(arguments: arguments)
-        case "list":
-            return try await listRecordings()
-        default:
-            throw MCPError.invalidParams(
-                "Invalid action: \(action). Use 'start', 'stop', or 'list'."
-            )
+            case "start":
+                return try await startRecording(arguments: arguments)
+            case "stop":
+                return try await stopRecording(arguments: arguments)
+            case "list":
+                return try await listRecordings()
+            default:
+                throw MCPError.invalidParams(
+                    "Invalid action: \(action). Use 'start', 'stop', or 'list'.",
+                )
         }
     }
 
@@ -153,12 +153,12 @@ public struct XctraceRecordTool: Sendable {
                 timeLimit: timeLimit,
                 attachPID: attachPID,
                 attachName: attachName,
-                allProcesses: allProcesses
+                allProcesses: allProcesses,
             )
             let sessionId = UUID().uuidString
 
             await TraceRecordingManager.shared.startRecording(
-                sessionId: sessionId, process: process, outputPath: outputPath
+                sessionId: sessionId, process: process, outputPath: outputPath,
             )
 
             return CallTool.Result(
@@ -169,14 +169,16 @@ public struct XctraceRecordTool: Sendable {
                         Output: \(outputPath)
                         Session ID: \(sessionId)
 
-                        Use xctrace_record with action='stop' and session_id='\(sessionId)' to stop recording.
-                        """
-                    )
-                ]
+                        Use xctrace_record with action='stop' and session_id='\(
+                            sessionId
+                        )' to stop recording.
+                        """,
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to start xctrace recording: \(error.localizedDescription)"
+                "Failed to start xctrace recording: \(error.localizedDescription)",
             )
         }
     }
@@ -190,7 +192,7 @@ public struct XctraceRecordTool: Sendable {
             let session = await TraceRecordingManager.shared.stopRecording(sessionId: sessionId)
         else {
             throw MCPError.invalidParams(
-                "No active recording found with session ID: \(sessionId). Use action='list' to see active recordings."
+                "No active recording found with session ID: \(sessionId). Use action='list' to see active recordings.",
             )
         }
 
@@ -207,9 +209,9 @@ public struct XctraceRecordTool: Sendable {
                     Stopped xctrace recording.
                     Session ID: \(sessionId)
                     Output: \(session.outputPath)
-                    """
-                )
-            ]
+                    """,
+                ),
+            ],
         )
     }
 
@@ -218,7 +220,7 @@ public struct XctraceRecordTool: Sendable {
 
         if sessions.isEmpty {
             return CallTool.Result(
-                content: [.text("No active xctrace recordings.")]
+                content: [.text("No active xctrace recordings.")],
             )
         }
 

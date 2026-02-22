@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct ShowSessionDefaultsTool: Sendable {
     private let sessionManager: SessionManager
@@ -13,12 +13,12 @@ public struct ShowSessionDefaultsTool: Sendable {
         Tool(
             name: "show_session_defaults",
             description:
-                "Display the current session defaults including project, scheme, simulator, and device settings.",
+            "Display the current session defaults including project, scheme, simulator, and device settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([:]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -26,8 +26,8 @@ public struct ShowSessionDefaultsTool: Sendable {
         let summary = await sessionManager.summary()
         return CallTool.Result(
             content: [
-                .text("Current session defaults:\n\n\(summary)")
-            ]
+                .text("Current session defaults:\n\n\(summary)"),
+            ],
         )
     }
 }

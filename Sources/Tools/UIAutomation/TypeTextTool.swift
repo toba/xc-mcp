@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct TypeTextTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,25 +15,25 @@ public struct TypeTextTool: Sendable {
         Tool(
             name: "type_text",
             description:
-                "Type text into the currently focused field on a simulator.",
+            "Type text into the currently focused field on a simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "text": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Text to type."
+                            "Text to type.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("text")]),
-            ])
+            ]),
         )
     }
 
@@ -46,7 +46,7 @@ public struct TypeTextTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -58,7 +58,7 @@ public struct TypeTextTool: Sendable {
         do {
             // Use simctl io to send keyboard input
             let result = try await simctlRunner.run(
-                arguments: ["io", simulator, "keyboard", "text", text]
+                arguments: ["io", simulator, "keyboard", "text", text],
             )
 
             if result.succeeded {
@@ -66,13 +66,13 @@ public struct TypeTextTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Typed '\(truncatedText)' on simulator '\(simulator)'"
-                        )
-                    ]
+                            "Typed '\(truncatedText)' on simulator '\(simulator)'",
+                        ),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to type text: \(result.errorOutput)"
+                    "Failed to type text: \(result.errorOutput)",
                 )
             }
         } catch {

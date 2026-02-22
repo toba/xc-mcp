@@ -1,6 +1,6 @@
-import ArgumentParser
-import Foundation
 import Logging
+import Foundation
+import ArgumentParser
 
 /// Command-line interface for the xc-debug MCP server.
 ///
@@ -23,7 +23,7 @@ import Logging
 struct DebugServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-debug",
-        abstract: "MCP server for LLDB debugging operations (8 tools, ~2K tokens)"
+        abstract: "MCP server for LLDB debugging operations (8 tools, ~2K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")

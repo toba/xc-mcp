@@ -62,7 +62,7 @@ extension ProcessResult {
     public static func run(
         _ executablePath: String,
         arguments: [String] = [],
-        mergeStderr: Bool = true
+        mergeStderr: Bool = true,
     ) throws -> ProcessResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executablePath)
@@ -98,7 +98,7 @@ extension ProcessResult {
         return ProcessResult(
             exitCode: process.terminationStatus,
             stdout: stdoutString,
-            stderr: stderrString
+            stderr: stderrString,
         )
     }
 
@@ -127,7 +127,7 @@ public enum FileUtility {
     public static func readTailLines(path: String, count: Int = 50) -> String? {
         guard
             let result = try? ProcessResult.run(
-                "/usr/bin/tail", arguments: ["-n", "\(count)", path], mergeStderr: false
+                "/usr/bin/tail", arguments: ["-n", "\(count)", path], mergeStderr: false,
             ),
             !result.stdout.isEmpty
         else {
@@ -144,8 +144,8 @@ public enum LogCapture {
     /// Appends the tail of a log file to a message string.
     public static func appendTail(to message: inout String, from outputFile: String?, lines: Int) {
         guard let outputFile,
-            FileManager.default.fileExists(atPath: outputFile),
-            let tailOutput = FileUtility.readTailLines(path: outputFile, count: lines)
+              FileManager.default.fileExists(atPath: outputFile),
+              let tailOutput = FileUtility.readTailLines(path: outputFile, count: lines)
         else { return }
 
         message += "\n\nLast \(lines) lines of log:\n"

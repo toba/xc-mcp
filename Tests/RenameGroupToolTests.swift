@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("RenameGroupTool Tests")
@@ -47,7 +46,7 @@ struct RenameGroupToolTests {
     @Test("Rename existing group")
     func renameExistingGroup() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -62,7 +61,7 @@ struct RenameGroupToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let mainGroup = try #require(try xcodeproj.pbxproj.rootProject()?.mainGroup)
         let childGroup = PBXGroup(
-            children: [], sourceTree: .group, name: "OldGroup", path: "OldGroup"
+            children: [], sourceTree: .group, name: "OldGroup", path: "OldGroup",
         )
         xcodeproj.pbxproj.add(object: childGroup)
         mainGroup.children.append(childGroup)
@@ -94,7 +93,7 @@ struct RenameGroupToolTests {
     @Test("Rename nested group")
     func renameNestedGroup() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -109,12 +108,12 @@ struct RenameGroupToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let mainGroup = try #require(try xcodeproj.pbxproj.rootProject()?.mainGroup)
         let sourcesGroup = PBXGroup(
-            children: [], sourceTree: .group, name: "Sources", path: "Sources"
+            children: [], sourceTree: .group, name: "Sources", path: "Sources",
         )
         xcodeproj.pbxproj.add(object: sourcesGroup)
         mainGroup.children.append(sourcesGroup)
         let moduleGroup = PBXGroup(
-            children: [], sourceTree: .group, name: "OldModule", path: "OldModule"
+            children: [], sourceTree: .group, name: "OldModule", path: "OldModule",
         )
         xcodeproj.pbxproj.add(object: moduleGroup)
         sourcesGroup.children.append(moduleGroup)
@@ -148,7 +147,7 @@ struct RenameGroupToolTests {
     @Test("Rename non-existent group")
     func renameNonExistentGroup() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 

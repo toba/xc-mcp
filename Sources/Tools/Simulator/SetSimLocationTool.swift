@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct SetSimLocationTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,31 +15,31 @@ public struct SetSimLocationTool: Sendable {
         Tool(
             name: "set_sim_location",
             description:
-                "Set the simulated location on a simulator. Useful for testing location-based features.",
+            "Set the simulated location on a simulator. Useful for testing location-based features.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "latitude": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Latitude coordinate (e.g., 37.7749 for San Francisco)."
+                            "Latitude coordinate (e.g., 37.7749 for San Francisco).",
                         ),
                     ]),
                     "longitude": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Longitude coordinate (e.g., -122.4194 for San Francisco)."
+                            "Longitude coordinate (e.g., -122.4194 for San Francisco).",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("latitude"), .string("longitude")]),
-            ])
+            ]),
         )
     }
 
@@ -52,7 +52,7 @@ public struct SetSimLocationTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -80,20 +80,20 @@ public struct SetSimLocationTool: Sendable {
             let result = try await simctlRunner.setLocation(
                 udid: simulator,
                 latitude: latitude,
-                longitude: longitude
+                longitude: longitude,
             )
 
             if result.succeeded {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Successfully set location to (\(latitude), \(longitude)) on simulator '\(simulator)'"
-                        )
-                    ]
+                            "Successfully set location to (\(latitude), \(longitude)) on simulator '\(simulator)'",
+                        ),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to set location: \(result.errorOutput)"
+                    "Failed to set location: \(result.errorOutput)",
                 )
             }
         } catch {

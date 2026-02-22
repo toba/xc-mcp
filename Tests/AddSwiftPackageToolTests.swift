@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for package requirement tests
@@ -48,21 +47,21 @@ struct AddSwiftPackageToolTests {
             [
                 "package_url": Value.string("https://github.com/alamofire/alamofire.git"),
                 "requirement": Value.string("5.0.0"),
-            ]
+            ],
         ),
         SwiftPackageMissingParamTestCase(
             "Missing package_url",
             [
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "requirement": Value.string("5.0.0"),
-            ]
+            ],
         ),
         SwiftPackageMissingParamTestCase(
             "Missing requirement",
             [
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "package_url": Value.string("https://github.com/alamofire/alamofire.git"),
-            ]
+            ],
         ),
     ]
 
@@ -79,24 +78,24 @@ struct AddSwiftPackageToolTests {
         PackageRequirementTestCase(
             "https://github.com/alamofire/alamofire.git",
             "5.0.0",
-            #"exact("5.0.0")"#
+            #"exact("5.0.0")"#,
         ),
         PackageRequirementTestCase(
             "https://github.com/pointfreeco/swift-composable-architecture.git",
             "from: 1.0.0",
-            #"upToNextMajorVersion("1.0.0")"#
+            #"upToNextMajorVersion("1.0.0")"#,
         ),
         PackageRequirementTestCase(
             "https://github.com/apple/swift-algorithms.git",
             "branch: main",
-            #"branch("main")"#
+            #"branch("main")"#,
         ),
     ]
 
     @Test("Add Swift Package with requirement", arguments: requirementCases)
     func addSwiftPackageWithRequirement(_ testCase: PackageRequirementTestCase) throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -142,7 +141,7 @@ struct AddSwiftPackageToolTests {
     @Test("Add Swift Package to specific target")
     func addSwiftPackageToSpecificTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -152,7 +151,7 @@ struct AddSwiftPackageToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -189,7 +188,7 @@ struct AddSwiftPackageToolTests {
     @Test("Add duplicate Swift Package")
     func addDuplicateSwiftPackage() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -223,7 +222,7 @@ struct AddSwiftPackageToolTests {
     @Test("Add package with invalid target")
     func addPackageWithInvalidTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 

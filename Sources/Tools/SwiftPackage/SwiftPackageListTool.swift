@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct SwiftPackageListTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -15,19 +15,19 @@ public struct SwiftPackageListTool: Sendable {
         Tool(
             name: "swift_package_list",
             description:
-                "List dependencies for a Swift package. Shows the dependency tree including resolved versions.",
+            "List dependencies for a Swift package. Shows the dependency tree including resolved versions.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "package_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified."
+                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
                         ),
-                    ])
+                    ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -40,17 +40,17 @@ public struct SwiftPackageListTool: Sendable {
             packagePath = sessionPackagePath
         } else {
             throw MCPError.invalidParams(
-                "package_path is required. Set it with set_session_defaults or pass it directly."
+                "package_path is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift"
+            "Package.swift",
         ).path
         guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
             throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path."
+                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
             )
         }
 
@@ -66,7 +66,7 @@ public struct SwiftPackageListTool: Sendable {
                 }
 
                 return CallTool.Result(
-                    content: [.text(message)]
+                    content: [.text(message)],
                 )
             } else {
                 throw MCPError.internalError("Failed to list dependencies:\n\(result.output)")

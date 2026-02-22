@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
@@ -26,8 +25,8 @@ struct AddFolderToolTests {
     init() {
         tempDir =
             FileManager.default.temporaryDirectory
-            .appendingPathComponent("AddFolderToolTests-\(UUID().uuidString)")
-            .path
+                .appendingPathComponent("AddFolderToolTests-\(UUID().uuidString)")
+                .path
         pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
@@ -38,7 +37,7 @@ struct AddFolderToolTests {
 
         #expect(tool.tool().name == "add_synchronized_folder")
         #expect(
-            tool.tool().description == "Add a synchronized folder reference to an Xcode project"
+            tool.tool().description == "Add a synchronized folder reference to an Xcode project",
         )
 
         let schema = tool.tool().inputSchema
@@ -61,11 +60,11 @@ struct AddFolderToolTests {
     static let missingParamCases: [AddFolderMissingParamTestCase] = [
         AddFolderMissingParamTestCase(
             "Missing project_path",
-            ["folder_path": .string("path/to/folder")]
+            ["folder_path": .string("path/to/folder")],
         ),
         AddFolderMissingParamTestCase(
             "Missing folder_path",
-            ["project_path": .string("project.xcodeproj")]
+            ["project_path": .string("project.xcodeproj")],
         ),
     ]
 
@@ -101,7 +100,7 @@ struct AddFolderToolTests {
         // Create a test folder
         let folderPath = Path(tempDir) + "TestFolder"
         try FileManager.default.createDirectory(
-            atPath: folderPath.string, withIntermediateDirectories: true
+            atPath: folderPath.string, withIntermediateDirectories: true,
         )
 
         // Execute the tool
@@ -144,7 +143,7 @@ struct AddFolderToolTests {
         // Create a test folder
         let folderPath = Path(tempDir) + "TestFolder"
         try FileManager.default.createDirectory(
-            atPath: folderPath.string, withIntermediateDirectories: true
+            atPath: folderPath.string, withIntermediateDirectories: true,
         )
 
         // Execute the tool
@@ -175,13 +174,13 @@ struct AddFolderToolTests {
         // Create a test project with a target
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestTarget", at: projectPath
+            name: "TestProject", targetName: "TestTarget", at: projectPath,
         )
 
         // Create a test folder
         let folderPath = Path(tempDir) + "TestFolder"
         try FileManager.default.createDirectory(
-            atPath: folderPath.string, withIntermediateDirectories: true
+            atPath: folderPath.string, withIntermediateDirectories: true,
         )
 
         // Execute the tool
@@ -237,7 +236,7 @@ struct AddFolderToolTests {
         // Create a file instead of a folder
         let filePath = Path(tempDir) + "TestFile.txt"
         try "test content".write(
-            to: URL(filePath: filePath.string), atomically: true, encoding: .utf8
+            to: URL(filePath: filePath.string), atomically: true, encoding: .utf8,
         )
 
         // Try to add a file as a folder
@@ -265,7 +264,7 @@ struct AddFolderToolTests {
         let domPath = Path(tempDir) + "DOM"
         let sourcesPath = domPath + "Sources"
         try FileManager.default.createDirectory(
-            atPath: sourcesPath.string, withIntermediateDirectories: true
+            atPath: sourcesPath.string, withIntermediateDirectories: true,
         )
 
         // Load the project and add a group "DOM" with path = "DOM"
@@ -304,7 +303,7 @@ struct AddFolderToolTests {
         // The key assertion: path should be relative to the parent group, not project root
         #expect(
             folderRef?.path == "Sources",
-            "Expected path to be 'Sources' relative to DOM group, not 'DOM/Sources'"
+            "Expected path to be 'Sources' relative to DOM group, not 'DOM/Sources'",
         )
     }
 }

@@ -1,6 +1,5 @@
 import MCP
 import Testing
-
 @testable import XCMCPCore
 @testable import XCMCPTools
 
@@ -22,7 +21,7 @@ struct XctraceRecordToolTests {
         let schema = tool.tool()
 
         guard case let .object(inputSchema) = schema.inputSchema,
-            case let .object(properties) = inputSchema["properties"]
+              case let .object(properties) = inputSchema["properties"]
         else {
             Issue.record("Expected object input schema with properties")
             return
@@ -118,7 +117,7 @@ struct XctraceListToolTests {
         let schema = tool.tool()
 
         guard case let .object(inputSchema) = schema.inputSchema,
-            case let .object(properties) = inputSchema["properties"]
+              case let .object(properties) = inputSchema["properties"]
         else {
             Issue.record("Expected object input schema with properties")
             return
@@ -176,7 +175,7 @@ struct XctraceExportToolTests {
         let schema = tool.tool()
 
         guard case let .object(inputSchema) = schema.inputSchema,
-            case let .object(properties) = inputSchema["properties"]
+              case let .object(properties) = inputSchema["properties"]
         else {
             Issue.record("Expected object input schema with properties")
             return
@@ -202,7 +201,7 @@ struct XctraceExportToolTests {
 
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: [
-                "input_path": .string("/nonexistent/path.trace")
+                "input_path": .string("/nonexistent/path.trace"),
             ])
         }
     }

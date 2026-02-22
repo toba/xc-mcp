@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
@@ -36,7 +35,7 @@ struct AddBuildPhaseToolTests {
                 "target_name": Value.string("App"),
                 "phase_name": Value.string("Custom Script"),
                 "phase_type": Value.string("run_script"),
-            ]
+            ],
         ),
         AddBuildPhaseMissingParamTestCase(
             "Missing target_name",
@@ -44,7 +43,7 @@ struct AddBuildPhaseToolTests {
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "phase_name": Value.string("Custom Script"),
                 "phase_type": Value.string("run_script"),
-            ]
+            ],
         ),
         AddBuildPhaseMissingParamTestCase(
             "Missing phase_name",
@@ -52,7 +51,7 @@ struct AddBuildPhaseToolTests {
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "target_name": Value.string("App"),
                 "phase_type": Value.string("run_script"),
-            ]
+            ],
         ),
         AddBuildPhaseMissingParamTestCase(
             "Missing phase_type",
@@ -60,7 +59,7 @@ struct AddBuildPhaseToolTests {
                 "project_path": Value.string("/path/to/project.xcodeproj"),
                 "target_name": Value.string("App"),
                 "phase_name": Value.string("Custom Script"),
-            ]
+            ],
         ),
     ]
 
@@ -77,7 +76,7 @@ struct AddBuildPhaseToolTests {
     func addRunScriptBuildPhase() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -88,7 +87,7 @@ struct AddBuildPhaseToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add run script phase
@@ -99,7 +98,7 @@ struct AddBuildPhaseToolTests {
             "phase_name": Value.string("SwiftLint"),
             "phase_type": Value.string("run_script"),
             "script": Value.string(
-                "if which swiftlint >/dev/null; then\n  swiftlint\nelse\n  echo \"warning: SwiftLint not installed\"\nfi"
+                "if which swiftlint >/dev/null; then\n  swiftlint\nelse\n  echo \"warning: SwiftLint not installed\"\nfi",
             ),
         ]
 
@@ -131,7 +130,7 @@ struct AddBuildPhaseToolTests {
     func addCopyFilesBuildPhase() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -142,7 +141,7 @@ struct AddBuildPhaseToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a file to the project first
@@ -195,7 +194,7 @@ struct AddBuildPhaseToolTests {
     func addRunScriptPhaseWithoutScript() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -206,7 +205,7 @@ struct AddBuildPhaseToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = AddBuildPhaseTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -227,7 +226,7 @@ struct AddBuildPhaseToolTests {
     func addCopyFilesPhaseWithoutDestination() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -238,7 +237,7 @@ struct AddBuildPhaseToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = AddBuildPhaseTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -259,7 +258,7 @@ struct AddBuildPhaseToolTests {
     func addBuildPhaseWithInvalidPhaseType() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -270,7 +269,7 @@ struct AddBuildPhaseToolTests {
         // Create a test project with target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = AddBuildPhaseTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -290,7 +289,7 @@ struct AddBuildPhaseToolTests {
     func addBuildPhaseToNonExistentTarget() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -328,7 +327,7 @@ struct AddBuildPhaseToolTests {
 
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -339,7 +338,7 @@ struct AddBuildPhaseToolTests {
         // Create a test project with target and add a copy files build phase
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a copy files build phase with dstSubfolderSpec = .resources
@@ -349,7 +348,7 @@ struct AddBuildPhaseToolTests {
         let copyPhase = PBXCopyFilesBuildPhase(
             dstPath: "styles",
             dstSubfolderSpec: .resources,
-            name: "Copy Styles"
+            name: "Copy Styles",
         )
         xcodeproj.pbxproj.add(object: copyPhase)
         target.buildPhases.append(copyPhase)
@@ -358,20 +357,21 @@ struct AddBuildPhaseToolTests {
         // Verify the phase was created correctly
         let verifyProject = try XcodeProj(path: projectPath)
         let verifyTarget = try #require(
-            verifyProject.pbxproj.nativeTargets.first { $0.name == "App" })
+            verifyProject.pbxproj.nativeTargets.first { $0.name == "App" },
+        )
         let verifyCopyPhase = verifyTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
             .first { $0.name == "Copy Styles" }
 
         #expect(verifyCopyPhase != nil, "Copy phase should exist")
         #expect(
             verifyCopyPhase?.dstSubfolderSpec == .resources,
-            "dstSubfolderSpec should be .resources before modification"
+            "dstSubfolderSpec should be .resources before modification",
         )
 
         // Now use add_synchronized_folder to add a folder (this was corrupting copy phases)
         let folderPath = Path(tempDir.path) + "TestFolder"
         try FileManager.default.createDirectory(
-            atPath: folderPath.string, withIntermediateDirectories: true
+            atPath: folderPath.string, withIntermediateDirectories: true,
         )
 
         let folderTool = AddFolderTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -383,7 +383,8 @@ struct AddBuildPhaseToolTests {
         // Verify the copy files phase still has the correct dstSubfolderSpec
         let updatedProject = try XcodeProj(path: projectPath)
         let updatedTarget = try #require(
-            updatedProject.pbxproj.nativeTargets.first { $0.name == "App" })
+            updatedProject.pbxproj.nativeTargets.first { $0.name == "App" },
+        )
         let updatedCopyPhase = updatedTarget.buildPhases.compactMap {
             $0 as? PBXCopyFilesBuildPhase
         }
@@ -392,11 +393,11 @@ struct AddBuildPhaseToolTests {
         #expect(updatedCopyPhase != nil, "Copy phase should still exist after folder operation")
         #expect(
             updatedCopyPhase?.dstSubfolderSpec == .resources,
-            "dstSubfolderSpec should remain .resources after folder operation (was corrupted to \(String(describing: updatedCopyPhase?.dstSubfolderSpec)))"
+            "dstSubfolderSpec should remain .resources after folder operation (was corrupted to \(String(describing: updatedCopyPhase?.dstSubfolderSpec)))",
         )
         #expect(
             updatedCopyPhase?.dstPath == "styles",
-            "dstPath should remain 'styles' after folder operation"
+            "dstPath should remain 'styles' after folder operation",
         )
     }
 }

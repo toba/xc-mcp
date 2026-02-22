@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DiscoverProjectsTool: Sendable {
     private let pathUtility: PathUtility
@@ -13,37 +13,37 @@ public struct DiscoverProjectsTool: Sendable {
         Tool(
             name: "discover_projs",
             description:
-                "Discover Xcode projects (.xcodeproj) and workspaces (.xcworkspace) in a directory. Searches recursively up to a specified depth.",
+            "Discover Xcode projects (.xcodeproj) and workspaces (.xcworkspace) in a directory. Searches recursively up to a specified depth.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Directory path to search in. Defaults to the base path."
+                            "Directory path to search in. Defaults to the base path.",
                         ),
                     ]),
                     "max_depth": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Maximum depth to search. Defaults to 3. Use 0 for no recursion."
+                            "Maximum depth to search. Defaults to 3. Use 0 for no recursion.",
                         ),
                     ]),
                     "include_workspaces": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Include .xcworkspace files in results. Defaults to true."
+                            "Include .xcworkspace files in results. Defaults to true.",
                         ),
                     ]),
                     "include_projects": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Include .xcodeproj files in results. Defaults to true."
+                            "Include .xcodeproj files in results. Defaults to true.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -64,7 +64,7 @@ public struct DiscoverProjectsTool: Sendable {
         // Verify search path exists
         var isDirectory: ObjCBool = false
         guard fileManager.fileExists(atPath: searchPath, isDirectory: &isDirectory),
-            isDirectory.boolValue
+              isDirectory.boolValue
         else {
             throw MCPError.invalidParams("Path does not exist or is not a directory: \(searchPath)")
         }
@@ -90,20 +90,20 @@ public struct DiscoverProjectsTool: Sendable {
 
                 let fullPath = "\(path)/\(item)"
 
-                if item.hasSuffix(".xcworkspace") && includeWorkspaces {
+                if item.hasSuffix(".xcworkspace"), includeWorkspaces {
                     // Skip Pods workspace and workspace inside .xcodeproj
-                    if !item.hasPrefix("Pods") && !path.hasSuffix(".xcodeproj") {
+                    if !item.hasPrefix("Pods"), !path.hasSuffix(".xcodeproj") {
                         workspaces.append(fullPath)
                     }
-                } else if item.hasSuffix(".xcodeproj") && includeProjects {
+                } else if item.hasSuffix(".xcodeproj"), includeProjects {
                     projects.append(fullPath)
                 } else {
                     var itemIsDir: ObjCBool = false
                     if fileManager.fileExists(atPath: fullPath, isDirectory: &itemIsDir),
-                        itemIsDir.boolValue
+                       itemIsDir.boolValue
                     {
                         // Don't recurse into .xcodeproj or .xcworkspace bundles
-                        if !item.hasSuffix(".xcodeproj") && !item.hasSuffix(".xcworkspace") {
+                        if !item.hasSuffix(".xcodeproj"), !item.hasSuffix(".xcworkspace") {
                             search(path: fullPath, currentDepth: currentDepth + 1)
                         }
                     }

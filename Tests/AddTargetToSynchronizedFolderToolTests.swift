@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("AddTargetToSynchronizedFolderTool Tests")
@@ -15,10 +14,10 @@ struct AddTargetToSynchronizedFolderToolTests {
     init() {
         tempDir =
             FileManager.default.temporaryDirectory
-            .appendingPathComponent(
-                "AddTargetToSyncFolderToolTests-\(UUID().uuidString)"
-            )
-            .path
+                .appendingPathComponent(
+                    "AddTargetToSyncFolderToolTests-\(UUID().uuidString)",
+                )
+                .path
         pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
@@ -65,14 +64,14 @@ struct AddTargetToSynchronizedFolderToolTests {
         // Create a project with two targets
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         // Add a second target
         let xcodeproj = try XcodeProj(path: projectPath)
         let targetConfig = XCBuildConfiguration(name: "Debug", buildSettings: [:])
         let targetConfigList = XCConfigurationList(
-            buildConfigurations: [targetConfig], defaultConfigurationName: "Debug"
+            buildConfigurations: [targetConfig], defaultConfigurationName: "Debug",
         )
         xcodeproj.pbxproj.add(object: targetConfig)
         xcodeproj.pbxproj.add(object: targetConfigList)
@@ -81,21 +80,22 @@ struct AddTargetToSynchronizedFolderToolTests {
             name: "DiagnosticTarget",
             buildConfigurationList: targetConfigList,
             buildPhases: [],
-            productType: .application
+            productType: .application,
         )
         xcodeproj.pbxproj.add(object: secondTarget)
         try xcodeproj.pbxproj.rootProject()?.targets.append(secondTarget)
 
         // Add a synchronized folder to the first target
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "Sources", name: "Sources"
+            sourceTree: .group, path: "Sources", name: "Sources",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(syncGroup)
         }
         let firstTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" })
+            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" },
+        )
         firstTarget.fileSystemSynchronizedGroups = [syncGroup]
 
         try xcodeproj.write(path: projectPath)
@@ -132,13 +132,13 @@ struct AddTargetToSynchronizedFolderToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         // Add a sync folder to the target
         let xcodeproj = try XcodeProj(path: projectPath)
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "Sources", name: "Sources"
+            sourceTree: .group, path: "Sources", name: "Sources",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
@@ -168,7 +168,7 @@ struct AddTargetToSynchronizedFolderToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         #expect(throws: MCPError.self) {
@@ -186,13 +186,13 @@ struct AddTargetToSynchronizedFolderToolTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "AppTarget", at: projectPath
+            name: "TestProject", targetName: "AppTarget", at: projectPath,
         )
 
         // Add a sync folder
         let xcodeproj = try XcodeProj(path: projectPath)
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "Sources", name: "Sources"
+            sourceTree: .group, path: "Sources", name: "Sources",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {

@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct RemoveGroupTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,30 +21,30 @@ public struct RemoveGroupTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "group_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name or path of the group to remove (e.g., 'Models' or 'Sources/Models')"
+                            "Name or path of the group to remove (e.g., 'Models' or 'Sources/Models')",
                         ),
                     ]),
                     "recursive": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, also remove all child groups and file references. If false (default), fails when the group has children."
+                            "If true, also remove all child groups and file references. If false (default), fails when the group has children.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("group_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(groupName) = arguments["group_name"]
+              case let .string(groupName) = arguments["group_name"]
         else {
             throw MCPError.invalidParams("project_path and group_name are required")
         }
@@ -63,7 +63,7 @@ public struct RemoveGroupTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                let mainGroup = project.mainGroup
+                  let mainGroup = project.mainGroup
             else {
                 throw MCPError.internalError("Main group not found in project")
             }
@@ -75,15 +75,15 @@ public struct RemoveGroupTool: Sendable {
             for component in pathComponents.dropLast() {
                 guard
                     let childGroup = parentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                        where: { $0.name == component || $0.path == component }
+                        where: { $0.name == component || $0.path == component },
                     )
                 else {
                     return CallTool.Result(
                         content: [
                             .text(
-                                "Group '\(groupName)' not found in project (failed at '\(component)')"
-                            )
-                        ]
+                                "Group '\(groupName)' not found in project (failed at '\(component)')",
+                            ),
+                        ],
                     )
                 }
                 parentGroup = childGroup
@@ -92,22 +92,22 @@ public struct RemoveGroupTool: Sendable {
             let targetName = pathComponents.last!
             guard
                 let targetGroup = parentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                    where: { $0.name == targetName || $0.path == targetName }
+                    where: { $0.name == targetName || $0.path == targetName },
                 )
             else {
                 return CallTool.Result(
-                    content: [.text("Group '\(groupName)' not found in project")]
+                    content: [.text("Group '\(groupName)' not found in project")],
                 )
             }
 
             // Check for children when not recursive
-            if !recursive && !targetGroup.children.isEmpty {
+            if !recursive, !targetGroup.children.isEmpty {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Group '\(groupName)' has \(targetGroup.children.count) children. Use recursive=true to remove it and all its contents."
-                        )
-                    ]
+                            "Group '\(groupName)' has \(targetGroup.children.count) children. Use recursive=true to remove it and all its contents.",
+                        ),
+                    ],
                 )
             }
 
@@ -127,12 +127,12 @@ public struct RemoveGroupTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Successfully removed group '\(groupName)' from project")
-                ]
+                    .text("Successfully removed group '\(groupName)' from project"),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to remove group from Xcode project: \(error.localizedDescription)"
+                "Failed to remove group from Xcode project: \(error.localizedDescription)",
             )
         }
     }

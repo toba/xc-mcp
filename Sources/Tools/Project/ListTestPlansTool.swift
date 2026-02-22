@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct ListTestPlansTool: Sendable {
     private let pathUtility: PathUtility
@@ -13,19 +13,19 @@ public struct ListTestPlansTool: Sendable {
         Tool(
             name: "list_test_plans",
             description:
-                "List all .xctestplan files in the project directory with their target lists",
+            "List all .xctestplan files in the project directory with their target lists",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (search root is the parent directory)"
+                            "Path to the .xcodeproj file (search root is the parent directory)",
                         ),
-                    ])
+                    ]),
                 ]),
                 "required": .array([.string("project_path")]),
-            ])
+            ]),
         )
     }
 
@@ -42,7 +42,7 @@ public struct ListTestPlansTool: Sendable {
 
         if testPlans.isEmpty {
             return CallTool.Result(
-                content: [.text("No .xctestplan files found under \(searchRoot)")]
+                content: [.text("No .xctestplan files found under \(searchRoot)")],
             )
         }
 
@@ -61,7 +61,7 @@ public struct ListTestPlansTool: Sendable {
                 let configNames = configs.compactMap { $0["name"] as? String }
                 if !configNames.isEmpty {
                     lines.append(
-                        "    Configurations: \(configNames.joined(separator: ", "))"
+                        "    Configurations: \(configNames.joined(separator: ", "))",
                     )
                 }
             }

@@ -1,7 +1,7 @@
-import Foundation
 import MCP
 import PathKit
 import XcodeProj
+import Foundation
 
 enum TestProjectHelper {
     static func createTestProject(name: String, at path: Path) throws {
@@ -25,7 +25,7 @@ enum TestProjectHelper {
         // Create configuration list
         let configurationList = XCConfigurationList(
             buildConfigurations: [debugConfig, releaseConfig],
-            defaultConfigurationName: "Release"
+            defaultConfigurationName: "Release",
         )
         pbxproj.add(object: configurationList)
 
@@ -39,7 +39,7 @@ enum TestProjectHelper {
             mainGroup: mainGroup,
             developmentRegion: "en",
             knownRegions: ["en", "Base"],
-            productsGroup: productsGroup
+            productsGroup: productsGroup,
         )
         pbxproj.add(object: project)
         pbxproj.rootObject = project
@@ -75,7 +75,7 @@ enum TestProjectHelper {
         // Create configuration list for project
         let configurationList = XCConfigurationList(
             buildConfigurations: [debugConfig, releaseConfig],
-            defaultConfigurationName: "Release"
+            defaultConfigurationName: "Release",
         )
         pbxproj.add(object: configurationList)
 
@@ -85,14 +85,14 @@ enum TestProjectHelper {
             buildSettings: [
                 "PRODUCT_NAME": .string(targetName),
                 "BUNDLE_IDENTIFIER": .string("com.example.\(targetName)"),
-            ]
+            ],
         )
         let targetReleaseConfig = XCBuildConfiguration(
             name: "Release",
             buildSettings: [
                 "PRODUCT_NAME": .string(targetName),
                 "BUNDLE_IDENTIFIER": .string("com.example.\(targetName)"),
-            ]
+            ],
         )
         pbxproj.add(object: targetDebugConfig)
         pbxproj.add(object: targetReleaseConfig)
@@ -100,7 +100,7 @@ enum TestProjectHelper {
         // Create target configuration list
         let targetConfigurationList = XCConfigurationList(
             buildConfigurations: [targetDebugConfig, targetReleaseConfig],
-            defaultConfigurationName: "Release"
+            defaultConfigurationName: "Release",
         )
         pbxproj.add(object: targetConfigurationList)
 
@@ -116,7 +116,7 @@ enum TestProjectHelper {
             name: targetName,
             buildConfigurationList: targetConfigurationList,
             buildPhases: [sourcesBuildPhase, resourcesBuildPhase],
-            productType: .application
+            productType: .application,
         )
         pbxproj.add(object: target)
 
@@ -131,7 +131,7 @@ enum TestProjectHelper {
             developmentRegion: "en",
             knownRegions: ["en", "Base"],
             productsGroup: productsGroup,
-            targets: [target]
+            targets: [target],
         )
         pbxproj.add(object: project)
         pbxproj.rootObject = project
@@ -153,13 +153,13 @@ enum TestProjectHelper {
         targetName: String,
         folderPath: String,
         membershipExceptions: [String]? = nil,
-        at path: Path
+        at path: Path,
     ) throws {
         try createTestProjectWithTarget(name: name, targetName: targetName, at: path)
 
         let xcodeproj = try XcodeProj(path: path)
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: folderPath, name: folderPath
+            sourceTree: .group, path: folderPath, name: folderPath,
         )
         xcodeproj.pbxproj.add(object: syncGroup)
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
@@ -176,7 +176,7 @@ enum TestProjectHelper {
                 publicHeaders: nil,
                 privateHeaders: nil,
                 additionalCompilerFlagsByRelativePath: nil,
-                attributesByRelativePath: nil
+                attributesByRelativePath: nil,
             )
             xcodeproj.pbxproj.add(object: exceptionSet)
             syncGroup.exceptions = [exceptionSet]

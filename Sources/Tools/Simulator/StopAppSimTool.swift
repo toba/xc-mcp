@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct StopAppSimTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -21,18 +21,18 @@ public struct StopAppSimTool: Sendable {
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The bundle identifier of the app to stop (e.g., 'com.example.MyApp')."
+                            "The bundle identifier of the app to stop (e.g., 'com.example.MyApp').",
                         ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("bundle_id")]),
-            ])
+            ]),
         )
     }
 
@@ -46,18 +46,18 @@ public struct StopAppSimTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text("Successfully stopped '\(bundleId)' on simulator '\(simulator)'")
-                    ]
+                        .text("Successfully stopped '\(bundleId)' on simulator '\(simulator)'"),
+                    ],
                 )
             } else if result.stderr.contains("No matching processes") {
                 return CallTool.Result(
                     content: [
-                        .text("App '\(bundleId)' was not running on simulator '\(simulator)'")
-                    ]
+                        .text("App '\(bundleId)' was not running on simulator '\(simulator)'"),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to stop app: \(result.errorOutput)"
+                    "Failed to stop app: \(result.errorOutput)",
                 )
             }
         } catch {

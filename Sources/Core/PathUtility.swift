@@ -1,5 +1,5 @@
-import Foundation
 import MCP
+import Foundation
 
 /// Errors that can occur during path resolution and validation.
 public enum PathError: LocalizedError, MCPErrorConvertible {
@@ -8,8 +8,8 @@ public enum PathError: LocalizedError, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-        case let .pathOutsideBasePath(path, basePath):
-            return "Path '\(path)' is outside the allowed base path '\(basePath)'"
+            case let .pathOutsideBasePath(path, basePath):
+                return "Path '\(path)' is outside the allowed base path '\(basePath)'"
         }
     }
 
@@ -136,7 +136,7 @@ public struct PathUtility: Sendable {
 
         // Find common prefix
         var commonPrefixLength = 0
-        for i in 0..<min(baseComponents.count, absoluteComponents.count) {
+        for i in 0 ..< min(baseComponents.count, absoluteComponents.count) {
             if baseComponents[i] == absoluteComponents[i] {
                 commonPrefixLength += 1
             } else {
@@ -180,6 +180,6 @@ public struct PathUtility: Sendable {
     /// - Note: This method does not validate paths against a base directory.
     ///   Prefer the instance method ``resolvePath(from:)`` for secure path handling.
     static func resolvePath(from path: String) -> String {
-        return resolvePathURL(from: path).path
+        resolvePathURL(from: path).path
     }
 }

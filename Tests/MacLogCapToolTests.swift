@@ -1,6 +1,5 @@
 import MCP
 import Testing
-
 @testable import XCMCPCore
 @testable import XCMCPTools
 
@@ -23,7 +22,7 @@ struct StartMacLogCapToolTests {
         let schema = tool.tool()
 
         guard case let .object(inputSchema) = schema.inputSchema,
-            case let .object(properties) = inputSchema["properties"]
+              case let .object(properties) = inputSchema["properties"]
         else {
             Issue.record("Expected object input schema with properties")
             return
@@ -56,7 +55,7 @@ struct StopMacLogCapToolTests {
         let schema = tool.tool()
 
         guard case let .object(inputSchema) = schema.inputSchema,
-            case let .object(properties) = inputSchema["properties"]
+              case let .object(properties) = inputSchema["properties"]
         else {
             Issue.record("Expected object input schema with properties")
             return

@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ListCopyFilesPhases: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct ListCopyFilesPhases: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -30,13 +30,13 @@ public struct ListCopyFilesPhases: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("target_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"]
+              case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams("project_path and target_name are required")
         }
@@ -51,7 +51,7 @@ public struct ListCopyFilesPhases: Sendable {
                 let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
             else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")]
+                    content: [.text("Target '\(targetName)' not found in project")],
                 )
             }
 
@@ -59,7 +59,7 @@ public struct ListCopyFilesPhases: Sendable {
 
             if copyFilesPhases.isEmpty {
                 return CallTool.Result(
-                    content: [.text("No Copy Files build phases found in target '\(targetName)'")]
+                    content: [.text("No Copy Files build phases found in target '\(targetName)'")],
                 )
             }
 
@@ -95,39 +95,39 @@ public struct ListCopyFilesPhases: Sendable {
             }
 
             return CallTool.Result(content: [
-                .text(output.trimmingCharacters(in: .whitespacesAndNewlines))
+                .text(output.trimmingCharacters(in: .whitespacesAndNewlines)),
             ])
         } catch {
             throw MCPError.internalError(
-                "Failed to list copy files phases: \(error.localizedDescription)"
+                "Failed to list copy files phases: \(error.localizedDescription)",
             )
         }
     }
 
     private func destinationString(_ subfolder: PBXCopyFilesBuildPhase.SubFolder) -> String {
         switch subfolder {
-        case .absolutePath:
-            return "Absolute Path"
-        case .productsDirectory:
-            return "Products Directory"
-        case .wrapper:
-            return "Wrapper"
-        case .executables:
-            return "Executables"
-        case .resources:
-            return "Resources"
-        case .javaResources:
-            return "Java Resources"
-        case .frameworks:
-            return "Frameworks"
-        case .sharedFrameworks:
-            return "Shared Frameworks"
-        case .sharedSupport:
-            return "Shared Support"
-        case .plugins:
-            return "Plugins"
-        @unknown default:
-            return "Unknown"
+            case .absolutePath:
+                return "Absolute Path"
+            case .productsDirectory:
+                return "Products Directory"
+            case .wrapper:
+                return "Wrapper"
+            case .executables:
+                return "Executables"
+            case .resources:
+                return "Resources"
+            case .javaResources:
+                return "Java Resources"
+            case .frameworks:
+                return "Frameworks"
+            case .sharedFrameworks:
+                return "Shared Frameworks"
+            case .sharedSupport:
+                return "Shared Support"
+            case .plugins:
+                return "Plugins"
+            @unknown default:
+                return "Unknown"
         }
     }
 }

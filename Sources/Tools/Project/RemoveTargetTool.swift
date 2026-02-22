@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct RemoveTargetTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct RemoveTargetTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -30,13 +30,13 @@ public struct RemoveTargetTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("target_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"]
+              case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams("project_path and target_name are required")
         }
@@ -56,8 +56,8 @@ public struct RemoveTargetTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project")
-                    ]
+                        .text("Target '\(targetName)' not found in project"),
+                    ],
                 )
             }
 
@@ -87,7 +87,7 @@ public struct RemoveTargetTool: Sendable {
             if let productRef = target.product {
                 // Remove from products group
                 if let project = xcodeproj.pbxproj.rootObject,
-                    let productsGroup = project.productsGroup
+                   let productsGroup = project.productsGroup
                 {
                     productsGroup.children.removeAll { $0 == productRef }
                 }
@@ -101,13 +101,13 @@ public struct RemoveTargetTool: Sendable {
 
             // Remove target group if exists
             if let project = try xcodeproj.pbxproj.rootProject(),
-                let mainGroup = project.mainGroup
+               let mainGroup = project.mainGroup
             {
                 /// Find and remove target folder
                 func removeTargetGroup(from group: PBXGroup) {
                     group.children.removeAll { element in
                         if let groupElement = element as? PBXGroup,
-                            groupElement.name == targetName
+                           groupElement.name == targetName
                         {
                             xcodeproj.pbxproj.delete(object: groupElement)
                             return true
@@ -133,12 +133,12 @@ public struct RemoveTargetTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Successfully removed target '\(targetName)' from project")
-                ]
+                    .text("Successfully removed target '\(targetName)' from project"),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to remove target from Xcode project: \(error.localizedDescription)"
+                "Failed to remove target from Xcode project: \(error.localizedDescription)",
             )
         }
     }

@@ -34,7 +34,7 @@ public struct XCStringsReader: Sendable {
         for (key, entry) in file.strings {
             let isTranslated =
                 entry.localizations?[language]?.stringUnit?.value != nil
-                || entry.localizations?[language]?.variations != nil
+                    || entry.localizations?[language]?.variations != nil
 
             if !isTranslated {
                 untranslated.append(key)
@@ -61,7 +61,7 @@ public struct XCStringsReader: Sendable {
             key: key,
             comment: entry.comment,
             extractionState: entry.extractionState,
-            languages: languages
+            languages: languages,
         )
     }
 
@@ -82,7 +82,7 @@ public struct XCStringsReader: Sendable {
                     language: lang,
                     value: localization.stringUnit?.value,
                     state: localization.stringUnit?.state,
-                    hasVariations: localization.variations != nil
+                    hasVariations: localization.variations != nil,
                 )
             } else {
                 throw XCStringsError.languageNotFound(language: lang, key: key)
@@ -95,7 +95,7 @@ public struct XCStringsReader: Sendable {
                         language: lang,
                         value: localization.stringUnit?.value,
                         state: localization.stringUnit?.state,
-                        hasVariations: localization.variations != nil
+                        hasVariations: localization.variations != nil,
                     )
                 }
             }
@@ -145,13 +145,13 @@ public struct XCStringsReader: Sendable {
         let missingLanguages = allLanguages.filter { !translatedLanguages.contains($0) }
         let coveragePercent =
             allLanguages.isEmpty
-            ? 0 : Double(translatedLanguages.count) / Double(allLanguages.count) * 100
+                ? 0 : Double(translatedLanguages.count) / Double(allLanguages.count) * 100
 
         return CoverageInfo(
             key: key,
             translatedLanguages: translatedLanguages,
             missingLanguages: missingLanguages,
-            coveragePercent: coveragePercent
+            coveragePercent: coveragePercent,
         )
     }
 }

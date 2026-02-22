@@ -1,7 +1,7 @@
-import Foundation
-import Logging
 import MCP
+import Logging
 import XCMCPCore
+import Foundation
 import XCMCPTools
 
 /// All available tool names exposed by the xc-debug MCP server.
@@ -72,7 +72,7 @@ public struct DebugMCPServer: Sendable {
         let server = Server(
             name: "xc-debug",
             version: "1.0.0",
-            capabilities: .init(tools: .init())
+            capabilities: .init(tools: .init()),
         )
 
         // Create utilities
@@ -84,10 +84,10 @@ public struct DebugMCPServer: Sendable {
         let xcodebuildRunner = XcodebuildRunner()
         let buildDebugMacOSTool = BuildDebugMacOSTool(
             xcodebuildRunner: xcodebuildRunner, lldbRunner: lldbRunner,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
         )
         let debugAttachSimTool = DebugAttachSimTool(
-            lldbRunner: lldbRunner, simctlRunner: simctlRunner, sessionManager: sessionManager
+            lldbRunner: lldbRunner, simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
         let debugDetachTool = DebugDetachTool(lldbRunner: lldbRunner)
         let debugBreakpointAddTool = DebugBreakpointAddTool(lldbRunner: lldbRunner)
@@ -148,60 +148,61 @@ public struct DebugMCPServer: Sendable {
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = DebugToolName(rawValue: params.name) else {
                 let hint = ServerToolDirectory.hint(for: params.name, currentServer: "xc-debug")
-                let message = hint.map { "Unknown tool: \(params.name). \($0)" }
-                    ?? "Unknown tool: \(params.name)"
+                let message =
+                    hint.map { "Unknown tool: \(params.name). \($0)" }
+                        ?? "Unknown tool: \(params.name)"
                 throw MCPError.methodNotFound(message)
             }
 
             let arguments = params.arguments ?? [:]
 
             switch toolName {
-            case .buildDebugMacOS:
-                return try await buildDebugMacOSTool.execute(arguments: arguments)
-            case .debugAttachSim:
-                return try await debugAttachSimTool.execute(arguments: arguments)
-            case .debugDetach:
-                return try await debugDetachTool.execute(arguments: arguments)
-            case .debugBreakpointAdd:
-                return try await debugBreakpointAddTool.execute(arguments: arguments)
-            case .debugBreakpointRemove:
-                return try await debugBreakpointRemoveTool.execute(arguments: arguments)
-            case .debugContinue:
-                return try await debugContinueTool.execute(arguments: arguments)
-            case .debugStack:
-                return try await debugStackTool.execute(arguments: arguments)
-            case .debugVariables:
-                return try await debugVariablesTool.execute(arguments: arguments)
-            case .debugLLDBCommand:
-                return try await debugLLDBCommandTool.execute(arguments: arguments)
-            case .debugEvaluate:
-                return try await debugEvaluateTool.execute(arguments: arguments)
-            case .debugThreads:
-                return try await debugThreadsTool.execute(arguments: arguments)
-            case .debugWatchpoint:
-                return try await debugWatchpointTool.execute(arguments: arguments)
-            case .debugStep:
-                return try await debugStepTool.execute(arguments: arguments)
-            case .debugMemory:
-                return try await debugMemoryTool.execute(arguments: arguments)
-            case .debugSymbolLookup:
-                return try await debugSymbolLookupTool.execute(arguments: arguments)
-            case .debugViewHierarchy:
-                return try await debugViewHierarchyTool.execute(arguments: arguments)
-            case .debugViewBorders:
-                return try await debugViewBordersTool.execute(arguments: arguments)
-            case .debugProcessStatus:
-                return try await debugProcessStatusTool.execute(arguments: arguments)
-            // macOS tools
-            case .screenshotMacWindow:
-                return try await screenshotMacWindowTool.execute(arguments: arguments)
-            // Session tools
-            case .setSessionDefaults:
-                return try await setSessionDefaultsTool.execute(arguments: arguments)
-            case .showSessionDefaults:
-                return try await showSessionDefaultsTool.execute(arguments: arguments)
-            case .clearSessionDefaults:
-                return try await clearSessionDefaultsTool.execute(arguments: arguments)
+                case .buildDebugMacOS:
+                    return try await buildDebugMacOSTool.execute(arguments: arguments)
+                case .debugAttachSim:
+                    return try await debugAttachSimTool.execute(arguments: arguments)
+                case .debugDetach:
+                    return try await debugDetachTool.execute(arguments: arguments)
+                case .debugBreakpointAdd:
+                    return try await debugBreakpointAddTool.execute(arguments: arguments)
+                case .debugBreakpointRemove:
+                    return try await debugBreakpointRemoveTool.execute(arguments: arguments)
+                case .debugContinue:
+                    return try await debugContinueTool.execute(arguments: arguments)
+                case .debugStack:
+                    return try await debugStackTool.execute(arguments: arguments)
+                case .debugVariables:
+                    return try await debugVariablesTool.execute(arguments: arguments)
+                case .debugLLDBCommand:
+                    return try await debugLLDBCommandTool.execute(arguments: arguments)
+                case .debugEvaluate:
+                    return try await debugEvaluateTool.execute(arguments: arguments)
+                case .debugThreads:
+                    return try await debugThreadsTool.execute(arguments: arguments)
+                case .debugWatchpoint:
+                    return try await debugWatchpointTool.execute(arguments: arguments)
+                case .debugStep:
+                    return try await debugStepTool.execute(arguments: arguments)
+                case .debugMemory:
+                    return try await debugMemoryTool.execute(arguments: arguments)
+                case .debugSymbolLookup:
+                    return try await debugSymbolLookupTool.execute(arguments: arguments)
+                case .debugViewHierarchy:
+                    return try await debugViewHierarchyTool.execute(arguments: arguments)
+                case .debugViewBorders:
+                    return try await debugViewBordersTool.execute(arguments: arguments)
+                case .debugProcessStatus:
+                    return try await debugProcessStatusTool.execute(arguments: arguments)
+                // macOS tools
+                case .screenshotMacWindow:
+                    return try await screenshotMacWindowTool.execute(arguments: arguments)
+                // Session tools
+                case .setSessionDefaults:
+                    return try await setSessionDefaultsTool.execute(arguments: arguments)
+                case .showSessionDefaults:
+                    return try await showSessionDefaultsTool.execute(arguments: arguments)
+                case .clearSessionDefaults:
+                    return try await clearSessionDefaultsTool.execute(arguments: arguments)
             }
         }
 

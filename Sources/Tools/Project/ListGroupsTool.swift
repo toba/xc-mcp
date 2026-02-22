@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ListGroupsTool: Sendable {
     private let pathUtility: PathUtility
@@ -15,19 +15,19 @@ public struct ListGroupsTool: Sendable {
         Tool(
             name: "list_groups",
             description:
-                "List all groups, folder references, and file system synchronized groups in an Xcode project",
+            "List all groups, folder references, and file system synchronized groups in an Xcode project",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
-                    ])
+                    ]),
                 ]),
                 "required": .array([.string("project_path")]),
-            ])
+            ]),
         )
     }
 
@@ -45,7 +45,7 @@ public struct ListGroupsTool: Sendable {
 
             // Get the root project and main group
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                let mainGroup = project.mainGroup
+                  let mainGroup = project.mainGroup
             else {
                 throw MCPError.internalError("Main group not found in project")
             }
@@ -57,27 +57,27 @@ public struct ListGroupsTool: Sendable {
 
             // Also include the products group if it exists and is not already included
             if let productsGroup = project.productsGroup,
-                !groupList.contains(where: { $0.contains("Products") })
+               !groupList.contains(where: { $0.contains("Products") })
             {
                 traverseGroup(productsGroup, path: "", groupList: &groupList)
             }
 
             let result =
                 groupList.isEmpty
-                ? "No groups, folder references, or synchronized groups found in project."
-                : groupList.joined(separator: "\n")
+                    ? "No groups, folder references, or synchronized groups found in project."
+                    : groupList.joined(separator: "\n")
 
             let titleMessage =
                 "Groups, folder references, and synchronized groups in project:\n\(result)"
 
             return CallTool.Result(
                 content: [
-                    .text(titleMessage)
-                ]
+                    .text(titleMessage),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)"
+                "Failed to read Xcode project: \(error.localizedDescription)",
             )
         }
     }
@@ -107,18 +107,18 @@ public struct ListGroupsTool: Sendable {
                 let syncGroupName = syncGroup.path ?? "Unnamed Sync Group"
                 let syncGroupPath =
                     shouldInclude
-                    ? "\(currentPath)/\(syncGroupName)"
-                    : path.isEmpty ? syncGroupName : "\(path)/\(syncGroupName)"
+                        ? "\(currentPath)/\(syncGroupName)"
+                        : path.isEmpty ? syncGroupName : "\(path)/\(syncGroupName)"
                 groupList.append("- \(syncGroupPath) (file system synchronized)")
             } else if let folderRef = child as? PBXFileReference,
-                folderRef.lastKnownFileType == "folder"
+                      folderRef.lastKnownFileType == "folder"
             {
                 // Handle folder references
                 let folderName = folderRef.name ?? folderRef.path ?? "Unnamed Folder"
                 let folderPath =
                     shouldInclude
-                    ? "\(currentPath)/\(folderName)"
-                    : path.isEmpty ? folderName : "\(path)/\(folderName)"
+                        ? "\(currentPath)/\(folderName)"
+                        : path.isEmpty ? folderName : "\(path)/\(folderName)"
                 groupList.append("- \(folderPath) (folder reference)")
             }
         }

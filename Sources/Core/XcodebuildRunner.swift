@@ -1,5 +1,5 @@
-import Foundation
 import MCP
+import Foundation
 import Synchronization
 
 /// Wrapper for executing xcodebuild commands.
@@ -54,7 +54,7 @@ public struct XcodebuildRunner: Sendable {
     public func run(
         arguments: [String],
         timeout: TimeInterval,
-        onProgress: (@Sendable (String) -> Void)?
+        onProgress: (@Sendable (String) -> Void)?,
     ) async throws -> XcodebuildResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
@@ -109,7 +109,7 @@ public struct XcodebuildRunner: Sendable {
                 let (stdout, stderr) = outputActor.getOutput()
                 throw XcodebuildError.timeout(
                     duration: timeout,
-                    partialOutput: stdout + stderr
+                    partialOutput: stdout + stderr,
                 )
             }
 
@@ -120,14 +120,14 @@ public struct XcodebuildRunner: Sendable {
                 let (stdout, stderr) = outputActor.getOutput()
                 let seconds =
                     Double(timeSinceLastOutput.components.seconds)
-                    + Double(timeSinceLastOutput.components.attoseconds) / 1e18
+                        + Double(timeSinceLastOutput.components.attoseconds) / 1e18
                 throw XcodebuildError.stuckProcess(
                     noOutputFor: seconds,
-                    partialOutput: stdout + stderr
+                    partialOutput: stdout + stderr,
                 )
             }
 
-            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
+            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         }
 
         // Clean up handlers
@@ -150,7 +150,7 @@ public struct XcodebuildRunner: Sendable {
         return XcodebuildResult(
             exitCode: process.terminationStatus,
             stdout: stdout,
-            stderr: stderr
+            stderr: stderr,
         )
     }
 
@@ -173,7 +173,7 @@ public struct XcodebuildRunner: Sendable {
         configuration: String = "Debug",
         additionalArguments: [String] = [],
         timeout: TimeInterval = defaultTimeout,
-        onProgress: (@Sendable (String) -> Void)? = nil
+        onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> XcodebuildResult {
         var args: [String] = []
 
@@ -224,7 +224,7 @@ public struct XcodebuildRunner: Sendable {
         configuration: String = "Debug",
         additionalArguments: [String] = [],
         timeout: TimeInterval = defaultTimeout,
-        onProgress: (@Sendable (String) -> Void)? = nil
+        onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> XcodebuildResult {
         var args: [String] = []
 
@@ -272,7 +272,7 @@ public struct XcodebuildRunner: Sendable {
         enableCodeCoverage: Bool = false,
         resultBundlePath: String? = nil,
         additionalArguments: [String] = [],
-        timeout: TimeInterval = defaultTimeout
+        timeout: TimeInterval = defaultTimeout,
     ) async throws -> XcodebuildResult {
         var args: [String] = []
 
@@ -329,7 +329,7 @@ public struct XcodebuildRunner: Sendable {
         projectPath: String? = nil,
         workspacePath: String? = nil,
         scheme: String,
-        configuration: String = "Debug"
+        configuration: String = "Debug",
     ) async throws -> XcodebuildResult {
         var args: [String] = []
 
@@ -353,7 +353,7 @@ public struct XcodebuildRunner: Sendable {
     /// - Throws: An error if the process fails to launch.
     public func listSchemes(
         projectPath: String? = nil,
-        workspacePath: String? = nil
+        workspacePath: String? = nil,
     ) async throws -> XcodebuildResult {
         var args: [String] = ["-list", "-json"]
 
@@ -380,7 +380,7 @@ public struct XcodebuildRunner: Sendable {
         workspacePath: String? = nil,
         scheme: String,
         configuration: String = "Debug",
-        destination: String? = nil
+        destination: String? = nil,
     ) async throws -> XcodebuildResult {
         var args: [String] = []
 
@@ -420,18 +420,18 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-        case let .timeout(duration, _):
-            return "Build timed out after \(Int(duration)) seconds"
-        case let .stuckProcess(noOutputFor, _):
-            return "Build appears stuck (no output for \(Int(noOutputFor)) seconds)"
+            case let .timeout(duration, _):
+                return "Build timed out after \(Int(duration)) seconds"
+            case let .stuckProcess(noOutputFor, _):
+                return "Build appears stuck (no output for \(Int(noOutputFor)) seconds)"
         }
     }
 
     /// The partial output captured before the error occurred.
     public var partialOutput: String {
         switch self {
-        case let .timeout(_, output), let .stuckProcess(_, output):
-            return output
+            case let .timeout(_, output), let .stuckProcess(_, output):
+                return output
         }
     }
 

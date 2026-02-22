@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct CreateSchemeTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct CreateSchemeTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "scheme_name": .object([
@@ -36,14 +36,14 @@ public struct CreateSchemeTool: Sendable {
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
                         "description": .string(
-                            "Target names to include in TestAction as testables"
+                            "Target names to include in TestAction as testables",
                         ),
                     ]),
                     "test_plan_paths": .object([
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
                         "description": .string(
-                            "Paths to .xctestplan files (first is default test plan)"
+                            "Paths to .xctestplan files (first is default test plan)",
                         ),
                     ]),
                     "build_configuration": .object([
@@ -60,24 +60,24 @@ public struct CreateSchemeTool: Sendable {
                             ]),
                         ]),
                         "description": .string(
-                            "Pre-build shell script actions (each with title and script_text)"
+                            "Pre-build shell script actions (each with title and script_text)",
                         ),
                     ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("scheme_name"), .string("build_target"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(schemeName) = arguments["scheme_name"],
-            case let .string(buildTargetName) = arguments["build_target"]
+              case let .string(schemeName) = arguments["scheme_name"],
+              case let .string(buildTargetName) = arguments["build_target"]
         else {
             throw MCPError.invalidParams(
-                "project_path, scheme_name, and build_target are required"
+                "project_path, scheme_name, and build_target are required",
             )
         }
 
@@ -97,7 +97,7 @@ public struct CreateSchemeTool: Sendable {
 
         if FileManager.default.fileExists(atPath: schemePath) {
             return CallTool.Result(
-                content: [.text("Scheme '\(schemeName)' already exists")]
+                content: [.text("Scheme '\(schemeName)' already exists")],
             )
         }
 
@@ -113,9 +113,9 @@ public struct CreateSchemeTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Build target '\(buildTargetName)' not found in project"
-                        )
-                    ]
+                            "Build target '\(buildTargetName)' not found in project",
+                        ),
+                    ],
                 )
             }
 
@@ -125,7 +125,7 @@ public struct CreateSchemeTool: Sendable {
                 referencedContainer: containerPath,
                 blueprint: buildTarget,
                 buildableName: buildableName(for: buildTarget),
-                blueprintName: buildTargetName
+                blueprintName: buildTargetName,
             )
 
             // BuildAction
@@ -133,15 +133,15 @@ public struct CreateSchemeTool: Sendable {
             if case let .array(preActionValues) = arguments["pre_actions"] {
                 for preActionValue in preActionValues {
                     if case let .object(dict) = preActionValue,
-                        case let .string(title) = dict["title"],
-                        case let .string(scriptText) = dict["script_text"]
+                       case let .string(title) = dict["title"],
+                       case let .string(scriptText) = dict["script_text"]
                     {
                         preActions.append(
                             XCScheme.ExecutionAction(
                                 scriptText: scriptText,
                                 title: title,
-                                environmentBuildable: buildRef
-                            )
+                                environmentBuildable: buildRef,
+                            ),
                         )
                     }
                 }
@@ -149,14 +149,14 @@ public struct CreateSchemeTool: Sendable {
 
             let buildActionEntry = XCScheme.BuildAction.Entry(
                 buildableReference: buildRef,
-                buildFor: XCScheme.BuildAction.Entry.BuildFor.default
+                buildFor: XCScheme.BuildAction.Entry.BuildFor.default,
             )
 
             let buildAction = XCScheme.BuildAction(
                 buildActionEntries: [buildActionEntry],
                 preActions: preActions,
                 parallelizeBuild: true,
-                buildImplicitDependencies: true
+                buildImplicitDependencies: true,
             )
 
             // TestAction
@@ -172,9 +172,9 @@ public struct CreateSchemeTool: Sendable {
                         return CallTool.Result(
                             content: [
                                 .text(
-                                    "Test target '\(testTargetName)' not found in project"
-                                )
-                            ]
+                                    "Test target '\(testTargetName)' not found in project",
+                                ),
+                            ],
                         )
                     }
 
@@ -182,14 +182,14 @@ public struct CreateSchemeTool: Sendable {
                         referencedContainer: containerPath,
                         blueprint: testTarget,
                         buildableName: buildableName(for: testTarget),
-                        blueprintName: testTargetName
+                        blueprintName: testTargetName,
                     )
 
                     testables.append(
                         XCScheme.TestableReference(
                             skipped: false,
-                            buildableReference: testRef
-                        )
+                            buildableReference: testRef,
+                        ),
                     )
                 }
             }
@@ -206,7 +206,7 @@ public struct CreateSchemeTool: Sendable {
                     let relativePath: String
                     if resolvedPlanPath.hasPrefix(projectDir) {
                         relativePath = String(
-                            resolvedPlanPath.dropFirst(projectDir.count + 1)
+                            resolvedPlanPath.dropFirst(projectDir.count + 1),
                         )
                     } else {
                         relativePath = resolvedPlanPath
@@ -215,8 +215,8 @@ public struct CreateSchemeTool: Sendable {
                     testPlanRefs?.append(
                         XCScheme.TestPlanReference(
                             reference: "container:\(relativePath)",
-                            default: index == 0
-                        )
+                            default: index == 0,
+                        ),
                     )
                 }
             }
@@ -225,24 +225,24 @@ public struct CreateSchemeTool: Sendable {
                 buildConfiguration: buildConfiguration,
                 macroExpansion: buildRef,
                 testables: testables,
-                testPlans: testPlanRefs
+                testPlans: testPlanRefs,
             )
 
             // LaunchAction
             let launchAction = XCScheme.LaunchAction(
                 runnable: XCScheme.BuildableProductRunnable(
-                    buildableReference: buildRef
+                    buildableReference: buildRef,
                 ),
-                buildConfiguration: buildConfiguration
+                buildConfiguration: buildConfiguration,
             )
 
             // AnalyzeAction and ArchiveAction
             let analyzeAction = XCScheme.AnalyzeAction(
-                buildConfiguration: buildConfiguration
+                buildConfiguration: buildConfiguration,
             )
             let archiveAction = XCScheme.ArchiveAction(
                 buildConfiguration: buildConfiguration == "Debug" ? "Release" : buildConfiguration,
-                revealArchiveInOrganizer: true
+                revealArchiveInOrganizer: true,
             )
 
             let scheme = XCScheme(
@@ -253,13 +253,13 @@ public struct CreateSchemeTool: Sendable {
                 testAction: testAction,
                 launchAction: launchAction,
                 analyzeAction: analyzeAction,
-                archiveAction: archiveAction
+                archiveAction: archiveAction,
             )
 
             // Create directory if needed
             try FileManager.default.createDirectory(
                 atPath: schemesDir,
-                withIntermediateDirectories: true
+                withIntermediateDirectories: true,
             )
 
             try scheme.write(path: Path(schemePath), override: false)
@@ -278,14 +278,14 @@ public struct CreateSchemeTool: Sendable {
             return CallTool.Result(content: [.text(summary)])
         } catch {
             throw MCPError.internalError(
-                "Failed to create scheme: \(error.localizedDescription)"
+                "Failed to create scheme: \(error.localizedDescription)",
             )
         }
     }
 
     private func buildableName(for target: PBXNativeTarget) -> String {
         if let productType = target.productType,
-            let ext = productType.fileExtension
+           let ext = productType.fileExtension
         {
             return "\(target.name).\(ext)"
         }

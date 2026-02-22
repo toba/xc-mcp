@@ -1,5 +1,4 @@
 import Testing
-
 @testable import XCMCPCore
 
 @Suite("Build Phases Tests")
@@ -8,11 +7,11 @@ struct BuildPhasesTests {
     func phaseScriptExecutionFailureBasic() {
         let parser = BuildOutputParser()
         let output = """
-            /bin/sh -c /Users/test/DerivedData/Build/Script.sh
-            The path lib/main.dart does not exist
-            The path  does not exist
-            Command PhaseScriptExecution failed with a nonzero exit code
-            """
+        /bin/sh -c /Users/test/DerivedData/Build/Script.sh
+        The path lib/main.dart does not exist
+        The path  does not exist
+        Command PhaseScriptExecution failed with a nonzero exit code
+        """
 
         let result = parser.parse(input: output)
 
@@ -28,18 +27,18 @@ struct BuildPhasesTests {
     func phaseScriptExecutionWithMultipleErrors() {
         let parser = BuildOutputParser()
         let output = """
-            Build started...
+        Build started...
 
-            Compiling Swift files...
-            file.swift:10: error: Cannot find 'someFunction' in scope
+        Compiling Swift files...
+        file.swift:10: error: Cannot find 'someFunction' in scope
 
-            Running post-build script...
-            /bin/sh -c /path/to/script.sh
-            Script execution failed
-            Command PhaseScriptExecution failed with a nonzero exit code
+        Running post-build script...
+        /bin/sh -c /path/to/script.sh
+        Script execution failed
+        Command PhaseScriptExecution failed with a nonzero exit code
 
-            Build complete!
-            """
+        Build complete!
+        """
 
         let result = parser.parse(input: output)
 
@@ -50,8 +49,8 @@ struct BuildPhasesTests {
     func phaseScriptExecutionWithNoContext() {
         let parser = BuildOutputParser()
         let output = """
-            Command PhaseScriptExecution failed with a nonzero exit code
-            """
+        Command PhaseScriptExecution failed with a nonzero exit code
+        """
 
         let result = parser.parse(input: output)
 
@@ -63,9 +62,9 @@ struct BuildPhasesTests {
     func buildSucceededDoesNotCreatePhaseError() {
         let parser = BuildOutputParser()
         let output = """
-            Running phase script...
-            Build succeeded in 5.234 seconds
-            """
+        Running phase script...
+        Build succeeded in 5.234 seconds
+        """
 
         let result = parser.parse(input: output)
         #expect(result.summary.errors == 0)

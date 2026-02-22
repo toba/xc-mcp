@@ -1,7 +1,6 @@
-import Foundation
 import Testing
 import XCMCPCore
-
+import Foundation
 @testable import XCMCPTools
 
 struct ListTestPlanTargetsToolTests {
@@ -16,15 +15,15 @@ struct ListTestPlanTargetsToolTests {
             """
         }
         let json = """
-            {"testTargets": [\(testTargets.joined(separator: ","))]}
-            """
+        {"testTargets": [\(testTargets.joined(separator: ","))]}
+        """
         let filePath = directory.appendingPathComponent("\(name).xctestplan")
         try json.write(to: filePath, atomically: true, encoding: .utf8)
     }
 
     @Test func findTargetsWithAbsoluteSearchRoot() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -33,12 +32,13 @@ struct ListTestPlanTargetsToolTests {
 
         let tool = makeTool()
         let targets = tool.findTestPlanTargets(planName: "MyTests", searchRoot: tempDir.path)
-        #expect(targets == ["AppTests", "UITests"])
+        #expect(targets.map(\.name) == ["AppTests", "UITests"])
+        #expect(targets.map(\.enabled) == [true, true])
     }
 
     @Test func findTargetsWithDotSearchRoot() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -52,7 +52,7 @@ struct ListTestPlanTargetsToolTests {
 
         let tool = makeTool()
         let targets = tool.findTestPlanTargets(planName: "MyTests", searchRoot: ".")
-        #expect(targets == ["AppTests"])
+        #expect(targets.map(\.name) == ["AppTests"])
     }
 
     @Test func findTargetsWithEmptySearchRootReturnsEmpty() {
@@ -64,7 +64,7 @@ struct ListTestPlanTargetsToolTests {
 
     @Test func findTargetsInSubdirectory() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         let subDir = tempDir.appendingPathComponent("nested")
         try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
@@ -74,6 +74,30 @@ struct ListTestPlanTargetsToolTests {
 
         let tool = makeTool()
         let targets = tool.findTestPlanTargets(planName: "DeepPlan", searchRoot: tempDir.path)
-        #expect(targets == ["DeepTests"])
+        #expect(targets.map(\.name) == ["DeepTests"])
+    }
+
+    @Test func findTargetsShowsDisabledStatus() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // Create test plan with one enabled and one disabled target
+        let json = """
+        {"testTargets": [
+            {"target": {"name": "AppTests"}},
+            {"target": {"name": "UITests"}, "enabled": false}
+        ]}
+        """
+        let filePath = tempDir.appendingPathComponent("Mixed.xctestplan")
+        try json.write(to: filePath, atomically: true, encoding: .utf8)
+
+        let tool = makeTool()
+        let targets = tool.findTestPlanTargets(planName: "Mixed", searchRoot: tempDir.path)
+        #expect(targets.map(\.name) == ["AppTests", "UITests"])
+        #expect(targets[0].enabled == true)
+        #expect(targets[1].enabled == false)
     }
 }

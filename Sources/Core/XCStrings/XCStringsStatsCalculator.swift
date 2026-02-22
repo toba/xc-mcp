@@ -23,7 +23,7 @@ public struct XCStringsStatsCalculator: Sendable {
             for entry in file.strings.values {
                 let isTranslated =
                     entry.localizations?[language]?.stringUnit?.value != nil
-                    || entry.localizations?[language]?.variations != nil
+                        || entry.localizations?[language]?.variations != nil
 
                 if isTranslated {
                     translated += 1
@@ -39,7 +39,7 @@ public struct XCStringsStatsCalculator: Sendable {
                 translated: translated,
                 untranslated: untranslated,
                 total: total,
-                coveragePercent: coveragePercent
+                coveragePercent: coveragePercent,
             )
         }
 
@@ -47,7 +47,7 @@ public struct XCStringsStatsCalculator: Sendable {
             totalKeys: file.strings.count,
             sourceLanguage: file.sourceLanguage,
             languages: allLanguages,
-            coverageByLanguage: coverageByLanguage
+            coverageByLanguage: coverageByLanguage,
         )
     }
 
@@ -69,7 +69,7 @@ public struct XCStringsStatsCalculator: Sendable {
         return FileCoverageSummary(
             file: fileName,
             totalKeys: stats.totalKeys,
-            languages: languages
+            languages: languages,
         )
     }
 
@@ -100,8 +100,8 @@ public struct XCStringsStatsCalculator: Sendable {
             aggregated: AggregatedCoverage(
                 totalFiles: totalFiles,
                 totalKeys: totalKeys,
-                averageCoverageByLanguage: averageCoverage
-            )
+                averageCoverageByLanguage: averageCoverage,
+            ),
         )
     }
 

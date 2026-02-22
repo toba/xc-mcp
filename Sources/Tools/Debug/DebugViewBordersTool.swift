@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DebugViewBordersTool: Sendable {
     private let lldbRunner: LLDBRunner
@@ -13,43 +13,43 @@ public struct DebugViewBordersTool: Sendable {
         Tool(
             name: "debug_view_borders",
             description:
-                "Toggle colored borders on all views in a running macOS app's window via LLDB. Process must be stopped (at a breakpoint or via process interrupt). After enabling, resume with debug_continue and use screenshot_mac_window to see the result.",
+            "Toggle colored borders on all views in a running macOS app's window via LLDB. Process must be stopped (at a breakpoint or via process interrupt). After enabling, resume with debug_continue and use screenshot_mac_window to see the result.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the debugged process."
+                            "Process ID of the debugged process.",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app (uses registered session)."
+                            "Bundle identifier of the app (uses registered session).",
                         ),
                     ]),
                     "enabled": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Whether to enable or disable view borders."
+                            "Whether to enable or disable view borders.",
                         ),
                     ]),
                     "border_width": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Border width in points. Defaults to 2.0."
+                            "Border width in points. Defaults to 2.0.",
                         ),
                     ]),
                     "color": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Border color: red, green, blue, yellow, cyan, magenta, orange, or white. Defaults to red."
+                            "Border color: red, green, blue, yellow, cyan, magenta, orange, or white. Defaults to red.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("enabled")]),
-            ])
+            ]),
         )
     }
 
@@ -62,7 +62,7 @@ public struct DebugViewBordersTool: Sendable {
 
         guard let targetPID = pid else {
             throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required"
+                "Either pid or bundle_id (with active session) is required",
             )
         }
 
@@ -72,8 +72,8 @@ public struct DebugViewBordersTool: Sendable {
 
         let borderWidth =
             arguments.getDouble("border_width")
-            ?? arguments.getInt("border_width").map(Double.init)
-            ?? 2.0
+                ?? arguments.getInt("border_width").map(Double.init)
+                ?? 2.0
 
         let colorName = arguments.getString("color") ?? "red"
 
@@ -90,7 +90,7 @@ public struct DebugViewBordersTool: Sendable {
 
         guard let nsColorSelector = colorMap[colorName] else {
             throw MCPError.invalidParams(
-                "Invalid color '\(colorName)'. Valid colors: \(colorMap.keys.sorted().joined(separator: ", "))"
+                "Invalid color '\(colorName)'. Valid colors: \(colorMap.keys.sorted().joined(separator: ", "))",
             )
         }
 
@@ -99,7 +99,7 @@ public struct DebugViewBordersTool: Sendable {
                 pid: targetPID,
                 enabled: enabled,
                 borderWidth: borderWidth,
-                nsColorSelector: nsColorSelector
+                nsColorSelector: nsColorSelector,
             )
 
             let state = enabled ? "enabled" : "disabled"

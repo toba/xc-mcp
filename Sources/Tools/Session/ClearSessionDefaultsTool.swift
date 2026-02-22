@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct ClearSessionDefaultsTool: Sendable {
     private let sessionManager: SessionManager
@@ -13,12 +13,12 @@ public struct ClearSessionDefaultsTool: Sendable {
         Tool(
             name: "clear_session_defaults",
             description:
-                "Clear all session defaults, resetting project, scheme, simulator, and device settings.",
+            "Clear all session defaults, resetting project, scheme, simulator, and device settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([:]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -26,8 +26,8 @@ public struct ClearSessionDefaultsTool: Sendable {
         await sessionManager.clear()
         return CallTool.Result(
             content: [
-                .text("Session defaults cleared.")
-            ]
+                .text("Session defaults cleared."),
+            ],
         )
     }
 }

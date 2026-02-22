@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ValidateSchemeTool: Sendable {
     private let pathUtility: PathUtility
@@ -15,14 +15,14 @@ public struct ValidateSchemeTool: Sendable {
         Tool(
             name: "validate_scheme",
             description:
-                "Validate that an Xcode scheme's target references, test plans, and configurations are valid",
+            "Validate that an Xcode scheme's target references, test plans, and configurations are valid",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "scheme_name": .object([
@@ -31,13 +31,13 @@ public struct ValidateSchemeTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("scheme_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(schemeName) = arguments["scheme_name"]
+              case let .string(schemeName) = arguments["scheme_name"]
         else {
             throw MCPError.invalidParams("project_path and scheme_name are required")
         }
@@ -47,13 +47,13 @@ public struct ValidateSchemeTool: Sendable {
 
         guard
             let schemePath = SchemePathResolver.findScheme(
-                named: schemeName, in: resolvedProjectPath
+                named: schemeName, in: resolvedProjectPath,
             )
         else {
             return CallTool.Result(
                 content: [
-                    .text("Scheme '\(schemeName)' not found in project")
-                ]
+                    .text("Scheme '\(schemeName)' not found in project"),
+                ],
             )
         }
 
@@ -63,7 +63,7 @@ public struct ValidateSchemeTool: Sendable {
 
             let targetNames = Set(xcodeproj.pbxproj.nativeTargets.map(\.name))
             let configNames = Set(
-                xcodeproj.pbxproj.buildConfigurations.map(\.name)
+                xcodeproj.pbxproj.buildConfigurations.map(\.name),
             )
 
             var issues: [String] = []
@@ -74,7 +74,7 @@ public struct ValidateSchemeTool: Sendable {
                     let name = entry.buildableReference.blueprintName
                     if !targetNames.contains(name) {
                         issues.append(
-                            "Build target '\(name)' not found in project"
+                            "Build target '\(name)' not found in project",
                         )
                     }
                 }
@@ -84,10 +84,10 @@ public struct ValidateSchemeTool: Sendable {
             if let testAction = scheme.testAction {
                 // Check build configuration
                 if !configNames.isEmpty,
-                    !configNames.contains(testAction.buildConfiguration)
+                   !configNames.contains(testAction.buildConfiguration)
                 {
                     issues.append(
-                        "Test build configuration '\(testAction.buildConfiguration)' not found in project"
+                        "Test build configuration '\(testAction.buildConfiguration)' not found in project",
                     )
                 }
 
@@ -96,7 +96,7 @@ public struct ValidateSchemeTool: Sendable {
                     let name = testable.buildableReference.blueprintName
                     if !targetNames.contains(name) {
                         issues.append(
-                            "Test target '\(name)' not found in project"
+                            "Test target '\(name)' not found in project",
                         )
                     }
                 }
@@ -117,7 +117,7 @@ public struct ValidateSchemeTool: Sendable {
                         let absolutePath = "\(projectDir)/\(relativePath)"
                         if !FileManager.default.fileExists(atPath: absolutePath) {
                             issues.append(
-                                "Test plan file not found: \(relativePath)"
+                                "Test plan file not found: \(relativePath)",
                             )
                         }
                     }
@@ -127,17 +127,17 @@ public struct ValidateSchemeTool: Sendable {
             // Check launch action build configuration
             if let launchAction = scheme.launchAction {
                 if !configNames.isEmpty,
-                    !configNames.contains(launchAction.buildConfiguration)
+                   !configNames.contains(launchAction.buildConfiguration)
                 {
                     issues.append(
-                        "Launch build configuration '\(launchAction.buildConfiguration)' not found in project"
+                        "Launch build configuration '\(launchAction.buildConfiguration)' not found in project",
                     )
                 }
             }
 
             if issues.isEmpty {
                 return CallTool.Result(
-                    content: [.text("Scheme '\(schemeName)' is valid")]
+                    content: [.text("Scheme '\(schemeName)' is valid")],
                 )
             } else {
                 var result = "Scheme '\(schemeName)' has \(issues.count) issue(s):\n"
@@ -148,7 +148,7 @@ public struct ValidateSchemeTool: Sendable {
             }
         } catch {
             throw MCPError.internalError(
-                "Failed to validate scheme: \(error.localizedDescription)"
+                "Failed to validate scheme: \(error.localizedDescription)",
             )
         }
     }

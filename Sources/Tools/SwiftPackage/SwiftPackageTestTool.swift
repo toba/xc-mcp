@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct SwiftPackageTestTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -15,25 +15,25 @@ public struct SwiftPackageTestTool: Sendable {
         Tool(
             name: "swift_package_test",
             description:
-                "Run tests for a Swift package. Supports filtering to run specific tests.",
+            "Run tests for a Swift package. Supports filtering to run specific tests.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "package_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified."
+                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
                         ),
                     ]),
                     "filter": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Test filter pattern to run specific tests (e.g., 'MyTests' or 'MyTests/testMethod')."
+                            "Test filter pattern to run specific tests (e.g., 'MyTests' or 'MyTests/testMethod').",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -43,18 +43,18 @@ public struct SwiftPackageTestTool: Sendable {
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift"
+            "Package.swift",
         ).path
         guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
             throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path."
+                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
             )
         }
 
         do {
             let result = try await swiftRunner.test(
                 packagePath: packagePath,
-                filter: filter
+                filter: filter,
             )
 
             var context = "swift package"
@@ -63,7 +63,7 @@ public struct SwiftPackageTestTool: Sendable {
             }
             return try ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
-                context: context
+                context: context,
             )
         } catch {
             throw error.asMCPError()

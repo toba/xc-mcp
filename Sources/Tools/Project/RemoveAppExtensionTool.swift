@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct RemoveAppExtensionTool: Sendable {
     private let pathUtility: PathUtility
@@ -15,14 +15,14 @@ public struct RemoveAppExtensionTool: Sendable {
         Tool(
             name: "remove_app_extension",
             description:
-                "Remove an App Extension target from the project and its embedding from the host app",
+            "Remove an App Extension target from the project and its embedding from the host app",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "extension_name": .object([
@@ -31,13 +31,13 @@ public struct RemoveAppExtensionTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("extension_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(extensionName) = arguments["extension_name"]
+              case let .string(extensionName) = arguments["extension_name"]
         else {
             throw MCPError.invalidParams("project_path and extension_name are required")
         }
@@ -57,8 +57,8 @@ public struct RemoveAppExtensionTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Extension target '\(extensionName)' not found in project")
-                    ]
+                        .text("Extension target '\(extensionName)' not found in project"),
+                    ],
                 )
             }
 
@@ -78,9 +78,9 @@ public struct RemoveAppExtensionTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Target '\(extensionName)' is not an App Extension. Use remove_target for other target types."
-                        )
-                    ]
+                            "Target '\(extensionName)' is not an App Extension. Use remove_target for other target types.",
+                        ),
+                    ],
                 )
             }
 
@@ -106,8 +106,8 @@ public struct RemoveAppExtensionTool: Sendable {
                         }
 
                         // Remove empty embed phases if desired (optional cleanup)
-                        if copyPhase.files?.isEmpty == true
-                            && copyPhase.name == "Embed App Extensions"
+                        if copyPhase.files?.isEmpty == true,
+                           copyPhase.name == "Embed App Extensions"
                         {
                             target.buildPhases.removeAll { $0 == copyPhase }
                             xcodeproj.pbxproj.delete(object: copyPhase)
@@ -133,7 +133,7 @@ public struct RemoveAppExtensionTool: Sendable {
             if let productRef = productReference {
                 // Remove from products group
                 if let project = xcodeproj.pbxproj.rootObject,
-                    let productsGroup = project.productsGroup
+                   let productsGroup = project.productsGroup
                 {
                     productsGroup.children.removeAll { $0 == productRef }
                 }
@@ -147,10 +147,10 @@ public struct RemoveAppExtensionTool: Sendable {
 
             // Remove extension group if exists
             if let project = try xcodeproj.pbxproj.rootProject(),
-                let mainGroup = project.mainGroup
+               let mainGroup = project.mainGroup
             {
                 removeExtensionGroup(
-                    from: mainGroup, extensionName: extensionName, xcodeproj: xcodeproj
+                    from: mainGroup, extensionName: extensionName, xcodeproj: xcodeproj,
                 )
             }
 
@@ -163,23 +163,23 @@ public struct RemoveAppExtensionTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully removed App Extension '\(extensionName)' from project and all host app embeddings"
-                    )
-                ]
+                        "Successfully removed App Extension '\(extensionName)' from project and all host app embeddings",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to remove App Extension from Xcode project: \(error.localizedDescription)"
+                "Failed to remove App Extension from Xcode project: \(error.localizedDescription)",
             )
         }
     }
 
     private func removeExtensionGroup(
-        from group: PBXGroup, extensionName: String, xcodeproj: XcodeProj
+        from group: PBXGroup, extensionName: String, xcodeproj: XcodeProj,
     ) {
         group.children.removeAll { element in
             if let groupElement = element as? PBXGroup,
-                groupElement.name == extensionName
+               groupElement.name == extensionName
             {
                 xcodeproj.pbxproj.delete(object: groupElement)
                 return true
@@ -191,7 +191,7 @@ public struct RemoveAppExtensionTool: Sendable {
         for child in group.children {
             if let childGroup = child as? PBXGroup {
                 removeExtensionGroup(
-                    from: childGroup, extensionName: extensionName, xcodeproj: xcodeproj
+                    from: childGroup, extensionName: extensionName, xcodeproj: xcodeproj,
                 )
             }
         }

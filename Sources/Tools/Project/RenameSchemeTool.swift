@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct RenameSchemeTool: Sendable {
     private let pathUtility: PathUtility
@@ -19,7 +19,7 @@ public struct RenameSchemeTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "scheme_name": .object([
@@ -34,14 +34,14 @@ public struct RenameSchemeTool: Sendable {
                 "required": .array([
                     .string("project_path"), .string("scheme_name"), .string("new_name"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(schemeName) = arguments["scheme_name"],
-            case let .string(newName) = arguments["new_name"]
+              case let .string(schemeName) = arguments["scheme_name"],
+              case let .string(newName) = arguments["new_name"]
         else {
             throw MCPError.invalidParams("project_path, scheme_name, and new_name are required")
         }
@@ -59,7 +59,7 @@ public struct RenameSchemeTool: Sendable {
             let newPath = "\(dir)/\(newFilename)"
             if fm.fileExists(atPath: newPath) {
                 return CallTool.Result(
-                    content: [.text("Scheme '\(newName)' already exists")]
+                    content: [.text("Scheme '\(newName)' already exists")],
                 )
             }
         }
@@ -74,20 +74,20 @@ public struct RenameSchemeTool: Sendable {
                     return CallTool.Result(
                         content: [
                             .text(
-                                "Successfully renamed scheme '\(schemeName)' to '\(newName)'"
-                            )
-                        ]
+                                "Successfully renamed scheme '\(schemeName)' to '\(newName)'",
+                            ),
+                        ],
                     )
                 } catch {
                     throw MCPError.internalError(
-                        "Failed to rename scheme file: \(error.localizedDescription)"
+                        "Failed to rename scheme file: \(error.localizedDescription)",
                     )
                 }
             }
         }
 
         return CallTool.Result(
-            content: [.text("Scheme '\(schemeName)' not found in project")]
+            content: [.text("Scheme '\(schemeName)' not found in project")],
         )
     }
 }

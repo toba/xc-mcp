@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct LaunchAppLogsSimTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,26 +15,26 @@ public struct LaunchAppLogsSimTool: Sendable {
         Tool(
             name: "launch_app_logs_sim",
             description:
-                "Launch an app on a simulator and capture its console output (stdout/stderr) for a specified duration.",
+            "Launch an app on a simulator and capture its console output (stdout/stderr) for a specified duration.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The bundle identifier of the app to launch (e.g., 'com.example.MyApp')."
+                            "The bundle identifier of the app to launch (e.g., 'com.example.MyApp').",
                         ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "duration_seconds": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Number of seconds to capture logs. Defaults to 10 seconds. Max 60 seconds."
+                            "Number of seconds to capture logs. Defaults to 10 seconds. Max 60 seconds.",
                         ),
                     ]),
                     "args": .object([
@@ -44,7 +44,7 @@ public struct LaunchAppLogsSimTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("bundle_id")]),
-            ])
+            ]),
         )
     }
 
@@ -61,7 +61,7 @@ public struct LaunchAppLogsSimTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -76,12 +76,12 @@ public struct LaunchAppLogsSimTool: Sendable {
                 udid: simulator,
                 bundleId: bundleId,
                 waitForDebugger: false,
-                args: launchArgs
+                args: launchArgs,
             )
 
             guard launchResult.succeeded else {
                 throw MCPError.internalError(
-                    "Failed to launch app: \(launchResult.errorOutput)"
+                    "Failed to launch app: \(launchResult.errorOutput)",
                 )
             }
 
@@ -93,7 +93,7 @@ public struct LaunchAppLogsSimTool: Sendable {
                 simulator: simulator,
                 bundleId: bundleId,
                 pid: pid,
-                duration: durationSeconds
+                duration: durationSeconds,
             )
 
             var output = "Launched '\(bundleId)' on simulator '\(simulator)'\n"

@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ListBuildConfigurationsTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,12 +21,12 @@ public struct ListBuildConfigurationsTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
-                    ])
+                    ]),
                 ]),
                 "required": .array([.string("project_path")]),
-            ])
+            ]),
         )
     }
 
@@ -51,17 +51,17 @@ public struct ListBuildConfigurationsTool: Sendable {
 
             let result =
                 configList.isEmpty
-                ? "No build configurations found in the project."
-                : configList.joined(separator: "\n")
+                    ? "No build configurations found in the project."
+                    : configList.joined(separator: "\n")
 
             return CallTool.Result(
                 content: [
-                    .text("Build configurations in \(projectURL.lastPathComponent):\n\(result)")
-                ]
+                    .text("Build configurations in \(projectURL.lastPathComponent):\n\(result)"),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)"
+                "Failed to read Xcode project: \(error.localizedDescription)",
             )
         }
     }

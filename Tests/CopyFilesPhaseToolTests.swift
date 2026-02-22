@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("AddCopyFilesPhase Tests")
@@ -15,8 +14,8 @@ struct AddCopyFilesPhaseTests {
     init() {
         tempDir =
             FileManager.default.temporaryDirectory
-            .appendingPathComponent("AddCopyFilesPhaseTests-\(UUID().uuidString)")
-            .path
+                .appendingPathComponent("AddCopyFilesPhaseTests-\(UUID().uuidString)")
+                .path
         pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
@@ -66,7 +65,7 @@ struct AddCopyFilesPhaseTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let result = try tool.execute(arguments: [
@@ -99,7 +98,7 @@ struct AddCopyFilesPhaseTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let result = try tool.execute(arguments: [
@@ -130,7 +129,7 @@ struct AddCopyFilesPhaseTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Create the phase first time
@@ -162,7 +161,7 @@ struct AddCopyFilesPhaseTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         #expect(throws: MCPError.self) {
@@ -181,7 +180,7 @@ struct AddCopyFilesPhaseTests {
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let result = try tool.execute(arguments: [
@@ -207,8 +206,8 @@ struct ListCopyFilesPhasesTests {
     init() {
         tempDir =
             FileManager.default.temporaryDirectory
-            .appendingPathComponent("ListCopyFilesPhasesTests-\(UUID().uuidString)")
-            .path
+                .appendingPathComponent("ListCopyFilesPhasesTests-\(UUID().uuidString)")
+                .path
         pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
@@ -235,7 +234,7 @@ struct ListCopyFilesPhasesTests {
 
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
-                "project_path": .string("test.xcodeproj")
+                "project_path": .string("test.xcodeproj"),
             ])
         }
     }
@@ -244,7 +243,7 @@ struct ListCopyFilesPhasesTests {
     func listsCopyFilesPhases() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a copy files phase
@@ -253,7 +252,7 @@ struct ListCopyFilesPhasesTests {
         let copyPhase = PBXCopyFilesBuildPhase(
             dstPath: "styles",
             dstSubfolderSpec: .resources,
-            name: "Copy Styles"
+            name: "Copy Styles",
         )
         xcodeproj.pbxproj.add(object: copyPhase)
         target.buildPhases.append(copyPhase)
@@ -278,7 +277,7 @@ struct ListCopyFilesPhasesTests {
     func reportsNoPhasesFound() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = ListCopyFilesPhases(pathUtility: pathUtility)
@@ -298,7 +297,7 @@ struct ListCopyFilesPhasesTests {
     func reportsTargetNotFound() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = ListCopyFilesPhases(pathUtility: pathUtility)
@@ -323,8 +322,8 @@ struct AddToCopyFilesPhaseTests {
     init() {
         tempDir =
             FileManager.default.temporaryDirectory
-            .appendingPathComponent("AddToCopyFilesPhaseTests-\(UUID().uuidString)")
-            .path
+                .appendingPathComponent("AddToCopyFilesPhaseTests-\(UUID().uuidString)")
+                .path
         pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
@@ -367,13 +366,13 @@ struct AddToCopyFilesPhaseTests {
     func addsFileToCopyFilesPhase() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a file to the project
         let testFilePath = Path(tempDir) + "config.plist"
         try "<plist></plist>".write(
-            toFile: testFilePath.string, atomically: true, encoding: .utf8
+            toFile: testFilePath.string, atomically: true, encoding: .utf8,
         )
 
         let addFileTool = AddFileTool(pathUtility: pathUtility)
@@ -388,7 +387,7 @@ struct AddToCopyFilesPhaseTests {
         let copyPhase = PBXCopyFilesBuildPhase(
             dstPath: "",
             dstSubfolderSpec: .resources,
-            name: "Copy Configs"
+            name: "Copy Configs",
         )
         xcodeproj.pbxproj.add(object: copyPhase)
         target.buildPhases.append(copyPhase)
@@ -422,7 +421,7 @@ struct AddToCopyFilesPhaseTests {
     func reportsPhaseNotFound() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = AddToCopyFilesPhase(pathUtility: pathUtility)
@@ -444,7 +443,7 @@ struct AddToCopyFilesPhaseTests {
     func reportsFilesNotFoundInProject() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a copy files phase
@@ -453,7 +452,7 @@ struct AddToCopyFilesPhaseTests {
         let copyPhase = PBXCopyFilesBuildPhase(
             dstPath: "",
             dstSubfolderSpec: .resources,
-            name: "Copy Configs"
+            name: "Copy Configs",
         )
         xcodeproj.pbxproj.add(object: copyPhase)
         target.buildPhases.append(copyPhase)
@@ -483,8 +482,8 @@ struct RemoveCopyFilesPhaseTests {
     init() {
         tempDir =
             FileManager.default.temporaryDirectory
-            .appendingPathComponent("RemoveCopyFilesPhaseTests-\(UUID().uuidString)")
-            .path
+                .appendingPathComponent("RemoveCopyFilesPhaseTests-\(UUID().uuidString)")
+                .path
         pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
@@ -522,7 +521,7 @@ struct RemoveCopyFilesPhaseTests {
     func removesCopyFilesPhase() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a copy files phase
@@ -531,7 +530,7 @@ struct RemoveCopyFilesPhaseTests {
         let copyPhase = PBXCopyFilesBuildPhase(
             dstPath: "",
             dstSubfolderSpec: .resources,
-            name: "Copy Styles"
+            name: "Copy Styles",
         )
         xcodeproj.pbxproj.add(object: copyPhase)
         target.buildPhases.append(copyPhase)
@@ -563,7 +562,7 @@ struct RemoveCopyFilesPhaseTests {
     func reportsPhaseNotFound() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = RemoveCopyFilesPhase(pathUtility: pathUtility)
@@ -584,7 +583,7 @@ struct RemoveCopyFilesPhaseTests {
     func reportsTargetNotFound() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = RemoveCopyFilesPhase(pathUtility: pathUtility)
@@ -605,13 +604,13 @@ struct RemoveCopyFilesPhaseTests {
     func removesPhaseWithBuildFiles() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a file to the project
         let testFilePath = Path(tempDir) + "config.plist"
         try "<plist></plist>".write(
-            toFile: testFilePath.string, atomically: true, encoding: .utf8
+            toFile: testFilePath.string, atomically: true, encoding: .utf8,
         )
 
         let addFileTool = AddFileTool(pathUtility: pathUtility)
@@ -624,7 +623,8 @@ struct RemoveCopyFilesPhaseTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
         let fileRef = try #require(
-            xcodeproj.pbxproj.fileReferences.first { $0.path == "config.plist" })
+            xcodeproj.pbxproj.fileReferences.first { $0.path == "config.plist" },
+        )
         let buildFile = PBXBuildFile(file: fileRef)
         xcodeproj.pbxproj.add(object: buildFile)
 
@@ -633,7 +633,7 @@ struct RemoveCopyFilesPhaseTests {
             dstSubfolderSpec: .resources,
             name: "Copy Configs",
             buildActionMask: PBXBuildPhase.defaultBuildActionMask,
-            files: [buildFile]
+            files: [buildFile],
         )
         xcodeproj.pbxproj.add(object: copyPhase)
         target.buildPhases.append(copyPhase)

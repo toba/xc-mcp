@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct DoctorTool: Sendable {
     private let sessionManager: SessionManager
@@ -13,12 +13,12 @@ public struct DoctorTool: Sendable {
         Tool(
             name: "doctor",
             description:
-                "Diagnose the Xcode development environment. Checks Xcode installation, command line tools, simulators, LLDB, SDKs, session state, and other dependencies.",
+            "Diagnose the Xcode development environment. Checks Xcode installation, command line tools, simulators, LLDB, SDKs, session state, and other dependencies.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([:]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -100,16 +100,16 @@ public struct DoctorTool: Sendable {
         diagnostics.append("\n## Summary")
         let allPassed =
             xcode.allSatisfy { !$0.contains("[FAIL]") }
-            && clt.allSatisfy { !$0.contains("[FAIL]") }
-            && xcodebuild.allSatisfy { !$0.contains("[FAIL]") }
-            && simctl.allSatisfy { !$0.contains("[FAIL]") }
-            && swift.allSatisfy { !$0.contains("[FAIL]") }
+                && clt.allSatisfy { !$0.contains("[FAIL]") }
+                && xcodebuild.allSatisfy { !$0.contains("[FAIL]") }
+                && simctl.allSatisfy { !$0.contains("[FAIL]") }
+                && swift.allSatisfy { !$0.contains("[FAIL]") }
 
         if allPassed {
             diagnostics.append("[OK] All checks passed. Your environment is ready for development.")
         } else {
             diagnostics.append(
-                "[WARN] Some checks failed. Review the issues above and fix them before proceeding."
+                "[WARN] Some checks failed. Review the issues above and fix them before proceeding.",
             )
         }
 
@@ -119,14 +119,14 @@ public struct DoctorTool: Sendable {
                 NextStepHints.content(hints: [
                     NextStepHint(
                         tool: "set_session_defaults",
-                        description: "Configure project, scheme, and device defaults"
+                        description: "Configure project, scheme, and device defaults",
                     ),
                     NextStepHint(
                         tool: "discover_projs",
-                        description: "Discover Xcode projects in the workspace"
+                        description: "Discover Xcode projects in the workspace",
                     ),
                 ]),
-            ]
+            ],
         )
     }
 
@@ -141,17 +141,17 @@ public struct DoctorTool: Sendable {
 
             // Get Xcode version
             let versionResult = await runCommand(
-                "/usr/bin/xcodebuild", arguments: ["-version"]
+                "/usr/bin/xcodebuild", arguments: ["-version"],
             )
             if versionResult.exitCode == 0 {
                 let version =
                     versionResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-                    .components(separatedBy: .newlines).first ?? "Unknown"
+                        .components(separatedBy: .newlines).first ?? "Unknown"
                 results.append("[OK] \(version)")
             }
         } else {
             results.append(
-                "[FAIL] Xcode not found. Install Xcode from the App Store or run: xcode-select --install"
+                "[FAIL] Xcode not found. Install Xcode from the App Store or run: xcode-select --install",
             )
         }
 
@@ -170,7 +170,7 @@ public struct DoctorTool: Sendable {
                 results.append("[OK] Using Xcode's built-in developer tools")
             } else {
                 results.append(
-                    "[FAIL] Command Line Tools not found. Run: xcode-select --install"
+                    "[FAIL] Command Line Tools not found. Run: xcode-select --install",
                 )
             }
         }
@@ -188,13 +188,13 @@ public struct DoctorTool: Sendable {
 
             // Check if license is accepted
             let licenseCheck = await runCommand(
-                "/usr/bin/xcodebuild", arguments: ["-checkFirstLaunchStatus"]
+                "/usr/bin/xcodebuild", arguments: ["-checkFirstLaunchStatus"],
             )
             if licenseCheck.exitCode == 0 {
                 results.append("[OK] Xcode license accepted")
             } else if licenseCheck.stderr.contains("license") {
                 results.append(
-                    "[FAIL] Xcode license not accepted. Run: sudo xcodebuild -license accept"
+                    "[FAIL] Xcode license not accepted. Run: sudo xcodebuild -license accept",
                 )
             }
         } else {
@@ -213,7 +213,7 @@ public struct DoctorTool: Sendable {
 
             // Count available simulators
             let listResult = await runCommand(
-                "/usr/bin/xcrun", arguments: ["simctl", "list", "devices", "-j"]
+                "/usr/bin/xcrun", arguments: ["simctl", "list", "devices", "-j"],
             )
             if listResult.exitCode == 0 {
                 // Count devices from JSON
@@ -236,7 +236,7 @@ public struct DoctorTool: Sendable {
             results.append("[OK] devicectl available")
         } else {
             results.append(
-                "[WARN] devicectl not available (requires Xcode 15+, only needed for physical device support)"
+                "[WARN] devicectl not available (requires Xcode 15+, only needed for physical device support)",
             )
         }
 
@@ -250,7 +250,7 @@ public struct DoctorTool: Sendable {
         if result.exitCode == 0 {
             let version =
                 result.stdout.trimmingCharacters(in: .whitespacesAndNewlines).components(
-                    separatedBy: .newlines
+                    separatedBy: .newlines,
                 ).first ?? "Unknown"
             results.append("[OK] \(version)")
         } else {
@@ -267,7 +267,7 @@ public struct DoctorTool: Sendable {
         if result.exitCode == 0 {
             let version =
                 result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-                .components(separatedBy: .newlines).first ?? "Unknown"
+                    .components(separatedBy: .newlines).first ?? "Unknown"
             results.append("[OK] \(version)")
         } else {
             results.append("[WARN] LLDB not available")
@@ -310,7 +310,7 @@ public struct DoctorTool: Sendable {
                 if let freeSize = attrs[.systemFreeSize] as? Int64 {
                     let freeGB = Double(freeSize) / 1_073_741_824
                     results.append(
-                        String(format: "Disk free space: %.1f GB", freeGB)
+                        String(format: "Disk free space: %.1f GB", freeGB),
                     )
                 }
                 // Count subdirectories to estimate project count
@@ -328,11 +328,11 @@ public struct DoctorTool: Sendable {
     }
 
     private func runCommand(_ command: String, arguments: [String]) -> (
-        exitCode: Int32, stdout: String, stderr: String
+        exitCode: Int32, stdout: String, stderr: String,
     ) {
         do {
             let result = try ProcessResult.run(
-                command, arguments: arguments, mergeStderr: false
+                command, arguments: arguments, mergeStderr: false,
             )
             return (result.exitCode, result.stdout, result.stderr)
         } catch {

@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct OpenSimTool: Sendable {
     public init() {}
@@ -9,19 +9,19 @@ public struct OpenSimTool: Sendable {
         Tool(
             name: "open_sim",
             description:
-                "Open the Simulator.app. Optionally specify a simulator UDID to open a specific device.",
+            "Open the Simulator.app. Optionally specify a simulator UDID to open a specific device.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional simulator UDID to open. If not specified, opens Simulator.app with the default device."
+                            "Optional simulator UDID to open. If not specified, opens Simulator.app with the default device.",
                         ),
-                    ])
+                    ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -41,8 +41,8 @@ public struct OpenSimTool: Sendable {
             if result.succeeded {
                 let message =
                     simulator != nil
-                    ? "Opened Simulator.app with device: \(simulator!)"
-                    : "Opened Simulator.app"
+                        ? "Opened Simulator.app with device: \(simulator!)"
+                        : "Opened Simulator.app"
                 return CallTool.Result(content: [.text(message)])
             } else {
                 throw MCPError.internalError("Failed to open Simulator.app")

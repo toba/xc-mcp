@@ -1,7 +1,7 @@
-import Foundation
 import MCP
 import PathKit
 import XcodeProj
+import Foundation
 
 /// Utility for reading and writing Info.plist files associated with Xcode project targets.
 public enum InfoPlistUtility {
@@ -17,7 +17,7 @@ public enum InfoPlistUtility {
     public static func resolveInfoPlistPath(
         xcodeproj: XcodeProj,
         projectDir: String,
-        targetName: String
+        targetName: String,
     ) -> String? {
         guard
             let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
@@ -31,7 +31,7 @@ public enum InfoPlistUtility {
         let configToCheck = debugConfig ?? configs.first
 
         guard let plistFile = configToCheck?.buildSettings["INFOPLIST_FILE"]?.stringValue,
-            !plistFile.isEmpty
+              !plistFile.isEmpty
         else {
             return nil
         }
@@ -64,7 +64,7 @@ public enum InfoPlistUtility {
 
         guard
             let plist = try PropertyListSerialization.propertyList(
-                from: data, options: .mutableContainersAndLeaves, format: nil
+                from: data, options: .mutableContainersAndLeaves, format: nil,
             ) as? [String: Any]
         else {
             throw MCPError.internalError("Info.plist at \(path) is not a dictionary")
@@ -81,7 +81,7 @@ public enum InfoPlistUtility {
     /// - Throws: `MCPError` if serialization or writing fails.
     public static func writeInfoPlist(_ plist: [String: Any], toPath path: String) throws {
         let data = try PropertyListSerialization.data(
-            fromPropertyList: plist, format: .xml, options: 0
+            fromPropertyList: plist, format: .xml, options: 0,
         )
         try data.write(to: URL(fileURLWithPath: path))
     }
@@ -103,7 +103,7 @@ public enum InfoPlistUtility {
         xcodeproj: XcodeProj,
         projectDir: String,
         targetName: String,
-        projectPath: Path
+        projectPath: Path,
     ) throws -> String {
         guard
             let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
@@ -115,12 +115,12 @@ public enum InfoPlistUtility {
         let plistRelativePath = "\(targetName)/Info.plist"
         let plistAbsolutePath =
             URL(fileURLWithPath: projectDir).appendingPathComponent(plistRelativePath).standardized
-            .path
+                .path
 
         // Create directory if needed
         let plistDir = URL(fileURLWithPath: plistAbsolutePath).deletingLastPathComponent().path
         try FileManager.default.createDirectory(
-            atPath: plistDir, withIntermediateDirectories: true
+            atPath: plistDir, withIntermediateDirectories: true,
         )
 
         // Write an empty plist

@@ -1,9 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("RenameSchemeTool Tests")
@@ -46,7 +45,7 @@ struct RenameSchemeToolTests {
     @Test("Rename existing scheme")
     func renameExistingScheme() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -60,11 +59,11 @@ struct RenameSchemeToolTests {
         // Create a scheme file
         let schemesDir = projectPath.string + "/xcshareddata/xcschemes"
         try FileManager.default.createDirectory(
-            atPath: schemesDir, withIntermediateDirectories: true
+            atPath: schemesDir, withIntermediateDirectories: true,
         )
         let schemeContent = "<Scheme></Scheme>"
         try schemeContent.write(
-            toFile: "\(schemesDir)/OldScheme.xcscheme", atomically: true, encoding: .utf8
+            toFile: "\(schemesDir)/OldScheme.xcscheme", atomically: true, encoding: .utf8,
         )
 
         let tool = RenameSchemeTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -88,7 +87,7 @@ struct RenameSchemeToolTests {
     @Test("Rename non-existent scheme")
     func renameNonExistentScheme() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -116,7 +115,7 @@ struct RenameSchemeToolTests {
     @Test("Rename scheme with name conflict")
     func renameSchemeWithNameConflict() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -130,13 +129,13 @@ struct RenameSchemeToolTests {
         // Create two scheme files
         let schemesDir = projectPath.string + "/xcshareddata/xcschemes"
         try FileManager.default.createDirectory(
-            atPath: schemesDir, withIntermediateDirectories: true
+            atPath: schemesDir, withIntermediateDirectories: true,
         )
         try "<Scheme></Scheme>".write(
-            toFile: "\(schemesDir)/SchemeA.xcscheme", atomically: true, encoding: .utf8
+            toFile: "\(schemesDir)/SchemeA.xcscheme", atomically: true, encoding: .utf8,
         )
         try "<Scheme></Scheme>".write(
-            toFile: "\(schemesDir)/SchemeB.xcscheme", atomically: true, encoding: .utf8
+            toFile: "\(schemesDir)/SchemeB.xcscheme", atomically: true, encoding: .utf8,
         )
 
         let tool = RenameSchemeTool(pathUtility: PathUtility(basePath: tempDir.path))

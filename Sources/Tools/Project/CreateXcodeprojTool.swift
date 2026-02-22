@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 /// MCP tool for creating new Xcode project files.
 ///
@@ -33,7 +33,7 @@ public struct CreateXcodeprojTool: Sendable {
                     "path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Directory path where the project will be created (relative to current directory)"
+                            "Directory path where the project will be created (relative to current directory)",
                         ),
                     ]),
                     "organization_name": .object([
@@ -46,7 +46,7 @@ public struct CreateXcodeprojTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("project_name"), .string("path")]),
-            ])
+            ]),
         )
     }
 
@@ -57,7 +57,7 @@ public struct CreateXcodeprojTool: Sendable {
     /// - Throws: MCPError if required parameters are missing or project creation fails.
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectName) = arguments["project_name"],
-            case let .string(pathString) = arguments["path"]
+              case let .string(pathString) = arguments["path"]
         else {
             throw MCPError.invalidParams("project_name and path are required")
         }
@@ -94,14 +94,14 @@ public struct CreateXcodeprojTool: Sendable {
             let debugConfig = XCBuildConfiguration(
                 name: "Debug",
                 buildSettings: [
-                    "ORGANIZATION_NAME": .string(organizationName)
-                ]
+                    "ORGANIZATION_NAME": .string(organizationName),
+                ],
             )
             let releaseConfig = XCBuildConfiguration(
                 name: "Release",
                 buildSettings: [
-                    "ORGANIZATION_NAME": .string(organizationName)
-                ]
+                    "ORGANIZATION_NAME": .string(organizationName),
+                ],
             )
             pbxproj.add(object: debugConfig)
             pbxproj.add(object: releaseConfig)
@@ -109,7 +109,7 @@ public struct CreateXcodeprojTool: Sendable {
             // Create project configuration list
             let configurationList = XCConfigurationList(
                 buildConfigurations: [debugConfig, releaseConfig],
-                defaultConfigurationName: "Release"
+                defaultConfigurationName: "Release",
             )
             pbxproj.add(object: configurationList)
 
@@ -120,7 +120,7 @@ public struct CreateXcodeprojTool: Sendable {
                     "PRODUCT_BUNDLE_IDENTIFIER": .string("\(bundleIdentifier).\(projectName)"),
                     "PRODUCT_NAME": .string("$(TARGET_NAME)"),
                     "SWIFT_VERSION": .string("5.0"),
-                ]
+                ],
             )
             let targetReleaseConfig = XCBuildConfiguration(
                 name: "Release",
@@ -128,7 +128,7 @@ public struct CreateXcodeprojTool: Sendable {
                     "PRODUCT_BUNDLE_IDENTIFIER": .string("\(bundleIdentifier).\(projectName)"),
                     "PRODUCT_NAME": .string("$(TARGET_NAME)"),
                     "SWIFT_VERSION": .string("5.0"),
-                ]
+                ],
             )
             pbxproj.add(object: targetDebugConfig)
             pbxproj.add(object: targetReleaseConfig)
@@ -136,7 +136,7 @@ public struct CreateXcodeprojTool: Sendable {
             // Create target configuration list
             let targetConfigurationList = XCConfigurationList(
                 buildConfigurations: [targetDebugConfig, targetReleaseConfig],
-                defaultConfigurationName: "Release"
+                defaultConfigurationName: "Release",
             )
             pbxproj.add(object: targetConfigurationList)
 
@@ -144,7 +144,7 @@ public struct CreateXcodeprojTool: Sendable {
             let productReference = PBXFileReference(
                 sourceTree: .buildProductsDir,
                 name: "\(projectName).app",
-                explicitFileType: "wrapper.application"
+                explicitFileType: "wrapper.application",
             )
             pbxproj.add(object: productReference)
             productsGroup.children.append(productReference)
@@ -165,7 +165,7 @@ public struct CreateXcodeprojTool: Sendable {
                 buildConfigurationList: targetConfigurationList,
                 buildPhases: [sourcesBuildPhase, frameworksBuildPhase, resourcesBuildPhase],
                 productName: projectName,
-                productType: .application
+                productType: .application,
             )
             appTarget.product = productReference
             pbxproj.add(object: appTarget)
@@ -181,7 +181,7 @@ public struct CreateXcodeprojTool: Sendable {
                 developmentRegion: "en",
                 knownRegions: ["en", "Base"],
                 productsGroup: productsGroup,
-                targets: [appTarget]
+                targets: [appTarget],
             )
             pbxproj.add(object: project)
             pbxproj.rootObject = project
@@ -198,12 +198,12 @@ public struct CreateXcodeprojTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Successfully created Xcode project at: \(projectPath.string)")
-                ]
+                    .text("Successfully created Xcode project at: \(projectPath.string)"),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to create Xcode project: \(error.localizedDescription)"
+                "Failed to create Xcode project: \(error.localizedDescription)",
             )
         }
     }

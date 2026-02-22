@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("InfoPlistUtility Tests")
@@ -12,19 +11,19 @@ struct InfoPlistUtilityTests {
     @Test("resolveInfoPlistPath returns nil when target not found")
     func resolveInfoPlistPathTargetNotFound() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let xcodeproj = try XcodeProj(path: projectPath)
         let result = InfoPlistUtility.resolveInfoPlistPath(
-            xcodeproj: xcodeproj, projectDir: tempDir.path, targetName: "NonExistent"
+            xcodeproj: xcodeproj, projectDir: tempDir.path, targetName: "NonExistent",
         )
 
         #expect(result == nil)
@@ -33,19 +32,19 @@ struct InfoPlistUtilityTests {
     @Test("resolveInfoPlistPath returns nil when no INFOPLIST_FILE set")
     func resolveInfoPlistPathNoSetting() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let xcodeproj = try XcodeProj(path: projectPath)
         let result = InfoPlistUtility.resolveInfoPlistPath(
-            xcodeproj: xcodeproj, projectDir: tempDir.path, targetName: "App"
+            xcodeproj: xcodeproj, projectDir: tempDir.path, targetName: "App",
         )
 
         #expect(result == nil)
@@ -54,24 +53,24 @@ struct InfoPlistUtilityTests {
     @Test("resolveInfoPlistPath returns path when INFOPLIST_FILE is set and file exists")
     func resolveInfoPlistPathSuccess() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Create an Info.plist file
         let plistPath = tempDir.appendingPathComponent("App/Info.plist")
         try FileManager.default.createDirectory(
-            at: plistPath.deletingLastPathComponent(), withIntermediateDirectories: true
+            at: plistPath.deletingLastPathComponent(), withIntermediateDirectories: true,
         )
         let emptyPlist: [String: Any] = [:]
         let data = try PropertyListSerialization.data(
-            fromPropertyList: emptyPlist, format: .xml, options: 0
+            fromPropertyList: emptyPlist, format: .xml, options: 0,
         )
         try data.write(to: plistPath)
 
@@ -86,7 +85,7 @@ struct InfoPlistUtilityTests {
 
         let reloaded = try XcodeProj(path: projectPath)
         let result = InfoPlistUtility.resolveInfoPlistPath(
-            xcodeproj: reloaded, projectDir: tempDir.path, targetName: "App"
+            xcodeproj: reloaded, projectDir: tempDir.path, targetName: "App",
         )
 
         #expect(result != nil)
@@ -96,7 +95,7 @@ struct InfoPlistUtilityTests {
     @Test("readInfoPlist reads valid plist")
     func readInfoPlistSuccess() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -104,7 +103,7 @@ struct InfoPlistUtilityTests {
         let plistPath = tempDir.appendingPathComponent("Info.plist").path
         let testPlist: [String: Any] = ["CFBundleName": "TestApp", "CFBundleVersion": "1.0"]
         let data = try PropertyListSerialization.data(
-            fromPropertyList: testPlist, format: .xml, options: 0
+            fromPropertyList: testPlist, format: .xml, options: 0,
         )
         try data.write(to: URL(fileURLWithPath: plistPath))
 
@@ -123,7 +122,7 @@ struct InfoPlistUtilityTests {
     @Test("writeInfoPlist writes and reads back correctly")
     func writeInfoPlistRoundTrip() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -132,7 +131,7 @@ struct InfoPlistUtilityTests {
         let testPlist: [String: Any] = [
             "CFBundleName": "TestApp",
             "CFBundleDocumentTypes": [
-                ["CFBundleTypeName": "Test Document", "CFBundleTypeRole": "Editor"]
+                ["CFBundleTypeName": "Test Document", "CFBundleTypeRole": "Editor"],
             ] as [[String: Any]],
         ]
 
@@ -148,20 +147,20 @@ struct InfoPlistUtilityTests {
     @Test("materializeInfoPlist creates file and sets build setting")
     func materializeInfoPlist() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let xcodeproj = try XcodeProj(path: projectPath)
         let plistAbsPath = try InfoPlistUtility.materializeInfoPlist(
             xcodeproj: xcodeproj, projectDir: tempDir.path, targetName: "App",
-            projectPath: projectPath
+            projectPath: projectPath,
         )
 
         // Verify the file was created

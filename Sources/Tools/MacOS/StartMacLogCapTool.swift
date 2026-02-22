@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct StartMacLogCapTool: Sendable {
     private let sessionManager: SessionManager
@@ -13,43 +13,43 @@ public struct StartMacLogCapTool: Sendable {
         Tool(
             name: "start_mac_log_cap",
             description:
-                "Start capturing logs from a macOS app using the unified logging system. Logs are written to a file and can be stopped with stop_mac_log_cap.",
+            "Start capturing logs from a macOS app using the unified logging system. Logs are written to a file and can be stopped with stop_mac_log_cap.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional bundle identifier to filter logs to a specific app."
+                            "Optional bundle identifier to filter logs to a specific app.",
                         ),
                     ]),
                     "process_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional process name to filter logs to a specific process."
+                            "Optional process name to filter logs to a specific process.",
                         ),
                     ]),
                     "subsystem": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional OSLog subsystem to filter logs (e.g., 'com.apple.CloudKit')."
+                            "Optional OSLog subsystem to filter logs (e.g., 'com.apple.CloudKit').",
                         ),
                     ]),
                     "predicate": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional custom predicate to filter logs. Overrides bundle_id, process_name, and subsystem filters."
+                            "Optional custom predicate to filter logs. Overrides bundle_id, process_name, and subsystem filters.",
                         ),
                     ]),
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to write logs to. Defaults to /tmp/mac_log_<identifier>.log"
+                            "Path to write logs to. Defaults to /tmp/mac_log_<identifier>.log",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -60,7 +60,7 @@ public struct StartMacLogCapTool: Sendable {
         let customPredicate = arguments.getString("predicate")
         let outputFile =
             arguments.getString("output_file")
-            ?? "/tmp/mac_log_\(bundleId ?? processName ?? "system").log"
+                ?? "/tmp/mac_log_\(bundleId ?? processName ?? "system").log"
 
         do {
             let process = Process()

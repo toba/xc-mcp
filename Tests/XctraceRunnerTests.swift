@@ -1,5 +1,4 @@
 import Testing
-
 @testable import XCMCPCore
 
 @Suite("XctraceRunner Tests")
@@ -7,7 +6,7 @@ struct XctraceRunnerTests {
     @Test("Runner initializes successfully")
     func testInit() {
         let runner = XctraceRunner()
-        _ = runner  // Verify it compiles and initializes
+        _ = runner // Verify it compiles and initializes
     }
 
     @Test("List templates returns output")
@@ -43,7 +42,7 @@ struct XctraceRunnerTests {
         let result = try await runner.export(
             inputPath: "/nonexistent/path.trace",
             xpath: nil,
-            toc: true
+            toc: true,
         )
 
         #expect(!result.succeeded)

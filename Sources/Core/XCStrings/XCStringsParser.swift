@@ -169,22 +169,22 @@ public actor XCStringsParser {
 
     /// Add a translation
     public func addTranslation(
-        key: String, language: String, value: String, allowOverwrite: Bool = false
+        key: String, language: String, value: String, allowOverwrite: Bool = false,
     ) throws {
         let file = try load()
         let updated = try XCStringsWriter.addTranslation(
-            to: file, key: key, language: language, value: value, allowOverwrite: allowOverwrite
+            to: file, key: key, language: language, value: value, allowOverwrite: allowOverwrite,
         )
         try save(updated)
     }
 
     /// Add translations for multiple languages
     public func addTranslations(
-        key: String, translations: [String: String], allowOverwrite: Bool = false
+        key: String, translations: [String: String], allowOverwrite: Bool = false,
     ) throws {
         let file = try load()
         let updated = try XCStringsWriter.addTranslations(
-            to: file, key: key, translations: translations, allowOverwrite: allowOverwrite
+            to: file, key: key, translations: translations, allowOverwrite: allowOverwrite,
         )
         try save(updated)
     }
@@ -195,7 +195,7 @@ public actor XCStringsParser {
     {
         let file = try load()
         let updated = try XCStringsWriter.updateTranslation(
-            in: file, key: key, language: language, value: value
+            in: file, key: key, language: language, value: value,
         )
         try save(updated)
     }
@@ -206,7 +206,7 @@ public actor XCStringsParser {
     {
         let file = try load()
         let updated = try XCStringsWriter.updateTranslations(
-            in: file, key: key, translations: translations
+            in: file, key: key, translations: translations,
         )
         try save(updated)
     }
@@ -222,11 +222,11 @@ public actor XCStringsParser {
 
     /// Add translations for multiple keys
     public func addTranslationsBatch(
-        entries: [BatchTranslationEntry], allowOverwrite: Bool = false
+        entries: [BatchTranslationEntry], allowOverwrite: Bool = false,
     ) throws(XCStringsError) -> BatchWriteResult {
         let file = try load()
         let (updated, result) = XCStringsWriter.addTranslationsBatch(
-            to: file, entries: entries, allowOverwrite: allowOverwrite
+            to: file, entries: entries, allowOverwrite: allowOverwrite,
         )
         if result.succeeded > 0 {
             try save(updated)
@@ -240,7 +240,7 @@ public actor XCStringsParser {
     {
         let file = try load()
         let (updated, result) = XCStringsWriter.updateTranslationsBatch(
-            in: file, entries: entries
+            in: file, entries: entries,
         )
         if result.succeeded > 0 {
             try save(updated)
@@ -261,7 +261,7 @@ public actor XCStringsParser {
     public func deleteTranslation(key: String, language: String) throws(XCStringsError) {
         let file = try load()
         let updated = try XCStringsWriter.deleteTranslation(
-            from: file, key: key, language: language
+            from: file, key: key, language: language,
         )
         try save(updated)
     }
@@ -270,7 +270,7 @@ public actor XCStringsParser {
     public func deleteTranslations(key: String, languages: [String]) throws(XCStringsError) {
         let file = try load()
         let updated = try XCStringsWriter.deleteTranslations(
-            from: file, key: key, languages: languages
+            from: file, key: key, languages: languages,
         )
         try save(updated)
     }

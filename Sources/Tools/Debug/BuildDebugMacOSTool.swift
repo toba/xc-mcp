@@ -1,7 +1,7 @@
-import Foundation
-import Logging
 import MCP
+import Logging
 import XCMCPCore
+import Foundation
 
 public struct BuildDebugMacOSTool: Sendable {
     /// Build timeout for debug builds (10 minutes to accommodate large projects)
@@ -16,7 +16,7 @@ public struct BuildDebugMacOSTool: Sendable {
     public init(
         xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
         lldbRunner: LLDBRunner = LLDBRunner(),
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.lldbRunner = lldbRunner
@@ -27,38 +27,38 @@ public struct BuildDebugMacOSTool: Sendable {
         Tool(
             name: "build_debug_macos",
             description:
-                "Build and launch a macOS app under LLDB debugger. This is the equivalent of Xcode's Run button — it builds incrementally, launches via Launch Services with DYLD_FRAMEWORK_PATH for non-embedded frameworks, and attaches the debugger. Use all existing debug tools (debug_stack, debug_breakpoint_add, etc.) with the returned PID.",
+            "Build and launch a macOS app under LLDB debugger. This is the equivalent of Xcode's Run button — it builds incrementally, launches via Launch Services with DYLD_FRAMEWORK_PATH for non-embedded frameworks, and attaches the debugger. Use all existing debug tools (debug_stack, debug_breakpoint_add, etc.) with the returned PID.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."
+                            "Path to the .xcodeproj file. Uses session default if not specified.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
+                            "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to build. Uses session default if not specified."
+                            "The scheme to build. Uses session default if not specified.",
                         ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."
+                            "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
                     "arch": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture."
+                            "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture.",
                         ),
                     ]),
                     "args": .object([
@@ -70,24 +70,24 @@ public struct BuildDebugMacOSTool: Sendable {
                         "type": .string("object"),
                         "additionalProperties": .object(["type": .string("string")]),
                         "description": .string(
-                            "Additional environment variables to set (key-value pairs)."
+                            "Additional environment variables to set (key-value pairs).",
                         ),
                     ]),
                     "stop_at_entry": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Stop at the entry point before running. Defaults to false."
+                            "Stop at the entry point before running. Defaults to false.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments
+            from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
@@ -111,11 +111,11 @@ public struct BuildDebugMacOSTool: Sendable {
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
-                configuration: configuration
+                configuration: configuration,
             )
 
             let bundleId = extractBuildSetting(
-                "PRODUCT_BUNDLE_IDENTIFIER", from: buildSettings.stdout
+                "PRODUCT_BUNDLE_IDENTIFIER", from: buildSettings.stdout,
             )
 
             // Kill any existing session for this bundle ID
@@ -142,12 +142,12 @@ public struct BuildDebugMacOSTool: Sendable {
                 timeout: Self.buildTimeout,
                 onProgress: { line in
                     Self.logger.info("\(line)")
-                }
+                },
             )
 
             let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)
 
-            if !buildResult.succeeded && parsedBuild.status != "success" {
+            if !buildResult.succeeded, parsedBuild.status != "success" {
                 let errorOutput = BuildResultFormatter.formatBuildResult(parsedBuild)
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
@@ -155,18 +155,18 @@ public struct BuildDebugMacOSTool: Sendable {
             // Step 3: Extract paths from build settings
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {
                 throw MCPError.internalError(
-                    "Could not determine app path from build settings."
+                    "Could not determine app path from build settings.",
                 )
             }
 
             let builtProductsDir = extractBuildSetting(
-                "BUILT_PRODUCTS_DIR", from: buildSettings.stdout
+                "BUILT_PRODUCTS_DIR", from: buildSettings.stdout,
             )
 
             // Extract executable name from the app bundle name
             let appName =
                 URL(fileURLWithPath: appPath).lastPathComponent
-                .replacingOccurrences(of: ".app", with: "")
+                    .replacingOccurrences(of: ".app", with: "")
 
             // Step 4: Prepare the app for debug launch.
             // Sandboxed apps crash with SIGABRT when launched directly via LLDB's
@@ -176,7 +176,7 @@ public struct BuildDebugMacOSTool: Sendable {
             // Solution: inject LSEnvironment into Info.plist + add the
             // allow-dyld-environment-variables entitlement, then re-sign.
             try prepareAppForDebugLaunch(
-                appPath: appPath, builtProductsDir: builtProductsDir
+                appPath: appPath, builtProductsDir: builtProductsDir,
             )
 
             // Step 5: Launch via /usr/bin/open + LLDB --waitfor attach
@@ -185,7 +185,7 @@ public struct BuildDebugMacOSTool: Sendable {
                 executableName: appName,
                 arguments: launchArgs,
                 environment: userEnv,
-                stopAtEntry: stopAtEntry
+                stopAtEntry: stopAtEntry,
             )
 
             // Step 7: Register bundle ID mapping
@@ -232,7 +232,7 @@ public struct BuildDebugMacOSTool: Sendable {
     ///    binaries inside the bundle using `install_name_tool`
     /// 3. Re-signs the bundle to cover the modified content
     private func prepareAppForDebugLaunch(
-        appPath: String, builtProductsDir: String?
+        appPath: String, builtProductsDir: String?,
     ) throws {
         guard let dir = builtProductsDir else { return }
 
@@ -243,7 +243,7 @@ public struct BuildDebugMacOSTool: Sendable {
         // Step 1: Symlink frameworks from BUILT_PRODUCTS_DIR into the app bundle
         let builtProductsURL = URL(fileURLWithPath: dir)
         let contents = try fm.contentsOfDirectory(
-            at: builtProductsURL, includingPropertiesForKeys: nil
+            at: builtProductsURL, includingPropertiesForKeys: nil,
         )
 
         var modified = false
@@ -294,7 +294,7 @@ public struct BuildDebugMacOSTool: Sendable {
         let output =
             String(
                 data: otoolOut.fileHandleForReading.readDataToEndOfFile(),
-                encoding: .utf8
+                encoding: .utf8,
             ) ?? ""
 
         let prefix = "/Library/Frameworks/"
@@ -334,7 +334,7 @@ public struct BuildDebugMacOSTool: Sendable {
             let errStr =
                 String(
                     data: installErr.fileHandleForReading.readDataToEndOfFile(),
-                    encoding: .utf8
+                    encoding: .utf8,
                 ) ?? ""
             Self.logger.warning("install_name_tool failed for \(binaryPath): \(errStr)")
             return false
@@ -358,12 +358,13 @@ public struct BuildDebugMacOSTool: Sendable {
         let identityStr =
             String(
                 data: identityOut.fileHandleForReading.readDataToEndOfFile(),
-                encoding: .utf8
+                encoding: .utf8,
             ) ?? ""
 
         var signingIdentity = "-"
         for line in identityStr.components(separatedBy: .newlines)
-        where line.hasPrefix("Authority=") {
+            where line.hasPrefix("Authority=")
+        {
             signingIdentity = String(line.dropFirst("Authority=".count))
             break
         }
@@ -419,14 +420,14 @@ public struct BuildDebugMacOSTool: Sendable {
     private func extractAppPath(from buildSettings: String) -> String? {
         // Try CODESIGNING_FOLDER_PATH first
         if let path = extractBuildSetting("CODESIGNING_FOLDER_PATH", from: buildSettings),
-            path.hasSuffix(".app")
+           path.hasSuffix(".app")
         {
             return path
         }
 
         // Fallback: TARGET_BUILD_DIR + FULL_PRODUCT_NAME
         if let dir = extractBuildSetting("TARGET_BUILD_DIR", from: buildSettings),
-            let name = extractBuildSetting("FULL_PRODUCT_NAME", from: buildSettings)
+           let name = extractBuildSetting("FULL_PRODUCT_NAME", from: buildSettings)
         {
             return "\(dir)/\(name)"
         }

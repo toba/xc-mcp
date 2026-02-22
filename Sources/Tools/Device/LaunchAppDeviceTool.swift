@@ -1,13 +1,13 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct LaunchAppDeviceTool: Sendable {
     private let deviceCtlRunner: DeviceCtlRunner
     private let sessionManager: SessionManager
 
     public init(
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager
+        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
     ) {
         self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
@@ -23,18 +23,18 @@ public struct LaunchAppDeviceTool: Sendable {
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The bundle identifier of the app to launch (e.g., 'com.example.MyApp')."
+                            "The bundle identifier of the app to launch (e.g., 'com.example.MyApp').",
                         ),
                     ]),
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device UDID. Uses session default if not specified."
+                            "Device UDID. Uses session default if not specified.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("bundle_id")]),
-            ])
+            ]),
         )
     }
 
@@ -48,12 +48,12 @@ public struct LaunchAppDeviceTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text("Successfully launched '\(bundleId)' on device '\(device)'")
-                    ]
+                        .text("Successfully launched '\(bundleId)' on device '\(device)'"),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to launch app: \(result.errorOutput)"
+                    "Failed to launch app: \(result.errorOutput)",
                 )
             }
         } catch {

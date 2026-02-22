@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct ButtonTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,25 +15,25 @@ public struct ButtonTool: Sendable {
         Tool(
             name: "button",
             description:
-                "Simulate pressing a hardware button on a simulator.",
+            "Simulate pressing a hardware button on a simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "button_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Button to press: 'home', 'lock', 'volumeUp', 'volumeDown', 'siri', 'screenshot'."
+                            "Button to press: 'home', 'lock', 'volumeUp', 'volumeDown', 'siri', 'screenshot'.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("button_name")]),
-            ])
+            ]),
         )
     }
 
@@ -46,7 +46,7 @@ public struct ButtonTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -58,34 +58,34 @@ public struct ButtonTool: Sendable {
         let validButtons = ["home", "lock", "volumeUp", "volumeDown", "siri", "screenshot"]
         let normalizedButton =
             buttonName.lowercased() == "volumeup"
-            ? "volumeUp"
-            : (buttonName.lowercased() == "volumedown" ? "volumeDown" : buttonName.lowercased())
+                ? "volumeUp"
+                : (buttonName.lowercased() == "volumedown" ? "volumeDown" : buttonName.lowercased())
 
         guard
             validButtons.contains(normalizedButton)
-                || validButtons.contains(normalizedButton.lowercased())
+            || validButtons.contains(normalizedButton.lowercased())
         else {
             throw MCPError.invalidParams(
-                "Invalid button '\(buttonName)'. Valid buttons: \(validButtons.joined(separator: ", "))"
+                "Invalid button '\(buttonName)'. Valid buttons: \(validButtons.joined(separator: ", "))",
             )
         }
 
         do {
             let result = try await simctlRunner.run(
-                arguments: ["io", simulator, "button", normalizedButton]
+                arguments: ["io", simulator, "button", normalizedButton],
             )
 
             if result.succeeded {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Pressed button '\(buttonName)' on simulator '\(simulator)'"
-                        )
-                    ]
+                            "Pressed button '\(buttonName)' on simulator '\(simulator)'",
+                        ),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to press button: \(result.errorOutput)"
+                    "Failed to press button: \(result.errorOutput)",
                 )
             }
         } catch {

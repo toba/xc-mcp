@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct EraseSimTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,25 +15,25 @@ public struct EraseSimTool: Sendable {
         Tool(
             name: "erase_sims",
             description:
-                "Erase all content and settings from a simulator, restoring it to factory state.",
+            "Erase all content and settings from a simulator, restoring it to factory state.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "all": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, erases all simulators. Use with caution."
+                            "If true, erases all simulators. Use with caution.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -47,11 +47,11 @@ public struct EraseSimTool: Sendable {
 
                 if result.succeeded {
                     return CallTool.Result(
-                        content: [.text("Successfully erased all simulators")]
+                        content: [.text("Successfully erased all simulators")],
                     )
                 } else {
                     throw MCPError.internalError(
-                        "Failed to erase simulators: \(result.errorOutput)"
+                        "Failed to erase simulators: \(result.errorOutput)",
                     )
                 }
             } catch {
@@ -67,7 +67,7 @@ public struct EraseSimTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly, or use 'all: true' to erase all."
+                "simulator is required. Set it with set_session_defaults or pass it directly, or use 'all: true' to erase all.",
             )
         }
 
@@ -76,11 +76,11 @@ public struct EraseSimTool: Sendable {
 
             if result.succeeded {
                 return CallTool.Result(
-                    content: [.text("Successfully erased simulator '\(simulator)'")]
+                    content: [.text("Successfully erased simulator '\(simulator)'")],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to erase simulator: \(result.errorOutput)"
+                    "Failed to erase simulator: \(result.errorOutput)",
                 )
             }
         } catch {

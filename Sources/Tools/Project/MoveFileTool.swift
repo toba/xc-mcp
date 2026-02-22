@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct MoveFileTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct MoveFileTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "old_path": .object([
@@ -35,21 +35,21 @@ public struct MoveFileTool: Sendable {
                     "move_on_disk": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Whether to also move the file on disk (optional, defaults to false)"
+                            "Whether to also move the file on disk (optional, defaults to false)",
                         ),
                     ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("old_path"), .string("new_path"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(oldPath) = arguments["old_path"],
-            case let .string(newPath) = arguments["new_path"]
+              case let .string(oldPath) = arguments["old_path"],
+              case let .string(newPath) = arguments["new_path"]
         else {
             throw MCPError.invalidParams("project_path, old_path, and new_path are required")
         }
@@ -107,7 +107,7 @@ public struct MoveFileTool: Sendable {
                     let newParentDir = newURL.deletingLastPathComponent()
                     if !FileManager.default.fileExists(atPath: newParentDir.path) {
                         try FileManager.default.createDirectory(
-                            at: newParentDir, withIntermediateDirectories: true
+                            at: newParentDir, withIntermediateDirectories: true,
                         )
                     }
 
@@ -119,19 +119,19 @@ public struct MoveFileTool: Sendable {
 
                 return CallTool.Result(
                     content: [
-                        .text("Successfully moved \(oldFileName) to \(newRelativePath)")
-                    ]
+                        .text("Successfully moved \(oldFileName) to \(newRelativePath)"),
+                    ],
                 )
             } else {
                 return CallTool.Result(
                     content: [
-                        .text("File not found in project: \(oldFileName)")
-                    ]
+                        .text("File not found in project: \(oldFileName)"),
+                    ],
                 )
             }
         } catch {
             throw MCPError.internalError(
-                "Failed to move file in Xcode project: \(error.localizedDescription)"
+                "Failed to move file in Xcode project: \(error.localizedDescription)",
             )
         }
     }

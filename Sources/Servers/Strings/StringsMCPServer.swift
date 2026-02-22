@@ -1,7 +1,7 @@
-import Foundation
-import Logging
 import MCP
+import Logging
 import XCMCPCore
+import Foundation
 import XCMCPTools
 
 /// All available tool names exposed by the xc-strings MCP server.
@@ -74,7 +74,7 @@ public struct StringsMCPServer: Sendable {
         let server = Server(
             name: "xc-strings",
             version: "1.0.0",
-            capabilities: .init(tools: .init())
+            capabilities: .init(tools: .init()),
         )
 
         // Create path utility
@@ -104,7 +104,7 @@ public struct StringsMCPServer: Sendable {
         let batchCheckKeysTool = XCStringsBatchCheckKeysTool(pathUtility: pathUtility)
         let batchAddTranslationsTool = XCStringsBatchAddTranslationsTool(pathUtility: pathUtility)
         let batchUpdateTranslationsTool = XCStringsBatchUpdateTranslationsTool(
-            pathUtility: pathUtility
+            pathUtility: pathUtility,
         )
         let checkCoverageTool = XCStringsCheckCoverageTool(pathUtility: pathUtility)
 
@@ -142,62 +142,63 @@ public struct StringsMCPServer: Sendable {
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = StringsToolName(rawValue: params.name) else {
                 let hint = ServerToolDirectory.hint(for: params.name, currentServer: "xc-strings")
-                let message = hint.map { "Unknown tool: \(params.name). \($0)" }
-                    ?? "Unknown tool: \(params.name)"
+                let message =
+                    hint.map { "Unknown tool: \(params.name). \($0)" }
+                        ?? "Unknown tool: \(params.name)"
                 throw MCPError.methodNotFound(message)
             }
 
             let arguments = params.arguments ?? [:]
 
             switch toolName {
-            case .listKeys:
-                return try await listKeysTool.execute(arguments: arguments)
-            case .listLanguages:
-                return try await listLanguagesTool.execute(arguments: arguments)
-            case .listUntranslated:
-                return try await listUntranslatedTool.execute(arguments: arguments)
-            case .getSourceLanguage:
-                return try await getSourceLanguageTool.execute(arguments: arguments)
-            case .getKey:
-                return try await getKeyTool.execute(arguments: arguments)
-            case .checkKey:
-                return try await checkKeyTool.execute(arguments: arguments)
-            case .statsCoverage:
-                return try await statsCoverageTool.execute(arguments: arguments)
-            case .statsProgress:
-                return try await statsProgressTool.execute(arguments: arguments)
-            case .batchStatsCoverage:
-                return try await batchStatsCoverageTool.execute(arguments: arguments)
-            case .createFile:
-                return try await createFileTool.execute(arguments: arguments)
-            case .addTranslation:
-                return try await addTranslationTool.execute(arguments: arguments)
-            case .addTranslations:
-                return try await addTranslationsTool.execute(arguments: arguments)
-            case .updateTranslation:
-                return try await updateTranslationTool.execute(arguments: arguments)
-            case .updateTranslations:
-                return try await updateTranslationsTool.execute(arguments: arguments)
-            case .renameKey:
-                return try await renameKeyTool.execute(arguments: arguments)
-            case .deleteKey:
-                return try await deleteKeyTool.execute(arguments: arguments)
-            case .deleteTranslation:
-                return try await deleteTranslationTool.execute(arguments: arguments)
-            case .deleteTranslations:
-                return try await deleteTranslationsTool.execute(arguments: arguments)
-            case .listStale:
-                return try await listStaleTool.execute(arguments: arguments)
-            case .batchListStale:
-                return try batchListStaleTool.execute(arguments: arguments)
-            case .batchCheckKeys:
-                return try await batchCheckKeysTool.execute(arguments: arguments)
-            case .batchAddTranslations:
-                return try await batchAddTranslationsTool.execute(arguments: arguments)
-            case .batchUpdateTranslations:
-                return try await batchUpdateTranslationsTool.execute(arguments: arguments)
-            case .checkCoverage:
-                return try await checkCoverageTool.execute(arguments: arguments)
+                case .listKeys:
+                    return try await listKeysTool.execute(arguments: arguments)
+                case .listLanguages:
+                    return try await listLanguagesTool.execute(arguments: arguments)
+                case .listUntranslated:
+                    return try await listUntranslatedTool.execute(arguments: arguments)
+                case .getSourceLanguage:
+                    return try await getSourceLanguageTool.execute(arguments: arguments)
+                case .getKey:
+                    return try await getKeyTool.execute(arguments: arguments)
+                case .checkKey:
+                    return try await checkKeyTool.execute(arguments: arguments)
+                case .statsCoverage:
+                    return try await statsCoverageTool.execute(arguments: arguments)
+                case .statsProgress:
+                    return try await statsProgressTool.execute(arguments: arguments)
+                case .batchStatsCoverage:
+                    return try await batchStatsCoverageTool.execute(arguments: arguments)
+                case .createFile:
+                    return try await createFileTool.execute(arguments: arguments)
+                case .addTranslation:
+                    return try await addTranslationTool.execute(arguments: arguments)
+                case .addTranslations:
+                    return try await addTranslationsTool.execute(arguments: arguments)
+                case .updateTranslation:
+                    return try await updateTranslationTool.execute(arguments: arguments)
+                case .updateTranslations:
+                    return try await updateTranslationsTool.execute(arguments: arguments)
+                case .renameKey:
+                    return try await renameKeyTool.execute(arguments: arguments)
+                case .deleteKey:
+                    return try await deleteKeyTool.execute(arguments: arguments)
+                case .deleteTranslation:
+                    return try await deleteTranslationTool.execute(arguments: arguments)
+                case .deleteTranslations:
+                    return try await deleteTranslationsTool.execute(arguments: arguments)
+                case .listStale:
+                    return try await listStaleTool.execute(arguments: arguments)
+                case .batchListStale:
+                    return try batchListStaleTool.execute(arguments: arguments)
+                case .batchCheckKeys:
+                    return try await batchCheckKeysTool.execute(arguments: arguments)
+                case .batchAddTranslations:
+                    return try await batchAddTranslationsTool.execute(arguments: arguments)
+                case .batchUpdateTranslations:
+                    return try await batchUpdateTranslationsTool.execute(arguments: arguments)
+                case .checkCoverage:
+                    return try await checkCoverageTool.execute(arguments: arguments)
             }
         }
 

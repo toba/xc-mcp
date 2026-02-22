@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct StopMacLogCapTool: Sendable {
     private let sessionManager: SessionManager
@@ -13,31 +13,31 @@ public struct StopMacLogCapTool: Sendable {
         Tool(
             name: "stop_mac_log_cap",
             description:
-                "Stop capturing macOS logs. Can stop by process ID or kill all log stream processes.",
+            "Stop capturing macOS logs. Can stop by process ID or kill all log stream processes.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID of the log capture process to stop."
+                            "Process ID of the log capture process to stop.",
                         ),
                     ]),
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional path to the log file to return the last N lines from."
+                            "Optional path to the log file to return the last N lines from.",
                         ),
                     ]),
                     "tail_lines": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Number of lines to return from the end of the log file. Defaults to 50."
+                            "Number of lines to return from the end of the log file. Defaults to 50.",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -51,7 +51,7 @@ public struct StopMacLogCapTool: Sendable {
                 try ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
             } else {
                 _ = try? ProcessResult.run(
-                    "/usr/bin/pkill", arguments: ["-f", "/usr/bin/log stream"]
+                    "/usr/bin/pkill", arguments: ["-f", "/usr/bin/log stream"],
                 )
             }
 

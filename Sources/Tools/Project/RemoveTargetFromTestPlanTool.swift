@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct RemoveTargetFromTestPlanTool: Sendable {
     private let pathUtility: PathUtility
@@ -26,13 +26,13 @@ public struct RemoveTargetFromTestPlanTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("test_plan_path"), .string("target_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(testPlanPath) = arguments["test_plan_path"],
-            case let .string(targetName) = arguments["target_name"]
+              case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams("test_plan_path and target_name are required")
         }
@@ -43,14 +43,14 @@ public struct RemoveTargetFromTestPlanTool: Sendable {
             var json = try TestPlanFile.read(from: resolvedTestPlanPath)
             guard var testTargets = json["testTargets"] as? [[String: Any]] else {
                 return CallTool.Result(
-                    content: [.text("Test plan has no test targets")]
+                    content: [.text("Test plan has no test targets")],
                 )
             }
 
             let originalCount = testTargets.count
             testTargets.removeAll { entry in
                 guard let target = entry["target"] as? [String: Any],
-                    let name = target["name"] as? String
+                      let name = target["name"] as? String
                 else {
                     return false
                 }
@@ -61,9 +61,9 @@ public struct RemoveTargetFromTestPlanTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "Target '\(targetName)' not found in test plan"
-                        )
-                    ]
+                            "Target '\(targetName)' not found in test plan",
+                        ),
+                    ],
                 )
             }
 
@@ -73,13 +73,13 @@ public struct RemoveTargetFromTestPlanTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Removed target '\(targetName)' from test plan at \(resolvedTestPlanPath)"
-                    )
-                ]
+                        "Removed target '\(targetName)' from test plan at \(resolvedTestPlanPath)",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to remove target from test plan: \(error.localizedDescription)"
+                "Failed to remove target from test plan: \(error.localizedDescription)",
             )
         }
     }

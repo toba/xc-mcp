@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct XCStringsAddTranslationsTool: Sendable {
     private let pathUtility: PathUtility
@@ -27,12 +27,12 @@ public struct XCStringsAddTranslationsTool: Sendable {
                     "translations": .object([
                         "type": .string("object"),
                         "description": .string(
-                            "Object mapping language codes to translation values, e.g. {\"ja\": \"...\", \"en\": \"...\"}"
+                            "Object mapping language codes to translation values, e.g. {\"ja\": \"...\", \"en\": \"...\"}",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("key"), .string("translations")]),
-            ])
+            ]),
         )
     }
 
@@ -62,8 +62,8 @@ public struct XCStringsAddTranslationsTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Translations added successfully for \(translations.count) languages")
-                ]
+                    .text("Translations added successfully for \(translations.count) languages"),
+                ],
             )
         } catch let error as XCStringsError {
             throw error.toMCPError()

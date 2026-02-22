@@ -1,5 +1,5 @@
-import Foundation
 import MCP
+import Foundation
 
 /// Information about a simulator device.
 ///
@@ -39,9 +39,9 @@ public struct SimulatorDevice: Sendable, Codable {
         state = try container.decode(String.self, forKey: .state)
         isAvailable = try container.decodeIfPresent(Bool.self, forKey: .isAvailable) ?? true
         deviceTypeIdentifier = try container.decodeIfPresent(
-            String.self, forKey: .deviceTypeIdentifier
+            String.self, forKey: .deviceTypeIdentifier,
         )
-        runtime = nil  // Runtime comes from the parent key, not the device object
+        runtime = nil // Runtime comes from the parent key, not the device object
     }
 
     public init(
@@ -50,7 +50,7 @@ public struct SimulatorDevice: Sendable, Codable {
         state: String,
         isAvailable: Bool,
         deviceTypeIdentifier: String?,
-        runtime: String?
+        runtime: String?,
     ) {
         self.udid = udid
         self.name = name
@@ -119,7 +119,7 @@ public struct SimctlRunner: Sendable {
                 let result = SimctlResult(
                     exitCode: process.terminationStatus,
                     stdout: stdout,
-                    stderr: stderr
+                    stderr: stderr,
                 )
                 continuation.resume(returning: result)
             } catch {
@@ -156,7 +156,7 @@ public struct SimctlRunner: Sendable {
                     state: device.state,
                     isAvailable: device.isAvailable,
                     deviceTypeIdentifier: device.deviceTypeIdentifier,
-                    runtime: runtime
+                    runtime: runtime,
                 )
                 devices.append(deviceWithRuntime)
             }
@@ -228,7 +228,7 @@ public struct SimctlRunner: Sendable {
         udid: String,
         bundleId: String,
         waitForDebugger: Bool = false,
-        args: [String] = []
+        args: [String] = [],
     ) async throws -> SimctlResult {
         var arguments = ["launch"]
         if waitForDebugger {
@@ -261,7 +261,7 @@ public struct SimctlRunner: Sendable {
     public func getAppContainer(
         udid: String,
         bundleId: String,
-        container: String = "app"
+        container: String = "app",
     ) async throws -> String {
         let result = try await run(arguments: ["get_app_container", udid, bundleId, container])
         guard result.succeeded else {
@@ -356,7 +356,7 @@ public struct SimctlRunner: Sendable {
         batteryLevel: Int? = nil,
         batteryState: String? = nil,
         cellularBars: Int? = nil,
-        wifiBars: Int? = nil
+        wifiBars: Int? = nil,
     ) async throws -> SimctlResult {
         var arguments = ["status_bar", udid, "override"]
 
@@ -436,21 +436,21 @@ public enum SimctlError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-        case let .commandFailed(message):
-            return "simctl command failed: \(message)"
-        case .invalidOutput:
-            return "simctl returned invalid output"
-        case let .deviceNotFound(udid):
-            return "Simulator device not found: \(udid)"
+            case let .commandFailed(message):
+                return "simctl command failed: \(message)"
+            case .invalidOutput:
+                return "simctl returned invalid output"
+            case let .deviceNotFound(udid):
+                return "Simulator device not found: \(udid)"
         }
     }
 
     public func toMCPError() -> MCPError {
         switch self {
-        case .deviceNotFound:
-            return .invalidParams(errorDescription ?? "Simulator not found")
-        case .commandFailed, .invalidOutput:
-            return .internalError(errorDescription ?? "Simulator operation failed")
+            case .deviceNotFound:
+                return .invalidParams(errorDescription ?? "Simulator not found")
+            case .commandFailed, .invalidOutput:
+                return .internalError(errorDescription ?? "Simulator operation failed")
         }
     }
 }

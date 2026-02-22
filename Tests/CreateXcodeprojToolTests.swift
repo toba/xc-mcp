@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Test("CreateXcodeprojTool has correct properties")
@@ -62,8 +61,8 @@ func createProjectWithBundleIdentifier() throws {
 
     // Check that bundle identifier is set in build configurations
     if let target = appTarget,
-        let configList = target.buildConfigurationList,
-        let config = configList.buildConfigurations.first
+       let configList = target.buildConfigurationList,
+       let config = configList.buildConfigurations.first
     {
         let bundleId = config.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"]
         #expect(bundleId == .string("com.testorg.TestApp"))

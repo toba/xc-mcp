@@ -1,7 +1,7 @@
-import Foundation
-import Logging
 import MCP
+import Logging
 import XCMCPCore
+import Foundation
 import XCMCPTools
 
 /// All available tool names exposed by the xc-swift MCP server.
@@ -57,7 +57,7 @@ public struct SwiftMCPServer: Sendable {
         let server = Server(
             name: "xc-swift",
             version: "1.0.0",
-            capabilities: .init(tools: .init())
+            capabilities: .init(tools: .init()),
         )
 
         // Create utilities
@@ -66,19 +66,19 @@ public struct SwiftMCPServer: Sendable {
 
         // Create Swift package tools
         let swiftPackageBuildTool = SwiftPackageBuildTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
         let swiftPackageTestTool = SwiftPackageTestTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
         let swiftPackageRunTool = SwiftPackageRunTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
         let swiftPackageCleanTool = SwiftPackageCleanTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
         let swiftPackageListTool = SwiftPackageListTool(
-            swiftRunner: swiftRunner, sessionManager: sessionManager
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
         let swiftPackageStopTool = SwiftPackageStopTool(sessionManager: sessionManager)
 
@@ -107,33 +107,34 @@ public struct SwiftMCPServer: Sendable {
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = SwiftToolName(rawValue: params.name) else {
                 let hint = ServerToolDirectory.hint(for: params.name, currentServer: "xc-swift")
-                let message = hint.map { "Unknown tool: \(params.name). \($0)" }
-                    ?? "Unknown tool: \(params.name)"
+                let message =
+                    hint.map { "Unknown tool: \(params.name). \($0)" }
+                        ?? "Unknown tool: \(params.name)"
                 throw MCPError.methodNotFound(message)
             }
 
             let arguments = params.arguments ?? [:]
 
             switch toolName {
-            case .swiftPackageBuild:
-                return try await swiftPackageBuildTool.execute(arguments: arguments)
-            case .swiftPackageTest:
-                return try await swiftPackageTestTool.execute(arguments: arguments)
-            case .swiftPackageRun:
-                return try await swiftPackageRunTool.execute(arguments: arguments)
-            case .swiftPackageClean:
-                return try await swiftPackageCleanTool.execute(arguments: arguments)
-            case .swiftPackageList:
-                return try await swiftPackageListTool.execute(arguments: arguments)
-            case .swiftPackageStop:
-                return try await swiftPackageStopTool.execute(arguments: arguments)
-            // Session tools
-            case .setSessionDefaults:
-                return try await setSessionDefaultsTool.execute(arguments: arguments)
-            case .showSessionDefaults:
-                return try await showSessionDefaultsTool.execute(arguments: arguments)
-            case .clearSessionDefaults:
-                return try await clearSessionDefaultsTool.execute(arguments: arguments)
+                case .swiftPackageBuild:
+                    return try await swiftPackageBuildTool.execute(arguments: arguments)
+                case .swiftPackageTest:
+                    return try await swiftPackageTestTool.execute(arguments: arguments)
+                case .swiftPackageRun:
+                    return try await swiftPackageRunTool.execute(arguments: arguments)
+                case .swiftPackageClean:
+                    return try await swiftPackageCleanTool.execute(arguments: arguments)
+                case .swiftPackageList:
+                    return try await swiftPackageListTool.execute(arguments: arguments)
+                case .swiftPackageStop:
+                    return try await swiftPackageStopTool.execute(arguments: arguments)
+                // Session tools
+                case .setSessionDefaults:
+                    return try await setSessionDefaultsTool.execute(arguments: arguments)
+                case .showSessionDefaults:
+                    return try await showSessionDefaultsTool.execute(arguments: arguments)
+                case .clearSessionDefaults:
+                    return try await clearSessionDefaultsTool.execute(arguments: arguments)
             }
         }
 

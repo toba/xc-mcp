@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 /// Tracks active video recording sessions
 actor VideoRecordingManager {
@@ -13,11 +13,11 @@ actor VideoRecordingManager {
     }
 
     func stopRecording(sessionId: String) -> Process? {
-        return activeSessions.removeValue(forKey: sessionId)
+        activeSessions.removeValue(forKey: sessionId)
     }
 
     func getActiveSessionIds() -> [String] {
-        return Array(activeSessions.keys)
+        Array(activeSessions.keys)
     }
 }
 
@@ -34,7 +34,7 @@ public struct RecordSimVideoTool: Sendable {
         Tool(
             name: "record_sim_video",
             description:
-                "Start or stop video recording on a simulator. Use action 'start' to begin recording and 'stop' to end it.",
+            "Start or stop video recording on a simulator. Use action 'start' to begin recording and 'stop' to end it.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -42,30 +42,30 @@ public struct RecordSimVideoTool: Sendable {
                         "type": .string("string"),
                         "enum": .array([.string("start"), .string("stop"), .string("list")]),
                         "description": .string(
-                            "Action to perform: 'start' to begin recording, 'stop' to end recording, 'list' to show active recordings."
+                            "Action to perform: 'start' to begin recording, 'stop' to end recording, 'list' to show active recordings.",
                         ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "output_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path for the output video file (e.g., '/tmp/recording.mp4'). Required for 'start' action."
+                            "Path for the output video file (e.g., '/tmp/recording.mp4'). Required for 'start' action.",
                         ),
                     ]),
                     "session_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Session ID returned from 'start' action. Required for 'stop' action."
+                            "Session ID returned from 'start' action. Required for 'stop' action.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("action")]),
-            ])
+            ]),
         )
     }
 
@@ -75,16 +75,16 @@ public struct RecordSimVideoTool: Sendable {
         }
 
         switch action {
-        case "start":
-            return try await startRecording(arguments: arguments)
-        case "stop":
-            return try await stopRecording(arguments: arguments)
-        case "list":
-            return try await listRecordings()
-        default:
-            throw MCPError.invalidParams(
-                "Invalid action: \(action). Use 'start', 'stop', or 'list'."
-            )
+            case "start":
+                return try await startRecording(arguments: arguments)
+            case "stop":
+                return try await stopRecording(arguments: arguments)
+            case "list":
+                return try await listRecordings()
+            default:
+                throw MCPError.invalidParams(
+                    "Invalid action: \(action). Use 'start', 'stop', or 'list'.",
+                )
         }
     }
 
@@ -101,18 +101,18 @@ public struct RecordSimVideoTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
         do {
             let process = try await simctlRunner.recordVideo(
-                udid: simulator, outputPath: outputPath
+                udid: simulator, outputPath: outputPath,
             )
             let sessionId = UUID().uuidString
 
             await VideoRecordingManager.shared.startRecording(
-                sessionId: sessionId, process: process
+                sessionId: sessionId, process: process,
             )
 
             return CallTool.Result(
@@ -123,10 +123,12 @@ public struct RecordSimVideoTool: Sendable {
                         Output: \(outputPath)
                         Session ID: \(sessionId)
 
-                        Use record_sim_video with action='stop' and session_id='\(sessionId)' to stop recording.
-                        """
-                    )
-                ]
+                        Use record_sim_video with action='stop' and session_id='\(
+                            sessionId
+                        )' to stop recording.
+                        """,
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError("Failed to start recording: \(error.localizedDescription)")
@@ -141,7 +143,7 @@ public struct RecordSimVideoTool: Sendable {
         guard let process = await VideoRecordingManager.shared.stopRecording(sessionId: sessionId)
         else {
             throw MCPError.invalidParams(
-                "No active recording found with session ID: \(sessionId). Use action='list' to see active recordings."
+                "No active recording found with session ID: \(sessionId). Use action='list' to see active recordings.",
             )
         }
 
@@ -153,8 +155,8 @@ public struct RecordSimVideoTool: Sendable {
 
         return CallTool.Result(
             content: [
-                .text("Stopped video recording. Session ID: \(sessionId)")
-            ]
+                .text("Stopped video recording. Session ID: \(sessionId)"),
+            ],
         )
     }
 
@@ -163,7 +165,7 @@ public struct RecordSimVideoTool: Sendable {
 
         if sessionIds.isEmpty {
             return CallTool.Result(
-                content: [.text("No active video recordings.")]
+                content: [.text("No active video recordings.")],
             )
         }
 

@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("RemoveAppExtensionTool Tests")
@@ -17,7 +16,8 @@ struct RemoveAppExtensionToolTests {
         #expect(toolDefinition.name == "remove_app_extension")
         #expect(
             toolDefinition.description
-                == "Remove an App Extension target from the project and its embedding from the host app"
+                ==
+                "Remove an App Extension target from the project and its embedding from the host app",
         )
     }
 
@@ -28,14 +28,14 @@ struct RemoveAppExtensionToolTests {
         // Missing project_path
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
-                "extension_name": Value.string("MyWidget")
+                "extension_name": Value.string("MyWidget"),
             ])
         }
 
         // Missing extension_name
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
-                "project_path": Value.string("/path/to/project.xcodeproj")
+                "project_path": Value.string("/path/to/project.xcodeproj"),
             ])
         }
     }
@@ -44,7 +44,7 @@ struct RemoveAppExtensionToolTests {
     func removeWidgetExtension() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
-                UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -54,7 +54,7 @@ struct RemoveAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         // First add an extension
@@ -98,7 +98,7 @@ struct RemoveAppExtensionToolTests {
     func removeNonExistentExtension() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
-                UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -108,7 +108,7 @@ struct RemoveAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -128,7 +128,7 @@ struct RemoveAppExtensionToolTests {
     func removeNonExtensionTargetFails() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
-                UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -138,7 +138,7 @@ struct RemoveAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -158,7 +158,7 @@ struct RemoveAppExtensionToolTests {
     func removeExtensionCleansUpEmbedPhase() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
-                UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -168,7 +168,7 @@ struct RemoveAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         // Add an extension
@@ -204,7 +204,7 @@ struct RemoveAppExtensionToolTests {
     func removeMultipleExtensions() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
-                UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -214,7 +214,7 @@ struct RemoveAppExtensionToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath
+            name: "TestProject", targetName: "TestApp", at: projectPath,
         )
 
         // Add two extensions

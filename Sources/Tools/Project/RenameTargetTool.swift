@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct RenameTargetTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct RenameTargetTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -35,21 +35,21 @@ public struct RenameTargetTool: Sendable {
                     "new_bundle_identifier": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier for the renamed target (optional)"
+                            "Bundle identifier for the renamed target (optional)",
                         ),
                     ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("target_name"), .string("new_name"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"],
-            case let .string(newName) = arguments["new_name"]
+              case let .string(targetName) = arguments["target_name"],
+              case let .string(newName) = arguments["new_name"]
         else {
             throw MCPError.invalidParams("project_path, target_name, and new_name are required")
         }
@@ -75,8 +75,8 @@ public struct RenameTargetTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project")
-                    ]
+                        .text("Target '\(targetName)' not found in project"),
+                    ],
                 )
             }
 
@@ -84,8 +84,8 @@ public struct RenameTargetTool: Sendable {
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == newName }) {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(newName)' already exists in project")
-                    ]
+                        .text("Target '\(newName)' already exists in project"),
+                    ],
                 )
             }
 
@@ -103,10 +103,10 @@ public struct RenameTargetTool: Sendable {
 
                     // INFOPLIST_FILE — string-replace old name with new name
                     if let infoPlist = config.buildSettings["INFOPLIST_FILE"]?.stringValue,
-                        infoPlist.contains(targetName)
+                       infoPlist.contains(targetName)
                     {
                         let newInfoPlist = infoPlist.replacingOccurrences(
-                            of: targetName, with: newName
+                            of: targetName, with: newName,
                         )
                         config.buildSettings["INFOPLIST_FILE"] = .string(newInfoPlist)
                     }
@@ -122,14 +122,14 @@ public struct RenameTargetTool: Sendable {
                         entitlements.contains(targetName)
                     {
                         config.buildSettings["CODE_SIGN_ENTITLEMENTS"] = .string(
-                            entitlements.replacingOccurrences(of: targetName, with: newName)
+                            entitlements.replacingOccurrences(of: targetName, with: newName),
                         )
                     }
 
                     // Bundle identifier — update if new_bundle_identifier provided
                     if let newBundleIdentifier {
                         config.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"] = .string(
-                            newBundleIdentifier
+                            newBundleIdentifier,
                         )
                         config.buildSettings["BUNDLE_IDENTIFIER"] = .string(newBundleIdentifier)
                     }
@@ -147,10 +147,10 @@ public struct RenameTargetTool: Sendable {
 
                     // TEST_HOST — string-replace old name with new name
                     if let testHost = config.buildSettings["TEST_HOST"]?.stringValue,
-                        testHost.contains(targetName)
+                       testHost.contains(targetName)
                     {
                         config.buildSettings["TEST_HOST"] = .string(
-                            testHost.replacingOccurrences(of: targetName, with: newName)
+                            testHost.replacingOccurrences(of: targetName, with: newName),
                         )
                     }
 
@@ -159,7 +159,7 @@ public struct RenameTargetTool: Sendable {
                         in: &config.buildSettings,
                         key: "LD_RUNPATH_SEARCH_PATHS",
                         oldName: targetName,
-                        newName: newName
+                        newName: newName,
                     )
 
                     // FRAMEWORK_SEARCH_PATHS — handle string or array
@@ -167,7 +167,7 @@ public struct RenameTargetTool: Sendable {
                         in: &config.buildSettings,
                         key: "FRAMEWORK_SEARCH_PATHS",
                         oldName: targetName,
-                        newName: newName
+                        newName: newName,
                     )
                 }
             }
@@ -188,11 +188,11 @@ public struct RenameTargetTool: Sendable {
                     guard let copyPhase = buildPhase as? PBXCopyFilesBuildPhase else { continue }
                     for buildFile in copyPhase.files ?? [] {
                         if let fileRef = buildFile.file,
-                            let path = fileRef.path,
-                            path.contains(targetName)
+                           let path = fileRef.path,
+                           path.contains(targetName)
                         {
                             fileRef.path = path.replacingOccurrences(
-                                of: targetName, with: newName
+                                of: targetName, with: newName,
                             )
                         }
                     }
@@ -211,12 +211,12 @@ public struct RenameTargetTool: Sendable {
 
             // 7. Rename target group in main group hierarchy
             if let project = try xcodeproj.pbxproj.rootProject(),
-                let mainGroup = project.mainGroup
+               let mainGroup = project.mainGroup
             {
                 func renameGroup(in group: PBXGroup) {
                     for child in group.children {
                         if let childGroup = child as? PBXGroup,
-                            childGroup.name == targetName
+                           childGroup.name == targetName
                         {
                             childGroup.name = newName
                             if childGroup.path == targetName {
@@ -238,7 +238,7 @@ public struct RenameTargetTool: Sendable {
             let schemesUpdated = updateSchemeFiles(
                 projectPath: projectURL.path,
                 oldName: targetName,
-                newName: newName
+                newName: newName,
             )
 
             var message = "Successfully renamed target '\(targetName)' to '\(newName)'"
@@ -248,11 +248,11 @@ public struct RenameTargetTool: Sendable {
             }
 
             return CallTool.Result(
-                content: [.text(message)]
+                content: [.text(message)],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to rename target in Xcode project: \(error.localizedDescription)"
+                "Failed to rename target in Xcode project: \(error.localizedDescription)",
             )
         }
     }
@@ -262,21 +262,21 @@ public struct RenameTargetTool: Sendable {
         in buildSettings: inout BuildSettings,
         key: String,
         oldName: String,
-        newName: String
+        newName: String,
     ) {
         guard let value = buildSettings[key] else { return }
         switch value {
-        case let .string(str):
-            if str.contains(oldName) {
-                buildSettings[key] = .string(
-                    str.replacingOccurrences(of: oldName, with: newName)
-                )
-            }
-        case let .array(arr):
-            let updated = arr.map { $0.replacingOccurrences(of: oldName, with: newName) }
-            if updated != arr {
-                buildSettings[key] = .array(updated)
-            }
+            case let .string(str):
+                if str.contains(oldName) {
+                    buildSettings[key] = .string(
+                        str.replacingOccurrences(of: oldName, with: newName),
+                    )
+                }
+            case let .array(arr):
+                let updated = arr.map { $0.replacingOccurrences(of: oldName, with: newName) }
+                if updated != arr {
+                    buildSettings[key] = .array(updated)
+                }
         }
     }
 
@@ -285,7 +285,7 @@ public struct RenameTargetTool: Sendable {
     private func updateSchemeFiles(
         projectPath: String,
         oldName: String,
-        newName: String
+        newName: String,
     ) -> Int {
         let fm = FileManager.default
         var schemeDirs: [String] = []
@@ -321,13 +321,13 @@ public struct RenameTargetTool: Sendable {
                 // Replace BuildableName (preserves extension)
                 content = content.replacingOccurrences(
                     of: "BuildableName = \"\(oldName).",
-                    with: "BuildableName = \"\(newName)."
+                    with: "BuildableName = \"\(newName).",
                 )
 
                 // Replace BlueprintName
                 content = content.replacingOccurrences(
                     of: "BlueprintName = \"\(oldName)\"",
-                    with: "BlueprintName = \"\(newName)\""
+                    with: "BlueprintName = \"\(newName)\"",
                 )
 
                 if content != original {

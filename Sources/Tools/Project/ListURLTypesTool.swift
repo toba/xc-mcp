@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct ListURLTypesTool: Sendable {
     private let pathUtility: PathUtility
@@ -15,14 +15,14 @@ public struct ListURLTypesTool: Sendable {
         Tool(
             name: "list_url_types",
             description:
-                "List all URL types (CFBundleURLTypes) declared in a target's Info.plist. URL types define custom URL schemes the app can handle.",
+            "List all URL types (CFBundleURLTypes) declared in a target's Info.plist. URL types define custom URL schemes the app can handle.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -31,13 +31,13 @@ public struct ListURLTypesTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("project_path"), .string("target_name")]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"]
+              case let .string(targetName) = arguments["target_name"]
         else {
             throw MCPError.invalidParams("project_path and target_name are required")
         }
@@ -51,33 +51,33 @@ public struct ListURLTypesTool: Sendable {
 
             guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")]
+                    content: [.text("Target '\(targetName)' not found in project")],
                 )
             }
 
             guard
                 let plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName
+                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
                 )
             else {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "No Info.plist found for target '\(targetName)'. The target may use a generated Info.plist with no physical file."
-                        )
-                    ]
+                            "No Info.plist found for target '\(targetName)'. The target may use a generated Info.plist with no physical file.",
+                        ),
+                    ],
                 )
             }
 
             let plist = try InfoPlistUtility.readInfoPlist(path: plistPath)
 
             guard let urlTypes = plist["CFBundleURLTypes"] as? [[String: Any]],
-                !urlTypes.isEmpty
+                  !urlTypes.isEmpty
             else {
                 return CallTool.Result(
                     content: [
-                        .text("No URL types (CFBundleURLTypes) found in '\(targetName)'")
-                    ]
+                        .text("No URL types (CFBundleURLTypes) found in '\(targetName)'"),
+                    ],
                 )
             }
 
@@ -109,13 +109,13 @@ public struct ListURLTypesTool: Sendable {
             }
 
             return CallTool.Result(content: [
-                .text(output.trimmingCharacters(in: .whitespacesAndNewlines))
+                .text(output.trimmingCharacters(in: .whitespacesAndNewlines)),
             ])
         } catch let error as MCPError {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to list URL types: \(error.localizedDescription)"
+                "Failed to list URL types: \(error.localizedDescription)",
             )
         }
     }

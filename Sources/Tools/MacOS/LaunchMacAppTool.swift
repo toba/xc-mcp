@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct LaunchMacAppTool: Sendable {
     private let sessionManager: SessionManager
@@ -13,38 +13,38 @@ public struct LaunchMacAppTool: Sendable {
         Tool(
             name: "launch_mac_app",
             description:
-                "Launch a macOS app by its path or bundle identifier.",
+            "Launch a macOS app by its path or bundle identifier.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "app_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .app bundle to launch (e.g., '/path/to/MyApp.app')."
+                            "Path to the .app bundle to launch (e.g., '/path/to/MyApp.app').",
                         ),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Bundle identifier of the app to launch (e.g., 'com.example.MyApp'). Alternative to app_path."
+                            "Bundle identifier of the app to launch (e.g., 'com.example.MyApp'). Alternative to app_path.",
                         ),
                     ]),
                     "new_instance": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, launches a new instance even if the app is already running. Defaults to false."
+                            "If true, launches a new instance even if the app is already running. Defaults to false.",
                         ),
                     ]),
                     "hide": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, launches the app hidden (in background). Defaults to false."
+                            "If true, launches the app hidden (in background). Defaults to false.",
                         ),
                     ]),
                     "wait": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, waits for the app to exit before returning. Defaults to false."
+                            "If true, waits for the app to exit before returning. Defaults to false.",
                         ),
                     ]),
                     "args": .object([
@@ -54,7 +54,7 @@ public struct LaunchMacAppTool: Sendable {
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -63,7 +63,7 @@ public struct LaunchMacAppTool: Sendable {
         let bundleId = arguments.getString("bundle_id")
 
         // Validate we have either app_path or bundle_id
-        if appPath == nil && bundleId == nil {
+        if appPath == nil, bundleId == nil {
             throw MCPError.invalidParams("Either app_path or bundle_id is required.")
         }
 
@@ -123,11 +123,11 @@ public struct LaunchMacAppTool: Sendable {
                     NextStepHints.content(hints: [
                         NextStepHint(
                             tool: "screenshot_mac_window",
-                            description: "Take a screenshot of a macOS window"
+                            description: "Take a screenshot of a macOS window",
                         ),
                         NextStepHint(
                             tool: "interact_ui_tree",
-                            description: "Inspect the app's accessibility UI tree"
+                            description: "Inspect the app's accessibility UI tree",
                         ),
                     ]),
                 ])

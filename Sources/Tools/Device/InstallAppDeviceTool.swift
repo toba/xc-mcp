@@ -1,13 +1,13 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct InstallAppDeviceTool: Sendable {
     private let deviceCtlRunner: DeviceCtlRunner
     private let sessionManager: SessionManager
 
     public init(
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager
+        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
     ) {
         self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
@@ -27,12 +27,12 @@ public struct InstallAppDeviceTool: Sendable {
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device UDID. Uses session default if not specified."
+                            "Device UDID. Uses session default if not specified.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("app_path")]),
-            ])
+            ]),
         )
     }
 
@@ -46,12 +46,12 @@ public struct InstallAppDeviceTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text("Successfully installed app at '\(appPath)' on device '\(device)'")
-                    ]
+                        .text("Successfully installed app at '\(appPath)' on device '\(device)'"),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to install app: \(result.errorOutput)"
+                    "Failed to install app: \(result.errorOutput)",
                 )
             }
         } catch {

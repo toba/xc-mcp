@@ -14,11 +14,11 @@ public enum BuildSettingExtractor {
     public static func extractSetting(_ key: String, from buildSettings: String) -> String? {
         // Try JSON format first
         if let data = buildSettings.data(using: .utf8),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+           let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         {
             for entry in json {
                 if let settings = entry["buildSettings"] as? [String: Any],
-                    let value = settings[key] as? String
+                   let value = settings[key] as? String
                 {
                     return value
                 }
@@ -43,11 +43,11 @@ public enum BuildSettingExtractor {
     public static func extractBundleId(from buildSettings: String) -> String? {
         // Try JSON format first (most reliable)
         if let data = buildSettings.data(using: .utf8),
-            let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+           let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         {
             for targetSettings in parsed {
                 if let settings = targetSettings["buildSettings"] as? [String: Any],
-                    let bundleId = settings["PRODUCT_BUNDLE_IDENTIFIER"] as? String
+                   let bundleId = settings["PRODUCT_BUNDLE_IDENTIFIER"] as? String
                 {
                     if !bundleId.contains("$(") {
                         return bundleId
@@ -82,7 +82,7 @@ public enum BuildSettingExtractor {
     /// - Returns: The product name, or nil if not found.
     public static func extractProductName(from buildSettings: String) -> String? {
         if let value = extractSetting("PRODUCT_NAME", from: buildSettings),
-            !value.contains("$(")
+           !value.contains("$(")
         {
             return value
         }

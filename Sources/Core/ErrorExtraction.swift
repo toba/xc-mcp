@@ -1,5 +1,5 @@
-import Foundation
 import MCP
+import Foundation
 
 /// Utilities for extracting error information from build and test output.
 public enum ErrorExtractor {
@@ -40,20 +40,20 @@ public enum ErrorExtractor {
         succeeded: Bool,
         context: String,
         xcresultPath: String? = nil,
-        stderr: String? = nil
+        stderr: String? = nil,
     ) throws -> CallTool.Result {
         var testResult: String
 
         // Try xcresult bundle first for complete failure messages and test output
         if let xcresultPath,
-            let xcresultData = XCResultParser.parseTestResults(at: xcresultPath)
+           let xcresultData = XCResultParser.parseTestResults(at: xcresultPath)
         {
             testResult = formatXCResultData(xcresultData)
 
             // When xcresult shows no tests ran (0 passed, 0 failed) and the run failed,
             // the build likely failed before tests could execute. Fall back to parsing
             // stdout for compiler/linker errors that the xcresult doesn't capture.
-            if !succeeded && xcresultData.passedCount == 0 && xcresultData.failedCount == 0 {
+            if !succeeded, xcresultData.passedCount == 0, xcresultData.failedCount == 0 {
                 let buildErrors = extractTestResults(from: output)
                 if !buildErrors.isEmpty {
                     testResult += "\n\n" + buildErrors
@@ -71,9 +71,20 @@ public enum ErrorExtractor {
             }
         }
 
+        // Detect UI test misconfiguration (missing target application)
+        if !succeeded,
+           output.contains("NSInternalInconsistencyException"),
+           output.contains("XCTestConfiguration")
+           || output.contains("targetApplicationBundleID")
+        {
+            testResult +=
+                "\n\nUI test target has no target application configured. "
+                + "Use set_test_target_application to configure the host app in the scheme's Test action."
+        }
+
         if succeeded {
             return CallTool.Result(
-                content: [.text("Tests passed for \(context)\n\n\(testResult)")]
+                content: [.text("Tests passed for \(context)\n\n\(testResult)")],
             )
         } else {
             throw MCPError.internalError("Tests failed:\n\(testResult)")
@@ -98,7 +109,7 @@ public enum ErrorExtractor {
         let passed = data.passedCount
         let failed = data.failedCount
         var header: String
-        if failed == 0 && passed > 0 {
+        if failed == 0, passed > 0 {
             header = "Tests passed"
         } else if failed > 0 {
             header = "Tests failed"
@@ -149,38 +160,38 @@ public enum ErrorExtractor {
         var warnings: [String] = []
 
         // testmanagerd crash (SIGSEGV, SIGABRT, etc.)
-        if stderr.contains("testmanagerd")
-            && (stderr.contains("crash") || stderr.contains("SIGSEGV")
-                || stderr.contains("SIGABRT") || stderr.contains("SIGBUS")
-                || stderr.contains("pointer authentication")
-                || stderr.contains("pointer auth")
-                || stderr.contains("EXC_BAD_ACCESS"))
+        if stderr.contains("testmanagerd"),
+           stderr.contains("crash") || stderr.contains("SIGSEGV")
+           || stderr.contains("SIGABRT") || stderr.contains("SIGBUS")
+           || stderr.contains("pointer authentication")
+           || stderr.contains("pointer auth")
+           || stderr.contains("EXC_BAD_ACCESS")
         {
             warnings.append(
                 "Warning: testmanagerd crashed during the test run. "
                     + "Test results may be incomplete or unreliable. "
-                    + "Consider re-running the tests."
+                    + "Consider re-running the tests.",
             )
         }
 
         // testmanagerd mentioned with "terminated" or "exited"
-        if stderr.contains("testmanagerd")
-            && (stderr.contains("terminated unexpectedly")
-                || stderr.contains("exited unexpectedly")
-                || stderr.contains("lost connection"))
+        if stderr.contains("testmanagerd"),
+           stderr.contains("terminated unexpectedly")
+           || stderr.contains("exited unexpectedly")
+           || stderr.contains("lost connection")
         {
             if warnings.isEmpty {
                 warnings.append(
                     "Warning: testmanagerd terminated unexpectedly during the test run. "
-                        + "Test results may be incomplete."
+                        + "Test results may be incomplete.",
                 )
             }
         }
 
         // XCTest runner daemon issues
-        if stderr.contains("IDETestRunnerDaemon") && stderr.contains("crash") {
+        if stderr.contains("IDETestRunnerDaemon"), stderr.contains("crash") {
             warnings.append(
-                "Warning: The test runner daemon crashed during the test run."
+                "Warning: The test runner daemon crashed during the test run.",
             )
         }
 

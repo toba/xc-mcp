@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct LaunchAppSimTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -21,19 +21,19 @@ public struct LaunchAppSimTool: Sendable {
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The bundle identifier of the app to launch (e.g., 'com.example.MyApp')."
+                            "The bundle identifier of the app to launch (e.g., 'com.example.MyApp').",
                         ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "wait_for_debugger": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "If true, the app will wait for a debugger to attach before continuing. Defaults to false."
+                            "If true, the app will wait for a debugger to attach before continuing. Defaults to false.",
                         ),
                     ]),
                     "args": .object([
@@ -43,7 +43,7 @@ public struct LaunchAppSimTool: Sendable {
                     ]),
                 ]),
                 "required": .array([.string("bundle_id")]),
-            ])
+            ]),
         )
     }
 
@@ -58,7 +58,7 @@ public struct LaunchAppSimTool: Sendable {
                 udid: simulator,
                 bundleId: bundleId,
                 waitForDebugger: waitForDebugger,
-                args: launchArgs
+                args: launchArgs,
             )
 
             if result.succeeded {
@@ -75,20 +75,20 @@ public struct LaunchAppSimTool: Sendable {
                     NextStepHints.content(hints: [
                         NextStepHint(
                             tool: "screenshot",
-                            description: "Take a screenshot to verify the result"
+                            description: "Take a screenshot to verify the result",
                         ),
                         NextStepHint(
-                            tool: "tap", description: "Tap a UI element (provide x, y coordinates)"
+                            tool: "tap", description: "Tap a UI element (provide x, y coordinates)",
                         ),
                         NextStepHint(
                             tool: "debug_attach_sim",
-                            description: "Attach the debugger to the running app"
+                            description: "Attach the debugger to the running app",
                         ),
                     ]),
                 ])
             } else {
                 throw MCPError.internalError(
-                    "Failed to launch app: \(result.errorOutput)"
+                    "Failed to launch app: \(result.errorOutput)",
                 )
             }
         } catch {

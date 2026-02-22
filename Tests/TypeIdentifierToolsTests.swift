@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("TypeIdentifierTools Tests")
@@ -12,11 +11,11 @@ struct TypeIdentifierToolsTests {
     // MARK: - Helper
 
     private func createProjectWithInfoPlist(tempDir: URL) throws -> (
-        projectPath: Path, plistPath: String
+        projectPath: Path, plistPath: String,
     ) {
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let plistDir = tempDir.appendingPathComponent("App")
@@ -24,7 +23,7 @@ struct TypeIdentifierToolsTests {
         let plistPath = plistDir.appendingPathComponent("Info.plist").path
         let emptyPlist: [String: Any] = [:]
         let data = try PropertyListSerialization.data(
-            fromPropertyList: emptyPlist, format: .xml, options: 0
+            fromPropertyList: emptyPlist, format: .xml, options: 0,
         )
         try data.write(to: URL(fileURLWithPath: plistPath))
 
@@ -58,7 +57,7 @@ struct TypeIdentifierToolsTests {
     @Test("ListTypeIdentifiersTool with no identifiers")
     func listTypeIdentifiersEmpty() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -81,7 +80,7 @@ struct TypeIdentifierToolsTests {
     @Test("ListTypeIdentifiersTool with exported identifiers")
     func listTypeIdentifiersExported() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -95,10 +94,10 @@ struct TypeIdentifierToolsTests {
                     "UTTypeDescription": "Thesis Document",
                     "UTTypeConformsTo": ["com.apple.package"],
                     "UTTypeTagSpecification": [
-                        "public.filename-extension": ["thesis.project"]
+                        "public.filename-extension": ["thesis.project"],
                     ],
-                ] as [String: Any]
-            ] as [[String: Any]]
+                ] as [String: Any],
+            ] as [[String: Any]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -122,7 +121,7 @@ struct TypeIdentifierToolsTests {
     @Test("ListTypeIdentifiersTool with kind=all shows both")
     func listTypeIdentifiersAll() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -131,10 +130,10 @@ struct TypeIdentifierToolsTests {
 
         let plist: [String: Any] = [
             "UTExportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.exported"] as [String: Any]
+                ["UTTypeIdentifier": "com.example.exported"] as [String: Any],
             ] as [[String: Any]],
             "UTImportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.imported"] as [String: Any]
+                ["UTTypeIdentifier": "com.example.imported"] as [String: Any],
             ] as [[String: Any]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
@@ -181,7 +180,7 @@ struct TypeIdentifierToolsTests {
     @Test("ManageTypeIdentifierTool add exported type")
     func manageTypeIdentifierAddExported() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -222,7 +221,7 @@ struct TypeIdentifierToolsTests {
     @Test("ManageTypeIdentifierTool add imported type")
     func manageTypeIdentifierAddImported() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -256,7 +255,7 @@ struct TypeIdentifierToolsTests {
     @Test("ManageTypeIdentifierTool add duplicate")
     func manageTypeIdentifierAddDuplicate() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -266,8 +265,8 @@ struct TypeIdentifierToolsTests {
         // Pre-populate
         let plist: [String: Any] = [
             "UTExportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.dup"] as [String: Any]
-            ] as [[String: Any]]
+                ["UTTypeIdentifier": "com.example.dup"] as [String: Any],
+            ] as [[String: Any]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -290,7 +289,7 @@ struct TypeIdentifierToolsTests {
     @Test("ManageTypeIdentifierTool update type")
     func manageTypeIdentifierUpdate() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -303,8 +302,8 @@ struct TypeIdentifierToolsTests {
                 [
                     "UTTypeIdentifier": "com.example.type",
                     "UTTypeDescription": "Old Description",
-                ] as [String: Any]
-            ] as [[String: Any]]
+                ] as [String: Any],
+            ] as [[String: Any]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -334,7 +333,7 @@ struct TypeIdentifierToolsTests {
     @Test("ManageTypeIdentifierTool remove type")
     func manageTypeIdentifierRemove() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -344,8 +343,8 @@ struct TypeIdentifierToolsTests {
         // Pre-populate
         let plist: [String: Any] = [
             "UTExportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.remove"] as [String: Any]
-            ] as [[String: Any]]
+                ["UTTypeIdentifier": "com.example.remove"] as [String: Any],
+            ] as [[String: Any]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -371,14 +370,14 @@ struct TypeIdentifierToolsTests {
     @Test("ManageTypeIdentifierTool materializes Info.plist when missing")
     func manageTypeIdentifierMaterialize() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = ManageTypeIdentifierTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -405,7 +404,7 @@ struct TypeIdentifierToolsTests {
     @Test("Full workflow: add exported, add imported, list all, remove")
     func fullTypeIdentifierWorkflow() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }

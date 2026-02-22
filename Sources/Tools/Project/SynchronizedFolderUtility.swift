@@ -7,7 +7,7 @@ enum SynchronizedFolderUtility {
     {
         for child in group.children {
             if let syncGroup = child as? PBXFileSystemSynchronizedRootGroup,
-                syncGroup.path == path
+               syncGroup.path == path
             {
                 return syncGroup
             }

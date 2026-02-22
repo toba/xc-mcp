@@ -52,7 +52,7 @@ public struct XctraceRunner: Sendable {
                 let result = XctraceResult(
                     exitCode: process.terminationStatus,
                     stdout: stdout,
-                    stderr: stderr
+                    stderr: stderr,
                 )
                 continuation.resume(returning: result)
             } catch {
@@ -83,7 +83,7 @@ public struct XctraceRunner: Sendable {
         timeLimit: String?,
         attachPID: String?,
         attachName: String?,
-        allProcesses: Bool
+        allProcesses: Bool,
     ) throws -> Process {
         var args = ["record", "--template", template, "--output", outputPath]
 
@@ -138,7 +138,7 @@ public struct XctraceRunner: Sendable {
     public func export(
         inputPath: String,
         xpath: String?,
-        toc: Bool
+        toc: Bool,
     ) async throws -> XctraceResult {
         var args = ["export", "--input", inputPath]
 

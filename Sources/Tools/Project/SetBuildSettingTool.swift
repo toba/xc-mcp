@@ -1,8 +1,8 @@
-import Foundation
 import MCP
 import PathKit
 import XCMCPCore
 import XcodeProj
+import Foundation
 
 public struct SetBuildSettingTool: Sendable {
     private let pathUtility: PathUtility
@@ -21,7 +21,7 @@ public struct SetBuildSettingTool: Sendable {
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file (relative to current directory)"
+                            "Path to the .xcodeproj file (relative to current directory)",
                         ),
                     ]),
                     "target_name": .object([
@@ -45,19 +45,19 @@ public struct SetBuildSettingTool: Sendable {
                     .string("project_path"), .string("target_name"), .string("configuration"),
                     .string("setting_name"), .string("setting_value"),
                 ]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-            case let .string(targetName) = arguments["target_name"],
-            case let .string(configuration) = arguments["configuration"],
-            case let .string(settingName) = arguments["setting_name"],
-            case let .string(settingValue) = arguments["setting_value"]
+              case let .string(targetName) = arguments["target_name"],
+              case let .string(configuration) = arguments["configuration"],
+              case let .string(settingName) = arguments["setting_name"],
+              case let .string(settingValue) = arguments["setting_value"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, configuration, setting_name, and setting_value are required"
+                "project_path, target_name, configuration, setting_name, and setting_value are required",
             )
         }
 
@@ -74,8 +74,8 @@ public struct SetBuildSettingTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project")
-                    ]
+                        .text("Target '\(targetName)' not found in project"),
+                    ],
                 )
             }
 
@@ -83,8 +83,8 @@ public struct SetBuildSettingTool: Sendable {
             guard let configList = target.buildConfigurationList else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' has no build configuration list")
-                    ]
+                        .text("Target '\(targetName)' has no build configuration list"),
+                    ],
                 )
             }
 
@@ -106,9 +106,9 @@ public struct SetBuildSettingTool: Sendable {
                     return CallTool.Result(
                         content: [
                             .text(
-                                "Configuration '\(configuration)' not found for target '\(targetName)'"
-                            )
-                        ]
+                                "Configuration '\(configuration)' not found for target '\(targetName)'",
+                            ),
+                        ],
                     )
                 }
 
@@ -123,13 +123,13 @@ public struct SetBuildSettingTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully set '\(settingName)' to '\(settingValue)' for target '\(targetName)' in configuration(s): \(configurationsText)"
-                    )
-                ]
+                        "Successfully set '\(settingName)' to '\(settingValue)' for target '\(targetName)' in configuration(s): \(configurationsText)",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to set build setting in Xcode project: \(error.localizedDescription)"
+                "Failed to set build setting in Xcode project: \(error.localizedDescription)",
             )
         }
     }

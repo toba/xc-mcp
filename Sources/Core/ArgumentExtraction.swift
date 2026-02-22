@@ -96,7 +96,7 @@ extension [String: Value] {
             skipTesting: skipTestingArray.isEmpty ? nil : skipTestingArray,
             enableCodeCoverage: getBool("enable_code_coverage"),
             resultBundlePath: getString("result_bundle_path"),
-            timeout: getInt("timeout")
+            timeout: getInt("timeout"),
         )
     }
 
@@ -110,32 +110,32 @@ extension [String: Value] {
                 "type": .string("array"),
                 "items": .object(["type": .string("string")]),
                 "description": .string(
-                    "Test identifiers to run exclusively (e.g., 'MyTests/testFoo')."
+                    "Test identifiers to run exclusively (e.g., 'MyTests/testFoo').",
                 ),
             ]),
             "skip_testing": .object([
                 "type": .string("array"),
                 "items": .object(["type": .string("string")]),
                 "description": .string(
-                    "Test identifiers to skip."
+                    "Test identifiers to skip.",
                 ),
             ]),
             "enable_code_coverage": .object([
                 "type": .string("boolean"),
                 "description": .string(
-                    "Enable code coverage collection. Defaults to false."
+                    "Enable code coverage collection. Defaults to false.",
                 ),
             ]),
             "result_bundle_path": .object([
                 "type": .string("string"),
                 "description": .string(
-                    "Path to store the .xcresult bundle for coverage and test results."
+                    "Path to store the .xcresult bundle for coverage and test results.",
                 ),
             ]),
             "timeout": .object([
                 "type": .string("integer"),
                 "description": .string(
-                    "Maximum time in seconds for the test run. Defaults to 300 (5 minutes)."
+                    "Maximum time in seconds for the test run. Defaults to 300 (5 minutes).",
                 ),
             ]),
         ]
@@ -155,11 +155,11 @@ extension [String: Value] {
 
         return try entriesArray.compactMap { entryValue -> BatchTranslationEntry? in
             guard case let .object(entry) = entryValue,
-                case let .string(key) = entry["key"],
-                case let .object(translationsObj) = entry["translations"]
+                  case let .string(key) = entry["key"],
+                  case let .object(translationsObj) = entry["translations"]
             else {
                 throw MCPError.invalidParams(
-                    "Each entry must have a 'key' string and 'translations' object"
+                    "Each entry must have a 'key' string and 'translations' object",
                 )
             }
 
@@ -172,7 +172,7 @@ extension [String: Value] {
 
             guard !translations.isEmpty else {
                 throw MCPError.invalidParams(
-                    "translations for key '\(key)' must contain at least one language"
+                    "translations for key '\(key)' must contain at least one language",
                 )
             }
 

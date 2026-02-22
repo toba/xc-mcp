@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct ShowBuildSettingsTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -8,7 +8,7 @@ public struct ShowBuildSettingsTool: Sendable {
 
     public init(
         xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        sessionManager: SessionManager
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
@@ -18,50 +18,50 @@ public struct ShowBuildSettingsTool: Sendable {
         Tool(
             name: "show_build_settings",
             description:
-                "Show all build settings for a scheme. Returns detailed build settings including paths, identifiers, and compilation flags.",
+            "Show all build settings for a scheme. Returns detailed build settings including paths, identifiers, and compilation flags.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified."
+                            "Path to the .xcodeproj file. Uses session default if not specified.",
                         ),
                     ]),
                     "workspace_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified."
+                            "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
                     "scheme": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The scheme to get build settings for. Uses session default if not specified."
+                            "The scheme to get build settings for. Uses session default if not specified.",
                         ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug."
+                            "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
                     "filter": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional filter to show only settings containing this string (case-insensitive)."
+                            "Optional filter to show only settings containing this string (case-insensitive).",
                         ),
                     ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
-            from: arguments
+            from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
@@ -72,7 +72,7 @@ public struct ShowBuildSettingsTool: Sendable {
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
-                configuration: configuration
+                configuration: configuration,
             )
 
             if result.succeeded {
@@ -80,7 +80,7 @@ public struct ShowBuildSettingsTool: Sendable {
                 return CallTool.Result(content: [.text(parsed)])
             } else {
                 throw MCPError.internalError(
-                    "Failed to get build settings: \(result.errorOutput)"
+                    "Failed to get build settings: \(result.errorOutput)",
                 )
             }
         } catch {
@@ -90,7 +90,7 @@ public struct ShowBuildSettingsTool: Sendable {
 
     private func formatBuildSettings(from json: String, filter: String?) -> String {
         guard let data = json.data(using: .utf8),
-            let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+              let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else {
             // If not JSON, return raw output (possibly filtered)
             if let filter {
@@ -105,7 +105,7 @@ public struct ShowBuildSettingsTool: Sendable {
 
         for targetSettings in parsed {
             guard let target = targetSettings["target"] as? String,
-                let settings = targetSettings["buildSettings"] as? [String: Any]
+                  let settings = targetSettings["buildSettings"] as? [String: Any]
             else {
                 continue
             }
@@ -123,7 +123,7 @@ public struct ShowBuildSettingsTool: Sendable {
                 if let filter {
                     let keyLower = key.lowercased()
                     let valueLower = String(describing: value).lowercased()
-                    if !keyLower.contains(filter) && !valueLower.contains(filter) {
+                    if !keyLower.contains(filter), !valueLower.contains(filter) {
                         continue
                     }
                 }

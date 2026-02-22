@@ -1,8 +1,7 @@
-import Foundation
 import MCP
 import Testing
 import XCMCPCore
-
+import Foundation
 @testable import XCMCPTools
 
 /// Integration tests that exercise build, run, screenshot, and preview capture
@@ -22,7 +21,7 @@ struct BuildRunScreenshotIntegrationTests {
     func build_Alamofire_iOS() async throws {
         let tool = BuildSimTool(
             xcodebuildRunner: xcodebuildRunner,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
         )
         let result = try await tool.execute(arguments: [
             "project_path": .string(IntegrationFixtures.alamofireProjectPath),
@@ -38,7 +37,7 @@ struct BuildRunScreenshotIntegrationTests {
     func build_Alamofire_macOS() async throws {
         let tool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
         )
         let result = try await tool.execute(arguments: [
             "project_path": .string(IntegrationFixtures.alamofireProjectPath),
@@ -58,7 +57,7 @@ struct BuildRunScreenshotIntegrationTests {
     func build_SwiftFormat_macOS() async throws {
         let tool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
         )
         let result = try await tool.execute(arguments: [
             "project_path": .string(IntegrationFixtures.swiftFormatProjectPath),
@@ -82,14 +81,14 @@ struct BuildRunScreenshotIntegrationTests {
         // 1. Boot simulator
         let bootTool = BootSimTool(simctlRunner: simctlRunner)
         _ = try await bootTool.execute(arguments: [
-            "simulator": .string(simulatorUDID)
+            "simulator": .string(simulatorUDID),
         ])
 
         // 2. Build and run
         let buildRunTool = BuildRunSimTool(
             xcodebuildRunner: xcodebuildRunner,
             simctlRunner: simctlRunner,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
         )
         let buildResult = try await buildRunTool.execute(arguments: [
             "project_path": .string(IntegrationFixtures.iceCubesProjectPath),
@@ -106,10 +105,10 @@ struct BuildRunScreenshotIntegrationTests {
         // 4. Screenshot
         let savePath =
             NSTemporaryDirectory()
-            + "icecubes_screenshot_\(ProcessInfo.processInfo.globallyUniqueString).png"
+                + "icecubes_screenshot_\(ProcessInfo.processInfo.globallyUniqueString).png"
         let screenshotTool = ScreenshotTool(
             simctlRunner: simctlRunner,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
         )
         let screenshotResult = try await screenshotTool.execute(arguments: [
             "simulator": .string(simulatorUDID),
@@ -143,14 +142,14 @@ struct BuildRunScreenshotIntegrationTests {
     func previewCapture_IceCubesApp() async throws {
         let simulatorUDID = try #require(IntegrationFixtures.simulatorUDID)
         let pathUtility = PathUtility(
-            basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false
+            basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
         )
 
         let tool = PreviewCaptureTool(
             xcodebuildRunner: xcodebuildRunner,
             simctlRunner: simctlRunner,
             pathUtility: pathUtility,
-            sessionManager: sessionManager
+            sessionManager: sessionManager,
         )
 
         let result = try await tool.execute(arguments: [

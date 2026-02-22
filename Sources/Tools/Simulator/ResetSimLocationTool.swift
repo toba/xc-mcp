@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct ResetSimLocationTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,19 +15,19 @@ public struct ResetSimLocationTool: Sendable {
         Tool(
             name: "reset_sim_location",
             description:
-                "Reset the simulated location on a simulator to default (no custom location).",
+            "Reset the simulated location on a simulator to default (no custom location).",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
-                    ])
+                    ]),
                 ]),
                 "required": .array([]),
-            ])
+            ]),
         )
     }
 
@@ -40,7 +40,7 @@ public struct ResetSimLocationTool: Sendable {
             simulator = sessionSimulator
         } else {
             throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly."
+                "simulator is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -50,12 +50,12 @@ public struct ResetSimLocationTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text("Successfully reset location on simulator '\(simulator)'")
-                    ]
+                        .text("Successfully reset location on simulator '\(simulator)'"),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to reset location: \(result.errorOutput)"
+                    "Failed to reset location: \(result.errorOutput)",
                 )
             }
         } catch {

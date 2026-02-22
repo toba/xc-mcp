@@ -1,13 +1,13 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct GetDeviceAppPathTool: Sendable {
     private let deviceCtlRunner: DeviceCtlRunner
     private let sessionManager: SessionManager
 
     public init(
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager
+        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
     ) {
         self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
@@ -17,25 +17,25 @@ public struct GetDeviceAppPathTool: Sendable {
         Tool(
             name: "get_device_app_path",
             description:
-                "Get information about an installed app on a connected device, including its installation path.",
+            "Get information about an installed app on a connected device, including its installation path.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The bundle identifier of the app (e.g., 'com.example.MyApp')."
+                            "The bundle identifier of the app (e.g., 'com.example.MyApp').",
                         ),
                     ]),
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device UDID. Uses session default if not specified."
+                            "Device UDID. Uses session default if not specified.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("bundle_id")]),
-            ])
+            ]),
         )
     }
 
@@ -52,7 +52,7 @@ public struct GetDeviceAppPathTool: Sendable {
             device = sessionDevice
         } else {
             throw MCPError.invalidParams(
-                "device is required. Set it with set_session_defaults or pass it directly."
+                "device is required. Set it with set_session_defaults or pass it directly.",
             )
         }
 
@@ -63,13 +63,13 @@ public struct GetDeviceAppPathTool: Sendable {
                 return CallTool.Result(
                     content: [
                         .text(
-                            "App info for '\(bundleId)' on device '\(device)':\n\n\(result.stdout)"
-                        )
-                    ]
+                            "App info for '\(bundleId)' on device '\(device)':\n\n\(result.stdout)",
+                        ),
+                    ],
                 )
             } else {
                 throw MCPError.internalError(
-                    "Failed to get app info: \(result.errorOutput)"
+                    "Failed to get app info: \(result.errorOutput)",
                 )
             }
         } catch {

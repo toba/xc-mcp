@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct GetSimAppPathTool: Sendable {
     private let simctlRunner: SimctlRunner
@@ -15,31 +15,31 @@ public struct GetSimAppPathTool: Sendable {
         Tool(
             name: "get_sim_app_path",
             description:
-                "Get the path to an app's container on a simulator. Useful for finding where the app is installed or its data directory.",
+            "Get the path to an app's container on a simulator. Useful for finding where the app is installed or its data directory.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "bundle_id": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The bundle identifier of the app (e.g., 'com.example.MyApp')."
+                            "The bundle identifier of the app (e.g., 'com.example.MyApp').",
                         ),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified."
+                            "Simulator UDID or name. Uses session default if not specified.",
                         ),
                     ]),
                     "container": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "The container type: 'app' (the .app bundle), 'data' (the app's data directory), 'groups' (app groups), or a specific app group identifier. Defaults to 'app'."
+                            "The container type: 'app' (the .app bundle), 'data' (the app's data directory), 'groups' (app groups), or a specific app group identifier. Defaults to 'app'.",
                         ),
                     ]),
                 ]),
                 "required": .array([.string("bundle_id")]),
-            ])
+            ]),
         )
     }
 
@@ -52,19 +52,19 @@ public struct GetSimAppPathTool: Sendable {
             let path = try await simctlRunner.getAppContainer(
                 udid: simulator,
                 bundleId: bundleId,
-                container: container
+                container: container,
             )
 
             return CallTool.Result(
                 content: [
                     .text(
-                        "App container path for '\(bundleId)' (\(container)):\n\(path)"
-                    )
-                ]
+                        "App container path for '\(bundleId)' (\(container)):\n\(path)",
+                    ),
+                ],
             )
         } catch {
             throw MCPError.internalError(
-                "Failed to get app container path: \(error.localizedDescription)"
+                "Failed to get app container path: \(error.localizedDescription)",
             )
         }
     }

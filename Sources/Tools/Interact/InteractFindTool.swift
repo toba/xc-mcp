@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct InteractFindTool: Sendable {
     private let interactRunner: InteractRunner
@@ -13,7 +13,7 @@ public struct InteractFindTool: Sendable {
         Tool(
             name: "interact_find",
             description:
-                "Search for UI elements by role, title, identifier, or value with substring matching. "
+            "Search for UI elements by role, title, identifier, or value with substring matching. "
                 + "Returns matching elements and caches the full tree for subsequent interact_ calls. "
                 + "Default search depth is 10.",
             inputSchema: .object(
@@ -24,38 +24,38 @@ public struct InteractFindTool: Sendable {
                             "role": .object([
                                 "type": .string("string"),
                                 "description": .string(
-                                    "AX role to match (e.g., 'AXButton', 'AXTextField'). Case-insensitive substring match."
+                                    "AX role to match (e.g., 'AXButton', 'AXTextField'). Case-insensitive substring match.",
                                 ),
                             ]),
                             "title": .object([
                                 "type": .string("string"),
                                 "description": .string(
-                                    "Title text to match. Case-insensitive substring match."
+                                    "Title text to match. Case-insensitive substring match.",
                                 ),
                             ]),
                             "identifier": .object([
                                 "type": .string("string"),
                                 "description": .string(
-                                    "Accessibility identifier to match. Case-insensitive substring match."
+                                    "Accessibility identifier to match. Case-insensitive substring match.",
                                 ),
                             ]),
                             "value": .object([
                                 "type": .string("string"),
                                 "description": .string(
-                                    "Value to match. Case-insensitive substring match."
+                                    "Value to match. Case-insensitive substring match.",
                                 ),
                             ]),
                             "max_depth": .object([
                                 "type": .string("integer"),
                                 "description": .string(
-                                    "Maximum depth to search. Default 10."
+                                    "Maximum depth to search. Default 10.",
                                 ),
                             ]),
-                        ]) { _, new in new }
+                        ]) { _, new in new },
                     ),
                     "required": .array([]),
-                ]
-            )
+                ],
+            ),
         )
     }
 
@@ -69,7 +69,7 @@ public struct InteractFindTool: Sendable {
 
         guard role != nil || title != nil || identifier != nil || value != nil else {
             throw MCPError.invalidParams(
-                "At least one search criterion (role, title, identifier, value) is required."
+                "At least one search criterion (role, title, identifier, value) is required.",
             )
         }
 
@@ -87,7 +87,7 @@ public struct InteractFindTool: Sendable {
                 return false
             }
             if let identifier,
-                element.identifier?.localizedCaseInsensitiveContains(identifier) != true
+               element.identifier?.localizedCaseInsensitiveContains(identifier) != true
             {
                 return false
             }
@@ -99,7 +99,7 @@ public struct InteractFindTool: Sendable {
 
         var lines: [String] = []
         lines.append(
-            "Found \(matches.count) matching element(s) (searched \(fullTree.count) total, depth=\(maxDepth)):"
+            "Found \(matches.count) matching element(s) (searched \(fullTree.count) total, depth=\(maxDepth)):",
         )
         lines.append("")
         for (element, _) in matches {

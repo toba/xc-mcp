@@ -14,27 +14,46 @@ public enum TestPlanFile {
     public static func write(_ json: [String: Any], to path: String) throws {
         let data = try JSONSerialization.data(
             withJSONObject: json,
-            options: [.prettyPrinted, .sortedKeys]
+            options: [.prettyPrinted, .sortedKeys],
         )
         try data.write(to: URL(fileURLWithPath: path))
     }
 
     /// Extracts test target names from a test plan JSON dictionary.
     public static func targetNames(from json: [String: Any]) -> [String] {
+        targetEntries(from: json).map(\.name)
+    }
+
+    /// Extracts test target entries with name and enabled status from a test plan JSON dictionary.
+    ///
+    /// Targets without an explicit `"enabled"` key are treated as enabled (Xcode's default).
+    public static func targetEntries(from json: [String: Any]) -> [(name: String, enabled: Bool)] {
         guard let testTargets = json["testTargets"] as? [[String: Any]] else {
             return []
         }
         return testTargets.compactMap { entry in
-            guard let target = entry["target"] as? [String: Any] else { return nil }
-            return target["name"] as? String
+            guard let target = entry["target"] as? [String: Any],
+                  let name = target["name"] as? String
+            else {
+                return nil
+            }
+            let enabled = entry["enabled"] as? Bool ?? true
+            return (name: name, enabled: enabled)
         }
+    }
+
+    /// Builds a `container:` path for a project URL, used in test plan target entries.
+    ///
+    /// Returns `"container:<project-filename>"`, e.g. `"container:MyApp.xcodeproj"`.
+    public static func containerPath(for projectURL: URL) -> String {
+        "container:\(projectURL.lastPathComponent)"
     }
 
     /// Recursively finds `.xctestplan` files under the given root directory.
     ///
     /// Returns tuples of `(path, json)` for each valid test plan file found.
     public static func findFiles(
-        under root: String, maxDepth: Int = 5
+        under root: String, maxDepth: Int = 5,
     ) -> [(path: String, json: [String: Any])] {
         let fm = FileManager.default
         var results: [(path: String, json: [String: Any])] = []
@@ -43,7 +62,7 @@ public enum TestPlanFile {
             let enumerator = fm.enumerator(
                 at: URL(fileURLWithPath: root),
                 includingPropertiesForKeys: nil,
-                options: [.skipsHiddenFiles]
+                options: [.skipsHiddenFiles],
             )
         else {
             return results
@@ -74,8 +93,8 @@ public enum TestPlanFile {
 
         public var description: String {
             switch self {
-            case let .invalidFormat(path):
-                return "File at '\(path)' is not a valid test plan JSON"
+                case let .invalidFormat(path):
+                    return "File at '\(path)' is not a valid test plan JSON"
             }
         }
     }

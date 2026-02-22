@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("RenameTargetTool Tests")
@@ -17,7 +16,7 @@ struct RenameTargetToolTests {
         #expect(toolDefinition.name == "rename_target")
         #expect(
             toolDefinition.description
-                == "Rename an existing target in-place, updating all references"
+                == "Rename an existing target in-place, updating all references",
         )
     }
 
@@ -53,7 +52,7 @@ struct RenameTargetToolTests {
     @Test("Rename existing target")
     func renameExistingTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -63,7 +62,7 @@ struct RenameTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = RenameTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -96,14 +95,14 @@ struct RenameTargetToolTests {
 
         // Verify BUNDLE_IDENTIFIER preserved (not changed)
         #expect(
-            buildConfig?.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.example.App"
+            buildConfig?.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.example.App",
         )
     }
 
     @Test("Rename non-existent target")
     func renameNonExistentTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -133,7 +132,7 @@ struct RenameTargetToolTests {
     @Test("Rename to existing target name")
     func renameToExistingTargetName() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -143,7 +142,7 @@ struct RenameTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add another target
@@ -174,7 +173,7 @@ struct RenameTargetToolTests {
     @Test("Rename target with dependencies")
     func renameTargetWithDependencies() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -184,7 +183,7 @@ struct RenameTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a framework target
@@ -230,7 +229,7 @@ struct RenameTargetToolTests {
     @Test("Rename target with product reference")
     func renameTargetWithProductReference() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -240,14 +239,14 @@ struct RenameTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a product reference to the target
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
         let productRef = PBXFileReference(
-            sourceTree: .buildProductsDir, name: "App.app", path: "App.app"
+            sourceTree: .buildProductsDir, name: "App.app", path: "App.app",
         )
         xcodeproj.pbxproj.add(object: productRef)
         target.product = productRef
@@ -280,7 +279,7 @@ struct RenameTargetToolTests {
     @Test("Rename target with new bundle identifier")
     func renameTargetWithBundleIdentifier() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -290,7 +289,7 @@ struct RenameTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         let tool = RenameTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -312,15 +311,15 @@ struct RenameTargetToolTests {
         // Verify bundle identifiers updated
         let xcodeproj = try XcodeProj(path: projectPath)
         let renamedTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "NewApp" }
+            xcodeproj.pbxproj.nativeTargets.first { $0.name == "NewApp" },
         )
         for config in renamedTarget.buildConfigurationList?.buildConfigurations ?? [] {
             #expect(
                 config.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"]?.stringValue
-                    == "com.example.NewApp"
+                    == "com.example.NewApp",
             )
             #expect(
-                config.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.example.NewApp"
+                config.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.example.NewApp",
             )
         }
     }
@@ -328,7 +327,7 @@ struct RenameTargetToolTests {
     @Test("Rename target updates CODE_SIGN_ENTITLEMENTS")
     func renameTargetUpdatesEntitlements() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -338,7 +337,7 @@ struct RenameTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add CODE_SIGN_ENTITLEMENTS to build settings
@@ -365,21 +364,21 @@ struct RenameTargetToolTests {
         // Verify entitlements path updated
         let updatedProj = try XcodeProj(path: projectPath)
         let renamedTarget = try #require(
-            updatedProj.pbxproj.nativeTargets.first { $0.name == "NewApp" }
+            updatedProj.pbxproj.nativeTargets.first { $0.name == "NewApp" },
         )
         let config = try #require(
-            renamedTarget.buildConfigurationList?.buildConfigurations.first
+            renamedTarget.buildConfigurationList?.buildConfigurations.first,
         )
         #expect(
             config.buildSettings["CODE_SIGN_ENTITLEMENTS"]?.stringValue
-                == "NewApp/NewApp.entitlements"
+                == "NewApp/NewApp.entitlements",
         )
     }
 
     @Test("Rename target updates cross-target TEST_TARGET_NAME and TEST_HOST")
     func renameTargetUpdatesCrossTargetSettings() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -389,7 +388,7 @@ struct RenameTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Add a test target with TEST_TARGET_NAME and TEST_HOST
@@ -404,12 +403,12 @@ struct RenameTargetToolTests {
         // Set TEST_TARGET_NAME and TEST_HOST on the test target
         let xcodeproj = try XcodeProj(path: projectPath)
         let testTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTests" }
+            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTests" },
         )
         for config in testTarget.buildConfigurationList?.buildConfigurations ?? [] {
             config.buildSettings["TEST_TARGET_NAME"] = .string("App")
             config.buildSettings["TEST_HOST"] = .string(
-                "$(BUILT_PRODUCTS_DIR)/App.app/Contents/MacOS/App"
+                "$(BUILT_PRODUCTS_DIR)/App.app/Contents/MacOS/App",
             )
         }
         try PBXProjWriter.write(xcodeproj, to: projectPath)
@@ -431,22 +430,22 @@ struct RenameTargetToolTests {
         // Verify test target settings updated
         let updatedProj = try XcodeProj(path: projectPath)
         let updatedTestTarget = try #require(
-            updatedProj.pbxproj.nativeTargets.first { $0.name == "AppTests" }
+            updatedProj.pbxproj.nativeTargets.first { $0.name == "AppTests" },
         )
         let config = try #require(
-            updatedTestTarget.buildConfigurationList?.buildConfigurations.first
+            updatedTestTarget.buildConfigurationList?.buildConfigurations.first,
         )
         #expect(config.buildSettings["TEST_TARGET_NAME"]?.stringValue == "NewApp")
         #expect(
             config.buildSettings["TEST_HOST"]?.stringValue
-                == "$(BUILT_PRODUCTS_DIR)/NewApp.app/Contents/MacOS/NewApp"
+                == "$(BUILT_PRODUCTS_DIR)/NewApp.app/Contents/MacOS/NewApp",
         )
     }
 
     @Test("Rename target updates scheme files")
     func renameTargetUpdatesSchemeFiles() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -456,28 +455,28 @@ struct RenameTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Create a scheme file with BuildableName and BlueprintName
         let schemesDir = projectPath.string + "/xcshareddata/xcschemes"
         try FileManager.default.createDirectory(
-            atPath: schemesDir, withIntermediateDirectories: true
+            atPath: schemesDir, withIntermediateDirectories: true,
         )
         let schemeContent = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <Scheme>
-               <BuildableReference
-                  BuildableIdentifier = "primary"
-                  BlueprintIdentifier = "ABC123"
-                  BuildableName = "App.app"
-                  BlueprintName = "App"
-                  ReferencedContainer = "container:TestProject.xcodeproj">
-               </BuildableReference>
-            </Scheme>
-            """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Scheme>
+           <BuildableReference
+              BuildableIdentifier = "primary"
+              BlueprintIdentifier = "ABC123"
+              BuildableName = "App.app"
+              BlueprintName = "App"
+              ReferencedContainer = "container:TestProject.xcodeproj">
+           </BuildableReference>
+        </Scheme>
+        """
         try schemeContent.write(
-            toFile: "\(schemesDir)/App.xcscheme", atomically: true, encoding: .utf8
+            toFile: "\(schemesDir)/App.xcscheme", atomically: true, encoding: .utf8,
         )
 
         // Rename the target
@@ -497,7 +496,7 @@ struct RenameTargetToolTests {
 
         // Verify scheme file content was updated
         let updatedScheme = try String(
-            contentsOfFile: "\(schemesDir)/App.xcscheme", encoding: .utf8
+            contentsOfFile: "\(schemesDir)/App.xcscheme", encoding: .utf8,
         )
         #expect(updatedScheme.contains("BuildableName = \"NewApp.app\""))
         #expect(updatedScheme.contains("BlueprintName = \"NewApp\""))
@@ -508,7 +507,7 @@ struct RenameTargetToolTests {
     @Test("Rename target updates LD_RUNPATH_SEARCH_PATHS and FRAMEWORK_SEARCH_PATHS")
     func renameTargetUpdatesSearchPaths() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
@@ -518,7 +517,7 @@ struct RenameTargetToolTests {
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Set search paths that reference the target name
@@ -530,7 +529,7 @@ struct RenameTargetToolTests {
                 "@executable_path/../Frameworks/App",
             ])
             config.buildSettings["FRAMEWORK_SEARCH_PATHS"] = .string(
-                "$(BUILT_PRODUCTS_DIR)/App/Frameworks"
+                "$(BUILT_PRODUCTS_DIR)/App/Frameworks",
             )
         }
         try PBXProjWriter.write(xcodeproj, to: projectPath)
@@ -552,10 +551,10 @@ struct RenameTargetToolTests {
         // Verify search paths updated
         let updatedProj = try XcodeProj(path: projectPath)
         let renamedTarget = try #require(
-            updatedProj.pbxproj.nativeTargets.first { $0.name == "NewApp" }
+            updatedProj.pbxproj.nativeTargets.first { $0.name == "NewApp" },
         )
         let config = try #require(
-            renamedTarget.buildConfigurationList?.buildConfigurations.first
+            renamedTarget.buildConfigurationList?.buildConfigurations.first,
         )
 
         // LD_RUNPATH_SEARCH_PATHS (array value)
@@ -569,7 +568,7 @@ struct RenameTargetToolTests {
         // FRAMEWORK_SEARCH_PATHS (string value)
         #expect(
             config.buildSettings["FRAMEWORK_SEARCH_PATHS"]?.stringValue
-                == "$(BUILT_PRODUCTS_DIR)/NewApp/Frameworks"
+                == "$(BUILT_PRODUCTS_DIR)/NewApp/Frameworks",
         )
     }
 }

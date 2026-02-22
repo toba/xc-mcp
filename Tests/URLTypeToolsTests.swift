@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 @Suite("URLTypeTools Tests")
@@ -13,11 +12,11 @@ struct URLTypeToolsTests {
 
     /// Creates a test project with an Info.plist that has INFOPLIST_FILE set.
     private func createProjectWithInfoPlist(tempDir: URL) throws -> (
-        projectPath: Path, plistPath: String
+        projectPath: Path, plistPath: String,
     ) {
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // Create Info.plist
@@ -26,7 +25,7 @@ struct URLTypeToolsTests {
         let plistPath = plistDir.appendingPathComponent("Info.plist").path
         let emptyPlist: [String: Any] = [:]
         let data = try PropertyListSerialization.data(
-            fromPropertyList: emptyPlist, format: .xml, options: 0
+            fromPropertyList: emptyPlist, format: .xml, options: 0,
         )
         try data.write(to: URL(fileURLWithPath: plistPath))
 
@@ -61,7 +60,7 @@ struct URLTypeToolsTests {
     @Test("ListURLTypesTool with non-existent target")
     func listURLTypesNonExistentTarget() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -84,7 +83,7 @@ struct URLTypeToolsTests {
     @Test("ListURLTypesTool with no URL types")
     func listURLTypesEmpty() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -107,7 +106,7 @@ struct URLTypeToolsTests {
     @Test("ListURLTypesTool with existing URL types")
     func listURLTypesWithEntries() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -121,8 +120,8 @@ struct URLTypeToolsTests {
                     "CFBundleURLName": "app.toba.ThesisApp",
                     "CFBundleURLSchemes": ["thesisapp"],
                     "CFBundleTypeRole": "Editor",
-                ] as [String: Any]
-            ] as [[String: Any]]
+                ] as [String: Any],
+            ] as [[String: Any]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -165,7 +164,7 @@ struct URLTypeToolsTests {
     @Test("ManageURLTypeTool add URL type")
     func manageURLTypeAdd() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -201,7 +200,7 @@ struct URLTypeToolsTests {
     @Test("ManageURLTypeTool add duplicate")
     func manageURLTypeAddDuplicate() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -211,8 +210,8 @@ struct URLTypeToolsTests {
         // Pre-populate
         let plist: [String: Any] = [
             "CFBundleURLTypes": [
-                ["CFBundleURLName": "com.example.myapp"] as [String: Any]
-            ] as [[String: Any]]
+                ["CFBundleURLName": "com.example.myapp"] as [String: Any],
+            ] as [[String: Any]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -234,7 +233,7 @@ struct URLTypeToolsTests {
     @Test("ManageURLTypeTool update URL type")
     func manageURLTypeUpdate() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -248,8 +247,8 @@ struct URLTypeToolsTests {
                     "CFBundleURLName": "com.example.myapp",
                     "CFBundleTypeRole": "Viewer",
                     "CFBundleURLSchemes": ["myapp"],
-                ] as [String: Any]
-            ] as [[String: Any]]
+                ] as [String: Any],
+            ] as [[String: Any]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -280,7 +279,7 @@ struct URLTypeToolsTests {
     @Test("ManageURLTypeTool update non-existent")
     func manageURLTypeUpdateNotFound() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -305,7 +304,7 @@ struct URLTypeToolsTests {
     @Test("ManageURLTypeTool remove URL type")
     func manageURLTypeRemove() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -315,8 +314,8 @@ struct URLTypeToolsTests {
         // Pre-populate
         let plist: [String: Any] = [
             "CFBundleURLTypes": [
-                ["CFBundleURLName": "com.example.myapp"] as [String: Any]
-            ] as [[String: Any]]
+                ["CFBundleURLName": "com.example.myapp"] as [String: Any],
+            ] as [[String: Any]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -342,7 +341,7 @@ struct URLTypeToolsTests {
     @Test("ManageURLTypeTool with additional_properties")
     func manageURLTypeAdditionalProperties() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -372,14 +371,14 @@ struct URLTypeToolsTests {
     @Test("ManageURLTypeTool materializes Info.plist when missing")
     func manageURLTypeMaterialize() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "App", at: projectPath
+            name: "TestProject", targetName: "App", at: projectPath,
         )
 
         // No Info.plist exists, tool should materialize one
@@ -408,7 +407,7 @@ struct URLTypeToolsTests {
     @Test("Full workflow: add, list, update, list, remove")
     func fullURLTypeWorkflow() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString
+            UUID().uuidString,
         )
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: tempDir) }
