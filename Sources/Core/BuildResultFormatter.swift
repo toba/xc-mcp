@@ -15,7 +15,7 @@ public enum BuildResultFormatter {
     /// Warnings:
     ///   Sources/Baz.swift:88:3 — unused variable 'x'
     /// ```
-    public static func formatBuildResult(_ result: BuildResult) -> String {
+    public static func formatBuildResult(_ result: BuildResult, projectRoot: String? = nil) -> String {
         var parts: [String] = []
 
         // Header line
@@ -33,10 +33,52 @@ public enum BuildResultFormatter {
 
         // Warnings (only if non-trivial count)
         if !result.warnings.isEmpty {
-            parts.append(formatWarnings(result.warnings))
+            if let projectRoot {
+                // On success, warnings are already counted in the header — omit them
+                if result.status == "success" {
+                    // No warning details needed
+                } else {
+                    // On failure, show only project-local warnings
+                    let (projectWarnings, externalCount) = partitionWarnings(
+                        result.warnings, projectRoot: projectRoot,
+                    )
+                    if !projectWarnings.isEmpty {
+                        parts.append(formatWarnings(projectWarnings))
+                    }
+                    if externalCount > 0 {
+                        parts.append(
+                            "(+\(externalCount) warning\(externalCount == 1 ? "" : "s") from dependencies hidden)",
+                        )
+                    }
+                }
+            } else {
+                parts.append(formatWarnings(result.warnings))
+            }
         }
 
         return parts.joined(separator: "\n\n")
+    }
+
+    // MARK: - Warning Filtering
+
+    /// Partitions warnings into project-local and external based on file path.
+    ///
+    /// A warning is project-local if its file path starts with the project root.
+    /// Warnings without a file path are always treated as project-local (they can't be classified).
+    private static func partitionWarnings(
+        _ warnings: [BuildWarning], projectRoot: String,
+    ) -> (projectWarnings: [BuildWarning], externalCount: Int) {
+        let root = projectRoot.hasSuffix("/") ? projectRoot : projectRoot + "/"
+        var project: [BuildWarning] = []
+        var externalCount = 0
+        for warning in warnings {
+            if let file = warning.file, !file.hasPrefix(root) {
+                externalCount += 1
+            } else {
+                project.append(warning)
+            }
+        }
+        return (project, externalCount)
     }
 
     /// Formats a test result for display.

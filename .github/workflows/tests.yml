@@ -30,8 +30,8 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-swift-
     
-    - name: Build
-      run: swift build
-    
     - name: Run tests
       run: swift test
+
+    - name: Verify all executables build
+      run: swift build

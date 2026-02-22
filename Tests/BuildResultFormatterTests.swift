@@ -163,6 +163,157 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("main.swift:10:5"))
     }
 
+    // MARK: - Project Root Warning Filtering
+
+    @Test("Failed build with project root filters external warnings")
+    func failedBuildFiltersExternalWarnings() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 1, warnings: 3, failedTests: 0, passedTests: nil, buildTime: "8.2s",
+            ),
+            errors: [
+                BuildError(
+                    file: "/Users/dev/MyApp/Sources/App.swift", line: 10,
+                    message: "missing import", column: 1,
+                ),
+            ],
+            warnings: [
+                BuildWarning(
+                    file: "/Users/dev/MyApp/Sources/Foo.swift", line: 5,
+                    message: "unused variable 'x'",
+                ),
+                BuildWarning(
+                    file: "/Users/dev/MyApp/Pods/SomeLib/Source.swift", line: 20,
+                    message: "deprecated API",
+                ),
+                BuildWarning(
+                    file: "/Users/dev/DerivedData/Build/SomeOther.swift", line: 99,
+                    message: "implicit conversion",
+                ),
+            ],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(
+            result, projectRoot: "/Users/dev/MyApp",
+        )
+        // Project warning is shown
+        #expect(formatted.contains("unused variable 'x'"))
+        // Pods warning is shown (inside project root)
+        #expect(formatted.contains("deprecated API"))
+        // DerivedData warning is hidden
+        #expect(!formatted.contains("implicit conversion"))
+        // Summary of hidden warnings
+        #expect(formatted.contains("(+1 warning from dependencies hidden)"))
+    }
+
+    @Test("Successful build with project root omits all warnings")
+    func successfulBuildOmitsWarnings() {
+        let result = BuildResult(
+            status: "success",
+            summary: BuildSummary(
+                errors: 0, warnings: 5, failedTests: 0, passedTests: nil, buildTime: "3.0s",
+            ),
+            errors: [],
+            warnings: [
+                BuildWarning(
+                    file: "/Users/dev/MyApp/Sources/Foo.swift", line: 1,
+                    message: "unused var",
+                ),
+                BuildWarning(
+                    file: "/external/Lib/Bar.swift", line: 2,
+                    message: "deprecated",
+                ),
+            ],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(
+            result, projectRoot: "/Users/dev/MyApp",
+        )
+        #expect(formatted.contains("Build succeeded"))
+        #expect(formatted.contains("5 warning"))
+        // No warning details shown on success
+        #expect(!formatted.contains("unused var"))
+        #expect(!formatted.contains("deprecated"))
+        #expect(!formatted.contains("Warnings:"))
+    }
+
+    @Test("Nil project root preserves all warnings (backwards compat)")
+    func nilProjectRootPreservesAllWarnings() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 1, warnings: 2, failedTests: 0, passedTests: nil, buildTime: nil,
+            ),
+            errors: [
+                BuildError(file: "main.swift", line: 1, message: "error"),
+            ],
+            warnings: [
+                BuildWarning(
+                    file: "/external/Lib.swift", line: 1,
+                    message: "external warning",
+                ),
+                BuildWarning(
+                    file: "/project/Source.swift", line: 2,
+                    message: "project warning",
+                ),
+            ],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(result)
+        #expect(formatted.contains("external warning"))
+        #expect(formatted.contains("project warning"))
+        #expect(!formatted.contains("dependencies hidden"))
+    }
+
+    @Test("Warnings without file path are always shown")
+    func warningsWithoutFileAlwaysShown() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 1, warnings: 2, failedTests: 0, passedTests: nil, buildTime: nil,
+            ),
+            errors: [
+                BuildError(file: nil, line: nil, message: "some error"),
+            ],
+            warnings: [
+                BuildWarning(file: nil, line: nil, message: "unlocalized warning"),
+                BuildWarning(
+                    file: "/external/Dep/File.swift", line: 1,
+                    message: "dep warning",
+                ),
+            ],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(
+            result, projectRoot: "/Users/dev/MyApp",
+        )
+        // Warning without file is shown
+        #expect(formatted.contains("unlocalized warning"))
+        // External warning is hidden
+        #expect(!formatted.contains("dep warning"))
+        #expect(formatted.contains("(+1 warning from dependencies hidden)"))
+    }
+
+    @Test("ErrorExtractor.extractBuildErrors threads project root")
+    func errorExtractorThreadsProjectRoot() {
+        let output = """
+        /ext/Lib.swift:1:1: warning: external warning
+        /proj/App.swift:10:5: error: missing import
+        """
+
+        let formatted = ErrorExtractor.extractBuildErrors(
+            from: output, projectRoot: "/proj",
+        )
+        #expect(!formatted.contains("external warning"))
+        #expect(formatted.contains("missing import"))
+        #expect(formatted.contains("dependencies hidden"))
+    }
+
     @Test("ErrorExtractor.extractTestResults integration")
     func errorExtractorTestResultsIntegration() {
         let output = """

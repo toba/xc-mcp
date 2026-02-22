@@ -94,6 +94,15 @@ public struct BuildSimTool: Sendable {
 
             let buildResult = ErrorExtractor.parseBuildOutput(result.output)
 
+            // Derive project root for warning filtering
+            let projectRoot: String? = if let projectPath {
+                (projectPath as NSString).deletingLastPathComponent
+            } else if let workspacePath {
+                (workspacePath as NSString).deletingLastPathComponent
+            } else {
+                nil
+            }
+
             if result.succeeded || buildResult.status == "success" {
                 return CallTool.Result(
                     content: [
@@ -110,7 +119,9 @@ public struct BuildSimTool: Sendable {
                     ],
                 )
             } else {
-                let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
+                let errorOutput = BuildResultFormatter.formatBuildResult(
+                    buildResult, projectRoot: projectRoot,
+                )
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
         } catch {

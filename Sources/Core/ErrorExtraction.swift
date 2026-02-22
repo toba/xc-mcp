@@ -9,10 +9,10 @@ public enum ErrorExtractor {
     ///
     /// - Parameter output: The full build output to parse.
     /// - Returns: A formatted string describing the build result.
-    public static func extractBuildErrors(from output: String) -> String {
+    public static func extractBuildErrors(from output: String, projectRoot: String? = nil) -> String {
         let parser = BuildOutputParser()
         let result = parser.parse(input: output)
-        return BuildResultFormatter.formatBuildResult(result)
+        return BuildResultFormatter.formatBuildResult(result, projectRoot: projectRoot)
     }
 
     /// Parses test output and returns a formatted summary of test results.
