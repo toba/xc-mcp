@@ -18,7 +18,7 @@ public struct ListTestPlanTargetsTool: Sendable {
         Tool(
             name: "list_test_plan_targets",
             description:
-                "List test plans and their test targets for a scheme. Returns target names usable with only_testing.",
+            "List test plans and their test targets for a scheme. Returns target names usable with only_testing.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -55,11 +55,11 @@ public struct ListTestPlanTargetsTool: Sendable {
         // Determine the project root directory for searching .xctestplan files
         let projectRoot: String
         if let workspacePath {
-            projectRoot =
-                (workspacePath as NSString).deletingLastPathComponent
+            let parent = (workspacePath as NSString).deletingLastPathComponent
+            projectRoot = parent.isEmpty ? "." : parent
         } else if let projectPath {
-            projectRoot =
-                (projectPath as NSString).deletingLastPathComponent
+            let parent = (projectPath as NSString).deletingLastPathComponent
+            projectRoot = parent.isEmpty ? "." : parent
         } else {
             throw MCPError.invalidParams(
                 "Either project_path or workspace_path is required"
@@ -75,7 +75,7 @@ public struct ListTestPlanTargetsTool: Sendable {
             if testPlanNames.isEmpty {
                 return CallTool.Result(
                     content: [
-                        .text("No test plans found for scheme '\(scheme)'.")
+                        .text("No test plans found for scheme '\(scheme)'."),
                     ]
                 )
             }
@@ -126,8 +126,8 @@ public struct ListTestPlanTargetsTool: Sendable {
 
         // Parse JSON output to extract test plan names
         guard let data = result.stdout.data(using: .utf8),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let testPlans = json["testPlans"] as? [[String: Any]]
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let testPlans = json["testPlans"] as? [[String: Any]]
         else {
             return []
         }
@@ -136,7 +136,7 @@ public struct ListTestPlanTargetsTool: Sendable {
     }
 
     /// Finds and parses a `.xctestplan` file to extract test target names.
-    private func findTestPlanTargets(planName: String, searchRoot: String) -> [String] {
+    package func findTestPlanTargets(planName: String, searchRoot: String) -> [String] {
         let fm = FileManager.default
         let planFileName = "\(planName).xctestplan"
 
@@ -154,16 +154,16 @@ public struct ListTestPlanTargetsTool: Sendable {
         }
 
         guard let planPath,
-            let data = fm.contents(atPath: planPath),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-            let testTargets = json["testTargets"] as? [[String: Any]]
+              let data = fm.contents(atPath: planPath),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let testTargets = json["testTargets"] as? [[String: Any]]
         else {
             return []
         }
 
         return testTargets.compactMap { entry -> String? in
             guard let target = entry["target"] as? [String: Any],
-                let name = target["name"] as? String
+                  let name = target["name"] as? String
             else {
                 return nil
             }
