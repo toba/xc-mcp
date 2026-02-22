@@ -1,104 +1,103 @@
-import Foundation
 import Testing
 import XCMCPCore
-
+import Foundation
 @testable import XCMCPTools
 
 struct ListTestPlanTargetsToolTests {
-  private func makeTool() -> ListTestPlanTargetsTool {
-    ListTestPlanTargetsTool(sessionManager: SessionManager())
-  }
-
-  private func createTestPlan(at directory: URL, name: String, targets: [String]) throws {
-    let testTargets = targets.map { name in
-      """
-      {"target": {"name": "\(name)"}}
-      """
+    private func makeTool() -> ListTestPlanTargetsTool {
+        ListTestPlanTargetsTool(sessionManager: SessionManager())
     }
-    let json = """
-      {"testTargets": [\(testTargets.joined(separator: ","))]}
-      """
-    let filePath = directory.appendingPathComponent("\(name).xctestplan")
-    try json.write(to: filePath, atomically: true, encoding: .utf8)
-  }
 
-  @Test func findTargetsWithAbsoluteSearchRoot() throws {
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: tempDir) }
+    private func createTestPlan(at directory: URL, name: String, targets: [String]) throws {
+        let testTargets = targets.map { name in
+            """
+            {"target": {"name": "\(name)"}}
+            """
+        }
+        let json = """
+        {"testTargets": [\(testTargets.joined(separator: ","))]}
+        """
+        let filePath = directory.appendingPathComponent("\(name).xctestplan")
+        try json.write(to: filePath, atomically: true, encoding: .utf8)
+    }
 
-    try createTestPlan(at: tempDir, name: "MyTests", targets: ["AppTests", "UITests"])
+    @Test func findTargetsWithAbsoluteSearchRoot() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let tool = makeTool()
-    let targets = tool.findTestPlanTargets(planName: "MyTests", searchRoot: tempDir.path)
-    #expect(targets.map(\.name) == ["AppTests", "UITests"])
-    #expect(targets.map(\.enabled) == [true, true])
-  }
+        try createTestPlan(at: tempDir, name: "MyTests", targets: ["AppTests", "UITests"])
 
-  @Test func findTargetsWithDotSearchRoot() throws {
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tool = makeTool()
+        let targets = tool.findTestPlanTargets(planName: "MyTests", searchRoot: tempDir.path)
+        #expect(targets.map(\.name) == ["AppTests", "UITests"])
+        #expect(targets.map(\.enabled) == [true, true])
+    }
 
-    try createTestPlan(at: tempDir, name: "MyTests", targets: ["AppTests"])
+    @Test func findTargetsWithDotSearchRoot() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    // Change to the temp directory and use "." as search root
-    let originalDir = FileManager.default.currentDirectoryPath
-    FileManager.default.changeCurrentDirectoryPath(tempDir.path)
-    defer { FileManager.default.changeCurrentDirectoryPath(originalDir) }
+        try createTestPlan(at: tempDir, name: "MyTests", targets: ["AppTests"])
 
-    let tool = makeTool()
-    let targets = tool.findTestPlanTargets(planName: "MyTests", searchRoot: ".")
-    #expect(targets.map(\.name) == ["AppTests"])
-  }
+        // Change to the temp directory and use "." as search root
+        let originalDir = FileManager.default.currentDirectoryPath
+        FileManager.default.changeCurrentDirectoryPath(tempDir.path)
+        defer { FileManager.default.changeCurrentDirectoryPath(originalDir) }
 
-  @Test func findTargetsWithEmptySearchRootReturnsEmpty() {
-    let tool = makeTool()
-    // Empty string returns nil enumerator, so no targets found
-    let targets = tool.findTestPlanTargets(planName: "MyTests", searchRoot: "")
-    #expect(targets.isEmpty)
-  }
+        let tool = makeTool()
+        let targets = tool.findTestPlanTargets(planName: "MyTests", searchRoot: ".")
+        #expect(targets.map(\.name) == ["AppTests"])
+    }
 
-  @Test func findTargetsInSubdirectory() throws {
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    let subDir = tempDir.appendingPathComponent("nested")
-    try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: tempDir) }
+    @Test func findTargetsWithEmptySearchRootReturnsEmpty() {
+        let tool = makeTool()
+        // Empty string returns nil enumerator, so no targets found
+        let targets = tool.findTestPlanTargets(planName: "MyTests", searchRoot: "")
+        #expect(targets.isEmpty)
+    }
 
-    try createTestPlan(at: subDir, name: "DeepPlan", targets: ["DeepTests"])
+    @Test func findTargetsInSubdirectory() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        let subDir = tempDir.appendingPathComponent("nested")
+        try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let tool = makeTool()
-    let targets = tool.findTestPlanTargets(planName: "DeepPlan", searchRoot: tempDir.path)
-    #expect(targets.map(\.name) == ["DeepTests"])
-  }
+        try createTestPlan(at: subDir, name: "DeepPlan", targets: ["DeepTests"])
 
-  @Test func findTargetsShowsDisabledStatus() throws {
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-    defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tool = makeTool()
+        let targets = tool.findTestPlanTargets(planName: "DeepPlan", searchRoot: tempDir.path)
+        #expect(targets.map(\.name) == ["DeepTests"])
+    }
 
-    // Create test plan with one enabled and one disabled target
-    let json = """
-      {"testTargets": [
-          {"target": {"name": "AppTests"}},
-          {"target": {"name": "UITests"}, "enabled": false}
-      ]}
-      """
-    let filePath = tempDir.appendingPathComponent("Mixed.xctestplan")
-    try json.write(to: filePath, atomically: true, encoding: .utf8)
+    @Test func findTargetsShowsDisabledStatus() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    let tool = makeTool()
-    let targets = tool.findTestPlanTargets(planName: "Mixed", searchRoot: tempDir.path)
-    #expect(targets.map(\.name) == ["AppTests", "UITests"])
-    #expect(targets[0].enabled == true)
-    #expect(targets[1].enabled == false)
-  }
+        // Create test plan with one enabled and one disabled target
+        let json = """
+        {"testTargets": [
+            {"target": {"name": "AppTests"}},
+            {"target": {"name": "UITests"}, "enabled": false}
+        ]}
+        """
+        let filePath = tempDir.appendingPathComponent("Mixed.xctestplan")
+        try json.write(to: filePath, atomically: true, encoding: .utf8)
+
+        let tool = makeTool()
+        let targets = tool.findTestPlanTargets(planName: "Mixed", searchRoot: tempDir.path)
+        #expect(targets.map(\.name) == ["AppTests", "UITests"])
+        #expect(targets[0].enabled == true)
+        #expect(targets[1].enabled == false)
+    }
 }

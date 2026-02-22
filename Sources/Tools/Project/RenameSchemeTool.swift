@@ -1,93 +1,93 @@
-import Foundation
 import MCP
 import XCMCPCore
+import Foundation
 
 public struct RenameSchemeTool: Sendable {
-  private let pathUtility: PathUtility
+    private let pathUtility: PathUtility
 
-  public init(pathUtility: PathUtility) {
-    self.pathUtility = pathUtility
-  }
-
-  public func tool() -> Tool {
-    Tool(
-      name: "rename_scheme",
-      description: "Rename an Xcode scheme file on disk",
-      inputSchema: .object([
-        "type": .string("object"),
-        "properties": .object([
-          "project_path": .object([
-            "type": .string("string"),
-            "description": .string(
-              "Path to the .xcodeproj file (relative to current directory)",
-            ),
-          ]),
-          "scheme_name": .object([
-            "type": .string("string"),
-            "description": .string("Current name of the scheme to rename"),
-          ]),
-          "new_name": .object([
-            "type": .string("string"),
-            "description": .string("New name for the scheme"),
-          ]),
-        ]),
-        "required": .array([
-          .string("project_path"), .string("scheme_name"), .string("new_name"),
-        ]),
-      ]),
-    )
-  }
-
-  public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-    guard case .string(let projectPath) = arguments["project_path"],
-      case .string(let schemeName) = arguments["scheme_name"],
-      case .string(let newName) = arguments["new_name"]
-    else {
-      throw MCPError.invalidParams("project_path, scheme_name, and new_name are required")
+    public init(pathUtility: PathUtility) {
+        self.pathUtility = pathUtility
     }
 
-    let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
-    let fm = FileManager.default
-
-    // Search for the scheme file in shared and user scheme directories
-    let oldFilename = "\(schemeName).xcscheme"
-    let newFilename = "\(newName).xcscheme"
-
-    // Check that new name doesn't already exist
-    let schemeDirs = SchemePathResolver.schemeDirs(for: resolvedProjectPath)
-    for dir in schemeDirs {
-      let newPath = "\(dir)/\(newFilename)"
-      if fm.fileExists(atPath: newPath) {
-        return CallTool.Result(
-          content: [.text("Scheme '\(newName)' already exists")],
+    public func tool() -> Tool {
+        Tool(
+            name: "rename_scheme",
+            description: "Rename an Xcode scheme file on disk",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object([
+                    "project_path": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Path to the .xcodeproj file (relative to current directory)",
+                        ),
+                    ]),
+                    "scheme_name": .object([
+                        "type": .string("string"),
+                        "description": .string("Current name of the scheme to rename"),
+                    ]),
+                    "new_name": .object([
+                        "type": .string("string"),
+                        "description": .string("New name for the scheme"),
+                    ]),
+                ]),
+                "required": .array([
+                    .string("project_path"), .string("scheme_name"), .string("new_name"),
+                ]),
+            ]),
         )
-      }
     }
 
-    // Find and rename the scheme file
-    for dir in schemeDirs {
-      let oldPath = "\(dir)/\(oldFilename)"
-      if fm.fileExists(atPath: oldPath) {
-        let newPath = "\(dir)/\(newFilename)"
-        do {
-          try fm.moveItem(atPath: oldPath, toPath: newPath)
-          return CallTool.Result(
-            content: [
-              .text(
-                "Successfully renamed scheme '\(schemeName)' to '\(newName)'",
-              )
-            ],
-          )
-        } catch {
-          throw MCPError.internalError(
-            "Failed to rename scheme file: \(error.localizedDescription)",
-          )
+    public func execute(arguments: [String: Value]) throws -> CallTool.Result {
+        guard case let .string(projectPath) = arguments["project_path"],
+              case let .string(schemeName) = arguments["scheme_name"],
+              case let .string(newName) = arguments["new_name"]
+        else {
+            throw MCPError.invalidParams("project_path, scheme_name, and new_name are required")
         }
-      }
-    }
 
-    return CallTool.Result(
-      content: [.text("Scheme '\(schemeName)' not found in project")],
-    )
-  }
+        let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
+        let fm = FileManager.default
+
+        // Search for the scheme file in shared and user scheme directories
+        let oldFilename = "\(schemeName).xcscheme"
+        let newFilename = "\(newName).xcscheme"
+
+        // Check that new name doesn't already exist
+        let schemeDirs = SchemePathResolver.schemeDirs(for: resolvedProjectPath)
+        for dir in schemeDirs {
+            let newPath = "\(dir)/\(newFilename)"
+            if fm.fileExists(atPath: newPath) {
+                return CallTool.Result(
+                    content: [.text("Scheme '\(newName)' already exists")],
+                )
+            }
+        }
+
+        // Find and rename the scheme file
+        for dir in schemeDirs {
+            let oldPath = "\(dir)/\(oldFilename)"
+            if fm.fileExists(atPath: oldPath) {
+                let newPath = "\(dir)/\(newFilename)"
+                do {
+                    try fm.moveItem(atPath: oldPath, toPath: newPath)
+                    return CallTool.Result(
+                        content: [
+                            .text(
+                                "Successfully renamed scheme '\(schemeName)' to '\(newName)'",
+                            ),
+                        ],
+                    )
+                } catch {
+                    throw MCPError.internalError(
+                        "Failed to rename scheme file: \(error.localizedDescription)",
+                    )
+                }
+            }
+        }
+
+        return CallTool.Result(
+            content: [.text("Scheme '\(schemeName)' not found in project")],
+        )
+    }
 }

@@ -1,301 +1,300 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
 struct RemoveSwiftPackageMissingParamTestCase: Sendable {
-  let description: String
-  let arguments: [String: Value]
+    let description: String
+    let arguments: [String: Value]
 
-  init(_ description: String, _ arguments: [String: Value]) {
-    self.description = description
-    self.arguments = arguments
-  }
+    init(_ description: String, _ arguments: [String: Value]) {
+        self.description = description
+        self.arguments = arguments
+    }
 }
 
 @Suite("RemoveSwiftPackageTool Tests")
 struct RemoveSwiftPackageToolTests {
-  @Test("Tool creation")
-  func toolCreation() {
-    let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
-    let toolDefinition = tool.tool()
+    @Test("Tool creation")
+    func toolCreation() {
+        let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
+        let toolDefinition = tool.tool()
 
-    #expect(toolDefinition.name == "remove_swift_package")
-    #expect(
-      toolDefinition.description == "Remove a Swift Package dependency from an Xcode project",
-    )
-  }
-
-  static let missingParamCases: [RemoveSwiftPackageMissingParamTestCase] = [
-    RemoveSwiftPackageMissingParamTestCase(
-      "Missing project_path",
-      ["package_url": Value.string("https://github.com/alamofire/alamofire.git")],
-    ),
-    RemoveSwiftPackageMissingParamTestCase(
-      "Missing package_url",
-      ["project_path": Value.string("/path/to/project.xcodeproj")],
-    ),
-  ]
-
-  @Test("Remove package with missing parameter", arguments: missingParamCases)
-  func removePackageWithMissingParameters(_ testCase: RemoveSwiftPackageMissingParamTestCase)
-    throws
-  {
-    let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
-
-    #expect(throws: MCPError.self) {
-      try tool.execute(arguments: testCase.arguments)
-    }
-  }
-
-  @Test("Remove non-existent package")
-  func removeNonExistentPackage() throws {
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-    defer {
-      try? FileManager.default.removeItem(at: tempDir)
+        #expect(toolDefinition.name == "remove_swift_package")
+        #expect(
+            toolDefinition.description == "Remove a Swift Package dependency from an Xcode project",
+        )
     }
 
-    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
-
-    let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
-    let args: [String: Value] = [
-      "project_path": Value.string(projectPath.string),
-      "package_url": Value.string("https://github.com/nonexistent/package.git"),
+    static let missingParamCases: [RemoveSwiftPackageMissingParamTestCase] = [
+        RemoveSwiftPackageMissingParamTestCase(
+            "Missing project_path",
+            ["package_url": Value.string("https://github.com/alamofire/alamofire.git")],
+        ),
+        RemoveSwiftPackageMissingParamTestCase(
+            "Missing package_url",
+            ["project_path": Value.string("/path/to/project.xcodeproj")],
+        ),
     ]
 
-    let result = try tool.execute(arguments: args)
+    @Test("Remove package with missing parameter", arguments: missingParamCases)
+    func removePackageWithMissingParameters(_ testCase: RemoveSwiftPackageMissingParamTestCase)
+        throws
+    {
+        let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-    guard case .text(let message) = result.content.first else {
-      Issue.record("Expected text result")
-      return
-    }
-    #expect(message.contains("not found in project"))
-  }
-
-  @Test("Remove existing package from project")
-  func removeExistingPackageFromProject() throws {
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-    defer {
-      try? FileManager.default.removeItem(at: tempDir)
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: testCase.arguments)
+        }
     }
 
-    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+    @Test("Remove non-existent package")
+    func removeNonExistentPackage() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-    // First add a package
-    let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
-    _ = try addTool.execute(arguments: [
-      "project_path": Value.string(projectPath.string),
-      "package_url": Value.string("https://github.com/alamofire/alamofire.git"),
-      "requirement": Value.string("5.0.0"),
-    ])
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
 
-    // Verify package was added
-    let xcodeproj = try XcodeProj(path: projectPath)
-    let project = try xcodeproj.pbxproj.rootProject()
-    #expect(project?.remotePackages.count == 1)
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
-    // Now remove the package
-    let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
-    let args: [String: Value] = [
-      "project_path": Value.string(projectPath.string),
-      "package_url": Value.string("https://github.com/alamofire/alamofire.git"),
-    ]
+        let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/nonexistent/package.git"),
+        ]
 
-    let result = try removeTool.execute(arguments: args)
+        let result = try tool.execute(arguments: args)
 
-    guard case .text(let message) = result.content.first else {
-      Issue.record("Expected text result")
-      return
-    }
-    #expect(message.contains("Successfully removed Swift Package"))
-    #expect(message.contains("alamofire"))
-
-    // Verify package was removed
-    let updatedXcodeproj = try XcodeProj(path: projectPath)
-    let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
-    #expect(updatedProject?.remotePackages.isEmpty == true)
-  }
-
-  @Test("Remove package from project and targets")
-  func removePackageFromProjectAndTargets() throws {
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-    defer {
-      try? FileManager.default.removeItem(at: tempDir)
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("not found in project"))
     }
 
-    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-    try TestProjectHelper.createTestProjectWithTarget(
-      name: "TestProject", targetName: "TestApp", at: projectPath,
-    )
+    @Test("Remove existing package from project")
+    func removeExistingPackageFromProject() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-    // Add a package to a specific target
-    let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
-    _ = try addTool.execute(arguments: [
-      "project_path": Value.string(projectPath.string),
-      "package_url": Value.string("https://github.com/rxswift/rxswift.git"),
-      "requirement": Value.string("6.0.0"),
-      "target_name": Value.string("TestApp"),
-      "product_name": Value.string("RxSwift"),
-    ])
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
 
-    // Verify package and dependency were added
-    let xcodeproj = try XcodeProj(path: projectPath)
-    let project = try xcodeproj.pbxproj.rootProject()
-    let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
-    #expect(project?.remotePackages.count == 1)
-    #expect(target?.packageProductDependencies?.count == 1)
+        // First add a package
+        let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/alamofire/alamofire.git"),
+            "requirement": Value.string("5.0.0"),
+        ])
 
-    // Remove the package (should remove from targets by default)
-    let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
-    let args: [String: Value] = [
-      "project_path": Value.string(projectPath.string),
-      "package_url": Value.string("https://github.com/rxswift/rxswift.git"),
-      "remove_from_targets": Value.bool(true),
-    ]
+        // Verify package was added
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let project = try xcodeproj.pbxproj.rootProject()
+        #expect(project?.remotePackages.count == 1)
 
-    let result = try removeTool.execute(arguments: args)
+        // Now remove the package
+        let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/alamofire/alamofire.git"),
+        ]
 
-    guard case .text(let message) = result.content.first else {
-      Issue.record("Expected text result")
-      return
-    }
-    #expect(message.contains("Successfully removed Swift Package"))
-    #expect(message.contains("and all targets"))
+        let result = try removeTool.execute(arguments: args)
 
-    // Verify package and dependencies were removed
-    let updatedXcodeproj = try XcodeProj(path: projectPath)
-    let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
-    let updatedTarget = updatedXcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed Swift Package"))
+        #expect(message.contains("alamofire"))
 
-    #expect(updatedProject?.remotePackages.isEmpty == true)
-    #expect(updatedTarget?.packageProductDependencies?.isEmpty == true)
-  }
-
-  @Test("Remove package but keep target dependencies")
-  func removePackageButKeepTargetDependencies() throws {
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-    defer {
-      try? FileManager.default.removeItem(at: tempDir)
+        // Verify package was removed
+        let updatedXcodeproj = try XcodeProj(path: projectPath)
+        let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
+        #expect(updatedProject?.remotePackages.isEmpty == true)
     }
 
-    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-    try TestProjectHelper.createTestProjectWithTarget(
-      name: "TestProject", targetName: "TestApp", at: projectPath,
-    )
+    @Test("Remove package from project and targets")
+    func removePackageFromProjectAndTargets() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-    // Add a package to a specific target
-    let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
-    _ = try addTool.execute(arguments: [
-      "project_path": Value.string(projectPath.string),
-      "package_url": Value.string(
-        "https://github.com/pointfreeco/swift-composable-architecture.git",
-      ),
-      "requirement": Value.string("1.0.0"),
-      "target_name": Value.string("TestApp"),
-      "product_name": Value.string("ComposableArchitecture"),
-    ])
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
 
-    // Remove the package but keep target dependencies
-    let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
-    let args: [String: Value] = [
-      "project_path": Value.string(projectPath.string),
-      "package_url": Value.string(
-        "https://github.com/pointfreeco/swift-composable-architecture.git",
-      ),
-      "remove_from_targets": Value.bool(false),
-    ]
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
 
-    let result = try removeTool.execute(arguments: args)
+        // Add a package to a specific target
+        let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/rxswift/rxswift.git"),
+            "requirement": Value.string("6.0.0"),
+            "target_name": Value.string("TestApp"),
+            "product_name": Value.string("RxSwift"),
+        ])
 
-    guard case .text(let message) = result.content.first else {
-      Issue.record("Expected text result")
-      return
+        // Verify package and dependency were added
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let project = try xcodeproj.pbxproj.rootProject()
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+
+        #expect(project?.remotePackages.count == 1)
+        #expect(target?.packageProductDependencies?.count == 1)
+
+        // Remove the package (should remove from targets by default)
+        let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/rxswift/rxswift.git"),
+            "remove_from_targets": Value.bool(true),
+        ]
+
+        let result = try removeTool.execute(arguments: args)
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed Swift Package"))
+        #expect(message.contains("and all targets"))
+
+        // Verify package and dependencies were removed
+        let updatedXcodeproj = try XcodeProj(path: projectPath)
+        let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
+        let updatedTarget = updatedXcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+
+        #expect(updatedProject?.remotePackages.isEmpty == true)
+        #expect(updatedTarget?.packageProductDependencies?.isEmpty == true)
     }
-    #expect(message.contains("Successfully removed Swift Package"))
-    #expect(!message.contains("and all targets"))
 
-    // Verify package was removed but dependencies remain (though they may be broken)
-    let updatedXcodeproj = try XcodeProj(path: projectPath)
-    let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
-    let updatedTarget = updatedXcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+    @Test("Remove package but keep target dependencies")
+    func removePackageButKeepTargetDependencies() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-    #expect(updatedProject?.remotePackages.isEmpty == true)
-    // Note: Target dependencies may still exist but will be broken since package reference is gone
-    #expect(updatedTarget?.packageProductDependencies?.count == 1)
-  }
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
 
-  @Test("Remove multiple packages")
-  func removeMultiplePackages() throws {
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
 
-    defer {
-      try? FileManager.default.removeItem(at: tempDir)
+        // Add a package to a specific target
+        let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string(
+                "https://github.com/pointfreeco/swift-composable-architecture.git",
+            ),
+            "requirement": Value.string("1.0.0"),
+            "target_name": Value.string("TestApp"),
+            "product_name": Value.string("ComposableArchitecture"),
+        ])
+
+        // Remove the package but keep target dependencies
+        let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string(
+                "https://github.com/pointfreeco/swift-composable-architecture.git",
+            ),
+            "remove_from_targets": Value.bool(false),
+        ]
+
+        let result = try removeTool.execute(arguments: args)
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed Swift Package"))
+        #expect(!message.contains("and all targets"))
+
+        // Verify package was removed but dependencies remain (though they may be broken)
+        let updatedXcodeproj = try XcodeProj(path: projectPath)
+        let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
+        let updatedTarget = updatedXcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+
+        #expect(updatedProject?.remotePackages.isEmpty == true)
+        // Note: Target dependencies may still exist but will be broken since package reference is gone
+        #expect(updatedTarget?.packageProductDependencies?.count == 1)
     }
 
-    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+    @Test("Remove multiple packages")
+    func removeMultiplePackages() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-    // Add multiple packages
-    let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
 
-    _ = try addTool.execute(arguments: [
-      "project_path": Value.string(projectPath.string),
-      "package_url": Value.string("https://github.com/alamofire/alamofire.git"),
-      "requirement": Value.string("5.0.0"),
-    ])
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
-    _ = try addTool.execute(arguments: [
-      "project_path": Value.string(projectPath.string),
-      "package_url": Value.string("https://github.com/apple/swift-collections.git"),
-      "requirement": Value.string("1.0.0"),
-    ])
+        // Add multiple packages
+        let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
 
-    // Verify both packages were added
-    let xcodeproj = try XcodeProj(path: projectPath)
-    let project = try xcodeproj.pbxproj.rootProject()
-    #expect(project?.remotePackages.count == 2)
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/alamofire/alamofire.git"),
+            "requirement": Value.string("5.0.0"),
+        ])
 
-    // Remove one package
-    let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
-    _ = try removeTool.execute(arguments: [
-      "project_path": Value.string(projectPath.string),
-      "package_url": Value.string("https://github.com/alamofire/alamofire.git"),
-    ])
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/apple/swift-collections.git"),
+            "requirement": Value.string("1.0.0"),
+        ])
 
-    // Verify only one package remains
-    let updatedXcodeproj = try XcodeProj(path: projectPath)
-    let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
-    #expect(updatedProject?.remotePackages.count == 1)
-    #expect(
-      updatedProject?.remotePackages.first?.repositoryURL
-        == "https://github.com/apple/swift-collections.git",
-    )
-  }
+        // Verify both packages were added
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let project = try xcodeproj.pbxproj.rootProject()
+        #expect(project?.remotePackages.count == 2)
+
+        // Remove one package
+        let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try removeTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/alamofire/alamofire.git"),
+        ])
+
+        // Verify only one package remains
+        let updatedXcodeproj = try XcodeProj(path: projectPath)
+        let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
+        #expect(updatedProject?.remotePackages.count == 1)
+        #expect(
+            updatedProject?.remotePackages.first?.repositoryURL
+                == "https://github.com/apple/swift-collections.git",
+        )
+    }
 }

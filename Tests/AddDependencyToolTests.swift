@@ -1,238 +1,237 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
 struct AddDependencyMissingParamTestCase: Sendable {
-  let description: String
-  let arguments: [String: Value]
+    let description: String
+    let arguments: [String: Value]
 
-  init(_ description: String, _ arguments: [String: Value]) {
-    self.description = description
-    self.arguments = arguments
-  }
+    init(_ description: String, _ arguments: [String: Value]) {
+        self.description = description
+        self.arguments = arguments
+    }
 }
 
 @Suite("AddDependencyTool Tests")
 struct AddDependencyToolTests {
-  @Test("Tool creation")
-  func toolCreation() {
-    let tool = AddDependencyTool(pathUtility: PathUtility(basePath: "/tmp"))
-    let toolDefinition = tool.tool()
+    @Test("Tool creation")
+    func toolCreation() {
+        let tool = AddDependencyTool(pathUtility: PathUtility(basePath: "/tmp"))
+        let toolDefinition = tool.tool()
 
-    #expect(toolDefinition.name == "add_dependency")
-    #expect(toolDefinition.description == "Add dependency between targets")
-  }
-
-  static let missingParamCases: [AddDependencyMissingParamTestCase] = [
-    AddDependencyMissingParamTestCase(
-      "Missing project_path",
-      [
-        "target_name": Value.string("App"),
-        "dependency_name": Value.string("Framework"),
-      ],
-    ),
-    AddDependencyMissingParamTestCase(
-      "Missing target_name",
-      [
-        "project_path": Value.string("/path/to/project.xcodeproj"),
-        "dependency_name": Value.string("Framework"),
-      ],
-    ),
-    AddDependencyMissingParamTestCase(
-      "Missing dependency_name",
-      [
-        "project_path": Value.string("/path/to/project.xcodeproj"),
-        "target_name": Value.string("App"),
-      ],
-    ),
-  ]
-
-  @Test("Add dependency with missing parameter", arguments: missingParamCases)
-  func addDependencyWithMissingParameters(_ testCase: AddDependencyMissingParamTestCase) throws {
-    let tool = AddDependencyTool(pathUtility: PathUtility(basePath: "/tmp"))
-
-    #expect(throws: MCPError.self) {
-      try tool.execute(arguments: testCase.arguments)
-    }
-  }
-
-  @Test("Add dependency between targets")
-  func addDependencyBetweenTargets() throws {
-    // Create a temporary directory
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-    defer {
-      try? FileManager.default.removeItem(at: tempDir)
+        #expect(toolDefinition.name == "add_dependency")
+        #expect(toolDefinition.description == "Add dependency between targets")
     }
 
-    // Create a test project with target
-    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-    try TestProjectHelper.createTestProjectWithTarget(
-      name: "TestProject", targetName: "App", at: projectPath,
-    )
-
-    // Add a framework target
-    let addTargetTool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
-    let addFrameworkArgs: [String: Value] = [
-      "project_path": Value.string(projectPath.string),
-      "target_name": Value.string("Framework"),
-      "product_type": Value.string("framework"),
-      "bundle_identifier": Value.string("com.test.framework"),
-    ]
-    _ = try addTargetTool.execute(arguments: addFrameworkArgs)
-
-    // Add dependency
-    let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
-    let args: [String: Value] = [
-      "project_path": Value.string(projectPath.string),
-      "target_name": Value.string("App"),
-      "dependency_name": Value.string("Framework"),
+    static let missingParamCases: [AddDependencyMissingParamTestCase] = [
+        AddDependencyMissingParamTestCase(
+            "Missing project_path",
+            [
+                "target_name": Value.string("App"),
+                "dependency_name": Value.string("Framework"),
+            ],
+        ),
+        AddDependencyMissingParamTestCase(
+            "Missing target_name",
+            [
+                "project_path": Value.string("/path/to/project.xcodeproj"),
+                "dependency_name": Value.string("Framework"),
+            ],
+        ),
+        AddDependencyMissingParamTestCase(
+            "Missing dependency_name",
+            [
+                "project_path": Value.string("/path/to/project.xcodeproj"),
+                "target_name": Value.string("App"),
+            ],
+        ),
     ]
 
-    let result = try tool.execute(arguments: args)
+    @Test("Add dependency with missing parameter", arguments: missingParamCases)
+    func addDependencyWithMissingParameters(_ testCase: AddDependencyMissingParamTestCase) throws {
+        let tool = AddDependencyTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-    // Check the result contains success message
-    guard case .text(let message) = result.content.first else {
-      Issue.record("Expected text result")
-      return
-    }
-    #expect(message.contains("Successfully added dependency 'Framework' to target 'App'"))
-
-    // Verify dependency was added
-    let xcodeproj = try XcodeProj(path: projectPath)
-    let appTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
-    #expect(appTarget != nil)
-
-    let hasDependency =
-      appTarget?.dependencies.contains { dependency in
-        dependency.name == "Framework"
-      } ?? false
-    #expect(hasDependency == true)
-  }
-
-  @Test("Add duplicate dependency")
-  func addDuplicateDependency() throws {
-    // Create a temporary directory
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-    defer {
-      try? FileManager.default.removeItem(at: tempDir)
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: testCase.arguments)
+        }
     }
 
-    // Create a test project with targets
-    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-    try TestProjectHelper.createTestProjectWithTarget(
-      name: "TestProject", targetName: "App", at: projectPath,
-    )
+    @Test("Add dependency between targets")
+    func addDependencyBetweenTargets() throws {
+        // Create a temporary directory
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-    // Add a framework target
-    let addTargetTool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
-    let addFrameworkArgs: [String: Value] = [
-      "project_path": Value.string(projectPath.string),
-      "target_name": Value.string("Framework"),
-      "product_type": Value.string("framework"),
-      "bundle_identifier": Value.string("com.test.framework"),
-    ]
-    _ = try addTargetTool.execute(arguments: addFrameworkArgs)
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
 
-    // Add dependency
-    let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
-    let args: [String: Value] = [
-      "project_path": Value.string(projectPath.string),
-      "target_name": Value.string("App"),
-      "dependency_name": Value.string("Framework"),
-    ]
+        // Create a test project with target
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
 
-    _ = try tool.execute(arguments: args)
+        // Add a framework target
+        let addTargetTool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let addFrameworkArgs: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("Framework"),
+            "product_type": Value.string("framework"),
+            "bundle_identifier": Value.string("com.test.framework"),
+        ]
+        _ = try addTargetTool.execute(arguments: addFrameworkArgs)
 
-    // Try to add the same dependency again
-    let result = try tool.execute(arguments: args)
+        // Add dependency
+        let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "dependency_name": Value.string("Framework"),
+        ]
 
-    // Check the result contains already exists message
-    guard case .text(let message) = result.content.first else {
-      Issue.record("Expected text result")
-      return
-    }
-    #expect(message.contains("already depends on"))
-  }
+        let result = try tool.execute(arguments: args)
 
-  @Test("Add dependency with non-existent target")
-  func addDependencyWithNonExistentTarget() throws {
-    // Create a temporary directory
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        // Check the result contains success message
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added dependency 'Framework' to target 'App'"))
 
-    defer {
-      try? FileManager.default.removeItem(at: tempDir)
-    }
+        // Verify dependency was added
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let appTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
+        #expect(appTarget != nil)
 
-    // Create a test project
-    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
-
-    let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
-    let args: [String: Value] = [
-      "project_path": Value.string(projectPath.string),
-      "target_name": Value.string("NonExistentTarget"),
-      "dependency_name": Value.string("Framework"),
-    ]
-
-    let result = try tool.execute(arguments: args)
-
-    // Check the result contains not found message
-    guard case .text(let message) = result.content.first else {
-      Issue.record("Expected text result")
-      return
-    }
-    #expect(message.contains("not found"))
-  }
-
-  @Test("Add dependency with non-existent dependency")
-  func addDependencyWithNonExistentDependency() throws {
-    // Create a temporary directory
-    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-      UUID().uuidString,
-    )
-    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-    defer {
-      try? FileManager.default.removeItem(at: tempDir)
+        let hasDependency =
+            appTarget?.dependencies.contains { dependency in
+                dependency.name == "Framework"
+            } ?? false
+        #expect(hasDependency == true)
     }
 
-    // Create a test project with target
-    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-    try TestProjectHelper.createTestProjectWithTarget(
-      name: "TestProject", targetName: "App", at: projectPath,
-    )
+    @Test("Add duplicate dependency")
+    func addDuplicateDependency() throws {
+        // Create a temporary directory
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-    let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
-    let args: [String: Value] = [
-      "project_path": Value.string(projectPath.string),
-      "target_name": Value.string("App"),
-      "dependency_name": Value.string("NonExistentFramework"),
-    ]
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
 
-    let result = try tool.execute(arguments: args)
+        // Create a test project with targets
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
 
-    // Check the result contains not found message
-    guard case .text(let message) = result.content.first else {
-      Issue.record("Expected text result")
-      return
+        // Add a framework target
+        let addTargetTool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let addFrameworkArgs: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("Framework"),
+            "product_type": Value.string("framework"),
+            "bundle_identifier": Value.string("com.test.framework"),
+        ]
+        _ = try addTargetTool.execute(arguments: addFrameworkArgs)
+
+        // Add dependency
+        let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "dependency_name": Value.string("Framework"),
+        ]
+
+        _ = try tool.execute(arguments: args)
+
+        // Try to add the same dependency again
+        let result = try tool.execute(arguments: args)
+
+        // Check the result contains already exists message
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("already depends on"))
     }
-    #expect(message.contains("not found"))
-  }
+
+    @Test("Add dependency with non-existent target")
+    func addDependencyWithNonExistentTarget() throws {
+        // Create a temporary directory
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        // Create a test project
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("NonExistentTarget"),
+            "dependency_name": Value.string("Framework"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        // Check the result contains not found message
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("not found"))
+    }
+
+    @Test("Add dependency with non-existent dependency")
+    func addDependencyWithNonExistentDependency() throws {
+        // Create a temporary directory
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        // Create a test project with target
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "dependency_name": Value.string("NonExistentFramework"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        // Check the result contains not found message
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("not found"))
+    }
 }
