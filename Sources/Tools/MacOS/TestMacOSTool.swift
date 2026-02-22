@@ -99,11 +99,15 @@ public struct TestMacOSTool: Sendable {
                 }
             }
 
+            let projectRoot = (workspacePath ?? projectPath)
+                .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
+
             return try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: "scheme '\(scheme)' on macOS",
                 xcresultPath: resultBundlePath,
                 stderr: result.stderr,
+                projectRoot: projectRoot,
             )
         } catch {
             if isTemporaryBundle {

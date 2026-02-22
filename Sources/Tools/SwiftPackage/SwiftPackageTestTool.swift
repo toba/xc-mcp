@@ -64,6 +64,7 @@ public struct SwiftPackageTestTool: Sendable {
             return try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: context,
+                projectRoot: packagePath,
             )
         } catch {
             throw error.asMCPError()

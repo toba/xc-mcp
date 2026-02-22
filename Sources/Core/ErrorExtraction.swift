@@ -43,6 +43,7 @@ public enum ErrorExtractor {
         context: String,
         xcresultPath: String? = nil,
         stderr: String? = nil,
+        projectRoot: String? = nil,
     ) async throws -> CallTool.Result {
         var testResult: String
 
@@ -82,6 +83,13 @@ public enum ErrorExtractor {
             testResult +=
                 "\n\nUI test target has no target application configured. "
                 + "Use set_test_target_application to configure the host app in the scheme's Test action."
+        }
+
+        // Enhance cryptic "not a member of the test plan" errors with actionable guidance
+        if !succeeded, let projectRoot {
+            if let hint = enhanceTestPlanError(output: output, projectRoot: projectRoot) {
+                testResult += "\n\n" + hint
+            }
         }
 
         if succeeded {
@@ -153,6 +161,60 @@ public enum ErrorExtractor {
         }
 
         return parts.joined(separator: "\n\n")
+    }
+
+    // MARK: - Test Plan Error Enhancement
+
+    /// Detects "not a member of the specified test plan or scheme" errors and enhances
+    /// them with available test targets and the correct identifier format.
+    private static func enhanceTestPlanError(output: String, projectRoot: String) -> String? {
+        // xcodebuild emits: "... isn't a member of the specified test plan or scheme."
+        guard output.contains("isn't a member of the specified test plan or scheme")
+            || output.contains("is not a member of the specified test plan or scheme")
+        else {
+            return nil
+        }
+
+        // Extract the identifier names from the error message
+        // Pattern: "\"SomeName\" isn't a member of..."
+        let identifierPattern = /\"([^\"]+)\"\s+isn't a member of the specified test plan or scheme/
+        var badIdentifiers: [String] = []
+        for match in output.matches(of: identifierPattern) {
+            badIdentifiers.append(String(match.1))
+        }
+
+        // Discover available test targets from .xctestplan files
+        let testPlanFiles = TestPlanFile.findFiles(under: projectRoot)
+        var allTargets: [String] = []
+        for planFile in testPlanFiles {
+            let entries = TestPlanFile.targetEntries(from: planFile.json)
+            for entry in entries where entry.enabled {
+                if !allTargets.contains(entry.name) {
+                    allTargets.append(entry.name)
+                }
+            }
+        }
+
+        var hint = ""
+        if badIdentifiers.isEmpty {
+            hint += "The only_testing identifier is not a member of the specified test plan or scheme."
+        } else {
+            let quoted = badIdentifiers.map { "\"\($0)\"" }.joined(separator: ", ")
+            hint += "\(quoted) is not a valid test identifier."
+        }
+
+        if !allTargets.isEmpty {
+            hint += " Available test targets: \(allTargets.joined(separator: ", "))."
+        }
+
+        hint += " Use format \"TargetName/TestClassName\" or \"TargetName/TestClassName/testMethodName\"."
+
+        if !allTargets.isEmpty, let firstTarget = allTargets.first, !badIdentifiers.isEmpty {
+            let example = "\(firstTarget)/\(badIdentifiers[0])"
+            hint += " For example: \"\(example)\"."
+        }
+
+        return hint
     }
 
     // MARK: - Infrastructure Warning Detection

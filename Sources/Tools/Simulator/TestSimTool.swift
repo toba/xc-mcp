@@ -96,11 +96,15 @@ public struct TestSimTool: Sendable {
                 }
             }
 
+            let projectRoot = (workspacePath ?? projectPath)
+                .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
+
             let testToolResult = try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: "scheme '\(scheme)' on simulator '\(simulator)'",
                 xcresultPath: resultBundlePath,
                 stderr: result.stderr,
+                projectRoot: projectRoot,
             )
             return CallTool.Result(
                 content: testToolResult.content + [

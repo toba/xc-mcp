@@ -1,3 +1,4 @@
+--exclude fixtures,.build
 --acronyms HTML,HTTP,ID,URL,UUID
 --allman false
 --allow-partial-wrapping true
