@@ -67,13 +67,13 @@ public struct StopDeviceLogCapTool: Sendable {
 
         do {
             if let pid {
-                try ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
+                try await ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
             } else if let device {
-                _ = try? ProcessResult.run(
+                _ = try? await ProcessResult.run(
                     "/usr/bin/pkill",
                     arguments: ["-f", "devicectl.*\(device).*syslog"],
                 )
-                _ = try? ProcessResult.run(
+                _ = try? await ProcessResult.run(
                     "/usr/bin/pkill",
                     arguments: ["-f", "devicectl device info syslog.*\(device)"],
                 )
@@ -86,7 +86,7 @@ public struct StopDeviceLogCapTool: Sendable {
                 message += " for device '\(device)'"
             }
 
-            LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
+            await LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
 
             return CallTool.Result(content: [.text(message)])
         } catch {

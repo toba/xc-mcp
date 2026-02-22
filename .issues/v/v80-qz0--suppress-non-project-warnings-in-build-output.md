@@ -1,10 +1,11 @@
 ---
 # v80-qz0
 title: Suppress non-project warnings in build output
-status: ready
+status: completed
 type: feature
+priority: normal
 created_at: 2026-02-22T04:49:12Z
-updated_at: 2026-02-22T04:49:12Z
+updated_at: 2026-02-22T20:28:31Z
 ---
 
 ## Context
@@ -46,3 +47,8 @@ Suppress warnings from outside the project source tree by default. The formatter
 ## Session Reference
 
 Thesis session where this was observed: fixing orphan side-note nodes. Build had 1 real error, 118 irrelevant warnings.
+
+
+## Summary of Changes
+
+Implemented in commit 661f406. All checklist items completed except the optional show_all_warnings parameter (deferred). Project root detection, warning partitioning, success/failure filtering, and hidden count summary all working. 5 new tests added.

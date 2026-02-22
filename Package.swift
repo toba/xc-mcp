@@ -34,6 +34,7 @@ let package = Package(
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk", from: "0.9.0"),
         .package(url: "https://github.com/tuist/xcodeproj", from: "9.7.2"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.7.0"),
+        .package(url: "https://github.com/swiftlang/swift-subprocess", from: "0.3.0"),
     ],
     targets: [
         // MARK: - Shared Core Library
@@ -42,9 +43,10 @@ let package = Package(
             name: "XCMCPCore",
             dependencies: [
                 .product(name: "MCP", package: "swift-sdk"),
+                .product(name: "Subprocess", package: "swift-subprocess"),
             ],
             path: "Sources/Core",
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
 
         // MARK: - Shared Tools Library
@@ -54,10 +56,11 @@ let package = Package(
             dependencies: [
                 "XCMCPCore",
                 .product(name: "MCP", package: "swift-sdk"),
+                .product(name: "Subprocess", package: "swift-subprocess"),
                 .product(name: "XcodeProj", package: "xcodeproj"),
             ],
             path: "Sources/Tools",
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
 
         // MARK: - Monolithic Server (all tools)
@@ -75,7 +78,7 @@ let package = Package(
                 "CLI.swift",
                 "Server/XcodeMCPServer.swift",
             ],
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
 
         // MARK: - Focused Servers
@@ -92,7 +95,7 @@ let package = Package(
             ],
             path: "Sources/Servers/Project",
             sources: ["CLI.swift", "ProjectMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
 
         // Simulator management server (26 tools, ~6K tokens)
@@ -107,7 +110,7 @@ let package = Package(
             ],
             path: "Sources/Servers/Simulator",
             sources: ["CLI.swift", "SimulatorMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
 
         // Physical device server (9 tools, ~2K tokens)
@@ -122,7 +125,7 @@ let package = Package(
             ],
             path: "Sources/Servers/Device",
             sources: ["CLI.swift", "DeviceMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
 
         // Debug server (8 tools, ~2K tokens)
@@ -137,7 +140,7 @@ let package = Package(
             ],
             path: "Sources/Servers/Debug",
             sources: ["CLI.swift", "DebugMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
 
         // Swift Package Manager server (6 tools, ~1.5K tokens)
@@ -152,7 +155,7 @@ let package = Package(
             ],
             path: "Sources/Servers/Swift",
             sources: ["CLI.swift", "SwiftMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
 
         // Build orchestration server (12 tools, ~3K tokens)
@@ -167,7 +170,7 @@ let package = Package(
             ],
             path: "Sources/Servers/Build",
             sources: ["CLI.swift", "BuildMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
 
         // XCStrings server (18 tools, ~6K tokens)
@@ -182,7 +185,7 @@ let package = Package(
             ],
             path: "Sources/Servers/Strings",
             sources: ["CLI.swift", "StringsMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
 
         // MARK: - Tests
@@ -197,7 +200,7 @@ let package = Package(
             resources: [
                 .copy("Fixtures"),
             ],
-            swiftSettings: sharedSwiftSettings
+            swiftSettings: sharedSwiftSettings,
         ),
-    ]
+    ],
 )

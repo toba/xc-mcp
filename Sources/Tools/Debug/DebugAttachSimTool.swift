@@ -123,7 +123,7 @@ public struct DebugAttachSimTool: Sendable {
         }
 
         // Use pgrep to find the process
-        let result = try ProcessResult.run("/usr/bin/pgrep", arguments: ["-f", bundleId])
+        let result = try await ProcessResult.run("/usr/bin/pgrep", arguments: ["-f", bundleId])
         let output = result.stdout
 
         guard

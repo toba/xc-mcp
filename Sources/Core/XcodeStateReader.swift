@@ -1,4 +1,6 @@
+import System
 import Foundation
+import Subprocess
 
 /// Result of reading Xcode IDE state from UserInterfaceState.xcuserstate.
 public struct XcodeStateResult: Sendable {
@@ -29,7 +31,7 @@ public enum XcodeStateReader {
     ///
     /// - Parameter path: Path to .xcodeproj or .xcworkspace.
     /// - Returns: Parsed state or an error description.
-    public static func readState(projectOrWorkspacePath path: String) -> XcodeStateResult {
+    public static func readState(projectOrWorkspacePath path: String) async -> XcodeStateResult {
         let username = NSUserName()
         let candidates = xcuserstateCandidates(for: path, username: username)
 
@@ -48,7 +50,7 @@ public enum XcodeStateReader {
         let tempPath = tempURL.path
         defer { try? FileManager.default.removeItem(atPath: tempPath) }
 
-        let convertResult = runProcess(
+        let convertResult = await runProcess(
             "/usr/bin/plutil",
             arguments: ["-convert", "xml1", "-o", tempPath, statePath],
         )
@@ -195,23 +197,15 @@ public enum XcodeStateReader {
         return string.range(of: pattern, options: .regularExpression) != nil
     }
 
-    private static func runProcess(_ path: String, arguments: [String]) -> (
+    private static func runProcess(_ path: String, arguments: [String]) async -> (
         exitCode: Int32, stdout: String, stderr: String,
     ) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: path)
-        process.arguments = arguments
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        process.standardOutput = stdoutPipe
-        process.standardError = stderrPipe
         do {
-            try process.run()
-            let pipes = ProcessResult.drainPipes(stdout: stdoutPipe, stderr: stderrPipe)
-            process.waitUntilExit()
-            let out = String(data: pipes.stdout, encoding: .utf8) ?? ""
-            let err = String(data: pipes.stderr, encoding: .utf8) ?? ""
-            return (process.terminationStatus, out, err)
+            let result = try await ProcessResult.runSubprocess(
+                .path(FilePath(path)),
+                arguments: Arguments(arguments),
+            )
+            return (result.exitCode, result.stdout, result.stderr)
         } catch {
             return (-1, "", error.localizedDescription)
         }

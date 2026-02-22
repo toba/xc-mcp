@@ -327,11 +327,11 @@ public struct DoctorTool: Sendable {
         return results
     }
 
-    private func runCommand(_ command: String, arguments: [String]) -> (
+    private func runCommand(_ command: String, arguments: [String]) async -> (
         exitCode: Int32, stdout: String, stderr: String,
     ) {
         do {
-            let result = try ProcessResult.run(
+            let result = try await ProcessResult.run(
                 command, arguments: arguments, mergeStderr: false,
             )
             return (result.exitCode, result.stdout, result.stderr)

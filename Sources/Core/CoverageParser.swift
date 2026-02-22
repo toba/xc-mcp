@@ -1,6 +1,7 @@
 // Adapted from xcsift (MIT License) - https://github.com/ldomaradzki/xcsift
 // swiftlint:disable legacy_objc_type
 import Foundation
+import Subprocess
 
 /// Parses code coverage data from `.xcresult` bundles and SPM `.profraw` files.
 public struct CoverageParser: Sendable {
@@ -9,7 +10,8 @@ public struct CoverageParser: Sendable {
     // MARK: - Main Entry Point
 
     /// Parses coverage from a path (xcresult bundle, JSON file, or directory to search).
-    public func parseCoverageFromPath(_ path: String, targetFilter: String? = nil) -> CodeCoverage?
+    public func parseCoverageFromPath(_ path: String,
+                                      targetFilter: String? = nil) async -> CodeCoverage?
     {
         let fileManager = FileManager.default
         let coveragePath: String
@@ -17,8 +19,10 @@ public struct CoverageParser: Sendable {
         if !path.isEmpty, fileManager.fileExists(atPath: path) {
             coveragePath = path
         } else {
-            if let latestXCResult = findLatestXCResultInDerivedData(projectHint: targetFilter) {
-                return convertXCResultToJSON(
+            if let latestXCResult =
+                await findLatestXCResultInDerivedData(projectHint: targetFilter)
+            {
+                return await convertXCResultToJSON(
                     xcresultPath: latestXCResult, targetFilter: targetFilter,
                 )
             }
@@ -63,18 +67,18 @@ public struct CoverageParser: Sendable {
 
             let profrawFiles = findProfrawFiles(in: coveragePath)
             if !profrawFiles.isEmpty {
-                return convertProfrawToJSON(profrawFiles: profrawFiles)
+                return await convertProfrawToJSON(profrawFiles: profrawFiles)
             }
 
             let xcresultBundles = findXCResultBundles(in: coveragePath)
             if let firstXCResult = xcresultBundles.first {
-                return convertXCResultToJSON(
+                return await convertXCResultToJSON(
                     xcresultPath: firstXCResult, targetFilter: targetFilter,
                 )
             }
 
-            if let latestXCResult = findLatestXCResultInDerivedData() {
-                return convertXCResultToJSON(
+            if let latestXCResult = await findLatestXCResultInDerivedData() {
+                return await convertXCResultToJSON(
                     xcresultPath: latestXCResult, targetFilter: targetFilter,
                 )
             }
@@ -82,7 +86,7 @@ public struct CoverageParser: Sendable {
             return nil
         } else {
             if coveragePath.hasSuffix(".xcresult") {
-                return convertXCResultToJSON(
+                return await convertXCResultToJSON(
                     xcresultPath: coveragePath, targetFilter: targetFilter,
                 )
             } else {
@@ -120,7 +124,7 @@ public struct CoverageParser: Sendable {
         return xcresultPaths
     }
 
-    private func findLatestXCResultInDerivedData(projectHint: String? = nil) -> String? {
+    private func findLatestXCResultInDerivedData(projectHint: String? = nil) async -> String? {
         let homeDir = NSHomeDirectory()
         let derivedDataPath = (homeDir as NSString).appendingPathComponent(
             "Library/Developer/Xcode/DerivedData",
@@ -148,7 +152,7 @@ public struct CoverageParser: Sendable {
 
         let findArgs =
             ["find"] + searchPaths + ["-name", "*.xcresult", "-type", "d", "-mtime", "-7"]
-        guard let output = runShellCommand("/usr/bin/env", args: findArgs) else {
+        guard let output = await runShellCommand("/usr/bin/env", args: findArgs) else {
             return nil
         }
 
@@ -216,7 +220,7 @@ public struct CoverageParser: Sendable {
 
     // MARK: - Conversion Helpers
 
-    private func convertProfrawToJSON(profrawFiles: [String]) -> CodeCoverage? {
+    private func convertProfrawToJSON(profrawFiles: [String]) async -> CodeCoverage? {
         guard !profrawFiles.isEmpty else { return nil }
         guard let testBinary = findTestBinary() else { return nil }
 
@@ -226,14 +230,14 @@ public struct CoverageParser: Sendable {
 
         let mergeArgs =
             ["llvm-profdata", "merge", "-sparse"] + profrawFiles + ["-o", profdataPath]
-        guard runShellCommand("xcrun", args: mergeArgs) != nil else {
+        guard await runShellCommand("xcrun", args: mergeArgs) != nil else {
             return nil
         }
 
         let exportArgs = [
             "llvm-cov", "export", testBinary, "-instr-profile=\(profdataPath)", "-format=text",
         ]
-        guard let jsonOutput = runShellCommand("xcrun", args: exportArgs) else {
+        guard let jsonOutput = await runShellCommand("xcrun", args: exportArgs) else {
             try? FileManager.default.removeItem(atPath: profdataPath)
             return nil
         }
@@ -256,10 +260,10 @@ public struct CoverageParser: Sendable {
     }
 
     private func convertXCResultToJSON(xcresultPath: String, targetFilter: String? = nil)
-        -> CodeCoverage?
+        async -> CodeCoverage?
     {
         let args = ["xccov", "view", "--report", "--json", xcresultPath]
-        guard let jsonOutput = runShellCommand("xcrun", args: args) else {
+        guard let jsonOutput = await runShellCommand("xcrun", args: args) else {
             return nil
         }
 
@@ -418,27 +422,14 @@ public struct CoverageParser: Sendable {
     // MARK: - Shell Helpers
 
     @discardableResult
-    private func runShellCommand(_ command: String, args: [String]) -> String? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = [command] + args
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        do {
-            try process.run()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-
-            guard process.terminationStatus == 0 else {
-                return nil
-            }
-
-            return String(data: data, encoding: .utf8)
-        } catch {
+    private func runShellCommand(_ command: String, args: [String]) async -> String? {
+        guard let result = try? await ProcessResult.runSubprocess(
+            .name(command),
+            arguments: Arguments(args),
+            mergeStderr: true,
+        ), result.succeeded else {
             return nil
         }
+        return result.stdout
     }
 }

@@ -57,7 +57,7 @@ public struct SyncXcodeDefaultsTool: Sendable {
             )
         }
 
-        let state = XcodeStateReader.readState(projectOrWorkspacePath: targetPath)
+        let state = await XcodeStateReader.readState(projectOrWorkspacePath: targetPath)
 
         if let error = state.error, state.scheme == nil, state.simulatorUDID == nil {
             return CallTool.Result(

@@ -1,10 +1,11 @@
 ---
 # wsv-fd4
 title: Migrate from Foundation Process to swift-subprocess
-status: draft
+status: completed
 type: feature
+priority: normal
 created_at: 2026-02-22T19:12:44Z
-updated_at: 2026-02-22T19:12:44Z
+updated_at: 2026-02-22T19:50:31Z
 ---
 
 ## Context
@@ -65,3 +66,31 @@ Files that currently manage Process + pipes manually:
 - [Saagar Jha: Swift Concurrency Waits for No One](https://saagarjha.com/blog/2023/12/22/swift-concurrency-waits-for-no-one/)
 - [Swift Forums: Cooperative pool deadlock](https://forums.swift.org/t/cooperative-pool-deadlock-when-calling-into-an-opaque-subsystem/70685)
 - [Swift Forums: NSPipe readabilityHandler + Swift 6](https://forums.swift.org/t/swift-6-concurrency-nspipe-readability-handlers/59834)
+
+
+## Summary of Changes
+
+Migrated all eligible `Foundation.Process()` call sites to [swift-subprocess](https://github.com/swiftlang/swift-subprocess) (SF-0007).
+
+### What changed
+- Added `swift-subprocess` 0.3.0 dependency to `XCMCPCore` and `XCMCPTools` targets
+- Added `ProcessResult.runSubprocess()` bridge method that wraps `Subprocess.run()` and returns the existing `ProcessResult` type
+- Converted `ProcessResult.run()` from sync to async (delegates to `runSubprocess()`)
+- Deleted `ProcessResult.drainPipes()` — no longer needed
+- Migrated 4 async runners: `SimctlRunner`, `DeviceCtlRunner`, `SwiftRunner`, `XctraceRunner`
+- Migrated 3 sync helpers to async: `XCResultParser`, `XcodeStateReader`, `CoverageParser`
+- Migrated `XcodebuildRunner` streaming from `readabilityHandler` + polling to `Subprocess` streaming closure + `TaskGroup`
+- Migrated 5 Process() calls in `BuildDebugMacOSTool` (otool, install_name_tool, codesign)
+- Migrated 4 Process() calls in `PreviewCaptureTool` (codesign, pgrep, pkill)
+- Migrated all remaining `ProcessResult.run()` callers to async (stop tools, open tools, launch tools, DoctorTool)
+
+### Excluded (per plan)
+- `LLDBRunner` (PTY requirement)
+- Long-running processes: `SimctlRunner.recordVideo`, `XctraceRunner.record`, log capture start tools
+- `PreviewCaptureTool` macOS app launch (needs `Process` for environment variable injection + lifecycle control)
+- `IntegrationTestHelper` (sync static initializer context)
+
+### Verification
+- `swift build` — clean
+- `swift test` — 538/538 passed
+- `swiftformat . && swiftlint` — clean (no new warnings)

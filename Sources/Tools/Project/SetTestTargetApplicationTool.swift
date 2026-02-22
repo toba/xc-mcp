@@ -107,7 +107,7 @@ public struct SetTestTargetApplicationTool: Sendable {
             }
 
             let buildRef = XCScheme.BuildableReference(
-                referencedContainer: "container:\((resolvedProjectPath as NSString).lastPathComponent)",
+                referencedContainer: "container:\(URL(fileURLWithPath: resolvedProjectPath).lastPathComponent)",
                 blueprint: appTarget,
                 buildableName: buildableName,
                 blueprintName: appTarget.name,

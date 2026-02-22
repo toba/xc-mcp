@@ -26,7 +26,7 @@ struct CoverageParserTests {
     }
 
     @Test("Parse xcodebuild coverage JSON format")
-    func parseXcodebuildCoverageFormat() throws {
+    func parseXcodebuildCoverageFormat() async throws {
         let xcodebuildJSON = """
         {
           "targets": [{
@@ -60,7 +60,7 @@ struct CoverageParserTests {
         }
 
         let parser = CoverageParser()
-        let coverage = parser.parseCoverageFromPath(testFile.path)
+        let coverage = await parser.parseCoverageFromPath(testFile.path)
 
         #expect(coverage != nil)
         #expect(coverage?.files.count == 2)
@@ -68,7 +68,7 @@ struct CoverageParserTests {
     }
 
     @Test("Parse SPM coverage JSON format")
-    func parseSPMCoverageFormat() throws {
+    func parseSPMCoverageFormat() async throws {
         let spmJSON = """
         {
           "data": [{
@@ -105,7 +105,7 @@ struct CoverageParserTests {
         }
 
         let parser = CoverageParser()
-        let coverage = parser.parseCoverageFromPath(testFile.path)
+        let coverage = await parser.parseCoverageFromPath(testFile.path)
 
         #expect(coverage != nil)
         #expect(coverage?.files.count == 2)
@@ -113,7 +113,7 @@ struct CoverageParserTests {
     }
 
     @Test("Invalid JSON returns nil")
-    func invalidJSONReturnsNil() throws {
+    func invalidJSONReturnsNil() async throws {
         let invalidJSON = """
         {
           "invalid": "format"
@@ -129,12 +129,12 @@ struct CoverageParserTests {
         }
 
         let parser = CoverageParser()
-        let coverage = parser.parseCoverageFromPath(testFile.path)
+        let coverage = await parser.parseCoverageFromPath(testFile.path)
         #expect(coverage == nil)
     }
 
     @Test("Empty files array returns nil")
-    func emptyFilesArrayReturnsNil() throws {
+    func emptyFilesArrayReturnsNil() async throws {
         let emptyJSON = """
         {
           "data": [{
@@ -152,12 +152,12 @@ struct CoverageParserTests {
         }
 
         let parser = CoverageParser()
-        let coverage = parser.parseCoverageFromPath(testFile.path)
+        let coverage = await parser.parseCoverageFromPath(testFile.path)
         #expect(coverage == nil)
     }
 
     @Test("Coverage target filtering")
-    func coverageTargetFiltering() throws {
+    func coverageTargetFiltering() async throws {
         let xcodebuildJSON = """
         {
           "targets": [
@@ -196,7 +196,7 @@ struct CoverageParserTests {
         }
 
         let parser = CoverageParser()
-        let coverage = parser.parseCoverageFromPath(testFile.path, targetFilter: "MyApp")
+        let coverage = await parser.parseCoverageFromPath(testFile.path, targetFilter: "MyApp")
 
         #expect(coverage != nil)
         #expect(coverage?.files.count == 1)
@@ -205,7 +205,7 @@ struct CoverageParserTests {
     }
 
     @Test("Coverage excludes test bundles")
-    func coverageExcludesTestBundles() throws {
+    func coverageExcludesTestBundles() async throws {
         let xcodebuildJSON = """
         {
           "targets": [
@@ -246,7 +246,7 @@ struct CoverageParserTests {
         }
 
         let parser = CoverageParser()
-        let coverage = parser.parseCoverageFromPath(testFile.path, targetFilter: "MyModule")
+        let coverage = await parser.parseCoverageFromPath(testFile.path, targetFilter: "MyModule")
 
         #expect(coverage != nil)
         #expect(coverage?.files.count == 1)
@@ -255,9 +255,9 @@ struct CoverageParserTests {
     }
 
     @Test("Non-existent path returns nil")
-    func nonExistentPathReturnsNil() {
+    func nonExistentPathReturnsNil() async {
         let parser = CoverageParser()
-        let coverage = parser.parseCoverageFromPath("/nonexistent/path/to/coverage.json")
+        let coverage = await parser.parseCoverageFromPath("/nonexistent/path/to/coverage.json")
         #expect(coverage == nil)
     }
 }

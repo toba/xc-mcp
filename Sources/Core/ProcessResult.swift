@@ -1,4 +1,6 @@
+import System
 import Foundation
+import Subprocess
 
 /// Unified result of a process execution.
 ///
@@ -48,92 +50,82 @@ public struct ProcessResult: Sendable {
     }
 }
 
-// MARK: - Pipe Reading
-
-extension ProcessResult {
-    /// Reads data from stdout and stderr pipes concurrently to avoid deadlock.
-    ///
-    /// When a process writes more than ~64KB to either pipe, it blocks until
-    /// the pipe is drained. Reading both sequentially on the same thread
-    /// deadlocks because `readDataToEndOfFile()` blocks until EOF.
-    ///
-    /// This method reads stderr on a background thread while reading stdout
-    /// on the calling thread, then waits for both to complete.
-    ///
-    /// - Parameters:
-    ///   - stdout: The pipe attached to the process's standard output.
-    ///   - stderr: The pipe attached to the process's standard error, or nil if merged.
-    /// - Returns: The captured data from both pipes.
-    public static func drainPipes(
-        stdout stdoutPipe: Pipe,
-        stderr stderrPipe: Pipe?,
-    ) -> (stdout: Data, stderr: Data) {
-        nonisolated(unsafe) var capturedStderr = Data()
-        let sem: DispatchSemaphore?
-        if let stderrPipe {
-            let s = DispatchSemaphore(value: 0)
-            sem = s
-            DispatchQueue.global().async {
-                capturedStderr = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-                s.signal()
-            }
-        } else {
-            sem = nil
-        }
-        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-        sem?.wait()
-        return (stdoutData, capturedStderr)
-    }
-}
-
 // MARK: - Run
 
 extension ProcessResult {
-    /// Runs a command synchronously and captures its output.
+    /// Runs a command asynchronously and captures its output.
     ///
     /// - Parameters:
     ///   - executablePath: Absolute path to the executable (e.g. "/usr/bin/open").
     ///   - arguments: Command-line arguments.
-    ///   - mergeStderr: When true, stderr is piped to the same handle as stdout.
+    ///   - mergeStderr: When true, stderr is merged into stdout (like `2>&1`).
     ///                  When false, stdout and stderr are captured separately.
     /// - Returns: A ``ProcessResult`` with exit code and captured output.
     public static func run(
         _ executablePath: String,
         arguments: [String] = [],
         mergeStderr: Bool = true,
-    ) throws -> ProcessResult {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executablePath)
-        process.arguments = arguments
-
-        let stdoutPipe = Pipe()
-        process.standardOutput = stdoutPipe
-
-        let stderrPipe: Pipe?
-        if mergeStderr {
-            process.standardError = stdoutPipe
-            stderrPipe = nil
-        } else {
-            let pipe = Pipe()
-            process.standardError = pipe
-            stderrPipe = pipe
-        }
-
-        try process.run()
-
-        let pipes = drainPipes(stdout: stdoutPipe, stderr: stderrPipe)
-        process.waitUntilExit()
-
-        let stdoutString = String(data: pipes.stdout, encoding: .utf8) ?? ""
-        let stderrString = stderrPipe != nil
-            ? (String(data: pipes.stderr, encoding: .utf8) ?? "")
-            : ""
-
-        return ProcessResult(
-            exitCode: process.terminationStatus,
-            stdout: stdoutString,
-            stderr: stderrString,
+    ) async throws -> ProcessResult {
+        try await runSubprocess(
+            .path(FilePath(executablePath)),
+            arguments: Arguments(arguments),
+            mergeStderr: mergeStderr,
         )
+    }
+
+    /// Runs a command asynchronously using Subprocess and captures its output.
+    ///
+    /// - Parameters:
+    ///   - executable: The executable to run (e.g., `.name("xcrun")` or `.path("/usr/bin/swift")`).
+    ///   - arguments: Command-line arguments.
+    ///   - workingDirectory: Optional working directory for the command.
+    ///   - mergeStderr: When true, stderr is merged into stdout (like `2>&1`).
+    ///   - outputLimit: Maximum bytes to capture from stdout. Defaults to 10MB.
+    ///   - errorLimit: Maximum bytes to capture from stderr. Defaults to 10MB.
+    /// - Returns: A ``ProcessResult`` with exit code and captured output.
+    public static func runSubprocess(
+        _ executable: Subprocess.Executable,
+        arguments: Subprocess.Arguments = [],
+        workingDirectory: FilePath? = nil,
+        mergeStderr: Bool = false,
+        outputLimit: Int = 10_485_760,
+        errorLimit: Int = 10_485_760,
+    ) async throws -> ProcessResult {
+        if mergeStderr {
+            let result = try await Subprocess.run(
+                executable,
+                arguments: arguments,
+                workingDirectory: workingDirectory,
+                output: .string(limit: outputLimit),
+                error: .combineWithOutput,
+            )
+            let exitCode: Int32 = switch result.terminationStatus {
+                case let .exited(code): code
+                case let .unhandledException(code): code
+            }
+            return ProcessResult(
+                exitCode: exitCode,
+                stdout: result.standardOutput ?? "",
+                stderr: "",
+            )
+        } else {
+            let result = try await Subprocess.run(
+                executable,
+                arguments: arguments,
+                workingDirectory: workingDirectory,
+                output: .string(limit: outputLimit),
+                error: .string(limit: errorLimit),
+            )
+            let exitCode: Int32 = switch result.terminationStatus {
+                case let .exited(code): code
+                case let .unhandledException(code): code
+            }
+            return ProcessResult(
+                exitCode: exitCode,
+                stdout: result.standardOutput ?? "",
+                stderr: result.standardError ?? "",
+            )
+        }
     }
 
     /// Discards the result. Useful for fire-and-forget commands like `kill` or `pkill`.
@@ -158,9 +150,9 @@ extension ProcessResult {
 
 public enum FileUtility {
     /// Reads the last N lines from a file using tail.
-    public static func readTailLines(path: String, count: Int = 50) -> String? {
+    public static func readTailLines(path: String, count: Int = 50) async -> String? {
         guard
-            let result = try? ProcessResult.run(
+            let result = try? await ProcessResult.run(
                 "/usr/bin/tail", arguments: ["-n", "\(count)", path], mergeStderr: false,
             ),
             !result.stdout.isEmpty
@@ -176,10 +168,14 @@ public enum FileUtility {
 /// Shared helpers for log capture start/stop tools.
 public enum LogCapture {
     /// Appends the tail of a log file to a message string.
-    public static func appendTail(to message: inout String, from outputFile: String?, lines: Int) {
+    public static func appendTail(
+        to message: inout String,
+        from outputFile: String?,
+        lines: Int,
+    ) async {
         guard let outputFile,
               FileManager.default.fileExists(atPath: outputFile),
-              let tailOutput = FileUtility.readTailLines(path: outputFile, count: lines)
+              let tailOutput = await FileUtility.readTailLines(path: outputFile, count: lines)
         else { return }
 
         message += "\n\nLast \(lines) lines of log:\n"

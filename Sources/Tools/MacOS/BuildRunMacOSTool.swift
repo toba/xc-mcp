@@ -115,7 +115,7 @@ public struct BuildRunMacOSTool: Sendable {
                 openArgs.append(contentsOf: launchArgs)
             }
 
-            let result = try ProcessResult.run("/usr/bin/open", arguments: openArgs)
+            let result = try await ProcessResult.run("/usr/bin/open", arguments: openArgs)
 
             if result.succeeded {
                 var message = "Successfully built and launched '\(scheme)' on macOS"

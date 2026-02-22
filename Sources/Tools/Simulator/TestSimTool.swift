@@ -96,7 +96,7 @@ public struct TestSimTool: Sendable {
                 }
             }
 
-            let testToolResult = try ErrorExtractor.formatTestToolResult(
+            let testToolResult = try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: "scheme '\(scheme)' on simulator '\(simulator)'",
                 xcresultPath: resultBundlePath,

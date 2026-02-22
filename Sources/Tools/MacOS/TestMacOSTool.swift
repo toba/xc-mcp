@@ -99,7 +99,7 @@ public struct TestMacOSTool: Sendable {
                 }
             }
 
-            return try ErrorExtractor.formatTestToolResult(
+            return try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: "scheme '\(scheme)' on macOS",
                 xcresultPath: resultBundlePath,

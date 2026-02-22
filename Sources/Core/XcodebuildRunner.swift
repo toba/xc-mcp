@@ -1,5 +1,6 @@
 import MCP
 import Foundation
+import Subprocess
 import Synchronization
 
 /// Wrapper for executing xcodebuild commands.
@@ -56,105 +57,92 @@ public struct XcodebuildRunner: Sendable {
         timeout: TimeInterval,
         onProgress: (@Sendable (String) -> Void)?,
     ) async throws -> XcodebuildResult {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-        process.arguments = ["xcodebuild"] + arguments
-
-        let stdoutPipe = Pipe()
-        let stderrPipe = Pipe()
-        process.standardOutput = stdoutPipe
-        process.standardError = stderrPipe
-
-        // Collected output
-        let outputActor = OutputCollector()
-
-        // Track last output time for stuck detection
+        let outputCollector = OutputCollector()
         let lastOutputTime = LastOutputTime()
-
-        // Set up async reading of stdout
-        let stdoutHandle = stdoutPipe.fileHandleForReading
-        stdoutHandle.readabilityHandler = { handle in
-            let data = handle.availableData
-            if !data.isEmpty {
-                outputActor.appendStdout(data)
-                lastOutputTime.update()
-                if let text = String(data: data, encoding: .utf8) {
-                    onProgress?(text)
-                }
-            }
-        }
-
-        // Set up async reading of stderr
-        let stderrHandle = stderrPipe.fileHandleForReading
-        stderrHandle.readabilityHandler = { handle in
-            let data = handle.availableData
-            if !data.isEmpty {
-                outputActor.appendStderr(data)
-                lastOutputTime.update()
-                if let text = String(data: data, encoding: .utf8) {
-                    onProgress?(text)
-                }
-            }
-        }
-
-        try process.run()
-
-        defer {
-            if process.isRunning {
-                process.terminate()
-            }
-        }
-
-        // Wait for process with timeout
         let startTime = ContinuousClock.now
+        let timeoutDuration = Duration.seconds(timeout)
 
-        while process.isRunning {
-            // Check total timeout
-            if startTime.duration(to: .now) > .seconds(timeout) {
-                process.terminate()
-                let (stdout, stderr) = outputActor.getOutput()
-                throw XcodebuildError.timeout(
-                    duration: timeout,
-                    partialOutput: stdout + stderr,
-                )
+        let executionResult = try await Subprocess.run(
+            .name("xcrun"),
+            arguments: Arguments(["xcodebuild"] + arguments),
+        ) { (_: Execution, _, stdoutSeq: AsyncBufferSequence, stderrSeq: AsyncBufferSequence) in
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                // Read stdout
+                group.addTask {
+                    for try await chunk in stdoutSeq {
+                        chunk.withUnsafeBytes { bytes in
+                            let data = Data(bytes)
+                            outputCollector.appendStdout(data)
+                            lastOutputTime.update()
+                            if let text = String(data: data, encoding: .utf8) {
+                                onProgress?(text)
+                            }
+                        }
+                    }
+                }
+
+                // Read stderr
+                group.addTask {
+                    for try await chunk in stderrSeq {
+                        chunk.withUnsafeBytes { bytes in
+                            let data = Data(bytes)
+                            outputCollector.appendStderr(data)
+                            lastOutputTime.update()
+                            if let text = String(data: data, encoding: .utf8) {
+                                onProgress?(text)
+                            }
+                        }
+                    }
+                }
+
+                // Watchdog: check timeout + stuck detection
+                group.addTask {
+                    while true {
+                        try await Task.sleep(for: .milliseconds(100))
+
+                        let elapsed = startTime.duration(to: .now)
+                        if elapsed > timeoutDuration {
+                            let (stdout, stderr) = outputCollector.getOutput()
+                            throw XcodebuildError.timeout(
+                                duration: timeout,
+                                partialOutput: stdout + stderr,
+                            )
+                        }
+
+                        let timeSinceLastOutput = lastOutputTime.timeSinceLastOutput()
+                        if timeSinceLastOutput > Self.outputTimeout {
+                            let (stdout, stderr) = outputCollector.getOutput()
+                            let seconds =
+                                Double(timeSinceLastOutput.components.seconds)
+                                    + Double(timeSinceLastOutput.components.attoseconds) / 1e18
+                            throw XcodebuildError.stuckProcess(
+                                noOutputFor: seconds,
+                                partialOutput: stdout + stderr,
+                            )
+                        }
+                    }
+                }
+
+                // Wait for stream readers to finish, then cancel watchdog
+                var streamsDone = 0
+                while try await group.next() != nil {
+                    streamsDone += 1
+                    if streamsDone >= 2 {
+                        group.cancelAll()
+                        break
+                    }
+                }
             }
-
-            // Check for stuck process (no output for too long)
-            let timeSinceLastOutput = lastOutputTime.timeSinceLastOutput()
-            if timeSinceLastOutput > Self.outputTimeout {
-                process.terminate()
-                let (stdout, stderr) = outputActor.getOutput()
-                let seconds =
-                    Double(timeSinceLastOutput.components.seconds)
-                        + Double(timeSinceLastOutput.components.attoseconds) / 1e18
-                throw XcodebuildError.stuckProcess(
-                    noOutputFor: seconds,
-                    partialOutput: stdout + stderr,
-                )
-            }
-
-            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
         }
 
-        // Clean up handlers
-        stdoutHandle.readabilityHandler = nil
-        stderrHandle.readabilityHandler = nil
-
-        // Read any remaining data
-        let remainingStdout = stdoutHandle.readDataToEndOfFile()
-        let remainingStderr = stderrHandle.readDataToEndOfFile()
-
-        if !remainingStdout.isEmpty {
-            outputActor.appendStdout(remainingStdout)
+        let (stdout, stderr) = outputCollector.getOutput()
+        let exitCode: Int32 = switch executionResult.terminationStatus {
+            case let .exited(code): code
+            case let .unhandledException(code): code
         }
-        if !remainingStderr.isEmpty {
-            outputActor.appendStderr(remainingStderr)
-        }
-
-        let (stdout, stderr) = outputActor.getOutput()
 
         return XcodebuildResult(
-            exitCode: process.terminationStatus,
+            exitCode: exitCode,
             stdout: stdout,
             stderr: stderr,
         )

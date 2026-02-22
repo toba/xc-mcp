@@ -50,6 +50,8 @@ fi
 #    is rejected as assigning to a `let` constant. Fix: use `self.error`.
 # 2. `downloadProgress`/`uploadProgress` closures escape but aren't marked
 #    `@escaping`. Fix: add `@escaping`.
+# 3. Multi-line `#if canImport(Darwin) && \n !canImport(FoundationNetworking)`
+#    is rejected by Swift 6.2 — collapse to single line.
 patch_alamofire() {
   local af="$REPOS_DIR/Alamofire"
   [ -d "$af" ] || return
@@ -81,6 +83,16 @@ for fname in ['DataRequest.swift', 'DataStreamRequest.swift', 'DownloadRequest.s
       's/public func uploadProgress(queue: DispatchQueue = .main, closure: ProgressHandler)/public func uploadProgress(queue: DispatchQueue = .main, closure: @escaping ProgressHandler)/' \
       "$af/Source/Core/Request.swift"
   fi
+
+  # Fix 3: Multi-line #if canImport(Darwin) && \n !canImport(FoundationNetworking)
+  # Swift 6.2 rejects multi-line conditional compilation directives. Collapse to single line.
+  for f in "$af"/Source/Core/Session.swift "$af"/Source/Core/WebSocketRequest.swift "$af"/Source/Features/Concurrency.swift; do
+    [ -f "$f" ] || continue
+    sed -i '' -E '/^[[:space:]]*#if canImport\(Darwin\) &&[[:space:]]*$/{
+      N
+      s/#if canImport\(Darwin\) &&[[:space:]]*\n[[:space:]]*!canImport\(FoundationNetworking\)[^\n]*/#if canImport(Darwin) \&\& !canImport(FoundationNetworking)/
+    }' "$f"
+  done
 
   echo "ok: patched Alamofire for Xcode 26 compatibility"
 }

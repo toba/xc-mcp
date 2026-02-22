@@ -4,6 +4,7 @@ import PathKit
 import XCMCPCore
 import XcodeProj
 import Foundation
+import Subprocess
 import CoreGraphics
 import ScreenCaptureKit
 
@@ -336,19 +337,16 @@ public struct PreviewCaptureTool: Sendable {
             // Ensure all frameworks from the build products dir are embedded
             // in the app bundle. Cross-project references (like GRDB from a
             // sub-xcodeproj) get built but aren't automatically embedded.
-            embedMissingFrameworks(appPath: appPath)
+            await embedMissingFrameworks(appPath: appPath)
 
             // Re-sign the app bundle after embedding additional frameworks.
             // Embedded frameworks may have different team IDs (e.g. GRDB from
             // a sub-xcodeproj). Ad-hoc re-signing the whole bundle ensures
             // consistent code signature validation at launch.
-            let codesign = Process()
-            codesign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-            codesign.arguments = [
-                "--force", "--sign", "-", "--deep", appPath,
-            ]
-            try? codesign.run()
-            codesign.waitUntilExit()
+            _ = try? await ProcessResult.runSubprocess(
+                .path("/usr/bin/codesign"),
+                arguments: ["--force", "--sign", "-", "--deep", appPath],
+            )
 
             // Step 8-10: Platform-specific install, launch, screenshot, terminate
             let screenshotData: Data
@@ -395,18 +393,11 @@ public struct PreviewCaptureTool: Sendable {
                 try await Task.sleep(for: .seconds(renderDelay))
 
                 // Verify the app is running
-                let pgrepProcess = Process()
-                pgrepProcess.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-                pgrepProcess.arguments = ["-f", bundleId]
-                let pgrepPipe = Pipe()
-                pgrepProcess.standardOutput = pgrepPipe
-                try? pgrepProcess.run()
-                pgrepProcess.waitUntilExit()
-                let pgrepOut =
-                    String(
-                        data: pgrepPipe.fileHandleForReading.readDataToEndOfFile(),
-                        encoding: .utf8,
-                    ) ?? ""
+                let pgrepResult = try? await ProcessResult.runSubprocess(
+                    .path("/usr/bin/pgrep"),
+                    arguments: ["-f", bundleId],
+                )
+                let pgrepOut = pgrepResult?.stdout ?? ""
                 FileHandle.standardError.write(
                     Data(
                         "[preview_capture] pgrep for \(bundleId): \(pgrepOut.isEmpty ? "NOT RUNNING" : pgrepOut.trimmingCharacters(in: .whitespacesAndNewlines))\n"
@@ -417,11 +408,10 @@ public struct PreviewCaptureTool: Sendable {
                 screenshotData = try await captureMacOSWindow(bundleId: bundleId)
 
                 // Terminate the app
-                let killProcess = Process()
-                killProcess.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
-                killProcess.arguments = ["-f", bundleId]
-                try? killProcess.run()
-                killProcess.waitUntilExit()
+                _ = try? await ProcessResult.runSubprocess(
+                    .path("/usr/bin/pkill"),
+                    arguments: ["-f", bundleId],
+                )
             } else {
                 // iOS Simulator: use simctl
                 let sim = simulator!
@@ -1171,7 +1161,7 @@ public struct PreviewCaptureTool: Sendable {
     /// the app's Frameworks/ folder if they aren't already there. This handles
     /// cross-project framework references (e.g., GRDB from a sub-xcodeproj)
     /// that get built as dependencies but aren't automatically embedded.
-    private func embedMissingFrameworks(appPath: String) {
+    private func embedMissingFrameworks(appPath: String) async {
         let fm = FileManager.default
         let appURL = URL(fileURLWithPath: appPath)
         // macOS apps use Contents/Frameworks/, iOS apps use Frameworks/
@@ -1199,11 +1189,10 @@ public struct PreviewCaptureTool: Sendable {
 
             // Re-sign the copied framework with ad-hoc identity so it's
             // accepted by the app's code signature validation.
-            let codesign = Process()
-            codesign.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-            codesign.arguments = ["--force", "--sign", "-", "--deep", dst.path]
-            try? codesign.run()
-            codesign.waitUntilExit()
+            _ = try? await ProcessResult.runSubprocess(
+                .path("/usr/bin/codesign"),
+                arguments: Arguments(["--force", "--sign", "-", "--deep", dst.path]),
+            )
         }
     }
 

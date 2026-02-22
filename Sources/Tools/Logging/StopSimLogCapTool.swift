@@ -69,13 +69,13 @@ public struct StopSimLogCapTool: Sendable {
 
         do {
             if let pid {
-                try ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
+                try await ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
             } else if let simulator {
-                _ = try? ProcessResult.run(
+                _ = try? await ProcessResult.run(
                     "/usr/bin/pkill",
                     arguments: ["-f", "simctl spawn \(simulator) log stream"],
                 )
-                _ = try? ProcessResult.run(
+                _ = try? await ProcessResult.run(
                     "/usr/bin/pkill",
                     arguments: ["-f", "xcrun simctl.*\(simulator).*log stream"],
                 )
@@ -88,7 +88,7 @@ public struct StopSimLogCapTool: Sendable {
                 message += " for simulator '\(simulator)'"
             }
 
-            LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
+            await LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
 
             return CallTool.Result(content: [.text(message)])
         } catch {

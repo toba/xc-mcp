@@ -43,12 +43,12 @@ public enum ErrorExtractor {
         context: String,
         xcresultPath: String? = nil,
         stderr: String? = nil,
-    ) throws -> CallTool.Result {
+    ) async throws -> CallTool.Result {
         var testResult: String
 
         // Try xcresult bundle first for complete failure messages and test output
         if let xcresultPath,
-           let xcresultData = XCResultParser.parseTestResults(at: xcresultPath)
+           let xcresultData = await XCResultParser.parseTestResults(at: xcresultPath)
         {
             testResult = formatXCResultData(xcresultData)
 

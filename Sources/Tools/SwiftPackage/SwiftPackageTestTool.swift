@@ -61,7 +61,7 @@ public struct SwiftPackageTestTool: Sendable {
             if let filter {
                 context += " (filter: '\(filter)')"
             }
-            return try ErrorExtractor.formatTestToolResult(
+            return try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: context,
             )

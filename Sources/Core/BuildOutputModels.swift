@@ -110,7 +110,10 @@ public struct BuildWarning: Sendable {
     public let column: Int?
 
     public init(
-        file: String?, line: Int?, message: String, type: WarningType = .compile,
+        file: String?,
+        line: Int?,
+        message: String,
+        type: WarningType = .compile,
         column: Int? = nil,
     ) {
         self.file = file

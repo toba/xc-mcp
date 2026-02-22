@@ -84,9 +84,9 @@ public struct BuildMacOSTool: Sendable {
 
             // Derive project root for warning filtering
             let projectRoot: String? = if let projectPath {
-                (projectPath as NSString).deletingLastPathComponent
+                URL(fileURLWithPath: projectPath).deletingLastPathComponent().path
             } else if let workspacePath {
-                (workspacePath as NSString).deletingLastPathComponent
+                URL(fileURLWithPath: workspacePath).deletingLastPathComponent().path
             } else {
                 nil
             }

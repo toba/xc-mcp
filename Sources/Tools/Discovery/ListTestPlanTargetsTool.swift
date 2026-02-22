@@ -55,10 +55,10 @@ public struct ListTestPlanTargetsTool: Sendable {
         // Determine the project root directory for searching .xctestplan files
         let projectRoot: String
         if let workspacePath {
-            let parent = (workspacePath as NSString).deletingLastPathComponent
+            let parent = URL(fileURLWithPath: workspacePath).deletingLastPathComponent().path
             projectRoot = parent.isEmpty ? "." : parent
         } else if let projectPath {
-            let parent = (projectPath as NSString).deletingLastPathComponent
+            let parent = URL(fileURLWithPath: projectPath).deletingLastPathComponent().path
             projectRoot = parent.isEmpty ? "." : parent
         } else {
             throw MCPError.invalidParams(

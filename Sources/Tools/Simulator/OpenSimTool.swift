@@ -25,7 +25,7 @@ public struct OpenSimTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) throws -> CallTool.Result {
+    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let simulator = arguments.getString("simulator")
 
         do {
@@ -36,7 +36,7 @@ public struct OpenSimTool: Sendable {
                 args = ["-a", "Simulator"]
             }
 
-            let result = try ProcessResult.run("/usr/bin/open", arguments: args)
+            let result = try await ProcessResult.run("/usr/bin/open", arguments: args)
 
             if result.succeeded {
                 let message =

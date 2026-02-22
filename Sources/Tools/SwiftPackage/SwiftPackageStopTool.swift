@@ -42,7 +42,7 @@ public struct SwiftPackageStopTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) throws -> CallTool.Result {
+    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Get executable name
         guard case let .string(executable) = arguments["executable"] else {
             throw MCPError.invalidParams("executable is required to identify the process to stop.")
@@ -55,7 +55,7 @@ public struct SwiftPackageStopTool: Sendable {
         let signalArg = signal == "KILL" ? "-9" : "-15"
 
         do {
-            let result = try ProcessResult.run(
+            let result = try await ProcessResult.run(
                 "/usr/bin/pkill", arguments: [signalArg, "-f", executable], mergeStderr: false,
             )
 

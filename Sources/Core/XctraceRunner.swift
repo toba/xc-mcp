@@ -1,4 +1,5 @@
 import Foundation
+import Subprocess
 
 /// Result of an xctrace command execution.
 public typealias XctraceResult = ProcessResult
@@ -29,35 +30,10 @@ public struct XctraceRunner: Sendable {
     /// - Returns: The result containing exit code and output.
     /// - Throws: An error if the process fails to launch.
     public func run(arguments: [String]) async throws -> XctraceResult {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-            process.arguments = ["xctrace"] + arguments
-
-            let stdoutPipe = Pipe()
-            let stderrPipe = Pipe()
-            process.standardOutput = stdoutPipe
-            process.standardError = stderrPipe
-
-            do {
-                try process.run()
-
-                let pipes = ProcessResult.drainPipes(stdout: stdoutPipe, stderr: stderrPipe)
-                process.waitUntilExit()
-
-                let stdout = String(data: pipes.stdout, encoding: .utf8) ?? ""
-                let stderr = String(data: pipes.stderr, encoding: .utf8) ?? ""
-
-                let result = XctraceResult(
-                    exitCode: process.terminationStatus,
-                    stdout: stdout,
-                    stderr: stderr,
-                )
-                continuation.resume(returning: result)
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
+        try await ProcessResult.runSubprocess(
+            .name("xcrun"),
+            arguments: Arguments(["xctrace"] + arguments),
+        )
     }
 
     /// Starts a long-running trace recording, returning the Process for lifecycle management.

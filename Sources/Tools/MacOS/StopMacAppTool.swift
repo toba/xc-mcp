@@ -41,7 +41,7 @@ public struct StopMacAppTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) throws -> CallTool.Result {
+    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let bundleId = arguments.getString("bundle_id")
         let appName = arguments.getString("app_name")
 
@@ -76,7 +76,7 @@ public struct StopMacAppTool: Sendable {
                 throw MCPError.invalidParams("Either bundle_id or app_name is required")
             }
 
-            let result = try ProcessResult.run(executablePath, arguments: processArgs)
+            let result = try await ProcessResult.run(executablePath, arguments: processArgs)
 
             let identifier = bundleId ?? appName ?? "unknown"
 

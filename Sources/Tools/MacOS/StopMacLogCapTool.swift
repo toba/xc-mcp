@@ -41,16 +41,16 @@ public struct StopMacLogCapTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) throws -> CallTool.Result {
+    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let pid = arguments.getInt("pid")
         let outputFile = arguments.getString("output_file")
         let tailLines = arguments.getInt("tail_lines") ?? 50
 
         do {
             if let pid {
-                try ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
+                try await ProcessResult.run("/bin/kill", arguments: ["\(pid)"]).ignore()
             } else {
-                _ = try? ProcessResult.run(
+                _ = try? await ProcessResult.run(
                     "/usr/bin/pkill", arguments: ["-f", "/usr/bin/log stream"],
                 )
             }
@@ -60,7 +60,7 @@ public struct StopMacLogCapTool: Sendable {
                 message += " (PID: \(pid))"
             }
 
-            LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
+            await LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
 
             return CallTool.Result(content: [.text(message)])
         } catch {

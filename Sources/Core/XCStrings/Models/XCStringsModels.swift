@@ -9,7 +9,8 @@ public struct XCStringsFile: Codable, Sendable {
     public var version: String
 
     public init(
-        sourceLanguage: String = "en", strings: [String: StringEntry] = [:],
+        sourceLanguage: String = "en",
+        strings: [String: StringEntry] = [:],
         version: String = "1.0",
     ) {
         self.sourceLanguage = sourceLanguage

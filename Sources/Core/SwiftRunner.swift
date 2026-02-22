@@ -1,4 +1,6 @@
+import System
 import Foundation
+import Subprocess
 
 /// Wrapper for executing Swift commands.
 ///
@@ -33,39 +35,11 @@ public struct SwiftRunner: Sendable {
     public func run(arguments: [String], workingDirectory: String? = nil) async throws
         -> SwiftResult
     {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-            process.arguments = arguments
-
-            if let workingDirectory {
-                process.currentDirectoryURL = URL(fileURLWithPath: workingDirectory)
-            }
-
-            let stdoutPipe = Pipe()
-            let stderrPipe = Pipe()
-            process.standardOutput = stdoutPipe
-            process.standardError = stderrPipe
-
-            do {
-                try process.run()
-
-                let pipes = ProcessResult.drainPipes(stdout: stdoutPipe, stderr: stderrPipe)
-                process.waitUntilExit()
-
-                let stdout = String(data: pipes.stdout, encoding: .utf8) ?? ""
-                let stderr = String(data: pipes.stderr, encoding: .utf8) ?? ""
-
-                let result = SwiftResult(
-                    exitCode: process.terminationStatus,
-                    stdout: stdout,
-                    stderr: stderr,
-                )
-                continuation.resume(returning: result)
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
+        try await ProcessResult.runSubprocess(
+            .path("/usr/bin/swift"),
+            arguments: Arguments(arguments),
+            workingDirectory: workingDirectory.map { FilePath($0) },
+        )
     }
 
     /// Builds a Swift package.

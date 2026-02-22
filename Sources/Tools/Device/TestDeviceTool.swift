@@ -97,7 +97,7 @@ public struct TestDeviceTool: Sendable {
                 }
             }
 
-            return try ErrorExtractor.formatTestToolResult(
+            return try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: "scheme '\(scheme)' on device '\(device)'",
                 xcresultPath: resultBundlePath,

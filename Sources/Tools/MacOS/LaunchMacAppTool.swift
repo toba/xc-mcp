@@ -58,7 +58,7 @@ public struct LaunchMacAppTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) throws -> CallTool.Result {
+    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let appPath = arguments.getString("app_path")
         let bundleId = arguments.getString("bundle_id")
 
@@ -107,7 +107,7 @@ public struct LaunchMacAppTool: Sendable {
                 openArgs.append(contentsOf: launchArgs)
             }
 
-            let result = try ProcessResult.run("/usr/bin/open", arguments: openArgs)
+            let result = try await ProcessResult.run("/usr/bin/open", arguments: openArgs)
 
             if result.succeeded {
                 let identifier = bundleId ?? appPath ?? "unknown"

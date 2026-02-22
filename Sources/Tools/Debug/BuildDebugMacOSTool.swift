@@ -2,6 +2,7 @@ import MCP
 import Logging
 import XCMCPCore
 import Foundation
+import Subprocess
 
 public struct BuildDebugMacOSTool: Sendable {
     /// Build timeout for debug builds (10 minutes to accommodate large projects)
@@ -175,7 +176,7 @@ public struct BuildDebugMacOSTool: Sendable {
             // need DYLD_FRAMEWORK_PATH, which dyld strips for hardened-runtime apps.
             // Solution: inject LSEnvironment into Info.plist + add the
             // allow-dyld-environment-variables entitlement, then re-sign.
-            try prepareAppForDebugLaunch(
+            try await prepareAppForDebugLaunch(
                 appPath: appPath, builtProductsDir: builtProductsDir,
             )
 
@@ -233,7 +234,7 @@ public struct BuildDebugMacOSTool: Sendable {
     /// 3. Re-signs the bundle to cover the modified content
     private func prepareAppForDebugLaunch(
         appPath: String, builtProductsDir: String?,
-    ) throws {
+    ) async throws {
         guard let dir = builtProductsDir else { return }
 
         let fm = FileManager.default
@@ -266,44 +267,34 @@ public struct BuildDebugMacOSTool: Sendable {
         if let macOSContents = try? fm.contentsOfDirectory(atPath: macOSDir) {
             for file in macOSContents {
                 let filePath = "\(macOSDir)/\(file)"
-                modified = try rewriteAbsoluteInstallNames(at: filePath) || modified
+                modified = try await rewriteAbsoluteInstallNames(at: filePath) || modified
             }
         }
 
         guard modified else { return }
 
         // Step 3: Re-sign with the original identity
-        try resignBundle(appPath: appPath)
+        try await resignBundle(appPath: appPath)
     }
 
     /// Rewrites absolute `/Library/Frameworks/` references to `@rpath/` using install_name_tool.
     ///
     /// Returns true if any changes were made.
-    private func rewriteAbsoluteInstallNames(at binaryPath: String) throws -> Bool {
-        let otoolProc = Process()
-        otoolProc.executableURL = URL(fileURLWithPath: "/usr/bin/otool")
-        otoolProc.arguments = ["-L", binaryPath]
-        let otoolOut = Pipe()
-        otoolProc.standardOutput = otoolOut
-        otoolProc.standardError = Pipe()
-        try otoolProc.run()
-        let otoolData = otoolOut.fileHandleForReading.readDataToEndOfFile()
-        otoolProc.waitUntilExit()
-
-        guard otoolProc.terminationStatus == 0 else { return false }
-
-        let output = String(data: otoolData, encoding: .utf8) ?? ""
+    private func rewriteAbsoluteInstallNames(at binaryPath: String) async throws -> Bool {
+        let otoolResult = try await ProcessResult.runSubprocess(
+            .path("/usr/bin/otool"),
+            arguments: ["-L", binaryPath],
+        )
+        guard otoolResult.succeeded else { return false }
 
         let prefix = "/Library/Frameworks/"
         var changes: [(old: String, new: String)] = []
 
-        for line in output.components(separatedBy: .newlines) {
+        for line in otoolResult.stdout.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.hasPrefix(prefix) {
-                // Extract the path (before the " (compatibility" part)
                 if let parenRange = trimmed.range(of: " (compatibility") {
                     let oldPath = String(trimmed[..<parenRange.lowerBound])
-                    // /Library/Frameworks/Foo.framework/... → @rpath/Foo.framework/...
                     let newPath = "@rpath/" + String(oldPath.dropFirst(prefix.count))
                     changes.append((old: oldPath, new: newPath))
                 }
@@ -312,28 +303,20 @@ public struct BuildDebugMacOSTool: Sendable {
 
         guard !changes.isEmpty else { return false }
 
-        // Apply all changes in a single install_name_tool invocation
         var args: [String] = []
         for change in changes {
             args += ["-change", change.old, change.new]
         }
         args.append(binaryPath)
 
-        let installNameProc = Process()
-        installNameProc.executableURL = URL(fileURLWithPath: "/usr/bin/install_name_tool")
-        installNameProc.arguments = args
-        let installErr = Pipe()
-        installNameProc.standardError = installErr
-        try installNameProc.run()
-        installNameProc.waitUntilExit()
+        let installResult = try await ProcessResult.runSubprocess(
+            .path("/usr/bin/install_name_tool"),
+            arguments: Arguments(args),
+        )
 
-        if installNameProc.terminationStatus != 0 {
-            let errStr =
-                String(
-                    data: installErr.fileHandleForReading.readDataToEndOfFile(),
-                    encoding: .utf8,
-                ) ?? ""
-            Self.logger.warning("install_name_tool failed for \(binaryPath): \(errStr)")
+        if !installResult.succeeded {
+            Self.logger
+                .warning("install_name_tool failed for \(binaryPath): \(installResult.stderr)")
             return false
         }
 
@@ -341,25 +324,16 @@ public struct BuildDebugMacOSTool: Sendable {
     }
 
     /// Re-signs the app bundle preserving the original signing identity and entitlements.
-    private func resignBundle(appPath: String) throws {
+    private func resignBundle(appPath: String) async throws {
         // Extract signing identity
-        let identityProc = Process()
-        identityProc.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-        identityProc.arguments = ["-dvvv", appPath]
-        let identityOut = Pipe()
-        identityProc.standardOutput = identityOut
-        identityProc.standardError = identityOut
-        try identityProc.run()
-        identityProc.waitUntilExit()
-
-        let identityStr =
-            String(
-                data: identityOut.fileHandleForReading.readDataToEndOfFile(),
-                encoding: .utf8,
-            ) ?? ""
+        let identityResult = try await ProcessResult.runSubprocess(
+            .path("/usr/bin/codesign"),
+            arguments: ["-dvvv", appPath],
+            mergeStderr: true,
+        )
 
         var signingIdentity = "-"
-        for line in identityStr.components(separatedBy: .newlines)
+        for line in identityResult.stdout.components(separatedBy: .newlines)
             where line.hasPrefix("Authority=")
         {
             signingIdentity = String(line.dropFirst("Authority=".count))
@@ -367,21 +341,16 @@ public struct BuildDebugMacOSTool: Sendable {
         }
 
         // Extract entitlements
-        let extractProc = Process()
-        extractProc.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-        extractProc.arguments = ["-d", "--entitlements", "-", "--xml", appPath]
-        let extractOut = Pipe()
-        extractProc.standardOutput = extractOut
-        extractProc.standardError = Pipe()
-        try extractProc.run()
-        let entitlementsData = extractOut.fileHandleForReading.readDataToEndOfFile()
-        extractProc.waitUntilExit()
+        let extractResult = try await ProcessResult.runSubprocess(
+            .path("/usr/bin/codesign"),
+            arguments: ["-d", "--entitlements", "-", "--xml", appPath],
+        )
         var tempEntitlementsURL: URL?
 
-        if !entitlementsData.isEmpty {
+        if let data = extractResult.stdout.data(using: .utf8), !data.isEmpty {
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent("debug_entitlements_\(UUID().uuidString).plist")
-            try entitlementsData.write(to: url)
+            try data.write(to: url)
             tempEntitlementsURL = url
         }
 
@@ -398,18 +367,13 @@ public struct BuildDebugMacOSTool: Sendable {
         }
         signArgs.append(appPath)
 
-        let signProc = Process()
-        signProc.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
-        signProc.arguments = signArgs
-        let signErr = Pipe()
-        signProc.standardError = signErr
-        try signProc.run()
-        signProc.waitUntilExit()
+        let signResult = try await ProcessResult.runSubprocess(
+            .path("/usr/bin/codesign"),
+            arguments: Arguments(signArgs),
+        )
 
-        if signProc.terminationStatus != 0 {
-            let errData = signErr.fileHandleForReading.readDataToEndOfFile()
-            let errStr = String(data: errData, encoding: .utf8) ?? ""
-            Self.logger.warning("Re-signing failed: \(errStr)")
+        if !signResult.succeeded {
+            Self.logger.warning("Re-signing failed: \(signResult.stderr)")
         }
     }
 

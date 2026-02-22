@@ -1,4 +1,5 @@
 import Foundation
+import Subprocess
 
 /// Parses `.xcresult` bundles using `xcresulttool` for detailed test results.
 ///
@@ -23,40 +24,28 @@ public enum XCResultParser {
     ///
     /// - Parameter path: Path to the `.xcresult` bundle.
     /// - Returns: Parsed test results, or nil if parsing fails.
-    public static func parseTestResults(at path: String) -> TestResults? {
-        guard let json = runXCResultTool(path: path) else { return nil }
+    public static func parseTestResults(at path: String) async -> TestResults? {
+        guard let json = await runXCResultTool(path: path) else { return nil }
         return parseTestJSON(json)
     }
 
     // MARK: - Private
 
-    private static func runXCResultTool(path: String) -> [String: Any]? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-        process.arguments = [
-            "xcresulttool", "get", "test-results", "tests", "--path", path, "--compact",
-        ]
+    private static func runXCResultTool(path: String) async -> [String: Any]? {
+        guard let result = try? await ProcessResult.runSubprocess(
+            .name("xcrun"),
+            arguments: Arguments([
+                "xcresulttool", "get", "test-results", "tests", "--path", path, "--compact",
+            ]),
+            outputLimit: 31_457_280,
+        ) else { return nil }
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-
-            // Read pipe data before waitUntilExit() to avoid deadlock when
-            // output exceeds the OS pipe buffer (~64KB).
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            process.waitUntilExit()
-
-            guard process.terminationStatus == 0 else { return nil }
-            guard !data.isEmpty,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            else { return nil }
-            return json
-        } catch {
-            return nil
-        }
+        guard result.succeeded,
+              let data = result.stdout.data(using: .utf8),
+              !data.isEmpty,
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        return json
     }
 
     private static func parseTestJSON(_ json: [String: Any]) -> TestResults {
