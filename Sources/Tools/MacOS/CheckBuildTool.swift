@@ -88,7 +88,8 @@ public struct CheckBuildTool: Sendable {
                 )
             } else {
                 let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
-                throw MCPError.internalError("Build failed for target '\(targetName)':\n\(errorOutput)")
+                throw MCPError.internalError(
+                    "Build failed for target '\(targetName)':\n\(errorOutput)")
             }
         } catch {
             throw error.asMCPError()
