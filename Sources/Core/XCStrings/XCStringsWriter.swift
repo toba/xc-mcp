@@ -2,243 +2,243 @@ import Foundation
 
 /// Handles write operations for xcstrings files
 public enum XCStringsWriter {
-    /// Add a translation for a key
-    public static func addTranslation(
-        to file: XCStringsFile,
-        key: String,
-        language: String,
-        value: String,
-        allowOverwrite: Bool = false,
-    ) throws(XCStringsError) -> XCStringsFile {
-        var result = file
+  /// Add a translation for a key
+  public static func addTranslation(
+    to file: XCStringsFile,
+    key: String,
+    language: String,
+    value: String,
+    allowOverwrite: Bool = false,
+  ) throws(XCStringsError) -> XCStringsFile {
+    var result = file
 
-        if result.strings[key] == nil {
-            result.strings[key] = StringEntry(localizations: [:])
-        }
+    if result.strings[key] == nil {
+      result.strings[key] = StringEntry(localizations: [:])
+    }
 
-        if !allowOverwrite, result.strings[key]?.localizations?[language] != nil {
-            throw XCStringsError.keyAlreadyExists(key: "\(key):\(language)")
-        }
+    if !allowOverwrite, result.strings[key]?.localizations?[language] != nil {
+      throw XCStringsError.keyAlreadyExists(key: "\(key):\(language)")
+    }
 
-        if result.strings[key]?.localizations == nil {
-            result.strings[key]?.localizations = [:]
-        }
+    if result.strings[key]?.localizations == nil {
+      result.strings[key]?.localizations = [:]
+    }
 
-        result.strings[key]?.localizations?[language] = Localization(
-            stringUnit: StringUnit(state: "translated", value: value),
+    result.strings[key]?.localizations?[language] = Localization(
+      stringUnit: StringUnit(state: "translated", value: value),
+    )
+
+    return result
+  }
+
+  /// Add translations for multiple languages
+  public static func addTranslations(
+    to file: XCStringsFile,
+    key: String,
+    translations: [String: String],
+    allowOverwrite: Bool = false,
+  ) throws(XCStringsError) -> XCStringsFile {
+    var result = file
+
+    if result.strings[key] == nil {
+      result.strings[key] = StringEntry(localizations: [:])
+    }
+
+    if result.strings[key]?.localizations == nil {
+      result.strings[key]?.localizations = [:]
+    }
+
+    for (language, value) in translations {
+      if !allowOverwrite, result.strings[key]?.localizations?[language] != nil {
+        throw XCStringsError.keyAlreadyExists(key: "\(key):\(language)")
+      }
+
+      result.strings[key]?.localizations?[language] = Localization(
+        stringUnit: StringUnit(state: "translated", value: value),
+      )
+    }
+
+    return result
+  }
+
+  /// Update an existing translation
+  public static func updateTranslation(
+    in file: XCStringsFile,
+    key: String,
+    language: String,
+    value: String,
+  ) throws(XCStringsError) -> XCStringsFile {
+    var result = file
+
+    guard result.strings[key] != nil else {
+      throw XCStringsError.keyNotFound(key: key)
+    }
+
+    guard result.strings[key]?.localizations?[language] != nil else {
+      throw XCStringsError.languageNotFound(language: language, key: key)
+    }
+
+    result.strings[key]?.localizations?[language] = Localization(
+      stringUnit: StringUnit(state: "translated", value: value),
+    )
+
+    return result
+  }
+
+  /// Update translations for multiple languages
+  public static func updateTranslations(
+    in file: XCStringsFile,
+    key: String,
+    translations: [String: String],
+  ) throws(XCStringsError) -> XCStringsFile {
+    var result = file
+
+    guard result.strings[key] != nil else {
+      throw XCStringsError.keyNotFound(key: key)
+    }
+
+    for (language, value) in translations {
+      guard result.strings[key]?.localizations?[language] != nil else {
+        throw XCStringsError.languageNotFound(language: language, key: key)
+      }
+
+      result.strings[key]?.localizations?[language] = Localization(
+        stringUnit: StringUnit(state: "translated", value: value),
+      )
+    }
+
+    return result
+  }
+
+  /// Add translations for multiple keys atomically
+  public static func addTranslationsBatch(
+    to file: XCStringsFile,
+    entries: [BatchTranslationEntry],
+    allowOverwrite: Bool = false,
+  ) -> (file: XCStringsFile, result: BatchWriteResult) {
+    var result = file
+    var succeeded = 0
+    var errors: [BatchWriteError] = []
+    errors.reserveCapacity(entries.count)
+
+    for entry in entries {
+      do {
+        result = try addTranslations(
+          to: result, key: entry.key, translations: entry.translations,
+          allowOverwrite: allowOverwrite,
         )
-
-        return result
+        succeeded += 1
+      } catch {
+        errors.append(BatchWriteError(key: entry.key, error: error.localizedDescription))
+      }
     }
 
-    /// Add translations for multiple languages
-    public static func addTranslations(
-        to file: XCStringsFile,
-        key: String,
-        translations: [String: String],
-        allowOverwrite: Bool = false,
-    ) throws(XCStringsError) -> XCStringsFile {
-        var result = file
+    return (result, BatchWriteResult(succeeded: succeeded, errors: errors))
+  }
 
-        if result.strings[key] == nil {
-            result.strings[key] = StringEntry(localizations: [:])
-        }
+  /// Update translations for multiple keys atomically
+  public static func updateTranslationsBatch(
+    in file: XCStringsFile,
+    entries: [BatchTranslationEntry],
+  ) -> (file: XCStringsFile, result: BatchWriteResult) {
+    var result = file
+    var succeeded = 0
+    var errors: [BatchWriteError] = []
+    errors.reserveCapacity(entries.count)
 
-        if result.strings[key]?.localizations == nil {
-            result.strings[key]?.localizations = [:]
-        }
-
-        for (language, value) in translations {
-            if !allowOverwrite, result.strings[key]?.localizations?[language] != nil {
-                throw XCStringsError.keyAlreadyExists(key: "\(key):\(language)")
-            }
-
-            result.strings[key]?.localizations?[language] = Localization(
-                stringUnit: StringUnit(state: "translated", value: value),
-            )
-        }
-
-        return result
-    }
-
-    /// Update an existing translation
-    public static func updateTranslation(
-        in file: XCStringsFile,
-        key: String,
-        language: String,
-        value: String,
-    ) throws(XCStringsError) -> XCStringsFile {
-        var result = file
-
-        guard result.strings[key] != nil else {
-            throw XCStringsError.keyNotFound(key: key)
-        }
-
-        guard result.strings[key]?.localizations?[language] != nil else {
-            throw XCStringsError.languageNotFound(language: language, key: key)
-        }
-
-        result.strings[key]?.localizations?[language] = Localization(
-            stringUnit: StringUnit(state: "translated", value: value),
+    for entry in entries {
+      do {
+        result = try updateTranslations(
+          in: result, key: entry.key, translations: entry.translations,
         )
-
-        return result
+        succeeded += 1
+      } catch {
+        errors.append(BatchWriteError(key: entry.key, error: error.localizedDescription))
+      }
     }
 
-    /// Update translations for multiple languages
-    public static func updateTranslations(
-        in file: XCStringsFile,
-        key: String,
-        translations: [String: String],
-    ) throws(XCStringsError) -> XCStringsFile {
-        var result = file
+    return (result, BatchWriteResult(succeeded: succeeded, errors: errors))
+  }
 
-        guard result.strings[key] != nil else {
-            throw XCStringsError.keyNotFound(key: key)
-        }
+  /// Rename a key
+  public static func renameKey(
+    in file: XCStringsFile,
+    from oldKey: String,
+    to newKey: String,
+  ) throws(XCStringsError) -> XCStringsFile {
+    var result = file
 
-        for (language, value) in translations {
-            guard result.strings[key]?.localizations?[language] != nil else {
-                throw XCStringsError.languageNotFound(language: language, key: key)
-            }
-
-            result.strings[key]?.localizations?[language] = Localization(
-                stringUnit: StringUnit(state: "translated", value: value),
-            )
-        }
-
-        return result
+    guard let entry = result.strings[oldKey] else {
+      throw XCStringsError.keyNotFound(key: oldKey)
     }
 
-    /// Add translations for multiple keys atomically
-    public static func addTranslationsBatch(
-        to file: XCStringsFile,
-        entries: [BatchTranslationEntry],
-        allowOverwrite: Bool = false,
-    ) -> (file: XCStringsFile, result: BatchWriteResult) {
-        var result = file
-        var succeeded = 0
-        var errors: [BatchWriteError] = []
-        errors.reserveCapacity(entries.count)
-
-        for entry in entries {
-            do {
-                result = try addTranslations(
-                    to: result, key: entry.key, translations: entry.translations,
-                    allowOverwrite: allowOverwrite,
-                )
-                succeeded += 1
-            } catch {
-                errors.append(BatchWriteError(key: entry.key, error: error.localizedDescription))
-            }
-        }
-
-        return (result, BatchWriteResult(succeeded: succeeded, errors: errors))
+    if result.strings[newKey] != nil {
+      throw XCStringsError.keyAlreadyExists(key: newKey)
     }
 
-    /// Update translations for multiple keys atomically
-    public static func updateTranslationsBatch(
-        in file: XCStringsFile,
-        entries: [BatchTranslationEntry],
-    ) -> (file: XCStringsFile, result: BatchWriteResult) {
-        var result = file
-        var succeeded = 0
-        var errors: [BatchWriteError] = []
-        errors.reserveCapacity(entries.count)
+    result.strings[newKey] = entry
+    result.strings.removeValue(forKey: oldKey)
 
-        for entry in entries {
-            do {
-                result = try updateTranslations(
-                    in: result, key: entry.key, translations: entry.translations,
-                )
-                succeeded += 1
-            } catch {
-                errors.append(BatchWriteError(key: entry.key, error: error.localizedDescription))
-            }
-        }
+    return result
+  }
 
-        return (result, BatchWriteResult(succeeded: succeeded, errors: errors))
+  /// Delete a key entirely
+  public static func deleteKey(
+    from file: XCStringsFile,
+    key: String,
+  ) throws(XCStringsError) -> XCStringsFile {
+    var result = file
+
+    guard result.strings[key] != nil else {
+      throw XCStringsError.keyNotFound(key: key)
     }
 
-    /// Rename a key
-    public static func renameKey(
-        in file: XCStringsFile,
-        from oldKey: String,
-        to newKey: String,
-    ) throws(XCStringsError) -> XCStringsFile {
-        var result = file
+    result.strings.removeValue(forKey: key)
 
-        guard let entry = result.strings[oldKey] else {
-            throw XCStringsError.keyNotFound(key: oldKey)
-        }
+    return result
+  }
 
-        if result.strings[newKey] != nil {
-            throw XCStringsError.keyAlreadyExists(key: newKey)
-        }
+  /// Delete a translation for a specific language
+  public static func deleteTranslation(
+    from file: XCStringsFile,
+    key: String,
+    language: String,
+  ) throws(XCStringsError) -> XCStringsFile {
+    var result = file
 
-        result.strings[newKey] = entry
-        result.strings.removeValue(forKey: oldKey)
-
-        return result
+    guard result.strings[key] != nil else {
+      throw XCStringsError.keyNotFound(key: key)
     }
 
-    /// Delete a key entirely
-    public static func deleteKey(
-        from file: XCStringsFile,
-        key: String,
-    ) throws(XCStringsError) -> XCStringsFile {
-        var result = file
-
-        guard result.strings[key] != nil else {
-            throw XCStringsError.keyNotFound(key: key)
-        }
-
-        result.strings.removeValue(forKey: key)
-
-        return result
+    guard result.strings[key]?.localizations?[language] != nil else {
+      throw XCStringsError.languageNotFound(language: language, key: key)
     }
 
-    /// Delete a translation for a specific language
-    public static func deleteTranslation(
-        from file: XCStringsFile,
-        key: String,
-        language: String,
-    ) throws(XCStringsError) -> XCStringsFile {
-        var result = file
+    result.strings[key]?.localizations?.removeValue(forKey: language)
 
-        guard result.strings[key] != nil else {
-            throw XCStringsError.keyNotFound(key: key)
-        }
+    return result
+  }
 
-        guard result.strings[key]?.localizations?[language] != nil else {
-            throw XCStringsError.languageNotFound(language: language, key: key)
-        }
+  /// Delete translations for multiple languages
+  public static func deleteTranslations(
+    from file: XCStringsFile,
+    key: String,
+    languages: [String],
+  ) throws(XCStringsError) -> XCStringsFile {
+    var result = file
 
-        result.strings[key]?.localizations?.removeValue(forKey: language)
-
-        return result
+    guard result.strings[key] != nil else {
+      throw XCStringsError.keyNotFound(key: key)
     }
 
-    /// Delete translations for multiple languages
-    public static func deleteTranslations(
-        from file: XCStringsFile,
-        key: String,
-        languages: [String],
-    ) throws(XCStringsError) -> XCStringsFile {
-        var result = file
+    for language in languages {
+      guard result.strings[key]?.localizations?[language] != nil else {
+        throw XCStringsError.languageNotFound(language: language, key: key)
+      }
 
-        guard result.strings[key] != nil else {
-            throw XCStringsError.keyNotFound(key: key)
-        }
-
-        for language in languages {
-            guard result.strings[key]?.localizations?[language] != nil else {
-                throw XCStringsError.languageNotFound(language: language, key: key)
-            }
-
-            result.strings[key]?.localizations?.removeValue(forKey: language)
-        }
-
-        return result
+      result.strings[key]?.localizations?.removeValue(forKey: language)
     }
+
+    return result
+  }
 }

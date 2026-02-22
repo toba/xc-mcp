@@ -1,74 +1,75 @@
+import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-import Foundation
+
 @testable import XCMCPTools
 
 @Test("CreateXcodeprojTool has correct properties")
 func toolProperties() {
-    let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: "/tmp"))
-    let tool = createTool.tool()
+  let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: "/tmp"))
+  let tool = createTool.tool()
 
-    #expect(tool.name == "create_xcodeproj")
-    #expect(tool.description == "Create a new Xcode project file (.xcodeproj)")
-    if case .object = tool.inputSchema {
-    } else {
-        Issue.record("Expected inputSchema to be an object")
-    }
+  #expect(tool.name == "create_xcodeproj")
+  #expect(tool.description == "Create a new Xcode project file (.xcodeproj)")
+  if case .object = tool.inputSchema {
+  } else {
+    Issue.record("Expected inputSchema to be an object")
+  }
 }
 
 @Test("CreateXcodeprojTool can be executed")
 func toolExecution() {
-    let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: "/tmp"))
+  let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-    // This test just verifies the tool can be instantiated and has the right interface
-    // We don't test actual file creation here to avoid side effects
-    #expect(createTool.tool().name == "create_xcodeproj")
+  // This test just verifies the tool can be instantiated and has the right interface
+  // We don't test actual file creation here to avoid side effects
+  #expect(createTool.tool().name == "create_xcodeproj")
 }
 
 @Test("CreateXcodeprojTool creates project with bundle identifier")
 func createProjectWithBundleIdentifier() throws {
-    let tempDir = Path("/tmp/xcodeproj-test-\(UUID().uuidString)")
-    try tempDir.mkpath()
-    let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: tempDir.string))
+  let tempDir = Path("/tmp/xcodeproj-test-\(UUID().uuidString)")
+  try tempDir.mkpath()
+  let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: tempDir.string))
 
-    defer {
-        try? tempDir.delete()
-    }
+  defer {
+    try? tempDir.delete()
+  }
 
-    let arguments: [String: Value] = [
-        "project_name": Value.string("TestApp"),
-        "path": Value.string(tempDir.string),
-        "organization_name": Value.string("Test Org"),
-        "bundle_identifier": Value.string("com.testorg"),
-    ]
+  let arguments: [String: Value] = [
+    "project_name": Value.string("TestApp"),
+    "path": Value.string(tempDir.string),
+    "organization_name": Value.string("Test Org"),
+    "bundle_identifier": Value.string("com.testorg"),
+  ]
 
-    let result = try createTool.execute(arguments: arguments)
+  let result = try createTool.execute(arguments: arguments)
 
-    // Verify project was created
-    let projectPath = tempDir + "TestApp.xcodeproj"
-    #expect(projectPath.exists)
+  // Verify project was created
+  let projectPath = tempDir + "TestApp.xcodeproj"
+  #expect(projectPath.exists)
 
-    // Read and verify the project contains the bundle identifier
-    let xcodeproj = try XcodeProj(path: projectPath)
-    let pbxproj = xcodeproj.pbxproj
+  // Read and verify the project contains the bundle identifier
+  let xcodeproj = try XcodeProj(path: projectPath)
+  let pbxproj = xcodeproj.pbxproj
 
-    // Find the app target
-    let appTarget = pbxproj.nativeTargets.first { $0.name == "TestApp" }
-    #expect(appTarget != nil)
+  // Find the app target
+  let appTarget = pbxproj.nativeTargets.first { $0.name == "TestApp" }
+  #expect(appTarget != nil)
 
-    // Check that bundle identifier is set in build configurations
-    if let target = appTarget,
-       let configList = target.buildConfigurationList,
-       let config = configList.buildConfigurations.first
-    {
-        let bundleId = config.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"]
-        #expect(bundleId == .string("com.testorg.TestApp"))
-    } else {
-        Issue.record("Could not find target build configuration")
-    }
+  // Check that bundle identifier is set in build configurations
+  if let target = appTarget,
+    let configList = target.buildConfigurationList,
+    let config = configList.buildConfigurations.first
+  {
+    let bundleId = config.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"]
+    #expect(bundleId == .string("com.testorg.TestApp"))
+  } else {
+    Issue.record("Could not find target build configuration")
+  }
 
-    #expect(result.isError != true)
+  #expect(result.isError != true)
 }

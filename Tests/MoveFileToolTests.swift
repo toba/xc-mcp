@@ -1,225 +1,226 @@
+import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-import Foundation
+
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
 struct MoveFileMissingParamTestCase: Sendable {
-    let description: String
-    let arguments: [String: Value]
+  let description: String
+  let arguments: [String: Value]
 
-    init(_ description: String, _ arguments: [String: Value]) {
-        self.description = description
-        self.arguments = arguments
-    }
+  init(_ description: String, _ arguments: [String: Value]) {
+    self.description = description
+    self.arguments = arguments
+  }
 }
 
 @Suite("MoveFileTool Tests")
 struct MoveFileToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
-        let tool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
-        let toolDefinition = tool.tool()
+  @Test("Tool creation")
+  func toolCreation() {
+    let tool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
+    let toolDefinition = tool.tool()
 
-        #expect(toolDefinition.name == "move_file")
-        #expect(toolDefinition.description == "Move or rename a file within the project")
+    #expect(toolDefinition.name == "move_file")
+    #expect(toolDefinition.description == "Move or rename a file within the project")
+  }
+
+  static let missingParamCases: [MoveFileMissingParamTestCase] = [
+    MoveFileMissingParamTestCase(
+      "Missing project_path",
+      [
+        "old_path": Value.string("old.swift"),
+        "new_path": Value.string("new.swift"),
+      ],
+    ),
+    MoveFileMissingParamTestCase(
+      "Missing old_path",
+      [
+        "project_path": Value.string("/path/to/project.xcodeproj"),
+        "new_path": Value.string("new.swift"),
+      ],
+    ),
+    MoveFileMissingParamTestCase(
+      "Missing new_path",
+      [
+        "project_path": Value.string("/path/to/project.xcodeproj"),
+        "old_path": Value.string("old.swift"),
+      ],
+    ),
+  ]
+
+  @Test("Move file with missing parameter", arguments: missingParamCases)
+  func moveFileWithMissingParameter(_ testCase: MoveFileMissingParamTestCase) throws {
+    let tool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
+
+    #expect(throws: MCPError.self) {
+      try tool.execute(arguments: testCase.arguments)
+    }
+  }
+
+  @Test("Move file in project")
+  func moveFile() throws {
+    // Create a temporary directory
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+      UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    static let missingParamCases: [MoveFileMissingParamTestCase] = [
-        MoveFileMissingParamTestCase(
-            "Missing project_path",
-            [
-                "old_path": Value.string("old.swift"),
-                "new_path": Value.string("new.swift"),
-            ],
-        ),
-        MoveFileMissingParamTestCase(
-            "Missing old_path",
-            [
-                "project_path": Value.string("/path/to/project.xcodeproj"),
-                "new_path": Value.string("new.swift"),
-            ],
-        ),
-        MoveFileMissingParamTestCase(
-            "Missing new_path",
-            [
-                "project_path": Value.string("/path/to/project.xcodeproj"),
-                "old_path": Value.string("old.swift"),
-            ],
-        ),
+    // Create a test project with target
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProjectWithTarget(
+      name: "TestProject", targetName: "TestApp", at: projectPath,
+    )
+
+    // First add a file to move
+    let addTool = AddFileTool(pathUtility: PathUtility(basePath: "/"))
+    let oldFilePath = tempDir.appendingPathComponent("OldFile.swift").path
+    try "// Test file".write(toFile: oldFilePath, atomically: true, encoding: .utf8)
+
+    let addArgs: [String: Value] = [
+      "project_path": Value.string(projectPath.string),
+      "file_path": Value.string(oldFilePath),
+      "target_name": Value.string("TestApp"),
+    ]
+    _ = try addTool.execute(arguments: addArgs)
+
+    // Now move the file
+    let moveTool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
+    let newFilePath = tempDir.appendingPathComponent("NewFile.swift").path
+    let moveArgs: [String: Value] = [
+      "project_path": Value.string(projectPath.string),
+      "old_path": Value.string(oldFilePath),
+      "new_path": Value.string(newFilePath),
+      "move_on_disk": Value.bool(false),
     ]
 
-    @Test("Move file with missing parameter", arguments: missingParamCases)
-    func moveFileWithMissingParameter(_ testCase: MoveFileMissingParamTestCase) throws {
-        let tool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
+    let result = try moveTool.execute(arguments: moveArgs)
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+    // Check the result contains success message
+    guard case .text(let message) = result.content.first else {
+      Issue.record("Expected text result")
+      return
+    }
+    #expect(message.contains("Successfully moved"))
+
+    // Verify file was moved in project
+    let xcodeproj = try XcodeProj(path: projectPath)
+    let fileReferences = xcodeproj.pbxproj.fileReferences
+
+    // Check that old path doesn't exist
+    let oldFileExists = fileReferences.contains {
+      $0.path == oldFilePath || $0.name == "OldFile.swift"
+    }
+    #expect(oldFileExists == false)
+
+    // Check that new path exists
+    let newFileExists = fileReferences.contains {
+      $0.path == newFilePath || $0.name == "NewFile.swift"
+    }
+    #expect(newFileExists == true)
+
+    // Verify file still exists at old path on disk (move_on_disk was false)
+    #expect(FileManager.default.fileExists(atPath: oldFilePath) == true)
+    #expect(FileManager.default.fileExists(atPath: newFilePath) == false)
+  }
+
+  @Test("Move file on disk")
+  func moveFileOnDisk() throws {
+    // Create a temporary directory
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+      UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Move file in project")
-    func moveFile() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    // Create a test project with target
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProjectWithTarget(
+      name: "TestProject", targetName: "TestApp", at: projectPath,
+    )
 
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+    // First add a file to move
+    let addTool = AddFileTool(pathUtility: PathUtility(basePath: "/"))
+    let oldFilePath = tempDir.appendingPathComponent("OldFile.swift").path
+    try "// Test file".write(toFile: oldFilePath, atomically: true, encoding: .utf8)
 
-        // Create a test project with target
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath,
-        )
+    let addArgs: [String: Value] = [
+      "project_path": Value.string(projectPath.string),
+      "file_path": Value.string(oldFilePath),
+      "target_name": Value.string("TestApp"),
+    ]
+    _ = try addTool.execute(arguments: addArgs)
 
-        // First add a file to move
-        let addTool = AddFileTool(pathUtility: PathUtility(basePath: "/"))
-        let oldFilePath = tempDir.appendingPathComponent("OldFile.swift").path
-        try "// Test file".write(toFile: oldFilePath, atomically: true, encoding: .utf8)
+    // Now move the file with move_on_disk = true
+    let moveTool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
+    let newFilePath = tempDir.appendingPathComponent("subfolder/NewFile.swift").path
+    let moveArgs: [String: Value] = [
+      "project_path": Value.string(projectPath.string),
+      "old_path": Value.string(oldFilePath),
+      "new_path": Value.string(newFilePath),
+      "move_on_disk": Value.bool(true),
+    ]
 
-        let addArgs: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-            "file_path": Value.string(oldFilePath),
-            "target_name": Value.string("TestApp"),
-        ]
-        _ = try addTool.execute(arguments: addArgs)
+    let result = try moveTool.execute(arguments: moveArgs)
 
-        // Now move the file
-        let moveTool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
-        let newFilePath = tempDir.appendingPathComponent("NewFile.swift").path
-        let moveArgs: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-            "old_path": Value.string(oldFilePath),
-            "new_path": Value.string(newFilePath),
-            "move_on_disk": Value.bool(false),
-        ]
+    // Check the result contains success message
+    guard case .text(let message) = result.content.first else {
+      Issue.record("Expected text result")
+      return
+    }
+    #expect(message.contains("Successfully moved"))
 
-        let result = try moveTool.execute(arguments: moveArgs)
+    // Verify file was moved on disk
+    #expect(FileManager.default.fileExists(atPath: oldFilePath) == false)
+    #expect(FileManager.default.fileExists(atPath: newFilePath) == true)
 
-        // Check the result contains success message
-        guard case let .text(message) = result.content.first else {
-            Issue.record("Expected text result")
-            return
-        }
-        #expect(message.contains("Successfully moved"))
+    // Verify content is preserved
+    let content = try String(contentsOfFile: newFilePath, encoding: .utf8)
+    #expect(content == "// Test file")
+  }
 
-        // Verify file was moved in project
-        let xcodeproj = try XcodeProj(path: projectPath)
-        let fileReferences = xcodeproj.pbxproj.fileReferences
+  @Test("Move non-existent file")
+  func moveNonExistentFile() throws {
+    // Create a temporary directory
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+      UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        // Check that old path doesn't exist
-        let oldFileExists = fileReferences.contains {
-            $0.path == oldFilePath || $0.name == "OldFile.swift"
-        }
-        #expect(oldFileExists == false)
-
-        // Check that new path exists
-        let newFileExists = fileReferences.contains {
-            $0.path == newFilePath || $0.name == "NewFile.swift"
-        }
-        #expect(newFileExists == true)
-
-        // Verify file still exists at old path on disk (move_on_disk was false)
-        #expect(FileManager.default.fileExists(atPath: oldFilePath) == true)
-        #expect(FileManager.default.fileExists(atPath: newFilePath) == false)
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Move file on disk")
-    func moveFileOnDisk() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    // Create a test project
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+    let moveTool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
+    let moveArgs: [String: Value] = [
+      "project_path": Value.string(projectPath.string),
+      "old_path": Value.string("/path/to/nonexistent.swift"),
+      "new_path": Value.string("/path/to/new.swift"),
+      "move_on_disk": Value.bool(false),
+    ]
 
-        // Create a test project with target
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath,
-        )
+    let result = try moveTool.execute(arguments: moveArgs)
 
-        // First add a file to move
-        let addTool = AddFileTool(pathUtility: PathUtility(basePath: "/"))
-        let oldFilePath = tempDir.appendingPathComponent("OldFile.swift").path
-        try "// Test file".write(toFile: oldFilePath, atomically: true, encoding: .utf8)
-
-        let addArgs: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-            "file_path": Value.string(oldFilePath),
-            "target_name": Value.string("TestApp"),
-        ]
-        _ = try addTool.execute(arguments: addArgs)
-
-        // Now move the file with move_on_disk = true
-        let moveTool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
-        let newFilePath = tempDir.appendingPathComponent("subfolder/NewFile.swift").path
-        let moveArgs: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-            "old_path": Value.string(oldFilePath),
-            "new_path": Value.string(newFilePath),
-            "move_on_disk": Value.bool(true),
-        ]
-
-        let result = try moveTool.execute(arguments: moveArgs)
-
-        // Check the result contains success message
-        guard case let .text(message) = result.content.first else {
-            Issue.record("Expected text result")
-            return
-        }
-        #expect(message.contains("Successfully moved"))
-
-        // Verify file was moved on disk
-        #expect(FileManager.default.fileExists(atPath: oldFilePath) == false)
-        #expect(FileManager.default.fileExists(atPath: newFilePath) == true)
-
-        // Verify content is preserved
-        let content = try String(contentsOfFile: newFilePath, encoding: .utf8)
-        #expect(content == "// Test file")
+    // Check the result contains not found message
+    guard case .text(let message) = result.content.first else {
+      Issue.record("Expected text result")
+      return
     }
-
-    @Test("Move non-existent file")
-    func moveNonExistentFile() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
-
-        // Create a test project
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
-
-        let moveTool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
-        let moveArgs: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-            "old_path": Value.string("/path/to/nonexistent.swift"),
-            "new_path": Value.string("/path/to/new.swift"),
-            "move_on_disk": Value.bool(false),
-        ]
-
-        let result = try moveTool.execute(arguments: moveArgs)
-
-        // Check the result contains not found message
-        guard case let .text(message) = result.content.first else {
-            Issue.record("Expected text result")
-            return
-        }
-        #expect(message.contains("File not found"))
-    }
+    #expect(message.contains("File not found"))
+  }
 }

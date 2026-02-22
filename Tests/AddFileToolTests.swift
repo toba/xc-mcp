@@ -1,224 +1,225 @@
+import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-import Foundation
+
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
 struct AddFileMissingParamTestCase: Sendable {
-    let description: String
-    let arguments: [String: Value]
+  let description: String
+  let arguments: [String: Value]
 
-    init(_ description: String, _ arguments: [String: Value]) {
-        self.description = description
-        self.arguments = arguments
-    }
+  init(_ description: String, _ arguments: [String: Value]) {
+    self.description = description
+    self.arguments = arguments
+  }
 }
 
 @Suite("AddFileTool Tests")
 struct AddFileToolTests {
-    @Test("Tool creation")
-    func addFileToolCreation() {
-        let tool = AddFileTool(pathUtility: PathUtility(basePath: "/tmp"))
-        let toolDefinition = tool.tool()
+  @Test("Tool creation")
+  func addFileToolCreation() {
+    let tool = AddFileTool(pathUtility: PathUtility(basePath: "/tmp"))
+    let toolDefinition = tool.tool()
 
-        #expect(toolDefinition.name == "add_file")
-        #expect(toolDefinition.description == "Add a file to an Xcode project")
+    #expect(toolDefinition.name == "add_file")
+    #expect(toolDefinition.description == "Add a file to an Xcode project")
+  }
+
+  static let missingParamCases: [AddFileMissingParamTestCase] = [
+    AddFileMissingParamTestCase(
+      "Missing project_path",
+      ["file_path": Value.string("test.swift")],
+    ),
+    AddFileMissingParamTestCase(
+      "Missing file_path",
+      ["project_path": Value.string("/path/to/project.xcodeproj")],
+    ),
+  ]
+
+  @Test("Add file with missing parameter", arguments: missingParamCases)
+  func addFileWithMissingParameter(_ testCase: AddFileMissingParamTestCase) throws {
+    let tool = AddFileTool(pathUtility: PathUtility(basePath: "/tmp"))
+
+    #expect(throws: MCPError.self) {
+      try tool.execute(arguments: testCase.arguments)
     }
+  }
 
-    static let missingParamCases: [AddFileMissingParamTestCase] = [
-        AddFileMissingParamTestCase(
-            "Missing project_path",
-            ["file_path": Value.string("test.swift")],
-        ),
-        AddFileMissingParamTestCase(
-            "Missing file_path",
-            ["project_path": Value.string("/path/to/project.xcodeproj")],
-        ),
+  @Test("Add file with invalid project path")
+  func addFileWithInvalidProjectPath() throws {
+    let tool = AddFileTool(pathUtility: PathUtility(basePath: "/tmp"))
+    let arguments: [String: Value] = [
+      "project_path": Value.string("/nonexistent/path.xcodeproj"),
+      "file_path": Value.string("test.swift"),
     ]
 
-    @Test("Add file with missing parameter", arguments: missingParamCases)
-    func addFileWithMissingParameter(_ testCase: AddFileMissingParamTestCase) throws {
-        let tool = AddFileTool(pathUtility: PathUtility(basePath: "/tmp"))
+    #expect(throws: MCPError.self) {
+      try tool.execute(arguments: arguments)
+    }
+  }
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+  @Test("Add file to main group")
+  func addFileToMainGroup() throws {
+    // Create a temporary directory
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+      UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Add file with invalid project path")
-    func addFileWithInvalidProjectPath() throws {
-        let tool = AddFileTool(pathUtility: PathUtility(basePath: "/tmp"))
-        let arguments: [String: Value] = [
-            "project_path": Value.string("/nonexistent/path.xcodeproj"),
-            "file_path": Value.string("test.swift"),
-        ]
+    // Create a test project
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: arguments)
-        }
+    // Add a file
+    let arguments: [String: Value] = [
+      "project_path": Value.string(projectPath.string),
+      "file_path": Value.string(tempDir.appendingPathComponent("file.swift").path),
+    ]
+
+    let result = try tool.execute(arguments: arguments)
+
+    #expect(result.content.count == 1)
+    if case .text(let content) = result.content[0] {
+      #expect(content.contains("Successfully added file 'file.swift'"))
+    } else {
+      Issue.record("Expected text content")
     }
 
-    @Test("Add file to main group")
-    func addFileToMainGroup() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    // Verify file was added to project
+    let xcodeproj = try XcodeProj(path: projectPath)
+    let fileReferences = xcodeproj.pbxproj.fileReferences
+    let addedFile = fileReferences.first { $0.name == "file.swift" }
+    #expect(addedFile != nil)
+  }
 
-        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+  @Test("Add file to group")
+  func addFileToGroup() throws {
+    // Create a temporary directory
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+      UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        // Create a test project
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
-
-        // Add a file
-        let arguments: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-            "file_path": Value.string(tempDir.appendingPathComponent("file.swift").path),
-        ]
-
-        let result = try tool.execute(arguments: arguments)
-
-        #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
-            #expect(content.contains("Successfully added file 'file.swift'"))
-        } else {
-            Issue.record("Expected text content")
-        }
-
-        // Verify file was added to project
-        let xcodeproj = try XcodeProj(path: projectPath)
-        let fileReferences = xcodeproj.pbxproj.fileReferences
-        let addedFile = fileReferences.first { $0.name == "file.swift" }
-        #expect(addedFile != nil)
+    let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Add file to group")
-    func addFileToGroup() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    // Create a test project
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
-        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+    // Add a file to "Tests" group
+    let arguments: [String: Value] = [
+      "project_path": Value.string(projectPath.string),
+      "file_path": Value.string(tempDir.appendingPathComponent("file.swift").path),
+      "group_name": Value.string("Tests"),
+    ]
 
-        // Create a test project
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+    let result = try tool.execute(arguments: arguments)
 
-        // Add a file to "Tests" group
-        let arguments: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-            "file_path": Value.string(tempDir.appendingPathComponent("file.swift").path),
-            "group_name": Value.string("Tests"),
-        ]
-
-        let result = try tool.execute(arguments: arguments)
-
-        #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
-            #expect(content.contains("Successfully added file 'file.swift'"))
-        } else {
-            Issue.record("Expected text content")
-        }
-
-        // Verify file was added to project
-        let xcodeproj = try XcodeProj(path: projectPath)
-        let fileReferences = xcodeproj.pbxproj.fileReferences
-        let addedFile = fileReferences.first { $0.name == "file.swift" }
-        #expect(addedFile != nil)
+    #expect(result.content.count == 1)
+    if case .text(let content) = result.content[0] {
+      #expect(content.contains("Successfully added file 'file.swift'"))
+    } else {
+      Issue.record("Expected text content")
     }
 
-    @Test("Add file to target")
-    func addFileToTarget() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    // Verify file was added to project
+    let xcodeproj = try XcodeProj(path: projectPath)
+    let fileReferences = xcodeproj.pbxproj.fileReferences
+    let addedFile = fileReferences.first { $0.name == "file.swift" }
+    #expect(addedFile != nil)
+  }
 
-        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+  @Test("Add file to target")
+  func addFileToTarget() throws {
+    // Create a temporary directory
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+      UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        // Create a test project with a target
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath,
-        )
-
-        // Add a Swift file to target
-        let arguments: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-            "file_path": Value.string(tempDir.appendingPathComponent("file.swift").path),
-            "target_name": Value.string("TestApp"),
-        ]
-
-        let result = try tool.execute(arguments: arguments)
-
-        #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
-            #expect(content.contains("Successfully added file 'file.swift' to target 'TestApp'"))
-        } else {
-            Issue.record("Expected text content")
-        }
-
-        // Verify file was added to project and target
-        let xcodeproj = try XcodeProj(path: projectPath)
-        let fileReferences = xcodeproj.pbxproj.fileReferences
-        let addedFile = fileReferences.first { $0.name == "file.swift" }
-        #expect(addedFile != nil)
-
-        // Verify file was added to target's sources build phase
-        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
-        #expect(target != nil)
-
-        let sourcesBuildPhase =
-            target?.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
-        #expect(sourcesBuildPhase != nil)
-
-        let buildFile = sourcesBuildPhase?.files?.first { $0.file == addedFile }
-        #expect(buildFile != nil)
+    let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Add file with nonexistent target")
-    func addFileWithNonexistentTarget() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    // Create a test project with a target
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProjectWithTarget(
+      name: "TestProject", targetName: "TestApp", at: projectPath,
+    )
 
-        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+    // Add a Swift file to target
+    let arguments: [String: Value] = [
+      "project_path": Value.string(projectPath.string),
+      "file_path": Value.string(tempDir.appendingPathComponent("file.swift").path),
+      "target_name": Value.string("TestApp"),
+    ]
 
-        // Create a test project
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+    let result = try tool.execute(arguments: arguments)
 
-        // Try to add file to non-existent target
-        let arguments: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-            "file_path": Value.string(tempDir.appendingPathComponent("file.swift").path),
-            "target_name": Value.string("NonexistentTarget"),
-        ]
-
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: arguments)
-        }
+    #expect(result.content.count == 1)
+    if case .text(let content) = result.content[0] {
+      #expect(content.contains("Successfully added file 'file.swift' to target 'TestApp'"))
+    } else {
+      Issue.record("Expected text content")
     }
+
+    // Verify file was added to project and target
+    let xcodeproj = try XcodeProj(path: projectPath)
+    let fileReferences = xcodeproj.pbxproj.fileReferences
+    let addedFile = fileReferences.first { $0.name == "file.swift" }
+    #expect(addedFile != nil)
+
+    // Verify file was added to target's sources build phase
+    let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+    #expect(target != nil)
+
+    let sourcesBuildPhase =
+      target?.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+    #expect(sourcesBuildPhase != nil)
+
+    let buildFile = sourcesBuildPhase?.files?.first { $0.file == addedFile }
+    #expect(buildFile != nil)
+  }
+
+  @Test("Add file with nonexistent target")
+  func addFileWithNonexistentTarget() throws {
+    // Create a temporary directory
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+      UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
+    }
+
+    // Create a test project
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+    // Try to add file to non-existent target
+    let arguments: [String: Value] = [
+      "project_path": Value.string(projectPath.string),
+      "file_path": Value.string(tempDir.appendingPathComponent("file.swift").path),
+      "target_name": Value.string("NonexistentTarget"),
+    ]
+
+    #expect(throws: MCPError.self) {
+      try tool.execute(arguments: arguments)
+    }
+  }
 }

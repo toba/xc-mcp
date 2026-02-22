@@ -1,266 +1,266 @@
+import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-import Foundation
+
 @testable import XCMCPTools
 
 @Suite("RemoveAppExtensionTool Tests")
 struct RemoveAppExtensionToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
-        let tool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: "/tmp"))
-        let toolDefinition = tool.tool()
+  @Test("Tool creation")
+  func toolCreation() {
+    let tool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: "/tmp"))
+    let toolDefinition = tool.tool()
 
-        #expect(toolDefinition.name == "remove_app_extension")
-        #expect(
-            toolDefinition.description
-                ==
-                "Remove an App Extension target from the project and its embedding from the host app",
-        )
+    #expect(toolDefinition.name == "remove_app_extension")
+    #expect(
+      toolDefinition.description
+        == "Remove an App Extension target from the project and its embedding from the host app",
+    )
+  }
+
+  @Test("Remove app extension with missing parameters")
+  func removeAppExtensionWithMissingParameters() throws {
+    let tool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: "/tmp"))
+
+    // Missing project_path
+    #expect(throws: MCPError.self) {
+      try tool.execute(arguments: [
+        "extension_name": Value.string("MyWidget")
+      ])
     }
 
-    @Test("Remove app extension with missing parameters")
-    func removeAppExtensionWithMissingParameters() throws {
-        let tool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: "/tmp"))
+    // Missing extension_name
+    #expect(throws: MCPError.self) {
+      try tool.execute(arguments: [
+        "project_path": Value.string("/path/to/project.xcodeproj")
+      ])
+    }
+  }
 
-        // Missing project_path
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "extension_name": Value.string("MyWidget"),
-            ])
-        }
+  @Test("Remove widget extension")
+  func removeWidgetExtension() throws {
+    let tempDir = FileManager.default.temporaryDirectory.appending(
+      component:
+        UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        // Missing extension_name
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "project_path": Value.string("/path/to/project.xcodeproj"),
-            ])
-        }
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Remove widget extension")
-    func removeWidgetExtension() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component:
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProjectWithTarget(
+      name: "TestProject", targetName: "TestApp", at: projectPath,
+    )
 
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+    // First add an extension
+    let addTool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
+    _ = try addTool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "extension_name": Value.string("MyWidget"),
+      "extension_type": Value.string("widget"),
+      "host_target_name": Value.string("TestApp"),
+      "bundle_identifier": Value.string("com.example.TestApp.MyWidget"),
+    ])
 
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath,
-        )
+    // Verify extension was added
+    var xcodeproj = try XcodeProj(path: projectPath)
+    #expect(xcodeproj.pbxproj.nativeTargets.contains { $0.name == "MyWidget" })
 
-        // First add an extension
-        let addTool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
-        _ = try addTool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "extension_name": Value.string("MyWidget"),
-            "extension_type": Value.string("widget"),
-            "host_target_name": Value.string("TestApp"),
-            "bundle_identifier": Value.string("com.example.TestApp.MyWidget"),
-        ])
+    // Now remove the extension
+    let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
+    let result = try removeTool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "extension_name": Value.string("MyWidget"),
+    ])
 
-        // Verify extension was added
-        var xcodeproj = try XcodeProj(path: projectPath)
-        #expect(xcodeproj.pbxproj.nativeTargets.contains { $0.name == "MyWidget" })
+    guard case .text(let message) = result.content.first else {
+      Issue.record("Expected text result")
+      return
+    }
+    #expect(message.contains("Successfully removed App Extension 'MyWidget'"))
 
-        // Now remove the extension
-        let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try removeTool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "extension_name": Value.string("MyWidget"),
-        ])
+    // Verify extension was removed
+    xcodeproj = try XcodeProj(path: projectPath)
+    #expect(!xcodeproj.pbxproj.nativeTargets.contains { $0.name == "MyWidget" })
 
-        guard case let .text(message) = result.content.first else {
-            Issue.record("Expected text result")
-            return
-        }
-        #expect(message.contains("Successfully removed App Extension 'MyWidget'"))
+    // Verify host target no longer has dependency
+    let hostTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+    let hasDependency = hostTarget?.dependencies.contains { $0.name == "MyWidget" }
+    #expect(hasDependency != true)
+  }
 
-        // Verify extension was removed
-        xcodeproj = try XcodeProj(path: projectPath)
-        #expect(!xcodeproj.pbxproj.nativeTargets.contains { $0.name == "MyWidget" })
+  @Test("Remove non-existent extension")
+  func removeNonExistentExtension() throws {
+    let tempDir = FileManager.default.temporaryDirectory.appending(
+      component:
+        UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        // Verify host target no longer has dependency
-        let hostTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
-        let hasDependency = hostTarget?.dependencies.contains { $0.name == "MyWidget" }
-        #expect(hasDependency != true)
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Remove non-existent extension")
-    func removeNonExistentExtension() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component:
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProjectWithTarget(
+      name: "TestProject", targetName: "TestApp", at: projectPath,
+    )
 
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+    let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
+    let result = try removeTool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "extension_name": Value.string("NonExistentWidget"),
+    ])
 
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath,
-        )
+    guard case .text(let message) = result.content.first else {
+      Issue.record("Expected text result")
+      return
+    }
+    #expect(message.contains("not found"))
+  }
 
-        let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try removeTool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "extension_name": Value.string("NonExistentWidget"),
-        ])
+  @Test("Remove non-extension target fails")
+  func removeNonExtensionTargetFails() throws {
+    let tempDir = FileManager.default.temporaryDirectory.appending(
+      component:
+        UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        guard case let .text(message) = result.content.first else {
-            Issue.record("Expected text result")
-            return
-        }
-        #expect(message.contains("not found"))
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Remove non-extension target fails")
-    func removeNonExtensionTargetFails() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component:
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProjectWithTarget(
+      name: "TestProject", targetName: "TestApp", at: projectPath,
+    )
 
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+    let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
+    let result = try removeTool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "extension_name": Value.string("TestApp"),
+    ])
 
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath,
-        )
+    guard case .text(let message) = result.content.first else {
+      Issue.record("Expected text result")
+      return
+    }
+    #expect(message.contains("is not an App Extension"))
+  }
 
-        let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try removeTool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "extension_name": Value.string("TestApp"),
-        ])
+  @Test("Remove extension cleans up embed phase")
+  func removeExtensionCleansUpEmbedPhase() throws {
+    let tempDir = FileManager.default.temporaryDirectory.appending(
+      component:
+        UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        guard case let .text(message) = result.content.first else {
-            Issue.record("Expected text result")
-            return
-        }
-        #expect(message.contains("is not an App Extension"))
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Remove extension cleans up embed phase")
-    func removeExtensionCleansUpEmbedPhase() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component:
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProjectWithTarget(
+      name: "TestProject", targetName: "TestApp", at: projectPath,
+    )
 
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+    // Add an extension
+    let addTool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
+    _ = try addTool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "extension_name": Value.string("MyWidget"),
+      "extension_type": Value.string("widget"),
+      "host_target_name": Value.string("TestApp"),
+      "bundle_identifier": Value.string("com.example.TestApp.MyWidget"),
+    ])
 
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath,
-        )
+    // Remove the extension
+    let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
+    _ = try removeTool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "extension_name": Value.string("MyWidget"),
+    ])
 
-        // Add an extension
-        let addTool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
-        _ = try addTool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "extension_name": Value.string("MyWidget"),
-            "extension_type": Value.string("widget"),
-            "host_target_name": Value.string("TestApp"),
-            "bundle_identifier": Value.string("com.example.TestApp.MyWidget"),
-        ])
+    // Verify embed phase is empty or removed
+    let xcodeproj = try XcodeProj(path: projectPath)
+    let hostTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+    let embedPhase = hostTarget?.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
+      .first { $0.name == "Embed App Extensions" }
 
-        // Remove the extension
-        let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
-        _ = try removeTool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "extension_name": Value.string("MyWidget"),
-        ])
+    // Either the phase should be removed or it should have no files
+    if let embedPhase {
+      #expect(embedPhase.files?.isEmpty == true)
+    }
+  }
 
-        // Verify embed phase is empty or removed
-        let xcodeproj = try XcodeProj(path: projectPath)
-        let hostTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
-        let embedPhase = hostTarget?.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
-            .first { $0.name == "Embed App Extensions" }
+  @Test("Remove multiple extensions")
+  func removeMultipleExtensions() throws {
+    let tempDir = FileManager.default.temporaryDirectory.appending(
+      component:
+        UUID().uuidString,
+    )
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
-        // Either the phase should be removed or it should have no files
-        if let embedPhase {
-            #expect(embedPhase.files?.isEmpty == true)
-        }
+    defer {
+      try? FileManager.default.removeItem(at: tempDir)
     }
 
-    @Test("Remove multiple extensions")
-    func removeMultipleExtensions() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component:
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProjectWithTarget(
+      name: "TestProject", targetName: "TestApp", at: projectPath,
+    )
 
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+    // Add two extensions
+    let addTool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
 
-        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestApp", at: projectPath,
-        )
+    _ = try addTool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "extension_name": Value.string("Widget1"),
+      "extension_type": Value.string("widget"),
+      "host_target_name": Value.string("TestApp"),
+      "bundle_identifier": Value.string("com.example.TestApp.Widget1"),
+    ])
 
-        // Add two extensions
-        let addTool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
+    _ = try addTool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "extension_name": Value.string("Widget2"),
+      "extension_type": Value.string("widget"),
+      "host_target_name": Value.string("TestApp"),
+      "bundle_identifier": Value.string("com.example.TestApp.Widget2"),
+    ])
 
-        _ = try addTool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "extension_name": Value.string("Widget1"),
-            "extension_type": Value.string("widget"),
-            "host_target_name": Value.string("TestApp"),
-            "bundle_identifier": Value.string("com.example.TestApp.Widget1"),
-        ])
+    // Verify both were added
+    var xcodeproj = try XcodeProj(path: projectPath)
+    #expect(xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Widget1" })
+    #expect(xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Widget2" })
 
-        _ = try addTool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "extension_name": Value.string("Widget2"),
-            "extension_type": Value.string("widget"),
-            "host_target_name": Value.string("TestApp"),
-            "bundle_identifier": Value.string("com.example.TestApp.Widget2"),
-        ])
+    // Remove first extension
+    let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
+    _ = try removeTool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "extension_name": Value.string("Widget1"),
+    ])
 
-        // Verify both were added
-        var xcodeproj = try XcodeProj(path: projectPath)
-        #expect(xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Widget1" })
-        #expect(xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Widget2" })
+    // Verify first was removed but second remains
+    xcodeproj = try XcodeProj(path: projectPath)
+    #expect(!xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Widget1" })
+    #expect(xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Widget2" })
 
-        // Remove first extension
-        let removeTool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
-        _ = try removeTool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "extension_name": Value.string("Widget1"),
-        ])
+    // Remove second extension
+    _ = try removeTool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "extension_name": Value.string("Widget2"),
+    ])
 
-        // Verify first was removed but second remains
-        xcodeproj = try XcodeProj(path: projectPath)
-        #expect(!xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Widget1" })
-        #expect(xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Widget2" })
-
-        // Remove second extension
-        _ = try removeTool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "extension_name": Value.string("Widget2"),
-        ])
-
-        // Verify second was removed
-        xcodeproj = try XcodeProj(path: projectPath)
-        #expect(!xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Widget2" })
-    }
+    // Verify second was removed
+    xcodeproj = try XcodeProj(path: projectPath)
+    #expect(!xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Widget2" })
+  }
 }

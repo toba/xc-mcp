@@ -1,309 +1,310 @@
+import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-import Foundation
+
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
 struct AddFolderMissingParamTestCase: Sendable {
-    let description: String
-    let arguments: [String: Value]
+  let description: String
+  let arguments: [String: Value]
 
-    init(_ description: String, _ arguments: [String: Value]) {
-        self.description = description
-        self.arguments = arguments
-    }
+  init(_ description: String, _ arguments: [String: Value]) {
+    self.description = description
+    self.arguments = arguments
+  }
 }
 
 @Suite("AddFolderTool Tests")
 struct AddFolderToolTests {
-    let tempDir: String
-    let pathUtility: PathUtility
+  let tempDir: String
+  let pathUtility: PathUtility
 
-    init() {
-        tempDir =
-            FileManager.default.temporaryDirectory
-                .appendingPathComponent("AddFolderToolTests-\(UUID().uuidString)")
-                .path
-        pathUtility = PathUtility(basePath: tempDir)
-        try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
+  init() {
+    tempDir =
+      FileManager.default.temporaryDirectory
+      .appendingPathComponent("AddFolderToolTests-\(UUID().uuidString)")
+      .path
+    pathUtility = PathUtility(basePath: tempDir)
+    try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
+  }
+
+  @Test("Tool has correct properties")
+  func toolProperties() {
+    let tool = AddFolderTool(pathUtility: pathUtility)
+
+    #expect(tool.tool().name == "add_synchronized_folder")
+    #expect(
+      tool.tool().description == "Add a synchronized folder reference to an Xcode project",
+    )
+
+    let schema = tool.tool().inputSchema
+    if case .object(let schemaDict) = schema {
+      if case .object(let props) = schemaDict["properties"] {
+        #expect(props["project_path"] != nil)
+        #expect(props["folder_path"] != nil)
+        #expect(props["group_name"] != nil)
+        #expect(props["target_name"] != nil)
+      }
+
+      if case .array(let required) = schemaDict["required"] {
+        #expect(required.count == 2)
+        #expect(required.contains(.string("project_path")))
+        #expect(required.contains(.string("folder_path")))
+      }
+    }
+  }
+
+  static let missingParamCases: [AddFolderMissingParamTestCase] = [
+    AddFolderMissingParamTestCase(
+      "Missing project_path",
+      ["folder_path": .string("path/to/folder")],
+    ),
+    AddFolderMissingParamTestCase(
+      "Missing folder_path",
+      ["project_path": .string("project.xcodeproj")],
+    ),
+  ]
+
+  @Test("Validates required parameter", arguments: missingParamCases)
+  func validateRequiredParameters(_ testCase: AddFolderMissingParamTestCase) throws {
+    let tool = AddFolderTool(pathUtility: pathUtility)
+
+    #expect(throws: MCPError.self) {
+      try tool.execute(arguments: testCase.arguments)
+    }
+  }
+
+  @Test("Validates invalid parameter type")
+  func validateInvalidParameterType() throws {
+    let tool = AddFolderTool(pathUtility: pathUtility)
+
+    #expect(throws: MCPError.self) {
+      try tool.execute(arguments: [
+        "project_path": Value.bool(true),
+        "folder_path": Value.string("path/to/folder"),
+      ])
+    }
+  }
+
+  @Test("Adds folder reference to project")
+  func addsFolderToProject() throws {
+    let tool = AddFolderTool(pathUtility: pathUtility)
+
+    // Create a test project
+    let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+    // Create a test folder
+    let folderPath = Path(tempDir) + "TestFolder"
+    try FileManager.default.createDirectory(
+      atPath: folderPath.string, withIntermediateDirectories: true,
+    )
+
+    // Execute the tool
+    let result = try tool.execute(arguments: [
+      "project_path": .string(projectPath.string),
+      "folder_path": .string(folderPath.string),
+    ])
+
+    // Verify the result
+    if case .text(let message) = result.content.first {
+      #expect(message.contains("Successfully added folder reference 'TestFolder'"))
+    } else {
+      Issue.record("Expected text result")
     }
 
-    @Test("Tool has correct properties")
-    func toolProperties() {
-        let tool = AddFolderTool(pathUtility: pathUtility)
+    // Verify the project was updated
+    let updatedProject = try XcodeProj(path: projectPath)
+    let folderReferences = updatedProject.pbxproj.fileSystemSynchronizedRootGroups
+    #expect(folderReferences.count == 1)
+    #expect(folderReferences.first?.name == "TestFolder")
+  }
 
-        #expect(tool.tool().name == "add_synchronized_folder")
-        #expect(
-            tool.tool().description == "Add a synchronized folder reference to an Xcode project",
-        )
+  @Test("Adds folder to specific group")
+  func addsFolderToSpecificGroup() throws {
+    let tool = AddFolderTool(pathUtility: pathUtility)
 
-        let schema = tool.tool().inputSchema
-        if case let .object(schemaDict) = schema {
-            if case let .object(props) = schemaDict["properties"] {
-                #expect(props["project_path"] != nil)
-                #expect(props["folder_path"] != nil)
-                #expect(props["group_name"] != nil)
-                #expect(props["target_name"] != nil)
-            }
+    // Create a test project
+    let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
-            if case let .array(required) = schemaDict["required"] {
-                #expect(required.count == 2)
-                #expect(required.contains(.string("project_path")))
-                #expect(required.contains(.string("folder_path")))
-            }
-        }
+    // Load the project and add a custom group
+    let xcodeproj = try XcodeProj(path: projectPath)
+    let customGroup = PBXGroup(children: [], sourceTree: .group, name: "CustomGroup")
+    xcodeproj.pbxproj.add(object: customGroup)
+    if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
+      mainGroup.children.append(customGroup)
+    }
+    try xcodeproj.write(path: projectPath)
+
+    // Create a test folder
+    let folderPath = Path(tempDir) + "TestFolder"
+    try FileManager.default.createDirectory(
+      atPath: folderPath.string, withIntermediateDirectories: true,
+    )
+
+    // Execute the tool
+    let result = try tool.execute(arguments: [
+      "project_path": .string(projectPath.string),
+      "folder_path": .string(folderPath.string),
+      "group_name": .string("CustomGroup"),
+    ])
+
+    // Verify the result
+    if case .text(let message) = result.content.first {
+      #expect(message.contains("Successfully added folder reference 'TestFolder'"))
+      #expect(message.contains("in group 'CustomGroup'"))
+    } else {
+      Issue.record("Expected text result")
     }
 
-    static let missingParamCases: [AddFolderMissingParamTestCase] = [
-        AddFolderMissingParamTestCase(
-            "Missing project_path",
-            ["folder_path": .string("path/to/folder")],
-        ),
-        AddFolderMissingParamTestCase(
-            "Missing folder_path",
-            ["project_path": .string("project.xcodeproj")],
-        ),
-    ]
+    // Verify the folder was added to the correct group
+    let updatedProject = try XcodeProj(path: projectPath)
+    let updatedCustomGroup = updatedProject.pbxproj.groups.first { $0.name == "CustomGroup" }
+    #expect(updatedCustomGroup?.children.count == 1)
+  }
 
-    @Test("Validates required parameter", arguments: missingParamCases)
-    func validateRequiredParameters(_ testCase: AddFolderMissingParamTestCase) throws {
-        let tool = AddFolderTool(pathUtility: pathUtility)
+  @Test("Adds folder to target")
+  func addsFolderToTarget() throws {
+    let tool = AddFolderTool(pathUtility: pathUtility)
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+    // Create a test project with a target
+    let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProjectWithTarget(
+      name: "TestProject", targetName: "TestTarget", at: projectPath,
+    )
+
+    // Create a test folder
+    let folderPath = Path(tempDir) + "TestFolder"
+    try FileManager.default.createDirectory(
+      atPath: folderPath.string, withIntermediateDirectories: true,
+    )
+
+    // Execute the tool
+    let result = try tool.execute(arguments: [
+      "project_path": Value.string(projectPath.string),
+      "folder_path": Value.string(folderPath.string),
+      "target_name": Value.string("TestTarget"),
+    ])
+
+    // Verify the result
+    if case .text(let message) = result.content.first {
+      #expect(message.contains("Successfully added folder reference 'TestFolder'"))
+      #expect(message.contains("to target 'TestTarget'"))
+    } else {
+      Issue.record("Expected text result")
     }
 
-    @Test("Validates invalid parameter type")
-    func validateInvalidParameterType() throws {
-        let tool = AddFolderTool(pathUtility: pathUtility)
+    // Verify the folder was added to the target
+    let updatedProject = try XcodeProj(path: projectPath)
+    let updatedTarget = updatedProject.pbxproj.nativeTargets.first { $0.name == "TestTarget" }
+    let resourcesPhase = updatedTarget?.buildPhases.first { $0 is PBXResourcesBuildPhase }
+    #expect(resourcesPhase != nil)
+  }
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "project_path": Value.bool(true),
-                "folder_path": Value.string("path/to/folder"),
-            ])
-        }
+  @Test("Fails when folder does not exist")
+  func failsWhenFolderDoesNotExist() throws {
+    let tool = AddFolderTool(pathUtility: pathUtility)
+
+    // Create a test project
+    let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+    // Try to add a non-existent folder
+    #expect(throws: MCPError.self) {
+      try tool.execute(arguments: [
+        "project_path": .string(projectPath.string),
+        "folder_path": .string("/path/that/does/not/exist"),
+      ])
     }
 
-    @Test("Adds folder reference to project")
-    func addsFolderToProject() throws {
-        let tool = AddFolderTool(pathUtility: pathUtility)
+    // Clean up
+    try FileManager.default.removeItem(atPath: projectPath.string)
+  }
 
-        // Create a test project
-        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+  @Test("Fails when path is not a directory")
+  func failsWhenPathIsNotDirectory() throws {
+    let tool = AddFolderTool(pathUtility: pathUtility)
 
-        // Create a test folder
-        let folderPath = Path(tempDir) + "TestFolder"
-        try FileManager.default.createDirectory(
-            atPath: folderPath.string, withIntermediateDirectories: true,
-        )
+    // Create a test project
+    let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
-        // Execute the tool
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-            "folder_path": .string(folderPath.string),
-        ])
+    // Create a file instead of a folder
+    let filePath = Path(tempDir) + "TestFile.txt"
+    try "test content".write(
+      to: URL(filePath: filePath.string), atomically: true, encoding: .utf8,
+    )
 
-        // Verify the result
-        if case let .text(message) = result.content.first {
-            #expect(message.contains("Successfully added folder reference 'TestFolder'"))
-        } else {
-            Issue.record("Expected text result")
-        }
-
-        // Verify the project was updated
-        let updatedProject = try XcodeProj(path: projectPath)
-        let folderReferences = updatedProject.pbxproj.fileSystemSynchronizedRootGroups
-        #expect(folderReferences.count == 1)
-        #expect(folderReferences.first?.name == "TestFolder")
+    // Try to add a file as a folder
+    #expect(throws: MCPError.self) {
+      try tool.execute(arguments: [
+        "project_path": .string(projectPath.string),
+        "folder_path": .string(filePath.string),
+      ])
     }
 
-    @Test("Adds folder to specific group")
-    func addsFolderToSpecificGroup() throws {
-        let tool = AddFolderTool(pathUtility: pathUtility)
+    // Clean up
+    try FileManager.default.removeItem(atPath: projectPath.string)
+    try FileManager.default.removeItem(atPath: filePath.string)
+  }
 
-        // Create a test project
-        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+  @Test("Adds folder with path relative to parent group")
+  func addsFolderWithRelativePathToParentGroup() throws {
+    let tool = AddFolderTool(pathUtility: pathUtility)
 
-        // Load the project and add a custom group
-        let xcodeproj = try XcodeProj(path: projectPath)
-        let customGroup = PBXGroup(children: [], sourceTree: .group, name: "CustomGroup")
-        xcodeproj.pbxproj.add(object: customGroup)
-        if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
-            mainGroup.children.append(customGroup)
-        }
-        try xcodeproj.write(path: projectPath)
+    // Create a test project
+    let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+    try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
-        // Create a test folder
-        let folderPath = Path(tempDir) + "TestFolder"
-        try FileManager.default.createDirectory(
-            atPath: folderPath.string, withIntermediateDirectories: true,
-        )
+    // Create directory structure: DOM/Sources
+    let domPath = Path(tempDir) + "DOM"
+    let sourcesPath = domPath + "Sources"
+    try FileManager.default.createDirectory(
+      atPath: sourcesPath.string, withIntermediateDirectories: true,
+    )
 
-        // Execute the tool
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-            "folder_path": .string(folderPath.string),
-            "group_name": .string("CustomGroup"),
-        ])
+    // Load the project and add a group "DOM" with path = "DOM"
+    let xcodeproj = try XcodeProj(path: projectPath)
+    let domGroup = PBXGroup(children: [], sourceTree: .group, name: "DOM", path: "DOM")
+    xcodeproj.pbxproj.add(object: domGroup)
+    if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
+      mainGroup.children.append(domGroup)
+    }
+    try xcodeproj.write(path: projectPath)
 
-        // Verify the result
-        if case let .text(message) = result.content.first {
-            #expect(message.contains("Successfully added folder reference 'TestFolder'"))
-            #expect(message.contains("in group 'CustomGroup'"))
-        } else {
-            Issue.record("Expected text result")
-        }
+    // Execute the tool to add DOM/Sources to the DOM group
+    let result = try tool.execute(arguments: [
+      "project_path": .string(projectPath.string),
+      "folder_path": .string(sourcesPath.string),
+      "group_name": .string("DOM"),
+    ])
 
-        // Verify the folder was added to the correct group
-        let updatedProject = try XcodeProj(path: projectPath)
-        let updatedCustomGroup = updatedProject.pbxproj.groups.first { $0.name == "CustomGroup" }
-        #expect(updatedCustomGroup?.children.count == 1)
+    // Verify the result
+    if case .text(let message) = result.content.first {
+      #expect(message.contains("Successfully added folder reference 'Sources'"))
+      #expect(message.contains("in group 'DOM'"))
+    } else {
+      Issue.record("Expected text result")
     }
 
-    @Test("Adds folder to target")
-    func addsFolderToTarget() throws {
-        let tool = AddFolderTool(pathUtility: pathUtility)
+    // Verify the folder was added with the correct relative path
+    // Since the folder is inside DOM group (which has path = "DOM"),
+    // the synchronized folder should have path = "Sources" (not "DOM/Sources")
+    let updatedProject = try XcodeProj(path: projectPath)
+    let folderReferences = updatedProject.pbxproj.fileSystemSynchronizedRootGroups
+    #expect(folderReferences.count == 1)
 
-        // Create a test project with a target
-        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProjectWithTarget(
-            name: "TestProject", targetName: "TestTarget", at: projectPath,
-        )
-
-        // Create a test folder
-        let folderPath = Path(tempDir) + "TestFolder"
-        try FileManager.default.createDirectory(
-            atPath: folderPath.string, withIntermediateDirectories: true,
-        )
-
-        // Execute the tool
-        let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-            "folder_path": Value.string(folderPath.string),
-            "target_name": Value.string("TestTarget"),
-        ])
-
-        // Verify the result
-        if case let .text(message) = result.content.first {
-            #expect(message.contains("Successfully added folder reference 'TestFolder'"))
-            #expect(message.contains("to target 'TestTarget'"))
-        } else {
-            Issue.record("Expected text result")
-        }
-
-        // Verify the folder was added to the target
-        let updatedProject = try XcodeProj(path: projectPath)
-        let updatedTarget = updatedProject.pbxproj.nativeTargets.first { $0.name == "TestTarget" }
-        let resourcesPhase = updatedTarget?.buildPhases.first { $0 is PBXResourcesBuildPhase }
-        #expect(resourcesPhase != nil)
-    }
-
-    @Test("Fails when folder does not exist")
-    func failsWhenFolderDoesNotExist() throws {
-        let tool = AddFolderTool(pathUtility: pathUtility)
-
-        // Create a test project
-        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
-
-        // Try to add a non-existent folder
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "project_path": .string(projectPath.string),
-                "folder_path": .string("/path/that/does/not/exist"),
-            ])
-        }
-
-        // Clean up
-        try FileManager.default.removeItem(atPath: projectPath.string)
-    }
-
-    @Test("Fails when path is not a directory")
-    func failsWhenPathIsNotDirectory() throws {
-        let tool = AddFolderTool(pathUtility: pathUtility)
-
-        // Create a test project
-        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
-
-        // Create a file instead of a folder
-        let filePath = Path(tempDir) + "TestFile.txt"
-        try "test content".write(
-            to: URL(filePath: filePath.string), atomically: true, encoding: .utf8,
-        )
-
-        // Try to add a file as a folder
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "project_path": .string(projectPath.string),
-                "folder_path": .string(filePath.string),
-            ])
-        }
-
-        // Clean up
-        try FileManager.default.removeItem(atPath: projectPath.string)
-        try FileManager.default.removeItem(atPath: filePath.string)
-    }
-
-    @Test("Adds folder with path relative to parent group")
-    func addsFolderWithRelativePathToParentGroup() throws {
-        let tool = AddFolderTool(pathUtility: pathUtility)
-
-        // Create a test project
-        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
-        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
-
-        // Create directory structure: DOM/Sources
-        let domPath = Path(tempDir) + "DOM"
-        let sourcesPath = domPath + "Sources"
-        try FileManager.default.createDirectory(
-            atPath: sourcesPath.string, withIntermediateDirectories: true,
-        )
-
-        // Load the project and add a group "DOM" with path = "DOM"
-        let xcodeproj = try XcodeProj(path: projectPath)
-        let domGroup = PBXGroup(children: [], sourceTree: .group, name: "DOM", path: "DOM")
-        xcodeproj.pbxproj.add(object: domGroup)
-        if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
-            mainGroup.children.append(domGroup)
-        }
-        try xcodeproj.write(path: projectPath)
-
-        // Execute the tool to add DOM/Sources to the DOM group
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-            "folder_path": .string(sourcesPath.string),
-            "group_name": .string("DOM"),
-        ])
-
-        // Verify the result
-        if case let .text(message) = result.content.first {
-            #expect(message.contains("Successfully added folder reference 'Sources'"))
-            #expect(message.contains("in group 'DOM'"))
-        } else {
-            Issue.record("Expected text result")
-        }
-
-        // Verify the folder was added with the correct relative path
-        // Since the folder is inside DOM group (which has path = "DOM"),
-        // the synchronized folder should have path = "Sources" (not "DOM/Sources")
-        let updatedProject = try XcodeProj(path: projectPath)
-        let folderReferences = updatedProject.pbxproj.fileSystemSynchronizedRootGroups
-        #expect(folderReferences.count == 1)
-
-        let folderRef = folderReferences.first
-        #expect(folderRef?.name == "Sources")
-        // The key assertion: path should be relative to the parent group, not project root
-        #expect(
-            folderRef?.path == "Sources",
-            "Expected path to be 'Sources' relative to DOM group, not 'DOM/Sources'",
-        )
-    }
+    let folderRef = folderReferences.first
+    #expect(folderRef?.name == "Sources")
+    // The key assertion: path should be relative to the parent group, not project root
+    #expect(
+      folderRef?.path == "Sources",
+      "Expected path to be 'Sources' relative to DOM group, not 'DOM/Sources'",
+    )
+  }
 }

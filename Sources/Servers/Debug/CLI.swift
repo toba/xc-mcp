@@ -1,6 +1,6 @@
-import Logging
-import Foundation
 import ArgumentParser
+import Foundation
+import Logging
 
 /// Command-line interface for the xc-debug MCP server.
 ///
@@ -21,30 +21,30 @@ import ArgumentParser
 /// ```
 @main
 struct DebugServerCLI: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
-        commandName: "xc-debug",
-        abstract: "MCP server for LLDB debugging operations (8 tools, ~2K tokens)",
-    )
+  static let configuration = CommandConfiguration(
+    commandName: "xc-debug",
+    abstract: "MCP server for LLDB debugging operations (8 tools, ~2K tokens)",
+  )
 
-    @Argument(help: "Base path for the server to operate in. Defaults to current directory.")
-    var basePath: String?
+  @Argument(help: "Base path for the server to operate in. Defaults to current directory.")
+  var basePath: String?
 
-    @Flag(name: .shortAndLong, help: "Enable verbose logging (debug level)")
-    var verbose: Bool = false
+  @Flag(name: .shortAndLong, help: "Enable verbose logging (debug level)")
+  var verbose: Bool = false
 
-    mutating func run() async throws {
-        let logLevel: Logger.Level = verbose ? .debug : .info
-        LoggingSystem.bootstrap { label in
-            var handler = StreamLogHandler.standardError(label: label)
-            handler.logLevel = logLevel
-            return handler
-        }
-
-        let logger = Logger(label: "com.toba.xc-debug")
-
-        let resolvedBasePath = basePath ?? FileManager.default.currentDirectoryPath
-
-        let server = DebugMCPServer(basePath: resolvedBasePath, logger: logger)
-        try await server.run()
+  mutating func run() async throws {
+    let logLevel: Logger.Level = verbose ? .debug : .info
+    LoggingSystem.bootstrap { label in
+      var handler = StreamLogHandler.standardError(label: label)
+      handler.logLevel = logLevel
+      return handler
     }
+
+    let logger = Logger(label: "com.toba.xc-debug")
+
+    let resolvedBasePath = basePath ?? FileManager.default.currentDirectoryPath
+
+    let server = DebugMCPServer(basePath: resolvedBasePath, logger: logger)
+    try await server.run()
+  }
 }
