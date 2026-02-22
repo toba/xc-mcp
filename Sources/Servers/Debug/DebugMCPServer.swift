@@ -147,7 +147,10 @@ public struct DebugMCPServer: Sendable {
         // Register tools/call handler
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = DebugToolName(rawValue: params.name) else {
-                throw MCPError.methodNotFound("Unknown tool: \(params.name)")
+                let hint = ServerToolDirectory.hint(for: params.name, currentServer: "xc-debug")
+                let message = hint.map { "Unknown tool: \(params.name). \($0)" }
+                    ?? "Unknown tool: \(params.name)"
+                throw MCPError.methodNotFound(message)
             }
 
             let arguments = params.arguments ?? [:]

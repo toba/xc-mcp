@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import XCMCPCore
+
 @testable import XCMCPTools
 
 struct ListTestPlanTargetsToolTests {
@@ -15,8 +16,8 @@ struct ListTestPlanTargetsToolTests {
             """
         }
         let json = """
-        {"testTargets": [\(testTargets.joined(separator: ","))]}
-        """
+            {"testTargets": [\(testTargets.joined(separator: ","))]}
+            """
         let filePath = directory.appendingPathComponent("\(name).xctestplan")
         try json.write(to: filePath, atomically: true, encoding: .utf8)
     }
