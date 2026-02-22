@@ -15,7 +15,9 @@ public enum BuildResultFormatter {
     /// Warnings:
     ///   Sources/Baz.swift:88:3 — unused variable 'x'
     /// ```
-    public static func formatBuildResult(_ result: BuildResult, projectRoot: String? = nil) -> String {
+    public static func formatBuildResult(_ result: BuildResult,
+                                         projectRoot: String? = nil) -> String
+    {
         var parts: [String] = []
 
         // Header line

@@ -287,15 +287,12 @@ public struct BuildDebugMacOSTool: Sendable {
         otoolProc.standardOutput = otoolOut
         otoolProc.standardError = Pipe()
         try otoolProc.run()
+        let otoolData = otoolOut.fileHandleForReading.readDataToEndOfFile()
         otoolProc.waitUntilExit()
 
         guard otoolProc.terminationStatus == 0 else { return false }
 
-        let output =
-            String(
-                data: otoolOut.fileHandleForReading.readDataToEndOfFile(),
-                encoding: .utf8,
-            ) ?? ""
+        let output = String(data: otoolData, encoding: .utf8) ?? ""
 
         let prefix = "/Library/Frameworks/"
         var changes: [(old: String, new: String)] = []
@@ -377,9 +374,8 @@ public struct BuildDebugMacOSTool: Sendable {
         extractProc.standardOutput = extractOut
         extractProc.standardError = Pipe()
         try extractProc.run()
-        extractProc.waitUntilExit()
-
         let entitlementsData = extractOut.fileHandleForReading.readDataToEndOfFile()
+        extractProc.waitUntilExit()
         var tempEntitlementsURL: URL?
 
         if !entitlementsData.isEmpty {

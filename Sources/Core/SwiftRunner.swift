@@ -49,13 +49,12 @@ public struct SwiftRunner: Sendable {
 
             do {
                 try process.run()
+
+                let pipes = ProcessResult.drainPipes(stdout: stdoutPipe, stderr: stderrPipe)
                 process.waitUntilExit()
 
-                let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-
-                let stdout = String(data: stdoutData, encoding: .utf8) ?? ""
-                let stderr = String(data: stderrData, encoding: .utf8) ?? ""
+                let stdout = String(data: pipes.stdout, encoding: .utf8) ?? ""
+                let stderr = String(data: pipes.stderr, encoding: .utf8) ?? ""
 
                 let result = SwiftResult(
                     exitCode: process.terminationStatus,

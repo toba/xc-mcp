@@ -48,6 +48,44 @@ public struct ProcessResult: Sendable {
     }
 }
 
+// MARK: - Pipe Reading
+
+extension ProcessResult {
+    /// Reads data from stdout and stderr pipes concurrently to avoid deadlock.
+    ///
+    /// When a process writes more than ~64KB to either pipe, it blocks until
+    /// the pipe is drained. Reading both sequentially on the same thread
+    /// deadlocks because `readDataToEndOfFile()` blocks until EOF.
+    ///
+    /// This method reads stderr on a background thread while reading stdout
+    /// on the calling thread, then waits for both to complete.
+    ///
+    /// - Parameters:
+    ///   - stdout: The pipe attached to the process's standard output.
+    ///   - stderr: The pipe attached to the process's standard error, or nil if merged.
+    /// - Returns: The captured data from both pipes.
+    public static func drainPipes(
+        stdout stdoutPipe: Pipe,
+        stderr stderrPipe: Pipe?,
+    ) -> (stdout: Data, stderr: Data) {
+        nonisolated(unsafe) var capturedStderr = Data()
+        let sem: DispatchSemaphore?
+        if let stderrPipe {
+            let s = DispatchSemaphore(value: 0)
+            sem = s
+            DispatchQueue.global().async {
+                capturedStderr = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+                s.signal()
+            }
+        } else {
+            sem = nil
+        }
+        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+        sem?.wait()
+        return (stdoutData, capturedStderr)
+    }
+}
+
 // MARK: - Run
 
 extension ProcessResult {
@@ -82,18 +120,14 @@ extension ProcessResult {
         }
 
         try process.run()
+
+        let pipes = drainPipes(stdout: stdoutPipe, stderr: stderrPipe)
         process.waitUntilExit()
 
-        let stdoutData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-        let stdoutString = String(data: stdoutData, encoding: .utf8) ?? ""
-
-        let stderrString: String
-        if let stderrPipe {
-            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-            stderrString = String(data: stderrData, encoding: .utf8) ?? ""
-        } else {
-            stderrString = ""
-        }
+        let stdoutString = String(data: pipes.stdout, encoding: .utf8) ?? ""
+        let stderrString = stderrPipe != nil
+            ? (String(data: pipes.stderr, encoding: .utf8) ?? "")
+            : ""
 
         return ProcessResult(
             exitCode: process.terminationStatus,

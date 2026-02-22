@@ -207,17 +207,10 @@ public enum XcodeStateReader {
         process.standardError = stderrPipe
         do {
             try process.run()
+            let pipes = ProcessResult.drainPipes(stdout: stdoutPipe, stderr: stderrPipe)
             process.waitUntilExit()
-            let out =
-                String(
-                    data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8,
-                )
-                ?? ""
-            let err =
-                String(
-                    data: stderrPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8,
-                )
-                ?? ""
+            let out = String(data: pipes.stdout, encoding: .utf8) ?? ""
+            let err = String(data: pipes.stderr, encoding: .utf8) ?? ""
             return (process.terminationStatus, out, err)
         } catch {
             return (-1, "", error.localizedDescription)

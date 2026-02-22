@@ -43,11 +43,13 @@ public enum XCResultParser {
 
         do {
             try process.run()
+
+            // Read pipe data before waitUntilExit() to avoid deadlock when
+            // output exceeds the OS pipe buffer (~64KB).
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             process.waitUntilExit()
 
             guard process.terminationStatus == 0 else { return nil }
-
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
             guard !data.isEmpty,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { return nil }
