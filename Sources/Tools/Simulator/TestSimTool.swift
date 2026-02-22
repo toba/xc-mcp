@@ -17,7 +17,7 @@ public struct TestSimTool: Sendable {
         Tool(
             name: "test_sim",
             description:
-            "Run tests for an Xcode project or workspace on the iOS/tvOS/watchOS Simulator.",
+                "Run tests for an Xcode project or workspace on the iOS/tvOS/watchOS Simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -105,8 +105,8 @@ public struct TestSimTool: Sendable {
             return CallTool.Result(
                 content: testToolResult.content + [
                     NextStepHints.content(hints: [
-                        NextStepHint(tool: "build_sim", description: "Rebuild after making changes"),
-                    ]),
+                        NextStepHint(tool: "build_sim", description: "Rebuild after making changes")
+                    ])
                 ],
                 isError: testToolResult.isError
             )

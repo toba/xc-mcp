@@ -17,7 +17,7 @@ public struct TestMacOSTool: Sendable {
         Tool(
             name: "test_macos",
             description:
-            "Run tests for an Xcode project or workspace on macOS.",
+                "Run tests for an Xcode project or workspace on macOS.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(

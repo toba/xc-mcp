@@ -138,8 +138,10 @@ public struct BuildDebugMacOSTool: Sendable {
                 }
             )
 
-            if !buildResult.succeeded {
-                let errorOutput = ErrorExtractor.extractBuildErrors(from: buildResult.output)
+            let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)
+
+            if !buildResult.succeeded && parsedBuild.status != "success" {
+                let errorOutput = BuildResultFormatter.formatBuildResult(parsedBuild)
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
 

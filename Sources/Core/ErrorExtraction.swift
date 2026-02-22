@@ -46,7 +46,7 @@ public enum ErrorExtractor {
 
         // Try xcresult bundle first for complete failure messages and test output
         if let xcresultPath,
-           let xcresultData = XCResultParser.parseTestResults(at: xcresultPath)
+            let xcresultData = XCResultParser.parseTestResults(at: xcresultPath)
         {
             testResult = formatXCResultData(xcresultData)
 

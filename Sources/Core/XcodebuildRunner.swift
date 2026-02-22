@@ -120,14 +120,14 @@ public struct XcodebuildRunner: Sendable {
                 let (stdout, stderr) = outputActor.getOutput()
                 let seconds =
                     Double(timeSinceLastOutput.components.seconds)
-                        + Double(timeSinceLastOutput.components.attoseconds) / 1e18
+                    + Double(timeSinceLastOutput.components.attoseconds) / 1e18
                 throw XcodebuildError.stuckProcess(
                     noOutputFor: seconds,
                     partialOutput: stdout + stderr
                 )
             }
 
-            try await Task.sleep(nanoseconds: 100_000_000) // 100ms
+            try await Task.sleep(nanoseconds: 100_000_000)  // 100ms
         }
 
         // Clean up handlers

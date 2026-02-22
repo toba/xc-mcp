@@ -76,7 +76,9 @@ public struct BuildMacOSTool: Sendable {
                 configuration: configuration
             )
 
-            if result.succeeded {
+            let buildResult = ErrorExtractor.parseBuildOutput(result.output)
+
+            if result.succeeded || buildResult.status == "success" {
                 return CallTool.Result(
                     content: [
                         .text("Build succeeded for scheme '\(scheme)' on macOS"),
@@ -88,7 +90,7 @@ public struct BuildMacOSTool: Sendable {
                     ]
                 )
             } else {
-                let errorOutput = ErrorExtractor.extractBuildErrors(from: result.output)
+                let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
         } catch {

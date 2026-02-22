@@ -18,7 +18,7 @@ public struct TestDeviceTool: Sendable {
         Tool(
             name: "test_device",
             description:
-            "Run tests for an Xcode project or workspace on a connected iOS/tvOS/watchOS device.",
+                "Run tests for an Xcode project or workspace on a connected iOS/tvOS/watchOS device.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(

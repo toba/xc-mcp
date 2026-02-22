@@ -70,7 +70,9 @@ public struct CleanTool: Sendable {
 
             var messages: [String] = []
 
-            if result.succeeded {
+            let buildResult = ErrorExtractor.parseBuildOutput(result.output)
+
+            if result.succeeded || buildResult.status == "success" {
                 messages.append(
                     "Clean succeeded for scheme '\(scheme)' (\(configuration) configuration)")
 
@@ -85,7 +87,7 @@ public struct CleanTool: Sendable {
                     content: [.text(messages.joined(separator: "\n"))]
                 )
             } else {
-                let errorOutput = ErrorExtractor.extractBuildErrors(from: result.output)
+                let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
                 throw MCPError.internalError("Clean failed:\n\(errorOutput)")
             }
         } catch {

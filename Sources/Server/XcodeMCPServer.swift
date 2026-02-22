@@ -175,61 +175,61 @@ public enum ToolName: String, CaseIterable, Sendable {
         switch self {
         // Project
         case .createXcodeproj, .listTargets, .listBuildConfigurations, .listFiles,
-             .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
-             .addTarget, .removeTarget, .renameTarget, .renameScheme, .renameGroup,
-             .addDependency, .setBuildSetting,
-             .addFramework,
-             .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
-             .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
-             .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
-             .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
-             .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
-             .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
-             .manageTypeIdentifier, .listURLTypes, .manageURLType:
+            .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
+            .addTarget, .removeTarget, .renameTarget, .renameScheme, .renameGroup,
+            .addDependency, .setBuildSetting,
+            .addFramework,
+            .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
+            .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
+            .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
+            .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
+            .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
+            .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
+            .manageTypeIdentifier, .listURLTypes, .manageURLType:
             return .project
         // Session
         case .setSessionDefaults, .showSessionDefaults, .clearSessionDefaults,
-             .syncXcodeDefaults, .manageWorkflows:
+            .syncXcodeDefaults, .manageWorkflows:
             return .session
         // Simulator
         case .listSims, .bootSim, .openSim, .buildSim, .buildRunSim, .installAppSim,
-             .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
-             .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
-             .resetSimLocation, .setSimAppearance, .simStatusbar:
+            .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
+            .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
+            .resetSimLocation, .setSimAppearance, .simStatusbar:
             return .simulator
         // Device
         case .listDevices, .buildDevice, .installAppDevice, .launchAppDevice,
-             .stopAppDevice, .getDeviceAppPath, .testDevice:
+            .stopAppDevice, .getDeviceAppPath, .testDevice:
             return .device
         // macOS
         case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
-             .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
+            .testMacOS, .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
             return .macos
         // Discovery
         case .discoverProjs, .listSchemes, .showBuildSettings, .getAppBundleId,
-             .getMacBundleId, .listTestPlanTargets:
+            .getMacBundleId, .listTestPlanTargets:
             return .discovery
         // Logging
         case .startSimLogCap, .stopSimLogCap, .startDeviceLogCap, .stopDeviceLogCap:
             return .logging
         // Debug
         case .buildDebugMacOS, .debugAttachSim, .debugDetach, .debugBreakpointAdd,
-             .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
-             .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
-             .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
-             .debugViewBorders, .debugProcessStatus:
+            .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
+            .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
+            .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
+            .debugViewBorders, .debugProcessStatus:
             return .debug
         // UI Automation
         case .tap, .longPress, .swipe, .gesture, .typeText, .keyPress, .button,
-             .screenshot:
+            .screenshot:
             return .uiAutomation
         // Interact
         case .interactUITree, .interactClick, .interactSetValue, .interactGetValue,
-             .interactMenu, .interactFocus, .interactKey, .interactFind:
+            .interactMenu, .interactFocus, .interactKey, .interactFind:
             return .interact
         // Swift Package
         case .swiftPackageBuild, .swiftPackageTest, .swiftPackageRun, .swiftPackageClean,
-             .swiftPackageList, .swiftPackageStop:
+            .swiftPackageList, .swiftPackageStop:
             return .swiftPackage
         // Instruments
         case .xctraceRecord, .xctraceList, .xctraceExport:

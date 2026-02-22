@@ -64,7 +64,9 @@ public struct SwiftPackageBuildTool: Sendable {
                 product: product
             )
 
-            if result.succeeded {
+            let buildResult = ErrorExtractor.parseBuildOutput(result.output)
+
+            if result.succeeded || buildResult.status == "success" {
                 var message = "Build succeeded"
                 if let product {
                     message += " for product '\(product)'"
@@ -75,7 +77,7 @@ public struct SwiftPackageBuildTool: Sendable {
                     content: [.text(message)]
                 )
             } else {
-                let errorOutput = ErrorExtractor.extractBuildErrors(from: result.output)
+                let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
         } catch {
