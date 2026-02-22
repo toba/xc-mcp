@@ -1,6 +1,6 @@
 # xc-mcp
 
-An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 158 tools for project manipulation, LLDB debugging, UI automation, localization, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 165 tools for project manipulation, LLDB debugging, UI automation, localization, and SwiftUI preview capture.
 
 I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
@@ -42,8 +42,8 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
   - [Simulator](#simulator-17-tools)
   - [Simulator UI Automation](#simulator-ui-automation-8-tools)
   - [Device](#device-7-tools)
-  - [Project Management](#project-management-43-tools)
-  - [Discovery](#discovery-5-tools)
+  - [Project Management](#project-management-50-tools)
+  - [Discovery](#discovery-6-tools)
   - [Logging](#logging-4-tools)
   - [Swift Package Manager](#swift-package-manager-6-tools)
   - [Localization](#localization-24-tools)
@@ -58,8 +58,8 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 145 | ~50K | Full monolithic server |
-| `xc-project` | 43 | ~10K | .xcodeproj file manipulation |
+| `xc-mcp` | 152 | ~50K | Full monolithic server |
+| `xc-project` | 50 | ~12K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
 | `xc-device` | 12 | ~2K | Physical iOS devices |
 | `xc-debug` | 22 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
@@ -312,7 +312,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `get_device_app_path` | Get path to installed app |
 | `test_device` | Run tests on physical device |
 
-### Project Management (43 tools)
+### Project Management (50 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -332,6 +332,13 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `remove_target` | Remove a target |
 | `rename_target` | Rename a target in-place — updates product name, build settings, dependencies, copy-files phases, product references, and group names. Optionally sets a new bundle identifier. Cross-target scan updates `TEST_TARGET_NAME`, `TEST_HOST`, `LD_RUNPATH_SEARCH_PATHS`, and `FRAMEWORK_SEARCH_PATHS` in other targets. Also patches `BuildableName` and `BlueprintName` in `.xcscheme` files |
 | `rename_scheme` | Rename an `.xcscheme` file on disk (shared or user schemes) |
+| `create_scheme` | Create a new `.xcscheme` file with build, test, and launch actions. Supports test targets, test plan references, build configurations, and pre-build shell script actions |
+| `validate_scheme` | Validate a scheme's integrity — checks that build target references, testable target references, test plan files, and build configurations all exist in the project |
+| `create_test_plan` | Generate a `.xctestplan` JSON file from project targets. Resolves target UUIDs from the `.xcodeproj`, supports code coverage toggle |
+| `add_target_to_test_plan` | Add a test target entry to an existing `.xctestplan` file (resolves UUID from project) |
+| `remove_target_from_test_plan` | Remove a test target from a `.xctestplan` file by name |
+| `add_test_plan_to_scheme` | Add a test plan reference to an existing scheme's TestAction. Optionally set as default, which clears the default flag on other plans |
+| `list_test_plans` | Find all `.xctestplan` files under the project directory and list their targets and configurations |
 | `rename_group` | Rename a group in the project navigator by slash-separated path (e.g. `Sources/OldName`) |
 | `duplicate_target` | Duplicate a target |
 | `add_dependency` | Add dependency between targets |
@@ -362,7 +369,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `list_url_types` | List URL types (`CFBundleURLTypes`) — custom URL schemes the app handles |
 | `manage_url_type` | Add, update, or remove a URL type (custom URL scheme) |
 
-### Discovery (5 tools)
+### Discovery (6 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -371,6 +378,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `show_build_settings` | Show build settings for a scheme |
 | `get_app_bundle_id` | Get bundle identifier for iOS/watchOS/tvOS app |
 | `get_mac_bundle_id` | Get bundle identifier for macOS app |
+| `list_test_plan_targets` | List test targets referenced by a scheme's test plans (via `xcodebuild`) |
 
 ### Logging (4 tools)
 
