@@ -31,7 +31,7 @@ xc-mcp/
 │   │   ├── Project/                 # xc-project (40 tools)
 │   │   ├── Simulator/               # xc-simulator (29 tools)
 │   │   ├── Strings/                 # xc-strings (24 tools)
-│   │   └── Swift/                   # xc-swift (9 tools)
+│   │   └── Swift/                   # xc-swift (11 tools)
 │   ├── Core/                        # Shared utilities (25 files)
 │   │   ├── SessionManager.swift
 │   │   ├── PathUtility.swift
@@ -58,7 +58,7 @@ xc-mcp/
 │   │   ├── MCPErrorConvertible.swift
 │   │   ├── ProcessResult.swift
 │   │   └── XCMCPCore.swift
-│   ├── Tools/                       # 162 tools across 14 categories
+│   ├── Tools/                       # 164 tools across 14 categories
 │   │   ├── Project/                 # 43 project manipulation tools
 │   │   ├── XCStrings/               # 24 localization/string catalog tools
 │   │   ├── Simulator/               # 18 simulator tools
@@ -67,7 +67,7 @@ xc-mcp/
 │   │   ├── Interact/                # 8 macOS UI automation (accessibility)
 │   │   ├── UIAutomation/            # 8 simulator UI automation tools
 │   │   ├── Device/                  # 7 device tools
-│   │   ├── SwiftPackage/            # 6 Swift Package Manager tools
+│   │   ├── SwiftPackage/            # 8 Swift Package Manager tools
 │   │   ├── Discovery/               # 5 project discovery tools
 │   │   ├── Session/                 # 5 session management tools
 │   │   ├── Logging/                 # 4 log capture tools
@@ -92,7 +92,7 @@ The project builds 8 executables — one monolithic server and 7 focused servers
 | `xc-debug` | 22 | LLDB debugging |
 | `xc-build` | 20 | Build, test, run |
 | `xc-device` | 12 | Physical device management |
-| `xc-swift` | 9 | SPM + Swift operations |
+| `xc-swift` | 11 | SPM + Swift operations |
 | `xc-strings` | 24 | Localization/string catalogs |
 
 Focused servers reduce token overhead for clients that only need specific capabilities.

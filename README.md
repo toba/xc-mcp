@@ -1,6 +1,6 @@
 # xc-mcp
 
-An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 165 tools for project manipulation, LLDB debugging, UI automation, localization, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 175 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, localization, and SwiftUI preview capture.
 
 I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
@@ -11,7 +11,7 @@ This project iterates rapidly. Fairly complex issues had to be solved to get to 
 ## Notable Powers
 
 - **Token Efficiency**: run a single server with all tools or use some combination of smaller MCPs with just the subset of tools relevant to your work.
-- **Screenshot any macOS app window**: `screenshot_mac_window` uses ScreenCaptureKit to capture a any window, including your debug build, without needing a simulator.
+- **Screenshot any macOS app window**: `screenshot_mac_window` uses ScreenCaptureKit to capture any window, including your debug build, without needing a simulator.
 - **UI automation for macOS apps via Accessibility**: The `interact_` tools use the macOS Accessibility API (AXUIElement) to click buttons, read values, navigate menus, type text, and dump the full UI element tree. It is *semantic*, able to click "Save" rather than a pixel coordinate. Eight tools: `interact_ui_tree`, `interact_click`, `interact_set_value`, `interact_get_value`, `interact_menu`, `interact_focus`, `interact_key`, `interact_find`.
 - **Capture SwiftUI previews as screenshots**: `preview_capture` extracts `#Preview` blocks from your Swift source, generates a temporary host app, builds it, launches it (iOS Simulator or macOS), takes a screenshot, and cleans up. Handles complex project configurations: mergeable library architectures, SPM transitive dependencies, cross-project framework embedding, local Swift packages (files inside `Packages/` directories referenced by the Xcode project), and nested struct previews that crash the compiler when naively inlined. Programmatic preview screenshots without opening Xcode.
 - **Paint view borders on a running app**: `debug_view_borders` injects colored `CALayer` borders onto every view in a running macOS app via LLDB. Pair with `screenshot_mac_window` to see the result. No code changes, no restarts.
@@ -24,7 +24,7 @@ This project iterates rapidly. Fairly complex issues had to be solved to get to 
 
 - [tuist/xcodeproj](https://github.com/tuist/xcodeproj) — project file manipulation
 - [modelcontextprotocol/swift-sdk](https://github.com/modelcontextprotocol/swift-sdk) — MCP implementation
-- Native `xcodebuild`, `simctl`, `devicectl`, and `lldb` — the usual suspects
+- Native `xcodebuild`, `simctl`, `devicectl`, `lldb`, and `xctrace` — the usual suspects
 
 Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server). Build output parsing adapted from [ldomaradzki/xcsift](https://github.com/ldomaradzki/xcsift). Localization from [Ryu0118/xcstrings-crud](https://github.com/Ryu0118/xcstrings-crud).
 
@@ -42,12 +42,13 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
   - [Simulator](#simulator-17-tools)
   - [Simulator UI Automation](#simulator-ui-automation-8-tools)
   - [Device](#device-7-tools)
-  - [Project Management](#project-management-50-tools)
+  - [Project Management](#project-management-53-tools)
   - [Discovery](#discovery-6-tools)
+  - [Instruments](#instruments-3-tools)
   - [Logging](#logging-4-tools)
-  - [Swift Package Manager](#swift-package-manager-6-tools)
+  - [Swift Package Manager](#swift-package-manager-8-tools)
   - [Localization](#localization-24-tools)
-  - [Session & Utilities](#session--utilities-7-tools)
+  - [Session & Utilities](#session--utilities-8-tools)
 - [Tests](#tests)
 - [Path Security](#path-security)
 - [License](#license)
@@ -58,12 +59,12 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 152 | ~50K | Full monolithic server |
-| `xc-project` | 50 | ~12K | .xcodeproj file manipulation |
+| `xc-mcp` | 175 | ~50K | Full monolithic server |
+| `xc-project` | 53 | ~12K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
 | `xc-device` | 12 | ~2K | Physical iOS devices |
 | `xc-debug` | 22 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
-| `xc-swift` | 9 | ~2K | Swift Package Manager + session defaults |
+| `xc-swift` | 11 | ~2K | Swift Package Manager, swiftformat, swiftlint + session defaults |
 | `xc-build` | 20 | ~3K | macOS builds, discovery, logging, utilities |
 | `xc-strings` | 24 | ~8K | Xcode String Catalog (.xcstrings) localization |
 
@@ -312,7 +313,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `get_device_app_path` | Get path to installed app |
 | `test_device` | Run tests on physical device |
 
-### Project Management (50 tools)
+### Project Management (53 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -321,7 +322,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `scaffold_macos_project` | Create macOS project with workspace + SPM architecture |
 | `list_targets` | List all targets in a project |
 | `list_build_configurations` | List all build configurations |
-| `list_files` | List all files in a target (includes synchronized folder content and exclusions) |
+| `list_files` | List all files in a target — enumerates disk files in synchronized folders (subtracting membership exceptions), handles both target-linked and exception-set-linked sync groups |
 | `list_groups` | List all groups in the project |
 | `add_file` | Add a file to the project |
 | `remove_file` | Remove a file from the project |
@@ -338,6 +339,9 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `add_target_to_test_plan` | Add a test target entry to an existing `.xctestplan` file (resolves UUID from project) |
 | `remove_target_from_test_plan` | Remove a test target from a `.xctestplan` file by name |
 | `add_test_plan_to_scheme` | Add a test plan reference to an existing scheme's TestAction. Optionally set as default, which clears the default flag on other plans |
+| `remove_test_plan_from_scheme` | Remove a test plan reference from a scheme's TestAction |
+| `set_test_plan_target_enabled` | Enable or disable a test target in a `.xctestplan` file without removing it |
+| `set_test_target_application` | Set the target application (macro expansion) for a UI test target in a scheme's Test action |
 | `list_test_plans` | Find all `.xctestplan` files under the project directory and list their targets and configurations |
 | `rename_group` | Rename a group in the project navigator by slash-separated path (e.g. `Sources/OldName`) |
 | `duplicate_target` | Duplicate a target |
@@ -380,6 +384,16 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `get_mac_bundle_id` | Get bundle identifier for macOS app |
 | `list_test_plan_targets` | List test targets referenced by a scheme's test plans (via `xcodebuild`) |
 
+### Instruments (3 tools)
+
+Profiling via `xctrace` — record traces, list available templates and instruments, and export trace data as XML for analysis.
+
+| Tool | Description |
+|------|-------------|
+| `xctrace_list` | List available Instruments templates, instruments, or devices |
+| `xctrace_record` | Start or stop an Instruments trace recording (Time Profiler, Allocations, etc.) |
+| `xctrace_export` | Export data from a `.trace` file as XML — use `toc=true` to see available tables, then query with xpath |
+
 ### Logging (4 tools)
 
 | Tool | Description |
@@ -389,7 +403,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `start_device_log_cap` | Start capturing device logs |
 | `stop_device_log_cap` | Stop capturing device logs |
 
-### Swift Package Manager (6 tools)
+### Swift Package Manager (8 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -399,6 +413,8 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `swift_package_clean` | Clean build artifacts |
 | `swift_package_list` | List dependencies |
 | `swift_package_stop` | Stop running executable |
+| `swift_format` | Run `swiftformat` on a package or specific paths. Supports `dry_run` to preview changes. Auto-detects `.swiftformat` config |
+| `swift_lint` | Run `swiftlint` on a package or specific paths. Parses JSON output into structured violations grouped by file. Supports `fix` mode for auto-correction. Auto-detects `.swiftlint.yml` config |
 
 ### Localization (24 tools)
 
@@ -431,7 +447,9 @@ Full CRUD for Apple's `.xcstrings` format — add, update, rename, delete keys a
 | `xcstrings_delete_translation` | Delete a single translation |
 | `xcstrings_delete_translations` | Delete multiple translations (batch) |
 
-### Session & Utilities (7 tools)
+### Session & Utilities (8 tools)
+
+Project, workspace, and package paths are **auto-detected from the working directory** — the server walks up from `cwd` looking for `Package.swift`, `.xcodeproj`, or `.xcworkspace`, so you often don't need to call `set_session_defaults` at all. Explicit arguments and session defaults still take precedence when set.
 
 | Tool | Description |
 |------|-------------|
@@ -442,6 +460,7 @@ Full CRUD for Apple's `.xcstrings` format — add, update, rename, delete keys a
 | `manage_workflows` | Enable or disable tool workflow categories (project, simulator, debug, etc.) to reduce tool surface area. Server sends `tools/list_changed` so clients update automatically |
 | `clean` | Clean build products |
 | `doctor` | Diagnose Xcode environment — checks Xcode, CLT, xcodebuild, simctl, devicectl, Swift, LLDB, SDKs, DerivedData, session state, and active debug sessions |
+| `search_crash_reports` | Search `~/Library/Logs/DiagnosticReports/` for recent `.ips` crash reports by process name or bundle ID. Parses exception type, signal, termination reason, and dyld details — so you don't have to squint at JSON in Console.app |
 
 ## Build Output Parsing
 
@@ -454,7 +473,7 @@ Test tools parse both **XCTest** and **Swift Testing** output formats, extractin
 
 ## Tests
 
-528 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
+539 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
 
 ### Unit Tests
 

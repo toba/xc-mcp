@@ -270,4 +270,92 @@ struct ListFilesToolTests {
             Issue.record("Expected text content")
         }
     }
+
+    @Test func listFilesWithSyncGroupViaExceptionSet() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestProject", at: projectPath,
+        )
+
+        // Create a synchronized folder on disk with some Swift files
+        let syncFolderPath = tempDir.appendingPathComponent("SyncFolder")
+        try FileManager.default.createDirectory(
+            at: syncFolderPath,
+            withIntermediateDirectories: true,
+        )
+        try "// A".write(
+            to: syncFolderPath.appendingPathComponent("FileA.swift"),
+            atomically: true, encoding: .utf8,
+        )
+        try "// B".write(
+            to: syncFolderPath.appendingPathComponent("FileB.swift"),
+            atomically: true, encoding: .utf8,
+        )
+        try "// C".write(
+            to: syncFolderPath.appendingPathComponent("Excluded.swift"),
+            atomically: true, encoding: .utf8,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first)
+        let mainGroup = try #require(xcodeproj.pbxproj.rootObject?.mainGroup)
+
+        // Add a synchronized root group NOT on target.fileSystemSynchronizedGroups
+        // but associated via an exception set referencing the target
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(
+            sourceTree: .group, path: "SyncFolder",
+        )
+        xcodeproj.pbxproj.add(object: syncGroup)
+        mainGroup.children.append(syncGroup)
+        // Do NOT set target.fileSystemSynchronizedGroups — this is the bug scenario
+
+        let exceptionSet = PBXFileSystemSynchronizedBuildFileExceptionSet(
+            target: target,
+            membershipExceptions: ["Excluded.swift"],
+            publicHeaders: nil,
+            privateHeaders: nil,
+            additionalCompilerFlagsByRelativePath: nil,
+            attributesByRelativePath: nil,
+        )
+        xcodeproj.pbxproj.add(object: exceptionSet)
+        syncGroup.exceptions = [exceptionSet]
+
+        try xcodeproj.write(path: projectPath)
+
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("TestProject"),
+        ])
+
+        #expect(result.content.count == 1)
+        if case let .text(content) = result.content[0] {
+            #expect(content.contains("Synchronized folders:"))
+            #expect(content.contains("SyncFolder"))
+            #expect(content.contains("excludes:"))
+            #expect(content.contains("Excluded.swift"))
+            // Files on disk minus excluded
+            #expect(content.contains("FileA.swift"))
+            #expect(content.contains("FileB.swift"))
+            // Excluded.swift appears in the "excludes:" line but not in the file listing.
+            // Split on "Files" to check the file listing section doesn't contain it.
+            let parts = content.components(separatedBy: "Files (")
+            if parts.count > 1 {
+                let fileListing = parts[1]
+                #expect(!fileListing.contains("Excluded.swift"))
+            }
+        } else {
+            Issue.record("Expected text content")
+        }
+    }
 }

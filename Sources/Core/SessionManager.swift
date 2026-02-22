@@ -226,6 +226,13 @@ public actor SessionManager {
         let project = arguments.getString("project_path") ?? projectPath
         let workspace = arguments.getString("workspace_path") ?? workspacePath
         if project == nil, workspace == nil {
+            // Auto-detect by walking up from cwd; prefer workspace over project
+            if let detectedWorkspace = PathUtility.findWorkspacePath() {
+                return (nil, detectedWorkspace)
+            }
+            if let detectedProject = PathUtility.findProjectPath() {
+                return (detectedProject, nil)
+            }
             throw MCPError.invalidParams(
                 "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly.",
             )
@@ -244,6 +251,10 @@ public actor SessionManager {
         }
         if let session = packagePath {
             return session
+        }
+        // Auto-detect by walking up from cwd looking for Package.swift
+        if let detected = PathUtility.findPackageRoot() {
+            return detected
         }
         throw MCPError.invalidParams(
             "package_path is required. Set it with set_session_defaults or pass it directly.",

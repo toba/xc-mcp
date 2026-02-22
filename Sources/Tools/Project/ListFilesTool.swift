@@ -87,25 +87,109 @@ public struct ListFilesTool: Sendable {
                 }
             }
 
-            // Get synchronized folders
+            // Get synchronized folders from both target.fileSystemSynchronizedGroups
+            // and project-level PBXFileSystemSynchronizedRootGroup entries with
+            // exception sets referencing this target.
+            let projectRoot = projectURL.deletingLastPathComponent().path
             var syncFolders: [String] = []
-            if let syncGroups = target.fileSystemSynchronizedGroups {
-                for syncGroup in syncGroups {
-                    guard let path = syncGroup.path else { continue }
-                    var line = "  - \(path)"
-                    // Check for per-target membership exceptions
-                    if let exceptions = syncGroup.exceptions {
-                        let targetExceptions = exceptions.compactMap {
-                            $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
-                        }.filter { $0.target === target }
-                        let excluded = targetExceptions.flatMap {
-                            $0.membershipExceptions ?? []
+            var visitedSyncGroups: Set<ObjectIdentifier> = []
+
+            // Helper to format a sync group entry for this target
+            func formatSyncGroup(_ syncGroup: PBXFileSystemSynchronizedRootGroup) -> String? {
+                guard let path = syncGroup.path else { return nil }
+                // Skip if already visited
+                guard visitedSyncGroups.insert(ObjectIdentifier(syncGroup)).inserted else {
+                    return nil
+                }
+
+                var excluded: [String] = []
+                if let exceptions = syncGroup.exceptions {
+                    let targetExceptions = exceptions.compactMap {
+                        $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
+                    }.filter { $0.target === target }
+                    excluded = targetExceptions.flatMap {
+                        $0.membershipExceptions ?? []
+                    }
+                }
+
+                // Enumerate files on disk in the synchronized folder
+                let folderPath: String
+                if let fullPath = try? syncGroup.fullPath(sourceRoot: projectRoot) {
+                    folderPath = fullPath
+                } else {
+                    folderPath = projectRoot + "/" + path
+                }
+
+                var diskFiles: [String] = []
+                let folderURL = URL(filePath: folderPath).standardizedFileURL
+                if let enumerator = FileManager.default.enumerator(
+                    at: folderURL,
+                    includingPropertiesForKeys: [.isRegularFileKey],
+                    options: [.skipsHiddenFiles],
+                ) {
+                    let excludedSet = Set(excluded)
+                    let prefix = folderURL.path(percentEncoded: false)
+                    for case let fileURL as URL in enumerator {
+                        let isFile =
+                            (try? fileURL.resourceValues(forKeys: [.isRegularFileKey])
+                                    .isRegularFile) ?? false
+                        guard isFile else { continue }
+                        // Get path relative to the sync folder
+                        let filePath = fileURL.standardizedFileURL
+                            .path(percentEncoded: false)
+                        let relativePath: String
+                        if filePath.hasPrefix(prefix) {
+                            var start = filePath.index(
+                                filePath.startIndex, offsetBy: prefix.count,
+                            )
+                            if start < filePath.endIndex, filePath[start] == "/" {
+                                start = filePath.index(after: start)
+                            }
+                            relativePath = String(filePath[start...])
+                        } else {
+                            relativePath = fileURL.lastPathComponent
                         }
-                        if !excluded.isEmpty {
-                            line += " (excludes: \(excluded.joined(separator: ", ")))"
+                        if !excludedSet.contains(relativePath) {
+                            diskFiles.append(relativePath)
                         }
                     }
-                    syncFolders.append(line)
+                }
+
+                var line = "  - \(path)"
+                if !excluded.isEmpty {
+                    line += " (excludes: \(excluded.joined(separator: ", ")))"
+                }
+                if !diskFiles.isEmpty {
+                    diskFiles.sort()
+                    line +=
+                        "\n    Files (\(diskFiles.count)):\n"
+                        + diskFiles.map { "      \($0)" }.joined(separator: "\n")
+                }
+                return line
+            }
+
+            // 1. Sync groups directly referenced by the target
+            if let syncGroups = target.fileSystemSynchronizedGroups {
+                for syncGroup in syncGroups {
+                    if let line = formatSyncGroup(syncGroup) {
+                        syncFolders.append(line)
+                    }
+                }
+            }
+
+            // 2. Project-level sync groups associated via exception sets
+            for syncGroup in xcodeproj.pbxproj.fileSystemSynchronizedRootGroups {
+                guard let exceptions = syncGroup.exceptions else { continue }
+                let hasTargetException = exceptions.contains { exception in
+                    guard let buildException =
+                        exception as? PBXFileSystemSynchronizedBuildFileExceptionSet
+                    else { return false }
+                    return buildException.target === target
+                }
+                if hasTargetException {
+                    if let line = formatSyncGroup(syncGroup) {
+                        syncFolders.append(line)
+                    }
                 }
             }
 

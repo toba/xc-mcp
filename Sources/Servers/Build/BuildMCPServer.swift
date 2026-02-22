@@ -30,6 +30,8 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     case scaffoldIOS = "scaffold_ios_project"
     case scaffoldMacOS = "scaffold_macos_project"
 
+    case searchCrashReports = "search_crash_reports"
+
     // Session tools
     case setSessionDefaults = "set_session_defaults"
     case showSessionDefaults = "show_session_defaults"
@@ -126,6 +128,7 @@ public struct BuildMCPServer: Sendable {
         let doctorTool = DoctorTool(sessionManager: sessionManager)
         let scaffoldIOSTool = ScaffoldIOSProjectTool(pathUtility: pathUtility)
         let scaffoldMacOSTool = ScaffoldMacOSProjectTool(pathUtility: pathUtility)
+        let searchCrashReportsTool = SearchCrashReportsTool()
 
         // Create session tools
         let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
@@ -156,6 +159,7 @@ public struct BuildMCPServer: Sendable {
                 doctorTool.tool(),
                 scaffoldIOSTool.tool(),
                 scaffoldMacOSTool.tool(),
+                searchCrashReportsTool.tool(),
                 // Session tools
                 setSessionDefaultsTool.tool(),
                 showSessionDefaultsTool.tool(),
@@ -215,6 +219,8 @@ public struct BuildMCPServer: Sendable {
                     return try scaffoldIOSTool.execute(arguments: arguments)
                 case .scaffoldMacOS:
                     return try scaffoldMacOSTool.execute(arguments: arguments)
+                case .searchCrashReports:
+                    return try searchCrashReportsTool.execute(arguments: arguments)
                 // Session tools
                 case .setSessionDefaults:
                     return try await setSessionDefaultsTool.execute(arguments: arguments)

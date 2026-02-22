@@ -156,6 +156,86 @@ public struct PathUtility: Sendable {
         return relativeComponents.joined(separator: "/")
     }
 
+    // MARK: - Ancestor Directory Search
+
+    /// Walks up from a starting directory looking for a directory containing a file or
+    /// subdirectory matching the given predicate.
+    ///
+    /// - Parameters:
+    ///   - predicate: A closure that receives directory contents and returns the matching
+    ///     entry name, or `nil` if no match is found.
+    ///   - startingFrom: The directory to start searching from.
+    /// - Returns: The path to the directory containing the match, or `nil` if not found.
+    public static func findAncestorDirectory(
+        matching predicate: (String) -> Bool,
+        startingFrom start: String,
+    ) -> String? {
+        let fm = FileManager.default
+        var current = URL(fileURLWithPath: start).standardized
+
+        // Walk up at most 20 levels to avoid infinite loops on broken symlinks
+        for _ in 0 ..< 20 {
+            let dirPath = current.path
+            if let entries = try? fm.contentsOfDirectory(atPath: dirPath),
+               entries.contains(where: predicate)
+            {
+                return dirPath
+            }
+            let parent = current.deletingLastPathComponent().standardized
+            if parent.path == current.path {
+                break // Reached filesystem root
+            }
+            current = parent
+        }
+        return nil
+    }
+
+    /// Finds the nearest ancestor directory containing `Package.swift`,
+    /// starting from the process's current working directory.
+    ///
+    /// - Returns: The Swift package root path, or `nil` if not found.
+    public static func findPackageRoot() -> String? {
+        findAncestorDirectory(
+            matching: { $0 == "Package.swift" },
+            startingFrom: FileManager.default.currentDirectoryPath,
+        )
+    }
+
+    /// Finds the nearest ancestor directory containing a `.xcodeproj` bundle,
+    /// starting from the process's current working directory.
+    ///
+    /// - Returns: The full path to the `.xcodeproj` bundle, or `nil` if not found.
+    public static func findProjectPath() -> String? {
+        guard let dir = findAncestorDirectory(
+            matching: { $0.hasSuffix(".xcodeproj") },
+            startingFrom: FileManager.default.currentDirectoryPath,
+        ) else { return nil }
+        // Return the full .xcodeproj path, not just the containing directory
+        let entries = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
+        guard let proj = entries.first(where: { $0.hasSuffix(".xcodeproj") }) else { return nil }
+        return "\(dir)/\(proj)"
+    }
+
+    /// Finds the nearest ancestor directory containing a `.xcworkspace` bundle,
+    /// starting from the process's current working directory.
+    ///
+    /// - Returns: The full path to the `.xcworkspace` bundle, or `nil` if not found.
+    public static func findWorkspacePath() -> String? {
+        guard let dir = findAncestorDirectory(
+            matching: {
+                $0.hasSuffix(".xcworkspace")
+                    && !$0.hasPrefix(".")
+                    && $0 != "Pods.xcworkspace"
+            },
+            startingFrom: FileManager.default.currentDirectoryPath,
+        ) else { return nil }
+        let entries = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
+        guard let ws = entries.first(where: {
+            $0.hasSuffix(".xcworkspace") && !$0.hasPrefix(".") && $0 != "Pods.xcworkspace"
+        }) else { return nil }
+        return "\(dir)/\(ws)"
+    }
+
     /// Resolves a path URL without base path validation (legacy compatibility).
     ///
     /// - Parameter path: The path to resolve.
