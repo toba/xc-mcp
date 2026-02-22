@@ -143,5 +143,129 @@ with open(f, 'w') as fh: fh.write(s)
 }
 patch_swiftformat
 
+# IceCubesApp 2.1.4 (9948440) has 5 categories of compilation errors with Xcode 26 / Swift 6.2:
+# 1. @Observable macro makes AccountTabFetcher `final`, blocking subclass inheritance.
+# 2. @State properties are file-private in Swift 6.2, breaking cross-file extensions.
+# 3. Synthesized memberwise init for structs with @StateObject/@State is now private.
+# 4. TimelineView.timelineView is too complex for the type checker.
+patch_icecubesapp() {
+  local ice="$REPOS_DIR/IceCubesApp"
+  [ -d "$ice" ] || return
+
+  python3 -c "
+ice = '$ice'
+import os
+
+# Fix 1: @Observable makes AccountTabFetcher final — remove macro from base class.
+# Subclasses keep @Observable for their own properties; base class properties don't
+# need observation tracking for compilation.
+f = os.path.join(ice, 'Packages/Account/Sources/Account/Detail/Tabs/Base/AccountTabFetcher.swift')
+with open(f) as fh: s = fh.read()
+s = s.replace(
+    '@MainActor\n@Observable\nclass AccountTabFetcher: StatusesFetcher {',
+    '@MainActor\nclass AccountTabFetcher: StatusesFetcher {'
+)
+with open(f, 'w') as fh: fh.write(s)
+
+# Fix 2: @State properties are file-private in Swift 6.2. Extensions in
+# IceCubesApp+Scene.swift and IceCubesApp+Menu.swift can't access @State vars
+# declared in IceCubesApp.swift. Fix: merge extensions into the main file.
+main_file = os.path.join(ice, 'IceCubesApp/App/Main/IceCubesApp.swift')
+scene_file = os.path.join(ice, 'IceCubesApp/App/Main/IceCubesApp+Scene.swift')
+menu_file = os.path.join(ice, 'IceCubesApp/App/Main/IceCubesApp+Menu.swift')
+
+with open(main_file) as fh: main_src = fh.read()
+with open(scene_file) as fh: scene_src = fh.read()
+with open(menu_file) as fh: menu_src = fh.read()
+
+# Append extension content to main file
+main_src += '\n// MARK: - Merged from IceCubesApp+Scene.swift (Xcode 26 patch)\n\n' + scene_src
+main_src += '\n// MARK: - Merged from IceCubesApp+Menu.swift (Xcode 26 patch)\n\n' + menu_src
+with open(main_file, 'w') as fh: fh.write(main_src)
+
+# Replace extension files with empty stubs (files must exist for Xcode project refs)
+for path in [scene_file, menu_file]:
+    with open(path, 'w') as fh:
+        fh.write('// Merged into IceCubesApp.swift for Xcode 26 compatibility\n')
+
+# Fix 3a: StatusRowShareAsImageView — @StateObject synthesized init is now private.
+# Add explicit init.
+f = os.path.join(ice, 'Packages/StatusKit/Sources/StatusKit/Share/StatusRowShareAsImageView.swift')
+with open(f) as fh: s = fh.read()
+s = s.replace(
+    '  let viewModel: StatusRowViewModel\n  @StateObject var renderer: ImageRenderer<AnyView>\n',
+    '  let viewModel: StatusRowViewModel\n  @StateObject var renderer: ImageRenderer<AnyView>\n\n  init(viewModel: StatusRowViewModel, renderer: ImageRenderer<AnyView>) {\n    self.viewModel = viewModel\n    _renderer = StateObject(wrappedValue: renderer)\n  }\n'
+)
+with open(f, 'w') as fh: fh.write(s)
+
+# Fix 3b: PushNotificationsView — @State synthesized init is now private.
+# Add explicit init.
+f = os.path.join(ice, 'IceCubesApp/App/Tabs/Settings/PushNotificationsView.swift')
+with open(f) as fh: s = fh.read()
+s = s.replace(
+    '  @State public var subscription: PushNotificationSubscriptionSettings\n\n  var body:',
+    '  @State public var subscription: PushNotificationSubscriptionSettings\n\n  init(subscription: PushNotificationSubscriptionSettings) {\n    _subscription = State(initialValue: subscription)\n  }\n\n  var body:'
+)
+with open(f, 'w') as fh: fh.write(s)
+
+# Fix 4: TimelineView.timelineView — type-checker timeout on complex toolbar.
+# Extract toolbar content into a separate computed property.
+f = os.path.join(ice, 'Packages/Timeline/Sources/Timeline/View/TimelineView.swift')
+with open(f) as fh: s = fh.read()
+s = s.replace(
+    '    .toolbar {\n'
+    '      TimelineToolbarTitleView(timeline: \$timeline, canFilterTimeline: canFilterTimeline)\n'
+    '      if #available(iOS 26.0, *) {\n'
+    '        ToolbarSpacer(placement: .topBarTrailing)\n'
+    '      }\n'
+    '      if viewModel.canStreamTimeline(timeline) {\n'
+    '        ToolbarItem(placement: .navigationBarTrailing) {\n'
+    '          Button {\n'
+    '            viewModel.isStreamingTimeline.toggle()\n'
+    '          } label: {\n'
+    '            Image(\n'
+    '              systemName: viewModel.isStreamingTimeline\n'
+    '                ? \"antenna.radiowaves.left.and.right\" : \"antenna.radiowaves.left.and.right.slash\")\n'
+    '          }\n'
+    '          .tint(theme.labelColor)\n'
+    '        }\n'
+    '      }\n'
+    '      TimelineToolbarTagGroupButton(timeline: \$timeline)\n'
+    '    }',
+    '    .toolbar { timelineToolbarContent }'
+)
+
+# Add the extracted toolbar property before the refreshContentFilter method
+s = s.replace(
+    '  private func refreshContentFilter() {',
+    '  @ToolbarContentBuilder\n'
+    '  private var timelineToolbarContent: some ToolbarContent {\n'
+    '    TimelineToolbarTitleView(timeline: \$timeline, canFilterTimeline: canFilterTimeline)\n'
+    '    if #available(iOS 26.0, *) {\n'
+    '      ToolbarSpacer(placement: .topBarTrailing)\n'
+    '    }\n'
+    '    if viewModel.canStreamTimeline(timeline) {\n'
+    '      ToolbarItem(placement: .navigationBarTrailing) {\n'
+    '        Button {\n'
+    '          viewModel.isStreamingTimeline.toggle()\n'
+    '        } label: {\n'
+    '          Image(\n'
+    '            systemName: viewModel.isStreamingTimeline\n'
+    '              ? \"antenna.radiowaves.left.and.right\" : \"antenna.radiowaves.left.and.right.slash\")\n'
+    '        }\n'
+    '        .tint(theme.labelColor)\n'
+    '      }\n'
+    '    }\n'
+    '    TimelineToolbarTagGroupButton(timeline: \$timeline)\n'
+    '  }\n\n'
+    '  private func refreshContentFilter() {'
+)
+with open(f, 'w') as fh: fh.write(s)
+"
+
+  echo "ok: patched IceCubesApp for Xcode 26 compatibility"
+}
+patch_icecubesapp
+
 echo ""
 echo "All fixtures ready in $REPOS_DIR"

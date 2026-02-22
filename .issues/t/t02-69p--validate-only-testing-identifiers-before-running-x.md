@@ -7,7 +7,7 @@ priority: normal
 tags:
     - test
 created_at: 2026-02-22T22:22:13Z
-updated_at: 2026-02-22T22:29:06Z
+updated_at: 2026-02-22T22:53:11Z
 ---
 
 ## Problem
@@ -50,3 +50,13 @@ Enhanced `ErrorExtractor.formatTestToolResult()` to detect xcodebuild's cryptic 
 - **Sources/Tools/Simulator/TestSimTool.swift** — Same
 - **Sources/Tools/Device/TestDeviceTool.swift** — Same
 - **Sources/Tools/SwiftPackage/SwiftPackageTestTool.swift** — Passes package path as `projectRoot`
+
+
+
+### IceCubesApp fixture patches (added in follow-up)
+
+Added `patch_icecubesapp()` to `scripts/fetch-fixtures.sh` with 4 fixes for Xcode 26/Swift 6.2 compatibility:
+1. Remove `@Observable` from AccountTabFetcher (macro makes class final, blocking subclass inheritance)
+2. Merge IceCubesApp+Scene.swift and IceCubesApp+Menu.swift into IceCubesApp.swift (`@State` properties are file-private in Swift 6.2)
+3. Add explicit inits to StatusRowShareAsImageView and PushNotificationsView (synthesized memberwise init now private with `@StateObject`/`@State`)
+4. Extract toolbar content from TimelineView.timelineView into separate property (type-checker timeout on complex toolbar builder)
