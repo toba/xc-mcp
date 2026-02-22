@@ -99,6 +99,12 @@ public struct XcodebuildRunner: Sendable {
 
         try process.run()
 
+        defer {
+            if process.isRunning {
+                process.terminate()
+            }
+        }
+
         // Wait for process with timeout
         let startTime = ContinuousClock.now
 
