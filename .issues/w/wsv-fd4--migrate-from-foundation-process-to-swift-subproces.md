@@ -1,0 +1,67 @@
+---
+# wsv-fd4
+title: Migrate from Foundation Process to swift-subprocess
+status: draft
+type: feature
+created_at: 2026-02-22T19:12:44Z
+updated_at: 2026-02-22T19:12:44Z
+---
+
+## Context
+
+The pipe deadlock fix (lcu-gfr) added `ProcessResult.drainPipes(stdout:stderr:)` using `DispatchQueue.global().async` + `DispatchSemaphore` + `nonisolated(unsafe)` to read stdout/stderr concurrently before `waitUntilExit()`. This is correct and follows Apple DTS-endorsed patterns, but it's manual plumbing that `Subprocess` (SF-0007) handles internally.
+
+## Proposal
+
+Replace `Foundation.Process` usage with [swift-subprocess](https://github.com/swiftlang/swift-subprocess) across all runners. `Subprocess` is the officially blessed async replacement for `Process` that eliminates manual pipe management entirely.
+
+```swift
+import Subprocess
+let result = try await run(
+    .name("xcodebuild"),
+    arguments: ["build"],
+    output: .data(limit: 10_485_760),
+    error: .data(limit: 10_485_760)
+)
+```
+
+## Requirements
+
+- Swift 6.1+ (package is available standalone; will be in Foundation proper later)
+- All callers must be async (Subprocess is async-only by design)
+
+## Scope
+
+Files that currently manage Process + pipes manually:
+
+| File | Pattern |
+|------|---------|
+| `Sources/Core/ProcessResult.swift` | `drainPipes()` + `run()` — central helper |
+| `Sources/Core/SimctlRunner.swift` | `withCheckedThrowingContinuation` + Process |
+| `Sources/Core/DeviceCtlRunner.swift` | same |
+| `Sources/Core/SwiftRunner.swift` | same |
+| `Sources/Core/XctraceRunner.swift` | same |
+| `Sources/Core/XcodeStateReader.swift` | sync Process usage |
+| `Sources/Core/XCResultParser.swift` | standalone Process for xcresulttool |
+| `Sources/Core/LLDBRunner.swift` | Process for pkill/open + long-running LLDB sessions |
+| `Sources/Tools/Debug/BuildDebugMacOSTool.swift` | otool, codesign, extract |
+| `Sources/Tools/Simulator/PreviewCaptureTool.swift` | pgrep, codesign, pkill |
+
+## Migration notes
+
+- `ProcessResult.run()` is sync — callers like `FileUtility.readTailLines` and `DoctorTool` would need to become async
+- The `withCheckedThrowingContinuation` wrappers in runners become unnecessary since Subprocess is natively async
+- Long-running processes (LLDBRunner sessions, xctrace recording) need `Subprocess`'s streaming APIs rather than `.data()` collection
+- `drainPipes()` can be deleted entirely after migration
+- Fire-and-forget calls (pkill, codesign --sign) may use `.discard` for output
+
+## Research sources
+
+- [Apple Developer Forums: Process() return values (Quinn's pattern)](https://developer.apple.com/forums/thread/129752)
+- [SF-0007 Subprocess proposal](https://github.com/swiftlang/swift-foundation/blob/main/Proposals/0007-swift-subprocess.md)
+- [SF-0007 3rd review (pipe deadlock discussion)](https://forums.swift.org/t/review-3rd-sf-0007-subprocess/78078)
+- [swift-subprocess GitHub](https://github.com/swiftlang/swift-subprocess)
+- [Michael Tsai: Swift 6.2 Subprocess](https://mjtsai.com/blog/2025/10/30/swift-6-2-subprocess/)
+- [Saagar Jha: Swift Concurrency Waits for No One](https://saagarjha.com/blog/2023/12/22/swift-concurrency-waits-for-no-one/)
+- [Swift Forums: Cooperative pool deadlock](https://forums.swift.org/t/cooperative-pool-deadlock-when-calling-into-an-opaque-subsystem/70685)
+- [Swift Forums: NSPipe readabilityHandler + Swift 6](https://forums.swift.org/t/swift-6-concurrency-nspipe-readability-handlers/59834)
