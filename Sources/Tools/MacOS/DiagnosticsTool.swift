@@ -110,8 +110,7 @@ public struct DiagnosticsTool: Sendable {
 
             // Step 5: Format combined output
             let output = formatDiagnostics(
-                parsed: parsed, buildFailed: buildFailed,
-                projectRoot: projectRoot, lintSection: lintSection,
+                parsed: parsed, buildFailed: buildFailed, lintSection: lintSection,
             )
 
             if buildFailed {
@@ -125,8 +124,7 @@ public struct DiagnosticsTool: Sendable {
     }
 
     private func formatDiagnostics(
-        parsed: BuildResult, buildFailed: Bool,
-        projectRoot: String?, lintSection: String?,
+        parsed: BuildResult, buildFailed: Bool, lintSection: String?,
     ) -> String {
         var sections: [String] = []
 
