@@ -8,6 +8,9 @@ import Foundation
 /// Requires `scripts/fetch-fixtures.sh` to have been run first.
 @Suite(.enabled(if: IntegrationFixtures.available))
 struct ProjectToolIntegrationTests {
+    private let sessionManager = SessionManager()
+    private let xcodebuildRunner = XcodebuildRunner()
+
     // MARK: - list_targets
 
     @Test func listTargets_IceCubesApp() throws {
@@ -183,6 +186,43 @@ struct ProjectToolIntegrationTests {
         let content = textContent(result)
         // IceCubesApp has local packages in Packages/
         #expect(content.contains("Package") || content.contains("local"))
+    }
+
+    // MARK: - list_test_plan_targets
+
+    @Test(.timeLimit(.minutes(2)))
+    func listTestPlanTargets_Alamofire() async throws {
+        let tool = ListTestPlanTargetsTool(
+            xcodebuildRunner: xcodebuildRunner,
+            sessionManager: sessionManager,
+        )
+        let result = try await tool.execute(arguments: [
+            "project_path": .string(IntegrationFixtures.alamofireProjectPath),
+            "scheme": .string("Alamofire iOS"),
+        ])
+
+        let content = textContent(result)
+        // Should find test targets or report test plan info
+        #expect(content.contains("test") || content.contains("Test") || content.contains("plan"))
+    }
+
+    // MARK: - find_targets (search)
+
+    @Test func findTargets_IceCubesApp() throws {
+        let tool = ListTargetsTool(
+            pathUtility: PathUtility(
+                basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
+            ),
+        )
+        let result = try tool.execute(arguments: [
+            "project_path": .string(IntegrationFixtures.iceCubesProjectPath),
+        ])
+
+        let content = textContent(result)
+        // IceCubesApp has multiple targets including the share extension
+        #expect(content.contains("IceCubesApp"))
+        #expect(content.contains("IceCubesShareExtension"))
+        #expect(content.contains("IceCubesActionExtension"))
     }
 
     // MARK: - Helpers

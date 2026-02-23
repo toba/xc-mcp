@@ -4,16 +4,14 @@ import XCMCPCore
 import Foundation
 @testable import XCMCPTools
 
-/// Integration tests that exercise build, run, screenshot, and preview capture
-/// against real open-source repos.
+/// Integration tests that exercise build pipelines against real open-source repos.
 /// Requires `scripts/fetch-fixtures.sh` to have been run first.
 @Suite(.enabled(if: IntegrationFixtures.available), .serialized)
-struct BuildRunScreenshotIntegrationTests {
+struct BuildIntegrationTests {
     // MARK: - Shared infrastructure
 
     private let sessionManager = SessionManager()
     private let xcodebuildRunner = XcodebuildRunner()
-    private let simctlRunner = SimctlRunner()
 
     // MARK: - Alamofire — build only
 
@@ -50,9 +48,6 @@ struct BuildRunScreenshotIntegrationTests {
 
     // MARK: - SwiftFormat — build only (macOS)
 
-    // Build-only because "SwiftFormat for Xcode" is a source editor extension host
-    // with no meaningful window to screenshot, and launching it triggers a TCC dialog.
-
     @Test(.timeLimit(.minutes(10)))
     func build_SwiftFormat_macOS() async throws {
         let tool = BuildMacOSTool(
@@ -68,13 +63,33 @@ struct BuildRunScreenshotIntegrationTests {
         #expect(content.contains("Build succeeded"))
     }
 
+    // MARK: - Helpers
+
+    private func textContent(_ result: CallTool.Result) -> String {
+        result.content.compactMap { item in
+            if case let .text(text) = item { return text }
+            return nil
+        }.joined(separator: "\n")
+    }
+}
+
+// MARK: - Slow integration tests (build+run+screenshot, preview capture)
+
+/// Expensive integration tests that build, run, and screenshot full apps.
+/// Disabled by default — set `RUN_SLOW_TESTS=1` to include.
+@Suite(
+    .enabled(if: IntegrationFixtures.simulatorAvailable
+        && ProcessInfo.processInfo.environment["RUN_SLOW_TESTS"] != nil),
+    .serialized,
+)
+struct SlowIntegrationTests {
+    private let sessionManager = SessionManager()
+    private let xcodebuildRunner = XcodebuildRunner()
+    private let simctlRunner = SimctlRunner()
+
     // MARK: - IceCubesApp — build, run, screenshot (simulator)
 
-    // Must run before previewCapture so SPM packages are resolved in DerivedData.
-    // The preview host scheme can't resolve transitive local package dependencies
-    // from a completely clean DerivedData.
-
-    @Test(.enabled(if: IntegrationFixtures.simulatorAvailable), .timeLimit(.minutes(10)))
+    @Test(.timeLimit(.minutes(10)))
     func buildRunScreenshot_IceCubesApp_sim() async throws {
         let simulatorUDID = try #require(IntegrationFixtures.simulatorUDID)
 
@@ -135,10 +150,7 @@ struct BuildRunScreenshotIntegrationTests {
 
     // MARK: - IceCubesApp — preview capture
 
-    // Runs after buildRunScreenshot which populates DerivedData with resolved
-    // SPM packages. The preview host scheme needs these cached packages.
-
-    @Test(.enabled(if: IntegrationFixtures.simulatorAvailable), .timeLimit(.minutes(10)))
+    @Test(.timeLimit(.minutes(10)))
     func previewCapture_IceCubesApp() async throws {
         let simulatorUDID = try #require(IntegrationFixtures.simulatorUDID)
         let pathUtility = PathUtility(
