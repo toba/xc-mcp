@@ -171,6 +171,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case swiftPackageStop = "swift_package_stop"
     case swiftFormat = "swift_format"
     case swiftLint = "swift_lint"
+    case swiftDiagnostics = "swift_diagnostics"
 
     // Instruments tools
     case xctraceRecord = "xctrace_record"
@@ -183,6 +184,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case scaffoldIOS = "scaffold_ios_project"
     case scaffoldMacOS = "scaffold_macos_project"
     case searchCrashReports = "search_crash_reports"
+    case diagnostics
     /// The workflow category this tool belongs to.
     public var workflow: Workflow {
         switch self {
@@ -247,13 +249,14 @@ public enum ToolName: String, CaseIterable, Sendable {
                 return .interact
             // Swift Package
             case .swiftPackageBuild, .swiftPackageTest, .swiftPackageRun, .swiftPackageClean,
-                 .swiftPackageList, .swiftPackageStop, .swiftFormat, .swiftLint:
+                 .swiftPackageList, .swiftPackageStop, .swiftFormat, .swiftLint,
+                 .swiftDiagnostics:
                 return .swiftPackage
             // Instruments
             case .xctraceRecord, .xctraceList, .xctraceExport:
                 return .instruments
             // Utility
-            case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS, .searchCrashReports:
+            case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS, .searchCrashReports, .diagnostics:
                 return .utility
         }
     }
@@ -569,6 +572,9 @@ public struct XcodeMCPServer: Sendable {
         let swiftPackageStopTool = SwiftPackageStopTool(sessionManager: sessionManager)
         let swiftFormatTool = SwiftFormatTool(sessionManager: sessionManager)
         let swiftLintTool = SwiftLintTool(sessionManager: sessionManager)
+        let swiftDiagnosticsTool = SwiftDiagnosticsTool(
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
+        )
 
         // Create interact tools
         let interactRunner = InteractRunner()
@@ -597,6 +603,9 @@ public struct XcodeMCPServer: Sendable {
         let scaffoldIOSTool = ScaffoldIOSProjectTool(pathUtility: pathUtility)
         let scaffoldMacOSTool = ScaffoldMacOSProjectTool(pathUtility: pathUtility)
         let searchCrashReportsTool = SearchCrashReportsTool()
+        let diagnosticsTool = DiagnosticsTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
 
         // Build the complete tool registry: (ToolName, Tool) pairs
         let allTools: [(ToolName, Tool)] = [
@@ -742,6 +751,7 @@ public struct XcodeMCPServer: Sendable {
             (.swiftPackageStop, swiftPackageStopTool.tool()),
             (.swiftFormat, swiftFormatTool.tool()),
             (.swiftLint, swiftLintTool.tool()),
+            (.swiftDiagnostics, swiftDiagnosticsTool.tool()),
             // Interact tools
             (.interactUITree, interactUITreeTool.tool()),
             (.interactClick, interactClickTool.tool()),
@@ -761,6 +771,7 @@ public struct XcodeMCPServer: Sendable {
             (.scaffoldIOS, scaffoldIOSTool.tool()),
             (.scaffoldMacOS, scaffoldMacOSTool.tool()),
             (.searchCrashReports, searchCrashReportsTool.tool()),
+            (.diagnostics, diagnosticsTool.tool()),
         ]
 
         // Register tools/list handler — filters by enabled workflows
@@ -1080,6 +1091,8 @@ public struct XcodeMCPServer: Sendable {
                     return try await swiftFormatTool.execute(arguments: arguments)
                 case .swiftLint:
                     return try await swiftLintTool.execute(arguments: arguments)
+                case .swiftDiagnostics:
+                    return try await swiftDiagnosticsTool.execute(arguments: arguments)
                 // Interact tools
                 case .interactUITree:
                     return try await interactUITreeTool.execute(arguments: arguments)
@@ -1115,6 +1128,8 @@ public struct XcodeMCPServer: Sendable {
                     return try scaffoldMacOSTool.execute(arguments: arguments)
                 case .searchCrashReports:
                     return try searchCrashReportsTool.execute(arguments: arguments)
+                case .diagnostics:
+                    return try await diagnosticsTool.execute(arguments: arguments)
             }
         }
 

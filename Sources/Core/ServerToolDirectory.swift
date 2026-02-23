@@ -47,7 +47,7 @@ public enum ServerToolDirectory {
         "discover_projs", "list_schemes", "show_build_settings",
         "get_app_bundle_id", "get_mac_bundle_id", "list_test_plan_targets",
         "clean", "doctor", "scaffold_ios_project", "scaffold_macos_project",
-        "search_crash_reports",
+        "search_crash_reports", "diagnostics",
     ]
 
     private static let simulatorTools: [String] = [
@@ -104,6 +104,7 @@ public enum ServerToolDirectory {
     private static let swiftTools: [String] = [
         "swift_package_build", "swift_package_test", "swift_package_run",
         "swift_package_clean", "swift_package_list", "swift_package_stop",
+        "swift_diagnostics",
     ]
 
     private static let stringsTools: [String] = [

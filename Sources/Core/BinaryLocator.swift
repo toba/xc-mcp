@@ -34,7 +34,7 @@ public enum BinaryLocator: Sendable {
         }
 
         throw .internalError(
-            "swiftformat (Lockwood) not found. Install it with: brew install swiftformat"
+            "swiftformat (Lockwood) not found. Install it with: brew install swiftformat",
         )
     }
 
@@ -43,7 +43,7 @@ public enum BinaryLocator: Sendable {
     private static func isLockwoodSwiftFormat(_ path: String) async -> Bool {
         guard
             let result = try? await ProcessResult.run(
-                path, arguments: ["--version"], mergeStderr: false
+                path, arguments: ["--version"], mergeStderr: false,
             )
         else { return false }
         let version = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)

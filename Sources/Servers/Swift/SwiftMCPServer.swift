@@ -14,6 +14,7 @@ public enum SwiftToolName: String, CaseIterable, Sendable {
     case swiftPackageStop = "swift_package_stop"
     case swiftFormat = "swift_format"
     case swiftLint = "swift_lint"
+    case swiftDiagnostics = "swift_diagnostics"
 
     // Session tools
     case setSessionDefaults = "set_session_defaults"
@@ -85,6 +86,9 @@ public struct SwiftMCPServer: Sendable {
         let swiftPackageStopTool = SwiftPackageStopTool(sessionManager: sessionManager)
         let swiftFormatTool = SwiftFormatTool(sessionManager: sessionManager)
         let swiftLintTool = SwiftLintTool(sessionManager: sessionManager)
+        let swiftDiagnosticsTool = SwiftDiagnosticsTool(
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
+        )
 
         // Create session tools
         let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
@@ -102,6 +106,7 @@ public struct SwiftMCPServer: Sendable {
                 swiftPackageStopTool.tool(),
                 swiftFormatTool.tool(),
                 swiftLintTool.tool(),
+                swiftDiagnosticsTool.tool(),
                 // Session tools
                 setSessionDefaultsTool.tool(),
                 showSessionDefaultsTool.tool(),
@@ -138,6 +143,8 @@ public struct SwiftMCPServer: Sendable {
                     return try await swiftFormatTool.execute(arguments: arguments)
                 case .swiftLint:
                     return try await swiftLintTool.execute(arguments: arguments)
+                case .swiftDiagnostics:
+                    return try await swiftDiagnosticsTool.execute(arguments: arguments)
                 // Session tools
                 case .setSessionDefaults:
                     return try await setSessionDefaultsTool.execute(arguments: arguments)

@@ -1,6 +1,6 @@
 # xc-mcp
 
-An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 175 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, localization, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 177 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, localization, and SwiftUI preview capture.
 
 I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
@@ -36,7 +36,7 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
 - [Requirements](#requirements)
 - [Tools](#tools)
   - [macOS UI Automation](#macos-ui-automation-8-tools)
-  - [macOS Screenshots & Builds](#macos-screenshots--builds-9-tools)
+  - [macOS Screenshots & Builds](#macos-screenshots--builds-10-tools)
   - [SwiftUI Preview Capture](#swiftui-preview-capture-1-tool)
   - [Debug](#debug-18-tools)
   - [Simulator](#simulator-17-tools)
@@ -46,7 +46,7 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
   - [Discovery](#discovery-6-tools)
   - [Instruments](#instruments-3-tools)
   - [Logging](#logging-4-tools)
-  - [Swift Package Manager](#swift-package-manager-8-tools)
+  - [Swift Package Manager](#swift-package-manager-9-tools)
   - [Localization](#localization-24-tools)
   - [Session & Utilities](#session--utilities-8-tools)
 - [Tests](#tests)
@@ -59,13 +59,13 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 175 | ~50K | Full monolithic server |
+| `xc-mcp` | 177 | ~50K | Full monolithic server |
 | `xc-project` | 53 | ~12K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
 | `xc-device` | 12 | ~2K | Physical iOS devices |
 | `xc-debug` | 22 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
-| `xc-swift` | 11 | ~2K | Swift Package Manager, swiftformat, swiftlint + session defaults |
-| `xc-build` | 20 | ~3K | macOS builds, discovery, logging, utilities |
+| `xc-swift` | 12 | ~2K | Swift Package Manager, swiftformat, swiftlint, diagnostics + session defaults |
+| `xc-build` | 21 | ~3K | macOS builds, discovery, logging, diagnostics, utilities |
 | `xc-strings` | 24 | ~8K | Xcode String Catalog (.xcstrings) localization |
 
 **When to use focused servers:**
@@ -192,7 +192,7 @@ Semantic UI automation for macOS apps via the Accessibility API. These work on *
 | `interact_key` | Send keyboard input to the focused element |
 | `interact_find` | Search for UI elements by properties |
 
-### macOS Screenshots & Builds (9 tools)
+### macOS Screenshots & Builds (10 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -205,6 +205,7 @@ Semantic UI automation for macOS apps via the Accessibility API. These work on *
 | `test_macos` | Run tests for macOS app |
 | `start_mac_log_cap` | Start capturing macOS app logs via unified logging |
 | `stop_mac_log_cap` | Stop capturing and return macOS log results |
+| `diagnostics` | Clean-build an Xcode project and collect all compiler warnings, errors, and lint violations. Same idea as `swift_diagnostics` but for `.xcodeproj`/`.xcworkspace` projects. Filters out dependency warnings so you only see your own code's problems |
 
 ### SwiftUI Preview Capture (1 tool)
 
@@ -403,7 +404,7 @@ Profiling via `xctrace` — record traces, list available templates and instrume
 | `start_device_log_cap` | Start capturing device logs |
 | `stop_device_log_cap` | Stop capturing device logs |
 
-### Swift Package Manager (8 tools)
+### Swift Package Manager (9 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -415,6 +416,7 @@ Profiling via `xctrace` — record traces, list available templates and instrume
 | `swift_package_stop` | Stop running executable |
 | `swift_format` | Run `swiftformat` on a package or specific paths. Supports `dry_run` to preview changes. Auto-detects `.swiftformat` config |
 | `swift_lint` | Run `swiftlint` on a package or specific paths. Parses JSON output into structured violations grouped by file. Supports `fix` mode for auto-correction. Auto-detects `.swiftlint.yml` config |
+| `swift_diagnostics` | Clean-build a package and collect *all* compiler warnings, errors, and lint violations in one shot. Cached builds swallow warnings on success — this forces recompilation so nothing hides. Optionally includes swiftlint. Returns diagnostics even when the build succeeds |
 
 ### Localization (24 tools)
 
