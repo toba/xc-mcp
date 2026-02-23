@@ -25,6 +25,12 @@ public struct SwiftPackageListTool: Sendable {
                             "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
                         ),
                     ]),
+                    "timeout": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Maximum time in seconds for listing dependencies. Defaults to 300 (5 minutes).",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -44,6 +50,9 @@ public struct SwiftPackageListTool: Sendable {
             )
         }
 
+        let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
+            ?? SwiftRunner.defaultTimeout
+
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
             "Package.swift",
@@ -55,7 +64,10 @@ public struct SwiftPackageListTool: Sendable {
         }
 
         do {
-            let result = try await swiftRunner.showDependencies(packagePath: packagePath)
+            let result = try await swiftRunner.showDependencies(
+                packagePath: packagePath,
+                timeout: timeout,
+            )
 
             if result.succeeded {
                 var message = "Package dependencies:\n"

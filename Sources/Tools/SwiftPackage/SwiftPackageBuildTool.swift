@@ -38,6 +38,12 @@ public struct SwiftPackageBuildTool: Sendable {
                             "Specific product to build. If not specified, builds all products.",
                         ),
                     ]),
+                    "timeout": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Maximum time in seconds for the build. Defaults to 300 (5 minutes).",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -48,6 +54,8 @@ public struct SwiftPackageBuildTool: Sendable {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let configuration = arguments.getString("configuration") ?? "debug"
         let product = arguments.getString("product")
+        let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
+            ?? SwiftRunner.defaultTimeout
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
@@ -64,6 +72,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 packagePath: packagePath,
                 configuration: configuration,
                 product: product,
+                timeout: timeout,
             )
 
             let buildResult = ErrorExtractor.parseBuildOutput(result.output)

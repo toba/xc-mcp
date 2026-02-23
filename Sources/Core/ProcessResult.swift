@@ -1,6 +1,27 @@
+import MCP
 import System
 import Foundation
 import Subprocess
+
+/// Errors that can occur during process execution.
+public enum ProcessError: Error, Sendable, LocalizedError, MCPErrorConvertible {
+    /// The process exceeded the allowed time limit.
+    case timeout(duration: Duration)
+
+    public var errorDescription: String? {
+        switch self {
+            case let .timeout(duration):
+                return "Process timed out after \(duration)"
+        }
+    }
+
+    public func toMCPError() -> MCPError {
+        switch self {
+            case let .timeout(duration):
+                return .internalError("Process timed out after \(duration)")
+        }
+    }
+}
 
 /// Unified result of a process execution.
 ///
@@ -90,15 +111,22 @@ extension ProcessResult {
         mergeStderr: Bool = false,
         outputLimit: Int = 10_485_760,
         errorLimit: Int = 10_485_760,
+        timeout: Duration? = nil,
     ) async throws -> ProcessResult {
         if mergeStderr {
-            let result = try await Subprocess.run(
-                executable,
-                arguments: arguments,
-                workingDirectory: workingDirectory,
-                output: .string(limit: outputLimit),
-                error: .combineWithOutput,
-            )
+            let run: @Sendable () async throws -> CollectedResult<
+                StringOutput<Unicode.UTF8>,
+                CombinedErrorOutput,
+            > = {
+                try await Subprocess.run(
+                    executable,
+                    arguments: arguments,
+                    workingDirectory: workingDirectory,
+                    output: .string(limit: outputLimit),
+                    error: .combineWithOutput,
+                )
+            }
+            let result = try await raceTimeout(timeout, run: run)
             let exitCode: Int32 =
                 switch result.terminationStatus {
                     case let .exited(code): code
@@ -110,13 +138,19 @@ extension ProcessResult {
                 stderr: "",
             )
         } else {
-            let result = try await Subprocess.run(
-                executable,
-                arguments: arguments,
-                workingDirectory: workingDirectory,
-                output: .string(limit: outputLimit),
-                error: .string(limit: errorLimit),
-            )
+            let run: @Sendable () async throws -> CollectedResult<
+                StringOutput<Unicode.UTF8>,
+                StringOutput<Unicode.UTF8>,
+            > = {
+                try await Subprocess.run(
+                    executable,
+                    arguments: arguments,
+                    workingDirectory: workingDirectory,
+                    output: .string(limit: outputLimit),
+                    error: .string(limit: errorLimit),
+                )
+            }
+            let result = try await raceTimeout(timeout, run: run)
             let exitCode: Int32 =
                 switch result.terminationStatus {
                     case let .exited(code): code
@@ -127,6 +161,34 @@ extension ProcessResult {
                 stdout: result.standardOutput ?? "",
                 stderr: result.standardError ?? "",
             )
+        }
+    }
+
+    /// Races a subprocess closure against an optional timeout.
+    ///
+    /// When timeout is nil, runs the closure directly. When set, uses a task group
+    /// to race the subprocess against a sleep, throwing ``ProcessError/timeout(duration:)``
+    /// if the deadline is exceeded.
+    private static func raceTimeout<T: Sendable>(
+        _ timeout: Duration?,
+        run: @escaping @Sendable () async throws -> T,
+    ) async throws -> T {
+        guard let timeout else {
+            return try await run()
+        }
+        return try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await run()
+            }
+            group.addTask {
+                try await Task.sleep(for: timeout)
+                throw ProcessError.timeout(duration: timeout)
+            }
+            guard let result = try await group.next() else {
+                throw ProcessError.timeout(duration: timeout)
+            }
+            group.cancelAll()
+            return result
         }
     }
 

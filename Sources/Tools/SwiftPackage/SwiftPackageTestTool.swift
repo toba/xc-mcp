@@ -31,6 +31,12 @@ public struct SwiftPackageTestTool: Sendable {
                             "Test filter pattern to run specific tests (e.g., 'MyTests' or 'MyTests/testMethod').",
                         ),
                     ]),
+                    "timeout": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Maximum time in seconds for the test run. Defaults to 300 (5 minutes).",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -40,6 +46,8 @@ public struct SwiftPackageTestTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let filter = arguments.getString("filter")
+        let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
+            ?? SwiftRunner.defaultTimeout
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
@@ -55,6 +63,7 @@ public struct SwiftPackageTestTool: Sendable {
             let result = try await swiftRunner.test(
                 packagePath: packagePath,
                 filter: filter,
+                timeout: timeout,
             )
 
             var context = "swift package"

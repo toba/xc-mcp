@@ -46,12 +46,6 @@ public struct SearchCrashReportsTool: Sendable {
         let bundleID = arguments.getString("bundle_id")
         let minutes = arguments.getInt("minutes") ?? 5
 
-        if processName == nil, bundleID == nil {
-            throw MCPError.invalidParams(
-                "At least one of process_name or bundle_id is required.",
-            )
-        }
-
         let results = CrashReportParser.search(
             processName: processName,
             bundleID: bundleID,

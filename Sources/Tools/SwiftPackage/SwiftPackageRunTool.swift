@@ -36,6 +36,12 @@ public struct SwiftPackageRunTool: Sendable {
                         "items": .object(["type": .string("string")]),
                         "description": .string("Arguments to pass to the executable."),
                     ]),
+                    "timeout": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Maximum time in seconds for the run. Defaults to 300 (5 minutes).",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -60,6 +66,8 @@ public struct SwiftPackageRunTool: Sendable {
 
         // Get arguments if specified
         let execArgs = arguments.getStringArray("arguments")
+        let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
+            ?? SwiftRunner.defaultTimeout
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
@@ -76,6 +84,7 @@ public struct SwiftPackageRunTool: Sendable {
                 packagePath: packagePath,
                 executableName: executable,
                 arguments: execArgs,
+                timeout: timeout,
             )
 
             if result.succeeded {
