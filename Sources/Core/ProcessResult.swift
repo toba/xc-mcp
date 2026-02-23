@@ -103,6 +103,7 @@ extension ProcessResult {
     ///   - mergeStderr: When true, stderr is merged into stdout (like `2>&1`).
     ///   - outputLimit: Maximum bytes to capture from stdout. Defaults to 10MB.
     ///   - errorLimit: Maximum bytes to capture from stderr. Defaults to 10MB.
+    ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
     /// - Returns: A ``ProcessResult`` with exit code and captured output.
     public static func runSubprocess(
         _ executable: Subprocess.Executable,
@@ -111,6 +112,7 @@ extension ProcessResult {
         mergeStderr: Bool = false,
         outputLimit: Int = 10_485_760,
         errorLimit: Int = 10_485_760,
+        environment: Environment = .inherit,
         timeout: Duration? = nil,
     ) async throws -> ProcessResult {
         if mergeStderr {
@@ -121,6 +123,7 @@ extension ProcessResult {
                 try await Subprocess.run(
                     executable,
                     arguments: arguments,
+                    environment: environment,
                     workingDirectory: workingDirectory,
                     output: .string(limit: outputLimit),
                     error: .combineWithOutput,
@@ -145,6 +148,7 @@ extension ProcessResult {
                 try await Subprocess.run(
                     executable,
                     arguments: arguments,
+                    environment: environment,
                     workingDirectory: workingDirectory,
                     output: .string(limit: outputLimit),
                     error: .string(limit: errorLimit),

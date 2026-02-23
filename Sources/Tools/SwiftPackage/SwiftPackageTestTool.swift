@@ -1,5 +1,6 @@
 import MCP
 import XCMCPCore
+import Subprocess
 import Foundation
 
 public struct SwiftPackageTestTool: Sendable {
@@ -31,6 +32,25 @@ public struct SwiftPackageTestTool: Sendable {
                             "Test filter pattern to run specific tests (e.g., 'MyTests' or 'MyTests/testMethod').",
                         ),
                     ]),
+                    "skip": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Test filter pattern to exclude tests (e.g., 'SlowTests').",
+                        ),
+                    ]),
+                    "parallel": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "Control test parallelism. True for --parallel, false for --no-parallel. Omit for default behavior.",
+                        ),
+                    ]),
+                    "env": .object([
+                        "type": .string("object"),
+                        "description": .string(
+                            "Environment variables to set for the test run (e.g., {\"RUN_SLOW_TESTS\": \"1\"}).",
+                        ),
+                        "additionalProperties": .object(["type": .string("string")]),
+                    ]),
                     "timeout": .object([
                         "type": .string("integer"),
                         "description": .string(
@@ -46,8 +66,25 @@ public struct SwiftPackageTestTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let filter = arguments.getString("filter")
+        let skip = arguments.getString("skip")
+        let parallel: Bool? = if case let .bool(value) = arguments["parallel"] { value }
+        else { nil }
         let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
             ?? SwiftRunner.defaultTimeout
+
+        // Build environment from env dict
+        var environment: Environment = .inherit
+        if case let .object(envDict) = arguments["env"] {
+            var overrides: [Environment.Key: String?] = [:]
+            for (key, value) in envDict {
+                if case let .string(str) = value {
+                    overrides[Environment.Key(stringLiteral: key)] = str
+                }
+            }
+            if !overrides.isEmpty {
+                environment = environment.updating(overrides)
+            }
+        }
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
@@ -63,12 +100,18 @@ public struct SwiftPackageTestTool: Sendable {
             let result = try await swiftRunner.test(
                 packagePath: packagePath,
                 filter: filter,
+                skip: skip,
+                parallel: parallel,
+                environment: environment,
                 timeout: timeout,
             )
 
             var context = "swift package"
             if let filter {
                 context += " (filter: '\(filter)')"
+            }
+            if let skip {
+                context += " (skip: '\(skip)')"
             }
             return try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,

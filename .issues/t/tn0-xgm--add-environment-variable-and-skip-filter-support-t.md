@@ -1,11 +1,11 @@
 ---
 # tn0-xgm
 title: Add environment variable and skip filter support to swift_package_test
-status: ready
+status: completed
 type: feature
 priority: normal
 created_at: 2026-02-23T00:16:26Z
-updated_at: 2026-02-23T00:16:26Z
+updated_at: 2026-02-23T00:30:46Z
 ---
 
 ## Problem
@@ -26,3 +26,9 @@ During this session, the \`RUN_SLOW_TESTS\` gating pattern was implemented but i
 - [ ] Add \`skip\` parameter (string) — maps to \`swift test --skip <pattern>\`
 - [ ] Add \`parallel\` parameter (boolean) — maps to \`--parallel\`/\`--no-parallel\`
 - [ ] Add environment variable passthrough to \`ProcessResult.runSubprocess()\`
+
+
+
+## Summary of Changes
+
+Added env (object), skip (string), and parallel (boolean) parameters to SwiftPackageTestTool. Added environment: Environment parameter to ProcessResult.runSubprocess() and SwiftRunner.run()/test(). Environment dict from MCP is converted to Subprocess.Environment via .inherit.updating().

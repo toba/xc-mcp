@@ -38,6 +38,12 @@ public struct SwiftPackageBuildTool: Sendable {
                             "Specific product to build. If not specified, builds all products.",
                         ),
                     ]),
+                    "build_tests": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "Also build test targets. Defaults to false.",
+                        ),
+                    ]),
                     "timeout": .object([
                         "type": .string("integer"),
                         "description": .string(
@@ -54,6 +60,7 @@ public struct SwiftPackageBuildTool: Sendable {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let configuration = arguments.getString("configuration") ?? "debug"
         let product = arguments.getString("product")
+        let buildTests = arguments.getBool("build_tests")
         let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
             ?? SwiftRunner.defaultTimeout
 
@@ -72,6 +79,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 packagePath: packagePath,
                 configuration: configuration,
                 product: product,
+                buildTests: buildTests,
                 timeout: timeout,
             )
 

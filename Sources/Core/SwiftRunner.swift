@@ -33,18 +33,21 @@ public struct SwiftRunner: Sendable {
     /// - Parameters:
     ///   - arguments: The command-line arguments to pass to swift.
     ///   - workingDirectory: Optional working directory for the command.
+    ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
     ///   - timeout: Maximum time to wait for the command. Defaults to ``defaultTimeout``.
     /// - Returns: The result containing exit code and output.
     /// - Throws: ``ProcessError/timeout(duration:)`` if the command exceeds the timeout.
     public func run(
         arguments: [String],
         workingDirectory: String? = nil,
+        environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
     ) async throws -> SwiftResult {
         try await ProcessResult.runSubprocess(
             .path("/usr/bin/swift"),
             arguments: Arguments(arguments),
             workingDirectory: workingDirectory.map { FilePath($0) },
+            environment: environment,
             timeout: timeout,
         )
     }
@@ -55,17 +58,22 @@ public struct SwiftRunner: Sendable {
     ///   - packagePath: Path to the Swift package directory.
     ///   - configuration: Build configuration ("debug" or "release"). Defaults to "debug".
     ///   - product: Optional specific product to build.
+    ///   - buildTests: When true, also builds test targets.
     ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
     /// - Returns: The build result containing exit code and output.
     public func build(
         packagePath: String,
         configuration: String = "debug",
         product: String? = nil,
+        buildTests: Bool = false,
         timeout: Duration = Self.defaultTimeout,
     ) async throws -> SwiftResult {
         var args = ["build", "-c", configuration]
         if let product {
             args.append(contentsOf: ["--product", product])
+        }
+        if buildTests {
+            args.append("--build-tests")
         }
         return try await run(arguments: args, workingDirectory: packagePath, timeout: timeout)
     }
@@ -74,19 +82,36 @@ public struct SwiftRunner: Sendable {
     ///
     /// - Parameters:
     ///   - packagePath: Path to the Swift package directory.
-    ///   - filter: Optional test filter pattern.
+    ///   - filter: Optional test filter pattern (include).
+    ///   - skip: Optional test filter pattern (exclude).
+    ///   - parallel: When non-nil, controls test parallelism.
+    ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
     ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
     /// - Returns: The test result containing exit code and output.
     public func test(
         packagePath: String,
         filter: String? = nil,
+        skip: String? = nil,
+        parallel: Bool? = nil,
+        environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
     ) async throws -> SwiftResult {
         var args = ["test"]
         if let filter {
             args.append(contentsOf: ["--filter", filter])
         }
-        return try await run(arguments: args, workingDirectory: packagePath, timeout: timeout)
+        if let skip {
+            args.append(contentsOf: ["--skip", skip])
+        }
+        if let parallel {
+            args.append(parallel ? "--parallel" : "--no-parallel")
+        }
+        return try await run(
+            arguments: args,
+            workingDirectory: packagePath,
+            environment: environment,
+            timeout: timeout,
+        )
     }
 
     /// Runs a Swift package executable.

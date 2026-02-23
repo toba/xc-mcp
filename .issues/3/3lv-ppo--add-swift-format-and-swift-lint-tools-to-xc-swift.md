@@ -1,13 +1,13 @@
 ---
 # 3lv-ppo
 title: Add swift_format and swift_lint tools to xc-swift server
-status: in-progress
+status: completed
 type: feature
 priority: normal
 tags:
     - xc-swift
 created_at: 2026-02-22T23:03:08Z
-updated_at: 2026-02-22T23:06:05Z
+updated_at: 2026-02-23T00:26:50Z
 ---
 
 ## Problem
@@ -40,7 +40,7 @@ Session 2026-02-22: after editing `ErrorExtraction.swift` and `XCResultParserTes
 
 ## Tasks
 
-- [ ] Add `SwiftFormatTool` to `Sources/Tools/SwiftPackage/`
+- [x] Add `SwiftFormatTool` to `Sources/Tools/SwiftPackage/`
 - [ ] Add `SwiftLintTool` to `Sources/Tools/SwiftPackage/`
 - [ ] Register tools in `SwiftMCPServer`
 - [ ] Detect config files from package root

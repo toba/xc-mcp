@@ -1,11 +1,11 @@
 ---
 # oqt-7l7
 title: Add --build-tests flag to swift_package_build
-status: ready
+status: completed
 type: feature
 priority: normal
 created_at: 2026-02-23T00:16:23Z
-updated_at: 2026-02-23T00:16:23Z
+updated_at: 2026-02-23T00:30:33Z
 ---
 
 ## Problem
@@ -16,6 +16,11 @@ During this session, verifying that new integration test files compiled required
 
 ## Acceptance Criteria
 
-- [ ] Add \`build_tests\` boolean parameter to \`swift_package_build\` tool
-- [ ] When true, pass \`--build-tests\` to \`swift build\`
-- [ ] Update SwiftRunner.build() to accept the flag
+- [x] Add \`build_tests\` boolean parameter to \`swift_package_build\` tool
+- [x] When true, pass \`--build-tests\` to \`swift build\`
+- [x] Update SwiftRunner.build() to accept the flag
+
+
+## Summary of Changes
+
+Added `build_tests` boolean parameter to `SwiftPackageBuildTool` schema and `SwiftRunner.build()`. When true, passes `--build-tests` to `swift build`.

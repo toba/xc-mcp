@@ -41,7 +41,7 @@ public struct SearchCrashReportsTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) throws -> CallTool.Result {
+    public func execute(arguments: [String: Value]) -> CallTool.Result {
         let processName = arguments.getString("process_name")
         let bundleID = arguments.getString("bundle_id")
         let minutes = arguments.getInt("minutes") ?? 5
