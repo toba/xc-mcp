@@ -112,7 +112,8 @@ public enum ErrorExtractor {
                     + "Filters: \(filters)\n\n"
                     + "Check that identifiers use the correct format: "
                     + "\"TargetName/TestClassName/testMethodName\". "
-                    + "For Swift Testing, the class name is the struct/class name, not the file name.",
+                    +
+                    "For Swift Testing, the class name is the struct/class name, not the file name.",
             )
         }
 
