@@ -8,6 +8,10 @@ tags:
     - agent-experience
 created_at: 2026-02-22T01:09:52Z
 updated_at: 2026-02-22T01:32:10Z
+sync:
+    github:
+        issue_number: "102"
+        synced_at: "2026-02-24T18:57:43Z"
 ---
 
 During an iOS test setup session for the thesis project, several tasks required manually generating Xcode project configuration files that the MCP server could provide as tools instead.

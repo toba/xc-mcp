@@ -353,9 +353,9 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `add_build_phase` | Add custom build phases |
 | `add_app_extension` | Add an App Extension target |
 | `remove_app_extension` | Remove an App Extension target |
-| `add_swift_package` | Add a Swift Package dependency |
-| `list_swift_packages` | List Swift Package dependencies |
-| `remove_swift_package` | Remove a Swift Package dependency |
+| `add_swift_package` | Add a Swift Package dependency — remote (by URL with version requirement) or local (by relative path). Mutually exclusive; local packages don't need a version |
+| `list_swift_packages` | List Swift Package dependencies (both remote and local) |
+| `remove_swift_package` | Remove a Swift Package dependency — remote (by URL) or local (by relative path). Optionally removes associated product dependencies from all targets |
 | `add_synchronized_folder` | Add a synchronized folder reference |
 | `remove_synchronized_folder` | Remove a synchronized folder reference (does not delete from disk) |
 | `add_target_to_synchronized_folder` | Share an existing synchronized folder with another target |
@@ -475,7 +475,7 @@ Test tools parse both **XCTest** and **Swift Testing** output formats, extractin
 
 ## Tests
 
-539 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
+578 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
 
 ### Unit Tests
 

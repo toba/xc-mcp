@@ -26,7 +26,8 @@ struct RemoveSwiftPackageToolTests {
 
         #expect(toolDefinition.name == "remove_swift_package")
         #expect(
-            toolDefinition.description == "Remove a Swift Package dependency from an Xcode project",
+            toolDefinition.description
+                == "Remove a Swift Package dependency from an Xcode project (remote or local)",
         )
     }
 
@@ -36,7 +37,7 @@ struct RemoveSwiftPackageToolTests {
             ["package_url": Value.string("https://github.com/alamofire/alamofire.git")],
         ),
         RemoveSwiftPackageMissingParamTestCase(
-            "Missing package_url",
+            "Missing both package_url and package_path",
             ["project_path": Value.string("/path/to/project.xcodeproj")],
         ),
     ]
@@ -245,6 +246,92 @@ struct RemoveSwiftPackageToolTests {
         #expect(updatedProject?.remotePackages.isEmpty == true)
         // Note: Target dependencies may still exist but will be broken since package reference is gone
         #expect(updatedTarget?.packageProductDependencies?.count == 1)
+    }
+
+    @Test("Remove local package from project")
+    func removeLocalPackageFromProject() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        // Add a local package
+        let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../MyLocalPackage"),
+        ])
+
+        // Verify package was added
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let project = try xcodeproj.pbxproj.rootProject()
+        #expect(project?.localPackages.count == 1)
+
+        // Now remove the local package
+        let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try removeTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../MyLocalPackage"),
+        ])
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed local Swift Package"))
+        #expect(message.contains("../MyLocalPackage"))
+
+        // Verify package was removed
+        let updatedXcodeproj = try XcodeProj(path: projectPath)
+        let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
+        #expect(updatedProject?.localPackages.isEmpty == true)
+    }
+
+    @Test("Remove non-existent local package")
+    func removeNonExistentLocalPackage() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../NonExistent"),
+        ])
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("not found in project"))
+    }
+
+    @Test("Remove fails with both URL and path")
+    func removeFailsWithBothUrlAndPath() throws {
+        let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
+
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": Value.string("/path/to/project.xcodeproj"),
+                "package_url": Value.string("https://github.com/example/repo.git"),
+                "package_path": Value.string("../LocalPackage"),
+            ])
+        }
     }
 
     @Test("Remove multiple packages")

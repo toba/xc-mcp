@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-21T20:39:41Z
 updated_at: 2026-02-21T21:07:59Z
+sync:
+    github:
+        issue_number: "103"
+        synced_at: "2026-02-24T18:57:43Z"
 ---
 
 There is no tool to remove a PBXGroup from the project. `create_group` exists but has no counterpart.

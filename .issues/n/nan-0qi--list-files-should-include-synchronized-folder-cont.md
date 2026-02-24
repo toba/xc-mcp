@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-21T20:40:09Z
 updated_at: 2026-02-21T20:54:35Z
+sync:
+    github:
+        issue_number: "105"
+        synced_at: "2026-02-24T18:57:45Z"
 ---
 
 `list_files` for a target only returns explicit file references (e.g. framework dependencies). It does not show files contributed by synchronized folders (`fileSystemSynchronizedGroups`).

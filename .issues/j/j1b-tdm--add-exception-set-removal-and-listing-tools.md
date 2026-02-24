@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-21T20:39:58Z
 updated_at: 2026-02-21T21:03:35Z
+sync:
+    github:
+        issue_number: "107"
+        synced_at: "2026-02-24T18:57:45Z"
 ---
 
 Exception sets (`PBXFileSystemSynchronizedBuildFileExceptionSet`) can be added via the unexposed `AddSynchronizedFolderExceptionTool`, but there's no way to remove them or list what exists.

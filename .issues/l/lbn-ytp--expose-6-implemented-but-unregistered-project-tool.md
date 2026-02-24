@@ -6,6 +6,10 @@ type: task
 priority: high
 created_at: 2026-02-21T20:39:33Z
 updated_at: 2026-02-21T20:59:09Z
+sync:
+    github:
+        issue_number: "124"
+        synced_at: "2026-02-24T18:57:47Z"
 ---
 
 6 tools in `Sources/Tools/Project/` are fully implemented but not registered in `ProjectMCPServer.swift`:

@@ -38,7 +38,10 @@ struct AddSwiftPackageToolTests {
         let toolDefinition = tool.tool()
 
         #expect(toolDefinition.name == "add_swift_package")
-        #expect(toolDefinition.description == "Add a Swift Package dependency to an Xcode project")
+        #expect(
+            toolDefinition.description
+                == "Add a Swift Package dependency to an Xcode project (remote URL or local path)",
+        )
     }
 
     static let missingParamCases: [SwiftPackageMissingParamTestCase] = [
@@ -217,6 +220,142 @@ struct AddSwiftPackageToolTests {
             return
         }
         #expect(message.contains("already exists"))
+    }
+
+    @Test("Add local Swift Package")
+    func addLocalSwiftPackage() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../MyLocalPackage"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added local Swift Package"))
+        #expect(message.contains("../MyLocalPackage"))
+
+        // Verify package was added
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let project = try xcodeproj.pbxproj.rootProject()
+        let localRef = project?.localPackages.first {
+            $0.relativePath == "../MyLocalPackage"
+        }
+        #expect(localRef != nil)
+    }
+
+    @Test("Add duplicate local Swift Package")
+    func addDuplicateLocalSwiftPackage() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../MyLocalPackage"),
+        ]
+
+        // Add package first time
+        _ = try tool.execute(arguments: args)
+
+        // Try to add same package again
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("already exists"))
+    }
+
+    @Test("Add local Swift Package to specific target")
+    func addLocalSwiftPackageToTarget() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../SharedKit"),
+            "target_name": Value.string("TestApp"),
+            "product_name": Value.string("SharedKit"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added local Swift Package"))
+        #expect(message.contains("to target 'TestApp'"))
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+        #expect(target?.packageProductDependencies?.count == 1)
+    }
+
+    @Test("Add package fails with both URL and path")
+    func addPackageFailsWithBothUrlAndPath() throws {
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
+        let args: [String: Value] = [
+            "project_path": Value.string("/path/to/project.xcodeproj"),
+            "package_url": Value.string("https://github.com/example/repo.git"),
+            "package_path": Value.string("../LocalPackage"),
+            "requirement": Value.string("1.0.0"),
+        ]
+
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: args)
+        }
+    }
+
+    @Test("Add package fails with neither URL nor path")
+    func addPackageFailsWithNeitherUrlNorPath() throws {
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
+        let args: [String: Value] = [
+            "project_path": Value.string("/path/to/project.xcodeproj"),
+        ]
+
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: args)
+        }
     }
 
     @Test("Add package with invalid target")

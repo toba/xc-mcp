@@ -6,6 +6,10 @@ type: bug
 priority: normal
 created_at: 2026-02-23T00:12:59Z
 updated_at: 2026-02-23T00:13:48Z
+sync:
+    github:
+        issue_number: "123"
+        synced_at: "2026-02-24T18:57:47Z"
 ---
 
 The `search_crash_reports` tool schema declares no required parameters, but the `execute` method throws `MCPError.invalidParams` when neither `process_name` nor `bundle_id` is provided. The underlying `CrashReportParser.search()` already handles both being nil (returns all recent reports), so the guard is unnecessarily restrictive.

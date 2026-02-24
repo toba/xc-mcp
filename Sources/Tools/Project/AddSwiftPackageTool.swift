@@ -14,7 +14,7 @@ public struct AddSwiftPackageTool: Sendable {
     public func tool() -> Tool {
         Tool(
             name: "add_swift_package",
-            description: "Add a Swift Package dependency to an Xcode project",
+            description: "Add a Swift Package dependency to an Xcode project (remote URL or local path)",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -26,12 +26,20 @@ public struct AddSwiftPackageTool: Sendable {
                     ]),
                     "package_url": .object([
                         "type": .string("string"),
-                        "description": .string("URL of the Swift Package repository"),
+                        "description": .string(
+                            "URL of the Swift Package repository (for remote packages)",
+                        ),
+                    ]),
+                    "package_path": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Relative path to a local Swift Package directory (for local packages, e.g., '../MyPackage')",
+                        ),
                     ]),
                     "requirement": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Version requirement (e.g., '1.0.0', 'from: 1.0.0', 'upToNextMajor: 1.0.0', 'branch: main')",
+                            "Version requirement for remote packages (e.g., '1.0.0', 'from: 1.0.0', 'branch: main'). Not used for local packages.",
                         ),
                     ]),
                     "target_name": .object([
@@ -43,19 +51,37 @@ public struct AddSwiftPackageTool: Sendable {
                         "description": .string("Specific product name to link (optional)"),
                     ]),
                 ]),
-                "required": .array([
-                    .string("project_path"), .string("package_url"), .string("requirement"),
-                ]),
+                "required": .array([.string("project_path")]),
             ]),
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(packageURL) = arguments["package_url"],
-              case let .string(requirement) = arguments["requirement"]
-        else {
-            throw MCPError.invalidParams("project_path, package_url, and requirement are required")
+        guard case let .string(projectPath) = arguments["project_path"] else {
+            throw MCPError.invalidParams("project_path is required")
+        }
+
+        let packageURL: String?
+        if case let .string(url) = arguments["package_url"] {
+            packageURL = url
+        } else {
+            packageURL = nil
+        }
+
+        let packagePath: String?
+        if case let .string(path) = arguments["package_path"] {
+            packagePath = path
+        } else {
+            packagePath = nil
+        }
+
+        guard packageURL != nil || packagePath != nil else {
+            throw MCPError
+                .invalidParams("Either package_url (remote) or package_path (local) is required")
+        }
+
+        if packageURL != nil, packagePath != nil {
+            throw MCPError.invalidParams("Specify either package_url or package_path, not both")
         }
 
         let targetName: String?
@@ -73,73 +99,30 @@ public struct AddSwiftPackageTool: Sendable {
         }
 
         do {
-            // Resolve and validate the project path
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
-
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            // Check if package already exists
-            if let project = try xcodeproj.pbxproj.rootProject(),
-               project.remotePackages.contains(where: { $0.repositoryURL == packageURL })
-            {
-                return CallTool.Result(
-                    content: [
-                        .text("Swift Package '\(packageURL)' already exists in project"),
-                    ],
+            if let packageURL {
+                return try addRemotePackage(
+                    xcodeproj: xcodeproj,
+                    projectURL: projectURL,
+                    packageURL: packageURL,
+                    requirement: arguments["requirement"],
+                    targetName: targetName,
+                    productName: productName,
+                )
+            } else {
+                return try addLocalPackage(
+                    xcodeproj: xcodeproj,
+                    projectURL: projectURL,
+                    packagePath: packagePath!,
+                    targetName: targetName,
+                    productName: productName,
                 )
             }
-
-            // Create Swift Package reference
-            let packageRef = XCRemoteSwiftPackageReference(
-                repositoryURL: packageURL,
-                versionRequirement: parseRequirement(requirement),
-            )
-            xcodeproj.pbxproj.add(object: packageRef)
-
-            // Add to project's package references
-            if let project = try xcodeproj.pbxproj.rootProject() {
-                project.remotePackages.append(packageRef)
-            }
-
-            // If target name is specified, add package product to target
-            if let targetName {
-                guard
-                    let target = xcodeproj.pbxproj.nativeTargets.first(where: {
-                        $0.name == targetName
-                    })
-                else {
-                    throw MCPError.invalidParams("Target '\(targetName)' not found in project")
-                }
-
-                // Create product dependency
-                let productDependency = XCSwiftPackageProductDependency(
-                    productName: productName ?? "Unknown",
-                    package: packageRef,
-                )
-                xcodeproj.pbxproj.add(object: productDependency)
-
-                // Initialize packageProductDependencies if nil
-                if target.packageProductDependencies == nil {
-                    target.packageProductDependencies = []
-                }
-                target.packageProductDependencies?.append(productDependency)
-            }
-
-            // Save project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
-
-            var message =
-                "Successfully added Swift Package '\(packageURL)' with requirement '\(requirement)'"
-            if let targetName {
-                message += " to target '\(targetName)'"
-            }
-
-            return CallTool.Result(
-                content: [
-                    .text(message),
-                ],
-            )
+        } catch let error as MCPError {
+            throw error
         } catch {
             throw MCPError.internalError(
                 "Failed to add Swift Package to Xcode project: \(error.localizedDescription)",
@@ -147,12 +130,143 @@ public struct AddSwiftPackageTool: Sendable {
         }
     }
 
+    private func addRemotePackage(
+        xcodeproj: XcodeProj,
+        projectURL: URL,
+        packageURL: String,
+        requirement: Value?,
+        targetName: String?,
+        productName: String?,
+    ) throws -> CallTool.Result {
+        guard case let .string(requirementStr) = requirement else {
+            throw MCPError.invalidParams("requirement is required for remote packages")
+        }
+
+        // Check if package already exists
+        if let project = try xcodeproj.pbxproj.rootProject(),
+           project.remotePackages.contains(where: { $0.repositoryURL == packageURL })
+        {
+            return CallTool.Result(
+                content: [
+                    .text("Swift Package '\(packageURL)' already exists in project"),
+                ],
+            )
+        }
+
+        // Create Swift Package reference
+        let packageRef = XCRemoteSwiftPackageReference(
+            repositoryURL: packageURL,
+            versionRequirement: parseRequirement(requirementStr),
+        )
+        xcodeproj.pbxproj.add(object: packageRef)
+
+        // Add to project's package references
+        if let project = try xcodeproj.pbxproj.rootProject() {
+            project.remotePackages.append(packageRef)
+        }
+
+        // If target name is specified, add package product to target
+        if let targetName {
+            try addProductToTarget(
+                xcodeproj: xcodeproj,
+                targetName: targetName,
+                productName: productName,
+                packageRef: packageRef,
+            )
+        }
+
+        // Save project
+        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+
+        var message =
+            "Successfully added Swift Package '\(packageURL)' with requirement '\(requirementStr)'"
+        if let targetName {
+            message += " to target '\(targetName)'"
+        }
+
+        return CallTool.Result(content: [.text(message)])
+    }
+
+    private func addLocalPackage(
+        xcodeproj: XcodeProj,
+        projectURL: URL,
+        packagePath: String,
+        targetName: String?,
+        productName: String?,
+    ) throws -> CallTool.Result {
+        // Check if package already exists
+        if let project = try xcodeproj.pbxproj.rootProject(),
+           project.localPackages.contains(where: { $0.relativePath == packagePath })
+        {
+            return CallTool.Result(
+                content: [
+                    .text("Local Swift Package '\(packagePath)' already exists in project"),
+                ],
+            )
+        }
+
+        // Create local package reference
+        let localRef = XCLocalSwiftPackageReference(relativePath: packagePath)
+        xcodeproj.pbxproj.add(object: localRef)
+
+        // Add to project's local package references
+        if let project = try xcodeproj.pbxproj.rootProject() {
+            project.localPackages.append(localRef)
+        }
+
+        // If target name is specified, add package product to target
+        if let targetName {
+            try addProductToTarget(
+                xcodeproj: xcodeproj,
+                targetName: targetName,
+                productName: productName,
+                localPackageRef: localRef,
+            )
+        }
+
+        // Save project
+        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+
+        var message = "Successfully added local Swift Package '\(packagePath)'"
+        if let targetName {
+            message += " to target '\(targetName)'"
+        }
+
+        return CallTool.Result(content: [.text(message)])
+    }
+
+    private func addProductToTarget(
+        xcodeproj: XcodeProj,
+        targetName: String,
+        productName: String?,
+        packageRef: XCRemoteSwiftPackageReference? = nil,
+        localPackageRef _: XCLocalSwiftPackageReference? = nil,
+    ) throws {
+        guard
+            let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            })
+        else {
+            throw MCPError.invalidParams("Target '\(targetName)' not found in project")
+        }
+
+        let productDependency = XCSwiftPackageProductDependency(
+            productName: productName ?? "Unknown",
+            package: packageRef,
+        )
+        xcodeproj.pbxproj.add(object: productDependency)
+
+        if target.packageProductDependencies == nil {
+            target.packageProductDependencies = []
+        }
+        target.packageProductDependencies?.append(productDependency)
+    }
+
     private func parseRequirement(_ requirement: String)
         -> XCRemoteSwiftPackageReference.VersionRequirement
     {
         let trimmed = requirement.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Parse different requirement formats
         if trimmed.hasPrefix("from:") {
             let version = String(trimmed.dropFirst(5)).trimmingCharacters(
                 in: .whitespacesAndNewlines,
@@ -184,7 +298,6 @@ public struct AddSwiftPackageTool: Sendable {
             )
             return .exact(version)
         } else {
-            // Default to exact version if just a version number
             return .exact(trimmed)
         }
     }

@@ -8,6 +8,10 @@ tags:
     - test
 created_at: 2026-02-22T22:22:13Z
 updated_at: 2026-02-22T22:53:11Z
+sync:
+    github:
+        issue_number: "118"
+        synced_at: "2026-02-24T18:57:47Z"
 ---
 
 ## Problem

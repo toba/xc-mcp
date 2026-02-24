@@ -6,6 +6,10 @@ type: feature
 priority: high
 created_at: 2026-02-21T23:29:18Z
 updated_at: 2026-02-21T23:40:41Z
+sync:
+    github:
+        issue_number: "109"
+        synced_at: "2026-02-24T18:57:45Z"
 ---
 
 Issues discovered during a Thesis coding session where `test_macos` caused friction:

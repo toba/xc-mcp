@@ -3,6 +3,7 @@ import XCMCPCore
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.serialized)
 struct ListTestPlanTargetsToolTests {
     private func makeTool() -> ListTestPlanTargetsTool {
         ListTestPlanTargetsTool(sessionManager: SessionManager())

@@ -267,5 +267,38 @@ with open(f, 'w') as fh: fh.write(s)
 }
 patch_icecubesapp
 
+# Pre-resolve SPM dependencies for projects that use them.
+# Without this, the first xcodebuild invocation during tests triggers
+# a full package graph resolution over the network, causing intermittent
+# timeouts and "Could not resolve package dependencies" failures.
+resolve_spm_dependencies() {
+  local project="$1"
+  local name
+  name="$(basename "$project" .xcodeproj)"
+
+  if [ ! -d "$project" ]; then
+    echo "skip: $name — project not found"
+    return
+  fi
+
+  # Check if DerivedData already has SourcePackages for this project
+  local dd_match
+  dd_match="$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -name "${name}-*" -print -quit 2>/dev/null)"
+  if [ -n "$dd_match" ] && [ -d "$dd_match/SourcePackages/checkouts" ]; then
+    echo "ok: $name SPM dependencies already resolved"
+    return
+  fi
+
+  echo ">>: Resolving SPM dependencies for $name (this may take a while)"
+  if xcodebuild -project "$project" -resolvePackageDependencies -quiet 2>/dev/null; then
+    echo "ok: $name SPM dependencies resolved"
+  else
+    echo "warn: $name SPM dependency resolution failed (tests may be flaky)"
+  fi
+}
+
+resolve_spm_dependencies "$REPOS_DIR/IceCubesApp/IceCubesApp.xcodeproj"
+resolve_spm_dependencies "$REPOS_DIR/Alamofire/Alamofire.xcodeproj"
+
 echo ""
 echo "All fixtures ready in $REPOS_DIR"

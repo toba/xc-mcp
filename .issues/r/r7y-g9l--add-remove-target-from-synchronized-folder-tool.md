@@ -6,6 +6,10 @@ type: feature
 priority: normal
 created_at: 2026-02-21T20:39:48Z
 updated_at: 2026-02-21T21:10:32Z
+sync:
+    github:
+        issue_number: "128"
+        synced_at: "2026-02-24T18:57:49Z"
 ---
 
 No tool exists to remove a target's reference to a synchronized folder. `add_synchronized_folder` can add one, but there's no way to unlink a target from a shared synced folder without editing pbxproj directly.

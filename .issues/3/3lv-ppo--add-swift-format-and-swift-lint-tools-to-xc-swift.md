@@ -8,6 +8,10 @@ tags:
     - xc-swift
 created_at: 2026-02-22T23:03:08Z
 updated_at: 2026-02-23T00:26:50Z
+sync:
+    github:
+        issue_number: "95"
+        synced_at: "2026-02-24T18:57:43Z"
 ---
 
 ## Problem

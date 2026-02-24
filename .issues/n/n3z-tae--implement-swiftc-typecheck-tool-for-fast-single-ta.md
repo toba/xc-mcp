@@ -3,8 +3,13 @@
 title: Implement swiftc -typecheck tool for fast single-target type checking
 status: draft
 type: feature
+priority: normal
 created_at: 2026-02-22T01:15:55Z
 updated_at: 2026-02-22T01:15:55Z
+sync:
+    github:
+        issue_number: "114"
+        synced_at: "2026-02-24T18:57:45Z"
 ---
 
 ## Motivation

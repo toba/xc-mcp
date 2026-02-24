@@ -8,6 +8,10 @@ tags:
     - xc-build
 created_at: 2026-02-22T23:03:20Z
 updated_at: 2026-02-22T23:16:02Z
+sync:
+    github:
+        issue_number: "127"
+        synced_at: "2026-02-24T18:57:48Z"
 ---
 
 ## Problem

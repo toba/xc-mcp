@@ -6,6 +6,10 @@ type: task
 priority: normal
 created_at: 2026-02-22T23:56:29Z
 updated_at: 2026-02-22T23:57:58Z
+sync:
+    github:
+        issue_number: "96"
+        synced_at: "2026-02-24T18:57:43Z"
 ---
 
 Split BuildRunScreenshotIntegrationTests into BuildIntegrationTests + SlowIntegrationTests, add DiscoveryIntegrationTests with xcodebuild metadata tests, add SwiftPackageIntegrationTests, expand ProjectToolIntegrationTests
