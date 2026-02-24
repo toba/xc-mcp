@@ -149,7 +149,7 @@ struct ErrorExtractorZeroTestTests {
     }
 
     @Test("Succeeds when only_testing filter matches tests")
-    func testsRunWithOnlyTesting() async throws {
+    func matchedFilterSucceeds() async throws {
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
