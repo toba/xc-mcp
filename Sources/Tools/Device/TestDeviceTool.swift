@@ -106,6 +106,7 @@ public struct TestDeviceTool: Sendable {
                 xcresultPath: resultBundlePath,
                 stderr: result.stderr,
                 projectRoot: projectRoot,
+                onlyTesting: testParams.onlyTesting,
             )
         } catch {
             if isTemporaryBundle {

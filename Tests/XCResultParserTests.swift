@@ -128,3 +128,70 @@ struct ErrorExtractorInfrastructureTests {
         #expect(text.contains("Warning: The test runner daemon crashed"))
     }
 }
+
+@Suite("ErrorExtractor Zero-Test Detection Tests")
+struct ErrorExtractorZeroTestTests {
+    @Test("Errors when only_testing filter matches zero tests")
+    func zeroTestsWithOnlyTesting() async {
+        do {
+            _ = try await ErrorExtractor.formatTestToolResult(
+                output: "Test run completed.",
+                succeeded: true,
+                context: "scheme 'Standard' on macOS",
+                onlyTesting: ["MathViewTests/WrongName/analysis(_:)"],
+            )
+            Issue.record("Expected error to be thrown for zero-test run with only_testing")
+        } catch {
+            let message = "\(error)"
+            #expect(message.contains("No tests matched the only_testing filter"))
+            #expect(message.contains("WrongName"))
+        }
+    }
+
+    @Test("Succeeds when only_testing filter matches tests")
+    func testsRunWithOnlyTesting() async throws {
+        let result = try await ErrorExtractor.formatTestToolResult(
+            output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
+            succeeded: true,
+            context: "scheme 'Standard' on macOS",
+            onlyTesting: ["MathViewTests/AnalysisTests/analysis(_:)"],
+        )
+        let text = result.content.compactMap {
+            if case let .text(t) = $0 { return t }
+            return nil
+        }.joined()
+        #expect(text.contains("Tests passed"))
+    }
+
+    @Test("No error when no only_testing filter and zero tests")
+    func zeroTestsWithoutFilter() async throws {
+        // Without only_testing, zero tests is not an error (could be a legitimate empty test target)
+        let result = try await ErrorExtractor.formatTestToolResult(
+            output: "Test run completed.",
+            succeeded: true,
+            context: "scheme 'Standard' on macOS",
+        )
+        let text = result.content.compactMap {
+            if case let .text(t) = $0 { return t }
+            return nil
+        }.joined()
+        #expect(text.contains("Test run completed"))
+    }
+
+    @Test("Error message includes all filter identifiers")
+    func multipleFilters() async {
+        do {
+            _ = try await ErrorExtractor.formatTestToolResult(
+                output: "Test run completed.",
+                succeeded: true,
+                context: "scheme 'Standard' on macOS",
+                onlyTesting: ["Target/WrongA", "Target/WrongB"],
+            )
+            Issue.record("Expected error to be thrown")
+        } catch {
+            let message = "\(error)"
+            #expect(message.contains("Target/WrongA"))
+            #expect(message.contains("Target/WrongB"))
+        }
+    }
+}

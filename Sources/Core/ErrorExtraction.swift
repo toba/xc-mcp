@@ -36,6 +36,7 @@ public enum ErrorExtractor {
     ///   - context: A human-readable description of the test target (e.g., "scheme 'Foo' on macOS").
     ///   - xcresultPath: Optional path to the `.xcresult` bundle for detailed results.
     ///   - stderr: Optional stderr output for detecting infrastructure issues.
+    ///   - onlyTesting: The `only_testing` filters that were passed to xcodebuild, if any.
     /// - Returns: A successful `CallTool.Result` if tests passed.
     /// - Throws: `MCPError.internalError` if tests failed.
     public static func formatTestToolResult(
@@ -45,14 +46,17 @@ public enum ErrorExtractor {
         xcresultPath: String? = nil,
         stderr: String? = nil,
         projectRoot: String? = nil,
+        onlyTesting: [String]? = nil,
     ) async throws -> CallTool.Result {
         var testResult: String
+        var totalTestCount = 0
 
         // Try xcresult bundle first for complete failure messages and test output
         if let xcresultPath,
            let xcresultData = await XCResultParser.parseTestResults(at: xcresultPath)
         {
             testResult = formatXCResultData(xcresultData)
+            totalTestCount = xcresultData.passedCount + xcresultData.failedCount
 
             // When xcresult shows no tests ran (0 passed, 0 failed) and the run failed,
             // the build likely failed before tests could execute. Fall back to parsing
@@ -65,6 +69,12 @@ public enum ErrorExtractor {
             }
         } else {
             testResult = extractTestResults(from: output)
+
+            // Extract test count from parsed output
+            let parsed = parseBuildOutput(output)
+            let passed = parsed.summary.passedTests ?? 0
+            let failed = parsed.summary.failedTests
+            totalTestCount = passed + failed
         }
 
         // Check for testmanagerd crashes in stderr
@@ -91,6 +101,19 @@ public enum ErrorExtractor {
             if let hint = enhanceTestPlanError(output: output, projectRoot: projectRoot) {
                 testResult += "\n\n" + hint
             }
+        }
+
+        // Detect zero-test runs when only_testing filters were specified
+        if succeeded, let onlyTesting, !onlyTesting.isEmpty, totalTestCount == 0 {
+            let filters = onlyTesting.map { "\"\($0)\"" }.joined(separator: ", ")
+            throw MCPError.internalError(
+                "No tests matched the only_testing filter. "
+                    + "0 tests ran for \(context).\n\n"
+                    + "Filters: \(filters)\n\n"
+                    + "Check that identifiers use the correct format: "
+                    + "\"TargetName/TestClassName/testMethodName\". "
+                    + "For Swift Testing, the class name is the struct/class name, not the file name.",
+            )
         }
 
         if succeeded {

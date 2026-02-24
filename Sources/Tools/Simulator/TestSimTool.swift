@@ -105,6 +105,7 @@ public struct TestSimTool: Sendable {
                 xcresultPath: resultBundlePath,
                 stderr: result.stderr,
                 projectRoot: projectRoot,
+                onlyTesting: testParams.onlyTesting,
             )
             return CallTool.Result(
                 content: testToolResult.content + [
