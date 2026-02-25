@@ -9,7 +9,7 @@ updated_at: 2026-02-25T02:25:20Z
 sync:
     github:
         issue_number: "133"
-        synced_at: "2026-02-25T02:05:45Z"
+        synced_at: "2026-02-25T02:25:29Z"
 ---
 
 Debug tools like \`debug_view_hierarchy\` blindly send LLDB commands without checking process state first. When the process is stopped (crashed, breakpoint), sending \`continue\` + expression evaluation causes cascading failures:

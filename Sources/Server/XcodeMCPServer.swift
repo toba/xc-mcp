@@ -377,6 +377,7 @@ public struct XcodeMCPServer: Sendable {
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
+        let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
         let listDocumentTypesTool = ListDocumentTypesTool(pathUtility: pathUtility)
         let manageDocumentTypeTool = ManageDocumentTypeTool(pathUtility: pathUtility)
         let listTypeIdentifiersTool = ListTypeIdentifiersTool(pathUtility: pathUtility)
@@ -654,6 +655,7 @@ public struct XcodeMCPServer: Sendable {
             (.addCopyFilesPhase, addCopyFilesPhase.tool()),
             (.addToCopyFilesPhase, addToCopyFilesPhase.tool()),
             (.removeCopyFilesPhase, removeCopyFilesPhase.tool()),
+            (.validateProject, validateProjectTool.tool()),
             (.listDocumentTypes, listDocumentTypesTool.tool()),
             (.manageDocumentType, manageDocumentTypeTool.tool()),
             (.listTypeIdentifiers, listTypeIdentifiersTool.tool()),
@@ -894,6 +896,8 @@ public struct XcodeMCPServer: Sendable {
                     return try addToCopyFilesPhase.execute(arguments: arguments)
                 case .removeCopyFilesPhase:
                     return try removeCopyFilesPhase.execute(arguments: arguments)
+                case .validateProject:
+                    return try validateProjectTool.execute(arguments: arguments)
                 case .listDocumentTypes:
                     return try listDocumentTypesTool.execute(arguments: arguments)
                 case .manageDocumentType:

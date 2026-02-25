@@ -1,6 +1,6 @@
 # xc-mcp
 
-An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 177 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, localization, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 178 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, localization, and SwiftUI preview capture.
 
 I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
@@ -42,7 +42,7 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
   - [Simulator](#simulator-17-tools)
   - [Simulator UI Automation](#simulator-ui-automation-8-tools)
   - [Device](#device-7-tools)
-  - [Project Management](#project-management-53-tools)
+  - [Project Management](#project-management-54-tools)
   - [Discovery](#discovery-6-tools)
   - [Instruments](#instruments-3-tools)
   - [Logging](#logging-4-tools)
@@ -59,8 +59,8 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 177 | ~50K | Full monolithic server |
-| `xc-project` | 53 | ~12K | .xcodeproj file manipulation |
+| `xc-mcp` | 178 | ~50K | Full monolithic server |
+| `xc-project` | 54 | ~12K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
 | `xc-device` | 12 | ~2K | Physical iOS devices |
 | `xc-debug` | 22 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
@@ -314,7 +314,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `get_device_app_path` | Get path to installed app |
 | `test_device` | Run tests on physical device |
 
-### Project Management (53 tools)
+### Project Management (54 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -373,6 +373,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `manage_type_identifier` | Add, update, or remove an exported or imported type identifier |
 | `list_url_types` | List URL types (`CFBundleURLTypes`) — custom URL schemes the app handles |
 | `manage_url_type` | Add, update, or remove a URL type (custom URL scheme) |
+| `validate_project` | Validate an Xcode project for common configuration issues — checks embed phase settings (`dstSubfolderSpec`), detects frameworks that are linked but not embedded (or vice versa), flags duplicate embeds across copy-files phases, empty copy-files phases, and missing or unused target dependencies |
 
 ### Discovery (6 tools)
 

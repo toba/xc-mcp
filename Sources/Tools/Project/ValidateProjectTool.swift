@@ -15,17 +15,17 @@ public struct ValidateProjectTool: Sendable {
         Tool(
             name: "validate_project",
             description: """
-                Validate an Xcode project for common configuration issues. \
-                Checks embed phase settings, framework link/embed consistency, \
-                and target dependency completeness.
-                """,
+            Validate an Xcode project for common configuration issues. \
+            Checks embed phase settings, framework link/embed consistency, \
+            and target dependency completeness.
+            """,
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the .xcodeproj file"
+                            "Path to the .xcodeproj file",
                         ),
                     ]),
                 ]),
@@ -51,7 +51,7 @@ public struct ValidateProjectTool: Sendable {
             xcodeproj = try XcodeProj(path: Path(resolvedPath))
         } catch {
             throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)"
+                "Failed to read Xcode project: \(error.localizedDescription)",
             )
         }
 
@@ -82,13 +82,13 @@ public struct ValidateProjectTool: Sendable {
             let linkedNames = frameworkNames(from: frameworksPhase)
             let embeddedNames = embeddedFrameworkNames(from: copyFilesPhases)
             checkFrameworkConsistency(
-                linked: linkedNames, embedded: embeddedNames, diagnostics: &diagnostics
+                linked: linkedNames, embedded: embeddedNames, diagnostics: &diagnostics,
             )
 
             // --- Dependency completeness ---
             checkDependencyCompleteness(
                 target: target, xcodeproj: xcodeproj,
-                targetProductNames: targetProductNames, diagnostics: &diagnostics
+                targetProductNames: targetProductNames, diagnostics: &diagnostics,
             )
 
             // --- Summary info for this target ---
@@ -97,8 +97,8 @@ public struct ValidateProjectTool: Sendable {
                 diagnostics.append(
                     Diagnostic(
                         .info,
-                        "\(matchedCount) framework\(matchedCount == 1 ? "" : "s") linked and embedded correctly"
-                    )
+                        "\(matchedCount) framework\(matchedCount == 1 ? "" : "s") linked and embedded correctly",
+                    ),
                 )
             }
 
@@ -118,7 +118,8 @@ public struct ValidateProjectTool: Sendable {
             output.append("No issues found in \(resolvedPath).")
         } else {
             var parts = [String]()
-            if totalErrors > 0 { parts.append("\(totalErrors) error\(totalErrors == 1 ? "" : "s")") }
+            if totalErrors >
+                0 { parts.append("\(totalErrors) error\(totalErrors == 1 ? "" : "s")") }
             if totalWarnings > 0 {
                 parts.append("\(totalWarnings) warning\(totalWarnings == 1 ? "" : "s")")
             }
@@ -132,7 +133,7 @@ public struct ValidateProjectTool: Sendable {
 
     private func checkEmbedPhases(
         _ phases: [PBXCopyFilesBuildPhase],
-        diagnostics: inout [Diagnostic]
+        diagnostics: inout [Diagnostic],
     ) {
         for phase in phases {
             let phaseName = phase.name ?? "(unnamed)"
@@ -142,15 +143,15 @@ public struct ValidateProjectTool: Sendable {
                 diagnostics.append(
                     Diagnostic(
                         .error,
-                        "Embed phase \"\(phaseName)\" has dstSubfolder=None (should be Frameworks)"
-                    )
+                        "Embed phase \"\(phaseName)\" has dstSubfolder=None (should be Frameworks)",
+                    ),
                 )
             }
 
             // Empty copy-files phases
             if (phase.files ?? []).isEmpty {
                 diagnostics.append(
-                    Diagnostic(.warning, "Copy-files phase \"\(phaseName)\" has zero files")
+                    Diagnostic(.warning, "Copy-files phase \"\(phaseName)\" has zero files"),
                 )
             }
         }
@@ -166,8 +167,8 @@ public struct ValidateProjectTool: Sendable {
                     diagnostics.append(
                         Diagnostic(
                             .error,
-                            "\(name) appears in both \"\(firstPhase)\" and \"\(phaseName)\""
-                        )
+                            "\(name) appears in both \"\(firstPhase)\" and \"\(phaseName)\"",
+                        ),
                     )
                 } else {
                     seenFiles[name] = phaseName
@@ -207,13 +208,13 @@ public struct ValidateProjectTool: Sendable {
 
     private func checkFrameworkConsistency(
         linked: Set<String>, embedded: Set<String>,
-        diagnostics: inout [Diagnostic]
+        diagnostics: inout [Diagnostic],
     ) {
         // Linked but not embedded (skip system frameworks)
         for name in linked.sorted() where !embedded.contains(name) {
             if !isSystemFramework(name) {
                 diagnostics.append(
-                    Diagnostic(.warning, "\(name) linked but not embedded")
+                    Diagnostic(.warning, "\(name) linked but not embedded"),
                 )
             }
         }
@@ -221,7 +222,7 @@ public struct ValidateProjectTool: Sendable {
         // Embedded but not linked
         for name in embedded.sorted() where !linked.contains(name) {
             diagnostics.append(
-                Diagnostic(.warning, "\(name) embedded but not linked")
+                Diagnostic(.warning, "\(name) embedded but not linked"),
             )
         }
     }
@@ -241,9 +242,9 @@ public struct ValidateProjectTool: Sendable {
 
     private func checkDependencyCompleteness(
         target: PBXNativeTarget,
-        xcodeproj: XcodeProj,
+        xcodeproj _: XcodeProj,
         targetProductNames: [String: String],
-        diagnostics: inout [Diagnostic]
+        diagnostics: inout [Diagnostic],
     ) {
         let frameworksPhase = target.buildPhases
             .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
@@ -252,12 +253,12 @@ public struct ValidateProjectTool: Sendable {
 
         // Build set of dependency target names
         let dependencyTargetNames = Set(
-            target.dependencies.compactMap { $0.target?.name }
+            target.dependencies.compactMap { $0.target?.name },
         )
 
         // Build set of product names that are linked
         let linkedProductNames = Set(
-            linkedFiles.compactMap { $0.file?.path ?? $0.file?.name }
+            linkedFiles.compactMap { $0.file?.path ?? $0.file?.name },
         )
 
         // Check: target links a product from another target but has no dependency
@@ -269,8 +270,8 @@ public struct ValidateProjectTool: Sendable {
                 diagnostics.append(
                     Diagnostic(
                         .warning,
-                        "Links \(productName) from \(depTargetName) but has no target dependency"
-                    )
+                        "Links \(productName) from \(depTargetName) but has no target dependency",
+                    ),
                 )
             }
         }
@@ -284,8 +285,8 @@ public struct ValidateProjectTool: Sendable {
                 diagnostics.append(
                     Diagnostic(
                         .info,
-                        "Has dependency on \(depTarget.name) but does not link \(productName)"
-                    )
+                        "Has dependency on \(depTarget.name) but does not link \(productName)",
+                    ),
                 )
             }
         }
@@ -300,9 +301,9 @@ extension ValidateProjectTool {
 
         var label: String {
             switch self {
-            case .error: return "[error]"
-            case .warning: return "[warn] "
-            case .info: return "[info] "
+                case .error: return "[error]"
+                case .warning: return "[warn] "
+                case .info: return "[info] "
             }
         }
     }
@@ -318,23 +319,6 @@ extension ValidateProjectTool {
 
         var formatted: String {
             "\(severity.label) \(message)"
-        }
-    }
-}
-
-private extension PBXNativeTarget {
-    func productNameWithExtension() -> String? {
-        guard let productType else { return nil }
-        let name = product?.path ?? self.name
-        switch productType {
-        case .framework, .staticFramework:
-            return name.hasSuffix(".framework") ? name : "\(name).framework"
-        case .staticLibrary:
-            return name.hasSuffix(".a") ? name : "lib\(name).a"
-        case .dynamicLibrary:
-            return name.hasSuffix(".dylib") ? name : "lib\(name).dylib"
-        default:
-            return nil
         }
     }
 }
