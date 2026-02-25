@@ -6,7 +6,7 @@ I began working on this because every other, similar MCP I tried crashed or, wor
 
 ## Be Wary
 
-This project iterates rapidly. Fairly complex issues had to be solved to get to this point which is both reassuring and disconcerting. There is good linting and strong tests, including fixtures that are actual, open source Swift projects, but no genuine QA process. As with any agent work, ensure your files are committed or otherwise backed up before releasing the kraken.
+This project [iterates rapidly](CHANGELOG.md). Fairly complex issues had to be solved to get to this point which is both reassuring and disconcerting. There is good linting and strong tests, including fixtures that are actual, open source Swift projects, but no genuine QA process. As with any agent work, ensure your files are committed or otherwise backed up before releasing the kraken.
 
 ## Notable Powers
 
