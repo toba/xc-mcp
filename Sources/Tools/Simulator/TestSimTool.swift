@@ -108,14 +108,7 @@ public struct TestSimTool: Sendable {
                 onlyTesting: testParams.onlyTesting,
             )
             return CallTool.Result(
-                content: testToolResult.content + [
-                    NextStepHints.content(hints: [
-                        NextStepHint(
-                            tool: "build_sim",
-                            description: "Rebuild after making changes",
-                        ),
-                    ]),
-                ],
+                content: testToolResult.content,
                 isError: testToolResult.isError,
             )
         } catch {

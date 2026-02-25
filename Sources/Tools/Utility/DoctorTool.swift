@@ -116,16 +116,6 @@ public struct DoctorTool: Sendable {
         return CallTool.Result(
             content: [
                 .text(diagnostics.joined(separator: "\n")),
-                NextStepHints.content(hints: [
-                    NextStepHint(
-                        tool: "set_session_defaults",
-                        description: "Configure project, scheme, and device defaults",
-                    ),
-                    NextStepHint(
-                        tool: "discover_projs",
-                        description: "Discover Xcode projects in the workspace",
-                    ),
-                ]),
             ],
         )
     }

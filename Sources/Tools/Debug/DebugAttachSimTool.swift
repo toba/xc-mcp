@@ -94,10 +94,6 @@ public struct DebugAttachSimTool: Sendable {
 
                 return CallTool.Result(content: [
                     .text(message),
-                    NextStepHints.content(hints: [
-                        NextStepHint(tool: "debug_breakpoint_add", description: "Add a breakpoint"),
-                        NextStepHint(tool: "debug_continue", description: "Continue execution"),
-                    ]),
                 ])
             } else {
                 throw MCPError.internalError(

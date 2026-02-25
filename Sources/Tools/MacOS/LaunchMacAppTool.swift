@@ -120,16 +120,6 @@ public struct LaunchMacAppTool: Sendable {
                 }
                 return CallTool.Result(content: [
                     .text(message),
-                    NextStepHints.content(hints: [
-                        NextStepHint(
-                            tool: "screenshot_mac_window",
-                            description: "Take a screenshot of a macOS window",
-                        ),
-                        NextStepHint(
-                            tool: "interact_ui_tree",
-                            description: "Inspect the app's accessibility UI tree",
-                        ),
-                    ]),
                 ])
             } else {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")

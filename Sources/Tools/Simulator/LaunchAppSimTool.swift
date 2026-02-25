@@ -72,19 +72,6 @@ public struct LaunchAppSimTool: Sendable {
                 }
                 return CallTool.Result(content: [
                     .text(message),
-                    NextStepHints.content(hints: [
-                        NextStepHint(
-                            tool: "screenshot",
-                            description: "Take a screenshot to verify the result",
-                        ),
-                        NextStepHint(
-                            tool: "tap", description: "Tap a UI element (provide x, y coordinates)",
-                        ),
-                        NextStepHint(
-                            tool: "debug_attach_sim",
-                            description: "Attach the debugger to the running app",
-                        ),
-                    ]),
                 ])
             } else {
                 throw MCPError.internalError(

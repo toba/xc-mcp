@@ -100,15 +100,6 @@ public struct BuildSimTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text("Build succeeded for scheme '\(scheme)' on simulator '\(simulator)'"),
-                    NextStepHints.content(hints: [
-                        NextStepHint(
-                            tool: "launch_app_sim",
-                            description: "Launch the built app on the simulator",
-                        ),
-                        NextStepHint(
-                            tool: "test_sim", description: "Run tests on the simulator",
-                        ),
-                    ]),
                 ],
             )
         } catch {

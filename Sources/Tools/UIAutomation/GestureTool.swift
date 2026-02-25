@@ -106,15 +106,6 @@ public struct GestureTool: Sendable {
                         .text(
                             "Performed '\(presetName)' gesture on simulator '\(simulator)' — swiped from (\(Int(coords.startX)), \(Int(coords.startY))) to (\(Int(coords.endX)), \(Int(coords.endY)))",
                         ),
-                        NextStepHints.content(hints: [
-                            NextStepHint(
-                                tool: "screenshot",
-                                description: "Take a screenshot to verify the result",
-                            ),
-                            NextStepHint(
-                                tool: "gesture", description: "Perform another gesture preset",
-                            ),
-                        ]),
                     ],
                 )
             } else {

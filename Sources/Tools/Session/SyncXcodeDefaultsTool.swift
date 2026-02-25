@@ -105,10 +105,6 @@ public struct SyncXcodeDefaultsTool: Sendable {
 
         return CallTool.Result(content: [
             .text(message),
-            NextStepHints.content(hints: [
-                NextStepHint(tool: "build_sim", description: "Build for the simulator"),
-                NextStepHint(tool: "build_macos", description: "Build for macOS"),
-            ]),
         ])
     }
 }
