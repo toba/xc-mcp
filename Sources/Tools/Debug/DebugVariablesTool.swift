@@ -48,6 +48,7 @@ public struct DebugVariablesTool: Sendable {
         let frameIndex = arguments.getInt("frame") ?? 0
 
         do {
+            try await lldbRunner.requireStopped(pid: targetPID)
             let result = try await lldbRunner.getVariables(pid: targetPID, frameIndex: frameIndex)
 
             var message = "Variables in frame \(frameIndex) for process \(targetPID):\n\n"

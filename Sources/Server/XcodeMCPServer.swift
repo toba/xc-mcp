@@ -52,6 +52,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addCopyFilesPhase = "add_copy_files_phase"
     case addToCopyFilesPhase = "add_to_copy_files_phase"
     case removeCopyFilesPhase = "remove_copy_files_phase"
+    case validateProject = "validate_project"
     case listDocumentTypes = "list_document_types"
     case manageDocumentType = "manage_document_type"
     case listTypeIdentifiers = "list_type_identifiers"
@@ -204,6 +205,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
                  .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
                  .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
+                 .validateProject,
                  .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
                  .manageTypeIdentifier, .listURLTypes, .manageURLType:
                 return .project

@@ -194,21 +194,38 @@ public struct BuildDebugMacOSTool: Sendable {
                 await LLDBSessionManager.shared.registerBundleId(bundleId, forPID: pid)
             }
 
-            // Build response
-            var message = "Successfully built and launched '\(scheme)' under debugger"
-            message += "\nPID: \(pid)"
-            message += "\nApp path: \(appPath)"
-            if let bundleId {
-                message += "\nBundle ID: \(bundleId)"
-            }
-            if stopAtEntry {
-                message += "\n\nProcess stopped at entry point. Use debug_continue to run."
-            } else {
-                message += "\n\nDebugger attached. Use debug tools with pid: \(pid)"
-            }
-            message += "\n\n" + launchResult.output
+            // Detect early crash from the launch output
+            let crashed = launchResult.output
+                .contains("Process crashed immediately after launch")
 
-            return CallTool.Result(content: [.text(message)])
+            // Build response
+            var message: String
+            if crashed {
+                message = "Built '\(scheme)' but process crashed immediately after launch"
+                message += "\nPID: \(pid)"
+                if let bundleId {
+                    message += "\nBundle ID: \(bundleId)"
+                }
+                message +=
+                    "\n\nDebugger attached. Use debug_stack, debug_variables, debug_lldb_command for investigation."
+                message += "\n\n" + launchResult.output
+            } else {
+                message = "Successfully built and launched '\(scheme)' under debugger"
+                message += "\nPID: \(pid)"
+                message += "\nApp path: \(appPath)"
+                if let bundleId {
+                    message += "\nBundle ID: \(bundleId)"
+                }
+                if stopAtEntry {
+                    message +=
+                        "\n\nProcess stopped at entry point. Use debug_continue to run."
+                } else {
+                    message += "\n\nDebugger attached. Use debug tools with pid: \(pid)"
+                }
+                message += "\n\n" + launchResult.output
+            }
+
+            return CallTool.Result(content: [.text(message)], isError: crashed)
         } catch {
             throw error.asMCPError()
         }

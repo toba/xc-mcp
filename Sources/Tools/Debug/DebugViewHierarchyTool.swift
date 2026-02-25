@@ -71,6 +71,11 @@ public struct DebugViewHierarchyTool: Sendable {
         let constraints = arguments.getBool("constraints")
 
         do {
+            // Expression evaluation fails on crashed processes (ObjC runtime not loaded)
+            if let warning = await lldbRunner.crashWarning(pid: targetPID) {
+                return CallTool.Result(content: [.text(warning)], isError: true)
+            }
+
             let result = try await lldbRunner.viewHierarchy(
                 pid: targetPID,
                 platform: platform,

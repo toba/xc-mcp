@@ -71,6 +71,11 @@ public struct DebugEvaluateTool: Sendable {
         let objectDescription = arguments.getBool("object_description", default: true)
 
         do {
+            // Warn if process is crashed — expression eval often fails in this state
+            if let warning = await lldbRunner.crashWarning(pid: targetPID) {
+                return CallTool.Result(content: [.text(warning)], isError: true)
+            }
+
             let result = try await lldbRunner.evaluate(
                 pid: targetPID,
                 expression: expression,
@@ -78,7 +83,7 @@ public struct DebugEvaluateTool: Sendable {
                 objectDescription: objectDescription,
             )
 
-            var message = "Expression result:\n\n\(result.output)"
+            let message = "Expression result:\n\n\(result.output)"
             return CallTool.Result(content: [.text(message)])
         } catch {
             throw error.asMCPError()

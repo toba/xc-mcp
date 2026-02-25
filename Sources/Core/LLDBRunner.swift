@@ -87,6 +87,30 @@ private func openPTY() throws(LLDBError) -> (primary: Int32, replica: Int32) {
 /// via stdin, reading responses until the `(lldb) ` prompt reappears.
 ///
 /// Uses a pseudo-TTY so LLDB emits interactive prompts.
+/// The state of the debugged process as tracked by the LLDB session.
+public enum ProcessState: Sendable, Equatable {
+    /// State is not yet known.
+    case unknown
+    /// The process is running (after continue).
+    case running
+    /// The process is stopped (at a breakpoint, after a step, or due to a signal/crash).
+    case stopped(reason: String?)
+
+    /// Whether the process is in a stopped state (breakpoint, crash, step, etc.).
+    public var isStopped: Bool {
+        if case .stopped = self { return true }
+        return false
+    }
+
+    /// Whether the process is stopped due to a crash signal (SIGABRT, SIGSEGV, etc.).
+    public var isCrashed: Bool {
+        guard case let .stopped(reason) = self else { return false }
+        guard let reason else { return false }
+        return reason.contains("signal SIG") || reason.contains("EXC_BAD_ACCESS")
+            || reason.contains("EXC_CRASH")
+    }
+}
+
 public actor LLDBSession {
     private let process: Process
     private let stdin: FileHandle
@@ -102,6 +126,9 @@ public actor LLDBSession {
     /// Whether the session has been poisoned by a timeout and should be recreated.
     public private(set) var isPoisoned: Bool = false
 
+    /// The last known state of the debugged process.
+    public private(set) var processState: ProcessState = .unknown
+
     /// Whether the LLDB process is still running and the session is usable.
     public var isAlive: Bool {
         process.isRunning && !isPoisoned
@@ -110,6 +137,11 @@ public actor LLDBSession {
     /// Updates the target PID (e.g. after a `--waitfor` attach resolves).
     public func setTargetPID(_ pid: Int32) {
         targetPID = pid
+    }
+
+    /// Updates the tracked process state.
+    public func setProcessState(_ state: ProcessState) {
+        processState = state
     }
 
     /// Creates a new persistent LLDB session attached to a process.
@@ -242,7 +274,12 @@ public actor LLDBSession {
             throw LLDBError.commandFailed("Failed to write to LLDB stdin: \(error)")
         }
 
-        return try await readUntilPrompt()
+        let output = try await readUntilPrompt()
+
+        // Update process state from output
+        updateProcessState(from: output)
+
+        return output
     }
 
     /// Sends a command without waiting for the prompt to return.
@@ -374,6 +411,58 @@ public actor LLDBSession {
     /// Marks this session as poisoned so it will be discarded and recreated.
     private func markPoisoned() {
         isPoisoned = true
+    }
+
+    /// Parses LLDB output and updates the tracked process state.
+    private func updateProcessState(from output: String) {
+        // Look for stop reason patterns in LLDB output
+        if let reasonRange = output.range(
+            of: #"stop reason = (.+)"#, options: .regularExpression,
+        ) {
+            let reason = String(output[reasonRange]).replacingOccurrences(
+                of: "stop reason = ", with: "",
+            )
+            processState = .stopped(reason: reason)
+        } else if output.contains("Process"), output.contains("stopped") {
+            processState = .stopped(reason: nil)
+        } else if output.contains("Process"), output.contains("resuming") {
+            processState = .running
+        }
+    }
+
+    /// Checks if the debugged process crashed shortly after a `continue` command.
+    ///
+    /// After launching and continuing, some processes crash immediately (e.g. dyld
+    /// symbol resolution failures, missing frameworks). This method sleeps for `delay`
+    /// to give the process time to crash, then uses `poll()` to check if LLDB has
+    /// emitted any output (crash info + prompt). If data is available, reads it via
+    /// `readUntilPrompt()` and returns the crash output. If no data is pending, the
+    /// process is running normally and returns `nil`.
+    ///
+    /// Does **not** poison the session — on timeout the session remains usable.
+    ///
+    /// - Parameter delay: How long to wait before checking. Defaults to 1.5 seconds.
+    /// - Returns: The crash/stop output from LLDB, or `nil` if the process is running.
+    public func checkForEarlyCrash(
+        delay: Duration = .milliseconds(1500),
+    ) async -> String? {
+        try? await Task.sleep(for: delay)
+
+        // Use poll() to check if LLDB has pending output without blocking.
+        // If the process crashed, LLDB will have emitted stop info + a new prompt.
+        let fd = stdout.fileDescriptor
+        var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+        let pollResult = poll(&pollFD, 1, 0)
+
+        guard pollResult > 0, pollFD.revents & Int16(POLLIN) != 0 else {
+            return nil // No data available — process is running normally
+        }
+
+        // Data is available — process likely stopped. Read the output.
+        // readUntilPrompt should return quickly since data is already buffered.
+        guard let output = try? await readUntilPrompt() else { return nil }
+        updateProcessState(from: output)
+        return output
     }
 }
 
@@ -534,6 +623,9 @@ public actor LLDBSessionManager {
             }
         }
 
+        // Process is stopped after attach
+        await session.setProcessState(.stopped(reason: nil))
+
         let pid = await session.targetPID
         if pid > 0 {
             sessions[pid] = session
@@ -542,6 +634,7 @@ public actor LLDBSessionManager {
         // If not stopping at entry, continue execution
         if !stopAtEntry {
             try await session.sendCommandNoWait("continue")
+            await session.setProcessState(.running)
         }
 
         return session
@@ -656,6 +749,42 @@ public struct LLDBRunner: Sendable {
     /// Creates a new LLDB runner.
     public init() {}
 
+    /// Returns the current process state for a debug session, or `.unknown` if no session exists.
+    public func getProcessState(pid: Int32) async -> ProcessState {
+        guard let session = await LLDBSessionManager.shared.getSession(pid: pid) else {
+            return .unknown
+        }
+        return await session.processState
+    }
+
+    /// Checks that the process is stopped and throws a descriptive error if not.
+    ///
+    /// Use this before sending commands that require a stopped process (e.g. `thread backtrace`,
+    /// `frame variable`, `thread step-*`, expression evaluation).
+    public func requireStopped(pid: Int32) async throws(LLDBError) {
+        let state = await getProcessState(pid: pid)
+        if case .running = state {
+            throw .commandFailed(
+                "Process \(pid) is running. Interrupt it first (debug_lldb_command with 'process interrupt'), then retry.",
+            )
+        }
+    }
+
+    /// Checks process state and returns a warning if the process is crashed.
+    ///
+    /// Expression evaluation often fails on crashed processes because the runtime
+    /// (ObjC/Swift) may not be fully loaded. Returns a warning string if crashed,
+    /// `nil` if the process is in a usable state.
+    public func crashWarning(pid: Int32) async -> String? {
+        let state = await getProcessState(pid: pid)
+        if state.isCrashed {
+            if case let .stopped(reason) = state {
+                return "Process \(pid) is stopped due to a crash (\(reason ?? "unknown signal")). Expression evaluation may fail. Use debug_stack or debug_variables to inspect the crash state."
+            }
+        }
+        return nil
+    }
+
     /// Attaches to a process by its process ID.
     ///
     /// Creates a persistent LLDB session that stays alive for subsequent commands.
@@ -728,13 +857,21 @@ public struct LLDBRunner: Sendable {
             stopAtEntry: stopAtEntry,
         )
         let pid = await session.targetPID
-        // Get status — if process is running (not stopped), this will time out,
-        // so only check status when stopped at entry
         let statusOutput: String
         if stopAtEntry {
+            // Process is stopped — get status directly
             statusOutput = try await session.sendCommand("process status")
         } else {
-            statusOutput = "Process \(pid) launched and running under debugger"
+            // Process was continued — check if it crashed immediately
+            if let crashOutput = await session.checkForEarlyCrash() {
+                // Process stopped shortly after launch — get the backtrace
+                let backtrace = await (try? session.sendCommand("thread backtrace")) ?? ""
+                statusOutput =
+                    "Process crashed immediately after launch\n\n" + crashOutput
+                        + (backtrace.isEmpty ? "" : "\n\nBacktrace:\n" + backtrace)
+            } else {
+                statusOutput = "Process \(pid) launched and running under debugger"
+            }
         }
         return (LLDBResult(exitCode: 0, stdout: statusOutput, stderr: ""), pid)
     }
@@ -847,6 +984,7 @@ public struct LLDBRunner: Sendable {
     public func continueExecution(pid: Int32) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         try await session.sendCommandNoWait("continue")
+        await session.setProcessState(.running)
         return LLDBResult(
             exitCode: 0,
             stdout:

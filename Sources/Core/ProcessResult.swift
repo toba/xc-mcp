@@ -86,11 +86,13 @@ extension ProcessResult {
         _ executablePath: String,
         arguments: [String] = [],
         mergeStderr: Bool = true,
+        timeout: Duration? = nil,
     ) async throws -> ProcessResult {
         try await runSubprocess(
             .path(FilePath(executablePath)),
             arguments: Arguments(arguments),
             mergeStderr: mergeStderr,
+            timeout: timeout,
         )
     }
 

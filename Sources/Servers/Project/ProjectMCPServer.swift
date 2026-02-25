@@ -59,6 +59,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case manageTypeIdentifier = "manage_type_identifier"
     case listURLTypes = "list_url_types"
     case manageURLType = "manage_url_type"
+    case validateProject = "validate_project"
 }
 
 /// MCP server for Xcode project file manipulation.
@@ -179,6 +180,7 @@ public struct ProjectMCPServer: Sendable {
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
+        let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
 
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
@@ -236,6 +238,7 @@ public struct ProjectMCPServer: Sendable {
                 addCopyFilesPhase.tool(),
                 addToCopyFilesPhase.tool(),
                 removeCopyFilesPhase.tool(),
+                validateProjectTool.tool(),
             ])
         }
 
@@ -358,6 +361,8 @@ public struct ProjectMCPServer: Sendable {
                     return try addToCopyFilesPhase.execute(arguments: arguments)
                 case .removeCopyFilesPhase:
                     return try removeCopyFilesPhase.execute(arguments: arguments)
+                case .validateProject:
+                    return try validateProjectTool.execute(arguments: arguments)
             }
         }
 

@@ -48,6 +48,7 @@ public struct DebugStackTool: Sendable {
         let threadIndex = arguments.getInt("thread")
 
         do {
+            try await lldbRunner.requireStopped(pid: targetPID)
             let result = try await lldbRunner.getStack(pid: targetPID, threadIndex: threadIndex)
 
             var message = "Stack trace for process \(targetPID)"

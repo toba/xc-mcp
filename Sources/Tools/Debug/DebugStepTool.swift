@@ -63,6 +63,7 @@ public struct DebugStepTool: Sendable {
         }
 
         do {
+            try await lldbRunner.requireStopped(pid: targetPID)
             let result = try await lldbRunner.step(pid: targetPID, mode: mode)
 
             let modeDesc: String

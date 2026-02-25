@@ -95,6 +95,11 @@ public struct DebugViewBordersTool: Sendable {
         }
 
         do {
+            // Expression evaluation fails on crashed processes
+            if let warning = await lldbRunner.crashWarning(pid: targetPID) {
+                return CallTool.Result(content: [.text(warning)], isError: true)
+            }
+
             let result = try await lldbRunner.toggleViewBorders(
                 pid: targetPID,
                 enabled: enabled,

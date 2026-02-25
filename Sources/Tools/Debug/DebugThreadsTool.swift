@@ -57,6 +57,7 @@ public struct DebugThreadsTool: Sendable {
         let selectIndex = arguments.getInt("select")
 
         do {
+            try await lldbRunner.requireStopped(pid: targetPID)
             let result = try await lldbRunner.listThreads(
                 pid: targetPID, selectIndex: selectIndex,
             )
