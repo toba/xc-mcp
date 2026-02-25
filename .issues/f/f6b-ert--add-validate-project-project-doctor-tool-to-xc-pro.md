@@ -3,8 +3,13 @@
 title: Add validate_project / project_doctor tool to xc-project
 status: ready
 type: feature
+priority: normal
 created_at: 2026-02-25T02:01:33Z
 updated_at: 2026-02-25T02:01:33Z
+sync:
+    github:
+        issue_number: "134"
+        synced_at: "2026-02-25T02:05:45Z"
 ---
 
 Add a \`validate_project\` (or \`project_doctor\`) tool to the xc-project server that checks for common pbxproj misconfigurations. This would partially automate the manual analysis done during a Thesis debugging session where:

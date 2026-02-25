@@ -6,6 +6,10 @@ type: bug
 priority: high
 created_at: 2026-02-25T02:00:43Z
 updated_at: 2026-02-25T02:05:33Z
+sync:
+    github:
+        issue_number: "131"
+        synced_at: "2026-02-25T02:05:46Z"
 ---
 
 \`getStack(pid:threadIndex:)\` in \`LLDBRunner.swift:870\` uses \`thread backtrace --thread N\` which is invalid LLDB syntax. The \`--thread\` flag doesn't exist — LLDB parses it as an unknown option and errors:

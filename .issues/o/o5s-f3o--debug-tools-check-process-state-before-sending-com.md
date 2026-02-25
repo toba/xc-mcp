@@ -3,8 +3,13 @@
 title: 'debug tools: check process state before sending commands'
 status: ready
 type: feature
+priority: normal
 created_at: 2026-02-25T02:01:18Z
 updated_at: 2026-02-25T02:01:18Z
+sync:
+    github:
+        issue_number: "133"
+        synced_at: "2026-02-25T02:05:45Z"
 ---
 
 Debug tools like \`debug_view_hierarchy\` blindly send LLDB commands without checking process state first. When the process is stopped (crashed, breakpoint), sending \`continue\` + expression evaluation causes cascading failures:

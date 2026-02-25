@@ -3,8 +3,13 @@
 title: 'build_debug_macos: detect early process crash (dyld, SIGABRT)'
 status: ready
 type: feature
+priority: normal
 created_at: 2026-02-25T02:00:57Z
 updated_at: 2026-02-25T02:00:57Z
+sync:
+    github:
+        issue_number: "132"
+        synced_at: "2026-02-25T02:05:45Z"
 ---
 
 When \`build_debug_macos\` launches an app that immediately crashes (e.g. dyld symbol resolution failure), it reports success:

@@ -3,8 +3,13 @@
 title: stop_mac_app hangs when process is crashed or under LLDB
 status: ready
 type: bug
+priority: normal
 created_at: 2026-02-25T02:01:08Z
 updated_at: 2026-02-25T02:01:08Z
+sync:
+    github:
+        issue_number: "130"
+        synced_at: "2026-02-25T02:05:45Z"
 ---
 
 \`stop_mac_app\` uses \`osascript -e 'tell application id "..." to quit'\` which hangs indefinitely when:
