@@ -48,6 +48,10 @@ public actor SessionManager {
     /// Located in /tmp so it's cleared on reboot — no stale state across sessions.
     static let sharedFilePath = URL(fileURLWithPath: "/tmp/xc-mcp-session.json")
 
+    /// Modification date of the shared file when we last loaded/saved it.
+    /// Used to detect external changes from other server processes.
+    private var lastKnownModDate: Date?
+
     public init() {
         if let defaults = Self.loadFromDisk() {
             projectPath = defaults.projectPath
@@ -58,6 +62,7 @@ public actor SessionManager {
             deviceUDID = defaults.deviceUDID
             configuration = defaults.configuration
         }
+        lastKnownModDate = Self.fileModDate()
     }
 
     /// Loads session defaults from the shared file, if it exists.
@@ -71,12 +76,36 @@ public actor SessionManager {
         }
     }
 
+    /// Returns the modification date of the shared session file, or nil if it doesn't exist.
+    private static func fileModDate() -> Date? {
+        try? FileManager.default
+            .attributesOfItem(atPath: sharedFilePath.path)[.modificationDate] as? Date
+    }
+
+    /// Reloads session defaults from disk if the shared file has been modified
+    /// by another server process since we last loaded or saved.
+    private func reloadIfNeeded() {
+        let currentModDate = Self.fileModDate()
+        guard currentModDate != lastKnownModDate else { return }
+        if let defaults = Self.loadFromDisk() {
+            projectPath = defaults.projectPath
+            workspacePath = defaults.workspacePath
+            packagePath = defaults.packagePath
+            scheme = defaults.scheme
+            simulatorUDID = defaults.simulatorUDID
+            deviceUDID = defaults.deviceUDID
+            configuration = defaults.configuration
+        }
+        lastKnownModDate = currentModDate
+    }
+
     /// Persists current session defaults to the shared file.
     private func saveToDisk() {
         let defaults = getDefaults()
         do {
             let data = try JSONEncoder().encode(defaults)
             try data.write(to: Self.sharedFilePath, options: .atomic)
+            lastKnownModDate = Self.fileModDate()
         } catch {
             // Best-effort — don't fail the operation if persistence fails
         }
@@ -143,16 +172,19 @@ public actor SessionManager {
 
     /// Get the effective project or workspace path
     public var effectiveProjectPath: String? {
-        workspacePath ?? projectPath
+        reloadIfNeeded()
+        return workspacePath ?? projectPath
     }
 
     /// Check if a project or workspace is configured
     public var hasProject: Bool {
-        projectPath != nil || workspacePath != nil
+        reloadIfNeeded()
+        return projectPath != nil || workspacePath != nil
     }
 
     /// Get a summary of current session state
     public func summary() -> String {
+        reloadIfNeeded()
         var lines: [String] = []
 
         if let workspacePath {
@@ -181,7 +213,8 @@ public actor SessionManager {
     ///
     /// - Returns: A ``SessionDefaults`` containing all current session values.
     public func getDefaults() -> SessionDefaults {
-        SessionDefaults(
+        reloadIfNeeded()
+        return SessionDefaults(
             projectPath: projectPath,
             workspacePath: workspacePath,
             packagePath: packagePath,
@@ -200,6 +233,7 @@ public actor SessionManager {
     /// - Returns: The resolved simulator UDID.
     /// - Throws: MCPError.invalidParams if no simulator is available.
     public func resolveSimulator(from arguments: [String: Value]) throws(MCPError) -> String {
+        reloadIfNeeded()
         if let value = arguments.getString("simulator") {
             return value
         }
@@ -217,6 +251,7 @@ public actor SessionManager {
     /// - Returns: The resolved device UDID.
     /// - Throws: MCPError.invalidParams if no device is available.
     public func resolveDevice(from arguments: [String: Value]) throws(MCPError) -> String {
+        reloadIfNeeded()
         if let value = arguments.getString("device") {
             return value
         }
@@ -234,6 +269,7 @@ public actor SessionManager {
     /// - Returns: The resolved scheme name.
     /// - Throws: MCPError.invalidParams if no scheme is available.
     public func resolveScheme(from arguments: [String: Value]) throws(MCPError) -> String {
+        reloadIfNeeded()
         if let value = arguments.getString("scheme") {
             return value
         }
@@ -255,7 +291,8 @@ public actor SessionManager {
         from arguments: [String: Value],
         default defaultValue: String = "Debug",
     ) -> String {
-        arguments.getString("configuration") ?? configuration ?? defaultValue
+        reloadIfNeeded()
+        return arguments.getString("configuration") ?? configuration ?? defaultValue
     }
 
     /// Resolves project and workspace paths from arguments or session defaults.
@@ -266,6 +303,7 @@ public actor SessionManager {
     public func resolveBuildPaths(from arguments: [String: Value]) throws(MCPError) -> (
         project: String?, workspace: String?,
     ) {
+        reloadIfNeeded()
         let project = arguments.getString("project_path") ?? projectPath
         let workspace = arguments.getString("workspace_path") ?? workspacePath
         if project == nil, workspace == nil {
@@ -289,6 +327,7 @@ public actor SessionManager {
     /// - Returns: The resolved package path.
     /// - Throws: MCPError.invalidParams if no package path is available.
     public func resolvePackagePath(from arguments: [String: Value]) throws(MCPError) -> String {
+        reloadIfNeeded()
         if let value = arguments.getString("package_path") {
             return value
         }

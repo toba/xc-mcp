@@ -102,4 +102,40 @@ struct SessionManagerPersistenceTests {
         #expect(defaults.scheme == "First")
         #expect(defaults.configuration == "Release")
     }
+
+    @Test("Running instance reloads when another process writes the shared file")
+    func crossProcessReload() async {
+        cleanup()
+        defer { cleanup() }
+
+        // Simulate two long-running servers — both already initialized
+        let server1 = SessionManager()
+        let server2 = SessionManager()
+
+        // server1 sets defaults (writes shared file)
+        await server1.setDefaults(
+            projectPath: "/path/to/Project.xcodeproj",
+            scheme: "Standard",
+        )
+
+        // server2 was already running — should pick up the change on next resolve
+        let defaults = await server2.getDefaults()
+        #expect(defaults.projectPath == "/path/to/Project.xcodeproj")
+        #expect(defaults.scheme == "Standard")
+    }
+
+    @Test("resolveScheme picks up externally written defaults")
+    func resolveAfterExternalWrite() async throws {
+        cleanup()
+        defer { cleanup() }
+
+        let server1 = SessionManager()
+        let server2 = SessionManager()
+
+        await server1.setDefaults(scheme: "External")
+
+        // server2 should resolve the scheme without needing its own setDefaults
+        let scheme = try await server2.resolveScheme(from: [:])
+        #expect(scheme == "External")
+    }
 }

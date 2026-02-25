@@ -430,6 +430,62 @@ public actor LLDBSession {
         }
     }
 
+    /// Interrupts a running process and waits for the stop notification.
+    ///
+    /// `process interrupt` is asynchronous — LLDB may return its prompt before the
+    /// target actually stops. This method sends the command, then polls for the
+    /// async stop notification (up to `timeout`) and updates `processState` once
+    /// the stop is confirmed.
+    ///
+    /// - Parameter timeout: Maximum time to wait for the stop. Defaults to 5 seconds.
+    /// - Returns: The combined output from the interrupt and stop notification.
+    public func interruptProcess(
+        timeout: Duration = .seconds(5),
+    ) async throws(LLDBError) -> String {
+        // Send the interrupt command — may return immediately with little output
+        let initialOutput = try await sendCommand("process interrupt")
+
+        // If the initial output already contains a stop reason, we're done
+        if initialOutput.contains("stop reason") || initialOutput.contains("stopped") {
+            processState = .stopped(reason: extractStopReason(from: initialOutput))
+            return initialOutput
+        }
+
+        // Poll for the async stop notification
+        let deadline = ContinuousClock.now + timeout
+        let fd = stdout.fileDescriptor
+        while ContinuousClock.now < deadline {
+            var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+            let remaining = deadline - .now
+            let pollTimeoutMs = max(
+                Int32(remaining.components.seconds * 1000 + remaining.components
+                    .attoseconds / 1_000_000_000_000_000),
+                0,
+            )
+            let pollResult = poll(&pollFD, 1, min(pollTimeoutMs, 100))
+
+            if pollResult > 0, pollFD.revents & Int16(POLLIN) != 0 {
+                if let stopOutput = try? await readUntilPrompt() {
+                    updateProcessState(from: stopOutput)
+                    return initialOutput + "\n" + stopOutput
+                }
+            }
+        }
+
+        // Timed out waiting for stop — set stopped anyway since interrupt was sent
+        processState = .stopped(reason: "interrupt")
+        return initialOutput
+    }
+
+    /// Extracts the stop reason string from LLDB output, if present.
+    private func extractStopReason(from output: String) -> String? {
+        guard let range = output.range(of: #"stop reason = (.+)"#, options: .regularExpression)
+        else {
+            return nil
+        }
+        return String(output[range]).replacingOccurrences(of: "stop reason = ", with: "")
+    }
+
     /// Checks if the debugged process crashed shortly after a `continue` command.
     ///
     /// After launching and continuing, some processes crash immediately (e.g. dyld
@@ -443,6 +499,31 @@ public actor LLDBSession {
     ///
     /// - Parameter delay: How long to wait before checking. Defaults to 1.5 seconds.
     /// - Returns: The crash/stop output from LLDB, or `nil` if the process is running.
+    /// Patterns that indicate a real crash or abnormal stop in LLDB output.
+    private static let crashIndicators: [String] = [
+        "stop reason = signal",
+        "stop reason = EXC_",
+        "EXC_BAD_ACCESS",
+        "EXC_BAD_INSTRUCTION",
+        "EXC_CRASH",
+        "Process ", // prefix for "Process NNN exited"
+    ]
+
+    /// Checks whether LLDB output contains indicators of a real crash or process exit.
+    static func outputIndicatesCrash(_ output: String) -> Bool {
+        // Check for process exit (e.g. "Process 12345 exited with status = 1")
+        if output.contains("exited with status") || output.contains("exited with signal") {
+            return true
+        }
+        // Check for crash-related stop reasons
+        for indicator in crashIndicators
+            where indicator.starts(with: "stop reason") || indicator.starts(with: "EXC_")
+        {
+            if output.contains(indicator) { return true }
+        }
+        return false
+    }
+
     public func checkForEarlyCrash(
         delay: Duration = .milliseconds(1500),
     ) async -> String? {
@@ -458,10 +539,14 @@ public actor LLDBSession {
             return nil // No data available — process is running normally
         }
 
-        // Data is available — process likely stopped. Read the output.
+        // Data is available — read it and check for actual crash indicators.
         // readUntilPrompt should return quickly since data is already buffered.
         guard let output = try? await readUntilPrompt() else { return nil }
         updateProcessState(from: output)
+
+        // Only report a crash if the output contains semantic crash indicators.
+        // Benign output (library loads, startup logs, attach noise) is ignored.
+        guard Self.outputIndicatesCrash(output) else { return nil }
         return output
     }
 }
@@ -1040,7 +1125,16 @@ public struct LLDBRunner: Sendable {
     /// - Returns: The result containing command output.
     public func executeCommand(pid: Int32, command: String) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
-        let output = try await session.sendCommand(command)
+        let trimmed = command.trimmingCharacters(in: .whitespaces)
+
+        // Route `process interrupt` through the dedicated handler that waits
+        // for the async stop notification — plain sendCommand races with it.
+        let output: String
+        if trimmed == "process interrupt" || trimmed.hasPrefix("process interrupt ") {
+            output = try await session.interruptProcess()
+        } else {
+            output = try await session.sendCommand(command)
+        }
         return LLDBResult(exitCode: 0, stdout: output, stderr: "")
     }
 

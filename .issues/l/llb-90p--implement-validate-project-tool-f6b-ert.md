@@ -9,7 +9,7 @@ updated_at: 2026-02-25T02:27:42Z
 sync:
     github:
         issue_number: "135"
-        synced_at: "2026-02-25T02:25:29Z"
+        synced_at: "2026-02-25T02:29:03Z"
 ---
 
 Add validate_project tool that checks Xcode project for embed phase issues, framework consistency, and dependency completeness.
