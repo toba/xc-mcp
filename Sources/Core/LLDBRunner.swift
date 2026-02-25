@@ -865,14 +865,14 @@ public struct LLDBRunner: Sendable {
                          threadIndex: Int? = nil) async throws(LLDBError) -> LLDBResult
     {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
-        let command: String
         if let threadIndex {
-            command = "thread backtrace --thread \(threadIndex)"
+            _ = try await session.sendCommand("thread select \(threadIndex)")
+            let output = try await session.sendCommand("thread backtrace")
+            return LLDBResult(exitCode: 0, stdout: output, stderr: "")
         } else {
-            command = "thread backtrace all"
+            let output = try await session.sendCommand("thread backtrace all")
+            return LLDBResult(exitCode: 0, stdout: output, stderr: "")
         }
-        let output = try await session.sendCommand(command)
-        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
     }
 
     /// Gets variables in the current stack frame.
