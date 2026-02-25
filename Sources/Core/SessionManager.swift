@@ -4,7 +4,7 @@ import Foundation
 /// Holds all session defaults as a single value type.
 ///
 /// Used for efficient batch retrieval of session state, reducing actor hops.
-public struct SessionDefaults: Sendable {
+public struct SessionDefaults: Sendable, Codable {
     /// Path to the current Xcode project (.xcodeproj)
     public let projectPath: String?
     /// Path to the current Xcode workspace (.xcworkspace)
@@ -44,7 +44,48 @@ public actor SessionManager {
     /// Current build configuration (Debug/Release)
     public private(set) var configuration: String?
 
-    public init() {}
+    /// Shared file path for persisting session defaults across server processes.
+    /// Located in /tmp so it's cleared on reboot — no stale state across sessions.
+    static let sharedFilePath = URL(fileURLWithPath: "/tmp/xc-mcp-session.json")
+
+    public init() {
+        if let defaults = Self.loadFromDisk() {
+            projectPath = defaults.projectPath
+            workspacePath = defaults.workspacePath
+            packagePath = defaults.packagePath
+            scheme = defaults.scheme
+            simulatorUDID = defaults.simulatorUDID
+            deviceUDID = defaults.deviceUDID
+            configuration = defaults.configuration
+        }
+    }
+
+    /// Loads session defaults from the shared file, if it exists.
+    private static func loadFromDisk() -> SessionDefaults? {
+        guard FileManager.default.fileExists(atPath: sharedFilePath.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: sharedFilePath)
+            return try JSONDecoder().decode(SessionDefaults.self, from: data)
+        } catch {
+            return nil
+        }
+    }
+
+    /// Persists current session defaults to the shared file.
+    private func saveToDisk() {
+        let defaults = getDefaults()
+        do {
+            let data = try JSONEncoder().encode(defaults)
+            try data.write(to: Self.sharedFilePath, options: .atomic)
+        } catch {
+            // Best-effort — don't fail the operation if persistence fails
+        }
+    }
+
+    /// Deletes the shared session file.
+    private func deleteFromDisk() {
+        try? FileManager.default.removeItem(at: Self.sharedFilePath)
+    }
 
     /// Set session defaults
     public func setDefaults(
@@ -85,6 +126,7 @@ public actor SessionManager {
         if let configuration {
             self.configuration = configuration
         }
+        saveToDisk()
     }
 
     /// Clear all session defaults
@@ -96,6 +138,7 @@ public actor SessionManager {
         simulatorUDID = nil
         deviceUDID = nil
         configuration = nil
+        deleteFromDisk()
     }
 
     /// Get the effective project or workspace path
