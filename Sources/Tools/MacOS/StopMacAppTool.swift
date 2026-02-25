@@ -183,6 +183,16 @@ public struct StopMacAppTool: Sendable {
             throw MCPError.invalidParams("Either bundle_id or app_name is required")
         }
 
+        // Pre-check: verify the app is actually running before attempting osascript quit.
+        // osascript can return success even for non-existent apps on some macOS versions.
+        let pattern = bundleId ?? appName!
+        let pgrepResult = try await ProcessResult.run(
+            "/usr/bin/pgrep", arguments: ["-f", pattern],
+        )
+        if !pgrepResult.succeeded {
+            return CallTool.Result(content: [.text("App '\(identifier)' was not running")])
+        }
+
         do {
             let result = try await ProcessResult.run(
                 "/usr/bin/osascript",
