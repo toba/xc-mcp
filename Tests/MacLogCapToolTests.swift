@@ -32,6 +32,7 @@ struct StartMacLogCapToolTests {
         #expect(properties["process_name"] != nil)
         #expect(properties["subsystem"] != nil)
         #expect(properties["predicate"] != nil)
+        #expect(properties["level"] != nil)
         #expect(properties["output_file"] != nil)
     }
 }

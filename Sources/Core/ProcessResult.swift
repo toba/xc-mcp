@@ -300,6 +300,40 @@ public enum LogCapture {
         return process.processIdentifier
     }
 
+    /// Verifies that a log stream process is still running after launch.
+    ///
+    /// Waits briefly, then checks if the process has exited. If it exited with an error
+    /// (e.g., invalid predicate syntax), reads the output file for error details and throws.
+    ///
+    /// - Parameters:
+    ///   - pid: The process identifier returned by ``launchStreamProcess(executable:arguments:outputFile:)``.
+    ///   - outputFile: Path to the log output file (may contain error output from the stream process).
+    /// - Throws: ``MCPError/internalError(_:)`` if the process exited unexpectedly.
+    public static func verifyStreamHealth(
+        pid: Int32,
+        outputFile: String,
+    ) async throws(MCPError) {
+        do {
+            try await Task.sleep(for: .seconds(1))
+        } catch {
+            return // Cancelled — skip health check
+        }
+
+        // Check if the process is still running via kill(pid, 0)
+        let running = kill(pid, 0) == 0
+        guard !running else { return }
+
+        // Process died — read output file for error details
+        var detail = "Log stream process (PID \(pid)) exited immediately after launch."
+        if let data = FileManager.default.contents(atPath: outputFile),
+           let output = String(data: data, encoding: .utf8),
+           !output.isEmpty
+        {
+            detail += "\nProcess output:\n\(output.prefix(500))"
+        }
+        throw .internalError(detail)
+    }
+
     /// Stops a log capture process by PID or pattern-based kill.
     ///
     /// - Parameters:

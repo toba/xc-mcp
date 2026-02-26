@@ -1,7 +1,7 @@
-import Foundation
 import MCP
-import Subprocess
 import XCMCPCore
+import Foundation
+import Subprocess
 
 public struct GetTestAttachmentsTool: Sendable {
     public init() {}
@@ -53,7 +53,7 @@ public struct GetTestAttachmentsTool: Sendable {
         // Validate the bundle exists
         guard FileManager.default.fileExists(atPath: resultBundlePath) else {
             throw MCPError.invalidParams(
-                "Result bundle not found at: \(resultBundlePath)"
+                "Result bundle not found at: \(resultBundlePath)",
             )
         }
 
@@ -65,14 +65,14 @@ public struct GetTestAttachmentsTool: Sendable {
             isTemporary = false
             // Create output directory if needed
             try FileManager.default.createDirectory(
-                atPath: exportDir, withIntermediateDirectories: true
+                atPath: exportDir, withIntermediateDirectories: true,
             )
         } else {
             exportDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent("xc-mcp-attachments-\(UUID().uuidString)").path
             isTemporary = true
             try FileManager.default.createDirectory(
-                atPath: exportDir, withIntermediateDirectories: true
+                atPath: exportDir, withIntermediateDirectories: true,
             )
         }
 
@@ -98,13 +98,13 @@ public struct GetTestAttachmentsTool: Sendable {
         let result = try await ProcessResult.runSubprocess(
             .name("xcrun"),
             arguments: Arguments(args),
-            timeout: .seconds(120)
+            timeout: .seconds(120),
         )
 
         guard result.succeeded else {
             let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
             throw MCPError.internalError(
-                "xcresulttool export failed: \(stderr.isEmpty ? result.stdout : stderr)"
+                "xcresulttool export failed: \(stderr.isEmpty ? result.stdout : stderr)",
             )
         }
 
@@ -116,7 +116,8 @@ public struct GetTestAttachmentsTool: Sendable {
             return CallTool.Result(content: [.text("No attachments found in the result bundle.")])
         }
 
-        guard let manifest = try? JSONSerialization.jsonObject(with: manifestData) as? [[String: Any]]
+        guard let manifest = try? JSONSerialization
+            .jsonObject(with: manifestData) as? [[String: Any]]
         else {
             return CallTool.Result(content: [.text("No attachments found in the result bundle.")])
         }
@@ -125,42 +126,83 @@ public struct GetTestAttachmentsTool: Sendable {
             return CallTool.Result(content: [.text("No attachments found in the result bundle.")])
         }
 
-        // Format output
-        let output = formatManifest(manifest, exportDir: isTemporary ? nil : exportDir)
+        // Parse the nested manifest structure:
+        // [{ "testIdentifier": "...", "attachments": [{ "exportedFileName": "...", ... }] }]
+        let attachments = Self.flattenManifest(manifest)
+
+        if attachments.isEmpty {
+            return CallTool.Result(content: [.text("No attachments found in the result bundle.")])
+        }
+
+        let output = Self.formatAttachments(attachments, exportDir: isTemporary ? nil : exportDir)
         return CallTool.Result(content: [.text(output)])
     }
 
-    private func formatManifest(_ manifest: [[String: Any]], exportDir: String?) -> String {
+    struct Attachment {
+        let testIdentifier: String?
+        let exportedFileName: String
+        let name: String
+        let isAssociatedWithFailure: Bool
+        let timestamp: Double?
+    }
+
+    static func flattenManifest(_ manifest: [[String: Any]]) -> [Attachment] {
+        var result: [Attachment] = []
+
+        for entry in manifest {
+            let testIdentifier = entry["testIdentifier"] as? String
+
+            // "attachments" can be a single object or an array of objects
+            let attachmentDicts: [[String: Any]]
+            if let array = entry["attachments"] as? [[String: Any]] {
+                attachmentDicts = array
+            } else if let single = entry["attachments"] as? [String: Any] {
+                attachmentDicts = [single]
+            } else {
+                continue
+            }
+
+            for att in attachmentDicts {
+                let exportedFileName = att["exportedFileName"] as? String ?? "unknown"
+                let name = att["suggestedHumanReadableName"] as? String ?? exportedFileName
+                let isFailure = att["isAssociatedWithFailure"] as? Bool ?? false
+                let timestamp = att["timestamp"] as? Double
+
+                result.append(Attachment(
+                    testIdentifier: testIdentifier,
+                    exportedFileName: exportedFileName,
+                    name: name,
+                    isAssociatedWithFailure: isFailure,
+                    timestamp: timestamp,
+                ))
+            }
+        }
+
+        return result
+    }
+
+    static func formatAttachments(_ attachments: [Attachment], exportDir: String?) -> String {
         var lines: [String] = []
-        lines.append("Found \(manifest.count) attachment(s)")
+        lines.append("Found \(attachments.count) attachment(s)")
         if let exportDir {
             lines.append("Exported to: \(exportDir)")
         }
         lines.append("")
 
-        for (index, entry) in manifest.enumerated() {
-            let name = entry["name"] as? String ?? "Unnamed"
-            let fileName = entry["fileName"] as? String ?? "unknown"
-            let timestamp = entry["timestamp"] as? String
-            let isFailure = entry["isFailure"] as? Bool ?? false
-            let testName = entry["testName"] as? String
-            let testId = entry["testIdentifier"] as? String
-
-            lines.append("[\(index + 1)] \(name)")
-            lines.append("    File: \(fileName)")
-            if let testName {
-                lines.append("    Test: \(testName)")
-            } else if let testId {
+        for (index, att) in attachments.enumerated() {
+            lines.append("[\(index + 1)] \(att.name)")
+            lines.append("    File: \(att.exportedFileName)")
+            if let testId = att.testIdentifier {
                 lines.append("    Test: \(testId)")
             }
-            if let timestamp {
+            if let timestamp = att.timestamp {
                 lines.append("    Timestamp: \(timestamp)")
             }
-            if isFailure {
+            if att.isAssociatedWithFailure {
                 lines.append("    Associated with failure")
             }
             if let exportDir {
-                lines.append("    Path: \(exportDir)/\(fileName)")
+                lines.append("    Path: \(exportDir)/\(att.exportedFileName)")
             }
             lines.append("")
         }
