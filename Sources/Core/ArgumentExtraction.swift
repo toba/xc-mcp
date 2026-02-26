@@ -54,10 +54,14 @@ extension [String: Value] {
     /// - Parameter key: The argument key to look up.
     /// - Returns: The integer value if present and valid, nil otherwise.
     public func getInt(_ key: String) -> Int? {
-        if case let .int(value) = self[key] {
-            return value
+        switch self[key] {
+            case let .int(value):
+                return value
+            case let .double(value) where value == value.rounded():
+                return Int(value)
+            default:
+                return nil
         }
-        return nil
     }
 
     /// Extracts an optional double value for the given key.

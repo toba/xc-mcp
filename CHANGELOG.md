@@ -23,6 +23,8 @@
 - Add `swift_format` and `swift_lint` tools to `xc-swift` server ([#95](https://github.com/toba/xc-mcp/issues/95))
 - Register `test_sim` in the Build server so you don't need a separate simulator server ([#97](https://github.com/toba/xc-mcp/issues/97))
 - Support `XCLocalSwiftPackageReference` deletion via XcodeProj 9.9.0 ([#108](https://github.com/toba/xc-mcp/issues/108))
+- `launch_mac_app` / `build_run_macos` return PID and detect early exit ([#139](https://github.com/toba/xc-mcp/issues/139))
+- `debug_attach_sim` supports macOS apps by `bundle_id` without requiring a simulator ([#140](https://github.com/toba/xc-mcp/issues/140))
 
 ### 🐞 Fixes
 
@@ -39,6 +41,9 @@
 - Fix `list_test_plan_targets` failing on relative project paths ([#120](https://github.com/toba/xc-mcp/issues/120))
 - Fix `search_crash_reports` requiring `process_name` or `bundle_id` when neither should be mandatory ([#123](https://github.com/toba/xc-mcp/issues/123))
 - Add timeout support to `SwiftRunner`; prevents runaway swift commands ([#125](https://github.com/toba/xc-mcp/issues/125))
+- Fix `build_run_macos` / `launch_mac_app` crashing on non-embedded frameworks; symlink from `BUILT_PRODUCTS_DIR` instead of relying on `DYLD_FRAMEWORK_PATH` ([#141](https://github.com/toba/xc-mcp/issues/141))
+- Fix `build_debug_macos` timeout with `stop_at_entry`; resolve actual executable name instead of `.app` folder name ([#142](https://github.com/toba/xc-mcp/issues/142))
+- Fix `debug_detach` rejecting valid PID parameter; `getInt` now handles JSON numbers decoded as doubles ([#143](https://github.com/toba/xc-mcp/issues/143))
 
 ### 🗜️ Tweaks
 

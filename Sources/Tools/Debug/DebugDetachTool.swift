@@ -36,17 +36,7 @@ public struct DebugDetachTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        var pid = arguments.getInt("pid").map(Int32.init)
-
-        if pid == nil, let bundleId = arguments.getString("bundle_id") {
-            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
-        }
-
-        guard let targetPID = pid else {
-            throw MCPError.invalidParams(
-                "Either bundle_id (with active session) or pid is required",
-            )
-        }
+        let targetPID = try await arguments.resolveDebugPID()
 
         do {
             let result = try await lldbRunner.detach(pid: targetPID)
