@@ -46,6 +46,8 @@ public enum ErrorExtractor {
         xcresultPath: String? = nil,
         stderr: String? = nil,
         projectRoot: String? = nil,
+        projectPath: String? = nil,
+        workspacePath: String? = nil,
         onlyTesting: [String]? = nil,
     ) async throws -> CallTool.Result {
         var testResult: String
@@ -98,7 +100,10 @@ public enum ErrorExtractor {
 
         // Enhance cryptic "not a member of the test plan" errors with actionable guidance
         if !succeeded, let projectRoot {
-            if let hint = enhanceTestPlanError(output: output, projectRoot: projectRoot) {
+            if let hint = enhanceTestPlanError(
+                output: output, projectRoot: projectRoot,
+                projectPath: projectPath, workspacePath: workspacePath,
+            ) {
                 testResult += "\n\n" + hint
             }
         }
@@ -229,8 +234,11 @@ public enum ErrorExtractor {
     // MARK: - Test Plan Error Enhancement
 
     /// Detects "not a member of the specified test plan or scheme" errors and enhances
-    /// them with available test targets and the correct identifier format.
-    private static func enhanceTestPlanError(output: String, projectRoot: String) -> String? {
+    /// them with available test targets, the correct identifier format, and scheme suggestions.
+    private static func enhanceTestPlanError(
+        output: String, projectRoot: String,
+        projectPath: String? = nil, workspacePath: String? = nil,
+    ) -> String? {
         // xcodebuild emits: "... isn't a member of the specified test plan or scheme."
         guard
             output.contains("isn't a member of the specified test plan or scheme")
@@ -279,7 +287,146 @@ public enum ErrorExtractor {
             hint += " For example: \"\(example)\"."
         }
 
+        // Suggest schemes that contain the missing test target
+        let schemeSuggestion = suggestSchemesForTargets(
+            badIdentifiers, projectPath: projectPath, workspacePath: workspacePath,
+        )
+        if let schemeSuggestion {
+            hint += " " + schemeSuggestion
+        }
+
         return hint
+    }
+
+    /// Scans `.xcscheme` files to find which schemes include the given test targets,
+    /// then returns a suggestion string.
+    private static func suggestSchemesForTargets(
+        _ identifiers: [String], projectPath: String?, workspacePath: String?,
+    ) -> String? {
+        // Collect all .xcodeproj paths to scan for schemes
+        let projectPaths = discoverProjectPaths(
+            projectPath: projectPath, workspacePath: workspacePath,
+        )
+        guard !projectPaths.isEmpty else { return nil }
+
+        // Build a map of scheme name → set of test target names
+        let schemeMap = buildSchemeTestTargetMap(projectPaths: projectPaths)
+        guard !schemeMap.isEmpty else { return nil }
+
+        // Extract target names from identifiers (the part before the first slash)
+        let targetNames = identifiers.map { id -> String in
+            if let slashIndex = id.firstIndex(of: "/") {
+                return String(id[id.startIndex ..< slashIndex])
+            }
+            return id
+        }
+
+        // Find schemes that contain each target
+        var suggestions: [String] = []
+        for targetName in targetNames {
+            let matchingSchemes = schemeMap
+                .filter { $0.value.contains(targetName) }
+                .map(\.key)
+                .sorted()
+            if !matchingSchemes.isEmpty {
+                let schemeList = matchingSchemes.map { "'\($0)'" }.joined(separator: ", ")
+                suggestions.append(
+                    "Target '\(targetName)' is in scheme \(schemeList).",
+                )
+            }
+        }
+
+        if suggestions.isEmpty { return nil }
+        return "Did you mean a different scheme? " + suggestions.joined(separator: " ")
+    }
+
+    /// Returns all `.xcodeproj` paths relevant to the current build context.
+    private static func discoverProjectPaths(
+        projectPath: String?, workspacePath: String?,
+    ) -> [String] {
+        if let projectPath {
+            return [projectPath]
+        }
+        guard let workspacePath else { return [] }
+
+        // For workspaces, read contents.xcworkspacedata to find referenced .xcodeproj files
+        let contentsPath = "\(workspacePath)/contents.xcworkspacedata"
+        guard let data = FileManager.default.contents(atPath: contentsPath),
+              let xml = String(data: data, encoding: .utf8)
+        else {
+            return []
+        }
+
+        let fm = FileManager.default
+        let workspaceDir = URL(fileURLWithPath: workspacePath).deletingLastPathComponent().path
+        var paths: [String] = []
+
+        // Pattern: location = "group:relative/path.xcodeproj"
+        let locationPattern = /location\s*=\s*"group:([^"]+\.xcodeproj)"/
+        for match in xml.matches(of: locationPattern) {
+            let relativePath = String(match.1)
+            let fullPath = "\(workspaceDir)/\(relativePath)"
+            let resolved = URL(fileURLWithPath: fullPath).standardized.path
+            if fm.fileExists(atPath: resolved) {
+                paths.append(resolved)
+            }
+        }
+
+        return paths
+    }
+
+    /// Builds a mapping from scheme name to the set of test target names in that scheme.
+    private static func buildSchemeTestTargetMap(
+        projectPaths: [String],
+    ) -> [String: Set<String>] {
+        let fm = FileManager.default
+        var result: [String: Set<String>] = [:]
+
+        for projectPath in projectPaths {
+            for schemeDir in SchemePathResolver.schemeDirs(for: projectPath) {
+                guard let files = try? fm.contentsOfDirectory(atPath: schemeDir) else { continue }
+                for file in files where file.hasSuffix(".xcscheme") {
+                    let schemeName = String(file.dropLast(".xcscheme".count))
+                    let schemePath = "\(schemeDir)/\(file)"
+                    let targets = extractTestTargets(fromSchemeAt: schemePath)
+                    if !targets.isEmpty {
+                        result[schemeName, default: []].formUnion(targets)
+                    }
+                }
+            }
+        }
+
+        return result
+    }
+
+    /// Extracts test target names from a `.xcscheme` XML file by parsing
+    /// `BlueprintName` attributes within `TestableReference` elements.
+    private static func extractTestTargets(fromSchemeAt path: String) -> Set<String> {
+        guard let data = FileManager.default.contents(atPath: path),
+              let xml = String(data: data, encoding: .utf8)
+        else {
+            return []
+        }
+
+        var targets: Set<String> = []
+
+        // Match TestableReference blocks and extract BlueprintName.
+        // We look for TestableReference that is not skipped, then find BlueprintName inside.
+        let testablePattern =
+            /TestableReference\s[^>]*?skipped\s*=\s*"NO"[\s\S]*?BlueprintName\s*=\s*"([^"]+)"/
+        for match in xml.matches(of: testablePattern) {
+            targets.insert(String(match.1))
+        }
+
+        // Also match when skipped attribute comes after other attributes or is absent
+        // (default is not skipped)
+        let altPattern =
+            /TestableReference[^>]*>\s*<BuildableReference[^>]*BlueprintName\s*=\s*"([^"]+)"/
+        for match in xml.matches(of: altPattern) {
+            targets.insert(String(match.1))
+        }
+
+        return targets
     }
 
     // MARK: - Infrastructure Warning Detection
