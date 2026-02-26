@@ -1,18 +1,18 @@
 ---
 # b5r-x0z
 title: build_debug_macos times out with stop_at_entry
-status: ready
+status: completed
 type: bug
 priority: normal
 tags:
     - macOS
     - LLDB
 created_at: 2026-02-26T01:03:56Z
-updated_at: 2026-02-26T01:03:56Z
+updated_at: 2026-02-26T01:18:52Z
 sync:
     github:
         issue_number: "142"
-        synced_at: "2026-02-26T01:16:49Z"
+        synced_at: "2026-02-26T01:19:46Z"
 ---
 
 ## Problem
@@ -38,6 +38,15 @@ lldb -s script.lldb -- "/path/to/App"
 
 ## TODO
 
-- [ ] Diagnose why build_debug_macos times out
-- [ ] Increase timeout or use PID-based attach instead of name-based waitfor
-- [ ] Handle app names with spaces/parens correctly
+- [x] Diagnose why build_debug_macos times out
+- [x] Increase timeout or use PID-based attach instead of name-based waitfor
+- [x] Handle app names with spaces/parens correctly
+
+
+## Summary of Changes
+
+Root cause: the executable name passed to LLDB `--waitfor` was derived from the `.app` folder name (e.g. `ThesisApp (debug)`) rather than the actual binary name (e.g. `ThesisApp`). LLDB never found a matching process, so it timed out after 120s.
+
+Fix: resolve the executable name from `EXECUTABLE_NAME` build setting first, then `CFBundleExecutable` from Info.plist, falling back to the folder-based derivation only as a last resort.
+
+**File changed:** `Sources/Tools/Debug/BuildDebugMacOSTool.swift`

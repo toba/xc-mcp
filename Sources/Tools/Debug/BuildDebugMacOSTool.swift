@@ -163,10 +163,26 @@ public struct BuildDebugMacOSTool: Sendable {
                 "BUILT_PRODUCTS_DIR", from: buildSettings.stdout,
             )
 
-            // Extract executable name from the app bundle name
-            let appName =
-                URL(fileURLWithPath: appPath).lastPathComponent
+            // Resolve the actual executable name for LLDB's --waitfor.
+            // The .app folder name may differ from the binary (e.g. "App (debug).app"
+            // contains a binary named "App"). Prefer EXECUTABLE_NAME from build settings,
+            // then CFBundleExecutable from Info.plist, then fall back to the folder name.
+            let appName: String = {
+                if let name = extractBuildSetting("EXECUTABLE_NAME", from: buildSettings.stdout) {
+                    return name
+                }
+                let infoPlistPath = "\(appPath)/Contents/Info.plist"
+                if let data = FileManager.default.contents(atPath: infoPlistPath),
+                   let plist = try? PropertyListSerialization.propertyList(
+                       from: data, format: nil,
+                   ) as? [String: Any],
+                   let name = plist["CFBundleExecutable"] as? String
+                {
+                    return name
+                }
+                return URL(fileURLWithPath: appPath).lastPathComponent
                     .replacingOccurrences(of: ".app", with: "")
+            }()
 
             // Step 4: Prepare the app for debug launch.
             // Sandboxed apps crash with SIGABRT when launched directly via LLDB's
