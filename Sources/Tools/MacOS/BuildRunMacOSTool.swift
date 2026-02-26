@@ -120,6 +120,20 @@ public struct BuildRunMacOSTool: Sendable {
             if result.succeeded {
                 var message = "Successfully built and launched '\(scheme)' on macOS"
                 message += "\nApp path: \(appPath)"
+
+                // Resolve PID and check liveness
+                let appName = URL(fileURLWithPath: appPath).deletingPathExtension()
+                    .lastPathComponent
+                let bundleId = extractBundleId(from: buildSettings.stdout)
+                if let pid = await findLaunchedPID(bundleId: bundleId, appName: appName) {
+                    try await Task.sleep(for: .seconds(1))
+                    if kill(pid, 0) == 0 {
+                        message += "\nPID: \(pid)"
+                    } else {
+                        message += "\nPID: \(pid) (exited — app may have crashed on launch)"
+                    }
+                }
+
                 return CallTool.Result(content: [.text(message)])
             } else {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")
@@ -131,5 +145,27 @@ public struct BuildRunMacOSTool: Sendable {
 
     private func extractAppPath(from buildSettings: String) -> String? {
         BuildSettingExtractor.extractAppPath(from: buildSettings)
+    }
+
+    private func extractBundleId(from buildSettings: String) -> String? {
+        BuildSettingExtractor.extractBundleId(from: buildSettings)
+    }
+
+    /// Attempts to find the PID of a recently launched app via pgrep.
+    private func findLaunchedPID(bundleId: String?, appName: String?) async -> Int32? {
+        for pattern in [bundleId, appName].compactMap(\.self) {
+            if let result = try? await ProcessResult.run(
+                "/usr/bin/pgrep",
+                arguments: ["-f", pattern],
+            ),
+                result.succeeded,
+                let pidString = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: .newlines).first,
+                let pid = Int32(pidString)
+            {
+                return pid
+            }
+        }
+        return nil
     }
 }

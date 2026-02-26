@@ -118,6 +118,20 @@ public struct LaunchMacAppTool: Sendable {
                 if hide {
                     message += " (hidden)"
                 }
+
+                // Resolve PID and check liveness
+                let appName = appPath
+                    .map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
+                if let pid = await findLaunchedPID(bundleId: bundleId, appName: appName) {
+                    // Brief delay then liveness check
+                    try await Task.sleep(for: .seconds(1))
+                    if kill(pid, 0) == 0 {
+                        message += "\nPID: \(pid)"
+                    } else {
+                        message += "\nPID: \(pid) (exited — app may have crashed on launch)"
+                    }
+                }
+
                 return CallTool.Result(content: [
                     .text(message),
                 ])
@@ -127,5 +141,24 @@ public struct LaunchMacAppTool: Sendable {
         } catch {
             throw error.asMCPError()
         }
+    }
+
+    /// Attempts to find the PID of a recently launched app via pgrep.
+    private func findLaunchedPID(bundleId: String?, appName: String?) async -> Int32? {
+        // Try bundle ID first (more specific), then app name
+        for pattern in [bundleId, appName].compactMap(\.self) {
+            if let result = try? await ProcessResult.run(
+                "/usr/bin/pgrep",
+                arguments: ["-f", pattern],
+            ),
+                result.succeeded,
+                let pidString = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: .newlines).first,
+                let pid = Int32(pidString)
+            {
+                return pid
+            }
+        }
+        return nil
     }
 }
