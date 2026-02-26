@@ -2,7 +2,6 @@ import MCP
 import Logging
 import XCMCPCore
 import Foundation
-import Subprocess
 
 public struct BuildDebugMacOSTool: Sendable {
     /// Build timeout for debug builds (10 minutes to accommodate large projects)
@@ -174,9 +173,8 @@ public struct BuildDebugMacOSTool: Sendable {
             // `process launch` because the sandbox isn't initialized. We must launch
             // via /usr/bin/open (Launch Services). But apps with non-embedded frameworks
             // need DYLD_FRAMEWORK_PATH, which dyld strips for hardened-runtime apps.
-            // Solution: inject LSEnvironment into Info.plist + add the
-            // allow-dyld-environment-variables entitlement, then re-sign.
-            try await prepareAppForDebugLaunch(
+            // Solution: symlink frameworks into bundle + rewrite install names + re-sign.
+            try await AppBundlePreparer.prepare(
                 appPath: appPath, builtProductsDir: builtProductsDir,
             )
 
@@ -235,163 +233,6 @@ public struct BuildDebugMacOSTool: Sendable {
 
     private func extractBuildSetting(_ key: String, from buildSettings: String) -> String? {
         BuildSettingExtractor.extractSetting(key, from: buildSettings)
-    }
-
-    /// Prepares a debug app bundle for launch via `/usr/bin/open`.
-    ///
-    /// Framework targets with `INSTALL_PATH = /Library/Frameworks` produce binaries
-    /// with absolute install names (e.g. `/Library/Frameworks/Foo.framework/...`).
-    /// Xcode handles this at runtime via `DYLD_FRAMEWORK_PATH`, but that's stripped
-    /// by SIP for hardened-runtime apps launched through Launch Services.
-    ///
-    /// This method:
-    /// 1. Symlinks non-embedded frameworks from BUILT_PRODUCTS_DIR into the app bundle
-    /// 2. Rewrites absolute `/Library/Frameworks/` install names to `@rpath/` in
-    ///    binaries inside the bundle using `install_name_tool`
-    /// 3. Re-signs the bundle to cover the modified content
-    private func prepareAppForDebugLaunch(
-        appPath: String, builtProductsDir: String?,
-    ) async throws {
-        guard let dir = builtProductsDir else { return }
-
-        let fm = FileManager.default
-        let frameworksDir = "\(appPath)/Contents/Frameworks"
-        try fm.createDirectory(atPath: frameworksDir, withIntermediateDirectories: true)
-
-        // Step 1: Symlink frameworks from BUILT_PRODUCTS_DIR into the app bundle
-        let builtProductsURL = URL(fileURLWithPath: dir)
-        let contents = try fm.contentsOfDirectory(
-            at: builtProductsURL, includingPropertiesForKeys: nil,
-        )
-
-        var modified = false
-        for item in contents where item.pathExtension == "framework" {
-            let destPath = "\(frameworksDir)/\(item.lastPathComponent)"
-            if fm.fileExists(atPath: destPath) { continue }
-            try fm.createSymbolicLink(atPath: destPath, withDestinationPath: item.path)
-            modified = true
-        }
-        for item in contents where item.pathExtension == "dylib" {
-            let destPath = "\(frameworksDir)/\(item.lastPathComponent)"
-            if fm.fileExists(atPath: destPath) { continue }
-            try fm.createSymbolicLink(atPath: destPath, withDestinationPath: item.path)
-            modified = true
-        }
-
-        // Step 2: Rewrite absolute /Library/Frameworks/ install names to @rpath/
-        // in all Mach-O binaries inside the app bundle's MacOS directory.
-        let macOSDir = "\(appPath)/Contents/MacOS"
-        if let macOSContents = try? fm.contentsOfDirectory(atPath: macOSDir) {
-            for file in macOSContents {
-                let filePath = "\(macOSDir)/\(file)"
-                modified = try await rewriteAbsoluteInstallNames(at: filePath) || modified
-            }
-        }
-
-        guard modified else { return }
-
-        // Step 3: Re-sign with the original identity
-        try await resignBundle(appPath: appPath)
-    }
-
-    /// Rewrites absolute `/Library/Frameworks/` references to `@rpath/` using install_name_tool.
-    ///
-    /// Returns true if any changes were made.
-    private func rewriteAbsoluteInstallNames(at binaryPath: String) async throws -> Bool {
-        let otoolResult = try await ProcessResult.runSubprocess(
-            .path("/usr/bin/otool"),
-            arguments: ["-L", binaryPath],
-        )
-        guard otoolResult.succeeded else { return false }
-
-        let prefix = "/Library/Frameworks/"
-        var changes: [(old: String, new: String)] = []
-
-        for line in otoolResult.stdout.components(separatedBy: .newlines) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix(prefix) {
-                if let parenRange = trimmed.range(of: " (compatibility") {
-                    let oldPath = String(trimmed[..<parenRange.lowerBound])
-                    let newPath = "@rpath/" + String(oldPath.dropFirst(prefix.count))
-                    changes.append((old: oldPath, new: newPath))
-                }
-            }
-        }
-
-        guard !changes.isEmpty else { return false }
-
-        var args: [String] = []
-        for change in changes {
-            args += ["-change", change.old, change.new]
-        }
-        args.append(binaryPath)
-
-        let installResult = try await ProcessResult.runSubprocess(
-            .path("/usr/bin/install_name_tool"),
-            arguments: Arguments(args),
-        )
-
-        if !installResult.succeeded {
-            Self.logger
-                .warning("install_name_tool failed for \(binaryPath): \(installResult.stderr)")
-            return false
-        }
-
-        return true
-    }
-
-    /// Re-signs the app bundle preserving the original signing identity and entitlements.
-    private func resignBundle(appPath: String) async throws {
-        // Extract signing identity
-        let identityResult = try await ProcessResult.runSubprocess(
-            .path("/usr/bin/codesign"),
-            arguments: ["-dvvv", appPath],
-            mergeStderr: true,
-        )
-
-        var signingIdentity = "-"
-        for line in identityResult.stdout.components(separatedBy: .newlines)
-            where line.hasPrefix("Authority=")
-        {
-            signingIdentity = String(line.dropFirst("Authority=".count))
-            break
-        }
-
-        // Extract entitlements
-        let extractResult = try await ProcessResult.runSubprocess(
-            .path("/usr/bin/codesign"),
-            arguments: ["-d", "--entitlements", "-", "--xml", appPath],
-        )
-        var tempEntitlementsURL: URL?
-
-        if let data = extractResult.stdout.data(using: .utf8), !data.isEmpty {
-            let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("debug_entitlements_\(UUID().uuidString).plist")
-            try data.write(to: url)
-            tempEntitlementsURL = url
-        }
-
-        defer {
-            if let url = tempEntitlementsURL {
-                try? FileManager.default.removeItem(at: url)
-            }
-        }
-
-        // Re-sign
-        var signArgs = ["--force", "--sign", signingIdentity, "--deep"]
-        if let url = tempEntitlementsURL {
-            signArgs += ["--entitlements", url.path]
-        }
-        signArgs.append(appPath)
-
-        let signResult = try await ProcessResult.runSubprocess(
-            .path("/usr/bin/codesign"),
-            arguments: Arguments(signArgs),
-        )
-
-        if !signResult.succeeded {
-            Self.logger.warning("Re-signing failed: \(signResult.stderr)")
-        }
     }
 
     private func extractAppPath(from buildSettings: String) -> String? {

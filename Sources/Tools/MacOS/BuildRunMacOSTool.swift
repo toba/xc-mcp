@@ -108,7 +108,15 @@ public struct BuildRunMacOSTool: Sendable {
                 )
             }
 
-            // Step 3: Launch app using open command
+            // Step 3: Prepare app bundle for launch (symlink non-embedded frameworks)
+            let builtProductsDir = BuildSettingExtractor.extractSetting(
+                "BUILT_PRODUCTS_DIR", from: buildSettings.stdout,
+            )
+            try await AppBundlePreparer.prepare(
+                appPath: appPath, builtProductsDir: builtProductsDir,
+            )
+
+            // Step 4: Launch app using open command
             var openArgs = [appPath]
             if !launchArgs.isEmpty {
                 openArgs.append("--args")

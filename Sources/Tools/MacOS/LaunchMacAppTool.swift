@@ -81,6 +81,17 @@ public struct LaunchMacAppTool: Sendable {
         }
 
         do {
+            // Prepare app bundle when launching from DerivedData
+            if let appPath,
+               let builtProductsDir = AppBundlePreparer.inferBuiltProductsDir(
+                   fromAppPath: appPath,
+               )
+            {
+                try await AppBundlePreparer.prepare(
+                    appPath: appPath, builtProductsDir: builtProductsDir,
+                )
+            }
+
             var openArgs: [String] = []
 
             if let bundleId {
