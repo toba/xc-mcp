@@ -21,7 +21,10 @@ public struct DebugAttachSimTool: Sendable {
         Tool(
             name: "debug_attach_sim",
             description:
-            "Attach LLDB debugger to a running app on a simulator.",
+            "Attach LLDB debugger to a running app on a simulator or macOS. "
+                + "For simulator apps, provide bundle_id with a simulator UDID. "
+                +
+                "For macOS apps, provide bundle_id without a simulator — the PID is resolved automatically.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -34,7 +37,8 @@ public struct DebugAttachSimTool: Sendable {
                     "simulator": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Simulator UDID or name. Uses session default if not specified.",
+                            "Simulator UDID or name. Uses session default if not specified. "
+                                + "Omit for macOS apps.",
                         ),
                     ]),
                     "pid": .object([
@@ -58,20 +62,23 @@ public struct DebugAttachSimTool: Sendable {
                 throw MCPError.invalidParams("Either bundle_id or pid is required")
             }
 
-            // Get simulator
-            let simulator: String
+            // Try to resolve simulator; if none available, treat as macOS app
+            let simulator: String?
             if let value = arguments.getString("simulator") {
                 simulator = value
             } else if let sessionSimulator = await sessionManager.simulatorUDID {
                 simulator = sessionSimulator
             } else {
-                throw MCPError.invalidParams(
-                    "simulator is required when using bundle_id. Set it with set_session_defaults or pass it directly.",
-                )
+                simulator = nil
             }
 
-            // Get PID of the running app on the simulator
-            pid = try await findAppPID(bundleId: bundleId, simulator: simulator)
+            if let simulator {
+                // Get PID of the running app on the simulator
+                pid = try await findSimulatorAppPID(bundleId: bundleId, simulator: simulator)
+            } else {
+                // Get PID of the running macOS app
+                pid = try await findMacOSAppPID(bundleId: bundleId)
+            }
         }
 
         guard let targetPID = pid else {
@@ -105,9 +112,8 @@ public struct DebugAttachSimTool: Sendable {
         }
     }
 
-    private func findAppPID(bundleId: String, simulator: String) async throws -> Int32 {
-        // Use simctl to find the app's PID
-        // First, try to get the app container to verify it's installed
+    private func findSimulatorAppPID(bundleId: String, simulator: String) async throws -> Int32 {
+        // Verify the app is installed on the simulator
         do {
             _ = try await simctlRunner.getAppContainer(
                 udid: simulator, bundleId: bundleId, container: "app",
@@ -129,6 +135,24 @@ public struct DebugAttachSimTool: Sendable {
         else {
             throw MCPError.internalError(
                 "App '\(bundleId)' is not running on simulator '\(simulator)'. Launch it first with launch_app_sim.",
+            )
+        }
+
+        return pid
+    }
+
+    private func findMacOSAppPID(bundleId: String) async throws -> Int32 {
+        // Use pgrep to find the macOS app process by bundle ID
+        let result = try await ProcessResult.run("/usr/bin/pgrep", arguments: ["-f", bundleId])
+        let output = result.stdout
+
+        guard
+            let pidString = output.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: .newlines).first,
+            let pid = Int32(pidString)
+        else {
+            throw MCPError.internalError(
+                "macOS app '\(bundleId)' is not running. Launch it first with build_run_macos or launch_mac_app.",
             )
         }
 
