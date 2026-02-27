@@ -197,7 +197,9 @@ public struct ValidateProjectTool: Sendable {
 
     private func embeddedFrameworkNames(from phases: [PBXCopyFilesBuildPhase]) -> Set<String> {
         var names = Set<String>()
-        for phase in phases where phase.dstSubfolderSpec == .frameworks || phase.dstSubfolder == .frameworks {
+        for phase in phases
+            where phase.dstSubfolderSpec == .frameworks || phase.dstSubfolder == .frameworks
+        {
             for buildFile in phase.files ?? [] {
                 if let fileRef = buildFile.file {
                     if let name = fileRef.path ?? fileRef.name {
