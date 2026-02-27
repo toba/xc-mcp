@@ -356,8 +356,9 @@ public struct AddAppExtensionTool: Sendable {
             xcodeproj.pbxproj.add(object: buildFile)
 
             // Find or create "Embed App Extensions" copy files build phase
-            var embedPhase = hostTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
-                .first { $0.name == "Embed App Extensions" || $0.dstSubfolderSpec == .plugins }
+            let copyPhases = hostTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
+            var embedPhase = copyPhases
+                .first { $0.name == "Embed App Extensions" || $0.dstSubfolderSpec == .plugins || $0.dstSubfolder == .plugins }
 
             if embedPhase == nil {
                 embedPhase = PBXCopyFilesBuildPhase(

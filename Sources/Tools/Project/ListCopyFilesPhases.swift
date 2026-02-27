@@ -70,6 +70,8 @@ public struct ListCopyFilesPhases: Sendable {
                 let destination: String
                 if let subfolder = phase.dstSubfolderSpec {
                     destination = destinationString(subfolder)
+                } else if let subfolder = phase.dstSubfolder {
+                    destination = subfolder.rawValue
                 } else {
                     destination = "(unknown)"
                 }

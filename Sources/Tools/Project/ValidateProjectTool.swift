@@ -138,8 +138,11 @@ public struct ValidateProjectTool: Sendable {
         for phase in phases {
             let phaseName = phase.name ?? "(unnamed)"
 
-            // Check dstSubfolderSpec == nil on phases named "Embed Frameworks"
-            if phaseName.contains("Embed Frameworks"), phase.dstSubfolderSpec == nil {
+            // Check destination on phases named "Embed Frameworks"
+            if phaseName.contains("Embed Frameworks"),
+               phase.dstSubfolderSpec == nil,
+               phase.dstSubfolder != .frameworks
+            {
                 diagnostics.append(
                     Diagnostic(
                         .error,
@@ -194,7 +197,7 @@ public struct ValidateProjectTool: Sendable {
 
     private func embeddedFrameworkNames(from phases: [PBXCopyFilesBuildPhase]) -> Set<String> {
         var names = Set<String>()
-        for phase in phases where phase.dstSubfolderSpec == .frameworks {
+        for phase in phases where phase.dstSubfolderSpec == .frameworks || phase.dstSubfolder == .frameworks {
             for buildFile in phase.files ?? [] {
                 if let fileRef = buildFile.file {
                     if let name = fileRef.path ?? fileRef.name {

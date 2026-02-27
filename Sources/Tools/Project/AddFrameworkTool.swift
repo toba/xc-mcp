@@ -194,7 +194,7 @@ public struct AddFrameworkTool: Sendable {
                 var embedPhase: PBXCopyFilesBuildPhase?
                 for phase in target.buildPhases {
                     if let copyPhase = phase as? PBXCopyFilesBuildPhase,
-                       copyPhase.dstSubfolderSpec == .frameworks
+                       copyPhase.dstSubfolderSpec == .frameworks || copyPhase.dstSubfolder == .frameworks
                     {
                         embedPhase = copyPhase
                         break

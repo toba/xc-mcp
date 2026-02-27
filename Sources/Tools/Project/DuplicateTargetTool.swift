@@ -154,6 +154,7 @@ public struct DuplicateTargetTool: Sendable {
                     let newPhase = PBXCopyFilesBuildPhase(
                         dstPath: copyFilesPhase.dstPath,
                         dstSubfolderSpec: copyFilesPhase.dstSubfolderSpec,
+                        dstSubfolder: copyFilesPhase.dstSubfolder,
                         name: copyFilesPhase.name,
                         files: copyFilesPhase.files ?? [],
                     )
