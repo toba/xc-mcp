@@ -66,6 +66,7 @@ public struct SwiftRunner: Sendable {
         configuration: String = "debug",
         product: String? = nil,
         buildTests: Bool = false,
+        environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
     ) async throws -> SwiftResult {
         var args = ["build", "-c", configuration]
@@ -75,7 +76,10 @@ public struct SwiftRunner: Sendable {
         if buildTests {
             args.append("--build-tests")
         }
-        return try await run(arguments: args, workingDirectory: packagePath, timeout: timeout)
+        return try await run(
+            arguments: args, workingDirectory: packagePath,
+            environment: environment, timeout: timeout,
+        )
     }
 
     /// Runs tests for a Swift package.
@@ -126,6 +130,7 @@ public struct SwiftRunner: Sendable {
         packagePath: String,
         executableName: String? = nil,
         arguments: [String] = [],
+        environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
     ) async throws -> SwiftResult {
         var args = ["run"]
@@ -136,7 +141,10 @@ public struct SwiftRunner: Sendable {
             args.append("--")
             args.append(contentsOf: arguments)
         }
-        return try await run(arguments: args, workingDirectory: packagePath, timeout: timeout)
+        return try await run(
+            arguments: args, workingDirectory: packagePath,
+            environment: environment, timeout: timeout,
+        )
     }
 
     /// Cleans build artifacts for a Swift package.

@@ -1,6 +1,8 @@
+import MCP
 import Testing
 @testable import XCMCPCore
 import Foundation
+import Subprocess
 
 @Suite("SessionManager Persistence", .serialized)
 struct SessionManagerPersistenceTests {
@@ -137,5 +139,90 @@ struct SessionManagerPersistenceTests {
         // server2 should resolve the scheme without needing its own setDefaults
         let scheme = try await server2.resolveScheme(from: [:])
         #expect(scheme == "External")
+    }
+
+    // MARK: - Environment Variable Tests
+
+    @Test("Env vars persist to disk and reload")
+    func envPersistence() async {
+        cleanup()
+        defer { cleanup() }
+
+        let manager = SessionManager()
+        await manager.setDefaults(env: ["FOO": "bar", "BAZ": "qux"])
+
+        let manager2 = SessionManager()
+        let defaults = await manager2.getDefaults()
+        #expect(defaults.env == ["FOO": "bar", "BAZ": "qux"])
+    }
+
+    @Test("Env deep-merge adds new keys and updates existing")
+    func envDeepMerge() async {
+        cleanup()
+        defer { cleanup() }
+
+        let manager = SessionManager()
+        await manager.setDefaults(env: ["A": "1", "B": "2"])
+        await manager.setDefaults(env: ["B": "updated", "C": "3"])
+
+        let defaults = await manager.getDefaults()
+        #expect(defaults.env == ["A": "1", "B": "updated", "C": "3"])
+    }
+
+    @Test("Clear resets env to nil")
+    func clearResetsEnv() async {
+        cleanup()
+        defer { cleanup() }
+
+        let manager = SessionManager()
+        await manager.setDefaults(env: ["KEY": "value"])
+        await manager.clear()
+
+        let defaults = await manager.getDefaults()
+        #expect(defaults.env == nil)
+    }
+
+    @Test("resolveEnvironment merges session and per-invocation env")
+    func resolveEnvironmentMerge() async {
+        cleanup()
+        defer { cleanup() }
+
+        let manager = SessionManager()
+        await manager.setDefaults(env: ["SESSION_KEY": "session", "SHARED": "from_session"])
+
+        // Per-invocation env overrides SHARED and adds NEW_KEY
+        let arguments: [String: Value] = [
+            "env": .object([
+                "SHARED": .string("from_invocation"),
+                "NEW_KEY": .string("new"),
+            ]),
+        ]
+
+        let environment = await manager.resolveEnvironment(from: arguments)
+
+        // Verify it's not .inherit (it has overrides)
+        #expect(environment != .inherit)
+    }
+
+    @Test("resolveEnvironment returns inherit when no env configured")
+    func resolveEnvironmentEmpty() async {
+        cleanup()
+        defer { cleanup() }
+
+        let manager = SessionManager()
+        let environment = await manager.resolveEnvironment(from: [:])
+        #expect(environment == .inherit)
+    }
+
+    @Test("Summary includes env vars")
+    func summaryIncludesEnv() async {
+        cleanup()
+        defer { cleanup() }
+
+        let manager = SessionManager()
+        await manager.setDefaults(env: ["DYLD_PRINT_LIBRARIES": "1"])
+
+        let summary = await manager.summary()
+        #expect(summary.contains("DYLD_PRINT_LIBRARIES=1"))
     }
 }

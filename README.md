@@ -1,6 +1,6 @@
 # xc-mcp
 
-An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 178 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, localization, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 180 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, localization, and SwiftUI preview capture.
 
 I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
@@ -18,6 +18,7 @@ This project [iterates rapidly](CHANGELOG.md). Fairly complex issues had to be s
 - **Full LLDB debugging over MCP**: Persistent LLDB sessions backed by a pseudo-TTY, so breakpoints survive across tool calls. Breakpoints, watchpoints, stepping, expression evaluation, memory inspection, view hierarchy dumps, symbol lookup — the full debugger experience, minus the GUI.
 - **Gesture presets**: `gesture` provides named presets — `scroll_up`, `pull_to_refresh`, `swipe_from_left_edge`, etc. — so agents don't have to do coordinate math every time they want to scroll a list. Eight presets, all computed as fractions of the screen dimensions you give it.
 - **Xcode state sync**: `sync_xcode_defaults` reads your active scheme and run destination straight from Xcode's `UserInterfaceState.xcuserstate`. Open a project in Xcode, pick your scheme, then let the agent inherit that context without manual configuration.
+- **Persistent environment variables**: `set_session_defaults(env: {"DYLD_PRINT_LIBRARIES": "1"})` sets custom env vars that automatically apply to *every* build, test, and run command for the session. Per-invocation env overrides session defaults (same key wins). Useful for `DYLD_` debugging vars, custom build flags, CI env passthrough. `clear_session_defaults` resets everything.
 - **Dynamic tool workflows**: `manage_workflows` lets you enable or disable entire tool categories (project, simulator, debug, etc.) at runtime. When an agent doesn't need 130 tools cluttering its context, disable the irrelevant ones. The server sends `tools/list_changed` notifications so clients update automatically.
 
 ## Built On
@@ -36,13 +37,13 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
 - [Requirements](#requirements)
 - [Tools](#tools)
   - [macOS UI Automation](#macos-ui-automation-8-tools)
-  - [macOS Screenshots & Builds](#macos-screenshots--builds-10-tools)
+  - [macOS Screenshots & Builds](#macos-screenshots--builds-11-tools)
   - [SwiftUI Preview Capture](#swiftui-preview-capture-1-tool)
   - [Debug](#debug-18-tools)
   - [Simulator](#simulator-17-tools)
   - [Simulator UI Automation](#simulator-ui-automation-8-tools)
   - [Device](#device-7-tools)
-  - [Project Management](#project-management-54-tools)
+  - [Project Management](#project-management-56-tools)
   - [Discovery](#discovery-6-tools)
   - [Instruments](#instruments-3-tools)
   - [Logging](#logging-4-tools)
@@ -59,14 +60,14 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 178 | ~50K | Full monolithic server |
-| `xc-project` | 54 | ~12K | .xcodeproj file manipulation |
-| `xc-simulator` | 29 | ~6K | Simulator, UI automation, simulator logs |
-| `xc-device` | 12 | ~2K | Physical iOS devices |
-| `xc-debug` | 22 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
+| `xc-mcp` | 158 | ~28K | Full monolithic server |
+| `xc-project` | 60 | ~9K | .xcodeproj file manipulation |
+| `xc-simulator` | 29 | ~5K | Simulator, UI automation, simulator logs |
+| `xc-build` | 24 | ~5K | macOS builds, discovery, logging, diagnostics, utilities |
+| `xc-debug` | 23 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
+| `xc-strings` | 24 | ~3K | Xcode String Catalog (.xcstrings) localization |
 | `xc-swift` | 12 | ~2K | Swift Package Manager, swiftformat, swiftlint, diagnostics + session defaults |
-| `xc-build` | 21 | ~3K | macOS builds, discovery, logging, diagnostics, utilities |
-| `xc-strings` | 24 | ~8K | Xcode String Catalog (.xcstrings) localization |
+| `xc-device` | 12 | ~2K | Physical iOS devices |
 
 **When to use focused servers:**
 - Use `xc-project` for project file editing (no CLI alternative exists)
@@ -79,14 +80,14 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 **Configuration presets:**
 
 ```json
-// Minimal (~5K tokens) - project editing only
+// Minimal (~9K tokens) - project editing only
 {
   "mcpServers": {
     "xc-project": { "command": "/opt/homebrew/bin/xc-project" }
   }
 }
 
-// Standard (~14K tokens) - project + simulator + build
+// Standard (~19K tokens) - project + simulator + build
 {
   "mcpServers": {
     "xc-project": { "command": "/opt/homebrew/bin/xc-project" },
@@ -95,7 +96,7 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
   }
 }
 
-// Full (~20K tokens) - all capabilities
+// Full (~27K tokens) - all capabilities
 {
   "mcpServers": {
     "xc-project": { "command": "/opt/homebrew/bin/xc-project" },
@@ -192,7 +193,7 @@ Semantic UI automation for macOS apps via the Accessibility API. These work on *
 | `interact_key` | Send keyboard input to the focused element |
 | `interact_find` | Search for UI elements by properties |
 
-### macOS Screenshots & Builds (10 tools)
+### macOS Screenshots & Builds (11 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -205,6 +206,7 @@ Semantic UI automation for macOS apps via the Accessibility API. These work on *
 | `test_macos` | Run tests for macOS app |
 | `start_mac_log_cap` | Start capturing macOS app logs via unified logging |
 | `stop_mac_log_cap` | Stop capturing and return macOS log results |
+| `get_test_attachments` | Extract test attachments (screenshots, data files) from an `.xcresult` bundle. Exports files and returns structured metadata from the manifest. Filter by test ID or failures only |
 | `diagnostics` | Clean-build an Xcode project and collect all compiler warnings, errors, and lint violations. Same idea as `swift_diagnostics` but for `.xcodeproj`/`.xcworkspace` projects. Filters out dependency warnings so you only see your own code's problems |
 
 ### SwiftUI Preview Capture (1 tool)
@@ -314,7 +316,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `get_device_app_path` | Get path to installed app |
 | `test_device` | Run tests on physical device |
 
-### Project Management (54 tools)
+### Project Management (56 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -456,7 +458,7 @@ Project, workspace, and package paths are **auto-detected from the working direc
 
 | Tool | Description |
 |------|-------------|
-| `set_session_defaults` | Set default project, scheme, simulator, device, and configuration |
+| `set_session_defaults` | Set default project, scheme, simulator, device, configuration, and custom environment variables. Env vars are deep-merged (new keys add, existing keys update) and automatically applied to all build/test/run commands. Per-invocation env overrides session defaults |
 | `show_session_defaults` | Show current session defaults |
 | `clear_session_defaults` | Clear all session defaults |
 | `sync_xcode_defaults` | Read active scheme and run destination from Xcode's IDE state (`UserInterfaceState.xcuserstate`) and apply as session defaults |
@@ -476,7 +478,7 @@ Test tools parse both **XCTest** and **Swift Testing** output formats, extractin
 
 ## Tests
 
-578 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
+640 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
 
 ### Unit Tests
 

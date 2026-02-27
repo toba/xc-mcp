@@ -2,6 +2,7 @@ import MCP
 import Logging
 import XCMCPCore
 import Foundation
+import Subprocess
 
 public struct BuildDebugMacOSTool: Sendable {
     /// Build timeout for debug builds (10 minutes to accommodate large projects)
@@ -95,8 +96,13 @@ public struct BuildDebugMacOSTool: Sendable {
         let launchArgs = arguments.getStringArray("args")
         let stopAtEntry = arguments.getBool("stop_at_entry")
 
-        // Extract user-provided env vars
+        // Merge session env with per-invocation env (per-invocation wins)
+        let resolvedEnv = await sessionManager.resolveEnvironment(from: arguments)
+        // Also build a plain dict for LLDBRunner which takes [String: String]
         var userEnv: [String: String] = [:]
+        if let sessionEnv = await sessionManager.env {
+            userEnv.merge(sessionEnv) { _, new in new }
+        }
         if case let .object(envDict) = arguments["env"] {
             for (key, value) in envDict {
                 if case let .string(v) = value {
@@ -139,6 +145,7 @@ public struct BuildDebugMacOSTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
+                environment: resolvedEnv,
                 timeout: Self.buildTimeout,
                 onProgress: { line in
                     Self.logger.info("\(line)")

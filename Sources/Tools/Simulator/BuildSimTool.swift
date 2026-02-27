@@ -1,6 +1,7 @@
 import MCP
 import XCMCPCore
 import Foundation
+import Subprocess
 
 /// MCP tool for building Xcode projects for the iOS/tvOS/watchOS Simulator.
 ///
@@ -80,6 +81,7 @@ public struct BuildSimTool: Sendable {
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
+        let environment = await sessionManager.resolveEnvironment(from: arguments)
 
         do {
             let destination = "platform=iOS Simulator,id=\(simulator)"
@@ -90,6 +92,7 @@ public struct BuildSimTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
+                environment: environment,
             )
 
             let projectRoot = ErrorExtractor.projectRoot(

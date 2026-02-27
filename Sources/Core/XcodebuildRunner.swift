@@ -40,8 +40,14 @@ public struct XcodebuildRunner: Sendable {
     /// - Parameter arguments: The command-line arguments to pass to xcodebuild.
     /// - Returns: The result containing exit code and output.
     /// - Throws: An error if the process fails to launch.
-    public func run(arguments: [String]) async throws -> XcodebuildResult {
-        try await run(arguments: arguments, timeout: Self.defaultTimeout, onProgress: nil)
+    public func run(
+        arguments: [String],
+        environment: Environment = .inherit,
+    ) async throws -> XcodebuildResult {
+        try await run(
+            arguments: arguments, environment: environment,
+            timeout: Self.defaultTimeout, onProgress: nil,
+        )
     }
 
     /// Executes an xcodebuild command with timeout and optional progress callback.
@@ -54,6 +60,7 @@ public struct XcodebuildRunner: Sendable {
     /// - Throws: An error if the process fails to launch or times out.
     public func run(
         arguments: [String],
+        environment: Environment = .inherit,
         timeout: TimeInterval,
         onProgress: (@Sendable (String) -> Void)?,
     ) async throws -> XcodebuildResult {
@@ -65,6 +72,7 @@ public struct XcodebuildRunner: Sendable {
         let executionResult = try await Subprocess.run(
             .name("xcrun"),
             arguments: Arguments(["xcodebuild"] + arguments),
+            environment: environment,
         ) { (_: Execution, _, stdoutSeq: AsyncBufferSequence, stderrSeq: AsyncBufferSequence) in
             try await withThrowingTaskGroup(of: Void.self) { group in
                 // Read stdout
@@ -167,6 +175,7 @@ public struct XcodebuildRunner: Sendable {
         destination: String,
         configuration: String = "Debug",
         additionalArguments: [String] = [],
+        environment: Environment = .inherit,
         timeout: TimeInterval = defaultTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> XcodebuildResult {
@@ -187,7 +196,10 @@ public struct XcodebuildRunner: Sendable {
 
         args += additionalArguments
 
-        return try await run(arguments: args, timeout: timeout, onProgress: onProgress)
+        return try await run(
+            arguments: args, environment: environment,
+            timeout: timeout, onProgress: onProgress,
+        )
     }
 
     /// Builds a single target for a specific destination.
@@ -218,6 +230,7 @@ public struct XcodebuildRunner: Sendable {
         destination: String,
         configuration: String = "Debug",
         additionalArguments: [String] = [],
+        environment: Environment = .inherit,
         timeout: TimeInterval = defaultTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> XcodebuildResult {
@@ -238,7 +251,10 @@ public struct XcodebuildRunner: Sendable {
 
         args += additionalArguments
 
-        return try await run(arguments: args, timeout: timeout, onProgress: onProgress)
+        return try await run(
+            arguments: args, environment: environment,
+            timeout: timeout, onProgress: onProgress,
+        )
     }
 
     /// Builds and runs tests for a scheme.
@@ -267,6 +283,7 @@ public struct XcodebuildRunner: Sendable {
         enableCodeCoverage: Bool = false,
         resultBundlePath: String? = nil,
         additionalArguments: [String] = [],
+        environment: Environment = .inherit,
         timeout: TimeInterval = defaultTimeout,
     ) async throws -> XcodebuildResult {
         var args: [String] = []
@@ -308,7 +325,10 @@ public struct XcodebuildRunner: Sendable {
         args += ["test"]
         args += additionalArguments
 
-        return try await run(arguments: args, timeout: timeout, onProgress: nil)
+        return try await run(
+            arguments: args, environment: environment,
+            timeout: timeout, onProgress: nil,
+        )
     }
 
     /// Cleans build artifacts for a scheme.

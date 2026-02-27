@@ -1,6 +1,7 @@
 import MCP
 import XCMCPCore
 import Foundation
+import Subprocess
 
 public struct SwiftPackageBuildTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -61,6 +62,7 @@ public struct SwiftPackageBuildTool: Sendable {
         let configuration = arguments.getString("configuration") ?? "debug"
         let product = arguments.getString("product")
         let buildTests = arguments.getBool("build_tests")
+        let environment = await sessionManager.resolveEnvironment(from: arguments)
         let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
             ?? SwiftRunner.defaultTimeout
 
@@ -80,6 +82,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 configuration: configuration,
                 product: product,
                 buildTests: buildTests,
+                environment: environment,
                 timeout: timeout,
             )
 

@@ -1,6 +1,7 @@
 import MCP
 import XCMCPCore
 import Foundation
+import Subprocess
 
 public struct TestDeviceTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -68,6 +69,7 @@ public struct TestDeviceTool: Sendable {
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let device = try await sessionManager.resolveDevice(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
+        let environment = await sessionManager.resolveEnvironment(from: arguments)
 
         let testParams = arguments.testParameters()
 
@@ -88,6 +90,7 @@ public struct TestDeviceTool: Sendable {
                 skipTesting: testParams.skipTesting,
                 enableCodeCoverage: testParams.enableCodeCoverage,
                 resultBundlePath: resultBundlePath,
+                environment: environment,
                 timeout: TimeInterval(testParams.timeout ?? 300),
             )
 

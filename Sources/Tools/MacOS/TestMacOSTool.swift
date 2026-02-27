@@ -1,6 +1,7 @@
 import MCP
 import XCMCPCore
 import Foundation
+import Subprocess
 
 public struct TestMacOSTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -66,6 +67,7 @@ public struct TestMacOSTool: Sendable {
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
+        let environment = await sessionManager.resolveEnvironment(from: arguments)
         let arch = arguments.getString("arch")
 
         let testParams = arguments.testParameters()
@@ -90,6 +92,7 @@ public struct TestMacOSTool: Sendable {
                 skipTesting: testParams.skipTesting,
                 enableCodeCoverage: testParams.enableCodeCoverage,
                 resultBundlePath: resultBundlePath,
+                environment: environment,
                 timeout: TimeInterval(testParams.timeout ?? 300),
             )
 

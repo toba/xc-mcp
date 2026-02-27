@@ -51,6 +51,13 @@ public struct SetSessionDefaultsTool: Sendable {
                         "type": .string("string"),
                         "description": .string("Build configuration (Debug or Release)"),
                     ]),
+                    "env": .object([
+                        "type": .string("object"),
+                        "additionalProperties": .object(["type": .string("string")]),
+                        "description": .string(
+                            "Custom environment variables applied to all build/test/run commands. Keys are merged with existing env (new keys add, existing keys update).",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -73,6 +80,20 @@ public struct SetSessionDefaultsTool: Sendable {
             )
         }
 
+        // Parse env dict
+        var env: [String: String]?
+        if case let .object(envDict) = arguments["env"] {
+            var parsed: [String: String] = [:]
+            for (key, value) in envDict {
+                if case let .string(str) = value {
+                    parsed[key] = str
+                }
+            }
+            if !parsed.isEmpty {
+                env = parsed
+            }
+        }
+
         // Validate configuration if provided
         if let config = configuration {
             let validConfigs = ["Debug", "Release"]
@@ -91,6 +112,7 @@ public struct SetSessionDefaultsTool: Sendable {
             simulatorUDID: simulatorUDID,
             deviceUDID: deviceUDID,
             configuration: configuration,
+            env: env,
         )
 
         let summary = await sessionManager.summary()

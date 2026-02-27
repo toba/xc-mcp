@@ -25,6 +25,10 @@
 - Support `XCLocalSwiftPackageReference` deletion via XcodeProj 9.9.0 ([#108](https://github.com/toba/xc-mcp/issues/108))
 - `launch_mac_app` / `build_run_macos` return PID and detect early exit ([#139](https://github.com/toba/xc-mcp/issues/139))
 - `debug_attach_sim` supports macOS apps by `bundle_id` without requiring a simulator ([#140](https://github.com/toba/xc-mcp/issues/140))
+- Add `get_test_attachments` tool; extract screenshots and data files from `.xcresult` bundles with test ID and failure filtering ([#144](https://github.com/toba/xc-mcp/issues/144))
+- Add persistent custom env vars to session defaults; `set_session_defaults(env: {...})` deep-merges and applies to all build/test/run commands ([#148](https://github.com/toba/xc-mcp/issues/148))
+- Suggest correct scheme when test target isn't in the specified scheme; no more guessing which scheme has your tests ([#145](https://github.com/toba/xc-mcp/issues/145))
+- `start_mac_log_cap` fixes `bundle_id` predicate reliability; adds `level` parameter and stream health checks ([#147](https://github.com/toba/xc-mcp/issues/147))
 
 ### 🐞 Fixes
 
@@ -44,10 +48,12 @@
 - Fix `build_run_macos` / `launch_mac_app` crashing on non-embedded frameworks; symlink from `BUILT_PRODUCTS_DIR` instead of relying on `DYLD_FRAMEWORK_PATH` ([#141](https://github.com/toba/xc-mcp/issues/141))
 - Fix `build_debug_macos` timeout with `stop_at_entry`; resolve actual executable name instead of `.app` folder name ([#142](https://github.com/toba/xc-mcp/issues/142))
 - Fix `debug_detach` rejecting valid PID parameter; `getInt` now handles JSON numbers decoded as doubles ([#143](https://github.com/toba/xc-mcp/issues/143))
+- Fix `get_test_attachments` parsing manifest with wrong keys; returns `Unnamed`/`unknown` for all attachments ([#146](https://github.com/toba/xc-mcp/issues/146))
 
 ### 🗜️ Tweaks
 
 - Redesign integration tests for speed; split slow tests behind `RUN_SLOW_TESTS` flag ([#96](https://github.com/toba/xc-mcp/issues/96))
+- Bump XcodeProj to 9.10.1; picks up Xcode 26 `dstSubfolder` support and `CommentedString` perf fix ([#149](https://github.com/toba/xc-mcp/issues/149))
 
 ## Week of Feb 15 – Feb 21, 2026
 

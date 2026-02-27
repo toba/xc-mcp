@@ -1,6 +1,7 @@
 import MCP
 import XCMCPCore
 import Foundation
+import Subprocess
 
 public struct BuildRunSimTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -75,6 +76,7 @@ public struct BuildRunSimTool: Sendable {
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
+        let environment = await sessionManager.resolveEnvironment(from: arguments)
         let bundleId = arguments.getString("bundle_id")
 
         do {
@@ -87,6 +89,7 @@ public struct BuildRunSimTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
+                environment: environment,
             )
 
             if !buildResult.succeeded {

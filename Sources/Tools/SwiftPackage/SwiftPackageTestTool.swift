@@ -72,19 +72,8 @@ public struct SwiftPackageTestTool: Sendable {
         let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
             ?? SwiftRunner.defaultTimeout
 
-        // Build environment from env dict
-        var environment: Environment = .inherit
-        if case let .object(envDict) = arguments["env"] {
-            var overrides: [Environment.Key: String?] = [:]
-            for (key, value) in envDict {
-                if case let .string(str) = value {
-                    overrides[Environment.Key(stringLiteral: key)] = str
-                }
-            }
-            if !overrides.isEmpty {
-                environment = environment.updating(overrides)
-            }
-        }
+        // Merge session env with per-invocation env (per-invocation wins)
+        let environment = await sessionManager.resolveEnvironment(from: arguments)
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(

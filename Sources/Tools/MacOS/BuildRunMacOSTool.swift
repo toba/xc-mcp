@@ -1,6 +1,7 @@
 import MCP
 import XCMCPCore
 import Foundation
+import Subprocess
 
 public struct BuildRunMacOSTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
@@ -69,6 +70,7 @@ public struct BuildRunMacOSTool: Sendable {
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
+        let environment = await sessionManager.resolveEnvironment(from: arguments)
         let arch = arguments.getString("arch")
         let launchArgs = arguments.getStringArray("args")
 
@@ -85,6 +87,7 @@ public struct BuildRunMacOSTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
+                environment: environment,
             )
 
             let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)

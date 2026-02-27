@@ -1,5 +1,6 @@
 import MCP
 import Foundation
+import Subprocess
 
 /// Holds all session defaults as a single value type.
 ///
@@ -19,6 +20,8 @@ public struct SessionDefaults: Sendable, Codable {
     public let deviceUDID: String?
     /// Current build configuration (Debug/Release)
     public let configuration: String?
+    /// Custom environment variables applied to all build/test/run commands
+    public let env: [String: String]?
 }
 
 /// Manages session state for the MCP server, including default project, scheme, and device settings
@@ -44,6 +47,9 @@ public actor SessionManager {
     /// Current build configuration (Debug/Release)
     public private(set) var configuration: String?
 
+    /// Custom environment variables applied to all build/test/run commands
+    public private(set) var env: [String: String]?
+
     /// Shared file path for persisting session defaults across server processes.
     /// Located in /tmp so it's cleared on reboot — no stale state across sessions.
     static let sharedFilePath = URL(fileURLWithPath: "/tmp/xc-mcp-session.json")
@@ -61,6 +67,7 @@ public actor SessionManager {
             simulatorUDID = defaults.simulatorUDID
             deviceUDID = defaults.deviceUDID
             configuration = defaults.configuration
+            env = defaults.env
         }
         lastKnownModDate = Self.fileModDate()
     }
@@ -95,6 +102,7 @@ public actor SessionManager {
             simulatorUDID = defaults.simulatorUDID
             deviceUDID = defaults.deviceUDID
             configuration = defaults.configuration
+            env = defaults.env
         }
         lastKnownModDate = currentModDate
     }
@@ -125,6 +133,7 @@ public actor SessionManager {
         simulatorUDID: String? = nil,
         deviceUDID: String? = nil,
         configuration: String? = nil,
+        env: [String: String]? = nil,
     ) {
         if let projectPath {
             self.projectPath = projectPath
@@ -155,6 +164,12 @@ public actor SessionManager {
         if let configuration {
             self.configuration = configuration
         }
+        if let env {
+            // Deep-merge: new keys add, existing keys update
+            var merged = self.env ?? [:]
+            merged.merge(env) { _, new in new }
+            self.env = merged
+        }
         saveToDisk()
     }
 
@@ -167,6 +182,7 @@ public actor SessionManager {
         simulatorUDID = nil
         deviceUDID = nil
         configuration = nil
+        env = nil
         deleteFromDisk()
     }
 
@@ -201,6 +217,15 @@ public actor SessionManager {
         lines.append("Simulator: \(simulatorUDID ?? "(not set)")")
         lines.append("Device: \(deviceUDID ?? "(not set)")")
 
+        if let env, !env.isEmpty {
+            lines.append("Environment:")
+            for key in env.keys.sorted() {
+                lines.append("  \(key)=\(env[key]!)")
+            }
+        } else {
+            lines.append("Environment: (not set)")
+        }
+
         return lines.joined(separator: "\n")
     }
 
@@ -222,6 +247,7 @@ public actor SessionManager {
             simulatorUDID: simulatorUDID,
             deviceUDID: deviceUDID,
             configuration: configuration,
+            env: env,
         )
     }
 
@@ -319,6 +345,35 @@ public actor SessionManager {
             )
         }
         return (project, workspace)
+    }
+
+    /// Resolves environment variables by merging session defaults with per-invocation overrides.
+    ///
+    /// Session env provides the baseline; per-invocation env keys override session values.
+    ///
+    /// - Parameter arguments: The tool arguments dictionary (may contain an "env" object).
+    /// - Returns: An `Environment` value to pass to subprocess runners. Returns `.inherit`
+    ///   when no env vars are configured.
+    public func resolveEnvironment(from arguments: [String: Value]) -> Environment {
+        reloadIfNeeded()
+        var merged: [String: String] = env ?? [:]
+
+        // Per-invocation env overrides session defaults
+        if case let .object(envDict) = arguments["env"] {
+            for (key, value) in envDict {
+                if case let .string(str) = value {
+                    merged[key] = str
+                }
+            }
+        }
+
+        guard !merged.isEmpty else { return .inherit }
+
+        var overrides: [Environment.Key: String?] = [:]
+        for (key, value) in merged {
+            overrides[Environment.Key(stringLiteral: key)] = value
+        }
+        return Environment.inherit.updating(overrides)
     }
 
     /// Resolves the package path from arguments or session defaults.
