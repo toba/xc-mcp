@@ -35,6 +35,10 @@ public final class BuildOutputParser: @unchecked Sendable {
     private var pendingDuplicateSymbol: String?
     private var pendingConflictingFiles: [String] = []
 
+    // Crash-to-test association state
+    private var lastStartedTestName: String?
+    private var pendingSignalCode: Int?
+
     // Test duration tracking for slow/flaky detection
     private var passedTestDurations: [String: Double] = [:]
     private var failedTestDurations: [String: Double] = [:]
@@ -91,6 +95,23 @@ public final class BuildOutputParser: @unchecked Sendable {
                     )
                 }
             }
+        }
+
+        // Safety net: if a test started but never completed and the test run failed,
+        // record it as a crash (ported from xcsift a1723d8)
+        if testRunFailed, let testName = lastStartedTestName {
+            let normalizedName = normalizeTestName(testName)
+            if !hasSeenSimilarTest(normalizedName) {
+                let message = pendingSignalCode.map {
+                    "Crashed (signal \($0)): last test started before crash"
+                } ?? "Test did not complete — possible crash"
+                failedTests.append(FailedTest(
+                    test: testName, message: message, file: nil, line: nil,
+                ))
+                seenTestNames.insert(normalizedName)
+            }
+            lastStartedTestName = nil
+            pendingSignalCode = nil
         }
 
         // Aggregate test counts from both XCTest and Swift Testing
@@ -259,6 +280,8 @@ public final class BuildOutputParser: @unchecked Sendable {
         pendingLinkerSymbol = nil
         pendingDuplicateSymbol = nil
         pendingConflictingFiles = []
+        lastStartedTestName = nil
+        pendingSignalCode = nil
         parallelTestsTotalCount = nil
         testRunFailed = false
         passedTestDurations = [:]
@@ -316,6 +339,8 @@ public final class BuildOutputParser: @unchecked Sendable {
                 || line.contains("Build complete!")
                 || line.hasPrefix("RegisterWithLaunchServices")
                 || line.hasPrefix("Validate") || line.contains("Fatal error")
+                || line.contains("signal code") || line.contains("Restarting after")
+                || line.contains("started")
                 || (line.hasPrefix("/") && line.contains(".swift:"))
 
         if !containsRelevant {
@@ -344,6 +369,38 @@ public final class BuildOutputParser: @unchecked Sendable {
             if seenExecutablePaths.insert(executable.path).inserted {
                 executables.append(executable)
             }
+            return
+        }
+
+        // Track test starts for crash association
+        if let startedName = parseStartedTest(line) {
+            lastStartedTestName = startedName
+            return
+        }
+
+        // Detect crash signal codes
+        if line.contains("signal code") {
+            if let lastSpace = line.lastIndex(of: " ") {
+                let codeStr = String(line[line.index(after: lastSpace)...])
+                pendingSignalCode = Int(codeStr)
+            }
+            return
+        }
+
+        // Crash confirmation — associate with last started test
+        if line.contains("Restarting after"), let testName = lastStartedTestName {
+            let normalizedName = normalizeTestName(testName)
+            if !hasSeenSimilarTest(normalizedName) {
+                let message = pendingSignalCode.map {
+                    "Crashed (signal \($0)): last test started before crash"
+                } ?? "Crashed: last test started before crash"
+                failedTests.append(FailedTest(
+                    test: testName, message: message, file: nil, line: nil,
+                ))
+                seenTestNames.insert(normalizedName)
+            }
+            lastStartedTestName = nil
+            pendingSignalCode = nil
             return
         }
 
@@ -377,6 +434,7 @@ public final class BuildOutputParser: @unchecked Sendable {
                     }
                 }
             }
+            lastStartedTestName = nil
         } else if let error = parseError(line) {
             let key = "\(error.file ?? ""):\(error.line ?? 0):\(error.message)"
             if !seenErrors.contains(key) {
@@ -613,10 +671,44 @@ public final class BuildOutputParser: @unchecked Sendable {
             return
         }
         passedTestsCount += 1
+        lastStartedTestName = nil
 
         if let dur = duration {
             passedTestDurations[normalizedTestName] = dur
         }
+    }
+
+    /// Extracts a test name from "started" lines (XCTest and Swift Testing formats).
+    private func parseStartedTest(_ line: String) -> String? {
+        // XCTest: Test Case '-[Module.Class testMethod]' started.
+        // Also: Test Case 'Module.Class.testMethod' started.
+        if line.hasPrefix("Test Case '"), line.hasSuffix("' started.") {
+            let prefixLength = 11 // "Test Case '"
+            let suffixLength = 10 // "' started."
+            let startIndex = line.index(line.startIndex, offsetBy: prefixLength)
+            let endIndex = line.index(line.endIndex, offsetBy: -suffixLength)
+            guard startIndex < endIndex else { return nil }
+            return String(line[startIndex ..< endIndex])
+        }
+
+        // Swift Testing: ◇ Test "name" started.
+        // Also: ◇ Test funcName() started.
+        if line.contains("Test "), line.hasSuffix(" started.") {
+            if let testRange = line.range(of: "Test ") {
+                let nameStart = testRange.upperBound
+                guard !line[nameStart...].hasPrefix("run with "),
+                      !line[nameStart...].hasPrefix("Case ")
+                else { return nil }
+                if let extracted = extractSwiftTestingName(from: line, after: nameStart) {
+                    let remaining = line[extracted.endIndex...]
+                    if remaining == " started." {
+                        return extracted.name
+                    }
+                }
+            }
+        }
+
+        return nil
     }
 
     private func parseError(_ line: String) -> BuildError? {

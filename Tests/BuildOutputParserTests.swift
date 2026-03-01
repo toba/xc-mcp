@@ -503,4 +503,126 @@ struct BuildOutputParserTests {
         #expect(result.summary.errors == 0)
         #expect(result.summary.failedTests == 0)
     }
+
+    // MARK: - Crash-to-test association
+
+    @Test("Crash with signal code associates with last started test")
+    func crashWithSignalCode() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Case 'MyTests.testCrashingMethod' started.
+        Exited with unexpected signal code 11
+        Restarting after MyTests.testCrashingMethod
+        ** TEST FAILED **
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "MyTests.testCrashingMethod")
+        #expect(result.failedTests[0].message.contains("signal 11"))
+        #expect(result.failedTests[0].message.contains("Crashed"))
+    }
+
+    @Test("Crash without signal code associates with last started test")
+    func crashWithoutSignalCode() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Case 'MyTests.testBadAccess' started.
+        Restarting after MyTests.testBadAccess
+        ** TEST FAILED **
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "MyTests.testBadAccess")
+        #expect(result.failedTests[0].message.contains("Crashed"))
+    }
+
+    @Test("Passed test clears crash tracking — no false association")
+    func passedTestClearsCrashTracking() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Case 'MyTests.testOK' started.
+        Test Case 'MyTests.testOK' passed (0.001 seconds).
+        Test Case 'MyTests.testCrasher' started.
+        Exited with unexpected signal code 6
+        Restarting after MyTests.testCrasher
+        ** TEST FAILED **
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "MyTests.testCrasher")
+    }
+
+    @Test("Safety net catches incomplete test when test run failed")
+    func safetyNetIncompleteTest() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Case 'MyTests.testHangsOrCrashes' started.
+        ** TEST FAILED **
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "MyTests.testHangsOrCrashes")
+        #expect(result.failedTests[0].message.contains("did not complete"))
+    }
+
+    @Test("Safety net with pending signal code")
+    func safetyNetWithSignalCode() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Case 'MyTests.testSegfault' started.
+        Exited with unexpected signal code 11
+        ** TEST FAILED **
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "MyTests.testSegfault")
+        #expect(result.failedTests[0].message.contains("signal 11"))
+    }
+
+    @Test("No false crash for normally failed test")
+    func noFalseCrashForNormalFailure() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Case 'MyTests.testAssert' started.
+        Test Case 'MyTests.testAssert' failed (0.010 seconds).
+        ** TEST FAILED **
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.failedTests.count == 1)
+        #expect(!result.failedTests[0].message.contains("Crashed"))
+    }
+
+    @Test("Swift Testing test start tracked for crash association")
+    func swiftTestingCrashAssociation() {
+        let parser = BuildOutputParser()
+        let input = """
+        ◇ Test "validateInput()" started.
+        Exited with unexpected signal code 6
+        Restarting after validateInput
+        ** TEST FAILED **
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "validateInput()")
+        #expect(result.failedTests[0].message.contains("signal 6"))
+    }
 }
