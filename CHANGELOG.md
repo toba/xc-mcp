@@ -1,5 +1,12 @@
 # Changelog
 
+## Week of Mar 1 – Mar 7, 2026
+
+### 🐞 Fixes
+
+- Default `ONLY_ACTIVE_ARCH=YES` for Debug in all target-creation tools; prevents cross-compilation failures with SPM dependencies ([#151](https://github.com/toba/xc-mcp/issues/151))
+- Fix `add_target`, `add_app_extension`, `add_swift_package`, `add_framework`, and `create_xcodeproj` issues found during extension setup; orphan targets, missing framework linking, wrong `sourceTree` for developer frameworks, macOS `TARGETED_DEVICE_FAMILY`, `ALWAYS_SEARCH_USER_PATHS` ([#150](https://github.com/toba/xc-mcp/issues/150))
+
 ## Week of Feb 22 – Feb 28, 2026
 
 ### ✨ Features
