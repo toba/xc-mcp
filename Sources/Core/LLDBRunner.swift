@@ -1016,7 +1016,7 @@ public struct LLDBRunner: Sendable {
     public func setBreakpoint(
         pid: Int32,
         file: String,
-        line: Int
+        line: Int,
     ) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let setOutput = try await session.sendCommand(

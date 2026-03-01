@@ -179,7 +179,7 @@ public struct LinkerError: Sendable {
         symbol: String,
         architecture: String,
         referencedFrom: String,
-        message: String = ""
+        message: String = "",
     ) {
         self.symbol = symbol
         self.architecture = architecture

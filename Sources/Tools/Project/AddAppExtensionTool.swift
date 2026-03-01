@@ -233,6 +233,7 @@ public struct AddAppExtensionTool: Sendable {
                 "SKIP_INSTALL": .string("YES"),
                 "ALWAYS_SEARCH_USER_PATHS": .string("NO"),
                 "DEBUG_INFORMATION_FORMAT": .string("dwarf"),
+                "ONLY_ACTIVE_ARCH": .string("YES"),
             ]
 
             var releaseSettings: [String: BuildSetting] = [

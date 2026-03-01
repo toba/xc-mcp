@@ -356,6 +356,7 @@ public struct ScaffoldIOSProjectTool: Sendable {
 
         if debug {
             settings["SWIFT_OPTIMIZATION_LEVEL"] = .string("-Onone")
+            settings["ONLY_ACTIVE_ARCH"] = .string("YES")
         }
 
         return settings

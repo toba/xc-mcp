@@ -313,7 +313,7 @@ public struct SimctlRunner: Sendable {
     public func setLocation(
         udid: String,
         latitude: Double,
-        longitude: Double
+        longitude: Double,
     ) async throws(SimctlError) -> SimctlResult {
         try await run(arguments: ["location", udid, "set", "\(latitude),\(longitude)"])
     }

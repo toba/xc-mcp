@@ -239,7 +239,7 @@ public enum ErrorExtractor {
         output: String,
         projectRoot: String,
         projectPath: String? = nil,
-        workspacePath: String? = nil
+        workspacePath: String? = nil,
     ) -> String? {
         // xcodebuild emits: "... isn't a member of the specified test plan or scheme."
         guard

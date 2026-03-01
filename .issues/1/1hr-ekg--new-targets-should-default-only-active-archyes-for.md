@@ -1,15 +1,15 @@
 ---
 # 1hr-ekg
 title: New targets should default ONLY_ACTIVE_ARCH=YES for Debug
-status: ready
+status: completed
 type: bug
 priority: normal
 created_at: 2026-03-01T06:46:03Z
-updated_at: 2026-03-01T06:46:03Z
+updated_at: 2026-03-01T07:04:33Z
 sync:
     github:
         issue_number: "151"
-        synced_at: "2026-03-01T07:00:29Z"
+        synced_at: "2026-03-01T07:04:37Z"
 ---
 
 ## Context
@@ -36,3 +36,15 @@ set_build_setting(target, configuration: "Debug", setting_name: "ONLY_ACTIVE_ARC
 ```
 
 Related: z23-qhd (other xc-project tool issues from same session)
+
+
+## Summary of Changes
+
+Added `ONLY_ACTIVE_ARCH = YES` to Debug build settings in all target-creation tools:
+
+- `AddTargetTool` — `debugSettings` dictionary
+- `AddAppExtensionTool` — `debugSettings` dictionary
+- `ScaffoldIOSProjectTool` — `createAppTargetBuildSettings(debug: true)`
+- `ScaffoldMacOSProjectTool` — `createAppTargetBuildSettings(debug: true)`
+
+This matches Xcode's default behavior for new projects and prevents cross-compilation failures when targets depend on SPM packages that only build for the active architecture.

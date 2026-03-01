@@ -58,7 +58,7 @@ enum TestProjectHelper {
     static func createTestProjectWithTarget(
         name: String,
         targetName: String,
-        at path: Path
+        at path: Path,
     ) throws {
         // Create the .pbxproj file using XcodeProj
         let pbxproj = PBXProj()

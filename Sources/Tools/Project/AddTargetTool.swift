@@ -172,6 +172,7 @@ public struct AddTargetTool: Sendable {
                 "INFOPLIST_FILE": .string("\(targetName)/Info.plist"),
                 "SWIFT_VERSION": .string("5.0"),
                 "ALWAYS_SEARCH_USER_PATHS": .string("NO"),
+                "ONLY_ACTIVE_ARCH": .string("YES"),
             ]
             var releaseSettings: [String: BuildSetting] = [
                 "PRODUCT_NAME": .string(targetName),

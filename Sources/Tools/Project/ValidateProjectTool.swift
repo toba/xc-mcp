@@ -214,7 +214,7 @@ public struct ValidateProjectTool: Sendable {
     private func checkFrameworkConsistency(
         linked: Set<String>,
         embedded: Set<String>,
-        diagnostics: inout [Diagnostic]
+        diagnostics: inout [Diagnostic],
     ) {
         // Linked but not embedded (skip system frameworks)
         for name in linked.sorted() where !embedded.contains(name) {

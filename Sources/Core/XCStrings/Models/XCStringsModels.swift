@@ -148,7 +148,7 @@ public struct TranslationInfo: Codable, Sendable {
         language: String,
         value: String?,
         state: String?,
-        hasVariations: Bool
+        hasVariations: Bool,
     ) {
         self.key = key
         self.language = language
