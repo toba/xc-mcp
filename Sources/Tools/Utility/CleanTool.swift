@@ -84,7 +84,7 @@ public struct CleanTool: Sendable {
 
                 // Clean derived data if requested
                 if cleanDerivedData {
-                    let derivedDataResult = try await cleanDerivedDataDirectory(
+                    let derivedDataResult = cleanDerivedDataDirectory(
                         projectPath: projectPath, workspacePath: workspacePath,
                     )
                     messages.append(derivedDataResult)
@@ -103,7 +103,6 @@ public struct CleanTool: Sendable {
     }
 
     private func cleanDerivedDataDirectory(projectPath: String?, workspacePath: String?)
-
         -> String
     {
         // Get the default DerivedData path

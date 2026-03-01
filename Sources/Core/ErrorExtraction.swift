@@ -236,8 +236,10 @@ public enum ErrorExtractor {
     /// Detects "not a member of the specified test plan or scheme" errors and enhances
     /// them with available test targets, the correct identifier format, and scheme suggestions.
     private static func enhanceTestPlanError(
-        output: String, projectRoot: String,
-        projectPath: String? = nil, workspacePath: String? = nil,
+        output: String,
+        projectRoot: String,
+        projectPath: String? = nil,
+        workspacePath: String? = nil
     ) -> String? {
         // xcodebuild emits: "... isn't a member of the specified test plan or scheme."
         guard

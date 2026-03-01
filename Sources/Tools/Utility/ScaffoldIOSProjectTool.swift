@@ -89,7 +89,7 @@ public struct ScaffoldIOSProjectTool: Sendable {
                 "\(projectName).xcodeproj",
             ).path
             let pbxproj = PBXProj()
-            let project = try createProject(
+            let project = createProject(
                 pbxproj: pbxproj,
                 projectName: projectName,
                 organizationName: organizationName,
@@ -174,7 +174,7 @@ public struct ScaffoldIOSProjectTool: Sendable {
         bundleIdPrefix: String,
         deploymentTarget: String,
         includeTests _: Bool,
-    ) throws -> PBXProject {
+    ) -> PBXProject {
         // Create main group
         let mainGroup = PBXGroup(children: [], sourceTree: .group)
         pbxproj.add(object: mainGroup)
@@ -213,7 +213,7 @@ public struct ScaffoldIOSProjectTool: Sendable {
         )
 
         // Create app target
-        let appTarget = try createAppTarget(
+        let appTarget = createAppTarget(
             pbxproj: pbxproj,
             project: project,
             projectName: projectName,

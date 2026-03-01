@@ -80,7 +80,7 @@ public struct RecordSimVideoTool: Sendable {
             case "stop":
                 return try await stopRecording(arguments: arguments)
             case "list":
-                return try await listRecordings()
+                return await listRecordings()
             default:
                 throw MCPError.invalidParams(
                     "Invalid action: \(action). Use 'start', 'stop', or 'list'.",
@@ -106,7 +106,7 @@ public struct RecordSimVideoTool: Sendable {
         }
 
         do {
-            let process = try await simctlRunner.recordVideo(
+            let process = try simctlRunner.recordVideo(
                 udid: simulator, outputPath: outputPath,
             )
             let sessionId = UUID().uuidString

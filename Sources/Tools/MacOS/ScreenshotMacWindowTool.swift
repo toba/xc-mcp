@@ -48,7 +48,7 @@ public struct ScreenshotMacWindowTool: Sendable {
 
     /// Ensures the process has a WindowServer connection for ScreenCaptureKit.
     private static func ensureGUIConnection() async {
-        await MainActor.run {
+        _ = await MainActor.run {
             NSApplication.shared.setActivationPolicy(.accessory)
         }
     }

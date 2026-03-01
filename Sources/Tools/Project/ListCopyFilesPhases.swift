@@ -128,6 +128,8 @@ public struct ListCopyFilesPhases: Sendable {
                 return "Shared Support"
             case .plugins:
                 return "Plugins"
+            case .other:
+                return "Other"
             @unknown default:
                 return "Unknown"
         }

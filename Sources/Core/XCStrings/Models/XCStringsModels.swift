@@ -143,9 +143,13 @@ public struct TranslationInfo: Codable, Sendable {
     public let state: String?
     public let hasVariations: Bool
 
-    public init(key: String, language: String, value: String?, state: String?,
-                hasVariations: Bool)
-    {
+    public init(
+        key: String,
+        language: String,
+        value: String?,
+        state: String?,
+        hasVariations: Bool
+    ) {
         self.key = key
         self.language = language
         self.value = value

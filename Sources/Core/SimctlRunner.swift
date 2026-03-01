@@ -310,10 +310,11 @@ public struct SimctlRunner: Sendable {
     ///   - latitude: The latitude coordinate.
     ///   - longitude: The longitude coordinate.
     /// - Returns: The result containing exit code and output.
-    public func setLocation(udid: String, latitude: Double,
-                            longitude: Double) async throws(SimctlError)
-        -> SimctlResult
-    {
+    public func setLocation(
+        udid: String,
+        latitude: Double,
+        longitude: Double
+    ) async throws(SimctlError) -> SimctlResult {
         try await run(arguments: ["location", udid, "set", "\(latitude),\(longitude)"])
     }
 

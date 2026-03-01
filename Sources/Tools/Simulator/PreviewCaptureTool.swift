@@ -101,7 +101,7 @@ public struct PreviewCaptureTool: Sendable {
         var tempDir: String?
         var resolvedProjectPath: String?
         var schemePath: String?
-        var xcconfigPath: String?
+        let xcconfigPath: String? = nil
 
         do {
             // Step 1: Resolve inputs
@@ -116,7 +116,7 @@ public struct PreviewCaptureTool: Sendable {
             } else {
                 simulator = await sessionManager.simulatorUDID
             }
-            let configuration = await sessionManager.resolveConfiguration(from: arguments)
+            _ = await sessionManager.resolveConfiguration(from: arguments)
             let savePath = arguments.getString("save_path")
             let renderDelay = arguments.getDouble("render_delay") ?? 2.0
 
@@ -1309,7 +1309,7 @@ public struct PreviewCaptureTool: Sendable {
 
     /// Ensures the process has a WindowServer connection for ScreenCaptureKit.
     private static func ensureGUIConnection() async {
-        await MainActor.run {
+        _ = await MainActor.run {
             NSApplication.shared.setActivationPolicy(.accessory)
         }
     }

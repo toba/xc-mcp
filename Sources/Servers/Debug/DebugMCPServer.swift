@@ -200,9 +200,9 @@ public struct DebugMCPServer: Sendable {
                 case .setSessionDefaults:
                     return try await setSessionDefaultsTool.execute(arguments: arguments)
                 case .showSessionDefaults:
-                    return try await showSessionDefaultsTool.execute(arguments: arguments)
+                    return await showSessionDefaultsTool.execute(arguments: arguments)
                 case .clearSessionDefaults:
-                    return try await clearSessionDefaultsTool.execute(arguments: arguments)
+                    return await clearSessionDefaultsTool.execute(arguments: arguments)
             }
         }
 

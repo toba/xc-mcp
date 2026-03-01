@@ -181,7 +181,6 @@ public struct InteractRunner: Sendable {
         results: inout [(InteractElement, SendableAXUIElement)],
     ) {
         let info = getAttributes(from: element, id: nextId, depth: depth)
-        let currentId = nextId
         nextId += 1
 
         // Get children before appending so we can set childCount

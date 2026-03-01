@@ -128,7 +128,7 @@ public struct BuildDebugMacOSTool: Sendable {
             if let bundleId {
                 if let existing = await LLDBSessionManager.shared.getSession(bundleId: bundleId) {
                     // Kill the old process and terminate the session
-                    try? await existing.session.sendCommand("process kill")
+                    _ = try? await existing.session.sendCommand("process kill")
                     await LLDBSessionManager.shared.removeSession(bundleId: bundleId)
                 }
             }

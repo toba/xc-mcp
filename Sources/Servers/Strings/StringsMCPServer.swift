@@ -168,9 +168,9 @@ public struct StringsMCPServer: Sendable {
                 case .statsProgress:
                     return try await statsProgressTool.execute(arguments: arguments)
                 case .batchStatsCoverage:
-                    return try await batchStatsCoverageTool.execute(arguments: arguments)
+                    return try batchStatsCoverageTool.execute(arguments: arguments)
                 case .createFile:
-                    return try await createFileTool.execute(arguments: arguments)
+                    return try createFileTool.execute(arguments: arguments)
                 case .addTranslation:
                     return try await addTranslationTool.execute(arguments: arguments)
                 case .addTranslations:

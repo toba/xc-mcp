@@ -115,7 +115,7 @@ public struct XctraceRecordTool: Sendable {
             case "stop":
                 return try await stopRecording(arguments: arguments)
             case "list":
-                return try await listRecordings()
+                return await listRecordings()
             default:
                 throw MCPError.invalidParams(
                     "Invalid action: \(action). Use 'start', 'stop', or 'list'.",

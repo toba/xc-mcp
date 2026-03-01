@@ -175,9 +175,12 @@ public struct LinkerError: Sendable {
     public let message: String
     public let conflictingFiles: [String]
 
-    public init(symbol: String, architecture: String, referencedFrom: String,
-                message: String = "")
-    {
+    public init(
+        symbol: String,
+        architecture: String,
+        referencedFrom: String,
+        message: String = ""
+    ) {
         self.symbol = symbol
         self.architecture = architecture
         self.referencedFrom = referencedFrom

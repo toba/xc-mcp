@@ -918,9 +918,9 @@ public struct XcodeMCPServer: Sendable {
                 case .setSessionDefaults:
                     return try await setSessionDefaultsTool.execute(arguments: arguments)
                 case .showSessionDefaults:
-                    return try await showSessionDefaultsTool.execute(arguments: arguments)
+                    return await showSessionDefaultsTool.execute(arguments: arguments)
                 case .clearSessionDefaults:
-                    return try await clearSessionDefaultsTool.execute(arguments: arguments)
+                    return await clearSessionDefaultsTool.execute(arguments: arguments)
                 case .syncXcodeDefaults:
                     return try await syncXcodeDefaultsTool.execute(arguments: arguments)
                 case .manageWorkflows:
@@ -996,7 +996,7 @@ public struct XcodeMCPServer: Sendable {
                 case .startMacLogCap:
                     return try await startMacLogCapTool.execute(arguments: arguments)
                 case .stopMacLogCap:
-                    return try await stopMacLogCapTool.execute(arguments: arguments)
+                    return await stopMacLogCapTool.execute(arguments: arguments)
                 case .screenshotMacWindow:
                     return try await screenshotMacWindowTool.execute(arguments: arguments)
                 // Discovery tools
@@ -1133,13 +1133,13 @@ public struct XcodeMCPServer: Sendable {
                 case .clean:
                     return try await cleanTool.execute(arguments: arguments)
                 case .doctor:
-                    return try await doctorTool.execute(arguments: arguments)
+                    return await doctorTool.execute(arguments: arguments)
                 case .scaffoldIOS:
                     return try scaffoldIOSTool.execute(arguments: arguments)
                 case .scaffoldMacOS:
                     return try scaffoldMacOSTool.execute(arguments: arguments)
                 case .searchCrashReports:
-                    return try searchCrashReportsTool.execute(arguments: arguments)
+                    return searchCrashReportsTool.execute(arguments: arguments)
                 case .diagnostics:
                     return try await diagnosticsTool.execute(arguments: arguments)
             }

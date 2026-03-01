@@ -53,7 +53,7 @@ public struct ListSchemesTool: Sendable {
             )
 
             if result.succeeded {
-                let parsed = try parseSchemeList(from: result.stdout)
+                let parsed = parseSchemeList(from: result.stdout)
                 return CallTool.Result(content: [.text(parsed)])
             } else {
                 throw MCPError.internalError(

@@ -111,8 +111,8 @@ struct ListSynchronizedFolderExceptionsToolTests {
         // Add a second target
         let xcodeproj = try XcodeProj(path: projectPath)
         let project = try #require(try xcodeproj.pbxproj.rootProject())
-        let secondTarget = try PBXNativeTarget(
-            name: "TestTarget", buildConfigurationList: #require(project.buildConfigurationList),
+        let secondTarget = PBXNativeTarget(
+            name: "TestTarget", buildConfigurationList: project.buildConfigurationList,
         )
         xcodeproj.pbxproj.add(object: secondTarget)
         project.targets.append(secondTarget)

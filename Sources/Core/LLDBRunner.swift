@@ -1013,9 +1013,11 @@ public struct LLDBRunner: Sendable {
     ///   - file: The source file path.
     ///   - line: The line number in the source file.
     /// - Returns: The result containing breakpoint information.
-    public func setBreakpoint(pid: Int32, file: String,
-                              line: Int) async throws(LLDBError) -> LLDBResult
-    {
+    public func setBreakpoint(
+        pid: Int32,
+        file: String,
+        line: Int
+    ) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let setOutput = try await session.sendCommand(
             "breakpoint set --file \"\(file)\" --line \(line)",
