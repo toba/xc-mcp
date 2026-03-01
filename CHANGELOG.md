@@ -8,6 +8,7 @@
 
 ### 🐞 Fixes
 
+- Fix `swift_package_test` reporting passing tests as MCP error -32603; override non-zero exit code when parsed output confirms all tests passed ([#160](https://github.com/toba/xc-mcp/issues/160))
 - Fix `add_file` creating duplicate `PBXFileReference` entries and miscomputing paths for groups with a `path` property; uses `sourceRoot` when file is outside the group's resolved path, deduplicates existing refs ([#159](https://github.com/toba/xc-mcp/issues/159))
 - Fix `remove_file` removing files from all targets when multiple targets have files with the same name; now matches by full path via `fullPath(sourceRoot:)` instead of filename ([#156](https://github.com/toba/xc-mcp/issues/156))
 - Fix `add_swift_package` returning "already exists" instead of linking product to a new target; now links the product and detects duplicates ([#154](https://github.com/toba/xc-mcp/issues/154))
