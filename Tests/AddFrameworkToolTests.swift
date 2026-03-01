@@ -275,6 +275,56 @@ struct AddFrameworkToolTests {
         #expect(message.contains("not found"))
     }
 
+    @Test("Add developer framework uses developerDir sourceTree and sets FRAMEWORK_SEARCH_PATHS")
+    func addDeveloperFramework() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "framework_name": Value.string("XcodeKit"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added framework 'XcodeKit'"))
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
+        let frameworkPhase =
+            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+
+        let xcodeKitRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
+            .first { $0.name == "XcodeKit.framework" }
+        #expect(xcodeKitRef != nil)
+        #expect(xcodeKitRef?.sourceTree == .developerDir)
+        #expect(xcodeKitRef?.path == "Library/Frameworks/XcodeKit.framework")
+
+        // Verify FRAMEWORK_SEARCH_PATHS was set
+        let buildConfig = target?.buildConfigurationList?.buildConfigurations.first {
+            $0.name == "Debug"
+        }
+        let searchPaths = buildConfig?.buildSettings["FRAMEWORK_SEARCH_PATHS"]
+        #expect(searchPaths == .array(["$(inherited)", "$(DEVELOPER_FRAMEWORKS_DIR)"]))
+    }
+
     @Test("Reuses existing BUILT_PRODUCTS_DIR file reference instead of creating duplicate")
     func reusesBuiltProductsRef() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(

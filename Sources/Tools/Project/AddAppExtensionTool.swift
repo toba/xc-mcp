@@ -221,39 +221,50 @@ public struct AddAppExtensionTool: Sendable {
             }
 
             // Create build configurations for extension target
+            var debugSettings: [String: BuildSetting] = [
+                "PRODUCT_NAME": .string(extensionName),
+                "PRODUCT_BUNDLE_IDENTIFIER": .string(bundleIdentifier),
+                "INFOPLIST_FILE": .string("\(extensionName)/Info.plist"),
+                "SWIFT_VERSION": .string("5.0"),
+                "CODE_SIGN_STYLE": .string("Automatic"),
+                "GENERATE_INFOPLIST_FILE": .string("YES"),
+                "CURRENT_PROJECT_VERSION": .string("1"),
+                "MARKETING_VERSION": .string("1.0"),
+                "SKIP_INSTALL": .string("YES"),
+                "ALWAYS_SEARCH_USER_PATHS": .string("NO"),
+                "DEBUG_INFORMATION_FORMAT": .string("dwarf"),
+            ]
+
+            var releaseSettings: [String: BuildSetting] = [
+                "PRODUCT_NAME": .string(extensionName),
+                "PRODUCT_BUNDLE_IDENTIFIER": .string(bundleIdentifier),
+                "INFOPLIST_FILE": .string("\(extensionName)/Info.plist"),
+                "SWIFT_VERSION": .string("5.0"),
+                "CODE_SIGN_STYLE": .string("Automatic"),
+                "GENERATE_INFOPLIST_FILE": .string("YES"),
+                "CURRENT_PROJECT_VERSION": .string("1"),
+                "MARKETING_VERSION": .string("1.0"),
+                "SKIP_INSTALL": .string("YES"),
+                "ALWAYS_SEARCH_USER_PATHS": .string("NO"),
+                "DEBUG_INFORMATION_FORMAT": .string("dwarf-with-dsym"),
+                "COPY_PHASE_STRIP": .string("NO"),
+            ]
+
+            // TARGETED_DEVICE_FAMILY is only meaningful for iOS/tvOS/watchOS, not macOS
+            if platform != "macOS" {
+                let deviceFamily = platform == "iOS" ? "1,2" : "1"
+                debugSettings["TARGETED_DEVICE_FAMILY"] = .string(deviceFamily)
+                releaseSettings["TARGETED_DEVICE_FAMILY"] = .string(deviceFamily)
+            }
+
             let extensionDebugConfig = XCBuildConfiguration(
                 name: "Debug",
-                buildSettings: [
-                    "PRODUCT_NAME": .string(extensionName),
-                    "PRODUCT_BUNDLE_IDENTIFIER": .string(bundleIdentifier),
-                    "INFOPLIST_FILE": .string("\(extensionName)/Info.plist"),
-                    "SWIFT_VERSION": .string("5.0"),
-                    "TARGETED_DEVICE_FAMILY": .string(platform == "iOS" ? "1,2" : "1"),
-                    "CODE_SIGN_STYLE": .string("Automatic"),
-                    "GENERATE_INFOPLIST_FILE": .string("YES"),
-                    "CURRENT_PROJECT_VERSION": .string("1"),
-                    "MARKETING_VERSION": .string("1.0"),
-                    "SKIP_INSTALL": .string("YES"),
-                    "DEBUG_INFORMATION_FORMAT": .string("dwarf"),
-                ],
+                buildSettings: debugSettings,
             )
 
             let extensionReleaseConfig = XCBuildConfiguration(
                 name: "Release",
-                buildSettings: [
-                    "PRODUCT_NAME": .string(extensionName),
-                    "PRODUCT_BUNDLE_IDENTIFIER": .string(bundleIdentifier),
-                    "INFOPLIST_FILE": .string("\(extensionName)/Info.plist"),
-                    "SWIFT_VERSION": .string("5.0"),
-                    "TARGETED_DEVICE_FAMILY": .string(platform == "iOS" ? "1,2" : "1"),
-                    "CODE_SIGN_STYLE": .string("Automatic"),
-                    "GENERATE_INFOPLIST_FILE": .string("YES"),
-                    "CURRENT_PROJECT_VERSION": .string("1"),
-                    "MARKETING_VERSION": .string("1.0"),
-                    "SKIP_INSTALL": .string("YES"),
-                    "DEBUG_INFORMATION_FORMAT": .string("dwarf-with-dsym"),
-                    "COPY_PHASE_STRIP": .string("NO"),
-                ],
+                buildSettings: releaseSettings,
             )
 
             // Add deployment target if specified

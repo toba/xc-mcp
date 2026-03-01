@@ -72,3 +72,29 @@ func createProjectWithBundleIdentifier() throws {
 
     #expect(result.isError != true)
 }
+
+@Test("CreateXcodeprojTool with skip_default_target creates no targets")
+func createProjectWithSkipDefaultTarget() throws {
+    let tempDir = Path("/tmp/xcodeproj-test-\(UUID().uuidString)")
+    try tempDir.mkpath()
+    let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: tempDir.string))
+
+    defer {
+        try? tempDir.delete()
+    }
+
+    let arguments: [String: Value] = [
+        "project_name": Value.string("EmptyProject"),
+        "path": Value.string(tempDir.string),
+        "skip_default_target": Value.bool(true),
+    ]
+
+    let result = try createTool.execute(arguments: arguments)
+
+    let projectPath = tempDir + "EmptyProject.xcodeproj"
+    #expect(projectPath.exists)
+
+    let xcodeproj = try XcodeProj(path: projectPath)
+    #expect(xcodeproj.pbxproj.nativeTargets.isEmpty)
+    #expect(result.isError != true)
+}

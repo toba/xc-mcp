@@ -101,9 +101,20 @@ public struct AddFrameworkTool: Sendable {
             let frameworkFileName: String
             let frameworkPath: String
 
+            // Developer frameworks that live in Xcode.app, not in the SDK
+            let developerFrameworks: Set<String> = [
+                "XcodeKit", "XCTest", "SpriteKit", "SceneKit",
+            ]
+            let isDeveloperFramework = isSystemFramework && developerFrameworks
+                .contains(frameworkName)
+
             if isSystemFramework {
                 frameworkFileName = "\(frameworkName).framework"
-                frameworkPath = "System/Library/Frameworks/\(frameworkFileName)"
+                if isDeveloperFramework {
+                    frameworkPath = "Library/Frameworks/\(frameworkFileName)"
+                } else {
+                    frameworkPath = "System/Library/Frameworks/\(frameworkFileName)"
+                }
             } else {
                 // Resolve custom framework path
                 let resolvedFrameworkPath = try pathUtility.resolvePath(from: frameworkName)
@@ -137,7 +148,7 @@ public struct AddFrameworkTool: Sendable {
             let frameworkFileRef: PBXFileReference
             if isSystemFramework {
                 frameworkFileRef = PBXFileReference(
-                    sourceTree: .sdkRoot,
+                    sourceTree: isDeveloperFramework ? .developerDir : .sdkRoot,
                     name: frameworkFileName,
                     lastKnownFileType: "wrapper.framework",
                     path: frameworkPath,
@@ -179,6 +190,21 @@ public struct AddFrameworkTool: Sendable {
                         xcodeproj.pbxproj.add(object: frameworksGroup)
                         frameworksGroup.children.append(frameworkFileRef)
                         mainGroup.children.append(frameworksGroup)
+                    }
+                }
+            }
+
+            // For developer frameworks, add FRAMEWORK_SEARCH_PATHS to target build settings
+            if isDeveloperFramework {
+                if let configList = target.buildConfigurationList {
+                    for config in configList.buildConfigurations {
+                        let existing = config.buildSettings["FRAMEWORK_SEARCH_PATHS"]
+                        if existing == nil {
+                            config.buildSettings["FRAMEWORK_SEARCH_PATHS"] = .array([
+                                "$(inherited)",
+                                "$(DEVELOPER_FRAMEWORKS_DIR)",
+                            ])
+                        }
                     }
                 }
             }

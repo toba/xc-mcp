@@ -166,26 +166,36 @@ public struct AddTargetTool: Sendable {
             }
 
             // Create build configurations for target
+            var debugSettings: [String: BuildSetting] = [
+                "PRODUCT_NAME": .string(targetName),
+                "BUNDLE_IDENTIFIER": .string(bundleIdentifier),
+                "INFOPLIST_FILE": .string("\(targetName)/Info.plist"),
+                "SWIFT_VERSION": .string("5.0"),
+                "ALWAYS_SEARCH_USER_PATHS": .string("NO"),
+            ]
+            var releaseSettings: [String: BuildSetting] = [
+                "PRODUCT_NAME": .string(targetName),
+                "BUNDLE_IDENTIFIER": .string(bundleIdentifier),
+                "INFOPLIST_FILE": .string("\(targetName)/Info.plist"),
+                "SWIFT_VERSION": .string("5.0"),
+                "ALWAYS_SEARCH_USER_PATHS": .string("NO"),
+            ]
+
+            // TARGETED_DEVICE_FAMILY is only meaningful for iOS/tvOS/watchOS, not macOS
+            if platform != "macOS" {
+                let deviceFamily = platform == "iOS" ? "1,2" : "1"
+                debugSettings["TARGETED_DEVICE_FAMILY"] = .string(deviceFamily)
+                releaseSettings["TARGETED_DEVICE_FAMILY"] = .string(deviceFamily)
+            }
+
             let targetDebugConfig = XCBuildConfiguration(
                 name: "Debug",
-                buildSettings: [
-                    "PRODUCT_NAME": .string(targetName),
-                    "BUNDLE_IDENTIFIER": .string(bundleIdentifier),
-                    "INFOPLIST_FILE": .string("\(targetName)/Info.plist"),
-                    "SWIFT_VERSION": .string("5.0"),
-                    "TARGETED_DEVICE_FAMILY": .string(platform == "iOS" ? "1,2" : "1"),
-                ],
+                buildSettings: debugSettings,
             )
 
             let targetReleaseConfig = XCBuildConfiguration(
                 name: "Release",
-                buildSettings: [
-                    "PRODUCT_NAME": .string(targetName),
-                    "BUNDLE_IDENTIFIER": .string(bundleIdentifier),
-                    "INFOPLIST_FILE": .string("\(targetName)/Info.plist"),
-                    "SWIFT_VERSION": .string("5.0"),
-                    "TARGETED_DEVICE_FAMILY": .string(platform == "iOS" ? "1,2" : "1"),
-                ],
+                buildSettings: releaseSettings,
             )
 
             // Add deployment target if specified

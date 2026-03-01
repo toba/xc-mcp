@@ -331,6 +331,49 @@ struct AddSwiftPackageToolTests {
         #expect(target?.packageProductDependencies?.count == 1)
     }
 
+    @Test("Add Swift Package to target adds PBXBuildFile to Frameworks build phase")
+    func addSwiftPackageAddsToFrameworksBuildPhase() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../SharedKit"),
+            "target_name": Value.string("TestApp"),
+            "product_name": Value.string("SharedKit"),
+        ]
+
+        _ = try tool.execute(arguments: args)
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+
+        // Verify a Frameworks build phase was created with a build file referencing the package product
+        let frameworkPhase =
+            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        #expect(frameworkPhase != nil, "Target should have a Frameworks build phase")
+
+        let hasPackageBuildFile = frameworkPhase?.files?.contains { buildFile in
+            buildFile.product?.productName == "SharedKit"
+        } ?? false
+        #expect(
+            hasPackageBuildFile,
+            "Frameworks build phase should contain a build file for the package product",
+        )
+    }
+
     @Test("Add package fails with both URL and path")
     func addPackageFailsWithBothUrlAndPath() throws {
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))

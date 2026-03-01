@@ -250,6 +250,43 @@ struct AddAppExtensionToolTests {
         )
     }
 
+    @Test("Add macOS extension sets ALWAYS_SEARCH_USER_PATHS and omits TARGETED_DEVICE_FAMILY")
+    func addMacOSExtensionSettings() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appending(
+            component: UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        let tool = AddAppExtensionTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "extension_name": Value.string("MyExtension"),
+            "extension_type": Value.string("custom"),
+            "host_target_name": Value.string("TestApp"),
+            "bundle_identifier": Value.string("com.example.TestApp.MyExtension"),
+            "platform": Value.string("macOS"),
+        ]
+
+        _ = try tool.execute(arguments: args)
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let extensionTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "MyExtension" }
+        let buildConfig = extensionTarget?.buildConfigurationList?.buildConfigurations.first {
+            $0.name == "Debug"
+        }
+        #expect(buildConfig?.buildSettings["ALWAYS_SEARCH_USER_PATHS"] == .string("NO"))
+        #expect(buildConfig?.buildSettings["TARGETED_DEVICE_FAMILY"] == nil)
+    }
+
     @Test("Add duplicate extension")
     func addDuplicateExtension() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(

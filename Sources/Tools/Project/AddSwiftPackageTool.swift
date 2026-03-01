@@ -260,6 +260,25 @@ public struct AddSwiftPackageTool: Sendable {
             target.packageProductDependencies = []
         }
         target.packageProductDependencies?.append(productDependency)
+
+        // Add a PBXBuildFile referencing the product dependency to the Frameworks build phase
+        let buildFile = PBXBuildFile(product: productDependency)
+        xcodeproj.pbxproj.add(object: buildFile)
+
+        // Find or create the Frameworks build phase
+        let frameworksBuildPhase: PBXFrameworksBuildPhase
+        if let existingPhase = target.buildPhases.first(
+            where: { $0 is PBXFrameworksBuildPhase },
+        ) as? PBXFrameworksBuildPhase {
+            frameworksBuildPhase = existingPhase
+        } else {
+            let newPhase = PBXFrameworksBuildPhase()
+            xcodeproj.pbxproj.add(object: newPhase)
+            target.buildPhases.append(newPhase)
+            frameworksBuildPhase = newPhase
+        }
+
+        frameworksBuildPhase.files?.append(buildFile)
     }
 
     private func parseRequirement(_ requirement: String)

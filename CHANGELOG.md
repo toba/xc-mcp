@@ -49,6 +49,7 @@
 - Fix `build_debug_macos` timeout with `stop_at_entry`; resolve actual executable name instead of `.app` folder name ([#142](https://github.com/toba/xc-mcp/issues/142))
 - Fix `debug_detach` rejecting valid PID parameter; `getInt` now handles JSON numbers decoded as doubles ([#143](https://github.com/toba/xc-mcp/issues/143))
 - Fix `get_test_attachments` parsing manifest with wrong keys; returns `Unnamed`/`unknown` for all attachments ([#146](https://github.com/toba/xc-mcp/issues/146))
+- Fix `create_xcodeproj` creating orphan default target; `add_swift_package` not linking to Frameworks build phase; `add_framework` using wrong `sourceTree` for developer frameworks; `add_target` setting `TARGETED_DEVICE_FAMILY` for macOS; missing `ALWAYS_SEARCH_USER_PATHS = NO`
 
 ### 🗜️ Tweaks
 

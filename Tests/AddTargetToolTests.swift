@@ -261,6 +261,40 @@ struct AddTargetToolTests {
         #expect(message.contains("already exists"))
     }
 
+    @Test("Add macOS target does not set TARGETED_DEVICE_FAMILY")
+    func addMacOSTargetNoDeviceFamily() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let tool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("MacApp"),
+            "product_type": Value.string("app"),
+            "bundle_identifier": Value.string("com.test.macapp"),
+            "platform": Value.string("macOS"),
+        ]
+
+        _ = try tool.execute(arguments: args)
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "MacApp" }
+        let buildConfig = target?.buildConfigurationList?.buildConfigurations.first {
+            $0.name == "Debug"
+        }
+        #expect(buildConfig?.buildSettings["TARGETED_DEVICE_FAMILY"] == nil)
+        #expect(buildConfig?.buildSettings["ALWAYS_SEARCH_USER_PATHS"] == .string("NO"))
+    }
+
     @Test("Add target with invalid product type")
     func addTargetWithInvalidProductType() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(

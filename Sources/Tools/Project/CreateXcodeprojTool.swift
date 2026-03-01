@@ -44,6 +44,12 @@ public struct CreateXcodeprojTool: Sendable {
                         "type": .string("string"),
                         "description": .string("Bundle identifier prefix"),
                     ]),
+                    "skip_default_target": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "Skip creating the default application target (useful when you plan to add targets separately via add_target)",
+                        ),
+                    ]),
                 ]),
                 "required": .array([.string("project_name"), .string("path")]),
             ]),
@@ -74,6 +80,13 @@ public struct CreateXcodeprojTool: Sendable {
             bundleIdentifier = bundle
         } else {
             bundleIdentifier = "com.example"
+        }
+
+        let skipDefaultTarget: Bool
+        if case let .bool(skip) = arguments["skip_default_target"] {
+            skipDefaultTarget = skip
+        } else {
+            skipDefaultTarget = false
         }
 
         do {
@@ -113,62 +126,68 @@ public struct CreateXcodeprojTool: Sendable {
             )
             pbxproj.add(object: configurationList)
 
-            // Create target build configurations with bundle identifier
-            let targetDebugConfig = XCBuildConfiguration(
-                name: "Debug",
-                buildSettings: [
-                    "PRODUCT_BUNDLE_IDENTIFIER": .string("\(bundleIdentifier).\(projectName)"),
-                    "PRODUCT_NAME": .string("$(TARGET_NAME)"),
-                    "SWIFT_VERSION": .string("5.0"),
-                ],
-            )
-            let targetReleaseConfig = XCBuildConfiguration(
-                name: "Release",
-                buildSettings: [
-                    "PRODUCT_BUNDLE_IDENTIFIER": .string("\(bundleIdentifier).\(projectName)"),
-                    "PRODUCT_NAME": .string("$(TARGET_NAME)"),
-                    "SWIFT_VERSION": .string("5.0"),
-                ],
-            )
-            pbxproj.add(object: targetDebugConfig)
-            pbxproj.add(object: targetReleaseConfig)
+            // Create default app target unless skipped
+            var targets: [PBXNativeTarget] = []
 
-            // Create target configuration list
-            let targetConfigurationList = XCConfigurationList(
-                buildConfigurations: [targetDebugConfig, targetReleaseConfig],
-                defaultConfigurationName: "Release",
-            )
-            pbxproj.add(object: targetConfigurationList)
+            if !skipDefaultTarget {
+                // Create target build configurations with bundle identifier
+                let targetDebugConfig = XCBuildConfiguration(
+                    name: "Debug",
+                    buildSettings: [
+                        "PRODUCT_BUNDLE_IDENTIFIER": .string("\(bundleIdentifier).\(projectName)"),
+                        "PRODUCT_NAME": .string("$(TARGET_NAME)"),
+                        "SWIFT_VERSION": .string("5.0"),
+                    ],
+                )
+                let targetReleaseConfig = XCBuildConfiguration(
+                    name: "Release",
+                    buildSettings: [
+                        "PRODUCT_BUNDLE_IDENTIFIER": .string("\(bundleIdentifier).\(projectName)"),
+                        "PRODUCT_NAME": .string("$(TARGET_NAME)"),
+                        "SWIFT_VERSION": .string("5.0"),
+                    ],
+                )
+                pbxproj.add(object: targetDebugConfig)
+                pbxproj.add(object: targetReleaseConfig)
 
-            // Create product reference for the app target
-            let productReference = PBXFileReference(
-                sourceTree: .buildProductsDir,
-                name: "\(projectName).app",
-                explicitFileType: "wrapper.application",
-            )
-            pbxproj.add(object: productReference)
-            productsGroup.children.append(productReference)
+                // Create target configuration list
+                let targetConfigurationList = XCConfigurationList(
+                    buildConfigurations: [targetDebugConfig, targetReleaseConfig],
+                    defaultConfigurationName: "Release",
+                )
+                pbxproj.add(object: targetConfigurationList)
 
-            // Create build phases
-            let sourcesBuildPhase = PBXSourcesBuildPhase(files: [])
-            pbxproj.add(object: sourcesBuildPhase)
+                // Create product reference for the app target
+                let productReference = PBXFileReference(
+                    sourceTree: .buildProductsDir,
+                    name: "\(projectName).app",
+                    explicitFileType: "wrapper.application",
+                )
+                pbxproj.add(object: productReference)
+                productsGroup.children.append(productReference)
 
-            let frameworksBuildPhase = PBXFrameworksBuildPhase(files: [])
-            pbxproj.add(object: frameworksBuildPhase)
+                // Create build phases
+                let sourcesBuildPhase = PBXSourcesBuildPhase(files: [])
+                pbxproj.add(object: sourcesBuildPhase)
 
-            let resourcesBuildPhase = PBXResourcesBuildPhase(files: [])
-            pbxproj.add(object: resourcesBuildPhase)
+                let frameworksBuildPhase = PBXFrameworksBuildPhase(files: [])
+                pbxproj.add(object: frameworksBuildPhase)
 
-            // Create app target with bundle identifier
-            let appTarget = PBXNativeTarget(
-                name: projectName,
-                buildConfigurationList: targetConfigurationList,
-                buildPhases: [sourcesBuildPhase, frameworksBuildPhase, resourcesBuildPhase],
-                productName: projectName,
-                productType: .application,
-            )
-            appTarget.product = productReference
-            pbxproj.add(object: appTarget)
+                let resourcesBuildPhase = PBXResourcesBuildPhase(files: [])
+                pbxproj.add(object: resourcesBuildPhase)
+
+                // Create app target with bundle identifier
+                let appTarget = PBXNativeTarget(
+                    name: projectName,
+                    buildConfigurationList: targetConfigurationList,
+                    buildPhases: [sourcesBuildPhase, frameworksBuildPhase, resourcesBuildPhase],
+                    productName: projectName,
+                    productType: .application,
+                )
+                appTarget.product = productReference
+                pbxproj.add(object: appTarget)
+                targets.append(appTarget)
+            }
 
             // Create project
             let project = PBXProject(
@@ -181,7 +200,7 @@ public struct CreateXcodeprojTool: Sendable {
                 developmentRegion: "en",
                 knownRegions: ["en", "Base"],
                 productsGroup: productsGroup,
-                targets: [appTarget],
+                targets: targets,
             )
             pbxproj.add(object: project)
             pbxproj.rootObject = project
