@@ -60,6 +60,7 @@ public struct RemoveFileTool: Sendable {
             // Resolve and validate the project path
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
+            let projectRoot = Path(projectURL.deletingLastPathComponent().path)
 
             // Resolve and validate the file path
             let resolvedFilePath = try pathUtility.resolvePath(from: filePath)
@@ -67,11 +68,18 @@ public struct RemoveFileTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             let fileName = URL(fileURLWithPath: resolvedFilePath).lastPathComponent
-            // Use relative path from project for comparison
-            let relativePath =
-                pathUtility.makeRelativePath(from: resolvedFilePath) ?? resolvedFilePath
             var removedFromTargets: [String] = []
             var fileRemoved = false
+
+            /// Check whether a file reference matches the requested path by
+            /// computing its full path relative to the project source root.
+            func matchesRequestedFile(_ fileRef: PBXFileReference) -> Bool {
+                if let fullPath = try? fileRef.fullPath(sourceRoot: projectRoot) {
+                    return fullPath.string == resolvedFilePath
+                        || resolvedFilePath.hasSuffix(fullPath.string)
+                }
+                return false
+            }
 
             // Find and remove file references from build phases
             for target in xcodeproj.pbxproj.nativeTargets {
@@ -81,8 +89,7 @@ public struct RemoveFileTool: Sendable {
                 }) as? PBXSourcesBuildPhase {
                     if let fileIndex = sourcesBuildPhase.files?.firstIndex(where: { buildFile in
                         if let fileRef = buildFile.file as? PBXFileReference {
-                            return fileRef.path == relativePath || fileRef.path == filePath
-                                || fileRef.name == fileName || fileRef.path == fileName
+                            return matchesRequestedFile(fileRef)
                         }
                         return false
                     }) {
@@ -98,8 +105,7 @@ public struct RemoveFileTool: Sendable {
                 }) as? PBXResourcesBuildPhase {
                     if let fileIndex = resourcesBuildPhase.files?.firstIndex(where: { buildFile in
                         if let fileRef = buildFile.file as? PBXFileReference {
-                            return fileRef.path == relativePath || fileRef.path == filePath
-                                || fileRef.name == fileName || fileRef.path == fileName
+                            return matchesRequestedFile(fileRef)
                         }
                         return false
                     }) {
@@ -117,8 +123,7 @@ public struct RemoveFileTool: Sendable {
                 let children = group.children
                 if let index = children.firstIndex(where: { element in
                     if let fileRef = element as? PBXFileReference {
-                        return fileRef.path == relativePath || fileRef.path == filePath
-                            || fileRef.name == fileName || fileRef.path == fileName
+                        return matchesRequestedFile(fileRef)
                     }
                     return false
                 }) {

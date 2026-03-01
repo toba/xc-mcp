@@ -488,6 +488,82 @@ struct AddSwiftPackageToolTests {
         #expect(extTarget?.packageProductDependencies?.count == 1)
     }
 
+    @Test("Existing local package at parent dir links product to second target")
+    func existingLocalPackageLinksToDifferentTarget_realWorldScenario() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "SwiftiomaticApp", target2: "SwiftiomaticExtension",
+            at: projectPath,
+        )
+
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+
+        // Step 1: Add local package ".." to extension target (first-time add, should succeed)
+        let args1: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string(".."),
+            "target_name": Value.string("SwiftiomaticExtension"),
+            "product_name": Value.string("SwiftiomaticLib"),
+        ]
+        let result1 = try tool.execute(arguments: args1)
+        guard case let .text(msg1) = result1.content.first else {
+            Issue.record("Expected text result for first add")
+            return
+        }
+        #expect(msg1.contains("Successfully added local Swift Package"))
+
+        // Step 2: Link same package to app target (package exists, should still link)
+        let args2: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string(".."),
+            "target_name": Value.string("SwiftiomaticApp"),
+            "product_name": Value.string("SwiftiomaticLib"),
+        ]
+        let result2 = try tool.execute(arguments: args2)
+        guard case let .text(msg2) = result2.content.first else {
+            Issue.record("Expected text result for second add")
+            return
+        }
+
+        // MUST NOT return the bare "already exists" message
+        #expect(!msg2.contains("already exists in project"))
+        // MUST confirm the product was linked
+        #expect(msg2.contains("linked product"))
+        #expect(msg2.contains("SwiftiomaticApp"))
+
+        // Verify both targets have the product dependency
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let appTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "SwiftiomaticApp" }
+        let extTarget = xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "SwiftiomaticExtension"
+        }
+        #expect(appTarget?.packageProductDependencies?.count == 1)
+        #expect(extTarget?.packageProductDependencies?.count == 1)
+
+        // Verify only one local package reference exists (not duplicated)
+        let project = try xcodeproj.pbxproj.rootProject()
+        let localRefs = project?.localPackages.filter { $0.relativePath == ".." }
+        #expect(localRefs?.count == 1)
+
+        // Verify both targets have a Frameworks build phase with the product
+        for targetName in ["SwiftiomaticApp", "SwiftiomaticExtension"] {
+            let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == targetName }
+            let fwPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+                as? PBXFrameworksBuildPhase
+            #expect(fwPhase != nil, "\(targetName) should have a Frameworks build phase")
+            let hasBuildFile =
+                fwPhase?.files?.contains { $0.product?.productName == "SwiftiomaticLib" }
+                    ?? false
+            #expect(hasBuildFile, "\(targetName) Frameworks phase should reference SwiftiomaticLib")
+        }
+    }
+
     @Test("Existing package rejects duplicate product link to same target")
     func existingPackageRejectsDuplicateLink() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(

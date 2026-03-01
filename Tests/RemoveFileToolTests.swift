@@ -164,6 +164,95 @@ struct RemoveFileToolTests {
         #expect(FileManager.default.fileExists(atPath: testFilePath) == false)
     }
 
+    @Test("Remove file only removes the matching path, not same-named files in other targets")
+    func removeFileMatchesByPath() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "AppTarget", target2: "ExtTarget", at: projectPath,
+        )
+
+        // Create two files with the same name under different directories
+        let appDir = tempDir.appendingPathComponent("AppTarget")
+        let extDir = tempDir.appendingPathComponent("ExtTarget")
+        try FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: extDir, withIntermediateDirectories: true)
+
+        let appFile = appDir.appendingPathComponent("SharedDefaults.swift").path
+        let extFile = extDir.appendingPathComponent("SharedDefaults.swift").path
+        try "// App".write(toFile: appFile, atomically: true, encoding: .utf8)
+        try "// Ext".write(toFile: extFile, atomically: true, encoding: .utf8)
+
+        let addTool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+
+        // Add the app file to AppTarget
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(appFile),
+            "target_name": Value.string("AppTarget"),
+        ])
+
+        // Add the ext file to ExtTarget
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(extFile),
+            "target_name": Value.string("ExtTarget"),
+        ])
+
+        // Remove only the app file
+        let removeTool = RemoveFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try removeTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(appFile),
+        ])
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+
+        // Should only remove from AppTarget
+        #expect(message.contains("AppTarget"))
+        #expect(!message.contains("ExtTarget"))
+
+        // Verify ExtTarget still has its file
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let extTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "ExtTarget" }
+        let extSources =
+            extTarget?.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        let extFileStillExists =
+            extSources?.files?.contains { buildFile in
+                if let fileRef = buildFile.file as? PBXFileReference {
+                    return fileRef.path == "SharedDefaults.swift"
+                        || fileRef.name == "SharedDefaults.swift"
+                }
+                return false
+            } ?? false
+        #expect(extFileStillExists == true)
+
+        // Verify AppTarget no longer has its file
+        let appTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" }
+        let appSources =
+            appTarget?.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        let appFileStillExists =
+            appSources?.files?.contains { buildFile in
+                if let fileRef = buildFile.file as? PBXFileReference {
+                    return fileRef.path == "SharedDefaults.swift"
+                        || fileRef.name == "SharedDefaults.swift"
+                }
+                return false
+            } ?? false
+        #expect(appFileStillExists == false)
+    }
+
     @Test("Remove non-existent file")
     func removeNonExistentFile() throws {
         // Create a temporary directory
