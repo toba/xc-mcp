@@ -4,6 +4,8 @@
 
 ### 🐞 Fixes
 
+- Fix `add_swift_package` returning "already exists" instead of linking product to a new target; now links the product and detects duplicates
+- Fix `add_file` path doubling when adding files to groups with a filesystem `path`; file reference now computed relative to the group location
 - Default `ONLY_ACTIVE_ARCH=YES` for Debug in all target-creation tools; prevents cross-compilation failures with SPM dependencies ([#151](https://github.com/toba/xc-mcp/issues/151))
 - Fix `add_target`, `add_app_extension`, `add_swift_package`, `add_framework`, and `create_xcodeproj` issues found during extension setup; orphan targets, missing framework linking, wrong `sourceTree` for developer frameworks, macOS `TARGETED_DEVICE_FAMILY`, `ALWAYS_SEARCH_USER_PATHS` ([#150](https://github.com/toba/xc-mcp/issues/150))
 

@@ -15,6 +15,7 @@ enum TestProjectHelper {
         pbxproj.add(object: productsGroup)
         let testsGroup = PBXGroup(children: [], sourceTree: .group, path: "Tests")
         pbxproj.add(object: testsGroup)
+        mainGroup.children.append(testsGroup)
 
         // Create build configurations
         let debugConfig = XCBuildConfiguration(name: "Debug", buildSettings: [:])
@@ -147,6 +148,94 @@ enum TestProjectHelper {
         let xcodeproj = XcodeProj(workspace: workspace, pbxproj: pbxproj)
 
         // Write project
+        try xcodeproj.write(path: path)
+    }
+
+    /// Creates a test project with two native targets.
+    static func createTestProjectWithTwoTargets(
+        name: String,
+        target1: String,
+        target2: String,
+        at path: Path,
+    ) throws {
+        let pbxproj = PBXProj()
+
+        let mainGroup = PBXGroup(sourceTree: .group)
+        pbxproj.add(object: mainGroup)
+        let productsGroup = PBXGroup(children: [], sourceTree: .group, name: "Products")
+        pbxproj.add(object: productsGroup)
+
+        let debugConfig = XCBuildConfiguration(name: "Debug", buildSettings: [:])
+        let releaseConfig = XCBuildConfiguration(name: "Release", buildSettings: [:])
+        pbxproj.add(object: debugConfig)
+        pbxproj.add(object: releaseConfig)
+
+        let configurationList = XCConfigurationList(
+            buildConfigurations: [debugConfig, releaseConfig],
+            defaultConfigurationName: "Release",
+        )
+        pbxproj.add(object: configurationList)
+
+        func makeTarget(_ targetName: String) -> PBXNativeTarget {
+            let tDebug = XCBuildConfiguration(
+                name: "Debug",
+                buildSettings: [
+                    "PRODUCT_NAME": .string(targetName),
+                    "BUNDLE_IDENTIFIER": .string("com.example.\(targetName)"),
+                ],
+            )
+            let tRelease = XCBuildConfiguration(
+                name: "Release",
+                buildSettings: [
+                    "PRODUCT_NAME": .string(targetName),
+                    "BUNDLE_IDENTIFIER": .string("com.example.\(targetName)"),
+                ],
+            )
+            pbxproj.add(object: tDebug)
+            pbxproj.add(object: tRelease)
+
+            let tConfigList = XCConfigurationList(
+                buildConfigurations: [tDebug, tRelease],
+                defaultConfigurationName: "Release",
+            )
+            pbxproj.add(object: tConfigList)
+
+            let sources = PBXSourcesBuildPhase()
+            pbxproj.add(object: sources)
+            let resources = PBXResourcesBuildPhase()
+            pbxproj.add(object: resources)
+
+            let target = PBXNativeTarget(
+                name: targetName,
+                buildConfigurationList: tConfigList,
+                buildPhases: [sources, resources],
+                productType: .application,
+            )
+            pbxproj.add(object: target)
+            return target
+        }
+
+        let t1 = makeTarget(target1)
+        let t2 = makeTarget(target2)
+
+        let project = PBXProject(
+            name: name,
+            buildConfigurationList: configurationList,
+            compatibilityVersion: "Xcode 14.0",
+            preferredProjectObjectVersion: 56,
+            minimizedProjectReferenceProxies: 0,
+            mainGroup: mainGroup,
+            developmentRegion: "en",
+            knownRegions: ["en", "Base"],
+            productsGroup: productsGroup,
+            targets: [t1, t2],
+        )
+        pbxproj.add(object: project)
+        pbxproj.rootObject = project
+
+        let workspaceData = XCWorkspaceData(children: [])
+        let workspace = XCWorkspace(data: workspaceData)
+        let xcodeproj = XcodeProj(workspace: workspace, pbxproj: pbxproj)
         try xcodeproj.write(path: path)
     }
 

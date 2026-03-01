@@ -374,6 +374,154 @@ struct AddSwiftPackageToolTests {
         )
     }
 
+    @Test("Existing remote package links product to new target")
+    func existingRemotePackageLinksToNewTarget() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "AppTarget", target2: "ExtTarget", at: projectPath,
+        )
+
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+
+        // Add package to first target
+        let args1: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/apple/swift-collections.git"),
+            "requirement": Value.string("1.0.0"),
+            "target_name": Value.string("AppTarget"),
+            "product_name": Value.string("Collections"),
+        ]
+        let result1 = try tool.execute(arguments: args1)
+        guard case let .text(msg1) = result1.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(msg1.contains("Successfully added"))
+
+        // Add same package to second target
+        let args2: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/apple/swift-collections.git"),
+            "requirement": Value.string("1.0.0"),
+            "target_name": Value.string("ExtTarget"),
+            "product_name": Value.string("Collections"),
+        ]
+        let result2 = try tool.execute(arguments: args2)
+        guard case let .text(msg2) = result2.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(msg2.contains("already in project"))
+        #expect(msg2.contains("linked product"))
+        #expect(msg2.contains("ExtTarget"))
+
+        // Verify both targets have the product linked
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let appTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" }
+        let extTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "ExtTarget" }
+        #expect(appTarget?.packageProductDependencies?.count == 1)
+        #expect(extTarget?.packageProductDependencies?.count == 1)
+
+        // Verify only one package reference exists
+        let project = try xcodeproj.pbxproj.rootProject()
+        let refs = project?.remotePackages.filter {
+            $0.repositoryURL == "https://github.com/apple/swift-collections.git"
+        }
+        #expect(refs?.count == 1)
+    }
+
+    @Test("Existing local package links product to new target")
+    func existingLocalPackageLinksToNewTarget() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "AppTarget", target2: "ExtTarget", at: projectPath,
+        )
+
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+
+        // Add local package to first target
+        let args1: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../SharedKit"),
+            "target_name": Value.string("AppTarget"),
+            "product_name": Value.string("SharedKit"),
+        ]
+        _ = try tool.execute(arguments: args1)
+
+        // Add same local package to second target
+        let args2: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../SharedKit"),
+            "target_name": Value.string("ExtTarget"),
+            "product_name": Value.string("SharedKit"),
+        ]
+        let result2 = try tool.execute(arguments: args2)
+        guard case let .text(msg2) = result2.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(msg2.contains("already in project"))
+        #expect(msg2.contains("linked product"))
+        #expect(msg2.contains("ExtTarget"))
+
+        // Verify both targets have the product linked
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let extTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "ExtTarget" }
+        #expect(extTarget?.packageProductDependencies?.count == 1)
+    }
+
+    @Test("Existing package rejects duplicate product link to same target")
+    func existingPackageRejectsDuplicateLink() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+
+        // Add package to target
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/apple/swift-collections.git"),
+            "requirement": Value.string("1.0.0"),
+            "target_name": Value.string("TestApp"),
+            "product_name": Value.string("Collections"),
+        ]
+        _ = try tool.execute(arguments: args)
+
+        // Try to link same product to same target again
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: args)
+        }
+    }
+
     @Test("Add package fails with both URL and path")
     func addPackageFailsWithBothUrlAndPath() throws {
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))

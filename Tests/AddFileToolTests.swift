@@ -193,6 +193,95 @@ struct AddFileToolTests {
         #expect(buildFile != nil)
     }
 
+    @Test("Add file to group with path computes relative path correctly")
+    func addFileToGroupWithPath() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        // Create project with a group hierarchy: mainGroup -> AppGroup (path: "App") -> ModelsGroup (path: "Models")
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        let pbxproj = PBXProj()
+
+        let mainGroup = PBXGroup(sourceTree: .group)
+        pbxproj.add(object: mainGroup)
+        let productsGroup = PBXGroup(children: [], sourceTree: .group, name: "Products")
+        pbxproj.add(object: productsGroup)
+
+        let appGroup = PBXGroup(children: [], sourceTree: .group, name: "App", path: "App")
+        pbxproj.add(object: appGroup)
+        mainGroup.children.append(appGroup)
+
+        let modelsGroup = PBXGroup(children: [], sourceTree: .group, name: "Models", path: "Models")
+        pbxproj.add(object: modelsGroup)
+        appGroup.children.append(modelsGroup)
+
+        let debugConfig = XCBuildConfiguration(name: "Debug", buildSettings: [:])
+        let releaseConfig = XCBuildConfiguration(name: "Release", buildSettings: [:])
+        pbxproj.add(object: debugConfig)
+        pbxproj.add(object: releaseConfig)
+        let configList = XCConfigurationList(
+            buildConfigurations: [debugConfig, releaseConfig],
+            defaultConfigurationName: "Release",
+        )
+        pbxproj.add(object: configList)
+
+        let project = PBXProject(
+            name: "TestProject",
+            buildConfigurationList: configList,
+            compatibilityVersion: "Xcode 14.0",
+            preferredProjectObjectVersion: 56,
+            minimizedProjectReferenceProxies: 0,
+            mainGroup: mainGroup,
+            developmentRegion: "en",
+            knownRegions: ["en", "Base"],
+            productsGroup: productsGroup,
+        )
+        pbxproj.add(object: project)
+        pbxproj.rootObject = project
+
+        let workspaceData = XCWorkspaceData(children: [])
+        let workspace = XCWorkspace(data: workspaceData)
+        let xcodeproj = XcodeProj(workspace: workspace, pbxproj: pbxproj)
+        try xcodeproj.write(path: projectPath)
+
+        // Create the actual file on disk
+        let fileDir = tempDir.appendingPathComponent("App/Models")
+        try FileManager.default.createDirectory(at: fileDir, withIntermediateDirectories: true)
+        let filePath = fileDir.appendingPathComponent("AppModel.swift")
+        try "// test".write(to: filePath, atomically: true, encoding: .utf8)
+
+        // Add file to the Models group
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(filePath.path),
+            "group_name": Value.string("Models"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added file 'AppModel.swift'"))
+
+        // Verify the file reference path is relative to the group, NOT the project root.
+        // Bug was: path = "App/Models/AppModel.swift" (relative to project root)
+        // With sourceTree=group under a group at App/Models, Xcode would resolve to App/Models/App/Models/AppModel.swift
+        // Fixed: path = "AppModel.swift" (relative to the group's own location)
+        let reloadedProj = try XcodeProj(path: projectPath)
+        let fileRef = reloadedProj.pbxproj.fileReferences.first { $0.name == "AppModel.swift" }
+        #expect(fileRef != nil)
+        #expect(fileRef?.path == "AppModel.swift", "Path should be relative to group, got: \(fileRef?.path ?? "nil")")
+    }
+
     @Test("Add file with nonexistent target")
     func addFileWithNonexistentTarget() throws {
         // Create a temporary directory

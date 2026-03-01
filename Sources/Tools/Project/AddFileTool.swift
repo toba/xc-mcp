@@ -90,18 +90,6 @@ public struct AddFileTool: Sendable {
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            // Create file reference
-            let fileName = URL(fileURLWithPath: resolvedFilePath).lastPathComponent
-            // Use relative path from project for file reference
-            let relativePath =
-                pathUtility.makeRelativePath(from: resolvedFilePath) ?? resolvedFilePath
-            let fileReference = PBXFileReference(
-                sourceTree: .group,
-                name: fileName,
-                path: relativePath,
-            )
-            xcodeproj.pbxproj.add(object: fileReference)
-
             // Find the group to add the file to
             let targetGroup: PBXGroup
             if let groupName {
@@ -122,6 +110,32 @@ public struct AddFileTool: Sendable {
                 }
                 targetGroup = mainGroup
             }
+
+            // Create file reference with path relative to the group's filesystem location.
+            // Since sourceTree is .group, Xcode resolves paths relative to the parent group.
+            let fileName = URL(fileURLWithPath: resolvedFilePath).lastPathComponent
+            let projectRoot = projectURL.deletingLastPathComponent().path
+            let groupFullPath: String
+            if let gp = try targetGroup.fullPath(sourceRoot: projectRoot) {
+                groupFullPath = gp
+            } else {
+                groupFullPath = projectRoot
+            }
+
+            let relativePath: String
+            if resolvedFilePath.hasPrefix(groupFullPath + "/") {
+                relativePath = String(resolvedFilePath.dropFirst(groupFullPath.count + 1))
+            } else {
+                relativePath =
+                    pathUtility.makeRelativePath(from: resolvedFilePath) ?? resolvedFilePath
+            }
+
+            let fileReference = PBXFileReference(
+                sourceTree: .group,
+                name: fileName,
+                path: relativePath,
+            )
+            xcodeproj.pbxproj.add(object: fileReference)
 
             // Add file to group
             targetGroup.children.append(fileReference)

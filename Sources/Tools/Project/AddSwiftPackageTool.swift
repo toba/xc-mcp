@@ -143,12 +143,37 @@ public struct AddSwiftPackageTool: Sendable {
         }
 
         // Check if package already exists
-        if let project = try xcodeproj.pbxproj.rootProject(),
-           project.remotePackages.contains(where: { $0.repositoryURL == packageURL })
-        {
+        let existingRef: XCRemoteSwiftPackageReference?
+        if let project = try xcodeproj.pbxproj.rootProject() {
+            existingRef = project.remotePackages.first(where: { $0.repositoryURL == packageURL })
+        } else {
+            existingRef = nil
+        }
+
+        if let existingRef {
+            // Package exists — if a target is specified, still link the product
+            guard let targetName else {
+                return CallTool.Result(
+                    content: [
+                        .text("Swift Package '\(packageURL)' already exists in project"),
+                    ],
+                )
+            }
+
+            try addProductToTarget(
+                xcodeproj: xcodeproj,
+                targetName: targetName,
+                productName: productName,
+                packageRef: existingRef,
+            )
+
+            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+
             return CallTool.Result(
                 content: [
-                    .text("Swift Package '\(packageURL)' already exists in project"),
+                    .text(
+                        "Swift Package '\(packageURL)' already in project; linked product '\(productName ?? "Unknown")' to target '\(targetName)'"
+                    ),
                 ],
             )
         }
@@ -195,12 +220,38 @@ public struct AddSwiftPackageTool: Sendable {
         productName: String?,
     ) throws -> CallTool.Result {
         // Check if package already exists
-        if let project = try xcodeproj.pbxproj.rootProject(),
-           project.localPackages.contains(where: { $0.relativePath == packagePath })
-        {
+        let alreadyExists: Bool
+        if let project = try xcodeproj.pbxproj.rootProject() {
+            alreadyExists = project.localPackages.contains(where: {
+                $0.relativePath == packagePath
+            })
+        } else {
+            alreadyExists = false
+        }
+
+        if alreadyExists {
+            // Package exists — if a target is specified, still link the product
+            guard let targetName else {
+                return CallTool.Result(
+                    content: [
+                        .text("Local Swift Package '\(packagePath)' already exists in project"),
+                    ],
+                )
+            }
+
+            try addProductToTarget(
+                xcodeproj: xcodeproj,
+                targetName: targetName,
+                productName: productName,
+            )
+
+            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+
             return CallTool.Result(
                 content: [
-                    .text("Local Swift Package '\(packagePath)' already exists in project"),
+                    .text(
+                        "Local Swift Package '\(packagePath)' already in project; linked product '\(productName ?? "Unknown")' to target '\(targetName)'"
+                    ),
                 ],
             )
         }
@@ -248,6 +299,16 @@ public struct AddSwiftPackageTool: Sendable {
             })
         else {
             throw MCPError.invalidParams("Target '\(targetName)' not found in project")
+        }
+
+        // Check if this product is already linked to the target
+        let resolvedProductName = productName ?? "Unknown"
+        if let existing = target.packageProductDependencies,
+           existing.contains(where: { $0.productName == resolvedProductName })
+        {
+            throw MCPError.invalidParams(
+                "Product '\(resolvedProductName)' is already linked to target '\(targetName)'"
+            )
         }
 
         let productDependency = XCSwiftPackageProductDependency(
