@@ -41,7 +41,7 @@ public enum ErrorExtractor {
     /// - Throws: `MCPError.internalError` if tests failed.
     public static func formatTestToolResult(
         output: String,
-        succeeded: Bool,
+        succeeded inputSucceeded: Bool,
         context: String,
         xcresultPath: String? = nil,
         stderr: String? = nil,
@@ -50,6 +50,7 @@ public enum ErrorExtractor {
         workspacePath: String? = nil,
         onlyTesting: [String]? = nil,
     ) async throws -> CallTool.Result {
+        var succeeded = inputSucceeded
         var testResult: String
         var totalTestCount = 0
 
@@ -59,6 +60,11 @@ public enum ErrorExtractor {
         {
             testResult = formatXCResultData(xcresultData)
             totalTestCount = xcresultData.passedCount + xcresultData.failedCount
+
+            // Override exit code when xcresult confirms all tests passed
+            if !succeeded, xcresultData.failedCount == 0, xcresultData.passedCount > 0 {
+                succeeded = true
+            }
 
             // When xcresult shows no tests ran (0 passed, 0 failed) and the run failed,
             // the build likely failed before tests could execute. Fall back to parsing
@@ -72,11 +78,17 @@ public enum ErrorExtractor {
         } else {
             testResult = extractTestResults(from: output)
 
-            // Extract test count from parsed output
+            // Extract test count and parsed status from output
             let parsed = parseBuildOutput(output)
             let passed = parsed.summary.passedTests ?? 0
             let failed = parsed.summary.failedTests
             totalTestCount = passed + failed
+
+            // Override exit code with parsed status: swift test can exit non-zero
+            // even when all tests pass (e.g. due to build warnings or toolchain quirks).
+            if !succeeded, parsed.status == "success" {
+                succeeded = true
+            }
         }
 
         // Check for testmanagerd crashes in stderr

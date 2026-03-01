@@ -195,3 +195,47 @@ struct ErrorExtractorZeroTestTests {
         }
     }
 }
+
+@Suite("ErrorExtractor Exit Code Override Tests")
+struct ErrorExtractorExitCodeOverrideTests {
+    @Test("Succeeds when exit code is non-zero but parsed output shows tests passed")
+    func nonZeroExitCodeWithPassingTests() async throws {
+        // Reproduces the bug: swift test exits non-zero but all tests pass
+        let output = """
+        Building for debugging...
+        Build complete!
+        Test Suite 'All tests' started.
+        Test Suite 'PackageTests' passed at 2026-03-01 10:00:00.
+        Executed 4535 tests, with 0 failures (0 unexpected) in 12.345 (12.567) seconds
+        """
+        let result = try await ErrorExtractor.formatTestToolResult(
+            output: output,
+            succeeded: false, // non-zero exit code
+            context: "swift package",
+        )
+        let text = result.content.compactMap {
+            if case let .text(t) = $0 { return t }
+            return nil
+        }.joined()
+        #expect(text.contains("Tests passed"))
+    }
+
+    @Test("Still fails when exit code is non-zero and tests actually failed")
+    func nonZeroExitCodeWithFailingTests() async {
+        let output = """
+        Test Case 'FooTests.testBar' failed (0.5 seconds)
+        Executed 10 tests, with 2 failures (2 unexpected) in 1.234 (1.500) seconds
+        """
+        do {
+            _ = try await ErrorExtractor.formatTestToolResult(
+                output: output,
+                succeeded: false,
+                context: "swift package",
+            )
+            Issue.record("Expected error to be thrown for failing tests")
+        } catch {
+            let message = "\(error)"
+            #expect(message.contains("Tests failed") || message.contains("failed"))
+        }
+    }
+}
