@@ -111,8 +111,6 @@ public struct AddFileTool: Sendable {
                 targetGroup = mainGroup
             }
 
-            // Create file reference with path relative to the group's filesystem location.
-            // Since sourceTree is .group, Xcode resolves paths relative to the parent group.
             let fileName = URL(fileURLWithPath: resolvedFilePath).lastPathComponent
             let projectRoot = projectURL.deletingLastPathComponent().path
             let groupFullPath: String
@@ -122,23 +120,48 @@ public struct AddFileTool: Sendable {
                 groupFullPath = projectRoot
             }
 
-            let relativePath: String
-            if resolvedFilePath.hasPrefix(groupFullPath + "/") {
-                relativePath = String(resolvedFilePath.dropFirst(groupFullPath.count + 1))
-            } else {
-                relativePath =
-                    pathUtility.makeRelativePath(from: resolvedFilePath) ?? resolvedFilePath
+            // Check for existing file reference with the same resolved path to avoid duplicates
+            let existingFileRef = xcodeproj.pbxproj.fileReferences.first { ref in
+                guard let refFullPath = try? ref.fullPath(sourceRoot: projectRoot) else {
+                    return false
+                }
+                return refFullPath == resolvedFilePath
             }
 
-            let fileReference = PBXFileReference(
-                sourceTree: .group,
-                name: fileName,
-                path: relativePath,
-            )
-            xcodeproj.pbxproj.add(object: fileReference)
+            let fileReference: PBXFileReference
+            if let existingFileRef {
+                fileReference = existingFileRef
+            } else {
+                // Compute path and sourceTree based on whether the file is under the group
+                let sourceTree: PBXSourceTree
+                let relativePath: String
+                if resolvedFilePath.hasPrefix(groupFullPath + "/") {
+                    // File is inside the group's directory — use path relative to group
+                    sourceTree = .group
+                    relativePath = String(resolvedFilePath.dropFirst(groupFullPath.count + 1))
+                } else if resolvedFilePath.hasPrefix(projectRoot + "/") {
+                    // File is outside the group but inside the project — use sourceRoot
+                    sourceTree = .sourceRoot
+                    relativePath = String(resolvedFilePath.dropFirst(projectRoot.count + 1))
+                } else {
+                    // File is outside the project — use absolute path
+                    sourceTree = .absolute
+                    relativePath = resolvedFilePath
+                }
 
-            // Add file to group
-            targetGroup.children.append(fileReference)
+                let newRef = PBXFileReference(
+                    sourceTree: sourceTree,
+                    name: fileName,
+                    path: relativePath,
+                )
+                xcodeproj.pbxproj.add(object: newRef)
+                fileReference = newRef
+            }
+
+            // Add file to group if not already present
+            if !targetGroup.children.contains(where: { $0 === fileReference }) {
+                targetGroup.children.append(fileReference)
+            }
 
             // Add file to target if specified
             if let targetName {

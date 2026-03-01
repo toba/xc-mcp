@@ -4,11 +4,12 @@
 
 ### ✨ Features
 
-- Add `remove_framework` tool; remove framework dependencies from one or all targets, cleaning up link phases, embed phases, and orphaned file references
+- Add `remove_framework` tool; remove framework dependencies from one or all targets, cleaning up link phases, embed phases, and orphaned file references ([#158](https://github.com/toba/xc-mcp/issues/158))
 
 ### 🐞 Fixes
 
-- Fix `remove_file` removing files from all targets when multiple targets have files with the same name; now matches by full path via `fullPath(sourceRoot:)` instead of filename
+- Fix `add_file` creating duplicate `PBXFileReference` entries and miscomputing paths for groups with a `path` property; uses `sourceRoot` when file is outside the group's resolved path, deduplicates existing refs ([#159](https://github.com/toba/xc-mcp/issues/159))
+- Fix `remove_file` removing files from all targets when multiple targets have files with the same name; now matches by full path via `fullPath(sourceRoot:)` instead of filename ([#156](https://github.com/toba/xc-mcp/issues/156))
 - Fix `add_swift_package` returning "already exists" instead of linking product to a new target; now links the product and detects duplicates ([#154](https://github.com/toba/xc-mcp/issues/154))
 - Fix `add_file` path doubling when adding files to groups with a filesystem `path`; file reference now computed relative to the group location ([#155](https://github.com/toba/xc-mcp/issues/155))
 - Default `ONLY_ACTIVE_ARCH=YES` for Debug in all target-creation tools; prevents cross-compilation failures with SPM dependencies ([#151](https://github.com/toba/xc-mcp/issues/151))
@@ -16,8 +17,8 @@
 
 ### 🗜️ Tweaks
 
-- Port crash-to-test association from xcsift; `BuildOutputParser` now tracks which test was running when a crash occurs and reports it in failed test diagnostics
-- Verify XcodeProj 9.10.1 dependency; already up to date with `dstSubfolder` and `CommentedString` perf improvements
+- Port crash-to-test association from xcsift; `BuildOutputParser` now tracks which test was running when a crash occurs and reports it in failed test diagnostics ([#153](https://github.com/toba/xc-mcp/issues/153))
+- Bump XcodeProj dependency to 9.10.1 ([#152](https://github.com/toba/xc-mcp/issues/152))
 
 ## Week of Feb 22 – Feb 28, 2026
 

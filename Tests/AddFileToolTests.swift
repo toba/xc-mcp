@@ -285,6 +285,138 @@ struct AddFileToolTests {
         )
     }
 
+    @Test("Add file outside group uses sourceRoot to avoid path doubling")
+    func addFileOutsideGroupUsesSourceRoot() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        // Reproduce the Swiftiomatic scenario:
+        // mainGroup -> AppGroup (name only, no path) -> ViewsGroup (path: "Views")
+        // File is at AppGroup/Views/AboutTab.swift, but group fullPath resolves to just "Views"
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        let pbxproj = PBXProj()
+
+        let mainGroup = PBXGroup(sourceTree: .group)
+        pbxproj.add(object: mainGroup)
+        let productsGroup = PBXGroup(children: [], sourceTree: .group, name: "Products")
+        pbxproj.add(object: productsGroup)
+
+        // AppGroup has name but NO path — it's a virtual grouping
+        let appGroup = PBXGroup(children: [], sourceTree: .group, name: "SwiftiomaticApp")
+        pbxproj.add(object: appGroup)
+        mainGroup.children.append(appGroup)
+
+        let viewsGroup = PBXGroup(children: [], sourceTree: .group, name: "Views", path: "Views")
+        pbxproj.add(object: viewsGroup)
+        appGroup.children.append(viewsGroup)
+
+        let debugConfig = XCBuildConfiguration(name: "Debug", buildSettings: [:])
+        let releaseConfig = XCBuildConfiguration(name: "Release", buildSettings: [:])
+        pbxproj.add(object: debugConfig)
+        pbxproj.add(object: releaseConfig)
+        let configList = XCConfigurationList(
+            buildConfigurations: [debugConfig, releaseConfig],
+            defaultConfigurationName: "Release",
+        )
+        pbxproj.add(object: configList)
+
+        let project = PBXProject(
+            name: "TestProject",
+            buildConfigurationList: configList,
+            compatibilityVersion: "Xcode 14.0",
+            preferredProjectObjectVersion: 56,
+            minimizedProjectReferenceProxies: 0,
+            mainGroup: mainGroup,
+            developmentRegion: "en",
+            knownRegions: ["en", "Base"],
+            productsGroup: productsGroup,
+        )
+        pbxproj.add(object: project)
+        pbxproj.rootObject = project
+
+        let workspaceData = XCWorkspaceData(children: [])
+        let workspace = XCWorkspace(data: workspaceData)
+        let xcodeproj = XcodeProj(workspace: workspace, pbxproj: pbxproj)
+        try xcodeproj.write(path: projectPath)
+
+        // File is at SwiftiomaticApp/Views/AboutTab.swift (not under Views/)
+        let fileDir = tempDir.appendingPathComponent("SwiftiomaticApp/Views")
+        try FileManager.default.createDirectory(at: fileDir, withIntermediateDirectories: true)
+        let filePath = fileDir.appendingPathComponent("AboutTab.swift")
+        try "// test".write(to: filePath, atomically: true, encoding: .utf8)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(filePath.path),
+            "group_name": Value.string("Views"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added file 'AboutTab.swift'"))
+
+        // The file is NOT under the group's fullPath (Views/), so it should use sourceRoot
+        // to avoid Xcode resolving Views/ + SwiftiomaticApp/Views/AboutTab.swift
+        let reloadedProj = try XcodeProj(path: projectPath)
+        let fileRef = reloadedProj.pbxproj.fileReferences.first { $0.name == "AboutTab.swift" }
+        #expect(fileRef != nil)
+        #expect(
+            fileRef?.sourceTree == .sourceRoot,
+            "sourceTree should be sourceRoot when file is outside group, got: \(String(describing: fileRef?.sourceTree))",
+        )
+        #expect(
+            fileRef?.path == "SwiftiomaticApp/Views/AboutTab.swift",
+            "Path should be relative to project root, got: \(fileRef?.path ?? "nil")",
+        )
+    }
+
+    @Test("Add file does not create duplicate file references")
+    func addFileNoDuplicateReferences() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        // Create the file on disk
+        let filePath = tempDir.appendingPathComponent("file.swift")
+        try "// test".write(to: filePath, atomically: true, encoding: .utf8)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(filePath.path),
+        ]
+
+        // Add the same file twice
+        _ = try tool.execute(arguments: args)
+        _ = try tool.execute(arguments: args)
+
+        // Should have exactly one PBXFileReference for file.swift
+        let reloadedProj = try XcodeProj(path: projectPath)
+        let fileRefs = reloadedProj.pbxproj.fileReferences.filter { $0.name == "file.swift" }
+        #expect(
+            fileRefs.count == 1,
+            "Should have exactly 1 file reference, got \(fileRefs.count)",
+        )
+    }
+
     @Test("Add file with nonexistent target")
     func addFileWithNonexistentTarget() throws {
         // Create a temporary directory
