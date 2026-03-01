@@ -34,6 +34,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case addDependency = "add_dependency"
     case setBuildSetting = "set_build_setting"
     case addFramework = "add_framework"
+    case removeFramework = "remove_framework"
     case addBuildPhase = "add_build_phase"
     case duplicateTarget = "duplicate_target"
     case addSwiftPackage = "add_swift_package"
@@ -145,6 +146,7 @@ public struct ProjectMCPServer: Sendable {
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
+        let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
         let addBuildPhaseTool = AddBuildPhaseTool(pathUtility: pathUtility)
         let duplicateTargetTool = DuplicateTargetTool(pathUtility: pathUtility)
         let addSwiftPackageTool = AddSwiftPackageTool(pathUtility: pathUtility)
@@ -213,6 +215,7 @@ public struct ProjectMCPServer: Sendable {
                 addDependencyTool.tool(),
                 setBuildSettingTool.tool(),
                 addFrameworkTool.tool(),
+                removeFrameworkTool.tool(),
                 addBuildPhaseTool.tool(),
                 duplicateTargetTool.tool(),
                 addSwiftPackageTool.tool(),
@@ -311,6 +314,8 @@ public struct ProjectMCPServer: Sendable {
                     return try setBuildSettingTool.execute(arguments: arguments)
                 case .addFramework:
                     return try addFrameworkTool.execute(arguments: arguments)
+                case .removeFramework:
+                    return try removeFrameworkTool.execute(arguments: arguments)
                 case .addBuildPhase:
                     return try addBuildPhaseTool.execute(arguments: arguments)
                 case .duplicateTarget:

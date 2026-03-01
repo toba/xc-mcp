@@ -37,6 +37,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addDependency = "add_dependency"
     case setBuildSetting = "set_build_setting"
     case addFramework = "add_framework"
+    case removeFramework = "remove_framework"
     case addBuildPhase = "add_build_phase"
     case duplicateTarget = "duplicate_target"
     case addSwiftPackage = "add_swift_package"
@@ -200,7 +201,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .listTestPlans, .setTestTargetApplication,
                  .renameGroup,
                  .addDependency, .setBuildSetting,
-                 .addFramework,
+                 .addFramework, .removeFramework,
                  .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
                  .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
                  .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
@@ -360,6 +361,7 @@ public struct XcodeMCPServer: Sendable {
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
+        let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
         let addBuildPhaseTool = AddBuildPhaseTool(pathUtility: pathUtility)
         let duplicateTargetTool = DuplicateTargetTool(pathUtility: pathUtility)
         let addSwiftPackageTool = AddSwiftPackageTool(pathUtility: pathUtility)
@@ -643,6 +645,7 @@ public struct XcodeMCPServer: Sendable {
             (.addDependency, addDependencyTool.tool()),
             (.setBuildSetting, setBuildSettingTool.tool()),
             (.addFramework, addFrameworkTool.tool()),
+            (.removeFramework, removeFrameworkTool.tool()),
             (.addBuildPhase, addBuildPhaseTool.tool()),
             (.duplicateTarget, duplicateTargetTool.tool()),
             (.addSwiftPackage, addSwiftPackageTool.tool()),
@@ -870,6 +873,8 @@ public struct XcodeMCPServer: Sendable {
                     return try setBuildSettingTool.execute(arguments: arguments)
                 case .addFramework:
                     return try addFrameworkTool.execute(arguments: arguments)
+                case .removeFramework:
+                    return try removeFrameworkTool.execute(arguments: arguments)
                 case .addBuildPhase:
                     return try addBuildPhaseTool.execute(arguments: arguments)
                 case .duplicateTarget:

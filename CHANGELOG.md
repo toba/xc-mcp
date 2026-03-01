@@ -2,6 +2,10 @@
 
 ## Week of Mar 1 – Mar 7, 2026
 
+### ✨ Features
+
+- Add `remove_framework` tool; remove framework dependencies from one or all targets, cleaning up link phases, embed phases, and orphaned file references
+
 ### 🐞 Fixes
 
 - Fix `remove_file` removing files from all targets when multiple targets have files with the same name; now matches by full path via `fullPath(sourceRoot:)` instead of filename
