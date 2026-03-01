@@ -172,7 +172,7 @@ public struct AddSwiftPackageTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Swift Package '\(packageURL)' already in project; linked product '\(productName ?? "Unknown")' to target '\(targetName)'"
+                        "Swift Package '\(packageURL)' already in project; linked product '\(productName ?? "Unknown")' to target '\(targetName)'",
                     ),
                 ],
             )
@@ -250,7 +250,7 @@ public struct AddSwiftPackageTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Local Swift Package '\(packagePath)' already in project; linked product '\(productName ?? "Unknown")' to target '\(targetName)'"
+                        "Local Swift Package '\(packagePath)' already in project; linked product '\(productName ?? "Unknown")' to target '\(targetName)'",
                     ),
                 ],
             )
@@ -307,7 +307,7 @@ public struct AddSwiftPackageTool: Sendable {
            existing.contains(where: { $0.productName == resolvedProductName })
         {
             throw MCPError.invalidParams(
-                "Product '\(resolvedProductName)' is already linked to target '\(targetName)'"
+                "Product '\(resolvedProductName)' is already linked to target '\(targetName)'",
             )
         }
 

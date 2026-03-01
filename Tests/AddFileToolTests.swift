@@ -279,7 +279,10 @@ struct AddFileToolTests {
         let reloadedProj = try XcodeProj(path: projectPath)
         let fileRef = reloadedProj.pbxproj.fileReferences.first { $0.name == "AppModel.swift" }
         #expect(fileRef != nil)
-        #expect(fileRef?.path == "AppModel.swift", "Path should be relative to group, got: \(fileRef?.path ?? "nil")")
+        #expect(
+            fileRef?.path == "AppModel.swift",
+            "Path should be relative to group, got: \(fileRef?.path ?? "nil")",
+        )
     }
 
     @Test("Add file with nonexistent target")
