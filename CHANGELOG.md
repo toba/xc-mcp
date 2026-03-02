@@ -4,10 +4,13 @@
 
 ### ✨ Features
 
+- Add JSON output mode (`format: "json"`) and field selection (`fields`) to discovery tools; `show_build_settings`, `list_schemes`, `list_test_plan_targets`, `discover_projs` ([#163](https://github.com/toba/xc-mcp/issues/163))
+- Add `validate_project` tool; catches dangling copy-files refs, orphaned build files, unreferenced phases, and inconsistent embedding ([#134](https://github.com/toba/xc-mcp/issues/134))
 - Add `remove_framework` tool; remove framework dependencies from one or all targets, cleaning up link phases, embed phases, and orphaned file references ([#158](https://github.com/toba/xc-mcp/issues/158))
 
 ### 🐞 Fixes
 
+- Fix `formatTestToolResult` exit-code override suppressing failures when no tests ran; guard with `totalTestCount > 0` ([#166](https://github.com/toba/xc-mcp/issues/166))
 - Fix `swift_package_test` reporting passing tests as MCP error -32603; override non-zero exit code when parsed output confirms all tests passed ([#160](https://github.com/toba/xc-mcp/issues/160))
 - Fix `add_file` creating duplicate `PBXFileReference` entries and miscomputing paths for groups with a `path` property; uses `sourceRoot` when file is outside the group's resolved path, deduplicates existing refs ([#159](https://github.com/toba/xc-mcp/issues/159))
 - Fix `remove_file` removing files from all targets when multiple targets have files with the same name; now matches by full path via `fullPath(sourceRoot:)` instead of filename ([#156](https://github.com/toba/xc-mcp/issues/156))
@@ -18,6 +21,11 @@
 
 ### 🗜️ Tweaks
 
+- Trim verbose tool descriptions; reduce token overhead for 7 tools ([#163](https://github.com/toba/xc-mcp/issues/163))
+- Evaluate MCP vs CLI architecture; concluded MCP should be kept with incremental improvements ([#161](https://github.com/toba/xc-mcp/issues/161))
+- Review XcodeBuildMCP v2.1.0 changes; no actionable items for xc-mcp ([#164](https://github.com/toba/xc-mcp/issues/164))
+- Review Sentry XcodeBuildMCP session defaults hardening; our Swift actor approach already covers the key patterns ([#94](https://github.com/toba/xc-mcp/issues/94))
+- Review tuist/xcodeproj 9.10.0–9.10.1 changes ([#162](https://github.com/toba/xc-mcp/issues/162))
 - Port crash-to-test association from xcsift; `BuildOutputParser` now tracks which test was running when a crash occurs and reports it in failed test diagnostics ([#153](https://github.com/toba/xc-mcp/issues/153))
 - Bump XcodeProj dependency to 9.10.1 ([#152](https://github.com/toba/xc-mcp/issues/152))
 
