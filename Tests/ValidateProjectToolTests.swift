@@ -310,6 +310,219 @@ struct ValidateProjectToolTests {
         #expect(content.contains("1 framework linked and embedded correctly"))
     }
 
+    @Test("Detects dangling file reference in copy-files phase")
+    func detectsDanglingCopyFilesReference() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+
+        // Create a build file with no file reference (dangling)
+        let buildFile = PBXBuildFile(file: nil)
+        xcodeproj.pbxproj.add(object: buildFile)
+
+        let phase = PBXCopyFilesBuildPhase(
+            dstPath: "",
+            dstSubfolderSpec: .resources,
+            name: "Copy Resources",
+            files: [buildFile],
+        )
+        xcodeproj.pbxproj.add(object: phase)
+        target.buildPhases.append(phase)
+        try xcodeproj.write(path: projectPath)
+
+        let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+        ])
+
+        guard case let .text(content) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("[warn]"))
+        #expect(content.contains("dangling reference"))
+    }
+
+    @Test("Detects orphaned PBXBuildFile entries")
+    func detectsOrphanedBuildFiles() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a framework to a build phase so PBXBuildFile section exists, then add an orphan
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+
+        // Add a real framework to a build phase
+        let realRef = PBXFileReference(
+            sourceTree: .buildProductsDir,
+            explicitFileType: "wrapper.framework",
+            path: "Real.framework",
+            includeInIndex: false,
+        )
+        xcodeproj.pbxproj.add(object: realRef)
+        let realBuildFile = PBXBuildFile(file: realRef)
+        xcodeproj.pbxproj.add(object: realBuildFile)
+        let frameworksPhase = PBXFrameworksBuildPhase(files: [realBuildFile])
+        xcodeproj.pbxproj.add(object: frameworksPhase)
+        target.buildPhases.append(frameworksPhase)
+
+        // Also add an orphan build file
+        let orphanRef = PBXFileReference(
+            sourceTree: .buildProductsDir,
+            explicitFileType: "wrapper.framework",
+            path: "Orphan.framework",
+            includeInIndex: false,
+        )
+        xcodeproj.pbxproj.add(object: orphanRef)
+        let orphanBuildFile = PBXBuildFile(file: orphanRef)
+        xcodeproj.pbxproj.add(object: orphanBuildFile)
+        try xcodeproj.write(path: projectPath)
+
+        // Inject orphan directly into pbxproj text since XcodeProj may prune on write
+        let pbxprojPath = projectPath + "project.pbxproj"
+        let pbxprojText = try String(contentsOf: URL(fileURLWithPath: pbxprojPath.string))
+
+        // Verify the orphan survived write — if PBXBuildFile section has 2 entries we're good.
+        // If XcodeProj pruned it, inject manually.
+        let buildFileCount = pbxprojText.components(separatedBy: "isa = PBXBuildFile").count - 1
+        if buildFileCount < 2 {
+            // XcodeProj pruned the orphan; inject it manually
+            let fileRefUUID = "DEADBEEF00000000DEADBEE1"
+            let buildFileUUID = "DEADBEEF00000000DEADBEE2"
+            var modified = pbxprojText
+            modified = modified.replacingOccurrences(
+                of: "/* End PBXFileReference section */",
+                with: """
+                \t\t\(
+                    fileRefUUID
+                ) /* Orphan.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Orphan.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+                /* End PBXFileReference section */
+                """,
+            )
+            modified = modified.replacingOccurrences(
+                of: "/* End PBXBuildFile section */",
+                with: """
+                \t\t\(buildFileUUID) /* Orphan.framework */ = {isa = PBXBuildFile; fileRef = \(
+                    fileRefUUID
+                ) /* Orphan.framework */; };
+                /* End PBXBuildFile section */
+                """,
+            )
+            try modified.write(toFile: pbxprojPath.string, atomically: true, encoding: .utf8)
+        }
+
+        let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+        ])
+
+        guard case let .text(content) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("Project-level"))
+        #expect(content.contains("orphaned PBXBuildFile"))
+    }
+
+    @Test("Detects build phase not referenced by any target")
+    func detectsUnreferencedBuildPhase() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+
+        // Add a build phase not attached to any target
+        let floatingPhase = PBXSourcesBuildPhase()
+        xcodeproj.pbxproj.add(object: floatingPhase)
+        try xcodeproj.write(path: projectPath)
+
+        let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+        ])
+
+        guard case let .text(content) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("Project-level"))
+        #expect(content.contains("not referenced by any target"))
+    }
+
+    @Test("Detects inconsistent embedding across app targets")
+    func detectsInconsistentEmbedding() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "App1", target2: "App2", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let app1 = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App1" })
+
+        // Embed a framework only in App1
+        let fileRef = PBXFileReference(
+            sourceTree: .buildProductsDir,
+            explicitFileType: "wrapper.framework",
+            path: "Core.framework",
+            includeInIndex: false,
+        )
+        xcodeproj.pbxproj.add(object: fileRef)
+        let buildFile = PBXBuildFile(file: fileRef)
+        xcodeproj.pbxproj.add(object: buildFile)
+        let embedPhase = PBXCopyFilesBuildPhase(
+            dstPath: "",
+            dstSubfolderSpec: .frameworks,
+            name: "Embed Frameworks",
+            files: [buildFile],
+        )
+        xcodeproj.pbxproj.add(object: embedPhase)
+        app1.buildPhases.append(embedPhase)
+        try xcodeproj.write(path: projectPath)
+
+        let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+        ])
+
+        guard case let .text(content) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("Core.framework embedded in App1 but not all app targets"))
+    }
+
     @Test("Detects missing target dependency")
     func detectsMissingDependency() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(

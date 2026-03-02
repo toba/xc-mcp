@@ -78,6 +78,9 @@ public struct ValidateProjectTool: Sendable {
             // --- Embed phase validation ---
             checkEmbedPhases(copyFilesPhases, diagnostics: &diagnostics)
 
+            // --- Copy-files dangling references ---
+            checkCopyFilesReferences(copyFilesPhases, diagnostics: &diagnostics)
+
             // --- Framework consistency ---
             let linkedNames = frameworkNames(from: frameworksPhase)
             let embeddedNames = embeddedFrameworkNames(from: copyFilesPhases)
@@ -111,6 +114,25 @@ public struct ValidateProjectTool: Sendable {
                 }
                 output.append("")
             }
+        }
+
+        // --- Project-level checks ---
+        var projectDiagnostics = [Diagnostic]()
+        checkBuildPhaseHygiene(
+            xcodeproj: xcodeproj,
+            targets: targets,
+            diagnostics: &projectDiagnostics,
+        )
+        checkInconsistentEmbedding(targets: targets, diagnostics: &projectDiagnostics)
+
+        if !projectDiagnostics.isEmpty {
+            output.append("## Project-level\n")
+            for diag in projectDiagnostics {
+                output.append(diag.formatted)
+                if diag.severity == .error { totalErrors += 1 }
+                if diag.severity == .warning { totalWarnings += 1 }
+            }
+            output.append("")
         }
 
         // Summary
@@ -242,6 +264,103 @@ public struct ValidateProjectTool: Sendable {
             return true
         }
         return false
+    }
+
+    // MARK: - Copy Files References
+
+    private func checkCopyFilesReferences(
+        _ phases: [PBXCopyFilesBuildPhase],
+        diagnostics: inout [Diagnostic],
+    ) {
+        for phase in phases {
+            let phaseName = phase.name ?? "(unnamed)"
+            for buildFile in phase.files ?? [] {
+                if buildFile.file == nil {
+                    diagnostics.append(
+                        Diagnostic(
+                            .warning,
+                            "Copy-files phase \"\(phaseName)\" contains a build file with a dangling reference",
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    // MARK: - Build Phase Hygiene
+
+    private func checkBuildPhaseHygiene(
+        xcodeproj: XcodeProj,
+        targets: [PBXNativeTarget],
+        diagnostics: inout [Diagnostic],
+    ) {
+        // Orphaned PBXBuildFile entries: in pbxproj.buildFiles but not in any build phase
+        var referencedBuildFiles = Set<PBXBuildFile>()
+        for target in targets {
+            for phase in target.buildPhases {
+                for buildFile in phase.files ?? [] {
+                    referencedBuildFiles.insert(buildFile)
+                }
+            }
+        }
+        let allBuildFiles = xcodeproj.pbxproj.buildFiles
+        let orphanCount = allBuildFiles.count(where: { !referencedBuildFiles.contains($0) })
+        if orphanCount > 0 {
+            diagnostics.append(
+                Diagnostic(
+                    .warning,
+                    "\(orphanCount) orphaned PBXBuildFile\(orphanCount == 1 ? "" : "s") not referenced by any build phase",
+                ),
+            )
+        }
+
+        // Build phases not referenced by any target
+        let targetPhases = Set(targets.flatMap(\.buildPhases).map(ObjectIdentifier.init))
+        let allPhases = xcodeproj.pbxproj.buildPhases
+        let unreferencedCount = allPhases
+            .count(where: { !targetPhases.contains(ObjectIdentifier($0)) })
+        if unreferencedCount > 0 {
+            diagnostics.append(
+                Diagnostic(
+                    .info,
+                    "\(unreferencedCount) build phase\(unreferencedCount == 1 ? "" : "s") not referenced by any target",
+                ),
+            )
+        }
+    }
+
+    // MARK: - Inconsistent Embedding
+
+    private func checkInconsistentEmbedding(
+        targets: [PBXNativeTarget],
+        diagnostics: inout [Diagnostic],
+    ) {
+        let appTargets = targets.filter { $0.productType == .application }
+        guard appTargets.count > 1 else { return }
+
+        // Collect embedded framework names per app target
+        var embeddedByTarget = [String: Set<String>]()
+        for target in appTargets {
+            let copyFilesPhases = target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
+            embeddedByTarget[target.name] = embeddedFrameworkNames(from: copyFilesPhases)
+        }
+
+        // Union of all embedded frameworks
+        let allEmbedded = embeddedByTarget.values.reduce(into: Set<String>()) { $0.formUnion($1) }
+
+        for name in allEmbedded.sorted() {
+            let targetsWithFramework = appTargets
+                .filter { embeddedByTarget[$0.name]?.contains(name) == true }
+            if targetsWithFramework.count < appTargets.count {
+                let havingNames = targetsWithFramework.map(\.name).sorted().joined(separator: ", ")
+                diagnostics.append(
+                    Diagnostic(
+                        .info,
+                        "\(name) embedded in \(havingNames) but not all app targets",
+                    ),
+                )
+            }
+        }
     }
 
     // MARK: - Dependency Completeness
