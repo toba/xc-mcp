@@ -1,15 +1,15 @@
 ---
 # n3z-tae
 title: Implement swiftc -typecheck tool for fast single-target type checking
-status: in-progress
+status: scrapped
 type: feature
 priority: normal
 created_at: 2026-02-22T01:15:55Z
-updated_at: 2026-03-02T19:06:56Z
+updated_at: 2026-03-02T19:17:47Z
 sync:
     github:
         issue_number: "114"
-        synced_at: "2026-03-02T19:11:13Z"
+        synced_at: "2026-03-02T19:25:53Z"
 ---
 
 ## Motivation
@@ -36,3 +36,7 @@ The removed `check_build` tool used `xcodebuild -target` which doesn't resolve S
 
 - Removed in commit that deleted `CheckBuildTool.swift` (see git log)
 - `swiftc -typecheck` docs: https://github.com/swiftlang/swift/blob/main/docs/Driver.md
+
+## Reasons for Scrapping
+
+The incremental build system already handles fast type-checking well enough. The complexity of manually extracting compiler flags and source files from xcodeproj is not worth the marginal speedup over `xcodebuild build` with warm derived data.

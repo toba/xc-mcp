@@ -86,7 +86,8 @@ public enum ErrorExtractor {
 
             // Override exit code with parsed status: swift test can exit non-zero
             // even when all tests pass (e.g. due to build warnings or toolchain quirks).
-            if !succeeded, parsed.status == "success" {
+            // Only override when tests actually ran — if no tests were parsed, trust the exit code.
+            if !succeeded, parsed.status == "success", totalTestCount > 0 {
                 succeeded = true
             }
         }
