@@ -39,7 +39,7 @@ public struct XctraceRecordTool: Sendable {
         Tool(
             name: "xctrace_record",
             description:
-            "Start or stop an Instruments trace recording using xctrace. Use action 'start' to begin profiling with a template (e.g., Time Profiler, Allocations), 'stop' to end a recording, or 'list' to show active sessions.",
+            "Start, stop, or list Instruments trace recordings using xctrace.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([

@@ -14,8 +14,7 @@ public struct InteractClickTool: Sendable {
         Tool(
             name: "interact_click",
             description:
-            "Click a UI element in a macOS application. Specify either element_id (from interact_ui_tree) "
-                + "or role+title to find and click an element. Performs the AXPress action.",
+            "Click a UI element in a macOS application by element_id or role+title.",
             inputSchema: .object(
                 [
                     "type": .string("object"),

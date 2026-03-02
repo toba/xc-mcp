@@ -18,7 +18,7 @@ public struct ShowBuildSettingsTool: Sendable {
         Tool(
             name: "show_build_settings",
             description:
-            "Show all build settings for a scheme. Returns detailed build settings including paths, identifiers, and compilation flags.",
+            "Show build settings for a scheme. Supports filtering and field selection.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -52,6 +52,20 @@ public struct ShowBuildSettingsTool: Sendable {
                             "Optional filter to show only settings containing this string (case-insensitive).",
                         ),
                     ]),
+                    "fields": .object([
+                        "type": .string("array"),
+                        "items": .object(["type": .string("string")]),
+                        "description": .string(
+                            "Exact build setting key names to return (e.g., [\"PRODUCT_NAME\", \"SWIFT_VERSION\"]). Takes precedence over filter.",
+                        ),
+                    ]),
+                    "format": .object([
+                        "type": .string("string"),
+                        "enum": .array([.string("text"), .string("json")]),
+                        "description": .string(
+                            "Output format: 'text' (default) or 'json'.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -66,6 +80,8 @@ public struct ShowBuildSettingsTool: Sendable {
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let filter = arguments.getString("filter")?.lowercased()
+        let fieldSet = Set(arguments.getStringArray("fields"))
+        let format = arguments.getString("format") ?? "text"
 
         do {
             let result = try await xcodebuildRunner.showBuildSettings(
@@ -76,8 +92,21 @@ public struct ShowBuildSettingsTool: Sendable {
             )
 
             if result.succeeded {
-                let parsed = formatBuildSettings(from: result.stdout, filter: filter)
-                return CallTool.Result(content: [.text(parsed)])
+                let output: String
+                if format == "json" {
+                    output = formatBuildSettingsJSON(
+                        from: result.stdout,
+                        fields: fieldSet,
+                        filter: filter,
+                    )
+                } else {
+                    output = formatBuildSettings(
+                        from: result.stdout,
+                        fields: fieldSet,
+                        filter: filter,
+                    )
+                }
+                return CallTool.Result(content: [.text(output)])
             } else {
                 throw MCPError.internalError(
                     "Failed to get build settings: \(result.errorOutput)",
@@ -88,7 +117,11 @@ public struct ShowBuildSettingsTool: Sendable {
         }
     }
 
-    private func formatBuildSettings(from json: String, filter: String?) -> String {
+    private func formatBuildSettings(
+        from json: String,
+        fields: Set<String>,
+        filter: String?,
+    ) -> String {
         guard let data = json.data(using: .utf8),
               let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else {
@@ -119,8 +152,10 @@ public struct ShowBuildSettingsTool: Sendable {
             for key in sortedKeys {
                 guard let value = settings[key] else { continue }
 
-                // Apply filter if specified
-                if let filter {
+                // Fields takes precedence over filter
+                if !fields.isEmpty {
+                    if !fields.contains(key) { continue }
+                } else if let filter {
                     let keyLower = key.lowercased()
                     let valueLower = String(describing: value).lowercased()
                     if !keyLower.contains(filter), !valueLower.contains(filter) {
@@ -136,6 +171,9 @@ public struct ShowBuildSettingsTool: Sendable {
         }
 
         if output.isEmpty {
+            if !fields.isEmpty {
+                return "No build settings found for fields: \(fields.sorted().joined(separator: ", "))"
+            }
             if let filter {
                 return "No build settings found matching filter '\(filter)'"
             }
@@ -143,5 +181,51 @@ public struct ShowBuildSettingsTool: Sendable {
         }
 
         return output
+    }
+
+    private func formatBuildSettingsJSON(
+        from json: String,
+        fields: Set<String>,
+        filter: String?,
+    ) -> String {
+        guard let data = json.data(using: .utf8),
+              let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        else {
+            return json
+        }
+
+        // Apply fields/filter to each target's build settings
+        let filtered: [[String: Any]] = parsed.compactMap { targetSettings in
+            guard let target = targetSettings["target"] as? String,
+                  let settings = targetSettings["buildSettings"] as? [String: Any]
+            else {
+                return nil
+            }
+
+            let filteredSettings: [String: Any]
+            if !fields.isEmpty {
+                filteredSettings = settings.filter { fields.contains($0.key) }
+            } else if let filter {
+                filteredSettings = settings.filter { key, value in
+                    key.lowercased().contains(filter)
+                        || String(describing: value).lowercased().contains(filter)
+                }
+            } else {
+                filteredSettings = settings
+            }
+
+            return [
+                "target": target,
+                "buildSettings": filteredSettings,
+            ]
+        }
+
+        guard let outputData = try? JSONSerialization.data(
+            withJSONObject: filtered, options: [.prettyPrinted, .sortedKeys],
+        ), let outputString = String(data: outputData, encoding: .utf8) else {
+            return json
+        }
+
+        return outputString
     }
 }

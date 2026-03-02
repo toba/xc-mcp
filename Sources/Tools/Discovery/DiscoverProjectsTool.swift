@@ -13,7 +13,7 @@ public struct DiscoverProjectsTool: Sendable {
         Tool(
             name: "discover_projs",
             description:
-            "Discover Xcode projects (.xcodeproj) and workspaces (.xcworkspace) in a directory. Searches recursively up to a specified depth.",
+            "Discover Xcode projects and workspaces in a directory.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -41,6 +41,13 @@ public struct DiscoverProjectsTool: Sendable {
                             "Include .xcodeproj files in results. Defaults to true.",
                         ),
                     ]),
+                    "format": .object([
+                        "type": .string("string"),
+                        "enum": .array([.string("text"), .string("json")]),
+                        "description": .string(
+                            "Output format: 'text' (default) or 'json'.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -58,6 +65,7 @@ public struct DiscoverProjectsTool: Sendable {
         let maxDepth = arguments.getInt("max_depth") ?? 3
         let includeWorkspaces = arguments.getBool("include_workspaces", default: true)
         let includeProjects = arguments.getBool("include_projects", default: true)
+        let format = arguments.getString("format") ?? "text"
 
         let fileManager = FileManager.default
 
@@ -117,7 +125,13 @@ public struct DiscoverProjectsTool: Sendable {
         workspaces.sort()
         projects.sort()
 
-        // Format output
+        if format == "json" {
+            return try formatDiscoveryJSON(
+                searchPath: searchPath, workspaces: workspaces, projects: projects,
+            )
+        }
+
+        // Format text output
         var output = "Discovered Xcode files in '\(searchPath)':\n\n"
 
         if includeWorkspaces {
@@ -144,5 +158,21 @@ public struct DiscoverProjectsTool: Sendable {
         }
 
         return CallTool.Result(content: [.text(output)])
+    }
+
+    private func formatDiscoveryJSON(
+        searchPath: String, workspaces: [String], projects: [String],
+    ) throws -> CallTool.Result {
+        struct DiscoveryResult: Encodable {
+            let searchPath: String
+            let workspaces: [String]
+            let projects: [String]
+        }
+
+        let result = DiscoveryResult(
+            searchPath: searchPath, workspaces: workspaces, projects: projects,
+        )
+        let json = try encodePrettyJSON(result)
+        return CallTool.Result(content: [.text(json)])
     }
 }

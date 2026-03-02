@@ -40,6 +40,13 @@ public struct ListTestPlanTargetsTool: Sendable {
                             "The scheme to query for test plans. Uses session default if not specified.",
                         ),
                     ]),
+                    "format": .object([
+                        "type": .string("string"),
+                        "enum": .array([.string("text"), .string("json")]),
+                        "description": .string(
+                            "Output format: 'text' (default) or 'json'.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -51,6 +58,7 @@ public struct ListTestPlanTargetsTool: Sendable {
             from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
+        let format = arguments.getString("format") ?? "text"
 
         // Determine the project root directory for searching .xctestplan files
         let projectRoot: String
@@ -80,7 +88,13 @@ public struct ListTestPlanTargetsTool: Sendable {
                 )
             }
 
-            // Parse each .xctestplan file to extract test targets
+            if format == "json" {
+                return try formatTestPlansJSON(
+                    testPlanNames: testPlanNames, scheme: scheme, projectRoot: projectRoot,
+                )
+            }
+
+            // Text format (existing behavior)
             var output = "Test plans for scheme '\(scheme)':\n"
             for planName in testPlanNames {
                 output += "\n  \(planName):\n"
@@ -101,6 +115,35 @@ public struct ListTestPlanTargetsTool: Sendable {
         } catch {
             throw error.asMCPError()
         }
+    }
+
+    private func formatTestPlansJSON(
+        testPlanNames: [String], scheme: String, projectRoot: String,
+    ) throws -> CallTool.Result {
+        struct TestTargetResult: Encodable {
+            let name: String
+            let enabled: Bool
+        }
+        struct TestPlanResult: Encodable {
+            let name: String
+            let targets: [TestTargetResult]
+        }
+        struct Result: Encodable {
+            let scheme: String
+            let testPlans: [TestPlanResult]
+        }
+
+        let plans = testPlanNames.map { planName in
+            let targets = findTestPlanTargets(planName: planName, searchRoot: projectRoot)
+            return TestPlanResult(
+                name: planName,
+                targets: targets.map { TestTargetResult(name: $0.name, enabled: $0.enabled) },
+            )
+        }
+
+        let result = Result(scheme: scheme, testPlans: plans)
+        let json = try encodePrettyJSON(result)
+        return CallTool.Result(content: [.text(json)])
     }
 
     /// Runs `xcodebuild -showTestPlans` to get test plan names for a scheme.

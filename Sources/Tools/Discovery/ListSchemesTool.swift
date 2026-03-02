@@ -34,6 +34,13 @@ public struct ListSchemesTool: Sendable {
                             "Path to the .xcworkspace file. Uses session default if not specified.",
                         ),
                     ]),
+                    "format": .object([
+                        "type": .string("string"),
+                        "enum": .array([.string("text"), .string("json")]),
+                        "description": .string(
+                            "Output format: 'text' (default) or 'json'.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -45,6 +52,7 @@ public struct ListSchemesTool: Sendable {
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
             from: arguments,
         )
+        let format = arguments.getString("format") ?? "text"
 
         do {
             let result = try await xcodebuildRunner.listSchemes(
@@ -53,8 +61,13 @@ public struct ListSchemesTool: Sendable {
             )
 
             if result.succeeded {
-                let parsed = parseSchemeList(from: result.stdout)
-                return CallTool.Result(content: [.text(parsed)])
+                let output: String
+                if format == "json" {
+                    output = formatSchemesJSON(from: result.stdout)
+                } else {
+                    output = parseSchemeList(from: result.stdout)
+                }
+                return CallTool.Result(content: [.text(output)])
             } else {
                 throw MCPError.internalError(
                     "Failed to list schemes: \(result.errorOutput)",
@@ -63,6 +76,19 @@ public struct ListSchemesTool: Sendable {
         } catch {
             throw error.asMCPError()
         }
+    }
+
+    private func formatSchemesJSON(from json: String) -> String {
+        guard let data = json.data(using: .utf8),
+              let parsed = try? JSONSerialization.jsonObject(with: data),
+              let outputData = try? JSONSerialization.data(
+                  withJSONObject: parsed, options: [.prettyPrinted, .sortedKeys],
+              ),
+              let outputString = String(data: outputData, encoding: .utf8)
+        else {
+            return json
+        }
+        return outputString
     }
 
     private func parseSchemeList(from json: String) -> String {

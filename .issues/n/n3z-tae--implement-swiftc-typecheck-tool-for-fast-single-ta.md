@@ -1,15 +1,15 @@
 ---
 # n3z-tae
 title: Implement swiftc -typecheck tool for fast single-target type checking
-status: draft
+status: in-progress
 type: feature
 priority: normal
 created_at: 2026-02-22T01:15:55Z
-updated_at: 2026-02-22T01:15:55Z
+updated_at: 2026-03-02T19:06:56Z
 sync:
     github:
         issue_number: "114"
-        synced_at: "2026-02-24T18:57:45Z"
+        synced_at: "2026-03-02T19:11:13Z"
 ---
 
 ## Motivation

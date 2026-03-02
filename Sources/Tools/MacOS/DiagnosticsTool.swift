@@ -17,9 +17,7 @@ public struct DiagnosticsTool: Sendable {
         Tool(
             name: "diagnostics",
             description:
-            "Collect all compiler warnings, errors, and lint violations for an Xcode project. "
-                + "Performs a clean build to ensure all diagnostics are emitted (cached builds hide warnings). "
-                + "Returns diagnostics even on successful builds.",
+            "Collect all compiler warnings, errors, and lint violations for an Xcode project. Performs a clean build so all diagnostics are emitted.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([

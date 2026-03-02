@@ -13,7 +13,7 @@ public struct SetSessionDefaultsTool: Sendable {
         Tool(
             name: "set_session_defaults",
             description:
-            "Set default project, scheme, simulator, or device for the session. These defaults will be used by build and run tools when not explicitly specified.",
+            "Set default project, scheme, simulator, or device for the session.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
