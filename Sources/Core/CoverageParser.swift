@@ -263,6 +263,14 @@ public struct CoverageParser: Sendable {
     private func convertXCResultToJSON(xcresultPath: String, targetFilter: String? = nil)
         async -> CodeCoverage?
     {
+        guard let json = await runXccovReport(xcresultPath: xcresultPath) else {
+            return nil
+        }
+        return Self.parseXcodebuildFormat(json: json, targetFilter: targetFilter)
+    }
+
+    /// Runs `xcrun xccov view --report --json` and returns the parsed JSON dictionary.
+    private func runXccovReport(xcresultPath: String) async -> [String: Any]? {
         let args = ["xccov", "view", "--report", "--json", xcresultPath]
         guard let jsonOutput = await runShellCommand("xcrun", args: args) else {
             return nil
@@ -274,7 +282,7 @@ public struct CoverageParser: Sendable {
             return nil
         }
 
-        return Self.parseXcodebuildFormat(json: json, targetFilter: targetFilter)
+        return json
     }
 
     // MARK: - JSON Parsing
@@ -285,6 +293,34 @@ public struct CoverageParser: Sendable {
         let coveredLines: Int
         let executableLines: Int
         let lineCoverage: Double
+    }
+
+    /// Normalizes xccov line coverage (0.0–1.0 fraction or 0–100 percentage) to percentage.
+    static func normalizeLineCoverage(_ coverage: Double) -> Double {
+        coverage > 1.0 ? coverage : coverage * 100.0
+    }
+
+    /// Computes overall coverage percentage from covered/executable line counts.
+    static func coveragePercent(covered: Int, executable: Int) -> Double {
+        executable > 0 ? (Double(covered) / Double(executable)) * 100.0 : 0.0
+    }
+
+    /// Parses a single xccov file entry into a ``FileCoverage``.
+    static func parseFileEntry(_ fileData: [String: Any]) -> FileCoverage? {
+        guard let path = fileData["path"] as? String,
+              let coverage = fileData["lineCoverage"] as? Double
+        else { return nil }
+
+        let covered = fileData["coveredLines"] as? Int ?? 0
+        let executable = fileData["executableLines"] as? Int ?? 0
+
+        return FileCoverage(
+            path: path,
+            name: (path as NSString).lastPathComponent,
+            lineCoverage: normalizeLineCoverage(coverage),
+            coveredLines: covered,
+            executableLines: executable,
+        )
     }
 
     /// Aggregates file coverage entries into a CodeCoverage result.
@@ -308,9 +344,10 @@ public struct CoverageParser: Sendable {
             totalCovered += entry.coveredLines
             totalExecutable += entry.executableLines
         }
-        let overallCoverage =
-            totalExecutable > 0 ? (Double(totalCovered) / Double(totalExecutable)) * 100.0 : 0.0
-        return CodeCoverage(lineCoverage: overallCoverage, files: fileCoverages)
+        return CodeCoverage(
+            lineCoverage: coveragePercent(covered: totalCovered, executable: totalExecutable),
+            files: fileCoverages,
+        )
     }
 
     private func parseCoverageJSON(at path: String, targetFilter: String? = nil) -> CodeCoverage? {
@@ -360,22 +397,13 @@ public struct CoverageParser: Sendable {
             }
 
             for fileData in filesArray {
-                guard let filename = fileData["path"] as? String,
-                      let coverage = fileData["lineCoverage"] as? Double
-                else {
-                    continue
-                }
-
-                let lineCoverage = coverage > 1.0 ? coverage : coverage * 100.0
-                let covered = fileData["coveredLines"] as? Int ?? 0
-                let executable = fileData["executableLines"] as? Int ?? 0
-
+                guard let file = parseFileEntry(fileData) else { continue }
                 entries.append(
                     RawFileCoverage(
-                        path: filename,
-                        coveredLines: covered,
-                        executableLines: executable,
-                        lineCoverage: lineCoverage,
+                        path: file.path,
+                        coveredLines: file.coveredLines,
+                        executableLines: file.executableLines,
+                        lineCoverage: file.lineCoverage,
                     ),
                 )
             }
@@ -417,6 +445,231 @@ public struct CoverageParser: Sendable {
         }
 
         return aggregate(entries)
+    }
+
+    // MARK: - Coverage Report (Target-Level)
+
+    /// Parses an xcresult bundle and returns per-target coverage data.
+    ///
+    /// - Parameters:
+    ///   - xcresultPath: Path to the .xcresult bundle.
+    ///   - targetFilter: Optional case-insensitive substring filter for target names.
+    /// - Returns: A ``CoverageReport`` with per-target breakdown, or nil on failure.
+    public func parseCoverageReport(
+        xcresultPath: String,
+        targetFilter: String? = nil,
+    ) async -> CoverageReport? {
+        guard let json = await runXccovReport(xcresultPath: xcresultPath) else {
+            return nil
+        }
+        return Self.parseTargetCoverage(json: json, targetFilter: targetFilter)
+    }
+
+    /// Parses xccov JSON into target-level coverage. Visible for testing.
+    static func parseTargetCoverage(
+        json: [String: Any],
+        targetFilter: String? = nil,
+    ) -> CoverageReport? {
+        guard let targets = json["targets"] as? [[String: Any]] else {
+            return nil
+        }
+
+        let lowercaseFilter = targetFilter?.lowercased()
+        var targetCoverages: [TargetCoverage] = []
+        var totalCovered = 0
+        var totalExecutable = 0
+
+        for target in targets {
+            guard let targetName = target["name"] as? String else { continue }
+
+            if targetName.hasSuffix(".xctest") { continue }
+
+            if let filter = lowercaseFilter {
+                if !targetName.lowercased().contains(filter) { continue }
+            }
+
+            guard let filesArray = target["files"] as? [[String: Any]] else { continue }
+
+            var files: [FileCoverage] = []
+            files.reserveCapacity(filesArray.count)
+            var targetCovered = 0
+            var targetExecutable = 0
+
+            for fileData in filesArray {
+                guard let file = parseFileEntry(fileData) else { continue }
+                files.append(file)
+                targetCovered += file.coveredLines
+                targetExecutable += file.executableLines
+            }
+
+            targetCoverages.append(TargetCoverage(
+                name: targetName,
+                lineCoverage: coveragePercent(covered: targetCovered, executable: targetExecutable),
+                coveredLines: targetCovered,
+                executableLines: targetExecutable,
+                files: files,
+            ))
+            totalCovered += targetCovered
+            totalExecutable += targetExecutable
+        }
+
+        guard !targetCoverages.isEmpty else { return nil }
+
+        return CoverageReport(
+            lineCoverage: coveragePercent(covered: totalCovered, executable: totalExecutable),
+            coveredLines: totalCovered,
+            executableLines: totalExecutable,
+            targets: targetCoverages,
+        )
+    }
+
+    // MARK: - Function-Level Coverage
+
+    /// Parses function-level coverage for a specific file from an xcresult bundle.
+    ///
+    /// - Parameters:
+    ///   - xcresultPath: Path to the .xcresult bundle.
+    ///   - filePath: Source file path to query.
+    /// - Returns: A ``FileFunctionCoverage`` with function breakdown, or nil on failure.
+    public func parseFunctionCoverage(
+        xcresultPath: String,
+        filePath: String,
+    ) async -> FileFunctionCoverage? {
+        let args = [
+            "xccov", "view", "--report", "--functions-for-file", filePath, "--json", xcresultPath,
+        ]
+        guard let jsonOutput = await runShellCommand("xcrun", args: args) else {
+            return nil
+        }
+
+        guard let jsonData = jsonOutput.data(using: .utf8) else {
+            return nil
+        }
+
+        return Self.parseFunctionCoverageJSON(jsonData: jsonData, filePath: filePath)
+    }
+
+    /// Parses function-level coverage JSON data. Visible for testing.
+    static func parseFunctionCoverageJSON(
+        jsonData: Data,
+        filePath: String,
+    ) -> FileFunctionCoverage? {
+        // xccov --functions-for-file returns an array of function entries or
+        // an object with a "functions" key depending on the file match
+        let functions: [[String: Any]]
+
+        if let array = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] {
+            functions = array
+        } else if let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+                  let fns = obj["functions"] as? [[String: Any]]
+        {
+            functions = fns
+        } else {
+            return nil
+        }
+
+        guard !functions.isEmpty else { return nil }
+
+        var functionCoverages: [FunctionCoverage] = []
+        functionCoverages.reserveCapacity(functions.count)
+        var totalCovered = 0
+        var totalExecutable = 0
+
+        for fn in functions {
+            guard let name = fn["name"] as? String else { continue }
+            let lineNumber = fn["lineNumber"] as? Int ?? 0
+            let covered = fn["coveredLines"] as? Int ?? 0
+            let executable = fn["executableLines"] as? Int ?? 0
+            let coverage = fn["lineCoverage"] as? Double ?? 0.0
+            let executionCount = fn["executionCount"] as? Int ?? 0
+
+            functionCoverages.append(FunctionCoverage(
+                name: name,
+                lineNumber: lineNumber,
+                coveredLines: covered,
+                executableLines: executable,
+                lineCoverage: normalizeLineCoverage(coverage),
+                executionCount: executionCount,
+            ))
+            totalCovered += covered
+            totalExecutable += executable
+        }
+
+        return FileFunctionCoverage(
+            path: filePath,
+            lineCoverage: coveragePercent(covered: totalCovered, executable: totalExecutable),
+            coveredLines: totalCovered,
+            executableLines: totalExecutable,
+            functions: functionCoverages,
+        )
+    }
+
+    // MARK: - Uncovered Line Ranges
+
+    /// Parses uncovered line ranges from the xcresult archive for a specific file.
+    ///
+    /// - Parameters:
+    ///   - xcresultPath: Path to the .xcresult bundle.
+    ///   - filePath: Source file path to query.
+    /// - Returns: An array of ``UncoveredRange`` values, or nil on failure.
+    public func parseUncoveredLines(
+        xcresultPath: String,
+        filePath: String,
+    ) async -> [UncoveredRange]? {
+        let args = ["xccov", "view", "--archive", "--file", filePath, xcresultPath]
+        guard let output = await runShellCommand("xcrun", args: args) else {
+            return nil
+        }
+
+        return Self.parseUncoveredLinesFromArchive(output)
+    }
+
+    /// Parses uncovered line ranges from xccov archive output. Visible for testing.
+    ///
+    /// The archive format has lines like:
+    /// ```
+    ///    1: *
+    ///    2: 1
+    ///    3: 0
+    ///    4: 0
+    ///    5: 1
+    /// ```
+    /// where `0` means uncovered and `*` means non-executable.
+    static func parseUncoveredLinesFromArchive(_ output: String) -> [UncoveredRange] {
+        var ranges: [UncoveredRange] = []
+        var rangeStart: Int?
+        var lastLineNumber: Int?
+
+        for line in output.split(separator: "\n") {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard let colonIndex = trimmed.firstIndex(of: ":") else { continue }
+
+            let lineNumberStr = trimmed[trimmed.startIndex ..< colonIndex]
+                .trimmingCharacters(in: .whitespaces)
+            let countStr = trimmed[trimmed.index(after: colonIndex)...]
+                .trimmingCharacters(in: .whitespaces)
+
+            guard let lineNumber = Int(lineNumberStr) else { continue }
+            lastLineNumber = lineNumber
+
+            if countStr == "0" {
+                if rangeStart == nil {
+                    rangeStart = lineNumber
+                }
+            } else {
+                if let start = rangeStart {
+                    ranges.append(UncoveredRange(start: start, end: lineNumber - 1))
+                    rangeStart = nil
+                }
+            }
+        }
+
+        // Close any trailing uncovered range
+        if let start = rangeStart {
+            ranges.append(UncoveredRange(start: start, end: lastLineNumber ?? start))
+        }
+
+        return ranges
     }
 
     // MARK: - Shell Helpers

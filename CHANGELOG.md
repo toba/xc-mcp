@@ -5,6 +5,7 @@
 ### ✨ Features
 
 - Add JSON output mode (`format: "json"`) and field selection (`fields`) to discovery tools; `show_build_settings`, `list_schemes`, `list_test_plan_targets`, `discover_projs` ([#163](https://github.com/toba/xc-mcp/issues/163))
+- Add `get_coverage_report` and `get_file_coverage` tools; per-target and function-level coverage from xcresult bundles
 - Add `validate_project` tool; catches dangling copy-files refs, orphaned build files, unreferenced phases, and inconsistent embedding ([#134](https://github.com/toba/xc-mcp/issues/134))
 - Add `remove_framework` tool; remove framework dependencies from one or all targets, cleaning up link phases, embed phases, and orphaned file references ([#158](https://github.com/toba/xc-mcp/issues/158))
 
@@ -23,6 +24,7 @@
 
 - Trim verbose tool descriptions; reduce token overhead for 7 tools ([#163](https://github.com/toba/xc-mcp/issues/163))
 - Evaluate MCP vs CLI architecture; concluded MCP should be kept with incremental improvements ([#161](https://github.com/toba/xc-mcp/issues/161))
+- Investigate XcodeBuildMCP xcresult/stderr output fixes; no action needed; our combined-stream approach avoids the issues by design
 - Review XcodeBuildMCP v2.1.0 changes; no actionable items for xc-mcp ([#164](https://github.com/toba/xc-mcp/issues/164))
 - Review Sentry XcodeBuildMCP session defaults hardening; our Swift actor approach already covers the key patterns ([#94](https://github.com/toba/xc-mcp/issues/94))
 - Review tuist/xcodeproj 9.10.0–9.10.1 changes ([#162](https://github.com/toba/xc-mcp/issues/162))

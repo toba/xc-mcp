@@ -252,3 +252,108 @@ public struct Executable: Sendable {
         self.target = target
     }
 }
+
+// MARK: - Coverage Report Models
+
+/// Per-target coverage data from an xcresult bundle.
+public struct TargetCoverage: Sendable {
+    public let name: String
+    public let lineCoverage: Double
+    public let coveredLines: Int
+    public let executableLines: Int
+    public let files: [FileCoverage]
+
+    public init(
+        name: String,
+        lineCoverage: Double,
+        coveredLines: Int,
+        executableLines: Int,
+        files: [FileCoverage],
+    ) {
+        self.name = name
+        self.lineCoverage = lineCoverage
+        self.coveredLines = coveredLines
+        self.executableLines = executableLines
+        self.files = files
+    }
+}
+
+/// Top-level coverage report with per-target breakdown.
+public struct CoverageReport: Sendable {
+    public let lineCoverage: Double
+    public let coveredLines: Int
+    public let executableLines: Int
+    public let targets: [TargetCoverage]
+
+    public init(
+        lineCoverage: Double,
+        coveredLines: Int,
+        executableLines: Int,
+        targets: [TargetCoverage],
+    ) {
+        self.lineCoverage = lineCoverage
+        self.coveredLines = coveredLines
+        self.executableLines = executableLines
+        self.targets = targets
+    }
+}
+
+/// Function-level coverage data.
+public struct FunctionCoverage: Sendable {
+    public let name: String
+    public let lineNumber: Int
+    public let coveredLines: Int
+    public let executableLines: Int
+    public let lineCoverage: Double
+    public let executionCount: Int
+
+    public init(
+        name: String,
+        lineNumber: Int,
+        coveredLines: Int,
+        executableLines: Int,
+        lineCoverage: Double,
+        executionCount: Int,
+    ) {
+        self.name = name
+        self.lineNumber = lineNumber
+        self.coveredLines = coveredLines
+        self.executableLines = executableLines
+        self.lineCoverage = lineCoverage
+        self.executionCount = executionCount
+    }
+}
+
+/// File-level coverage with function breakdown.
+public struct FileFunctionCoverage: Sendable {
+    public let path: String
+    public let lineCoverage: Double
+    public let coveredLines: Int
+    public let executableLines: Int
+    public let functions: [FunctionCoverage]
+
+    public init(
+        path: String,
+        lineCoverage: Double,
+        coveredLines: Int,
+        executableLines: Int,
+        functions: [FunctionCoverage],
+    ) {
+        self.path = path
+        self.lineCoverage = lineCoverage
+        self.coveredLines = coveredLines
+        self.executableLines = executableLines
+        self.functions = functions
+    }
+}
+
+/// A range of uncovered lines.
+public struct UncoveredRange: Sendable {
+    public let start: Int
+    public let end: Int
+
+    public init(start: Int, end: Int) {
+        self.start = start
+        self.end = end
+    }
+}

@@ -14,6 +14,8 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     case getMacAppPath = "get_mac_app_path"
     case testMacOS = "test_macos"
     case getTestAttachments = "get_test_attachments"
+    case getCoverageReport = "get_coverage_report"
+    case getFileCoverage = "get_file_coverage"
     case startMacLogCap = "start_mac_log_cap"
     case stopMacLogCap = "stop_mac_log_cap"
 
@@ -103,6 +105,8 @@ public struct BuildMCPServer: Sendable {
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let getTestAttachmentsTool = GetTestAttachmentsTool()
+        let getCoverageReportTool = GetCoverageReportTool()
+        let getFileCoverageTool = GetFileCoverageTool()
         let startMacLogCapTool = StartMacLogCapTool(sessionManager: sessionManager)
         let stopMacLogCapTool = StopMacLogCapTool(sessionManager: sessionManager)
 
@@ -152,6 +156,8 @@ public struct BuildMCPServer: Sendable {
                 getMacAppPathTool.tool(),
                 testMacOSTool.tool(),
                 getTestAttachmentsTool.tool(),
+                getCoverageReportTool.tool(),
+                getFileCoverageTool.tool(),
                 startMacLogCapTool.tool(),
                 stopMacLogCapTool.tool(),
                 // Discovery tools
@@ -203,6 +209,10 @@ public struct BuildMCPServer: Sendable {
                     return try await testMacOSTool.execute(arguments: arguments)
                 case .getTestAttachments:
                     return try await getTestAttachmentsTool.execute(arguments: arguments)
+                case .getCoverageReport:
+                    return try await getCoverageReportTool.execute(arguments: arguments)
+                case .getFileCoverage:
+                    return try await getFileCoverageTool.execute(arguments: arguments)
                 case .startMacLogCap:
                     return try await startMacLogCapTool.execute(arguments: arguments)
                 case .stopMacLogCap:

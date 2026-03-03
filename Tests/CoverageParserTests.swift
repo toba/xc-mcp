@@ -260,4 +260,210 @@ struct CoverageParserTests {
         let coverage = await parser.parseCoverageFromPath("/nonexistent/path/to/coverage.json")
         #expect(coverage == nil)
     }
+
+    // MARK: - Target-Level Coverage Report
+
+    @Test("Parse target coverage from xcodebuild JSON")
+    func parseTargetCoverage() throws {
+        let json: [String: Any] = [
+            "targets": [
+                [
+                    "name": "MyApp.app",
+                    "lineCoverage": 0.85,
+                    "files": [
+                        [
+                            "path": "/path/to/A.swift",
+                            "lineCoverage": 0.90,
+                            "coveredLines": 45,
+                            "executableLines": 50,
+                        ],
+                        [
+                            "path": "/path/to/B.swift",
+                            "lineCoverage": 0.80,
+                            "coveredLines": 40,
+                            "executableLines": 50,
+                        ],
+                    ],
+                ],
+                [
+                    "name": "MyFramework.framework",
+                    "files": [
+                        [
+                            "path": "/path/to/C.swift",
+                            "lineCoverage": 0.50,
+                            "coveredLines": 25,
+                            "executableLines": 50,
+                        ],
+                    ],
+                ],
+                [
+                    "name": "MyTests.xctest",
+                    "files": [
+                        [
+                            "path": "/path/to/Tests.swift",
+                            "lineCoverage": 1.0,
+                            "coveredLines": 100,
+                            "executableLines": 100,
+                        ],
+                    ],
+                ],
+            ],
+        ]
+
+        let report = CoverageParser.parseTargetCoverage(json: json)
+        #expect(report != nil)
+        #expect(report?.targets.count == 2) // xctest excluded
+        #expect(report?.coveredLines == 110)
+        #expect(report?.executableLines == 150)
+
+        let app = try #require(report?.targets.first { $0.name == "MyApp.app" })
+        #expect(app.files.count == 2)
+        #expect(app.coveredLines == 85)
+    }
+
+    @Test("Parse target coverage with filter")
+    func parseTargetCoverageWithFilter() {
+        let json: [String: Any] = [
+            "targets": [
+                [
+                    "name": "MyApp.app",
+                    "files": [
+                        [
+                            "path": "/a.swift",
+                            "lineCoverage": 0.90,
+                            "coveredLines": 45,
+                            "executableLines": 50,
+                        ],
+                    ],
+                ],
+                [
+                    "name": "OtherLib.framework",
+                    "files": [
+                        [
+                            "path": "/b.swift",
+                            "lineCoverage": 0.50,
+                            "coveredLines": 25,
+                            "executableLines": 50,
+                        ],
+                    ],
+                ],
+            ],
+        ]
+
+        let report = CoverageParser.parseTargetCoverage(json: json, targetFilter: "myapp")
+        #expect(report != nil)
+        #expect(report?.targets.count == 1)
+        #expect(report?.targets[0].name == "MyApp.app")
+    }
+
+    @Test("Parse target coverage returns nil for empty targets")
+    func parseTargetCoverageEmpty() {
+        let json: [String: Any] = ["targets": [] as [[String: Any]]]
+        let report = CoverageParser.parseTargetCoverage(json: json)
+        #expect(report == nil)
+    }
+
+    // MARK: - Function-Level Coverage
+
+    @Test("Parse function coverage JSON array format")
+    func parseFunctionCoverageArray() throws {
+        let json = """
+        [
+          {
+            "name": "init()",
+            "lineNumber": 10,
+            "coveredLines": 5,
+            "executableLines": 5,
+            "lineCoverage": 1.0,
+            "executionCount": 3
+          },
+          {
+            "name": "doWork()",
+            "lineNumber": 20,
+            "coveredLines": 0,
+            "executableLines": 8,
+            "lineCoverage": 0.0,
+            "executionCount": 0
+          }
+        ]
+        """
+
+        let data = try #require(json.data(using: .utf8))
+        let result = CoverageParser.parseFunctionCoverageJSON(
+            jsonData: data, filePath: "/path/to/File.swift",
+        )
+
+        #expect(result != nil)
+        #expect(result?.functions.count == 2)
+        #expect(result?.coveredLines == 5)
+        #expect(result?.executableLines == 13)
+        #expect(result?.functions[0].name == "init()")
+        #expect(result?.functions[0].executionCount == 3)
+        #expect(result?.functions[1].executionCount == 0)
+    }
+
+    @Test("Parse function coverage empty array returns nil")
+    func parseFunctionCoverageEmpty() {
+        let data = Data("[]".utf8)
+        let result = CoverageParser.parseFunctionCoverageJSON(
+            jsonData: data, filePath: "/path/to/File.swift",
+        )
+        #expect(result == nil)
+    }
+
+    // MARK: - Uncovered Line Ranges
+
+    @Test("Parse uncovered lines from archive output")
+    func parseUncoveredLines() {
+        let archiveOutput = """
+           1: *
+           2: 1
+           3: 0
+           4: 0
+           5: 1
+           6: 1
+           7: 0
+           8: *
+        """
+
+        let ranges = CoverageParser.parseUncoveredLinesFromArchive(archiveOutput)
+
+        #expect(ranges.count == 2)
+        #expect(ranges[0].start == 3)
+        #expect(ranges[0].end == 4)
+        #expect(ranges[1].start == 7)
+        #expect(ranges[1].end == 7)
+    }
+
+    @Test("Parse uncovered lines trailing range")
+    func parseUncoveredLinesTrailing() {
+        let archiveOutput = """
+           1: 1
+           2: 0
+           3: 0
+        """
+
+        let ranges = CoverageParser.parseUncoveredLinesFromArchive(archiveOutput)
+        #expect(ranges.count == 1)
+        #expect(ranges[0].start == 2)
+        #expect(ranges[0].end == 3)
+    }
+
+    @Test("Parse uncovered lines empty output")
+    func parseUncoveredLinesEmpty() {
+        let ranges = CoverageParser.parseUncoveredLinesFromArchive("")
+        #expect(ranges.isEmpty)
+    }
+
+    @Test("Parse uncovered lines all covered")
+    func parseUncoveredLinesAllCovered() {
+        let archiveOutput = """
+           1: 1
+           2: 3
+           3: *
+        """
+
+        let ranges = CoverageParser.parseUncoveredLinesFromArchive(archiveOutput)
+        #expect(ranges.isEmpty)
+    }
 }

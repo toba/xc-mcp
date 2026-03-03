@@ -16,6 +16,10 @@ public enum SwiftToolName: String, CaseIterable, Sendable {
     case swiftLint = "swift_lint"
     case swiftDiagnostics = "swift_diagnostics"
 
+    // Coverage tools
+    case getCoverageReport = "get_coverage_report"
+    case getFileCoverage = "get_file_coverage"
+
     // Session tools
     case setSessionDefaults = "set_session_defaults"
     case showSessionDefaults = "show_session_defaults"
@@ -90,6 +94,10 @@ public struct SwiftMCPServer: Sendable {
             swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
 
+        // Create coverage tools
+        let getCoverageReportTool = GetCoverageReportTool()
+        let getFileCoverageTool = GetFileCoverageTool()
+
         // Create session tools
         let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
         let showSessionDefaultsTool = ShowSessionDefaultsTool(sessionManager: sessionManager)
@@ -107,6 +115,9 @@ public struct SwiftMCPServer: Sendable {
                 swiftFormatTool.tool(),
                 swiftLintTool.tool(),
                 swiftDiagnosticsTool.tool(),
+                // Coverage tools
+                getCoverageReportTool.tool(),
+                getFileCoverageTool.tool(),
                 // Session tools
                 setSessionDefaultsTool.tool(),
                 showSessionDefaultsTool.tool(),
@@ -145,6 +156,11 @@ public struct SwiftMCPServer: Sendable {
                     return try await swiftLintTool.execute(arguments: arguments)
                 case .swiftDiagnostics:
                     return try await swiftDiagnosticsTool.execute(arguments: arguments)
+                // Coverage tools
+                case .getCoverageReport:
+                    return try await getCoverageReportTool.execute(arguments: arguments)
+                case .getFileCoverage:
+                    return try await getFileCoverageTool.execute(arguments: arguments)
                 // Session tools
                 case .setSessionDefaults:
                     return try await setSessionDefaultsTool.execute(arguments: arguments)
