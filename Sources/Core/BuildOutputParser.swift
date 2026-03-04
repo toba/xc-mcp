@@ -43,6 +43,9 @@ public final class BuildOutputParser: @unchecked Sendable {
     private var passedTestDurations: [String: Double] = [:]
     private var failedTestDurations: [String: Double] = [:]
 
+    // Performance measurement tracking
+    private var performanceMeasurements: [PerformanceMeasurement] = []
+
     // Build info tracking
     private var targetPhases: [String: [String]] = [:]
     private var targetDurations: [String: String] = [:]
@@ -217,6 +220,7 @@ public final class BuildOutputParser: @unchecked Sendable {
             flakyTests: flakyTests,
             buildInfo: buildInfo,
             executables: executables,
+            performanceMeasurements: performanceMeasurements,
         )
     }
 
@@ -286,6 +290,7 @@ public final class BuildOutputParser: @unchecked Sendable {
         testRunFailed = false
         passedTestDurations = [:]
         failedTestDurations = [:]
+        performanceMeasurements = []
         targetPhases = [:]
         targetDurations = [:]
         targetOrder = []
@@ -323,6 +328,12 @@ public final class BuildOutputParser: @unchecked Sendable {
                 targetDurations[targetName] = duration
                 return
             }
+        }
+
+        // Performance measurements: "measured [Time, seconds] average: ..."
+        if line.contains("measured [") {
+            parsePerformanceMeasurement(line)
+            return
         }
 
         // Fast path checks
@@ -935,6 +946,58 @@ public final class BuildOutputParser: @unchecked Sendable {
         }
 
         return false
+    }
+
+    // MARK: - Performance Measurement Parsing
+
+    /// Parses XCTest measure() output lines.
+    ///
+    /// Format: `measured [Time, seconds] average: 0.037, relative standard deviation: 112.254%, values: [0.125, 0.033, ...]`
+    /// May also have a leading path/test prefix or whitespace.
+    private func parsePerformanceMeasurement(_ line: String) {
+        guard let metricStart = line.range(of: "measured [") else { return }
+        let afterMeasured = line[metricStart.upperBound...]
+
+        // Extract metric name: everything up to the closing "]"
+        guard let metricEnd = afterMeasured.firstIndex(of: "]") else { return }
+        let metric = String(afterMeasured[..<metricEnd])
+
+        let rest = afterMeasured[afterMeasured.index(after: metricEnd)...]
+
+        // Extract average
+        guard let avgRange = rest.range(of: "average: ") else { return }
+        let afterAvg = rest[avgRange.upperBound...]
+        guard let avgComma = afterAvg.firstIndex(of: ",") else { return }
+        guard let average = Double(afterAvg[..<avgComma]) else { return }
+
+        // Extract relative standard deviation
+        guard let rsdRange = rest.range(of: "relative standard deviation: ") else { return }
+        let afterRsd = rest[rsdRange.upperBound...]
+        guard let pctIndex = afterRsd.firstIndex(of: "%") else { return }
+        guard let rsd = Double(afterRsd[..<pctIndex]) else { return }
+
+        // Extract values array
+        var values: [Double] = []
+        if let valuesRange = rest.range(of: "values: [") {
+            let afterValues = rest[valuesRange.upperBound...]
+            if let closeBracket = afterValues.firstIndex(of: "]") {
+                let valuesStr = afterValues[..<closeBracket]
+                for part in valuesStr.split(separator: ",") {
+                    if let v = Double(part.trimmingCharacters(in: .whitespaces)) {
+                        values.append(v)
+                    }
+                }
+            }
+        }
+
+        let testName = lastStartedTestName ?? "unknown"
+        performanceMeasurements.append(PerformanceMeasurement(
+            test: testName,
+            metric: metric,
+            average: average,
+            relativeStandardDeviation: rsd,
+            values: values,
+        ))
     }
 
     private func parseFailedTest(_ line: String) -> FailedTest? {

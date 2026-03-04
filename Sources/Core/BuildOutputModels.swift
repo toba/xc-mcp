@@ -14,6 +14,7 @@ public struct BuildResult: Sendable {
     public let flakyTests: [String]
     public let buildInfo: BuildInfo?
     public let executables: [Executable]
+    public let performanceMeasurements: [PerformanceMeasurement]
 
     public init(
         status: String,
@@ -27,6 +28,7 @@ public struct BuildResult: Sendable {
         flakyTests: [String] = [],
         buildInfo: BuildInfo? = nil,
         executables: [Executable] = [],
+        performanceMeasurements: [PerformanceMeasurement] = [],
     ) {
         self.status = status
         self.summary = summary
@@ -39,6 +41,7 @@ public struct BuildResult: Sendable {
         self.flakyTests = flakyTests
         self.buildInfo = buildInfo
         self.executables = executables
+        self.performanceMeasurements = performanceMeasurements
     }
 }
 
@@ -212,6 +215,28 @@ public struct SlowTest: Sendable {
     public init(test: String, duration: Double) {
         self.test = test
         self.duration = duration
+    }
+}
+
+public struct PerformanceMeasurement: Sendable {
+    public let test: String
+    public let metric: String
+    public let average: Double
+    public let relativeStandardDeviation: Double
+    public let values: [Double]
+
+    public init(
+        test: String,
+        metric: String,
+        average: Double,
+        relativeStandardDeviation: Double,
+        values: [Double],
+    ) {
+        self.test = test
+        self.metric = metric
+        self.average = average
+        self.relativeStandardDeviation = relativeStandardDeviation
+        self.values = values
     }
 }
 

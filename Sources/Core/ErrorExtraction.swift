@@ -75,6 +75,14 @@ public enum ErrorExtractor {
                     testResult += "\n\n" + buildErrors
                 }
             }
+
+            // Performance measurements are in stdout, not in xcresult — parse them separately
+            let parsed = parseBuildOutput(output)
+            if !parsed.performanceMeasurements.isEmpty {
+                testResult += "\n\n" + BuildResultFormatter.formatPerformanceMeasurements(
+                    parsed.performanceMeasurements,
+                )
+            }
         } else {
             testResult = extractTestResults(from: output)
 

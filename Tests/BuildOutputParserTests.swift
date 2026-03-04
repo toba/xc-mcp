@@ -625,4 +625,75 @@ struct BuildOutputParserTests {
         #expect(result.failedTests[0].test == "validateInput()")
         #expect(result.failedTests[0].message.contains("signal 6"))
     }
+
+    // MARK: - Performance Measurement Parsing
+
+    @Test("Parse XCTest measure() timing data")
+    func parsePerformanceMeasurement() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Case '-[PerfTests.RenderTests testRenderPerformance]' started.
+        /path/to/RenderTests.swift:25: Test Case '-[PerfTests.RenderTests testRenderPerformance]' measured [Time, seconds] average: 0.037, relative standard deviation: 112.254%, values: [0.125595, 0.033183, 0.015517, 0.016484, 0.015461]
+        Test Case '-[PerfTests.RenderTests testRenderPerformance]' passed (2.345 seconds).
+        Executed 1 test, with 0 failures (0 unexpected) in 2.345 (2.456) seconds
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.performanceMeasurements.count == 1)
+        let m = result.performanceMeasurements[0]
+        #expect(m.test == "-[PerfTests.RenderTests testRenderPerformance]")
+        #expect(m.metric == "Time, seconds")
+        #expect(m.average == 0.037)
+        #expect(m.relativeStandardDeviation == 112.254)
+        #expect(m.values.count == 5)
+        #expect(m.values[0] == 0.125595)
+    }
+
+    @Test("Parse multiple measure() metrics from same test")
+    func parseMultiplePerformanceMetrics() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Case '-[PerfTests.MemTests testMemory]' started.
+        /path/to/MemTests.swift:10: Test Case '-[PerfTests.MemTests testMemory]' measured [Time, seconds] average: 0.005, relative standard deviation: 20.0%, values: [0.006, 0.005, 0.004]
+        /path/to/MemTests.swift:10: Test Case '-[PerfTests.MemTests testMemory]' measured [Memory, kB] average: 1024.0, relative standard deviation: 5.0%, values: [1000.0, 1024.0, 1048.0]
+        Test Case '-[PerfTests.MemTests testMemory]' passed (1.0 seconds).
+        Executed 1 test, with 0 failures (0 unexpected) in 1.0 (1.1) seconds
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.performanceMeasurements.count == 2)
+        #expect(result.performanceMeasurements[0].metric == "Time, seconds")
+        #expect(result.performanceMeasurements[1].metric == "Memory, kB")
+    }
+
+    @Test("Performance measurements included in formatted test output")
+    func performanceMeasurementsInFormattedOutput() {
+        let result = BuildResult(
+            status: "success",
+            summary: BuildSummary(
+                errors: 0, warnings: 0, failedTests: 0, passedTests: 1,
+                buildTime: nil, testTime: "2.3s",
+            ),
+            errors: [],
+            warnings: [],
+            failedTests: [],
+            performanceMeasurements: [
+                PerformanceMeasurement(
+                    test: "testRender",
+                    metric: "Time, seconds",
+                    average: 0.037,
+                    relativeStandardDeviation: 112.254,
+                    values: [0.125, 0.033],
+                ),
+            ],
+        )
+
+        let formatted = BuildResultFormatter.formatTestResult(result)
+        #expect(formatted.contains("Performance:"))
+        #expect(formatted.contains("testRender"))
+        #expect(formatted.contains("avg: 0.037"))
+        #expect(formatted.contains("std dev: 112.3%"))
+    }
 }

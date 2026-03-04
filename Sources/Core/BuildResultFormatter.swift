@@ -115,6 +115,11 @@ public enum BuildResultFormatter {
             parts.append(formatLinkerErrors(result.linkerErrors))
         }
 
+        // Performance measurements
+        if !result.performanceMeasurements.isEmpty {
+            parts.append(formatPerformanceMeasurements(result.performanceMeasurements))
+        }
+
         // Coverage summary
         if let coverage = result.coverage {
             parts.append(
@@ -251,6 +256,21 @@ public enum BuildResultFormatter {
                 detail += ")"
             }
             lines.append(detail)
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    public static func formatPerformanceMeasurements(
+        _ measurements: [PerformanceMeasurement],
+    ) -> String {
+        var lines = ["Performance:"]
+        for m in measurements {
+            let valuesStr = m.values.map { String(format: "%.6f", $0) }.joined(separator: ", ")
+            lines.append(
+                "  \(m.test) [\(m.metric)] avg: \(String(format: "%.3f", m.average)), "
+                    + "std dev: \(String(format: "%.1f", m.relativeStandardDeviation))%, "
+                    + "values: [\(valuesStr)]",
+            )
         }
         return lines.joined(separator: "\n")
     }

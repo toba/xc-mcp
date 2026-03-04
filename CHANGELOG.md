@@ -4,6 +4,7 @@
 
 ### ✨ Features
 
+- `test_macos` now returns XCTest `measure()` timing data in results; average, relative standard deviation, and individual values
 - Add JSON output mode (`format: "json"`) and field selection (`fields`) to discovery tools; `show_build_settings`, `list_schemes`, `list_test_plan_targets`, `discover_projs` ([#163](https://github.com/toba/xc-mcp/issues/163))
 - Add `get_coverage_report` and `get_file_coverage` tools; per-target and function-level coverage from xcresult bundles
 - Add `validate_project` tool; catches dangling copy-files refs, orphaned build files, unreferenced phases, and inconsistent embedding ([#134](https://github.com/toba/xc-mcp/issues/134))
