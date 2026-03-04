@@ -113,6 +113,12 @@ swift run xc-debug
 swift test
 ```
 
+## Testing Rules
+
+- **Use `swift_package_test`** (MCP tool) for running tests — never `swift test` via bash.
+- **Filter to affected tests** when verifying a specific fix: `swift_package_test(filter: "TestClassName")`.
+- If an MCP tool call is aborted, **do not retry it in a loop**. Diagnose why it was aborted first.
+
 ## Test Harness
 
 `test-debug.sh` is a bash harness for testing the xc-debug MCP server end-to-end via JSON-RPC over pipes.

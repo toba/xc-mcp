@@ -173,6 +173,68 @@ struct SchemeSuggestionTests {
     }
 
     @Test
+    func `Shows available test targets from scheme when target name is wrong`() async throws {
+        let (root, projectPath) = try createFixture(schemes: [
+            "Standard": schemeXML(testTargets: ["ThesisTests", "ThesisUITests"]),
+        ])
+        defer { cleanup(root) }
+
+        let output = """
+        Testing failed:
+            Tests in the target "ThesisAppTests" can't be run because "ThesisAppTests" isn't a member of the specified test plan or scheme.
+        """
+
+        do {
+            _ = try await ErrorExtractor.formatTestToolResult(
+                output: output, succeeded: false,
+                context: "scheme 'Standard' on macOS",
+                projectRoot: root,
+                projectPath: projectPath,
+                scheme: "Standard",
+            )
+            Issue.record("Expected error to be thrown")
+        } catch {
+            let message = "\(error)"
+            // Should list the available targets from the scheme
+            #expect(message.contains("ThesisTests"))
+            #expect(message.contains("ThesisUITests"))
+            #expect(message.contains("Available test targets for scheme 'Standard'"))
+            // Should suggest a corrected example using the class name from the bad identifier
+            #expect(message.contains("ThesisTests/ThesisAppTests"))
+        }
+    }
+
+    @Test
+    func `Shows available targets from all schemes when current scheme has no tests`() async throws {
+        let (root, projectPath) = try createFixture(schemes: [
+            "Standard": schemeXML(testTargets: []),
+            "Testing": schemeXML(testTargets: ["AppTests", "UITests"]),
+        ])
+        defer { cleanup(root) }
+
+        let output = """
+        Testing failed:
+            "WrongTests" isn't a member of the specified test plan or scheme.
+        """
+
+        do {
+            _ = try await ErrorExtractor.formatTestToolResult(
+                output: output, succeeded: false,
+                context: "scheme 'Standard' on macOS",
+                projectRoot: root,
+                projectPath: projectPath,
+                scheme: "Standard",
+            )
+            Issue.record("Expected error to be thrown")
+        } catch {
+            let message = "\(error)"
+            // Should show targets from other schemes as fallback
+            #expect(message.contains("AppTests"))
+            #expect(message.contains("UITests"))
+        }
+    }
+
+    @Test
     func `No enhancement when error is not about test plan membership`() async throws {
         let (root, projectPath) = try createFixture(schemes: [
             "TestScheme": schemeXML(testTargets: ["MyTests"]),

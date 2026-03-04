@@ -50,51 +50,82 @@ public actor SessionManager {
     /// Custom environment variables applied to all build/test/run commands
     public private(set) var env: [String: String]?
 
-    /// Shared file path for persisting session defaults across server processes.
-    /// Located in /tmp so it's cleared on reboot — no stale state across sessions.
-    static let sharedFilePath = URL(fileURLWithPath: "/tmp/xc-mcp-session.json")
+    /// Resolves the session file path.
+    ///
+    /// Priority:
+    /// 1. `XC_MCP_SESSION` env var (for wrapper scripts where PPID doesn't group correctly)
+    /// 2. PPID-scoped path: `/tmp/xc-mcp-session-{PPID}.json`
+    ///
+    /// Scoping by PPID ensures focused servers spawned by the same parent (e.g., Claude Code)
+    /// share session state, while different agents get isolated files.
+    static func resolveFilePath() -> URL {
+        if let envPath = ProcessInfo.processInfo.environment["XC_MCP_SESSION"] {
+            return URL(fileURLWithPath: envPath)
+        }
+        let ppid = getppid()
+        return URL(fileURLWithPath: "/tmp/xc-mcp-session-\(ppid).json")
+    }
+
+    /// The session file path used by this instance.
+    let filePath: URL
 
     /// Modification date of the shared file when we last loaded/saved it.
     /// Used to detect external changes from other server processes.
     private var lastKnownModDate: Date?
 
-    public init() {
-        if let defaults = Self.loadFromDisk() {
-            projectPath = defaults.projectPath
-            workspacePath = defaults.workspacePath
-            packagePath = defaults.packagePath
-            scheme = defaults.scheme
-            simulatorUDID = defaults.simulatorUDID
-            deviceUDID = defaults.deviceUDID
-            configuration = defaults.configuration
-            env = defaults.env
-        }
-        lastKnownModDate = Self.fileModDate()
+    /// Creates a session manager.
+    ///
+    /// - Parameter filePath: Explicit file path for persistence. When `nil`,
+    ///   uses ``resolveFilePath()`` (PPID-scoped or `XC_MCP_SESSION` env var).
+    ///   Pass an explicit path in tests for isolation.
+    public init(filePath: URL? = nil) {
+        let resolved = filePath ?? Self.resolveFilePath()
+        self.filePath = resolved
+        let defaults = Self.loadDefaults(from: resolved)
+        projectPath = defaults?.projectPath
+        workspacePath = defaults?.workspacePath
+        packagePath = defaults?.packagePath
+        scheme = defaults?.scheme
+        simulatorUDID = defaults?.simulatorUDID
+        deviceUDID = defaults?.deviceUDID
+        configuration = defaults?.configuration
+        env = defaults?.env
+        lastKnownModDate = Self.modDate(of: resolved)
     }
 
-    /// Loads session defaults from the shared file, if it exists.
-    private static func loadFromDisk() -> SessionDefaults? {
-        guard FileManager.default.fileExists(atPath: sharedFilePath.path) else { return nil }
+    /// Loads session defaults from a file path. Static to be callable from nonisolated init.
+    private static func loadDefaults(from path: URL) -> SessionDefaults? {
+        guard FileManager.default.fileExists(atPath: path.path) else { return nil }
         do {
-            let data = try Data(contentsOf: sharedFilePath)
+            let data = try Data(contentsOf: path)
             return try JSONDecoder().decode(SessionDefaults.self, from: data)
         } catch {
             return nil
         }
     }
 
-    /// Returns the modification date of the shared session file, or nil if it doesn't exist.
-    private static func fileModDate() -> Date? {
+    /// Returns the modification date of a file, or nil if it doesn't exist.
+    private static func modDate(of path: URL) -> Date? {
         try? FileManager.default
-            .attributesOfItem(atPath: sharedFilePath.path)[.modificationDate] as? Date
+            .attributesOfItem(atPath: path.path)[.modificationDate] as? Date
+    }
+
+    /// Loads session defaults from the session file, if it exists.
+    private nonisolated func loadFromDisk() -> SessionDefaults? {
+        Self.loadDefaults(from: filePath)
+    }
+
+    /// Returns the modification date of the session file, or nil if it doesn't exist.
+    private nonisolated func fileModDate() -> Date? {
+        Self.modDate(of: filePath)
     }
 
     /// Reloads session defaults from disk if the shared file has been modified
     /// by another server process since we last loaded or saved.
     private func reloadIfNeeded() {
-        let currentModDate = Self.fileModDate()
+        let currentModDate = fileModDate()
         guard currentModDate != lastKnownModDate else { return }
-        if let defaults = Self.loadFromDisk() {
+        if let defaults = loadFromDisk() {
             projectPath = defaults.projectPath
             workspacePath = defaults.workspacePath
             packagePath = defaults.packagePath
@@ -112,8 +143,8 @@ public actor SessionManager {
         let defaults = getDefaults()
         do {
             let data = try JSONEncoder().encode(defaults)
-            try data.write(to: Self.sharedFilePath, options: .atomic)
-            lastKnownModDate = Self.fileModDate()
+            try data.write(to: filePath, options: .atomic)
+            lastKnownModDate = fileModDate()
         } catch {
             // Best-effort — don't fail the operation if persistence fails
         }
@@ -121,7 +152,7 @@ public actor SessionManager {
 
     /// Deletes the shared session file.
     private func deleteFromDisk() {
-        try? FileManager.default.removeItem(at: Self.sharedFilePath)
+        try? FileManager.default.removeItem(at: filePath)
     }
 
     /// Set session defaults

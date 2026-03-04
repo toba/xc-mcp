@@ -111,6 +111,7 @@ public struct TestSimTool: Sendable {
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 onlyTesting: testParams.onlyTesting,
+                scheme: scheme,
             )
             return CallTool.Result(
                 content: testToolResult.content,

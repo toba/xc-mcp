@@ -37,6 +37,7 @@ public enum ErrorExtractor {
     ///   - xcresultPath: Optional path to the `.xcresult` bundle for detailed results.
     ///   - stderr: Optional stderr output for detecting infrastructure issues.
     ///   - onlyTesting: The `only_testing` filters that were passed to xcodebuild, if any.
+    ///   - scheme: The scheme name used for the test run, for enhanced error messages.
     /// - Returns: A successful `CallTool.Result` if tests passed.
     /// - Throws: `MCPError.internalError` if tests failed.
     public static func formatTestToolResult(
@@ -49,6 +50,7 @@ public enum ErrorExtractor {
         projectPath: String? = nil,
         workspacePath: String? = nil,
         onlyTesting: [String]? = nil,
+        scheme: String? = nil,
     ) async throws -> CallTool.Result {
         var succeeded = inputSucceeded
         var testResult: String
@@ -124,6 +126,7 @@ public enum ErrorExtractor {
             if let hint = enhanceTestPlanError(
                 output: output, projectRoot: projectRoot,
                 projectPath: projectPath, workspacePath: workspacePath,
+                scheme: scheme,
             ) {
                 testResult += "\n\n" + hint
             }
@@ -261,6 +264,7 @@ public enum ErrorExtractor {
         projectRoot: String,
         projectPath: String? = nil,
         workspacePath: String? = nil,
+        scheme: String? = nil,
     ) -> String? {
         // xcodebuild emits: "... isn't a member of the specified test plan or scheme."
         guard
@@ -290,23 +294,60 @@ public enum ErrorExtractor {
             }
         }
 
+        // Also discover test targets from scheme files (covers projects without .xctestplan files)
+        let projectPaths = discoverProjectPaths(
+            projectPath: projectPath, workspacePath: workspacePath,
+        )
+        let schemeMap = buildSchemeTestTargetMap(projectPaths: projectPaths)
+
+        // If no test plan targets found, use scheme targets instead
+        if allTargets.isEmpty {
+            // Prefer targets from the current scheme
+            if let scheme, let currentSchemeTargets = schemeMap[scheme], !currentSchemeTargets.isEmpty
+            {
+                allTargets = currentSchemeTargets.sorted()
+            } else {
+                // Fall back to all targets across all schemes
+                var seen: Set<String> = []
+                for targets in schemeMap.values {
+                    for target in targets where seen.insert(target).inserted {
+                        allTargets.append(target)
+                    }
+                }
+                allTargets.sort()
+            }
+        }
+
         var hint = ""
         if badIdentifiers.isEmpty {
-            hint += "The only_testing identifier is not a member of the specified test plan or scheme."
+            hint +=
+                "The only_testing identifier is not a member of the specified test plan or scheme."
         } else {
             let quoted = badIdentifiers.map { "\"\($0)\"" }.joined(separator: ", ")
             hint += "\(quoted) is not a valid test identifier."
         }
 
         if !allTargets.isEmpty {
-            hint += " Available test targets: \(allTargets.joined(separator: ", "))."
+            if let scheme {
+                hint += " Available test targets for scheme '\(scheme)': "
+            } else {
+                hint += " Available test targets: "
+            }
+            hint += allTargets.joined(separator: ", ") + "."
         }
 
         hint +=
             " Use format \"TargetName/TestClassName\" or \"TargetName/TestClassName/testMethodName\"."
 
         if !allTargets.isEmpty, let firstTarget = allTargets.first, !badIdentifiers.isEmpty {
-            let example = "\(firstTarget)/\(badIdentifiers[0])"
+            // Extract the class/method part from the bad identifier to build a better example
+            let classOrMethod: String
+            if let slashIndex = badIdentifiers[0].firstIndex(of: "/") {
+                classOrMethod = String(badIdentifiers[0][badIdentifiers[0].index(after: slashIndex)...])
+            } else {
+                classOrMethod = badIdentifiers[0]
+            }
+            let example = "\(firstTarget)/\(classOrMethod)"
             hint += " For example: \"\(example)\"."
         }
 

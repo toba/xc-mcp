@@ -114,6 +114,7 @@ public struct TestMacOSTool: Sendable {
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 onlyTesting: testParams.onlyTesting,
+                scheme: scheme,
             )
         } catch {
             if isTemporaryBundle {
