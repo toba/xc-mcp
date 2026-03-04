@@ -5,10 +5,9 @@ import XCMCPCore
 import Foundation
 @testable import XCMCPTools
 
-@Suite("RenameSchemeTool Tests")
 struct RenameSchemeToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = RenameSchemeTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -16,8 +15,8 @@ struct RenameSchemeToolTests {
         #expect(toolDefinition.description == "Rename an Xcode scheme file on disk")
     }
 
-    @Test("Rename scheme with missing parameters")
-    func renameSchemeWithMissingParameters() throws {
+    @Test
+    func `Rename scheme with missing parameters`() throws {
         let tool = RenameSchemeTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -42,8 +41,8 @@ struct RenameSchemeToolTests {
         }
     }
 
-    @Test("Rename existing scheme")
-    func renameExistingScheme() throws {
+    @Test
+    func `Rename existing scheme`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -84,8 +83,8 @@ struct RenameSchemeToolTests {
         #expect(!FileManager.default.fileExists(atPath: "\(schemesDir)/OldScheme.xcscheme"))
     }
 
-    @Test("Rename non-existent scheme")
-    func renameNonExistentScheme() throws {
+    @Test
+    func `Rename non-existent scheme`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -112,8 +111,8 @@ struct RenameSchemeToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Rename scheme with name conflict")
-    func renameSchemeWithNameConflict() throws {
+    @Test
+    func `Rename scheme with name conflict`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

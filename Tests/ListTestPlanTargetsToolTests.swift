@@ -22,7 +22,7 @@ struct ListTestPlanTargetsToolTests {
         try json.write(to: filePath, atomically: true, encoding: .utf8)
     }
 
-    @Test func findTargetsWithAbsoluteSearchRoot() throws {
+    @Test func `find targets with absolute search root`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -37,7 +37,7 @@ struct ListTestPlanTargetsToolTests {
         #expect(targets.map(\.enabled) == [true, true])
     }
 
-    @Test func findTargetsWithDotSearchRoot() throws {
+    @Test func `find targets with dot search root`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -56,14 +56,14 @@ struct ListTestPlanTargetsToolTests {
         #expect(targets.map(\.name) == ["AppTests"])
     }
 
-    @Test func findTargetsWithEmptySearchRootReturnsEmpty() {
+    @Test func `find targets with empty search root returns empty`() {
         let tool = makeTool()
         // Empty string returns nil enumerator, so no targets found
         let targets = tool.findTestPlanTargets(planName: "MyTests", searchRoot: "")
         #expect(targets.isEmpty)
     }
 
-    @Test func findTargetsInSubdirectory() throws {
+    @Test func `find targets in subdirectory`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -78,7 +78,7 @@ struct ListTestPlanTargetsToolTests {
         #expect(targets.map(\.name) == ["DeepTests"])
     }
 
-    @Test func findTargetsShowsDisabledStatus() throws {
+    @Test func `find targets shows disabled status`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

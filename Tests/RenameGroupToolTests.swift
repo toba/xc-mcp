@@ -6,10 +6,9 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("RenameGroupTool Tests")
 struct RenameGroupToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = RenameGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -17,8 +16,8 @@ struct RenameGroupToolTests {
         #expect(toolDefinition.description == "Rename a group in the Xcode project hierarchy")
     }
 
-    @Test("Rename group with missing parameters")
-    func renameGroupWithMissingParameters() throws {
+    @Test
+    func `Rename group with missing parameters`() throws {
         let tool = RenameGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -43,8 +42,8 @@ struct RenameGroupToolTests {
         }
     }
 
-    @Test("Rename existing group")
-    func renameExistingGroup() throws {
+    @Test
+    func `Rename existing group`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -90,8 +89,8 @@ struct RenameGroupToolTests {
         #expect(renamedGroup?.path == "NewGroup")
     }
 
-    @Test("Rename nested group")
-    func renameNestedGroup() throws {
+    @Test
+    func `Rename nested group`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -144,8 +143,8 @@ struct RenameGroupToolTests {
         #expect(renamedModule != nil)
     }
 
-    @Test("Rename non-existent group")
-    func renameNonExistentGroup() throws {
+    @Test
+    func `Rename non-existent group`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

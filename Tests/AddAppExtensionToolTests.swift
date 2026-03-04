@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for extension type tests
-struct ExtensionTypeTestCase: Sendable {
+struct ExtensionTypeTestCase {
     let extensionName: String
     let extensionType: String
     let expectedProductTypeRawValue: String
@@ -24,7 +24,7 @@ struct ExtensionTypeTestCase: Sendable {
 }
 
 /// Test case for missing parameter validation
-struct AppExtensionMissingParamTestCase: Sendable {
+struct AppExtensionMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -34,10 +34,9 @@ struct AppExtensionMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("AddAppExtensionTool Tests")
 struct AddAppExtensionToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = AddAppExtensionTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -97,8 +96,10 @@ struct AddAppExtensionToolTests {
         ),
     ]
 
-    @Test("Add app extension with missing parameters", arguments: missingParamCases)
-    func addAppExtensionWithMissingParameters(_ testCase: AppExtensionMissingParamTestCase) throws {
+    @Test(arguments: missingParamCases)
+    func `Add app extension with missing parameters`(
+        _ testCase: AppExtensionMissingParamTestCase,
+    ) throws {
         let tool = AddAppExtensionTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -113,8 +114,8 @@ struct AddAppExtensionToolTests {
         ExtensionTypeTestCase("IntentsExtension", "intents", .intentsServiceExtension),
     ]
 
-    @Test("Add extension type", arguments: extensionTypeCases)
-    func addExtensionType(_ testCase: ExtensionTypeTestCase) throws {
+    @Test(arguments: extensionTypeCases)
+    func `Add extension type`(_ testCase: ExtensionTypeTestCase) throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component: UUID().uuidString,
         )
@@ -154,8 +155,8 @@ struct AddAppExtensionToolTests {
         #expect(extensionTarget?.productType == testCase.expectedProductType)
     }
 
-    @Test("Add widget extension verifies embedding")
-    func addWidgetExtensionVerifiesEmbedding() throws {
+    @Test
+    func `Add widget extension verifies embedding`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component: UUID().uuidString,
         )
@@ -205,8 +206,8 @@ struct AddAppExtensionToolTests {
         #expect(embedPhase != nil)
     }
 
-    @Test("Add extension with deployment target")
-    func addExtensionWithDeploymentTarget() throws {
+    @Test
+    func `Add extension with deployment target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component: UUID().uuidString,
         )
@@ -250,8 +251,9 @@ struct AddAppExtensionToolTests {
         )
     }
 
-    @Test("Add macOS extension sets ALWAYS_SEARCH_USER_PATHS and omits TARGETED_DEVICE_FAMILY")
-    func addMacOSExtensionSettings() throws {
+    @Test
+    func `Add macOS extension sets ALWAYS_SEARCH_USER_PATHS and omits TARGETED_DEVICE_FAMILY`(
+    ) throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component: UUID().uuidString,
         )
@@ -287,8 +289,8 @@ struct AddAppExtensionToolTests {
         #expect(buildConfig?.buildSettings["TARGETED_DEVICE_FAMILY"] == nil)
     }
 
-    @Test("Add duplicate extension")
-    func addDuplicateExtension() throws {
+    @Test
+    func `Add duplicate extension`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component: UUID().uuidString,
         )
@@ -325,8 +327,8 @@ struct AddAppExtensionToolTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("Add extension with non-existent host target")
-    func addExtensionWithNonExistentHostTarget() throws {
+    @Test
+    func `Add extension with non-existent host target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component: UUID().uuidString,
         )
@@ -357,8 +359,8 @@ struct AddAppExtensionToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Add extension with invalid extension type")
-    func addExtensionWithInvalidExtensionType() throws {
+    @Test
+    func `Add extension with invalid extension type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component: UUID().uuidString,
         )
@@ -387,8 +389,8 @@ struct AddAppExtensionToolTests {
         }
     }
 
-    @Test("Add extension to non-application target")
-    func addExtensionToNonApplicationTarget() throws {
+    @Test
+    func `Add extension to non-application target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component: UUID().uuidString,
         )

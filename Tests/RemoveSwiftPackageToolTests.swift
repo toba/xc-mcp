@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
-struct RemoveSwiftPackageMissingParamTestCase: Sendable {
+struct RemoveSwiftPackageMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -17,10 +17,9 @@ struct RemoveSwiftPackageMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("RemoveSwiftPackageTool Tests")
 struct RemoveSwiftPackageToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -42,8 +41,8 @@ struct RemoveSwiftPackageToolTests {
         ),
     ]
 
-    @Test("Remove package with missing parameter", arguments: missingParamCases)
-    func removePackageWithMissingParameters(_ testCase: RemoveSwiftPackageMissingParamTestCase)
+    @Test(arguments: missingParamCases)
+    func `Remove package with missing parameter`(_ testCase: RemoveSwiftPackageMissingParamTestCase)
         throws
     {
         let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
@@ -53,8 +52,8 @@ struct RemoveSwiftPackageToolTests {
         }
     }
 
-    @Test("Remove non-existent package")
-    func removeNonExistentPackage() throws {
+    @Test
+    func `Remove non-existent package`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -82,8 +81,8 @@ struct RemoveSwiftPackageToolTests {
         #expect(message.contains("not found in project"))
     }
 
-    @Test("Remove existing package from project")
-    func removeExistingPackageFromProject() throws {
+    @Test
+    func `Remove existing package from project`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -131,8 +130,8 @@ struct RemoveSwiftPackageToolTests {
         #expect(updatedProject?.remotePackages.isEmpty == true)
     }
 
-    @Test("Remove package from project and targets")
-    func removePackageFromProjectAndTargets() throws {
+    @Test
+    func `Remove package from project and targets`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -191,8 +190,8 @@ struct RemoveSwiftPackageToolTests {
         #expect(updatedTarget?.packageProductDependencies?.isEmpty == true)
     }
 
-    @Test("Remove package but keep target dependencies")
-    func removePackageButKeepTargetDependencies() throws {
+    @Test
+    func `Remove package but keep target dependencies`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -248,8 +247,8 @@ struct RemoveSwiftPackageToolTests {
         #expect(updatedTarget?.packageProductDependencies?.count == 1)
     }
 
-    @Test("Remove local package from project")
-    func removeLocalPackageFromProject() throws {
+    @Test
+    func `Remove local package from project`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -294,8 +293,8 @@ struct RemoveSwiftPackageToolTests {
         #expect(updatedProject?.localPackages.isEmpty == true)
     }
 
-    @Test("Remove non-existent local package")
-    func removeNonExistentLocalPackage() throws {
+    @Test
+    func `Remove non-existent local package`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -321,8 +320,8 @@ struct RemoveSwiftPackageToolTests {
         #expect(message.contains("not found in project"))
     }
 
-    @Test("Remove fails with both URL and path")
-    func removeFailsWithBothUrlAndPath() throws {
+    @Test
+    func `Remove fails with both URL and path`() throws {
         let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -334,8 +333,8 @@ struct RemoveSwiftPackageToolTests {
         }
     }
 
-    @Test("Remove multiple packages")
-    func removeMultiplePackages() throws {
+    @Test
+    func `Remove multiple packages`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

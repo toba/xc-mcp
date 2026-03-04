@@ -3,12 +3,11 @@ import Testing
 @testable import XCMCPCore
 @testable import XCMCPTools
 
-@Suite("StartMacLogCapTool Tests")
 struct StartMacLogCapToolTests {
     let sessionManager = SessionManager()
 
-    @Test("Tool schema has correct name and properties")
-    func toolSchema() {
+    @Test
+    func `Tool schema has correct name and properties`() {
         let tool = StartMacLogCapTool(sessionManager: sessionManager)
         let schema = tool.tool()
 
@@ -16,8 +15,8 @@ struct StartMacLogCapToolTests {
         #expect(schema.description?.contains("macOS") == true)
     }
 
-    @Test("Tool schema includes all expected parameters")
-    func toolParameters() {
+    @Test
+    func `Tool schema includes all expected parameters`() {
         let tool = StartMacLogCapTool(sessionManager: sessionManager)
         let schema = tool.tool()
 
@@ -37,12 +36,11 @@ struct StartMacLogCapToolTests {
     }
 }
 
-@Suite("StopMacLogCapTool Tests")
 struct StopMacLogCapToolTests {
     let sessionManager = SessionManager()
 
-    @Test("Tool schema has correct name and properties")
-    func testToolSchema() {
+    @Test
+    func `tool schema`() {
         let tool = StopMacLogCapTool(sessionManager: sessionManager)
         let schema = tool.tool()
 
@@ -50,8 +48,8 @@ struct StopMacLogCapToolTests {
         #expect(schema.description?.contains("macOS") == true)
     }
 
-    @Test("Tool schema includes all expected parameters")
-    func testToolParameters() {
+    @Test
+    func `tool parameters`() {
         let tool = StopMacLogCapTool(sessionManager: sessionManager)
         let schema = tool.tool()
 

@@ -6,7 +6,6 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("ListSynchronizedFolderExceptionsTool Tests")
 struct ListSynchronizedFolderExceptionsToolTests {
     let tempDir: String
     let pathUtility: PathUtility
@@ -22,8 +21,8 @@ struct ListSynchronizedFolderExceptionsToolTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
-    func toolProperties() {
+    @Test
+    func `Tool has correct properties`() {
         let tool = ListSynchronizedFolderExceptionsTool(pathUtility: pathUtility)
 
         #expect(tool.tool().name == "list_synchronized_folder_exceptions")
@@ -41,8 +40,8 @@ struct ListSynchronizedFolderExceptionsToolTests {
         }
     }
 
-    @Test("Validates required parameters")
-    func validateRequiredParameters() throws {
+    @Test
+    func `Validates required parameters`() throws {
         let tool = ListSynchronizedFolderExceptionsTool(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
@@ -52,8 +51,8 @@ struct ListSynchronizedFolderExceptionsToolTests {
         }
     }
 
-    @Test("Returns empty message when no exceptions")
-    func returnsEmptyWhenNoExceptions() throws {
+    @Test
+    func `Returns empty message when no exceptions`() throws {
         let tool = ListSynchronizedFolderExceptionsTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -74,8 +73,8 @@ struct ListSynchronizedFolderExceptionsToolTests {
         }
     }
 
-    @Test("Lists exception sets with files")
-    func listsExceptionSetsWithFiles() throws {
+    @Test
+    func `Lists exception sets with files`() throws {
         let tool = ListSynchronizedFolderExceptionsTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -99,8 +98,8 @@ struct ListSynchronizedFolderExceptionsToolTests {
         }
     }
 
-    @Test("Lists multiple exception sets")
-    func listsMultipleExceptionSets() throws {
+    @Test
+    func `Lists multiple exception sets`() throws {
         let tool = ListSynchronizedFolderExceptionsTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -164,8 +163,8 @@ struct ListSynchronizedFolderExceptionsToolTests {
         }
     }
 
-    @Test("Fails when sync folder not found")
-    func failsWhenSyncFolderNotFound() throws {
+    @Test
+    func `Fails when sync folder not found`() throws {
         let tool = ListSynchronizedFolderExceptionsTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"

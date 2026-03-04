@@ -2,10 +2,9 @@ import MCP
 import Testing
 @testable import XCMCPTools
 
-@Suite("ScreenshotMacWindowTool Tests")
 struct ScreenshotMacWindowToolTests {
-    @Test("Tool schema has correct name and description")
-    func toolSchema() {
+    @Test
+    func `Tool schema has correct name and description`() {
         let tool = ScreenshotMacWindowTool()
         let schema = tool.tool()
 
@@ -14,8 +13,8 @@ struct ScreenshotMacWindowToolTests {
         #expect(schema.description?.contains("ScreenCaptureKit") == true)
     }
 
-    @Test("Tool schema includes all expected parameters")
-    func toolParameters() {
+    @Test
+    func `Tool schema includes all expected parameters`() {
         let tool = ScreenshotMacWindowTool()
         let schema = tool.tool()
 
@@ -32,8 +31,8 @@ struct ScreenshotMacWindowToolTests {
         #expect(properties["save_path"] != nil)
     }
 
-    @Test("Execute with no arguments throws invalidParams")
-    func noArguments() async throws {
+    @Test
+    func `Execute with no arguments throws invalidParams`() async throws {
         let tool = ScreenshotMacWindowTool()
 
         await #expect(throws: MCPError.self) {

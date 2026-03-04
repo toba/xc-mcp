@@ -2,19 +2,17 @@ import Testing
 @testable import XCMCPCore
 import Foundation
 
-@Suite("XCResultParser Tests")
 struct XCResultParserTests {
-    @Test("Non-existent path returns nil")
-    func nonExistentPath() async {
+    @Test
+    func `Non-existent path returns nil`() async {
         let result = await XCResultParser.parseTestResults(at: "/nonexistent/path.xcresult")
         #expect(result == nil)
     }
 }
 
-@Suite("ErrorExtractor Infrastructure Warning Tests")
 struct ErrorExtractorInfrastructureTests {
-    @Test("Detects testmanagerd SIGSEGV crash")
-    func managerdSIGSEGV() async throws {
+    @Test
+    func `Detects testmanagerd SIGSEGV crash`() async throws {
         let stderr = """
         Testing started
         testmanagerd received SIGSEGV: pointer authentication failure
@@ -32,8 +30,8 @@ struct ErrorExtractorInfrastructureTests {
         #expect(text.contains("Warning: testmanagerd crashed"))
     }
 
-    @Test("Detects testmanagerd EXC_BAD_ACCESS")
-    func managerdExcBadAccess() async throws {
+    @Test
+    func `Detects testmanagerd EXC_BAD_ACCESS`() async throws {
         let stderr = "testmanagerd: EXC_BAD_ACCESS in HIServices"
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
@@ -48,8 +46,8 @@ struct ErrorExtractorInfrastructureTests {
         #expect(text.contains("Warning: testmanagerd crashed"))
     }
 
-    @Test("Detects testmanagerd lost connection")
-    func managerdLostConnection() async throws {
+    @Test
+    func `Detects testmanagerd lost connection`() async throws {
         let stderr = "testmanagerd lost connection to test process"
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
@@ -64,8 +62,8 @@ struct ErrorExtractorInfrastructureTests {
         #expect(text.contains("Warning: testmanagerd terminated unexpectedly"))
     }
 
-    @Test("No warning for clean stderr")
-    func cleanStderr() async throws {
+    @Test
+    func `No warning for clean stderr`() async throws {
         let stderr = "note: Using new build system"
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
@@ -80,8 +78,8 @@ struct ErrorExtractorInfrastructureTests {
         #expect(!text.contains("Warning:"))
     }
 
-    @Test("No warning when stderr is nil")
-    func nilStderr() async throws {
+    @Test
+    func `No warning when stderr is nil`() async throws {
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
@@ -94,8 +92,8 @@ struct ErrorExtractorInfrastructureTests {
         #expect(!text.contains("Warning:"))
     }
 
-    @Test("Failed tests throw MCPError with warning appended")
-    func failedWithWarning() async {
+    @Test
+    func `Failed tests throw MCPError with warning appended`() async {
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
                 output: """
@@ -112,8 +110,8 @@ struct ErrorExtractorInfrastructureTests {
         }
     }
 
-    @Test("Detects IDETestRunnerDaemon crash")
-    func iDETestRunnerDaemonCrash() async throws {
+    @Test
+    func `Detects IDETestRunnerDaemon crash`() async throws {
         let stderr = "IDETestRunnerDaemon crash report generated"
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
@@ -129,10 +127,9 @@ struct ErrorExtractorInfrastructureTests {
     }
 }
 
-@Suite("ErrorExtractor Zero-Test Detection Tests")
 struct ErrorExtractorZeroTestTests {
-    @Test("Errors when only_testing filter matches zero tests")
-    func zeroTestsWithOnlyTesting() async {
+    @Test
+    func `Errors when only_testing filter matches zero tests`() async {
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
                 output: "Test run completed.",
@@ -148,8 +145,8 @@ struct ErrorExtractorZeroTestTests {
         }
     }
 
-    @Test("Succeeds when only_testing filter matches tests")
-    func matchedFilterSucceeds() async throws {
+    @Test
+    func `Succeeds when only_testing filter matches tests`() async throws {
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
@@ -163,8 +160,8 @@ struct ErrorExtractorZeroTestTests {
         #expect(text.contains("Tests passed"))
     }
 
-    @Test("No error when no only_testing filter and zero tests")
-    func zeroTestsWithoutFilter() async throws {
+    @Test
+    func `No error when no only_testing filter and zero tests`() async throws {
         // Without only_testing, zero tests is not an error (could be a legitimate empty test target)
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run completed.",
@@ -178,8 +175,8 @@ struct ErrorExtractorZeroTestTests {
         #expect(text.contains("Test run completed"))
     }
 
-    @Test("Error message includes all filter identifiers")
-    func multipleFilters() async {
+    @Test
+    func `Error message includes all filter identifiers`() async {
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
                 output: "Test run completed.",
@@ -196,10 +193,9 @@ struct ErrorExtractorZeroTestTests {
     }
 }
 
-@Suite("ErrorExtractor Exit Code Override Tests")
 struct ErrorExtractorExitCodeOverrideTests {
-    @Test("Succeeds when exit code is non-zero but parsed output shows tests passed")
-    func nonZeroExitCodeWithPassingTests() async throws {
+    @Test
+    func `Succeeds when exit code is non-zero but parsed output shows tests passed`() async throws {
         // Reproduces the bug: swift test exits non-zero but all tests pass
         let output = """
         Building for debugging...
@@ -220,8 +216,8 @@ struct ErrorExtractorExitCodeOverrideTests {
         #expect(text.contains("Tests passed"))
     }
 
-    @Test("Still fails when exit code is non-zero and tests actually failed")
-    func nonZeroExitCodeWithFailingTests() async {
+    @Test
+    func `Still fails when exit code is non-zero and tests actually failed`() async {
         let output = """
         Test Case 'FooTests.testBar' failed (0.5 seconds)
         Executed 10 tests, with 2 failures (2 unexpected) in 1.234 (1.500) seconds

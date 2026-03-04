@@ -2,10 +2,9 @@ import Testing
 @testable import XCMCPCore
 import Foundation
 
-@Suite("CrashReportParser Tests")
 struct CrashReportParserTests {
-    @Test("Parses JSON with termination reason and exception")
-    func fullCrashJSON() {
+    @Test
+    func `Parses JSON with termination reason and exception`() {
         let json: [String: Any] = [
             "procName": "ThesisApp",
             "captureTime": "2026-02-22 18:17:24.2324 -0700",
@@ -48,8 +47,8 @@ struct CrashReportParserTests {
         #expect(formatted.contains("Symbol not found"))
     }
 
-    @Test("Parses minimal JSON with only process name")
-    func minimalJSON() {
+    @Test
+    func `Parses minimal JSON with only process name`() {
         let json: [String: Any] = [
             "procName": "MyApp",
         ]
@@ -65,15 +64,15 @@ struct CrashReportParserTests {
         #expect(formatted == "Process: MyApp")
     }
 
-    @Test("Empty JSON produces empty formatted string")
-    func emptyJSON() {
+    @Test
+    func `Empty JSON produces empty formatted string`() {
         let summary = CrashReportParser.parseJSON([:])
         #expect(summary.processName == nil)
         #expect(summary.formatted().isEmpty)
     }
 
-    @Test("fatalDyldError adds hint when no DYLD in termination")
-    func dyldErrorHint() {
+    @Test
+    func `fatalDyldError adds hint when no DYLD in termination`() {
         let json: [String: Any] = [
             "procName": "CrashApp",
             "fatalDyldError": 1,
@@ -85,8 +84,8 @@ struct CrashReportParserTests {
         #expect(formatted.contains("Fatal dyld error"))
     }
 
-    @Test("fatalDyldError does not duplicate when DYLD already in termination")
-    func dyldErrorNoDuplicate() {
+    @Test
+    func `fatalDyldError does not duplicate when DYLD already in termination`() {
         let json: [String: Any] = [
             "procName": "CrashApp",
             "fatalDyldError": 1,
@@ -102,8 +101,8 @@ struct CrashReportParserTests {
         #expect(!formatted.contains("Fatal dyld error"))
     }
 
-    @Test("Search returns empty for nonexistent process")
-    func searchNoResults() {
+    @Test
+    func `Search returns empty for nonexistent process`() {
         let results = CrashReportParser.search(
             processName: "NonExistentApp_\(UUID().uuidString)",
             minutes: 1,
@@ -111,8 +110,8 @@ struct CrashReportParserTests {
         #expect(results.isEmpty)
     }
 
-    @Test("diagnosticReportsDir points to expected location")
-    func reportsDir() {
+    @Test
+    func `diagnosticReportsDir points to expected location`() {
         let dir = CrashReportParser.diagnosticReportsDir
         #expect(dir.contains("Library/Logs/DiagnosticReports"))
     }

@@ -1,10 +1,9 @@
 import Testing
 @testable import XCMCPCore
 
-@Suite("LLDB Crash Detection")
 struct LLDBCrashDetectionTests {
-    @Test("Detects SIGABRT crash")
-    func sigabrt() {
+    @Test
+    func `Detects SIGABRT crash`() {
         let output = """
         Process 12345 stopped
         * thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGABRT
@@ -13,44 +12,44 @@ struct LLDBCrashDetectionTests {
         #expect(LLDBSession.outputIndicatesCrash(output))
     }
 
-    @Test("Detects SIGSEGV crash")
-    func sigsegv() {
+    @Test
+    func `Detects SIGSEGV crash`() {
         let output = "stop reason = signal SIGSEGV"
         #expect(LLDBSession.outputIndicatesCrash(output))
     }
 
-    @Test("Detects EXC_BAD_ACCESS")
-    func excBadAccess() {
+    @Test
+    func `Detects EXC_BAD_ACCESS`() {
         let output = "stop reason = EXC_BAD_ACCESS (code=1, address=0x0)"
         #expect(LLDBSession.outputIndicatesCrash(output))
     }
 
-    @Test("Detects EXC_BAD_INSTRUCTION")
-    func excBadInstruction() {
+    @Test
+    func `Detects EXC_BAD_INSTRUCTION`() {
         let output = "stop reason = EXC_BAD_INSTRUCTION (code=EXC_I386_INVOP, subcode=0x0)"
         #expect(LLDBSession.outputIndicatesCrash(output))
     }
 
-    @Test("Detects EXC_CRASH")
-    func excCrash() {
+    @Test
+    func `Detects EXC_CRASH`() {
         let output = "stop reason = EXC_CRASH (code=0, subcode=0x0)"
         #expect(LLDBSession.outputIndicatesCrash(output))
     }
 
-    @Test("Detects process exit with status")
-    func exitWithStatus() {
+    @Test
+    func `Detects process exit with status`() {
         let output = "Process 12345 exited with status = 1 (0x00000001)"
         #expect(LLDBSession.outputIndicatesCrash(output))
     }
 
-    @Test("Detects process exit with signal")
-    func exitWithSignal() {
+    @Test
+    func `Detects process exit with signal`() {
         let output = "Process 12345 exited with signal = 11"
         #expect(LLDBSession.outputIndicatesCrash(output))
     }
 
-    @Test("Ignores library load noise")
-    func libraryLoadNoise() {
+    @Test
+    func `Ignores library load noise`() {
         let output = """
         2 locations added to breakpoint 1
         Process 12345 resuming
@@ -58,8 +57,8 @@ struct LLDBCrashDetectionTests {
         #expect(!LLDBSession.outputIndicatesCrash(output))
     }
 
-    @Test("Ignores attach noise")
-    func attachNoise() {
+    @Test
+    func `Ignores attach noise`() {
         let output = """
         Executable module set to "/Applications/MyApp.app/Contents/MacOS/MyApp".
         Architecture set to: arm64-apple-macosx-.
@@ -67,14 +66,14 @@ struct LLDBCrashDetectionTests {
         #expect(!LLDBSession.outputIndicatesCrash(output))
     }
 
-    @Test("Ignores benign stop reason (breakpoint)")
-    func breakpointStop() {
+    @Test
+    func `Ignores benign stop reason (breakpoint)`() {
         let output = "stop reason = breakpoint 1.1"
         #expect(!LLDBSession.outputIndicatesCrash(output))
     }
 
-    @Test("Ignores empty output")
-    func emptyOutput() {
+    @Test
+    func `Ignores empty output`() {
         #expect(!LLDBSession.outputIndicatesCrash(""))
     }
 }

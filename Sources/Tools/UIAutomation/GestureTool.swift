@@ -121,7 +121,7 @@ public struct GestureTool: Sendable {
 
 // MARK: - Gesture Presets
 
-private enum GesturePreset: String, CaseIterable, Sendable {
+private enum GesturePreset: String, CaseIterable {
     case scrollUp = "scroll_up"
     case scrollDown = "scroll_down"
     case scrollLeft = "scroll_left"

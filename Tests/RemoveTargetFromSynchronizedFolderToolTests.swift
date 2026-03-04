@@ -6,7 +6,6 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("RemoveTargetFromSynchronizedFolderTool Tests")
 struct RemoveTargetFromSynchronizedFolderToolTests {
     let tempDir: String
     let pathUtility: PathUtility
@@ -22,8 +21,8 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
-    func toolProperties() {
+    @Test
+    func `Tool has correct properties`() {
         let tool = RemoveTargetFromSynchronizedFolderTool(pathUtility: pathUtility)
         let definition = tool.tool()
 
@@ -43,8 +42,8 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
         }
     }
 
-    @Test("Validates required parameters")
-    func validateRequiredParameters() throws {
+    @Test
+    func `Validates required parameters`() throws {
         let tool = RemoveTargetFromSynchronizedFolderTool(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
@@ -55,8 +54,8 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
         }
     }
 
-    @Test("Removes target from synchronized folder")
-    func removesTargetFromSynchronizedFolder() throws {
+    @Test
+    func `Removes target from synchronized folder`() throws {
         let tool = RemoveTargetFromSynchronizedFolderTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -86,8 +85,8 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
         #expect(syncGroups.isEmpty)
     }
 
-    @Test("Cleans up exception sets when removing target")
-    func cleansUpExceptionSets() throws {
+    @Test
+    func `Cleans up exception sets when removing target`() throws {
         let tool = RemoveTargetFromSynchronizedFolderTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -118,8 +117,8 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
         #expect(exceptions.isEmpty)
     }
 
-    @Test("Returns message when target does not reference folder")
-    func targetDoesNotReferenceFolder() throws {
+    @Test
+    func `Returns message when target does not reference folder`() throws {
         let tool = RemoveTargetFromSynchronizedFolderTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -151,8 +150,8 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
         }
     }
 
-    @Test("Fails when sync folder not found")
-    func failsWhenSyncFolderNotFound() throws {
+    @Test
+    func `Fails when sync folder not found`() throws {
         let tool = RemoveTargetFromSynchronizedFolderTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -169,8 +168,8 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
         }
     }
 
-    @Test("Fails when target not found")
-    func failsWhenTargetNotFound() throws {
+    @Test
+    func `Fails when target not found`() throws {
         let tool = RemoveTargetFromSynchronizedFolderTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"

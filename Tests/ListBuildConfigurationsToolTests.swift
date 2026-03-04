@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 struct ListBuildConfigurationsToolTests {
-    @Test func listBuildConfigurationsToolCreation() {
+    @Test func `list build configurations tool creation`() {
         let tool = ListBuildConfigurationsTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -15,7 +15,7 @@ struct ListBuildConfigurationsToolTests {
         #expect(toolDefinition.description == "List all build configurations in an Xcode project")
     }
 
-    @Test func listBuildConfigurationsWithMissingProjectPath() throws {
+    @Test func `list build configurations with missing project path`() throws {
         let tool = ListBuildConfigurationsTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -23,7 +23,7 @@ struct ListBuildConfigurationsToolTests {
         }
     }
 
-    @Test func listBuildConfigurationsWithInvalidProjectPath() throws {
+    @Test func `list build configurations with invalid project path`() throws {
         let tool = ListBuildConfigurationsTool(pathUtility: PathUtility(basePath: "/tmp"))
         let arguments: [String: Value] = [
             "project_path": Value.string("/nonexistent/path.xcodeproj"),
@@ -34,7 +34,7 @@ struct ListBuildConfigurationsToolTests {
         }
     }
 
-    @Test func listBuildConfigurationsWithValidProject() throws {
+    @Test func `list build configurations with valid project`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

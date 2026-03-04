@@ -2,10 +2,9 @@ import Testing
 @testable import XCMCPCore
 import Foundation
 
-@Suite("Linker Error Tests")
 struct LinkerErrorTests {
-    @Test("Parse undefined symbol linker error")
-    func parseLinkerError() throws {
+    @Test
+    func `Parse undefined symbol linker error`() throws {
         let parser = BuildOutputParser()
 
         let fixtureURL = try #require(
@@ -21,8 +20,8 @@ struct LinkerErrorTests {
         #expect(result.linkerErrors.count >= 1)
     }
 
-    @Test("Parse inline linker error")
-    func parseInlineLinkerError() {
+    @Test
+    func `Parse inline linker error`() {
         let parser = BuildOutputParser()
         let input = """
         Undefined symbols for architecture arm64:
@@ -41,8 +40,8 @@ struct LinkerErrorTests {
         #expect(result.linkerErrors[0].referencedFrom == "main.o")
     }
 
-    @Test("Parse framework not found linker error")
-    func frameworkNotFound() {
+    @Test
+    func `Parse framework not found linker error`() {
         let parser = BuildOutputParser()
         let input = """
         ld: framework not found SomeFramework
@@ -56,8 +55,8 @@ struct LinkerErrorTests {
         #expect(result.linkerErrors[0].message == "framework not found SomeFramework")
     }
 
-    @Test("Parse library not found linker error")
-    func libraryNotFound() {
+    @Test
+    func `Parse library not found linker error`() {
         let parser = BuildOutputParser()
         let input = """
         ld: library not found for -lSomeLib
@@ -71,8 +70,8 @@ struct LinkerErrorTests {
         #expect(result.linkerErrors[0].message == "library not found for -lSomeLib")
     }
 
-    @Test("Deduplicate linker errors")
-    func deduplicateLinkerErrors() {
+    @Test
+    func `Deduplicate linker errors`() {
         let parser = BuildOutputParser()
         let input = """
         Undefined symbols for architecture arm64:

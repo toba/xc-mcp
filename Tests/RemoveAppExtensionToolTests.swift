@@ -6,10 +6,9 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("RemoveAppExtensionTool Tests")
 struct RemoveAppExtensionToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -21,8 +20,8 @@ struct RemoveAppExtensionToolTests {
         )
     }
 
-    @Test("Remove app extension with missing parameters")
-    func removeAppExtensionWithMissingParameters() throws {
+    @Test
+    func `Remove app extension with missing parameters`() throws {
         let tool = RemoveAppExtensionTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         // Missing project_path
@@ -40,8 +39,8 @@ struct RemoveAppExtensionToolTests {
         }
     }
 
-    @Test("Remove widget extension")
-    func removeWidgetExtension() throws {
+    @Test
+    func `Remove widget extension`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
             UUID().uuidString,
@@ -94,8 +93,8 @@ struct RemoveAppExtensionToolTests {
         #expect(hasDependency != true)
     }
 
-    @Test("Remove non-existent extension")
-    func removeNonExistentExtension() throws {
+    @Test
+    func `Remove non-existent extension`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
             UUID().uuidString,
@@ -124,8 +123,8 @@ struct RemoveAppExtensionToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Remove non-extension target fails")
-    func removeNonExtensionTargetFails() throws {
+    @Test
+    func `Remove non-extension target fails`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
             UUID().uuidString,
@@ -154,8 +153,8 @@ struct RemoveAppExtensionToolTests {
         #expect(message.contains("is not an App Extension"))
     }
 
-    @Test("Remove extension cleans up embed phase")
-    func removeExtensionCleansUpEmbedPhase() throws {
+    @Test
+    func `Remove extension cleans up embed phase`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
             UUID().uuidString,
@@ -200,8 +199,8 @@ struct RemoveAppExtensionToolTests {
         }
     }
 
-    @Test("Remove multiple extensions")
-    func removeMultipleExtensions() throws {
+    @Test
+    func `Remove multiple extensions`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appending(
             component:
             UUID().uuidString,

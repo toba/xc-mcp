@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
-struct RemoveFileMissingParamTestCase: Sendable {
+struct RemoveFileMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -17,10 +17,9 @@ struct RemoveFileMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("RemoveFileTool Tests")
 struct RemoveFileToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = RemoveFileTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -39,8 +38,8 @@ struct RemoveFileToolTests {
         ),
     ]
 
-    @Test("Remove file with missing parameter", arguments: missingParamCases)
-    func removeFileWithMissingParameter(_ testCase: RemoveFileMissingParamTestCase) throws {
+    @Test(arguments: missingParamCases)
+    func `Remove file with missing parameter`(_ testCase: RemoveFileMissingParamTestCase) throws {
         let tool = RemoveFileTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -48,8 +47,8 @@ struct RemoveFileToolTests {
         }
     }
 
-    @Test("Remove file from project")
-    func removeFile() throws {
+    @Test
+    func `Remove file from project`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -115,8 +114,8 @@ struct RemoveFileToolTests {
         #expect(FileManager.default.fileExists(atPath: testFilePath) == true)
     }
 
-    @Test("Remove file from disk")
-    func removeFileFromDisk() throws {
+    @Test
+    func `Remove file from disk`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -164,8 +163,9 @@ struct RemoveFileToolTests {
         #expect(FileManager.default.fileExists(atPath: testFilePath) == false)
     }
 
-    @Test("Remove file only removes the matching path, not same-named files in other targets")
-    func removeFileMatchesByPath() throws {
+    @Test
+    func `Remove file only removes the matching path, not same-named files in other targets`(
+    ) throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -253,8 +253,8 @@ struct RemoveFileToolTests {
         #expect(appFileStillExists == false)
     }
 
-    @Test("Remove non-existent file")
-    func removeNonExistentFile() throws {
+    @Test
+    func `Remove non-existent file`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

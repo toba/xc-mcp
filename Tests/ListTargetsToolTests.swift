@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 struct ListTargetsToolTests {
-    @Test func listTargetsToolCreation() {
+    @Test func `list targets tool creation`() {
         let tool = ListTargetsTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -15,7 +15,7 @@ struct ListTargetsToolTests {
         #expect(toolDefinition.description == "List all targets in an Xcode project")
     }
 
-    @Test func listTargetsWithMissingProjectPath() throws {
+    @Test func `list targets with missing project path`() throws {
         let tool = ListTargetsTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -23,7 +23,7 @@ struct ListTargetsToolTests {
         }
     }
 
-    @Test func listTargetsWithInvalidProjectPath() throws {
+    @Test func `list targets with invalid project path`() throws {
         let tool = ListTargetsTool(pathUtility: PathUtility(basePath: "/tmp"))
         let arguments: [String: Value] = [
             "project_path": Value.string("/nonexistent/path.xcodeproj"),
@@ -34,7 +34,7 @@ struct ListTargetsToolTests {
         }
     }
 
-    @Test func listTargetsWithEmptyProject() throws {
+    @Test func `list targets with empty project`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

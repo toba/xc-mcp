@@ -6,12 +6,11 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("CopyFilesPhaseTools Tests")
 struct CopyFilesPhaseToolsTests {
     // MARK: - ListCopyFilesPhases Tests
 
-    @Test("ListCopyFilesPhases tool creation")
-    func listCopyFilesPhaseToolCreation() {
+    @Test
+    func `ListCopyFilesPhases tool creation`() {
         let tool = ListCopyFilesPhases(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -19,8 +18,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(toolDefinition.description == "List all Copy Files build phases for a target")
     }
 
-    @Test("ListCopyFilesPhases with missing parameters")
-    func listCopyFilesPhasesWithMissingParams() throws {
+    @Test
+    func `ListCopyFilesPhases with missing parameters`() throws {
         let tool = ListCopyFilesPhases(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -32,8 +31,8 @@ struct CopyFilesPhaseToolsTests {
         }
     }
 
-    @Test("ListCopyFilesPhases with no phases")
-    func listCopyFilesPhasesEmpty() throws {
+    @Test
+    func `ListCopyFilesPhases with no phases`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -61,8 +60,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(message.contains("No Copy Files build phases found"))
     }
 
-    @Test("ListCopyFilesPhases with existing phases")
-    func listCopyFilesPhasesWithPhases() throws {
+    @Test
+    func `ListCopyFilesPhases with existing phases`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -104,8 +103,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(message.contains("styles"))
     }
 
-    @Test("ListCopyFilesPhases with non-existent target")
-    func listCopyFilesPhasesNonExistentTarget() throws {
+    @Test
+    func `ListCopyFilesPhases with non-existent target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -135,8 +134,8 @@ struct CopyFilesPhaseToolsTests {
 
     // MARK: - AddCopyFilesPhase Tests
 
-    @Test("AddCopyFilesPhase tool creation")
-    func addCopyFilesPhaseToolCreation() {
+    @Test
+    func `AddCopyFilesPhase tool creation`() {
         let tool = AddCopyFilesPhase(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -144,8 +143,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(toolDefinition.description?.contains("Copy Files") == true)
     }
 
-    @Test("AddCopyFilesPhase with missing parameters")
-    func addCopyFilesPhaseWithMissingParams() throws {
+    @Test
+    func `AddCopyFilesPhase with missing parameters`() throws {
         let tool = AddCopyFilesPhase(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -158,8 +157,8 @@ struct CopyFilesPhaseToolsTests {
         }
     }
 
-    @Test("AddCopyFilesPhase creates phase successfully")
-    func addCopyFilesPhaseSuccess() throws {
+    @Test
+    func `AddCopyFilesPhase creates phase successfully`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -201,8 +200,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(copyPhase?.dstPath == "styles")
     }
 
-    @Test("AddCopyFilesPhase with invalid destination")
-    func addCopyFilesPhaseInvalidDestination() throws {
+    @Test
+    func `AddCopyFilesPhase with invalid destination`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -229,8 +228,8 @@ struct CopyFilesPhaseToolsTests {
         }
     }
 
-    @Test("AddCopyFilesPhase duplicate phase name")
-    func addCopyFilesPhaseDuplicate() throws {
+    @Test
+    func `AddCopyFilesPhase duplicate phase name`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -272,8 +271,8 @@ struct CopyFilesPhaseToolsTests {
 
     // MARK: - AddToCopyFilesPhase Tests
 
-    @Test("AddToCopyFilesPhase tool creation")
-    func addToCopyFilesPhaseToolCreation() {
+    @Test
+    func `AddToCopyFilesPhase tool creation`() {
         let tool = AddToCopyFilesPhase(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -281,8 +280,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(toolDefinition.description?.contains("Add files") == true)
     }
 
-    @Test("AddToCopyFilesPhase with missing parameters")
-    func addToCopyFilesPhaseWithMissingParams() throws {
+    @Test
+    func `AddToCopyFilesPhase with missing parameters`() throws {
         let tool = AddToCopyFilesPhase(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -295,8 +294,8 @@ struct CopyFilesPhaseToolsTests {
         }
     }
 
-    @Test("AddToCopyFilesPhase adds files successfully")
-    func addToCopyFilesPhaseSuccess() throws {
+    @Test
+    func `AddToCopyFilesPhase adds files successfully`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -356,8 +355,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(copyPhase?.files?.count == 1)
     }
 
-    @Test("AddToCopyFilesPhase with non-existent phase")
-    func addToCopyFilesPhaseNonExistentPhase() throws {
+    @Test
+    func `AddToCopyFilesPhase with non-existent phase`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -387,8 +386,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("AddToCopyFilesPhase with file not in project")
-    func addToCopyFilesPhaseFileNotInProject() throws {
+    @Test
+    func `AddToCopyFilesPhase with file not in project`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -430,8 +429,8 @@ struct CopyFilesPhaseToolsTests {
 
     // MARK: - RemoveCopyFilesPhase Tests
 
-    @Test("RemoveCopyFilesPhase tool creation")
-    func removeCopyFilesPhaseToolCreation() {
+    @Test
+    func `RemoveCopyFilesPhase tool creation`() {
         let tool = RemoveCopyFilesPhase(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -439,8 +438,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(toolDefinition.description?.contains("Remove") == true)
     }
 
-    @Test("RemoveCopyFilesPhase with missing parameters")
-    func removeCopyFilesPhaseWithMissingParams() throws {
+    @Test
+    func `RemoveCopyFilesPhase with missing parameters`() throws {
         let tool = RemoveCopyFilesPhase(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -452,8 +451,8 @@ struct CopyFilesPhaseToolsTests {
         }
     }
 
-    @Test("RemoveCopyFilesPhase removes phase successfully")
-    func removeCopyFilesPhaseSuccess() throws {
+    @Test
+    func `RemoveCopyFilesPhase removes phase successfully`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -504,8 +503,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(!copyPhases.contains { $0.name == "Copy Styles" })
     }
 
-    @Test("RemoveCopyFilesPhase with non-existent phase")
-    func removeCopyFilesPhaseNonExistent() throws {
+    @Test
+    func `RemoveCopyFilesPhase with non-existent phase`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -534,8 +533,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("RemoveCopyFilesPhase with non-existent target")
-    func removeCopyFilesPhaseNonExistentTarget() throws {
+    @Test
+    func `RemoveCopyFilesPhase with non-existent target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -566,8 +565,8 @@ struct CopyFilesPhaseToolsTests {
 
     // MARK: - Integration Tests
 
-    @Test("Full workflow: create, add files, list, remove")
-    func fullWorkflow() throws {
+    @Test
+    func `Full workflow: create, add files, list, remove`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -668,8 +667,8 @@ struct CopyFilesPhaseToolsTests {
         #expect(finalListMessage.contains("No Copy Files build phases found"))
     }
 
-    @Test("AddCopyFilesPhase with all destination types")
-    func addCopyFilesPhaseAllDestinations() throws {
+    @Test
+    func `AddCopyFilesPhase with all destination types`() throws {
         let destinations = [
             ("resources", PBXCopyFilesBuildPhase.SubFolder.resources),
             ("frameworks", PBXCopyFilesBuildPhase.SubFolder.frameworks),

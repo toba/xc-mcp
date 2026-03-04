@@ -6,7 +6,6 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("RemoveSynchronizedFolderExceptionTool Tests")
 struct RemoveSynchronizedFolderExceptionToolTests {
     let tempDir: String
     let pathUtility: PathUtility
@@ -22,8 +21,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
-    func toolProperties() {
+    @Test
+    func `Tool has correct properties`() {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         #expect(tool.tool().name == "remove_synchronized_folder_exception")
@@ -43,8 +42,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         }
     }
 
-    @Test("Validates required parameters")
-    func validateRequiredParameters() throws {
+    @Test
+    func `Validates required parameters`() throws {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
@@ -55,8 +54,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         }
     }
 
-    @Test("Removes entire exception set when no file_name given")
-    func removesEntireExceptionSet() throws {
+    @Test
+    func `Removes entire exception set when no file_name given`() throws {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -86,8 +85,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         #expect(updatedSyncGroups.first?.exceptions?.isEmpty != false)
     }
 
-    @Test("Removes single file from exception set")
-    func removesSingleFile() throws {
+    @Test
+    func `Removes single file from exception set`() throws {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -116,8 +115,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         #expect(exceptionSets.first?.membershipExceptions == ["File2.swift"])
     }
 
-    @Test("Removes exception set when last file removed")
-    func removesExceptionSetWhenLastFileRemoved() throws {
+    @Test
+    func `Removes exception set when last file removed`() throws {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -143,8 +142,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         #expect(updated.pbxproj.fileSystemSynchronizedBuildFileExceptionSets.isEmpty)
     }
 
-    @Test("Fails when sync folder not found")
-    func failsWhenSyncFolderNotFound() throws {
+    @Test
+    func `Fails when sync folder not found`() throws {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -161,8 +160,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         }
     }
 
-    @Test("Fails when no exception set for target")
-    func failsWhenNoExceptionSetForTarget() throws {
+    @Test
+    func `Fails when no exception set for target`() throws {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -180,8 +179,8 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         }
     }
 
-    @Test("Fails when file not in exception set")
-    func failsWhenFileNotInExceptionSet() throws {
+    @Test
+    func `Fails when file not in exception set`() throws {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"

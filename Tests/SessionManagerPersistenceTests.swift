@@ -4,15 +4,15 @@ import Testing
 import Foundation
 import Subprocess
 
-@Suite("SessionManager Persistence", .serialized)
+@Suite(.serialized)
 struct SessionManagerPersistenceTests {
     /// Clean up the shared file before and after each test.
     private func cleanup() {
         try? FileManager.default.removeItem(at: SessionManager.sharedFilePath)
     }
 
-    @Test("Defaults persist to disk and load in new instance")
-    func roundTrip() async {
+    @Test
+    func `Defaults persist to disk and load in new instance`() async {
         cleanup()
         defer { cleanup() }
 
@@ -32,8 +32,8 @@ struct SessionManagerPersistenceTests {
         #expect(defaults.workspacePath == nil)
     }
 
-    @Test("All fields persist correctly")
-    func allFields() async {
+    @Test
+    func `All fields persist correctly`() async {
         cleanup()
         defer { cleanup() }
 
@@ -57,8 +57,8 @@ struct SessionManagerPersistenceTests {
         #expect(defaults.configuration == "Debug")
     }
 
-    @Test("Clear deletes shared file")
-    func clearDeletesFile() async {
+    @Test
+    func `Clear deletes shared file`() async {
         cleanup()
         defer { cleanup() }
 
@@ -75,8 +75,8 @@ struct SessionManagerPersistenceTests {
         #expect(defaults.scheme == nil)
     }
 
-    @Test("Corrupted file is ignored gracefully")
-    func corruptedFile() async throws {
+    @Test
+    func `Corrupted file is ignored gracefully`() async throws {
         cleanup()
         defer { cleanup() }
 
@@ -90,8 +90,8 @@ struct SessionManagerPersistenceTests {
         #expect(defaults.scheme == nil)
     }
 
-    @Test("setDefaults merges and persists incrementally")
-    func incrementalMerge() async {
+    @Test
+    func `setDefaults merges and persists incrementally`() async {
         cleanup()
         defer { cleanup() }
 
@@ -105,8 +105,8 @@ struct SessionManagerPersistenceTests {
         #expect(defaults.configuration == "Release")
     }
 
-    @Test("Running instance reloads when another process writes the shared file")
-    func crossProcessReload() async {
+    @Test
+    func `Running instance reloads when another process writes the shared file`() async {
         cleanup()
         defer { cleanup() }
 
@@ -126,8 +126,8 @@ struct SessionManagerPersistenceTests {
         #expect(defaults.scheme == "Standard")
     }
 
-    @Test("resolveScheme picks up externally written defaults")
-    func resolveAfterExternalWrite() async throws {
+    @Test
+    func `resolveScheme picks up externally written defaults`() async throws {
         cleanup()
         defer { cleanup() }
 
@@ -143,8 +143,8 @@ struct SessionManagerPersistenceTests {
 
     // MARK: - Environment Variable Tests
 
-    @Test("Env vars persist to disk and reload")
-    func envPersistence() async {
+    @Test
+    func `Env vars persist to disk and reload`() async {
         cleanup()
         defer { cleanup() }
 
@@ -156,8 +156,8 @@ struct SessionManagerPersistenceTests {
         #expect(defaults.env == ["FOO": "bar", "BAZ": "qux"])
     }
 
-    @Test("Env deep-merge adds new keys and updates existing")
-    func envDeepMerge() async {
+    @Test
+    func `Env deep-merge adds new keys and updates existing`() async {
         cleanup()
         defer { cleanup() }
 
@@ -169,8 +169,8 @@ struct SessionManagerPersistenceTests {
         #expect(defaults.env == ["A": "1", "B": "updated", "C": "3"])
     }
 
-    @Test("Clear resets env to nil")
-    func clearResetsEnv() async {
+    @Test
+    func `Clear resets env to nil`() async {
         cleanup()
         defer { cleanup() }
 
@@ -182,8 +182,8 @@ struct SessionManagerPersistenceTests {
         #expect(defaults.env == nil)
     }
 
-    @Test("resolveEnvironment merges session and per-invocation env")
-    func resolveEnvironmentMerge() async {
+    @Test
+    func `resolveEnvironment merges session and per-invocation env`() async {
         cleanup()
         defer { cleanup() }
 
@@ -204,8 +204,8 @@ struct SessionManagerPersistenceTests {
         #expect(environment != .inherit)
     }
 
-    @Test("resolveEnvironment returns inherit when no env configured")
-    func resolveEnvironmentEmpty() async {
+    @Test
+    func `resolveEnvironment returns inherit when no env configured`() async {
         cleanup()
         defer { cleanup() }
 
@@ -214,8 +214,8 @@ struct SessionManagerPersistenceTests {
         #expect(environment == .inherit)
     }
 
-    @Test("Summary includes env vars")
-    func summaryIncludesEnv() async {
+    @Test
+    func `Summary includes env vars`() async {
         cleanup()
         defer { cleanup() }
 

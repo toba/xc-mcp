@@ -3,10 +3,9 @@ import Testing
 @testable import XCMCPTools
 import Foundation
 
-@Suite("GetFileCoverageTool Tests")
 struct GetFileCoverageToolTests {
-    @Test("Format file coverage with function breakdown")
-    func formatFileCoverage() throws {
+    @Test
+    func `Format file coverage with function breakdown`() throws {
         let coverage = FileFunctionCoverage(
             path: "/path/to/MyFile.swift",
             lineCoverage: 65.3,
@@ -53,8 +52,8 @@ struct GetFileCoverageToolTests {
         #expect(uncoveredIndex < initIndex)
     }
 
-    @Test("Format uncovered ranges single and multi-line")
-    func formatUncoveredRanges() {
+    @Test
+    func `Format uncovered ranges single and multi-line`() {
         let ranges = [
             UncoveredRange(start: 10, end: 10),
             UncoveredRange(start: 25, end: 30),
@@ -67,8 +66,8 @@ struct GetFileCoverageToolTests {
         #expect(output.contains("L25-30"))
     }
 
-    @Test("Execute with non-existent bundle path throws")
-    func executeWithBadPath() async {
+    @Test
+    func `Execute with non-existent bundle path throws`() async {
         let tool = GetFileCoverageTool()
         do {
             _ = try await tool.execute(arguments: [
@@ -81,8 +80,8 @@ struct GetFileCoverageToolTests {
         }
     }
 
-    @Test("Execute with missing file param throws")
-    func executeMissingFile() async {
+    @Test
+    func `Execute with missing file param throws`() async {
         let tool = GetFileCoverageTool()
         do {
             _ = try await tool.execute(arguments: [

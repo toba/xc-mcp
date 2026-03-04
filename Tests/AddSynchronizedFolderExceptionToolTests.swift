@@ -6,7 +6,6 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("AddSynchronizedFolderExceptionTool Tests")
 struct AddSynchronizedFolderExceptionToolTests {
     let tempDir: String
     let pathUtility: PathUtility
@@ -22,8 +21,8 @@ struct AddSynchronizedFolderExceptionToolTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
-    func toolProperties() {
+    @Test
+    func `Tool has correct properties`() {
         let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         #expect(tool.tool().name == "add_synchronized_folder_exception")
@@ -43,8 +42,8 @@ struct AddSynchronizedFolderExceptionToolTests {
         }
     }
 
-    @Test("Validates required parameters")
-    func validateRequiredParameters() throws {
+    @Test
+    func `Validates required parameters`() throws {
         let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
@@ -56,8 +55,8 @@ struct AddSynchronizedFolderExceptionToolTests {
         }
     }
 
-    @Test("Validates non-empty files array")
-    func validatesNonEmptyFilesArray() throws {
+    @Test
+    func `Validates non-empty files array`() throws {
         let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -75,8 +74,8 @@ struct AddSynchronizedFolderExceptionToolTests {
         }
     }
 
-    @Test("Adds membership exceptions to sync folder")
-    func addsMembershipExceptions() throws {
+    @Test
+    func `Adds membership exceptions to sync folder`() throws {
         let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -125,8 +124,8 @@ struct AddSynchronizedFolderExceptionToolTests {
         #expect(updatedSyncGroups.first?.exceptions?.count == 1)
     }
 
-    @Test("Fails when sync folder not found")
-    func failsWhenSyncFolderNotFound() throws {
+    @Test
+    func `Fails when sync folder not found`() throws {
         let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -144,8 +143,8 @@ struct AddSynchronizedFolderExceptionToolTests {
         }
     }
 
-    @Test("Fails when target not found")
-    func failsWhenTargetNotFound() throws {
+    @Test
+    func `Fails when target not found`() throws {
         let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"

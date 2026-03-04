@@ -2,10 +2,9 @@ import MCP
 import Testing
 @testable import XCMCPTools
 
-@Suite("DebugViewBordersTool Tests")
 struct DebugViewBordersToolTests {
-    @Test("Tool schema has correct name and description")
-    func toolSchema() {
+    @Test
+    func `Tool schema has correct name and description`() {
         let tool = DebugViewBordersTool()
         let schema = tool.tool()
 
@@ -14,8 +13,8 @@ struct DebugViewBordersToolTests {
         #expect(schema.description?.contains("LLDB") == true)
     }
 
-    @Test("Tool schema includes all expected parameters")
-    func toolParameters() {
+    @Test
+    func `Tool schema includes all expected parameters`() {
         let tool = DebugViewBordersTool()
         let schema = tool.tool()
 
@@ -33,8 +32,8 @@ struct DebugViewBordersToolTests {
         #expect(properties["color"] != nil)
     }
 
-    @Test("Execute with no pid or bundle_id throws invalidParams")
-    func noPidOrBundleId() async throws {
+    @Test
+    func `Execute with no pid or bundle_id throws invalidParams`() async throws {
         let tool = DebugViewBordersTool()
 
         await #expect(throws: MCPError.self) {
@@ -42,8 +41,8 @@ struct DebugViewBordersToolTests {
         }
     }
 
-    @Test("Execute with missing enabled throws invalidParams")
-    func missingEnabled() async throws {
+    @Test
+    func `Execute with missing enabled throws invalidParams`() async throws {
         let tool = DebugViewBordersTool()
 
         await #expect(throws: MCPError.self) {

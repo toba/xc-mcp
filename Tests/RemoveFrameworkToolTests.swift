@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
-struct RemoveFrameworkMissingParamTestCase: Sendable {
+struct RemoveFrameworkMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -17,10 +17,9 @@ struct RemoveFrameworkMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("RemoveFrameworkTool Tests")
 struct RemoveFrameworkToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = RemoveFrameworkTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -43,8 +42,8 @@ struct RemoveFrameworkToolTests {
         ),
     ]
 
-    @Test("Remove framework with missing parameter", arguments: missingParamCases)
-    func removeFrameworkWithMissingParameters(
+    @Test(arguments: missingParamCases)
+    func `Remove framework with missing parameter`(
         _ testCase: RemoveFrameworkMissingParamTestCase,
     ) throws {
         let tool = RemoveFrameworkTool(pathUtility: PathUtility(basePath: "/tmp"))
@@ -54,8 +53,8 @@ struct RemoveFrameworkToolTests {
         }
     }
 
-    @Test("Remove system framework")
-    func removeSystemFramework() throws {
+    @Test
+    func `Remove system framework`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -125,8 +124,8 @@ struct RemoveFrameworkToolTests {
         #expect(uikitRefs.isEmpty)
     }
 
-    @Test("Remove embedded custom framework")
-    func removeEmbeddedCustomFramework() throws {
+    @Test
+    func `Remove embedded custom framework`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -216,8 +215,8 @@ struct RemoveFrameworkToolTests {
         #expect(hasCustomInEmbed == false)
     }
 
-    @Test("Remove from specific target preserves other targets")
-    func removeFromSpecificTarget() throws {
+    @Test
+    func `Remove from specific target preserves other targets`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -324,8 +323,8 @@ struct RemoveFrameworkToolTests {
         #expect(!uikitRefs.isEmpty)
     }
 
-    @Test("Remove from all targets when target_name omitted")
-    func removeFromAllTargets() throws {
+    @Test
+    func `Remove from all targets when target_name omitted`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -419,8 +418,8 @@ struct RemoveFrameworkToolTests {
         #expect(uikitRefs.isEmpty)
     }
 
-    @Test("Framework not found returns informative message")
-    func frameworkNotFound() throws {
+    @Test
+    func `Framework not found returns informative message`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -448,8 +447,8 @@ struct RemoveFrameworkToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Target not found returns informative message")
-    func targetNotFound() throws {
+    @Test
+    func `Target not found returns informative message`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -478,8 +477,8 @@ struct RemoveFrameworkToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Name normalization — add without suffix, remove with suffix")
-    func nameNormalization() throws {
+    @Test
+    func `Name normalization — add without suffix, remove with suffix`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

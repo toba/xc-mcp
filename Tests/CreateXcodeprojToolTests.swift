@@ -6,8 +6,8 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Test("CreateXcodeprojTool has correct properties")
-func toolProperties() {
+@Test
+func `CreateXcodeprojTool has correct properties`() {
     let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: "/tmp"))
     let tool = createTool.tool()
 
@@ -19,8 +19,8 @@ func toolProperties() {
     }
 }
 
-@Test("CreateXcodeprojTool can be executed")
-func toolExecution() {
+@Test
+func `CreateXcodeprojTool can be executed`() {
     let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: "/tmp"))
 
     // This test just verifies the tool can be instantiated and has the right interface
@@ -28,8 +28,8 @@ func toolExecution() {
     #expect(createTool.tool().name == "create_xcodeproj")
 }
 
-@Test("CreateXcodeprojTool creates project with bundle identifier")
-func createProjectWithBundleIdentifier() throws {
+@Test
+func `CreateXcodeprojTool creates project with bundle identifier`() throws {
     let tempDir = Path("/tmp/xcodeproj-test-\(UUID().uuidString)")
     try tempDir.mkpath()
     let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: tempDir.string))
@@ -73,8 +73,8 @@ func createProjectWithBundleIdentifier() throws {
     #expect(result.isError != true)
 }
 
-@Test("CreateXcodeprojTool with skip_default_target creates no targets")
-func createProjectWithSkipDefaultTarget() throws {
+@Test
+func `CreateXcodeprojTool with skip_default_target creates no targets`() throws {
     let tempDir = Path("/tmp/xcodeproj-test-\(UUID().uuidString)")
     try tempDir.mkpath()
     let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: tempDir.string))

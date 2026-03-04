@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for package requirement tests
-struct PackageRequirementTestCase: Sendable {
+struct PackageRequirementTestCase {
     let packageUrl: String
     let requirementInput: String
     let expectedRequirementDescription: String
@@ -20,7 +20,7 @@ struct PackageRequirementTestCase: Sendable {
 }
 
 /// Test case for missing parameter validation
-struct SwiftPackageMissingParamTestCase: Sendable {
+struct SwiftPackageMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -30,10 +30,9 @@ struct SwiftPackageMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("AddSwiftPackageTool Tests")
 struct AddSwiftPackageToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -68,8 +67,8 @@ struct AddSwiftPackageToolTests {
         ),
     ]
 
-    @Test("Add package with missing parameters", arguments: missingParamCases)
-    func addPackageWithMissingParameters(_ testCase: SwiftPackageMissingParamTestCase) throws {
+    @Test(arguments: missingParamCases)
+    func `Add package with missing parameters`(_ testCase: SwiftPackageMissingParamTestCase) throws {
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -95,8 +94,8 @@ struct AddSwiftPackageToolTests {
         ),
     ]
 
-    @Test("Add Swift Package with requirement", arguments: requirementCases)
-    func addSwiftPackageWithRequirement(_ testCase: PackageRequirementTestCase) throws {
+    @Test(arguments: requirementCases)
+    func `Add Swift Package with requirement`(_ testCase: PackageRequirementTestCase) throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -141,8 +140,8 @@ struct AddSwiftPackageToolTests {
         }
     }
 
-    @Test("Add Swift Package to specific target")
-    func addSwiftPackageToSpecificTarget() throws {
+    @Test
+    func `Add Swift Package to specific target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -188,8 +187,8 @@ struct AddSwiftPackageToolTests {
         #expect(target?.packageProductDependencies?.count == 1)
     }
 
-    @Test("Add duplicate Swift Package")
-    func addDuplicateSwiftPackage() throws {
+    @Test
+    func `Add duplicate Swift Package`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -222,8 +221,8 @@ struct AddSwiftPackageToolTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("Add local Swift Package")
-    func addLocalSwiftPackage() throws {
+    @Test
+    func `Add local Swift Package`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -260,8 +259,8 @@ struct AddSwiftPackageToolTests {
         #expect(localRef != nil)
     }
 
-    @Test("Add duplicate local Swift Package")
-    func addDuplicateLocalSwiftPackage() throws {
+    @Test
+    func `Add duplicate local Swift Package`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -293,8 +292,8 @@ struct AddSwiftPackageToolTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("Add local Swift Package to specific target")
-    func addLocalSwiftPackageToTarget() throws {
+    @Test
+    func `Add local Swift Package to specific target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -331,8 +330,8 @@ struct AddSwiftPackageToolTests {
         #expect(target?.packageProductDependencies?.count == 1)
     }
 
-    @Test("Add Swift Package to target adds PBXBuildFile to Frameworks build phase")
-    func addSwiftPackageAddsToFrameworksBuildPhase() throws {
+    @Test
+    func `Add Swift Package to target adds PBXBuildFile to Frameworks build phase`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -374,8 +373,8 @@ struct AddSwiftPackageToolTests {
         )
     }
 
-    @Test("Existing remote package links product to new target")
-    func existingRemotePackageLinksToNewTarget() throws {
+    @Test
+    func `Existing remote package links product to new target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -439,8 +438,8 @@ struct AddSwiftPackageToolTests {
         #expect(refs?.count == 1)
     }
 
-    @Test("Existing local package links product to new target")
-    func existingLocalPackageLinksToNewTarget() throws {
+    @Test
+    func `Existing local package links product to new target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -488,8 +487,8 @@ struct AddSwiftPackageToolTests {
         #expect(extTarget?.packageProductDependencies?.count == 1)
     }
 
-    @Test("Existing local package at parent dir links product to second target")
-    func existingLocalPackageLinksToDifferentTarget_realWorldScenario() throws {
+    @Test
+    func `Existing local package at parent dir links product to second target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -564,8 +563,8 @@ struct AddSwiftPackageToolTests {
         }
     }
 
-    @Test("Existing package rejects duplicate product link to same target")
-    func existingPackageRejectsDuplicateLink() throws {
+    @Test
+    func `Existing package rejects duplicate product link to same target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -598,8 +597,8 @@ struct AddSwiftPackageToolTests {
         }
     }
 
-    @Test("Add package fails with both URL and path")
-    func addPackageFailsWithBothUrlAndPath() throws {
+    @Test
+    func `Add package fails with both URL and path`() throws {
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
         let args: [String: Value] = [
             "project_path": Value.string("/path/to/project.xcodeproj"),
@@ -613,8 +612,8 @@ struct AddSwiftPackageToolTests {
         }
     }
 
-    @Test("Add package fails with neither URL nor path")
-    func addPackageFailsWithNeitherUrlNorPath() throws {
+    @Test
+    func `Add package fails with neither URL nor path`() throws {
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
         let args: [String: Value] = [
             "project_path": Value.string("/path/to/project.xcodeproj"),
@@ -625,8 +624,8 @@ struct AddSwiftPackageToolTests {
         }
     }
 
-    @Test("Add package with invalid target")
-    func addPackageWithInvalidTarget() throws {
+    @Test
+    func `Add package with invalid target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

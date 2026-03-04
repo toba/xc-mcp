@@ -102,7 +102,7 @@ public struct AddFrameworkTool: Sendable {
             let frameworkPath: String
 
             // Developer frameworks that live in Xcode.app, not in the SDK
-            let developerFrameworks: Set<String> = [
+            let developerFrameworks: Set = [
                 "XcodeKit", "XCTest", "SpriteKit", "SceneKit",
             ]
             let isDeveloperFramework = isSystemFramework && developerFrameworks

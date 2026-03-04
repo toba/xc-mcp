@@ -1,16 +1,15 @@
 import Testing
 @testable import XCMCPCore
 
-@Suite("XctraceRunner Tests")
 struct XctraceRunnerTests {
-    @Test("Runner initializes successfully")
-    func testInit() {
+    @Test
+    func `Runner initializes successfully`() {
         let runner = XctraceRunner()
         _ = runner // Verify it compiles and initializes
     }
 
-    @Test("List templates returns output")
-    func listTemplates() async throws {
+    @Test
+    func `List templates returns output`() async throws {
         let runner = XctraceRunner()
         let result = try await runner.list(kind: "templates")
 
@@ -18,8 +17,8 @@ struct XctraceRunnerTests {
         #expect(!result.stdout.isEmpty || !result.stderr.isEmpty)
     }
 
-    @Test("List instruments returns output")
-    func listInstruments() async throws {
+    @Test
+    func `List instruments returns output`() async throws {
         let runner = XctraceRunner()
         let result = try await runner.list(kind: "instruments")
 
@@ -27,8 +26,8 @@ struct XctraceRunnerTests {
         #expect(!result.stdout.isEmpty || !result.stderr.isEmpty)
     }
 
-    @Test("List devices returns output")
-    func listDevices() async throws {
+    @Test
+    func `List devices returns output`() async throws {
         let runner = XctraceRunner()
         let result = try await runner.list(kind: "devices")
 
@@ -36,8 +35,8 @@ struct XctraceRunnerTests {
         #expect(!result.stdout.isEmpty || !result.stderr.isEmpty)
     }
 
-    @Test("Export with invalid path fails gracefully")
-    func exportInvalidPath() async throws {
+    @Test
+    func `Export with invalid path fails gracefully`() async throws {
         let runner = XctraceRunner()
         let result = try await runner.export(
             inputPath: "/nonexistent/path.trace",
@@ -48,8 +47,8 @@ struct XctraceRunnerTests {
         #expect(!result.succeeded)
     }
 
-    @Test("Run with invalid arguments fails gracefully")
-    func runInvalidArgs() async throws {
+    @Test
+    func `Run with invalid arguments fails gracefully`() async throws {
         let runner = XctraceRunner()
         let result = try await runner.run(arguments: ["invalid-command-that-does-not-exist"])
 

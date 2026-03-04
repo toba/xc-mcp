@@ -6,10 +6,9 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("CreateGroupTool Tests")
 struct CreateGroupToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = CreateGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -17,8 +16,8 @@ struct CreateGroupToolTests {
         #expect(toolDefinition.description == "Create a new group in the project navigator")
     }
 
-    @Test("Create group with missing project path")
-    func createGroupWithMissingProjectPath() throws {
+    @Test
+    func `Create group with missing project path`() throws {
         let tool = CreateGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -26,8 +25,8 @@ struct CreateGroupToolTests {
         }
     }
 
-    @Test("Create group with missing group name")
-    func createGroupWithMissingGroupName() throws {
+    @Test
+    func `Create group with missing group name`() throws {
         let tool = CreateGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -37,8 +36,8 @@ struct CreateGroupToolTests {
         }
     }
 
-    @Test("Create group in main group")
-    func createGroupInMainGroup() throws {
+    @Test
+    func `Create group in main group`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -76,8 +75,8 @@ struct CreateGroupToolTests {
         #expect(newGroup != nil)
     }
 
-    @Test("Create group with path")
-    func createGroupWithPath() throws {
+    @Test
+    func `Create group with path`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -116,8 +115,8 @@ struct CreateGroupToolTests {
         #expect(sourcesGroup?.path == "Sources")
     }
 
-    @Test("Create group in parent group")
-    func createGroupInParentGroup() throws {
+    @Test
+    func `Create group in parent group`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -172,8 +171,8 @@ struct CreateGroupToolTests {
         #expect(childInParent == true)
     }
 
-    @Test("Create duplicate group")
-    func createDuplicateGroup() throws {
+    @Test
+    func `Create duplicate group`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -208,8 +207,8 @@ struct CreateGroupToolTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("Create group with non-existent parent")
-    func createGroupWithNonExistentParent() throws {
+    @Test
+    func `Create group with non-existent parent`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

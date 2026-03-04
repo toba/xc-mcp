@@ -2,10 +2,9 @@ import Testing
 @testable import XCMCPCore
 import Foundation
 
-@Suite("CoverageParser Tests")
 struct CoverageParserTests {
-    @Test("Coverage data structures")
-    func codeCoverageDataStructures() {
+    @Test
+    func `Coverage data structures`() {
         let fileCoverage = FileCoverage(
             path: "/path/to/file.swift",
             name: "file.swift",
@@ -25,8 +24,8 @@ struct CoverageParserTests {
         #expect(coverage.files[0].lineCoverage == 85.5)
     }
 
-    @Test("Parse xcodebuild coverage JSON format")
-    func parseXcodebuildCoverageFormat() async throws {
+    @Test
+    func `Parse xcodebuild coverage JSON format`() async throws {
         let xcodebuildJSON = """
         {
           "targets": [{
@@ -67,8 +66,8 @@ struct CoverageParserTests {
         #expect(abs((coverage?.lineCoverage ?? 0) - 85.0) < 0.1)
     }
 
-    @Test("Parse SPM coverage JSON format")
-    func parseSPMCoverageFormat() async throws {
+    @Test
+    func `Parse SPM coverage JSON format`() async throws {
         let spmJSON = """
         {
           "data": [{
@@ -112,8 +111,8 @@ struct CoverageParserTests {
         #expect(abs((coverage?.lineCoverage ?? 0) - 85.0) < 0.1)
     }
 
-    @Test("Invalid JSON returns nil")
-    func invalidJSONReturnsNil() async throws {
+    @Test
+    func `Invalid JSON returns nil`() async throws {
         let invalidJSON = """
         {
           "invalid": "format"
@@ -133,8 +132,8 @@ struct CoverageParserTests {
         #expect(coverage == nil)
     }
 
-    @Test("Empty files array returns nil")
-    func emptyFilesArrayReturnsNil() async throws {
+    @Test
+    func `Empty files array returns nil`() async throws {
         let emptyJSON = """
         {
           "data": [{
@@ -156,8 +155,8 @@ struct CoverageParserTests {
         #expect(coverage == nil)
     }
 
-    @Test("Coverage target filtering")
-    func coverageTargetFiltering() async throws {
+    @Test
+    func `Coverage target filtering`() async throws {
         let xcodebuildJSON = """
         {
           "targets": [
@@ -204,8 +203,8 @@ struct CoverageParserTests {
         #expect(abs((coverage?.lineCoverage ?? 0) - 85.0) < 0.1)
     }
 
-    @Test("Coverage excludes test bundles")
-    func coverageExcludesTestBundles() async throws {
+    @Test
+    func `Coverage excludes test bundles`() async throws {
         let xcodebuildJSON = """
         {
           "targets": [
@@ -254,8 +253,8 @@ struct CoverageParserTests {
         #expect(abs((coverage?.lineCoverage ?? 0) - 50.0) < 0.1)
     }
 
-    @Test("Non-existent path returns nil")
-    func nonExistentPathReturnsNil() async {
+    @Test
+    func `Non-existent path returns nil`() async {
         let parser = CoverageParser()
         let coverage = await parser.parseCoverageFromPath("/nonexistent/path/to/coverage.json")
         #expect(coverage == nil)
@@ -263,8 +262,8 @@ struct CoverageParserTests {
 
     // MARK: - Target-Level Coverage Report
 
-    @Test("Parse target coverage from xcodebuild JSON")
-    func parseTargetCoverage() throws {
+    @Test
+    func `Parse target coverage from xcodebuild JSON`() throws {
         let json: [String: Any] = [
             "targets": [
                 [
@@ -321,8 +320,8 @@ struct CoverageParserTests {
         #expect(app.coveredLines == 85)
     }
 
-    @Test("Parse target coverage with filter")
-    func parseTargetCoverageWithFilter() {
+    @Test
+    func `Parse target coverage with filter`() {
         let json: [String: Any] = [
             "targets": [
                 [
@@ -356,8 +355,8 @@ struct CoverageParserTests {
         #expect(report?.targets[0].name == "MyApp.app")
     }
 
-    @Test("Parse target coverage returns nil for empty targets")
-    func parseTargetCoverageEmpty() {
+    @Test
+    func `Parse target coverage returns nil for empty targets`() {
         let json: [String: Any] = ["targets": [] as [[String: Any]]]
         let report = CoverageParser.parseTargetCoverage(json: json)
         #expect(report == nil)
@@ -365,8 +364,8 @@ struct CoverageParserTests {
 
     // MARK: - Function-Level Coverage
 
-    @Test("Parse function coverage JSON array format")
-    func parseFunctionCoverageArray() throws {
+    @Test
+    func `Parse function coverage JSON array format`() throws {
         let json = """
         [
           {
@@ -402,8 +401,8 @@ struct CoverageParserTests {
         #expect(result?.functions[1].executionCount == 0)
     }
 
-    @Test("Parse function coverage empty array returns nil")
-    func parseFunctionCoverageEmpty() {
+    @Test
+    func `Parse function coverage empty array returns nil`() {
         let data = Data("[]".utf8)
         let result = CoverageParser.parseFunctionCoverageJSON(
             jsonData: data, filePath: "/path/to/File.swift",
@@ -413,8 +412,8 @@ struct CoverageParserTests {
 
     // MARK: - Uncovered Line Ranges
 
-    @Test("Parse uncovered lines from archive output")
-    func parseUncoveredLines() {
+    @Test
+    func `Parse uncovered lines from archive output`() {
         let archiveOutput = """
            1: *
            2: 1
@@ -435,8 +434,8 @@ struct CoverageParserTests {
         #expect(ranges[1].end == 7)
     }
 
-    @Test("Parse uncovered lines trailing range")
-    func parseUncoveredLinesTrailing() {
+    @Test
+    func `Parse uncovered lines trailing range`() {
         let archiveOutput = """
            1: 1
            2: 0
@@ -449,14 +448,14 @@ struct CoverageParserTests {
         #expect(ranges[0].end == 3)
     }
 
-    @Test("Parse uncovered lines empty output")
-    func parseUncoveredLinesEmpty() {
+    @Test
+    func `Parse uncovered lines empty output`() {
         let ranges = CoverageParser.parseUncoveredLinesFromArchive("")
         #expect(ranges.isEmpty)
     }
 
-    @Test("Parse uncovered lines all covered")
-    func parseUncoveredLinesAllCovered() {
+    @Test
+    func `Parse uncovered lines all covered`() {
         let archiveOutput = """
            1: 1
            2: 3

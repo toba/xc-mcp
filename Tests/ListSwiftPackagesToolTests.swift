@@ -6,10 +6,9 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("ListSwiftPackagesTool Tests")
 struct ListSwiftPackagesToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -19,8 +18,8 @@ struct ListSwiftPackagesToolTests {
         )
     }
 
-    @Test("List packages with missing project path")
-    func listPackagesWithMissingProjectPath() throws {
+    @Test
+    func `List packages with missing project path`() throws {
         let tool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -28,8 +27,8 @@ struct ListSwiftPackagesToolTests {
         }
     }
 
-    @Test("List packages from empty project")
-    func listPackagesFromEmptyProject() throws {
+    @Test
+    func `List packages from empty project`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -56,8 +55,8 @@ struct ListSwiftPackagesToolTests {
         #expect(message.contains("No Swift Package dependencies found"))
     }
 
-    @Test("List packages with remote packages")
-    func listPackagesWithRemotePackages() throws {
+    @Test
+    func `List packages with remote packages`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -116,8 +115,8 @@ struct ListSwiftPackagesToolTests {
         #expect(message.contains("branch: main"))
     }
 
-    @Test("List packages with local packages")
-    func listPackagesWithLocalPackages() throws {
+    @Test
+    func `List packages with local packages`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -160,8 +159,8 @@ struct ListSwiftPackagesToolTests {
         #expect(message.contains("📁 ../MyLocalPackage (local)"))
     }
 
-    @Test("List packages with mixed remote and local packages")
-    func listPackagesWithMixedPackages() throws {
+    @Test
+    func `List packages with mixed remote and local packages`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

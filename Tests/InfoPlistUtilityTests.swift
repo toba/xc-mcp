@@ -6,10 +6,9 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("InfoPlistUtility Tests")
 struct InfoPlistUtilityTests {
-    @Test("resolveInfoPlistPath returns nil when target not found")
-    func resolveInfoPlistPathTargetNotFound() throws {
+    @Test
+    func `resolveInfoPlistPath returns nil when target not found`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -29,8 +28,8 @@ struct InfoPlistUtilityTests {
         #expect(result == nil)
     }
 
-    @Test("resolveInfoPlistPath returns nil when no INFOPLIST_FILE set")
-    func resolveInfoPlistPathNoSetting() throws {
+    @Test
+    func `resolveInfoPlistPath returns nil when no INFOPLIST_FILE set`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -50,8 +49,8 @@ struct InfoPlistUtilityTests {
         #expect(result == nil)
     }
 
-    @Test("resolveInfoPlistPath returns path when INFOPLIST_FILE is set and file exists")
-    func resolveInfoPlistPathSuccess() throws {
+    @Test
+    func `resolveInfoPlistPath returns path when INFOPLIST_FILE is set and file exists`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -92,8 +91,8 @@ struct InfoPlistUtilityTests {
         #expect(result?.hasSuffix("App/Info.plist") == true)
     }
 
-    @Test("readInfoPlist reads valid plist")
-    func readInfoPlistSuccess() throws {
+    @Test
+    func `readInfoPlist reads valid plist`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -112,15 +111,15 @@ struct InfoPlistUtilityTests {
         #expect(result["CFBundleVersion"] as? String == "1.0")
     }
 
-    @Test("readInfoPlist throws for missing file")
-    func readInfoPlistMissingFile() {
+    @Test
+    func `readInfoPlist throws for missing file`() {
         #expect(throws: MCPError.self) {
             try InfoPlistUtility.readInfoPlist(path: "/nonexistent/Info.plist")
         }
     }
 
-    @Test("writeInfoPlist writes and reads back correctly")
-    func writeInfoPlistRoundTrip() throws {
+    @Test
+    func `writeInfoPlist writes and reads back correctly`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -144,8 +143,8 @@ struct InfoPlistUtilityTests {
         #expect(docTypes?.first?["CFBundleTypeName"] as? String == "Test Document")
     }
 
-    @Test("materializeInfoPlist creates file and sets build setting")
-    func materializeInfoPlist() throws {
+    @Test
+    func `materializeInfoPlist creates file and sets build setting`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

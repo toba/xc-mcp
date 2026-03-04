@@ -13,7 +13,7 @@ struct ProjectToolIntegrationTests {
 
     // MARK: - list_targets
 
-    @Test func listTargets_IceCubesApp() throws {
+    @Test func `list targets ice cubes app`() throws {
         let tool = ListTargetsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
@@ -28,7 +28,7 @@ struct ProjectToolIntegrationTests {
         #expect(content.contains("IceCubesShareExtension"))
     }
 
-    @Test func listTargets_Alamofire() throws {
+    @Test func `list targets alamofire`() throws {
         let tool = ListTargetsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false,
@@ -42,7 +42,7 @@ struct ProjectToolIntegrationTests {
         #expect(content.contains("Alamofire"))
     }
 
-    @Test func listTargets_SwiftFormat() throws {
+    @Test func `list targets swift format`() throws {
         let tool = ListTargetsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.swiftFormatRepoDir, sandboxEnabled: false,
@@ -58,7 +58,7 @@ struct ProjectToolIntegrationTests {
 
     // MARK: - list_files
 
-    @Test func listFiles_IceCubesApp() throws {
+    @Test func `list files ice cubes app`() throws {
         let tool = ListFilesTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
@@ -74,7 +74,7 @@ struct ProjectToolIntegrationTests {
         #expect(content.contains("Files in target 'IceCubesApp'"))
     }
 
-    @Test func listFiles_Alamofire() throws {
+    @Test func `list files alamofire`() throws {
         let tool = ListFilesTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false,
@@ -91,7 +91,7 @@ struct ProjectToolIntegrationTests {
 
     // MARK: - list_groups
 
-    @Test func listGroups_IceCubesApp() throws {
+    @Test func `list groups ice cubes app`() throws {
         let tool = ListGroupsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
@@ -106,7 +106,7 @@ struct ProjectToolIntegrationTests {
         #expect(content.contains("IceCubesApp"))
     }
 
-    @Test func listGroups_Alamofire() throws {
+    @Test func `list groups alamofire`() throws {
         let tool = ListGroupsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false,
@@ -123,7 +123,7 @@ struct ProjectToolIntegrationTests {
 
     // MARK: - list_build_configurations
 
-    @Test func listBuildConfigurations_IceCubesApp() throws {
+    @Test func `list build configurations ice cubes app`() throws {
         let tool = ListBuildConfigurationsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
@@ -138,7 +138,7 @@ struct ProjectToolIntegrationTests {
         #expect(content.contains("Release"))
     }
 
-    @Test func listBuildConfigurations_Alamofire() throws {
+    @Test func `list build configurations alamofire`() throws {
         let tool = ListBuildConfigurationsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false,
@@ -155,7 +155,7 @@ struct ProjectToolIntegrationTests {
 
     // MARK: - get_build_settings
 
-    @Test func getBuildSettings_Alamofire() throws {
+    @Test func `get build settings alamofire`() throws {
         let tool = GetBuildSettingsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false,
@@ -173,7 +173,7 @@ struct ProjectToolIntegrationTests {
 
     // MARK: - list_swift_packages
 
-    @Test func listSwiftPackages_IceCubesApp() throws {
+    @Test func `list swift packages ice cubes app`() throws {
         let tool = ListSwiftPackagesTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
@@ -191,7 +191,7 @@ struct ProjectToolIntegrationTests {
     // MARK: - list_test_plan_targets
 
     @Test(.timeLimit(.minutes(2)))
-    func listTestPlanTargets_Alamofire() async throws {
+    func `list test plan targets alamofire`() async throws {
         let tool = ListTestPlanTargetsTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
@@ -208,7 +208,7 @@ struct ProjectToolIntegrationTests {
 
     // MARK: - find_targets (search)
 
-    @Test func findTargets_IceCubesApp() throws {
+    @Test func `find targets ice cubes app`() throws {
         let tool = ListTargetsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,

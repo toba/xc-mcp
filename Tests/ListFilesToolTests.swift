@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 struct ListFilesToolTests {
-    @Test func listFilesToolCreation() {
+    @Test func `list files tool creation`() {
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: "/workspace"))
         let toolDefinition = tool.tool()
 
@@ -17,7 +17,7 @@ struct ListFilesToolTests {
         )
     }
 
-    @Test func listFilesWithMissingParameters() throws {
+    @Test func `list files with missing parameters`() throws {
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         #expect(throws: MCPError.self) {
@@ -29,7 +29,7 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func listFilesWithInvalidProjectPath() throws {
+    @Test func `list files with invalid project path`() throws {
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: "/workspace"))
         let arguments: [String: Value] = [
             "project_path": Value.string("/nonexistent/path.xcodeproj"),
@@ -41,7 +41,7 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func listFilesWithEmptyTarget() throws {
+    @Test func `list files with empty target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -77,7 +77,7 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func listFilesWithInvalidTarget() throws {
+    @Test func `list files with invalid target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -107,7 +107,7 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func listFilesWithSourceFiles() throws {
+    @Test func `list files with source files`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -167,7 +167,7 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func listFilesWithSynchronizedFolder() throws {
+    @Test func `list files with synchronized folder`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -212,7 +212,7 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func listFilesWithSynchronizedFolderExceptions() throws {
+    @Test func `list files with synchronized folder exceptions`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -271,7 +271,7 @@ struct ListFilesToolTests {
         }
     }
 
-    @Test func listFilesWithSyncGroupViaExceptionSet() throws {
+    @Test func `list files with sync group via exception set`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

@@ -3,12 +3,11 @@ import Testing
 @testable import XCMCPCore
 @testable import XCMCPTools
 
-@Suite("SwiftLintTool Tests")
 struct SwiftLintToolTests {
     let sessionManager = SessionManager()
 
-    @Test("Tool schema has correct name and description")
-    func toolSchema() {
+    @Test
+    func `Tool schema has correct name and description`() {
         let tool = SwiftLintTool(sessionManager: sessionManager)
         let schema = tool.tool()
 
@@ -16,8 +15,8 @@ struct SwiftLintToolTests {
         #expect(schema.description?.contains("swiftlint") == true)
     }
 
-    @Test("Tool schema includes all expected parameters")
-    func toolParameters() {
+    @Test
+    func `Tool schema includes all expected parameters`() {
         let tool = SwiftLintTool(sessionManager: sessionManager)
         let schema = tool.tool()
 
@@ -33,8 +32,8 @@ struct SwiftLintToolTests {
         #expect(properties["fix"] != nil)
     }
 
-    @Test("Parses JSON output with violations")
-    func parseViolations() {
+    @Test
+    func `Parses JSON output with violations`() {
         let json = """
         [
           {
@@ -66,20 +65,20 @@ struct SwiftLintToolTests {
         #expect(violations[1].severity == "error")
     }
 
-    @Test("Parses empty JSON array")
-    func parseEmptyArray() {
+    @Test
+    func `Parses empty JSON array`() {
         let violations = SwiftLintTool.parseJSONOutput("[]")
         #expect(violations.isEmpty)
     }
 
-    @Test("Handles invalid JSON gracefully")
-    func parseInvalidJSON() {
+    @Test
+    func `Handles invalid JSON gracefully`() {
         let violations = SwiftLintTool.parseJSONOutput("not json")
         #expect(violations.isEmpty)
     }
 
-    @Test("Formats violations grouped by file")
-    func formatViolations() {
+    @Test
+    func `Formats violations grouped by file`() {
         let violations = [
             SwiftLintTool.Violation(
                 file: "/path/to/Foo.swift", line: 10, column: 5,

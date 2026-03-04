@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
-struct AddFileMissingParamTestCase: Sendable {
+struct AddFileMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -17,10 +17,9 @@ struct AddFileMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("AddFileTool Tests")
 struct AddFileToolTests {
-    @Test("Tool creation")
-    func addFileToolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = AddFileTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -39,8 +38,8 @@ struct AddFileToolTests {
         ),
     ]
 
-    @Test("Add file with missing parameter", arguments: missingParamCases)
-    func addFileWithMissingParameter(_ testCase: AddFileMissingParamTestCase) throws {
+    @Test(arguments: missingParamCases)
+    func `Add file with missing parameter`(_ testCase: AddFileMissingParamTestCase) throws {
         let tool = AddFileTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -48,8 +47,8 @@ struct AddFileToolTests {
         }
     }
 
-    @Test("Add file with invalid project path")
-    func addFileWithInvalidProjectPath() throws {
+    @Test
+    func `Add file with invalid project path`() throws {
         let tool = AddFileTool(pathUtility: PathUtility(basePath: "/tmp"))
         let arguments: [String: Value] = [
             "project_path": Value.string("/nonexistent/path.xcodeproj"),
@@ -61,8 +60,8 @@ struct AddFileToolTests {
         }
     }
 
-    @Test("Add file to main group")
-    func addFileToMainGroup() throws {
+    @Test
+    func `Add file to main group`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -100,8 +99,8 @@ struct AddFileToolTests {
         #expect(addedFile != nil)
     }
 
-    @Test("Add file to group")
-    func addFileToGroup() throws {
+    @Test
+    func `Add file to group`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -140,8 +139,8 @@ struct AddFileToolTests {
         #expect(addedFile != nil)
     }
 
-    @Test("Add file to target")
-    func addFileToTarget() throws {
+    @Test
+    func `Add file to target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -193,8 +192,8 @@ struct AddFileToolTests {
         #expect(buildFile != nil)
     }
 
-    @Test("Add file to group with path computes relative path correctly")
-    func addFileToGroupWithPath() throws {
+    @Test
+    func `Add file to group with path computes relative path correctly`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -285,8 +284,8 @@ struct AddFileToolTests {
         )
     }
 
-    @Test("Add file outside group uses sourceRoot to avoid path doubling")
-    func addFileOutsideGroupUsesSourceRoot() throws {
+    @Test
+    func `Add file outside group uses sourceRoot to avoid path doubling`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -380,8 +379,8 @@ struct AddFileToolTests {
         )
     }
 
-    @Test("Add file does not create duplicate file references")
-    func addFileNoDuplicateReferences() throws {
+    @Test
+    func `Add file does not create duplicate file references`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -417,8 +416,8 @@ struct AddFileToolTests {
         )
     }
 
-    @Test("Add file with nonexistent target")
-    func addFileWithNonexistentTarget() throws {
+    @Test
+    func `Add file with nonexistent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

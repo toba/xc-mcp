@@ -3,12 +3,11 @@ import Testing
 @testable import XCMCPCore
 @testable import XCMCPTools
 
-@Suite("SwiftFormatTool Tests")
 struct SwiftFormatToolTests {
     let sessionManager = SessionManager()
 
-    @Test("Tool schema has correct name and description")
-    func toolSchema() {
+    @Test
+    func `Tool schema has correct name and description`() {
         let tool = SwiftFormatTool(sessionManager: sessionManager)
         let schema = tool.tool()
 
@@ -16,8 +15,8 @@ struct SwiftFormatToolTests {
         #expect(schema.description?.contains("swiftformat") == true)
     }
 
-    @Test("Tool schema includes all expected parameters")
-    func toolParameters() {
+    @Test
+    func `Tool schema includes all expected parameters`() {
         let tool = SwiftFormatTool(sessionManager: sessionManager)
         let schema = tool.tool()
 
@@ -33,8 +32,8 @@ struct SwiftFormatToolTests {
         #expect(properties["dry_run"] != nil)
     }
 
-    @Test("Parses verbose output with changed files")
-    func parseChangedFiles() {
+    @Test
+    func `Parses verbose output with changed files`() {
         let output = """
         Running swiftformat...
         *./Sources/Foo.swift
@@ -45,8 +44,8 @@ struct SwiftFormatToolTests {
         #expect(result == ["./Sources/Foo.swift", "./Sources/Baz.swift"])
     }
 
-    @Test("Parses verbose output with no changes")
-    func parseNoChanges() {
+    @Test
+    func `Parses verbose output with no changes`() {
         let output = """
         Running swiftformat...
         ./Sources/Foo.swift
@@ -56,8 +55,8 @@ struct SwiftFormatToolTests {
         #expect(result.isEmpty)
     }
 
-    @Test("Parses empty output")
-    func parseEmptyOutput() {
+    @Test
+    func `Parses empty output`() {
         let result = SwiftFormatTool.parseVerboseOutput("")
         #expect(result.isEmpty)
     }

@@ -6,10 +6,9 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("DuplicateTargetTool Tests")
 struct DuplicateTargetToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = DuplicateTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -17,8 +16,8 @@ struct DuplicateTargetToolTests {
         #expect(toolDefinition.description == "Duplicate an existing target")
     }
 
-    @Test("Duplicate target with missing parameters")
-    func duplicateTargetWithMissingParameters() throws {
+    @Test
+    func `Duplicate target with missing parameters`() throws {
         let tool = DuplicateTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         // Missing project_path
@@ -46,8 +45,8 @@ struct DuplicateTargetToolTests {
         }
     }
 
-    @Test("Duplicate existing target")
-    func duplicateExistingTarget() throws {
+    @Test
+    func `Duplicate existing target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -94,8 +93,8 @@ struct DuplicateTargetToolTests {
         #expect(newTarget?.buildPhases.isEmpty == false)
     }
 
-    @Test("Duplicate target with new bundle identifier")
-    func duplicateTargetWithNewBundleIdentifier() throws {
+    @Test
+    func `Duplicate target with new bundle identifier`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -141,8 +140,8 @@ struct DuplicateTargetToolTests {
         #expect(buildConfig?.buildSettings["PRODUCT_NAME"]?.stringValue == "AppStaging")
     }
 
-    @Test("Duplicate non-existent target")
-    func duplicateNonExistentTarget() throws {
+    @Test
+    func `Duplicate non-existent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -174,8 +173,8 @@ struct DuplicateTargetToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Duplicate to existing target name")
-    func duplicateToExistingTargetName() throws {
+    @Test
+    func `Duplicate to existing target name`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -219,8 +218,8 @@ struct DuplicateTargetToolTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("Duplicate target with dependencies")
-    func duplicateTargetWithDependencies() throws {
+    @Test
+    func `Duplicate target with dependencies`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

@@ -6,7 +6,6 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("DocumentTypeTools Tests")
 struct DocumentTypeToolsTests {
     // MARK: - Helper
 
@@ -42,23 +41,23 @@ struct DocumentTypeToolsTests {
 
     // MARK: - ListDocumentTypesTool Tests
 
-    @Test("ListDocumentTypesTool tool creation")
-    func listDocumentTypesToolCreation() {
+    @Test
+    func `ListDocumentTypesTool tool creation`() {
         let tool = ListDocumentTypesTool(pathUtility: PathUtility(basePath: "/tmp"))
         let definition = tool.tool()
         #expect(definition.name == "list_document_types")
     }
 
-    @Test("ListDocumentTypesTool with missing parameters")
-    func listDocumentTypesMissingParams() throws {
+    @Test
+    func `ListDocumentTypesTool with missing parameters`() throws {
         let tool = ListDocumentTypesTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: ["project_path": .string("/path")])
         }
     }
 
-    @Test("ListDocumentTypesTool with non-existent target")
-    func listDocumentTypesNonExistentTarget() throws {
+    @Test
+    func `ListDocumentTypesTool with non-existent target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -80,8 +79,8 @@ struct DocumentTypeToolsTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("ListDocumentTypesTool with no document types")
-    func listDocumentTypesEmpty() throws {
+    @Test
+    func `ListDocumentTypesTool with no document types`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -103,8 +102,8 @@ struct DocumentTypeToolsTests {
         #expect(message.contains("No document types"))
     }
 
-    @Test("ListDocumentTypesTool with existing document types")
-    func listDocumentTypesWithEntries() throws {
+    @Test
+    func `ListDocumentTypesTool with existing document types`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -145,15 +144,15 @@ struct DocumentTypeToolsTests {
 
     // MARK: - ManageDocumentTypeTool Tests
 
-    @Test("ManageDocumentTypeTool tool creation")
-    func manageDocumentTypeToolCreation() {
+    @Test
+    func `ManageDocumentTypeTool tool creation`() {
         let tool = ManageDocumentTypeTool(pathUtility: PathUtility(basePath: "/tmp"))
         let definition = tool.tool()
         #expect(definition.name == "manage_document_type")
     }
 
-    @Test("ManageDocumentTypeTool with missing parameters")
-    func manageDocumentTypeMissingParams() throws {
+    @Test
+    func `ManageDocumentTypeTool with missing parameters`() throws {
         let tool = ManageDocumentTypeTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
@@ -164,8 +163,8 @@ struct DocumentTypeToolsTests {
         }
     }
 
-    @Test("ManageDocumentTypeTool add document type")
-    func manageDocumentTypeAdd() throws {
+    @Test
+    func `ManageDocumentTypeTool add document type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -202,8 +201,8 @@ struct DocumentTypeToolsTests {
         #expect(contentTypes == ["com.example.test"])
     }
 
-    @Test("ManageDocumentTypeTool add duplicate")
-    func manageDocumentTypeAddDuplicate() throws {
+    @Test
+    func `ManageDocumentTypeTool add duplicate`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -235,8 +234,8 @@ struct DocumentTypeToolsTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("ManageDocumentTypeTool update document type")
-    func manageDocumentTypeUpdate() throws {
+    @Test
+    func `ManageDocumentTypeTool update document type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -279,8 +278,8 @@ struct DocumentTypeToolsTests {
         #expect(docTypes?.first?["LSHandlerRank"] as? String == "Owner")
     }
 
-    @Test("ManageDocumentTypeTool update non-existent")
-    func manageDocumentTypeUpdateNotFound() throws {
+    @Test
+    func `ManageDocumentTypeTool update non-existent`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -304,8 +303,8 @@ struct DocumentTypeToolsTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("ManageDocumentTypeTool remove document type")
-    func manageDocumentTypeRemove() throws {
+    @Test
+    func `ManageDocumentTypeTool remove document type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -341,8 +340,8 @@ struct DocumentTypeToolsTests {
         #expect(updated["CFBundleDocumentTypes"] == nil)
     }
 
-    @Test("ManageDocumentTypeTool with additional_properties")
-    func manageDocumentTypeAdditionalProperties() throws {
+    @Test
+    func `ManageDocumentTypeTool with additional_properties`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -371,8 +370,8 @@ struct DocumentTypeToolsTests {
         #expect(docTypes?.first?["CustomKey"] as? String == "CustomValue")
     }
 
-    @Test("ManageDocumentTypeTool materializes Info.plist when missing")
-    func manageDocumentTypeMaterialize() throws {
+    @Test
+    func `ManageDocumentTypeTool materializes Info.plist when missing`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -407,8 +406,8 @@ struct DocumentTypeToolsTests {
 
     // MARK: - Full Workflow
 
-    @Test("Full workflow: add, list, update, list, remove")
-    func fullDocumentTypeWorkflow() throws {
+    @Test
+    func `Full workflow: add, list, update, list, remove`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

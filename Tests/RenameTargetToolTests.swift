@@ -6,10 +6,9 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("RenameTargetTool Tests")
 struct RenameTargetToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = RenameTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -20,8 +19,8 @@ struct RenameTargetToolTests {
         )
     }
 
-    @Test("Rename target with missing parameters")
-    func renameTargetWithMissingParameters() throws {
+    @Test
+    func `Rename target with missing parameters`() throws {
         let tool = RenameTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         // Missing project_path
@@ -49,8 +48,8 @@ struct RenameTargetToolTests {
         }
     }
 
-    @Test("Rename existing target")
-    func renameExistingTarget() throws {
+    @Test
+    func `Rename existing target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -99,8 +98,8 @@ struct RenameTargetToolTests {
         )
     }
 
-    @Test("Rename non-existent target")
-    func renameNonExistentTarget() throws {
+    @Test
+    func `Rename non-existent target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -129,8 +128,8 @@ struct RenameTargetToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Rename to existing target name")
-    func renameToExistingTargetName() throws {
+    @Test
+    func `Rename to existing target name`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -170,8 +169,8 @@ struct RenameTargetToolTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("Rename target with dependencies")
-    func renameTargetWithDependencies() throws {
+    @Test
+    func `Rename target with dependencies`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -226,8 +225,8 @@ struct RenameTargetToolTests {
         #expect(hasDependency == true)
     }
 
-    @Test("Rename target with product reference")
-    func renameTargetWithProductReference() throws {
+    @Test
+    func `Rename target with product reference`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -276,8 +275,8 @@ struct RenameTargetToolTests {
 
     // MARK: - New tests for enhanced rename_target
 
-    @Test("Rename target with new bundle identifier")
-    func renameTargetWithBundleIdentifier() throws {
+    @Test
+    func `Rename target with new bundle identifier`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -324,8 +323,8 @@ struct RenameTargetToolTests {
         }
     }
 
-    @Test("Rename target updates CODE_SIGN_ENTITLEMENTS")
-    func renameTargetUpdatesEntitlements() throws {
+    @Test
+    func `Rename target updates CODE_SIGN_ENTITLEMENTS`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -375,8 +374,8 @@ struct RenameTargetToolTests {
         )
     }
 
-    @Test("Rename target updates cross-target TEST_TARGET_NAME and TEST_HOST")
-    func renameTargetUpdatesCrossTargetSettings() throws {
+    @Test
+    func `Rename target updates cross-target TEST_TARGET_NAME and TEST_HOST`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -442,8 +441,8 @@ struct RenameTargetToolTests {
         )
     }
 
-    @Test("Rename target updates scheme files")
-    func renameTargetUpdatesSchemeFiles() throws {
+    @Test
+    func `Rename target updates scheme files`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -504,8 +503,8 @@ struct RenameTargetToolTests {
         #expect(!updatedScheme.contains("BlueprintName = \"App\""))
     }
 
-    @Test("Rename target updates LD_RUNPATH_SEARCH_PATHS and FRAMEWORK_SEARCH_PATHS")
-    func renameTargetUpdatesSearchPaths() throws {
+    @Test
+    func `Rename target updates LD_RUNPATH_SEARCH_PATHS and FRAMEWORK_SEARCH_PATHS`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

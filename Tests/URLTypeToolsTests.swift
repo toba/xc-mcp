@@ -6,7 +6,6 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("URLTypeTools Tests")
 struct URLTypeToolsTests {
     // MARK: - Helper
 
@@ -42,23 +41,23 @@ struct URLTypeToolsTests {
 
     // MARK: - ListURLTypesTool Tests
 
-    @Test("ListURLTypesTool tool creation")
-    func listURLTypesToolCreation() {
+    @Test
+    func `ListURLTypesTool tool creation`() {
         let tool = ListURLTypesTool(pathUtility: PathUtility(basePath: "/tmp"))
         let definition = tool.tool()
         #expect(definition.name == "list_url_types")
     }
 
-    @Test("ListURLTypesTool with missing parameters")
-    func listURLTypesMissingParams() throws {
+    @Test
+    func `ListURLTypesTool with missing parameters`() throws {
         let tool = ListURLTypesTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: ["project_path": .string("/path")])
         }
     }
 
-    @Test("ListURLTypesTool with non-existent target")
-    func listURLTypesNonExistentTarget() throws {
+    @Test
+    func `ListURLTypesTool with non-existent target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -80,8 +79,8 @@ struct URLTypeToolsTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("ListURLTypesTool with no URL types")
-    func listURLTypesEmpty() throws {
+    @Test
+    func `ListURLTypesTool with no URL types`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -103,8 +102,8 @@ struct URLTypeToolsTests {
         #expect(message.contains("No URL types"))
     }
 
-    @Test("ListURLTypesTool with existing URL types")
-    func listURLTypesWithEntries() throws {
+    @Test
+    func `ListURLTypesTool with existing URL types`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -142,15 +141,15 @@ struct URLTypeToolsTests {
 
     // MARK: - ManageURLTypeTool Tests
 
-    @Test("ManageURLTypeTool tool creation")
-    func manageURLTypeToolCreation() {
+    @Test
+    func `ManageURLTypeTool tool creation`() {
         let tool = ManageURLTypeTool(pathUtility: PathUtility(basePath: "/tmp"))
         let definition = tool.tool()
         #expect(definition.name == "manage_url_type")
     }
 
-    @Test("ManageURLTypeTool with missing parameters")
-    func manageURLTypeMissingParams() throws {
+    @Test
+    func `ManageURLTypeTool with missing parameters`() throws {
         let tool = ManageURLTypeTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
@@ -161,8 +160,8 @@ struct URLTypeToolsTests {
         }
     }
 
-    @Test("ManageURLTypeTool add URL type")
-    func manageURLTypeAdd() throws {
+    @Test
+    func `ManageURLTypeTool add URL type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -197,8 +196,8 @@ struct URLTypeToolsTests {
         #expect(schemes == ["myapp", "myapp-dev"])
     }
 
-    @Test("ManageURLTypeTool add duplicate")
-    func manageURLTypeAddDuplicate() throws {
+    @Test
+    func `ManageURLTypeTool add duplicate`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -230,8 +229,8 @@ struct URLTypeToolsTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("ManageURLTypeTool update URL type")
-    func manageURLTypeUpdate() throws {
+    @Test
+    func `ManageURLTypeTool update URL type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -276,8 +275,8 @@ struct URLTypeToolsTests {
         #expect(schemes == ["myapp", "myapp-beta"])
     }
 
-    @Test("ManageURLTypeTool update non-existent")
-    func manageURLTypeUpdateNotFound() throws {
+    @Test
+    func `ManageURLTypeTool update non-existent`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -301,8 +300,8 @@ struct URLTypeToolsTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("ManageURLTypeTool remove URL type")
-    func manageURLTypeRemove() throws {
+    @Test
+    func `ManageURLTypeTool remove URL type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -338,8 +337,8 @@ struct URLTypeToolsTests {
         #expect(updated["CFBundleURLTypes"] == nil)
     }
 
-    @Test("ManageURLTypeTool with additional_properties")
-    func manageURLTypeAdditionalProperties() throws {
+    @Test
+    func `ManageURLTypeTool with additional_properties`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -368,8 +367,8 @@ struct URLTypeToolsTests {
         #expect(urlTypes?.first?["CustomKey"] as? String == "CustomValue")
     }
 
-    @Test("ManageURLTypeTool materializes Info.plist when missing")
-    func manageURLTypeMaterialize() throws {
+    @Test
+    func `ManageURLTypeTool materializes Info.plist when missing`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -404,8 +403,8 @@ struct URLTypeToolsTests {
 
     // MARK: - Full Workflow
 
-    @Test("Full workflow: add, list, update, list, remove")
-    func fullURLTypeWorkflow() throws {
+    @Test
+    func `Full workflow: add, list, update, list, remove`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

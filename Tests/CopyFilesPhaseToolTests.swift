@@ -6,7 +6,6 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("AddCopyFilesPhase Tests")
 struct AddCopyFilesPhaseTests {
     let tempDir: String
     let pathUtility: PathUtility
@@ -20,8 +19,8 @@ struct AddCopyFilesPhaseTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
-    func toolProperties() {
+    @Test
+    func `Tool has correct properties`() {
         let tool = AddCopyFilesPhase(pathUtility: pathUtility)
 
         #expect(tool.tool().name == "add_copy_files_phase")
@@ -46,8 +45,8 @@ struct AddCopyFilesPhaseTests {
         }
     }
 
-    @Test("Validates required parameters")
-    func validateRequiredParameters() throws {
+    @Test
+    func `Validates required parameters`() throws {
         let tool = AddCopyFilesPhase(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
@@ -59,8 +58,8 @@ struct AddCopyFilesPhaseTests {
         }
     }
 
-    @Test("Creates copy files phase with destination")
-    func createsCopyFilesPhase() throws {
+    @Test
+    func `Creates copy files phase with destination`() throws {
         let tool = AddCopyFilesPhase(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -92,8 +91,8 @@ struct AddCopyFilesPhaseTests {
         #expect(phase?.dstSubfolderSpec == .resources)
     }
 
-    @Test("Creates copy files phase with subpath")
-    func createsCopyFilesPhaseWithSubpath() throws {
+    @Test
+    func `Creates copy files phase with subpath`() throws {
         let tool = AddCopyFilesPhase(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -123,8 +122,8 @@ struct AddCopyFilesPhaseTests {
         #expect(phase?.dstPath == "Extensions")
     }
 
-    @Test("Idempotent when phase already exists")
-    func idempotentWhenPhaseExists() throws {
+    @Test
+    func `Idempotent when phase already exists`() throws {
         let tool = AddCopyFilesPhase(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -155,8 +154,8 @@ struct AddCopyFilesPhaseTests {
         }
     }
 
-    @Test("Fails with invalid destination")
-    func failsWithInvalidDestination() throws {
+    @Test
+    func `Fails with invalid destination`() throws {
         let tool = AddCopyFilesPhase(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -174,8 +173,8 @@ struct AddCopyFilesPhaseTests {
         }
     }
 
-    @Test("Reports target not found")
-    func reportsTargetNotFound() throws {
+    @Test
+    func `Reports target not found`() throws {
         let tool = AddCopyFilesPhase(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -198,7 +197,6 @@ struct AddCopyFilesPhaseTests {
     }
 }
 
-@Suite("ListCopyFilesPhases Tests")
 struct ListCopyFilesPhasesTests {
     let tempDir: String
     let pathUtility: PathUtility
@@ -212,8 +210,8 @@ struct ListCopyFilesPhasesTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
-    func toolProperties() {
+    @Test
+    func `tool properties`() {
         let tool = ListCopyFilesPhases(pathUtility: pathUtility)
 
         #expect(tool.tool().name == "list_copy_files_phases")
@@ -228,8 +226,8 @@ struct ListCopyFilesPhasesTests {
         }
     }
 
-    @Test("Validates required parameters")
-    func validateRequiredParameters() throws {
+    @Test
+    func `validate required parameters`() throws {
         let tool = ListCopyFilesPhases(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
@@ -239,8 +237,8 @@ struct ListCopyFilesPhasesTests {
         }
     }
 
-    @Test("Lists copy files phases")
-    func listsCopyFilesPhases() throws {
+    @Test
+    func `Lists copy files phases`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: "App", at: projectPath,
@@ -273,8 +271,8 @@ struct ListCopyFilesPhasesTests {
         }
     }
 
-    @Test("Reports no phases found")
-    func reportsNoPhasesFound() throws {
+    @Test
+    func `Reports no phases found`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: "App", at: projectPath,
@@ -293,8 +291,8 @@ struct ListCopyFilesPhasesTests {
         }
     }
 
-    @Test("Reports target not found")
-    func reportsTargetNotFound() throws {
+    @Test
+    func `reports target not found`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: "App", at: projectPath,
@@ -314,7 +312,6 @@ struct ListCopyFilesPhasesTests {
     }
 }
 
-@Suite("AddToCopyFilesPhase Tests")
 struct AddToCopyFilesPhaseTests {
     let tempDir: String
     let pathUtility: PathUtility
@@ -328,7 +325,7 @@ struct AddToCopyFilesPhaseTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
+    @Test
     func toolProperties() {
         let tool = AddToCopyFilesPhase(pathUtility: pathUtility)
 
@@ -349,7 +346,7 @@ struct AddToCopyFilesPhaseTests {
         }
     }
 
-    @Test("Validates required parameters")
+    @Test
     func validateRequiredParameters() throws {
         let tool = AddToCopyFilesPhase(pathUtility: pathUtility)
 
@@ -362,8 +359,8 @@ struct AddToCopyFilesPhaseTests {
         }
     }
 
-    @Test("Adds file to copy files phase")
-    func addsFileToCopyFilesPhase() throws {
+    @Test
+    func `Adds file to copy files phase`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: "App", at: projectPath,
@@ -417,8 +414,8 @@ struct AddToCopyFilesPhaseTests {
         #expect(updatedPhase?.files?.count == 1)
     }
 
-    @Test("Reports phase not found")
-    func reportsPhaseNotFound() throws {
+    @Test
+    func `Reports phase not found`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: "App", at: projectPath,
@@ -439,8 +436,8 @@ struct AddToCopyFilesPhaseTests {
         }
     }
 
-    @Test("Reports files not found in project")
-    func reportsFilesNotFoundInProject() throws {
+    @Test
+    func `Reports files not found in project`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: "App", at: projectPath,
@@ -474,7 +471,6 @@ struct AddToCopyFilesPhaseTests {
     }
 }
 
-@Suite("RemoveCopyFilesPhase Tests")
 struct RemoveCopyFilesPhaseTests {
     let tempDir: String
     let pathUtility: PathUtility
@@ -488,7 +484,7 @@ struct RemoveCopyFilesPhaseTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
+    @Test
     func toolProperties() {
         let tool = RemoveCopyFilesPhase(pathUtility: pathUtility)
 
@@ -505,7 +501,7 @@ struct RemoveCopyFilesPhaseTests {
         }
     }
 
-    @Test("Validates required parameters")
+    @Test
     func validateRequiredParameters() throws {
         let tool = RemoveCopyFilesPhase(pathUtility: pathUtility)
 
@@ -517,8 +513,8 @@ struct RemoveCopyFilesPhaseTests {
         }
     }
 
-    @Test("Removes copy files phase")
-    func removesCopyFilesPhase() throws {
+    @Test
+    func `Removes copy files phase`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: "App", at: projectPath,
@@ -558,8 +554,8 @@ struct RemoveCopyFilesPhaseTests {
         #expect(copyPhases.isEmpty)
     }
 
-    @Test("Reports phase not found")
-    func reportsPhaseNotFound() throws {
+    @Test
+    func `reports phase not found`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: "App", at: projectPath,
@@ -579,7 +575,7 @@ struct RemoveCopyFilesPhaseTests {
         }
     }
 
-    @Test("Reports target not found")
+    @Test
     func reportsTargetNotFound() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -600,8 +596,8 @@ struct RemoveCopyFilesPhaseTests {
         }
     }
 
-    @Test("Removes phase with build files")
-    func removesPhaseWithBuildFiles() throws {
+    @Test
+    func `Removes phase with build files`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: "App", at: projectPath,

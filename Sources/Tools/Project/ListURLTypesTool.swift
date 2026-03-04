@@ -98,7 +98,7 @@ public struct ListURLTypesTool: Sendable {
                 }
 
                 // Show any additional keys
-                let knownKeys: Set<String> = [
+                let knownKeys: Set = [
                     "CFBundleURLName", "CFBundleURLSchemes", "CFBundleTypeRole",
                     "CFBundleURLIconFile",
                 ]

@@ -19,8 +19,8 @@ struct ListGroupsToolTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
-    func toolProperties() {
+    @Test
+    func `Tool has correct properties`() {
         let tool = ListGroupsTool(pathUtility: pathUtility)
 
         #expect(tool.tool().name == "list_groups")
@@ -43,8 +43,8 @@ struct ListGroupsToolTests {
         }
     }
 
-    @Test("Validates required parameters")
-    func validateRequiredParameters() throws {
+    @Test
+    func `Validates required parameters`() throws {
         let tool = ListGroupsTool(pathUtility: pathUtility)
 
         // Missing project_path
@@ -60,8 +60,8 @@ struct ListGroupsToolTests {
         }
     }
 
-    @Test("Lists groups from project")
-    func listsGroupsFromProject() throws {
+    @Test
+    func `Lists groups from project`() throws {
         let tool = ListGroupsTool(pathUtility: pathUtility)
 
         // Create a test project
@@ -85,8 +85,8 @@ struct ListGroupsToolTests {
         }
     }
 
-    @Test("Lists nested groups correctly")
-    func listsNestedGroupsCorrectly() throws {
+    @Test
+    func `Lists nested groups correctly`() throws {
         let tool = ListGroupsTool(pathUtility: pathUtility)
 
         // Create a test project
@@ -135,8 +135,8 @@ struct ListGroupsToolTests {
         }
     }
 
-    @Test("Handles project with no custom groups")
-    func handlesProjectWithNoCustomGroups() throws {
+    @Test
+    func `Handles project with no custom groups`() throws {
         let tool = ListGroupsTool(pathUtility: pathUtility)
 
         // Create a minimal test project
@@ -199,8 +199,8 @@ struct ListGroupsToolTests {
         }
     }
 
-    @Test("Fails when project does not exist")
-    func failsWhenProjectDoesNotExist() throws {
+    @Test
+    func `Fails when project does not exist`() throws {
         let tool = ListGroupsTool(pathUtility: pathUtility)
 
         // Try to list groups from a non-existent project
@@ -211,8 +211,8 @@ struct ListGroupsToolTests {
         }
     }
 
-    @Test("Handles groups with path but no name")
-    func handlesGroupsWithPathButNoName() throws {
+    @Test
+    func `Handles groups with path but no name`() throws {
         let tool = ListGroupsTool(pathUtility: pathUtility)
 
         // Create a test project

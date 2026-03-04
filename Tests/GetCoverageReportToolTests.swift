@@ -3,10 +3,9 @@ import Testing
 @testable import XCMCPTools
 import Foundation
 
-@Suite("GetCoverageReportTool Tests")
 struct GetCoverageReportToolTests {
-    @Test("Format report with multiple targets sorted by coverage ascending")
-    func formatReportSortedByCoverage() throws {
+    @Test
+    func `Format report with multiple targets sorted by coverage ascending`() throws {
         let report = CoverageReport(
             lineCoverage: 72.3,
             coveredLines: 1450,
@@ -55,8 +54,8 @@ struct GetCoverageReportToolTests {
         #expect(frameworkIndex < appIndex)
     }
 
-    @Test("Format report with show_files includes file breakdown")
-    func formatReportShowFiles() throws {
+    @Test
+    func `Format report with show_files includes file breakdown`() throws {
         let report = CoverageReport(
             lineCoverage: 80.0,
             coveredLines: 80,
@@ -96,8 +95,8 @@ struct GetCoverageReportToolTests {
         #expect(aIndex < bIndex)
     }
 
-    @Test("Format report without show_files omits file breakdown")
-    func formatReportNoFiles() {
+    @Test
+    func `Format report without show_files omits file breakdown`() {
         let report = CoverageReport(
             lineCoverage: 80.0,
             coveredLines: 80,
@@ -126,8 +125,8 @@ struct GetCoverageReportToolTests {
         #expect(!output.contains("A.swift"))
     }
 
-    @Test("Execute with non-existent bundle path throws")
-    func executeWithBadPath() async {
+    @Test
+    func `Execute with non-existent bundle path throws`() async {
         let tool = GetCoverageReportTool()
         do {
             _ = try await tool.execute(arguments: [
@@ -139,8 +138,8 @@ struct GetCoverageReportToolTests {
         }
     }
 
-    @Test("Execute with missing required param throws")
-    func executeMissingParam() async {
+    @Test
+    func `Execute with missing required param throws`() async {
         let tool = GetCoverageReportTool()
         do {
             _ = try await tool.execute(arguments: [:])

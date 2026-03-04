@@ -295,16 +295,19 @@ public struct ValidateProjectTool: Sendable {
         diagnostics: inout [Diagnostic],
     ) {
         // Orphaned PBXBuildFile entries: in pbxproj.buildFiles but not in any build phase
-        var referencedBuildFiles = Set<PBXBuildFile>()
+        // Use ObjectIdentifier instead of Set<PBXBuildFile> to avoid XcodeProj's
+        // broken Hashable conformance (buildPhase mutates after insertion).
+        var referencedBuildFileIDs = Set<ObjectIdentifier>()
         for target in targets {
             for phase in target.buildPhases {
                 for buildFile in phase.files ?? [] {
-                    referencedBuildFiles.insert(buildFile)
+                    referencedBuildFileIDs.insert(ObjectIdentifier(buildFile))
                 }
             }
         }
         let allBuildFiles = xcodeproj.pbxproj.buildFiles
-        let orphanCount = allBuildFiles.count(where: { !referencedBuildFiles.contains($0) })
+        let orphanCount = allBuildFiles
+            .count(where: { !referencedBuildFileIDs.contains(ObjectIdentifier($0)) })
         if orphanCount > 0 {
             diagnostics.append(
                 Diagnostic(

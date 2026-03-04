@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
-struct SetBuildSettingMissingParamTestCase: Sendable {
+struct SetBuildSettingMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -17,10 +17,9 @@ struct SetBuildSettingMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("SetBuildSettingTool Tests")
 struct SetBuildSettingToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = SetBuildSettingTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -76,8 +75,8 @@ struct SetBuildSettingToolTests {
         ),
     ]
 
-    @Test("Set build setting with missing parameter", arguments: missingParamCases)
-    func setBuildSettingWithMissingParameters(_ testCase: SetBuildSettingMissingParamTestCase)
+    @Test(arguments: missingParamCases)
+    func `Set build setting with missing parameter`(_ testCase: SetBuildSettingMissingParamTestCase)
         throws
     {
         let tool = SetBuildSettingTool(pathUtility: PathUtility(basePath: "/tmp"))
@@ -87,8 +86,8 @@ struct SetBuildSettingToolTests {
         }
     }
 
-    @Test("Set build setting for specific configuration")
-    func setBuildSettingForSpecificConfiguration() throws {
+    @Test
+    func `Set build setting for specific configuration`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -140,8 +139,8 @@ struct SetBuildSettingToolTests {
         #expect(releaseConfig?.buildSettings["SWIFT_VERSION"]?.stringValue != "5.9")
     }
 
-    @Test("Set build setting for all configurations")
-    func setBuildSettingForAllConfigurations() throws {
+    @Test
+    func `Set build setting for all configurations`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -193,8 +192,8 @@ struct SetBuildSettingToolTests {
         #expect(releaseConfig?.buildSettings["SWIFT_VERSION"]?.stringValue == "5.9")
     }
 
-    @Test("Set build setting with non-existent target")
-    func setBuildSettingWithNonExistentTarget() throws {
+    @Test
+    func `Set build setting with non-existent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -228,8 +227,8 @@ struct SetBuildSettingToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("set_build_setting preserves dstSubfolderSpec on PBXCopyFilesBuildPhase")
-    func setBuildSettingPreservesCopyFilesPhase() throws {
+    @Test
+    func `set_build_setting preserves dstSubfolderSpec on PBXCopyFilesBuildPhase`() throws {
         // Regression test for xc-mcp-qem0:
         // set_build_setting drops dstSubfolder fields from PBXCopyFilesBuildPhase sections
 
@@ -300,8 +299,8 @@ struct SetBuildSettingToolTests {
         )
     }
 
-    @Test("set_build_setting preserves Xcode 26 string-based dstSubfolder on round-trip")
-    func setBuildSettingPreservesXcode26DstSubfolder() throws {
+    @Test
+    func `set_build_setting preserves Xcode 26 string-based dstSubfolder on round-trip`() throws {
         // Regression test for tuist/XcodeProj#1034:
         // Xcode 26 writes `dstSubfolder = Resources;` (string) instead of
         // `dstSubfolderSpec = 7;` (numeric). XcodeProj drops the string variant.
@@ -392,8 +391,8 @@ struct SetBuildSettingToolTests {
         )
     }
 
-    @Test("Set build setting with non-existent configuration")
-    func setBuildSettingWithNonExistentConfiguration() throws {
+    @Test
+    func `Set build setting with non-existent configuration`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

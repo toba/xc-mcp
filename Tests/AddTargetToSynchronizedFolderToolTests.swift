@@ -6,7 +6,6 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("AddTargetToSynchronizedFolderTool Tests")
 struct AddTargetToSynchronizedFolderToolTests {
     let tempDir: String
     let pathUtility: PathUtility
@@ -22,8 +21,8 @@ struct AddTargetToSynchronizedFolderToolTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
-    func toolProperties() {
+    @Test
+    func `Tool has correct properties`() {
         let tool = AddTargetToSynchronizedFolderTool(pathUtility: pathUtility)
 
         #expect(tool.tool().name == "add_target_to_synchronized_folder")
@@ -45,8 +44,8 @@ struct AddTargetToSynchronizedFolderToolTests {
         }
     }
 
-    @Test("Validates required parameters")
-    func validateRequiredParameters() throws {
+    @Test
+    func `Validates required parameters`() throws {
         let tool = AddTargetToSynchronizedFolderTool(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
@@ -57,8 +56,8 @@ struct AddTargetToSynchronizedFolderToolTests {
         }
     }
 
-    @Test("Adds existing sync folder to second target")
-    func addsExistingSyncFolderToSecondTarget() throws {
+    @Test
+    func `Adds existing sync folder to second target`() throws {
         let tool = AddTargetToSynchronizedFolderTool(pathUtility: pathUtility)
 
         // Create a project with two targets
@@ -126,8 +125,8 @@ struct AddTargetToSynchronizedFolderToolTests {
         #expect(updated.pbxproj.fileSystemSynchronizedRootGroups.count == 1)
     }
 
-    @Test("Idempotent when already added")
-    func idempotentWhenAlreadyAdded() throws {
+    @Test
+    func `Idempotent when already added`() throws {
         let tool = AddTargetToSynchronizedFolderTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -162,8 +161,8 @@ struct AddTargetToSynchronizedFolderToolTests {
         }
     }
 
-    @Test("Fails when sync folder not found")
-    func failsWhenSyncFolderNotFound() throws {
+    @Test
+    func `Fails when sync folder not found`() throws {
         let tool = AddTargetToSynchronizedFolderTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -180,8 +179,8 @@ struct AddTargetToSynchronizedFolderToolTests {
         }
     }
 
-    @Test("Fails when target not found")
-    func failsWhenTargetNotFound() throws {
+    @Test
+    func `Fails when target not found`() throws {
         let tool = AddTargetToSynchronizedFolderTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"

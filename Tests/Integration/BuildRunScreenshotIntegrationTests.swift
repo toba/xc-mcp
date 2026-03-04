@@ -16,7 +16,7 @@ struct BuildIntegrationTests {
     // MARK: - Alamofire — build only
 
     @Test(.enabled(if: IntegrationFixtures.simulatorAvailable), .timeLimit(.minutes(10)))
-    func build_Alamofire_iOS() async throws {
+    func `build alamofire i OS`() async throws {
         let tool = BuildSimTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
@@ -32,7 +32,7 @@ struct BuildIntegrationTests {
     }
 
     @Test(.timeLimit(.minutes(10)))
-    func build_Alamofire_macOS() async throws {
+    func `build alamofire mac OS`() async throws {
         let tool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
@@ -49,7 +49,7 @@ struct BuildIntegrationTests {
     // MARK: - SwiftFormat — build only (macOS)
 
     @Test(.timeLimit(.minutes(10)))
-    func build_SwiftFormat_macOS() async throws {
+    func `build swift format mac OS`() async throws {
         let tool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
@@ -90,7 +90,7 @@ struct SlowIntegrationTests {
     // MARK: - IceCubesApp — build, run, screenshot (simulator)
 
     @Test(.timeLimit(.minutes(10)))
-    func buildRunScreenshot_IceCubesApp_sim() async throws {
+    func `build run screenshot ice cubes app sim`() async throws {
         let simulatorUDID = try #require(IntegrationFixtures.simulatorUDID)
 
         // 1. Boot simulator
@@ -151,7 +151,7 @@ struct SlowIntegrationTests {
     // MARK: - IceCubesApp — preview capture
 
     @Test(.timeLimit(.minutes(10)))
-    func previewCapture_IceCubesApp() async throws {
+    func `preview capture ice cubes app`() async throws {
         let simulatorUDID = try #require(IntegrationFixtures.simulatorUDID)
         let pathUtility = PathUtility(
             basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,

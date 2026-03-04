@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for parameterized product type tests
-struct ProductTypeTestCase: Sendable {
+struct ProductTypeTestCase {
     let targetName: String
     let productTypeString: String
     let expectedProductTypeRawValue: String
@@ -34,7 +34,7 @@ struct ProductTypeTestCase: Sendable {
 }
 
 /// Test case for missing parameter validation
-struct MissingParamTestCase: Sendable {
+struct MissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -44,10 +44,9 @@ struct MissingParamTestCase: Sendable {
     }
 }
 
-@Suite("AddTargetTool Tests")
 struct AddTargetToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = AddTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -90,8 +89,8 @@ struct AddTargetToolTests {
         ),
     ]
 
-    @Test("Add target with missing parameters", arguments: missingParamCases)
-    func addTargetWithMissingParameters(_ testCase: MissingParamTestCase) throws {
+    @Test(arguments: missingParamCases)
+    func `Add target with missing parameters`(_ testCase: MissingParamTestCase) throws {
         let tool = AddTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -114,8 +113,8 @@ struct AddTargetToolTests {
         ProductTypeTestCase("MyXPCService", "xpcService", .xpcService, platform: "macOS"),
     ]
 
-    @Test("Add target with product type", arguments: productTypeCases)
-    func addTargetWithProductType(_ testCase: ProductTypeTestCase) throws {
+    @Test(arguments: productTypeCases)
+    func `Add target with product type`(_ testCase: ProductTypeTestCase) throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -182,8 +181,8 @@ struct AddTargetToolTests {
         }
     }
 
-    @Test("Add application target verifies build phases")
-    func addApplicationTargetVerifiesBuildPhases() throws {
+    @Test
+    func `Add application target verifies build phases`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -228,8 +227,8 @@ struct AddTargetToolTests {
         #expect(buildConfig?.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.test.newapp")
     }
 
-    @Test("Add duplicate target")
-    func addDuplicateTarget() throws {
+    @Test
+    func `Add duplicate target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -261,8 +260,8 @@ struct AddTargetToolTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("Add macOS target does not set TARGETED_DEVICE_FAMILY")
-    func addMacOSTargetNoDeviceFamily() throws {
+    @Test
+    func `Add macOS target does not set TARGETED_DEVICE_FAMILY`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -295,8 +294,8 @@ struct AddTargetToolTests {
         #expect(buildConfig?.buildSettings["ALWAYS_SEARCH_USER_PATHS"] == .string("NO"))
     }
 
-    @Test("Add target with invalid product type")
-    func addTargetWithInvalidProductType() throws {
+    @Test
+    func `Add target with invalid product type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

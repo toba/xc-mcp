@@ -3,10 +3,9 @@ import Testing
 @testable import XCMCPCore
 @testable import XCMCPTools
 
-@Suite("XctraceRecordTool Tests")
 struct XctraceRecordToolTests {
-    @Test("Tool schema has correct name and description")
-    func toolSchema() {
+    @Test
+    func `Tool schema has correct name and description`() {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
         let schema = tool.tool()
 
@@ -15,8 +14,8 @@ struct XctraceRecordToolTests {
         #expect(schema.description?.contains("trace") == true)
     }
 
-    @Test("Tool schema includes all expected parameters")
-    func toolParameters() {
+    @Test
+    func `Tool schema includes all expected parameters`() {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
         let schema = tool.tool()
 
@@ -38,8 +37,8 @@ struct XctraceRecordToolTests {
         #expect(properties["session_id"] != nil)
     }
 
-    @Test("Execute with no action throws invalidParams")
-    func noAction() async throws {
+    @Test
+    func `Execute with no action throws invalidParams`() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         await #expect(throws: MCPError.self) {
@@ -47,8 +46,8 @@ struct XctraceRecordToolTests {
         }
     }
 
-    @Test("Execute with invalid action throws invalidParams")
-    func invalidAction() async throws {
+    @Test
+    func `Execute with invalid action throws invalidParams`() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         await #expect(throws: MCPError.self) {
@@ -56,8 +55,8 @@ struct XctraceRecordToolTests {
         }
     }
 
-    @Test("Start without template throws invalidParams")
-    func startWithoutTemplate() async throws {
+    @Test
+    func `Start without template throws invalidParams`() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         await #expect(throws: MCPError.self) {
@@ -65,8 +64,8 @@ struct XctraceRecordToolTests {
         }
     }
 
-    @Test("Stop without session_id throws invalidParams")
-    func stopWithoutSessionId() async throws {
+    @Test
+    func `Stop without session_id throws invalidParams`() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         await #expect(throws: MCPError.self) {
@@ -74,8 +73,8 @@ struct XctraceRecordToolTests {
         }
     }
 
-    @Test("Stop with invalid session_id throws invalidParams")
-    func stopWithInvalidSessionId() async throws {
+    @Test
+    func `Stop with invalid session_id throws invalidParams`() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         await #expect(throws: MCPError.self) {
@@ -86,8 +85,8 @@ struct XctraceRecordToolTests {
         }
     }
 
-    @Test("List with no active sessions returns empty message")
-    func listEmpty() async throws {
+    @Test
+    func `List with no active sessions returns empty message`() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
         let result = try await tool.execute(arguments: ["action": .string("list")])
@@ -100,10 +99,9 @@ struct XctraceRecordToolTests {
     }
 }
 
-@Suite("XctraceListTool Tests")
 struct XctraceListToolTests {
-    @Test("Tool schema has correct name and description")
-    func testToolSchema() {
+    @Test
+    func `tool schema`() {
         let tool = XctraceListTool()
         let schema = tool.tool()
 
@@ -111,8 +109,8 @@ struct XctraceListToolTests {
         #expect(schema.description?.contains("Instruments") == true)
     }
 
-    @Test("Tool schema includes kind parameter")
-    func testToolParameters() {
+    @Test
+    func `Tool schema includes kind parameter`() {
         let tool = XctraceListTool()
         let schema = tool.tool()
 
@@ -126,8 +124,8 @@ struct XctraceListToolTests {
         #expect(properties["kind"] != nil)
     }
 
-    @Test("Execute with no kind throws invalidParams")
-    func noKind() async throws {
+    @Test
+    func `Execute with no kind throws invalidParams`() async throws {
         let tool = XctraceListTool()
 
         await #expect(throws: MCPError.self) {
@@ -135,8 +133,8 @@ struct XctraceListToolTests {
         }
     }
 
-    @Test("Execute with invalid kind throws invalidParams")
-    func invalidKind() async throws {
+    @Test
+    func `Execute with invalid kind throws invalidParams`() async throws {
         let tool = XctraceListTool()
 
         await #expect(throws: MCPError.self) {
@@ -144,8 +142,8 @@ struct XctraceListToolTests {
         }
     }
 
-    @Test("List templates returns results")
-    func listTemplates() async throws {
+    @Test
+    func `List templates returns results`() async throws {
         let tool = XctraceListTool()
         let result = try await tool.execute(arguments: ["kind": .string("templates")])
 
@@ -157,10 +155,9 @@ struct XctraceListToolTests {
     }
 }
 
-@Suite("XctraceExportTool Tests")
 struct XctraceExportToolTests {
-    @Test("Tool schema has correct name and description")
-    func testToolSchema() {
+    @Test
+    func toolSchema() {
         let tool = XctraceExportTool()
         let schema = tool.tool()
 
@@ -169,8 +166,8 @@ struct XctraceExportToolTests {
         #expect(schema.description?.contains(".trace") == true)
     }
 
-    @Test("Tool schema includes all expected parameters")
-    func testToolParameters() {
+    @Test
+    func `tool parameters`() {
         let tool = XctraceExportTool()
         let schema = tool.tool()
 
@@ -186,8 +183,8 @@ struct XctraceExportToolTests {
         #expect(properties["toc"] != nil)
     }
 
-    @Test("Execute with no input_path throws invalidParams")
-    func noInputPath() async throws {
+    @Test
+    func `Execute with no input_path throws invalidParams`() async throws {
         let tool = XctraceExportTool()
 
         await #expect(throws: MCPError.self) {
@@ -195,8 +192,8 @@ struct XctraceExportToolTests {
         }
     }
 
-    @Test("Execute with invalid path throws error")
-    func invalidPath() async throws {
+    @Test
+    func `Execute with invalid path throws error`() async throws {
         let tool = XctraceExportTool()
 
         await #expect(throws: MCPError.self) {

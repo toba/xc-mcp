@@ -14,7 +14,7 @@ struct DiscoveryIntegrationTests {
 
     // MARK: - discover_projects (XcodeProj-based, no xcodebuild)
 
-    @Test func discoverProjects_IceCubesApp() throws {
+    @Test func `discover projects ice cubes app`() throws {
         let tool = DiscoverProjectsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
@@ -28,7 +28,7 @@ struct DiscoveryIntegrationTests {
         #expect(content.contains("IceCubesApp.xcodeproj"))
     }
 
-    @Test func discoverProjects_Alamofire() throws {
+    @Test func `discover projects alamofire`() throws {
         let tool = DiscoverProjectsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false,
@@ -42,7 +42,7 @@ struct DiscoveryIntegrationTests {
         #expect(content.contains("Alamofire.xcodeproj"))
     }
 
-    @Test func discoverProjects_SwiftFormat() throws {
+    @Test func `discover projects swift format`() throws {
         let tool = DiscoverProjectsTool(
             pathUtility: PathUtility(
                 basePath: IntegrationFixtures.swiftFormatRepoDir, sandboxEnabled: false,
@@ -59,7 +59,7 @@ struct DiscoveryIntegrationTests {
     // MARK: - list_schemes (xcodebuild -list)
 
     @Test(.timeLimit(.minutes(2)))
-    func listSchemes_IceCubesApp() async throws {
+    func `list schemes ice cubes app`() async throws {
         let tool = ListSchemesTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
@@ -73,7 +73,7 @@ struct DiscoveryIntegrationTests {
     }
 
     @Test(.timeLimit(.minutes(2)))
-    func listSchemes_Alamofire() async throws {
+    func `list schemes alamofire`() async throws {
         let tool = ListSchemesTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
@@ -89,7 +89,7 @@ struct DiscoveryIntegrationTests {
     // MARK: - show_build_settings (xcodebuild -showBuildSettings)
 
     @Test(.timeLimit(.minutes(2)))
-    func showBuildSettings_Alamofire() async throws {
+    func `show build settings alamofire`() async throws {
         let tool = ShowBuildSettingsTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
@@ -105,7 +105,7 @@ struct DiscoveryIntegrationTests {
     }
 
     @Test(.timeLimit(.minutes(2)))
-    func showBuildSettings_withFilter() async throws {
+    func `show build settings with filter`() async throws {
         let tool = ShowBuildSettingsTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
@@ -125,7 +125,7 @@ struct DiscoveryIntegrationTests {
     // MARK: - get_app_bundle_id
 
     @Test(.timeLimit(.minutes(2)))
-    func getAppBundleId_IceCubesApp() async throws {
+    func `get app bundle id ice cubes app`() async throws {
         let tool = GetAppBundleIdTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
@@ -142,7 +142,7 @@ struct DiscoveryIntegrationTests {
     // MARK: - get_mac_bundle_id
 
     @Test(.timeLimit(.minutes(2)))
-    func getMacBundleId_Alamofire() async throws {
+    func `get mac bundle id alamofire`() async throws {
         let tool = GetMacBundleIdTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,

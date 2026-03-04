@@ -1,10 +1,9 @@
 import Testing
 @testable import XCMCPCore
 
-@Suite("Build Phases Tests")
 struct BuildPhasesTests {
-    @Test("PhaseScriptExecution failure basic")
-    func phaseScriptExecutionFailureBasic() {
+    @Test
+    func `PhaseScriptExecution failure basic`() {
         let parser = BuildOutputParser()
         let output = """
         /bin/sh -c /Users/test/DerivedData/Build/Script.sh
@@ -23,8 +22,8 @@ struct BuildPhasesTests {
         #expect(result.errors[0].message.contains("The path lib/main.dart does not exist"))
     }
 
-    @Test("PhaseScriptExecution with multiple errors")
-    func phaseScriptExecutionWithMultipleErrors() {
+    @Test
+    func `PhaseScriptExecution with multiple errors`() {
         let parser = BuildOutputParser()
         let output = """
         Build started...
@@ -45,8 +44,8 @@ struct BuildPhasesTests {
         #expect(result.summary.errors == 2)
     }
 
-    @Test("PhaseScriptExecution with no context")
-    func phaseScriptExecutionWithNoContext() {
+    @Test
+    func `PhaseScriptExecution with no context`() {
         let parser = BuildOutputParser()
         let output = """
         Command PhaseScriptExecution failed with a nonzero exit code
@@ -58,8 +57,8 @@ struct BuildPhasesTests {
         #expect(result.errors[0].message.contains("Command PhaseScriptExecution failed"))
     }
 
-    @Test("Build succeeded does not create phase error")
-    func buildSucceededDoesNotCreatePhaseError() {
+    @Test
+    func `Build succeeded does not create phase error`() {
         let parser = BuildOutputParser()
         let output = """
         Running phase script...

@@ -109,7 +109,7 @@ public struct ListDocumentTypesTool: Sendable {
                 }
 
                 // Show any additional keys
-                let knownKeys: Set<String> = [
+                let knownKeys: Set = [
                     "CFBundleTypeName", "LSItemContentTypes", "CFBundleTypeRole",
                     "LSHandlerRank", "NSDocumentClass", "CFBundleTypeIconFile",
                     "LSTypeIsPackage",

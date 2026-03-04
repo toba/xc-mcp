@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
-struct MoveFileMissingParamTestCase: Sendable {
+struct MoveFileMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -17,10 +17,9 @@ struct MoveFileMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("MoveFileTool Tests")
 struct MoveFileToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
         let toolDefinition = tool.tool()
 
@@ -52,8 +51,8 @@ struct MoveFileToolTests {
         ),
     ]
 
-    @Test("Move file with missing parameter", arguments: missingParamCases)
-    func moveFileWithMissingParameter(_ testCase: MoveFileMissingParamTestCase) throws {
+    @Test(arguments: missingParamCases)
+    func `Move file with missing parameter`(_ testCase: MoveFileMissingParamTestCase) throws {
         let tool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
 
         #expect(throws: MCPError.self) {
@@ -61,8 +60,8 @@ struct MoveFileToolTests {
         }
     }
 
-    @Test("Move file in project")
-    func moveFile() throws {
+    @Test
+    func `Move file in project`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -131,8 +130,8 @@ struct MoveFileToolTests {
         #expect(FileManager.default.fileExists(atPath: newFilePath) == false)
     }
 
-    @Test("Move file on disk")
-    func moveFileOnDisk() throws {
+    @Test
+    func `Move file on disk`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -189,8 +188,8 @@ struct MoveFileToolTests {
         #expect(content == "// Test file")
     }
 
-    @Test("Move non-existent file")
-    func moveNonExistentFile() throws {
+    @Test
+    func `Move non-existent file`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

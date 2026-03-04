@@ -1,10 +1,9 @@
 import Testing
 import XCMCPCore
 
-@Suite("PreviewExtractor Tests")
 struct PreviewExtractorTests {
-    @Test("Single simple preview")
-    func singleSimplePreview() {
+    @Test
+    func `Single simple preview`() {
         let source = """
         import SwiftUI
 
@@ -24,8 +23,8 @@ struct PreviewExtractorTests {
         #expect(previews[0].body.contains("ContentView()"))
     }
 
-    @Test("Multiple previews in one file")
-    func multiplePreviews() {
+    @Test
+    func `Multiple previews in one file`() {
         let source = """
         #Preview {
             Text("First")
@@ -41,8 +40,8 @@ struct PreviewExtractorTests {
         #expect(previews[1].body.contains("Second"))
     }
 
-    @Test("Named preview")
-    func namedPreview() {
+    @Test
+    func `Named preview`() {
         let source = """
         #Preview("Dark Mode") {
             ContentView()
@@ -56,8 +55,8 @@ struct PreviewExtractorTests {
         #expect(previews[0].body.contains(".preferredColorScheme(.dark)"))
     }
 
-    @Test("Nested braces")
-    func nestedBraces() {
+    @Test
+    func `Nested braces`() {
         let source = """
         #Preview {
             VStack {
@@ -74,8 +73,8 @@ struct PreviewExtractorTests {
         #expect(previews[0].body.contains("Text"))
     }
 
-    @Test("String literals containing braces")
-    func stringLiteralsWithBraces() {
+    @Test
+    func `String literals containing braces`() {
         let source = """
         #Preview {
             Text("Hello { world }")
@@ -86,8 +85,8 @@ struct PreviewExtractorTests {
         #expect(previews[0].body.contains("Hello { world }"))
     }
 
-    @Test("Comments containing braces")
-    func commentsWithBraces() {
+    @Test
+    func `Comments containing braces`() {
         let source = """
         #Preview {
             // This { brace should be ignored }
@@ -100,8 +99,8 @@ struct PreviewExtractorTests {
         #expect(previews[0].body.contains("Text(\"Hello\")"))
     }
 
-    @Test("No preview returns empty array")
-    func noPreview() {
+    @Test
+    func `No preview returns empty array`() {
         let source = """
         import SwiftUI
 
@@ -115,8 +114,8 @@ struct PreviewExtractorTests {
         #expect(previews.isEmpty)
     }
 
-    @Test("Preview with attributes before it")
-    func previewWithAttributesBefore() {
+    @Test
+    func `Preview with attributes before it`() {
         let source = """
         @available(iOS 17, *)
         #Preview {
@@ -128,8 +127,8 @@ struct PreviewExtractorTests {
         #expect(previews[0].body.contains("ContentView()"))
     }
 
-    @Test("Multiline string literal with braces inside preview")
-    func multilineStringLiteral() {
+    @Test
+    func `Multiline string literal with braces inside preview`() {
         let source = ##"""
         #Preview {
             Text("""
@@ -141,8 +140,8 @@ struct PreviewExtractorTests {
         #expect(previews.count == 1)
     }
 
-    @Test("Named previews with mixed unnamed")
-    func mixedNamedAndUnnamed() {
+    @Test
+    func `Named previews with mixed unnamed`() {
         let source = """
         #Preview("Light") {
             ContentView()
@@ -165,8 +164,8 @@ struct PreviewExtractorTests {
         #expect(previews[2].name == "Landscape")
     }
 
-    @Test("Does not match #PreviewFoo")
-    func doesNotMatchSimilarMacro() {
+    @Test
+    func `Does not match #PreviewFoo`() {
         let source = """
         #PreviewLayout(.sizeThatFits)
         #Preview {
@@ -178,8 +177,8 @@ struct PreviewExtractorTests {
         #expect(previews[0].body.contains("Real preview"))
     }
 
-    @Test("Preview body extraction trims correctly")
-    func bodyExtractionContent() {
+    @Test
+    func `Preview body extraction trims correctly`() {
         let source = """
         #Preview {
             Text("Hello")
@@ -195,8 +194,8 @@ struct PreviewExtractorTests {
 
     // MARK: - stripPreviewBlocks Tests
 
-    @Test("Strip single preview block")
-    func stripSinglePreview() {
+    @Test
+    func `Strip single preview block`() {
         let source = """
         import SwiftUI
 
@@ -217,8 +216,8 @@ struct PreviewExtractorTests {
         #expect(stripped.contains("Text(\"Hello\")"))
     }
 
-    @Test("Strip multiple preview blocks")
-    func stripMultiplePreviews() {
+    @Test
+    func `Strip multiple preview blocks`() {
         let source = """
         struct A: View { var body: some View { Text("A") } }
 
@@ -238,8 +237,8 @@ struct PreviewExtractorTests {
         #expect(stripped.contains("struct B"))
     }
 
-    @Test("Strip preview with nested braces")
-    func stripPreviewWithNestedBraces() {
+    @Test
+    func `Strip preview with nested braces`() {
         let source = """
         #Preview {
             struct Nested: View {
@@ -256,8 +255,8 @@ struct PreviewExtractorTests {
         #expect(stripped.contains("func keepMe()"))
     }
 
-    @Test("Strip preserves non-preview code intact")
-    func stripPreservesNonPreviewCode() {
+    @Test
+    func `Strip preserves non-preview code intact`() {
         let source = "let x = 1\nlet y = 2\n"
         let stripped = PreviewExtractor.stripPreviewBlocks(from: source)
         #expect(stripped == source)

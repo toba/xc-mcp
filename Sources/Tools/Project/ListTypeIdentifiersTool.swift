@@ -180,7 +180,7 @@ public struct ListTypeIdentifiersTool: Sendable {
             }
 
             // Show any additional keys
-            let knownKeys: Set<String> = [
+            let knownKeys: Set = [
                 "UTTypeIdentifier", "UTTypeDescription", "UTTypeConformsTo",
                 "UTTypeTagSpecification", "UTTypeReferenceURL", "UTTypeIconName",
             ]

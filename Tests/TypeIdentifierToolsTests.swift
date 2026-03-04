@@ -6,7 +6,6 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("TypeIdentifierTools Tests")
 struct TypeIdentifierToolsTests {
     // MARK: - Helper
 
@@ -39,23 +38,23 @@ struct TypeIdentifierToolsTests {
 
     // MARK: - ListTypeIdentifiersTool Tests
 
-    @Test("ListTypeIdentifiersTool tool creation")
-    func listTypeIdentifiersToolCreation() {
+    @Test
+    func `ListTypeIdentifiersTool tool creation`() {
         let tool = ListTypeIdentifiersTool(pathUtility: PathUtility(basePath: "/tmp"))
         let definition = tool.tool()
         #expect(definition.name == "list_type_identifiers")
     }
 
-    @Test("ListTypeIdentifiersTool with missing parameters")
-    func listTypeIdentifiersMissingParams() throws {
+    @Test
+    func `ListTypeIdentifiersTool with missing parameters`() throws {
         let tool = ListTypeIdentifiersTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: ["project_path": .string("/path")])
         }
     }
 
-    @Test("ListTypeIdentifiersTool with no identifiers")
-    func listTypeIdentifiersEmpty() throws {
+    @Test
+    func `ListTypeIdentifiersTool with no identifiers`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -77,8 +76,8 @@ struct TypeIdentifierToolsTests {
         #expect(message.contains("No exported or imported type identifiers"))
     }
 
-    @Test("ListTypeIdentifiersTool with exported identifiers")
-    func listTypeIdentifiersExported() throws {
+    @Test
+    func `ListTypeIdentifiersTool with exported identifiers`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -118,8 +117,8 @@ struct TypeIdentifierToolsTests {
         #expect(message.contains("thesis.project"))
     }
 
-    @Test("ListTypeIdentifiersTool with kind=all shows both")
-    func listTypeIdentifiersAll() throws {
+    @Test
+    func `ListTypeIdentifiersTool with kind=all shows both`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -157,15 +156,15 @@ struct TypeIdentifierToolsTests {
 
     // MARK: - ManageTypeIdentifierTool Tests
 
-    @Test("ManageTypeIdentifierTool tool creation")
-    func manageTypeIdentifierToolCreation() {
+    @Test
+    func `ManageTypeIdentifierTool tool creation`() {
         let tool = ManageTypeIdentifierTool(pathUtility: PathUtility(basePath: "/tmp"))
         let definition = tool.tool()
         #expect(definition.name == "manage_type_identifier")
     }
 
-    @Test("ManageTypeIdentifierTool with missing parameters")
-    func manageTypeIdentifierMissingParams() throws {
+    @Test
+    func `ManageTypeIdentifierTool with missing parameters`() throws {
         let tool = ManageTypeIdentifierTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
@@ -177,8 +176,8 @@ struct TypeIdentifierToolsTests {
         }
     }
 
-    @Test("ManageTypeIdentifierTool add exported type")
-    func manageTypeIdentifierAddExported() throws {
+    @Test
+    func `ManageTypeIdentifierTool add exported type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -218,8 +217,8 @@ struct TypeIdentifierToolsTests {
         #expect(extensions == ["thesis.project"])
     }
 
-    @Test("ManageTypeIdentifierTool add imported type")
-    func manageTypeIdentifierAddImported() throws {
+    @Test
+    func `ManageTypeIdentifierTool add imported type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -252,8 +251,8 @@ struct TypeIdentifierToolsTests {
         #expect(imported?.first?["UTTypeIdentifier"] as? String == "org.example.format")
     }
 
-    @Test("ManageTypeIdentifierTool add duplicate")
-    func manageTypeIdentifierAddDuplicate() throws {
+    @Test
+    func `ManageTypeIdentifierTool add duplicate`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -286,8 +285,8 @@ struct TypeIdentifierToolsTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("ManageTypeIdentifierTool update type")
-    func manageTypeIdentifierUpdate() throws {
+    @Test
+    func `ManageTypeIdentifierTool update type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -330,8 +329,8 @@ struct TypeIdentifierToolsTests {
         #expect(exported?.first?["UTTypeIconName"] as? String == "MyIcon")
     }
 
-    @Test("ManageTypeIdentifierTool remove type")
-    func manageTypeIdentifierRemove() throws {
+    @Test
+    func `ManageTypeIdentifierTool remove type`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -367,8 +366,8 @@ struct TypeIdentifierToolsTests {
         #expect(updated["UTExportedTypeDeclarations"] == nil)
     }
 
-    @Test("ManageTypeIdentifierTool materializes Info.plist when missing")
-    func manageTypeIdentifierMaterialize() throws {
+    @Test
+    func `ManageTypeIdentifierTool materializes Info.plist when missing`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -401,8 +400,8 @@ struct TypeIdentifierToolsTests {
 
     // MARK: - Full Workflow
 
-    @Test("Full workflow: add exported, add imported, list all, remove")
-    func fullTypeIdentifierWorkflow() throws {
+    @Test
+    func `Full workflow: add exported, add imported, list all, remove`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

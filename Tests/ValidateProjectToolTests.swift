@@ -6,10 +6,9 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("ValidateProjectTool Tests")
 struct ValidateProjectToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -17,24 +16,24 @@ struct ValidateProjectToolTests {
         #expect(toolDefinition.description?.contains("Validate") == true)
     }
 
-    @Test("Missing project_path throws")
-    func missingProjectPath() throws {
+    @Test
+    func `Missing project_path throws`() throws {
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [:])
         }
     }
 
-    @Test("Invalid project path throws")
-    func invalidProjectPath() throws {
+    @Test
+    func `Invalid project path throws`() throws {
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: ["project_path": .string("/nonexistent/path.xcodeproj")])
         }
     }
 
-    @Test("Clean project reports no issues")
-    func cleanProject() throws {
+    @Test
+    func `Clean project reports no issues`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -58,8 +57,8 @@ struct ValidateProjectToolTests {
         #expect(content.contains("No issues found"))
     }
 
-    @Test("Detects embed phase with nil dstSubfolderSpec")
-    func detectsBrokenEmbedPhase() throws {
+    @Test
+    func `Detects embed phase with nil dstSubfolderSpec`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -110,8 +109,8 @@ struct ValidateProjectToolTests {
         #expect(content.contains("1 error"))
     }
 
-    @Test("Detects empty copy-files phase")
-    func detectsEmptyCopyFilesPhase() throws {
+    @Test
+    func `Detects empty copy-files phase`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -148,8 +147,8 @@ struct ValidateProjectToolTests {
         #expect(content.contains("zero files"))
     }
 
-    @Test("Detects duplicate framework in multiple phases")
-    func detectsDuplicateEmbed() throws {
+    @Test
+    func `Detects duplicate framework in multiple phases`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -209,8 +208,8 @@ struct ValidateProjectToolTests {
         #expect(content.contains("appears in both"))
     }
 
-    @Test("Detects linked but not embedded framework")
-    func detectsLinkedNotEmbedded() throws {
+    @Test
+    func `Detects linked but not embedded framework`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -254,8 +253,8 @@ struct ValidateProjectToolTests {
         #expect(content.contains("MathView.framework linked but not embedded"))
     }
 
-    @Test("Reports correctly linked and embedded frameworks")
-    func reportsMatchedFrameworks() throws {
+    @Test
+    func `Reports correctly linked and embedded frameworks`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -310,8 +309,8 @@ struct ValidateProjectToolTests {
         #expect(content.contains("1 framework linked and embedded correctly"))
     }
 
-    @Test("Detects dangling file reference in copy-files phase")
-    func detectsDanglingCopyFilesReference() throws {
+    @Test
+    func `Detects dangling file reference in copy-files phase`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -353,8 +352,8 @@ struct ValidateProjectToolTests {
         #expect(content.contains("dangling reference"))
     }
 
-    @Test("Detects orphaned PBXBuildFile entries")
-    func detectsOrphanedBuildFiles() throws {
+    @Test
+    func `Detects orphaned PBXBuildFile entries`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -442,8 +441,8 @@ struct ValidateProjectToolTests {
         #expect(content.contains("orphaned PBXBuildFile"))
     }
 
-    @Test("Detects build phase not referenced by any target")
-    func detectsUnreferencedBuildPhase() throws {
+    @Test
+    func `Detects build phase not referenced by any target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -475,8 +474,8 @@ struct ValidateProjectToolTests {
         #expect(content.contains("not referenced by any target"))
     }
 
-    @Test("Detects inconsistent embedding across app targets")
-    func detectsInconsistentEmbedding() throws {
+    @Test
+    func `Detects inconsistent embedding across app targets`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -523,8 +522,8 @@ struct ValidateProjectToolTests {
         #expect(content.contains("Core.framework embedded in App1 but not all app targets"))
     }
 
-    @Test("Detects missing target dependency")
-    func detectsMissingDependency() throws {
+    @Test
+    func `Detects missing target dependency`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

@@ -6,10 +6,9 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("RemoveGroupTool Tests")
 struct RemoveGroupToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = RemoveGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -17,8 +16,8 @@ struct RemoveGroupToolTests {
         #expect(toolDefinition.description == "Remove a group from the project navigator")
     }
 
-    @Test("Missing project path")
-    func missingProjectPath() throws {
+    @Test
+    func `Missing project path`() throws {
         let tool = RemoveGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -26,8 +25,8 @@ struct RemoveGroupToolTests {
         }
     }
 
-    @Test("Missing group name")
-    func missingGroupName() throws {
+    @Test
+    func `Missing group name`() throws {
         let tool = RemoveGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -37,8 +36,8 @@ struct RemoveGroupToolTests {
         }
     }
 
-    @Test("Remove empty group")
-    func removeEmptyGroup() throws {
+    @Test
+    func `Remove empty group`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -77,8 +76,8 @@ struct RemoveGroupToolTests {
         #expect(found == nil)
     }
 
-    @Test("Remove non-existent group")
-    func removeNonExistentGroup() throws {
+    @Test
+    func `Remove non-existent group`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -104,8 +103,8 @@ struct RemoveGroupToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Remove group with children fails without recursive")
-    func removeGroupWithChildrenFailsWithoutRecursive() throws {
+    @Test
+    func `Remove group with children fails without recursive`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -145,8 +144,8 @@ struct RemoveGroupToolTests {
         #expect(message.contains("recursive=true"))
     }
 
-    @Test("Remove group with children recursively")
-    func removeGroupWithChildrenRecursively() throws {
+    @Test
+    func `Remove group with children recursively`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -191,8 +190,8 @@ struct RemoveGroupToolTests {
         #expect(!xcodeproj.pbxproj.groups.contains { $0.name == "ChildGroup" })
     }
 
-    @Test("Remove group by path")
-    func removeGroupByPath() throws {
+    @Test
+    func `Remove group by path`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

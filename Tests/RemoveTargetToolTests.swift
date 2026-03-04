@@ -6,10 +6,9 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
-@Suite("RemoveTargetTool Tests")
 struct RemoveTargetToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -17,8 +16,8 @@ struct RemoveTargetToolTests {
         #expect(toolDefinition.description == "Remove an existing target")
     }
 
-    @Test("Remove target with missing project path")
-    func removeTargetWithMissingProjectPath() throws {
+    @Test
+    func `Remove target with missing project path`() throws {
         let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -26,8 +25,8 @@ struct RemoveTargetToolTests {
         }
     }
 
-    @Test("Remove target with missing target name")
-    func removeTargetWithMissingTargetName() throws {
+    @Test
+    func `Remove target with missing target name`() throws {
         let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -37,8 +36,8 @@ struct RemoveTargetToolTests {
         }
     }
 
-    @Test("Remove existing target")
-    func removeExistingTarget() throws {
+    @Test
+    func `Remove existing target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -82,8 +81,8 @@ struct RemoveTargetToolTests {
         #expect(targetStillExists == false)
     }
 
-    @Test("Remove non-existent target")
-    func removeNonExistentTarget() throws {
+    @Test
+    func `Remove non-existent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -114,8 +113,8 @@ struct RemoveTargetToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Remove target with dependencies")
-    func removeTargetWithDependencies() throws {
+    @Test
+    func `Remove target with dependencies`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

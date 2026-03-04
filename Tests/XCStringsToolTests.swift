@@ -111,7 +111,7 @@ enum XCStringsTestHelper {
 // MARK: - XCStringsListKeysTool Tests
 
 struct XCStringsListKeysToolTests {
-    @Test func toolCreation() {
+    @Test func `tool creation`() {
         let tool = XCStringsListKeysTool(pathUtility: PathUtility(basePath: "/workspace"))
         let toolDefinition = tool.tool()
 
@@ -119,7 +119,7 @@ struct XCStringsListKeysToolTests {
         #expect(toolDefinition.description == "List all keys in the xcstrings file")
     }
 
-    @Test func missingFileParameter() async throws {
+    @Test func `missing file parameter`() async throws {
         let tool = XCStringsListKeysTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         await #expect(throws: MCPError.self) {
@@ -127,7 +127,7 @@ struct XCStringsListKeysToolTests {
         }
     }
 
-    @Test func fileNotFound() async throws {
+    @Test func `file not found`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -141,7 +141,7 @@ struct XCStringsListKeysToolTests {
         }
     }
 
-    @Test func listKeys() async throws {
+    @Test func `list keys`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -168,7 +168,7 @@ struct XCStringsListKeysToolTests {
 // MARK: - XCStringsListLanguagesTool Tests
 
 struct XCStringsListLanguagesToolTests {
-    @Test func testToolCreation() {
+    @Test func toolCreation() {
         let tool = XCStringsListLanguagesTool(pathUtility: PathUtility(basePath: "/workspace"))
         let toolDefinition = tool.tool()
 
@@ -176,7 +176,7 @@ struct XCStringsListLanguagesToolTests {
         #expect(toolDefinition.description == "List all languages in the xcstrings file")
     }
 
-    @Test func testMissingFileParameter() async throws {
+    @Test func missingFileParameter() async throws {
         let tool = XCStringsListLanguagesTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         await #expect(throws: MCPError.self) {
@@ -184,7 +184,7 @@ struct XCStringsListLanguagesToolTests {
         }
     }
 
-    @Test func listLanguages() async throws {
+    @Test func `list languages`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -211,7 +211,7 @@ struct XCStringsListLanguagesToolTests {
 // MARK: - XCStringsGetSourceLanguageTool Tests
 
 struct XCStringsGetSourceLanguageToolTests {
-    @Test func testToolCreation() {
+    @Test func `test tool creation`() {
         let tool = XCStringsGetSourceLanguageTool(pathUtility: PathUtility(basePath: "/workspace"))
         let toolDefinition = tool.tool()
 
@@ -219,7 +219,7 @@ struct XCStringsGetSourceLanguageToolTests {
         #expect(toolDefinition.description == "Get the source language of the xcstrings file")
     }
 
-    @Test func testMissingFileParameter() async throws {
+    @Test func `test missing file parameter`() async throws {
         let tool = XCStringsGetSourceLanguageTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         await #expect(throws: MCPError.self) {
@@ -227,7 +227,7 @@ struct XCStringsGetSourceLanguageToolTests {
         }
     }
 
-    @Test func getSourceLanguage() async throws {
+    @Test func `get source language`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -260,7 +260,7 @@ struct XCStringsGetKeyToolTests {
         #expect(toolDefinition.description == "Get translations for a specific key")
     }
 
-    @Test func missingParameters() async throws {
+    @Test func `missing parameters`() async throws {
         let tool = XCStringsGetKeyTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         await #expect(throws: MCPError.self) {
@@ -272,7 +272,7 @@ struct XCStringsGetKeyToolTests {
         }
     }
 
-    @Test func getKeyAllLanguages() async throws {
+    @Test func `get key all languages`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -298,7 +298,7 @@ struct XCStringsGetKeyToolTests {
         }
     }
 
-    @Test func getKeySpecificLanguage() async throws {
+    @Test func `get key specific language`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -323,7 +323,7 @@ struct XCStringsGetKeyToolTests {
         }
     }
 
-    @Test func getKeyNotFound() async throws {
+    @Test func `get key not found`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -355,7 +355,7 @@ struct XCStringsCheckKeyToolTests {
         #expect(toolDefinition.description == "Check if a key exists in the xcstrings file")
     }
 
-    @Test func testMissingParameters() async throws {
+    @Test func missingParameters() async throws {
         let tool = XCStringsCheckKeyTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         await #expect(throws: MCPError.self) {
@@ -367,7 +367,7 @@ struct XCStringsCheckKeyToolTests {
         }
     }
 
-    @Test func checkKeyExists() async throws {
+    @Test func `check key exists`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -391,7 +391,7 @@ struct XCStringsCheckKeyToolTests {
         }
     }
 
-    @Test func checkKeyNotExists() async throws {
+    @Test func `check key not exists`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -415,7 +415,7 @@ struct XCStringsCheckKeyToolTests {
         }
     }
 
-    @Test func checkKeyWithLanguage() async throws {
+    @Test func `check key with language`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -460,7 +460,7 @@ struct XCStringsListUntranslatedToolTests {
         #expect(toolDefinition.description == "List untranslated keys for a specific language")
     }
 
-    @Test func testMissingParameters() async throws {
+    @Test func `test missing parameters`() async throws {
         let tool = XCStringsListUntranslatedTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         await #expect(throws: MCPError.self) {
@@ -472,7 +472,7 @@ struct XCStringsListUntranslatedToolTests {
         }
     }
 
-    @Test func listUntranslated() async throws {
+    @Test func `list untranslated`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -521,7 +521,7 @@ struct XCStringsStatsCoverageToolTests {
         }
     }
 
-    @Test func statsCoverage() async throws {
+    @Test func `stats coverage`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -546,7 +546,7 @@ struct XCStringsStatsCoverageToolTests {
         }
     }
 
-    @Test func statsCoverageCompact() async throws {
+    @Test func `stats coverage compact`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -591,7 +591,7 @@ struct XCStringsStatsProgressToolTests {
         }
     }
 
-    @Test func statsProgress() async throws {
+    @Test func `stats progress`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -627,7 +627,7 @@ struct XCStringsBatchStatsCoverageToolTests {
         #expect(toolDefinition.description?.contains("token-efficient") == true)
     }
 
-    @Test func emptyFilesArray() throws {
+    @Test func `empty files array`() throws {
         let tool = XCStringsBatchStatsCoverageTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         #expect(throws: MCPError.self) {
@@ -635,7 +635,7 @@ struct XCStringsBatchStatsCoverageToolTests {
         }
     }
 
-    @Test func batchStatsCoverage() throws {
+    @Test func `batch stats coverage`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -685,7 +685,7 @@ struct XCStringsCreateFileToolTests {
         }
     }
 
-    @Test func createFile() throws {
+    @Test func `create file`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -711,7 +711,7 @@ struct XCStringsCreateFileToolTests {
         #expect(FileManager.default.fileExists(atPath: filePath))
     }
 
-    @Test func createFileAlreadyExists() throws {
+    @Test func `create file already exists`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -728,7 +728,7 @@ struct XCStringsCreateFileToolTests {
         }
     }
 
-    @Test func createFileWithOverwrite() throws {
+    @Test func `create file with overwrite`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -779,7 +779,7 @@ struct XCStringsAddTranslationToolTests {
         }
     }
 
-    @Test func addTranslation() async throws {
+    @Test func `add translation`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -817,7 +817,7 @@ struct XCStringsAddTranslationsToolTests {
         #expect(toolDefinition.description == "Add translations for multiple languages at once")
     }
 
-    @Test func missingTranslations() async throws {
+    @Test func `missing translations`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -837,7 +837,7 @@ struct XCStringsAddTranslationsToolTests {
         }
     }
 
-    @Test func addTranslations() async throws {
+    @Test func `add translations`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -886,7 +886,7 @@ struct XCStringsUpdateTranslationToolTests {
         }
     }
 
-    @Test func updateTranslation() async throws {
+    @Test func `update translation`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -912,7 +912,7 @@ struct XCStringsUpdateTranslationToolTests {
         }
     }
 
-    @Test func updateNonexistentKey() async throws {
+    @Test func `update nonexistent key`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -946,7 +946,7 @@ struct XCStringsUpdateTranslationsToolTests {
         #expect(toolDefinition.description == "Update translations for multiple languages at once")
     }
 
-    @Test func emptyTranslations() async throws {
+    @Test func `empty translations`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -967,7 +967,7 @@ struct XCStringsUpdateTranslationsToolTests {
         }
     }
 
-    @Test func updateTranslations() async throws {
+    @Test func `update translations`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -1023,7 +1023,7 @@ struct XCStringsRenameKeyToolTests {
         }
     }
 
-    @Test func renameKey() async throws {
+    @Test func `rename key`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -1050,7 +1050,7 @@ struct XCStringsRenameKeyToolTests {
         }
     }
 
-    @Test func renameNonexistentKey() async throws {
+    @Test func `rename nonexistent key`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -1095,7 +1095,7 @@ struct XCStringsDeleteKeyToolTests {
         }
     }
 
-    @Test func deleteKey() async throws {
+    @Test func `delete key`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -1119,7 +1119,7 @@ struct XCStringsDeleteKeyToolTests {
         }
     }
 
-    @Test func deleteNonexistentKey() async throws {
+    @Test func `delete nonexistent key`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -1166,7 +1166,7 @@ struct XCStringsDeleteTranslationToolTests {
         }
     }
 
-    @Test func deleteTranslation() async throws {
+    @Test func `delete translation`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -1191,7 +1191,7 @@ struct XCStringsDeleteTranslationToolTests {
         }
     }
 
-    @Test func deleteNonexistentTranslation() async throws {
+    @Test func `delete nonexistent translation`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -1224,7 +1224,7 @@ struct XCStringsDeleteTranslationsToolTests {
         #expect(toolDefinition.description == "Delete translations for multiple languages at once")
     }
 
-    @Test func emptyLanguagesArray() async throws {
+    @Test func `empty languages array`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -1245,7 +1245,7 @@ struct XCStringsDeleteTranslationsToolTests {
         }
     }
 
-    @Test func deleteTranslations() async throws {
+    @Test func `delete translations`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -1283,7 +1283,7 @@ struct XCStringsListStaleToolTests {
         #expect(toolDefinition.description?.contains("stale") == true)
     }
 
-    @Test func listStaleKeys() async throws {
+    @Test func `list stale keys`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             "XCStringsListStaleTests-\(UUID().uuidString)",
         ).path
@@ -1307,7 +1307,7 @@ struct XCStringsListStaleToolTests {
         }
     }
 
-    @Test func noStaleKeys() async throws {
+    @Test func `no stale keys`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             "XCStringsListStaleTests-\(UUID().uuidString)",
         ).path
@@ -1333,7 +1333,7 @@ struct XCStringsListStaleToolTests {
 // MARK: - XCStringsBatchListStaleTool Tests
 
 struct XCStringsBatchListStaleToolTests {
-    @Test func batchListStale() throws {
+    @Test func `batch list stale`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             "XCStringsBatchListStaleTests-\(UUID().uuidString)",
         ).path
@@ -1360,7 +1360,7 @@ struct XCStringsBatchListStaleToolTests {
         }
     }
 
-    @Test func testEmptyFilesArray() throws {
+    @Test func emptyFilesArray() throws {
         let tool = XCStringsBatchListStaleTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         #expect(throws: MCPError.self) {
@@ -1372,7 +1372,7 @@ struct XCStringsBatchListStaleToolTests {
 // MARK: - XCStringsBatchCheckKeysTool Tests
 
 struct XCStringsBatchCheckKeysToolTests {
-    @Test func batchCheckKeys() async throws {
+    @Test func `batch check keys`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             "XCStringsBatchCheckKeysTests-\(UUID().uuidString)",
         ).path
@@ -1398,7 +1398,7 @@ struct XCStringsBatchCheckKeysToolTests {
         }
     }
 
-    @Test func batchCheckKeysWithLanguage() async throws {
+    @Test func `batch check keys with language`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             "XCStringsBatchCheckKeysTests-\(UUID().uuidString)",
         ).path
@@ -1426,7 +1426,7 @@ struct XCStringsBatchCheckKeysToolTests {
         }
     }
 
-    @Test func emptyKeysArray() async throws {
+    @Test func `empty keys array`() async throws {
         let tool = XCStringsBatchCheckKeysTool(pathUtility: PathUtility(basePath: "/workspace"))
 
         await #expect(throws: MCPError.self) {
@@ -1441,7 +1441,7 @@ struct XCStringsBatchCheckKeysToolTests {
 // MARK: - XCStringsBatchAddTranslationsTool Tests
 
 struct XCStringsBatchAddTranslationsToolTests {
-    @Test func batchAddTranslations() async throws {
+    @Test func `batch add translations`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             "XCStringsBatchAddTests-\(UUID().uuidString)",
         ).path
@@ -1480,7 +1480,7 @@ struct XCStringsBatchAddTranslationsToolTests {
         }
     }
 
-    @Test func emptyEntries() async throws {
+    @Test func `empty entries`() async throws {
         let tool = XCStringsBatchAddTranslationsTool(
             pathUtility: PathUtility(basePath: "/workspace"),
         )
@@ -1497,7 +1497,7 @@ struct XCStringsBatchAddTranslationsToolTests {
 // MARK: - XCStringsBatchUpdateTranslationsTool Tests
 
 struct XCStringsBatchUpdateTranslationsToolTests {
-    @Test func batchUpdateTranslations() async throws {
+    @Test func `batch update translations`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             "XCStringsBatchUpdateTests-\(UUID().uuidString)",
         ).path
@@ -1552,7 +1552,7 @@ struct XCStringsCheckCoverageToolTests {
         #expect(toolDefinition.description?.contains("coverage") == true)
     }
 
-    @Test func checkCoverage() async throws {
+    @Test func `check coverage`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             "XCStringsCheckCoverageTests-\(UUID().uuidString)",
         ).path
@@ -1578,7 +1578,7 @@ struct XCStringsCheckCoverageToolTests {
         }
     }
 
-    @Test func checkCoverageKeyNotFound() async throws {
+    @Test func `check coverage key not found`() async throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             "XCStringsCheckCoverageTests-\(UUID().uuidString)",
         ).path

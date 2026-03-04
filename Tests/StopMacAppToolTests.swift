@@ -4,12 +4,11 @@ import Testing
 import Foundation
 @testable import XCMCPTools
 
-@Suite("StopMacAppTool Tests")
 struct StopMacAppToolTests {
     let sessionManager = SessionManager()
 
-    @Test("Tool schema has correct name and description")
-    func toolSchema() {
+    @Test
+    func `Tool schema has correct name and description`() {
         let tool = StopMacAppTool(sessionManager: sessionManager)
         let schema = tool.tool()
 
@@ -18,8 +17,8 @@ struct StopMacAppToolTests {
         #expect(schema.description?.contains("process ID") == true)
     }
 
-    @Test("Tool schema includes all expected parameters")
-    func toolParameters() {
+    @Test
+    func `Tool schema includes all expected parameters`() {
         let tool = StopMacAppTool(sessionManager: sessionManager)
         let schema = tool.tool()
 
@@ -36,8 +35,8 @@ struct StopMacAppToolTests {
         #expect(properties["force"] != nil)
     }
 
-    @Test("Execute with no arguments throws invalidParams")
-    func noArguments() async throws {
+    @Test
+    func `Execute with no arguments throws invalidParams`() async throws {
         let tool = StopMacAppTool(sessionManager: sessionManager)
 
         await #expect(throws: MCPError.self) {
@@ -45,8 +44,8 @@ struct StopMacAppToolTests {
         }
     }
 
-    @Test("Stop process by PID with SIGTERM")
-    func stopByPID() async throws {
+    @Test
+    func `Stop process by PID with SIGTERM`() async throws {
         // Spawn a long-running sleep process to kill
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sleep")
@@ -73,8 +72,8 @@ struct StopMacAppToolTests {
         #expect(kill(pid, 0) != 0)
     }
 
-    @Test("Force stop process by PID sends SIGKILL")
-    func forceStopByPID() async throws {
+    @Test
+    func `Force stop process by PID sends SIGKILL`() async throws {
         // Spawn a process that ignores SIGTERM
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
@@ -102,8 +101,8 @@ struct StopMacAppToolTests {
         #expect(kill(pid, 0) != 0)
     }
 
-    @Test("Stop non-existent PID reports not running")
-    func stopNonExistentPID() async throws {
+    @Test
+    func `Stop non-existent PID reports not running`() async throws {
         let tool = StopMacAppTool(sessionManager: sessionManager)
         let result = try await tool.execute(arguments: [
             "pid": .int(99999),
@@ -116,8 +115,8 @@ struct StopMacAppToolTests {
         #expect(message.contains("not running"))
     }
 
-    @Test("Graceful kill escalates to SIGKILL on stuck process")
-    func gracefulKillEscalatesToSIGKILL() async throws {
+    @Test
+    func `Graceful kill escalates to SIGKILL on stuck process`() async throws {
         // Spawn a process that ignores SIGTERM
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
@@ -145,8 +144,8 @@ struct StopMacAppToolTests {
         #expect(kill(pid, 0) != 0)
     }
 
-    @Test("Stop non-existent app by name reports not running")
-    func stopNonExistentAppName() async throws {
+    @Test
+    func `Stop non-existent app by name reports not running`() async throws {
         let tool = StopMacAppTool(sessionManager: sessionManager)
         let result = try await tool.execute(arguments: [
             "app_name": .string("NonExistentApp_XCMCPTest_12345"),

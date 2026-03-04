@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
-struct AddBuildPhaseMissingParamTestCase: Sendable {
+struct AddBuildPhaseMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -17,10 +17,9 @@ struct AddBuildPhaseMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("AddBuildPhaseTool Tests")
 struct AddBuildPhaseToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = AddBuildPhaseTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -63,8 +62,10 @@ struct AddBuildPhaseToolTests {
         ),
     ]
 
-    @Test("Add build phase with missing parameter", arguments: missingParamCases)
-    func addBuildPhaseWithMissingParameters(_ testCase: AddBuildPhaseMissingParamTestCase) throws {
+    @Test(arguments: missingParamCases)
+    func `Add build phase with missing parameter`(
+        _ testCase: AddBuildPhaseMissingParamTestCase,
+    ) throws {
         let tool = AddBuildPhaseTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -72,8 +73,8 @@ struct AddBuildPhaseToolTests {
         }
     }
 
-    @Test("Add run script build phase")
-    func addRunScriptBuildPhase() throws {
+    @Test
+    func `Add run script build phase`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -126,8 +127,8 @@ struct AddBuildPhaseToolTests {
         #expect(hasScriptPhase == true)
     }
 
-    @Test("Add copy files build phase")
-    func addCopyFilesBuildPhase() throws {
+    @Test
+    func `Add copy files build phase`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -190,8 +191,8 @@ struct AddBuildPhaseToolTests {
         #expect(hasCopyPhase == true)
     }
 
-    @Test("Add run script phase without script")
-    func addRunScriptPhaseWithoutScript() throws {
+    @Test
+    func `Add run script phase without script`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -222,8 +223,8 @@ struct AddBuildPhaseToolTests {
         }
     }
 
-    @Test("Add copy files phase without destination")
-    func addCopyFilesPhaseWithoutDestination() throws {
+    @Test
+    func `Add copy files phase without destination`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -254,8 +255,8 @@ struct AddBuildPhaseToolTests {
         }
     }
 
-    @Test("Add build phase with invalid phase type")
-    func addBuildPhaseWithInvalidPhaseType() throws {
+    @Test
+    func `Add build phase with invalid phase type`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -285,8 +286,8 @@ struct AddBuildPhaseToolTests {
         }
     }
 
-    @Test("Add build phase to non-existent target")
-    func addBuildPhaseToNonExistentTarget() throws {
+    @Test
+    func `Add build phase to non-existent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -320,8 +321,8 @@ struct AddBuildPhaseToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Copy files phase dstSubfolderSpec is preserved after other operations")
-    func copyFilesPhasePreservedAfterOtherOperations() throws {
+    @Test
+    func `Copy files phase dstSubfolderSpec is preserved after other operations`() throws {
         // This test verifies the fix for bug xc-mcp-f1y3:
         // "MCP tools corrupt unrelated PBXCopyFilesBuildPhase sections"
 

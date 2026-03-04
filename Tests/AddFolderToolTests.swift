@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
-struct AddFolderMissingParamTestCase: Sendable {
+struct AddFolderMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -17,7 +17,6 @@ struct AddFolderMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("AddFolderTool Tests")
 struct AddFolderToolTests {
     let tempDir: String
     let pathUtility: PathUtility
@@ -31,8 +30,8 @@ struct AddFolderToolTests {
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
 
-    @Test("Tool has correct properties")
-    func toolProperties() {
+    @Test
+    func `Tool has correct properties`() {
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         #expect(tool.tool().name == "add_synchronized_folder")
@@ -68,8 +67,8 @@ struct AddFolderToolTests {
         ),
     ]
 
-    @Test("Validates required parameter", arguments: missingParamCases)
-    func validateRequiredParameters(_ testCase: AddFolderMissingParamTestCase) throws {
+    @Test(arguments: missingParamCases)
+    func `Validates required parameter`(_ testCase: AddFolderMissingParamTestCase) throws {
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
@@ -77,8 +76,8 @@ struct AddFolderToolTests {
         }
     }
 
-    @Test("Validates invalid parameter type")
-    func validateInvalidParameterType() throws {
+    @Test
+    func `Validates invalid parameter type`() throws {
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
@@ -89,8 +88,8 @@ struct AddFolderToolTests {
         }
     }
 
-    @Test("Adds folder reference to project")
-    func addsFolderToProject() throws {
+    @Test
+    func `Adds folder reference to project`() throws {
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         // Create a test project
@@ -123,8 +122,8 @@ struct AddFolderToolTests {
         #expect(folderReferences.first?.name == "TestFolder")
     }
 
-    @Test("Adds folder to specific group")
-    func addsFolderToSpecificGroup() throws {
+    @Test
+    func `Adds folder to specific group`() throws {
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         // Create a test project
@@ -167,8 +166,8 @@ struct AddFolderToolTests {
         #expect(updatedCustomGroup?.children.count == 1)
     }
 
-    @Test("Adds folder to target")
-    func addsFolderToTarget() throws {
+    @Test
+    func `Adds folder to target`() throws {
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         // Create a test project with a target
@@ -205,8 +204,8 @@ struct AddFolderToolTests {
         #expect(resourcesPhase != nil)
     }
 
-    @Test("Fails when folder does not exist")
-    func failsWhenFolderDoesNotExist() throws {
+    @Test
+    func `Fails when folder does not exist`() throws {
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         // Create a test project
@@ -225,8 +224,8 @@ struct AddFolderToolTests {
         try FileManager.default.removeItem(atPath: projectPath.string)
     }
 
-    @Test("Fails when path is not a directory")
-    func failsWhenPathIsNotDirectory() throws {
+    @Test
+    func `Fails when path is not a directory`() throws {
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         // Create a test project
@@ -252,8 +251,8 @@ struct AddFolderToolTests {
         try FileManager.default.removeItem(atPath: filePath.string)
     }
 
-    @Test("Adds folder with path relative to parent group")
-    func addsFolderWithRelativePathToParentGroup() throws {
+    @Test
+    func `Adds folder with path relative to parent group`() throws {
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         // Create a test project

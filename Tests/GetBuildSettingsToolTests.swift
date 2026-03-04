@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 struct GetBuildSettingsToolTests {
-    @Test func getBuildSettingsToolCreation() {
+    @Test func `get build settings tool creation`() {
         let tool = GetBuildSettingsTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -18,7 +18,7 @@ struct GetBuildSettingsToolTests {
         )
     }
 
-    @Test func getBuildSettingsWithMissingProjectPath() throws {
+    @Test func `get build settings with missing project path`() throws {
         let tool = GetBuildSettingsTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -26,7 +26,7 @@ struct GetBuildSettingsToolTests {
         }
     }
 
-    @Test func getBuildSettingsWithMissingTargetName() throws {
+    @Test func `get build settings with missing target name`() throws {
         let tool = GetBuildSettingsTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -36,7 +36,7 @@ struct GetBuildSettingsToolTests {
         }
     }
 
-    @Test func getBuildSettingsWithInvalidProjectPath() throws {
+    @Test func `get build settings with invalid project path`() throws {
         let tool = GetBuildSettingsTool(pathUtility: PathUtility(basePath: "/tmp"))
         let arguments: [String: Value] = [
             "project_path": Value.string("/nonexistent/path.xcodeproj"),
@@ -48,7 +48,7 @@ struct GetBuildSettingsToolTests {
         }
     }
 
-    @Test func getBuildSettingsWithNonexistentTarget() throws {
+    @Test func `get build settings with nonexistent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -76,7 +76,7 @@ struct GetBuildSettingsToolTests {
         }
     }
 
-    @Test func getBuildSettingsWithValidTarget() throws {
+    @Test func `get build settings with valid target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -112,7 +112,7 @@ struct GetBuildSettingsToolTests {
         }
     }
 
-    @Test func getBuildSettingsWithSpecificConfiguration() throws {
+    @Test func `get build settings with specific configuration`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

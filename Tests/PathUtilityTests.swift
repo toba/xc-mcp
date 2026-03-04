@@ -4,7 +4,7 @@ import Foundation
 @testable import XCMCPTools
 
 struct PathUtilityTests {
-    @Test func relativePathResolution() throws {
+    @Test func `relative path resolution`() throws {
         // Use current working directory as base path for testing
         let basePath = FileManager.default.currentDirectoryPath
         let pathUtility = PathUtility(basePath: basePath)
@@ -16,7 +16,7 @@ struct PathUtilityTests {
         #expect(resolved == "\(basePath)/MyApp.xcodeproj")
     }
 
-    @Test func nestedRelativePathResolution() throws {
+    @Test func `nested relative path resolution`() throws {
         let basePath = FileManager.default.currentDirectoryPath
         let pathUtility = PathUtility(basePath: basePath)
 
@@ -26,7 +26,7 @@ struct PathUtilityTests {
         #expect(resolved == "\(basePath)/Projects/MyApp.xcodeproj")
     }
 
-    @Test func absolutePathWithinWorkspace() throws {
+    @Test func `absolute path within workspace`() throws {
         let basePath = FileManager.default.currentDirectoryPath
         let pathUtility = PathUtility(basePath: basePath)
 
@@ -36,7 +36,7 @@ struct PathUtilityTests {
         #expect(resolved == "\(basePath)/MyApp.xcodeproj")
     }
 
-    @Test func pathOutsideWorkspaceThrows() throws {
+    @Test func `path outside workspace throws`() throws {
         let basePath = "/workspace"
         let pathUtility = PathUtility(basePath: basePath)
 
@@ -47,7 +47,7 @@ struct PathUtilityTests {
         }
     }
 
-    @Test func dotDotPathResolution() throws {
+    @Test func `dot dot path resolution`() throws {
         // Create a temporary subdirectory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -69,7 +69,7 @@ struct PathUtilityTests {
         #expect(resolved == "\(basePath)/MyApp.xcodeproj")
     }
 
-    @Test func testCurrentDirectoryPath() throws {
+    @Test func `current directory path`() throws {
         let basePath = FileManager.default.currentDirectoryPath
         let pathUtility = PathUtility(basePath: basePath)
 
@@ -81,10 +81,9 @@ struct PathUtilityTests {
     }
 }
 
-@Suite("PathUtility Ancestor Directory Search Tests")
 struct PathUtilityAncestorSearchTests {
-    @Test("Finds Package.swift in starting directory")
-    func findsPackageInStartDir() throws {
+    @Test
+    func `Finds Package.swift in starting directory`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ancestor-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -103,8 +102,8 @@ struct PathUtilityAncestorSearchTests {
         #expect(result == tempDir.path)
     }
 
-    @Test("Finds Package.swift in parent directory")
-    func findsPackageInParent() throws {
+    @Test
+    func `Finds Package.swift in parent directory`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ancestor-test-\(UUID().uuidString)")
         let nested = tempDir.appendingPathComponent("Sources/Models")
@@ -124,8 +123,8 @@ struct PathUtilityAncestorSearchTests {
         #expect(result == tempDir.path)
     }
 
-    @Test("Returns nil when no match found")
-    func returnsNilWhenNotFound() throws {
+    @Test
+    func `Returns nil when no match found`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ancestor-test-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -142,8 +141,8 @@ struct PathUtilityAncestorSearchTests {
         #expect(result == nil)
     }
 
-    @Test("Finds .xcodeproj in ancestor")
-    func findsXcodeprojInAncestor() throws {
+    @Test
+    func `Finds .xcodeproj in ancestor`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ancestor-test-\(UUID().uuidString)")
         let nested = tempDir.appendingPathComponent("Sources")
@@ -161,8 +160,8 @@ struct PathUtilityAncestorSearchTests {
         #expect(result == tempDir.path)
     }
 
-    @Test("findPackageRoot returns path for xc-mcp repo")
-    func findPackageRootForCurrentRepo() {
+    @Test
+    func `findPackageRoot returns path for xc-mcp repo`() {
         // We're running inside the xc-mcp package, so this should find it
         let result = PathUtility.findPackageRoot()
         #expect(result != nil)

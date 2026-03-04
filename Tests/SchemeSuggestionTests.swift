@@ -2,7 +2,6 @@ import Testing
 @testable import XCMCPCore
 import Foundation
 
-@Suite("Scheme Suggestion Tests")
 struct SchemeSuggestionTests {
     /// Creates a temporary directory with an `.xcodeproj` containing scheme files.
     /// Returns `(projectRoot, projectPath)`.
@@ -60,8 +59,8 @@ struct SchemeSuggestionTests {
         """
     }
 
-    @Test("Suggests correct scheme when target not in current scheme")
-    func suggestsCorrectScheme() async throws {
+    @Test
+    func `Suggests correct scheme when target not in current scheme`() async throws {
         let (root, projectPath) = try createFixture(schemes: [
             "Standard": schemeXML(testTargets: []),
             "TestApp": schemeXML(testTargets: ["TestAppUITests"]),
@@ -89,8 +88,8 @@ struct SchemeSuggestionTests {
         }
     }
 
-    @Test("No suggestion when no schemes contain the target")
-    func noSuggestionWhenTargetNotFound() async throws {
+    @Test
+    func `No suggestion when no schemes contain the target`() async throws {
         let (root, projectPath) = try createFixture(schemes: [
             "Standard": schemeXML(testTargets: []),
             "OtherScheme": schemeXML(testTargets: ["OtherTests"]),
@@ -117,8 +116,8 @@ struct SchemeSuggestionTests {
         }
     }
 
-    @Test("Suggests multiple schemes when target appears in several")
-    func suggestsMultipleSchemes() async throws {
+    @Test
+    func `Suggests multiple schemes when target appears in several`() async throws {
         let (root, projectPath) = try createFixture(schemes: [
             "Alpha": schemeXML(testTargets: ["SharedTests"]),
             "Beta": schemeXML(testTargets: ["SharedTests", "BetaTests"]),
@@ -146,8 +145,8 @@ struct SchemeSuggestionTests {
         }
     }
 
-    @Test("Handles slash-separated identifiers by extracting target name")
-    func handlesSlashIdentifiers() async throws {
+    @Test
+    func `Handles slash-separated identifiers by extracting target name`() async throws {
         let (root, projectPath) = try createFixture(schemes: [
             "TestScheme": schemeXML(testTargets: ["MyUITests"]),
         ])
@@ -173,8 +172,8 @@ struct SchemeSuggestionTests {
         }
     }
 
-    @Test("No enhancement when error is not about test plan membership")
-    func noEnhancementForOtherErrors() async throws {
+    @Test
+    func `No enhancement when error is not about test plan membership`() async throws {
         let (root, projectPath) = try createFixture(schemes: [
             "TestScheme": schemeXML(testTargets: ["MyTests"]),
         ])

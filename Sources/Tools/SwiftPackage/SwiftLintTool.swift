@@ -87,7 +87,7 @@ public struct SwiftLintTool: Sendable {
     }
 
     /// A single swiftlint violation parsed from JSON output.
-    struct Violation: Sendable {
+    struct Violation {
         let file: String
         let line: Int
         let column: Int

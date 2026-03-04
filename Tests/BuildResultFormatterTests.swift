@@ -1,10 +1,9 @@
 import Testing
 @testable import XCMCPCore
 
-@Suite("BuildResultFormatter Tests")
 struct BuildResultFormatterTests {
-    @Test("Format successful build")
-    func formatSuccessfulBuild() {
+    @Test
+    func `Format successful build`() {
         let result = BuildResult(
             status: "success",
             summary: BuildSummary(
@@ -20,8 +19,8 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("2.3s"))
     }
 
-    @Test("Format failed build with errors")
-    func formatFailedBuild() {
+    @Test
+    func `Format failed build with errors`() {
         let result = BuildResult(
             status: "failed",
             summary: BuildSummary(
@@ -54,8 +53,8 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("Baz.swift:88:3"))
     }
 
-    @Test("Format test results passed")
-    func formatTestResultsPassed() {
+    @Test
+    func `Format test results passed`() {
         let result = BuildResult(
             status: "success",
             summary: BuildSummary(
@@ -73,8 +72,8 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("3.2s"))
     }
 
-    @Test("Format test results with failures")
-    func formatTestResultsFailed() {
+    @Test
+    func `Format test results with failures`() {
         let result = BuildResult(
             status: "failed",
             summary: BuildSummary(
@@ -104,8 +103,8 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("Timeout after 5.0s"))
     }
 
-    @Test("Format linker errors")
-    func formatLinkerErrors() {
+    @Test
+    func `Format linker errors`() {
         let result = BuildResult(
             status: "failed",
             summary: BuildSummary(
@@ -130,8 +129,8 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("arm64"))
     }
 
-    @Test("Format coverage in test results")
-    func formatCoverageInTestResults() {
+    @Test
+    func `Format coverage in test results`() {
         let result = BuildResult(
             status: "success",
             summary: BuildSummary(
@@ -148,8 +147,8 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("Coverage: 75.5%"))
     }
 
-    @Test("ErrorExtractor.extractBuildErrors integration")
-    func errorExtractorIntegration() {
+    @Test
+    func `ErrorExtractor.extractBuildErrors integration`() {
         let output = """
         Building for debugging...
         main.swift:10:5: error: cannot find 'x' in scope
@@ -165,8 +164,8 @@ struct BuildResultFormatterTests {
 
     // MARK: - Project Root Warning Filtering
 
-    @Test("Failed build with project root filters external warnings")
-    func failedBuildFiltersExternalWarnings() {
+    @Test
+    func `Failed build with project root filters external warnings`() {
         let result = BuildResult(
             status: "failed",
             summary: BuildSummary(
@@ -208,8 +207,8 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("(+1 warning from dependencies hidden)"))
     }
 
-    @Test("Successful build with project root omits all warnings")
-    func successfulBuildOmitsWarnings() {
+    @Test
+    func `Successful build with project root omits all warnings`() {
         let result = BuildResult(
             status: "success",
             summary: BuildSummary(
@@ -240,8 +239,8 @@ struct BuildResultFormatterTests {
         #expect(!formatted.contains("Warnings:"))
     }
 
-    @Test("Nil project root preserves all warnings (backwards compat)")
-    func nilProjectRootPreservesAllWarnings() {
+    @Test
+    func `Nil project root preserves all warnings (backwards compat)`() {
         let result = BuildResult(
             status: "failed",
             summary: BuildSummary(
@@ -269,8 +268,8 @@ struct BuildResultFormatterTests {
         #expect(!formatted.contains("dependencies hidden"))
     }
 
-    @Test("Warnings without file path are always shown")
-    func warningsWithoutFileAlwaysShown() {
+    @Test
+    func `Warnings without file path are always shown`() {
         let result = BuildResult(
             status: "failed",
             summary: BuildSummary(
@@ -299,8 +298,8 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("(+1 warning from dependencies hidden)"))
     }
 
-    @Test("ErrorExtractor.extractBuildErrors threads project root")
-    func errorExtractorThreadsProjectRoot() {
+    @Test
+    func `ErrorExtractor.extractBuildErrors threads project root`() {
         let output = """
         /ext/Lib.swift:1:1: warning: external warning
         /proj/App.swift:10:5: error: missing import
@@ -314,8 +313,8 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("dependencies hidden"))
     }
 
-    @Test("ErrorExtractor.extractTestResults integration")
-    func errorExtractorTestResultsIntegration() {
+    @Test
+    func `ErrorExtractor.extractTestResults integration`() {
         let output = """
         Test Case 'MyTests.testA' passed (0.001 seconds).
         Test Case 'MyTests.testB' passed (0.002 seconds).

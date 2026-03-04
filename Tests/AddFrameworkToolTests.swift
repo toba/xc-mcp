@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
-struct AddFrameworkMissingParamTestCase: Sendable {
+struct AddFrameworkMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -17,10 +17,9 @@ struct AddFrameworkMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("AddFrameworkTool Tests")
 struct AddFrameworkToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -52,8 +51,10 @@ struct AddFrameworkToolTests {
         ),
     ]
 
-    @Test("Add framework with missing parameter", arguments: missingParamCases)
-    func addFrameworkWithMissingParameters(_ testCase: AddFrameworkMissingParamTestCase) throws {
+    @Test(arguments: missingParamCases)
+    func `Add framework with missing parameter`(
+        _ testCase: AddFrameworkMissingParamTestCase,
+    ) throws {
         let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -61,8 +62,8 @@ struct AddFrameworkToolTests {
         }
     }
 
-    @Test("Add system framework")
-    func addSystemFramework() throws {
+    @Test
+    func `Add system framework`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -113,8 +114,8 @@ struct AddFrameworkToolTests {
         #expect(hasUIKit == true)
     }
 
-    @Test("Add custom framework without embedding")
-    func addCustomFrameworkWithoutEmbedding() throws {
+    @Test
+    func `Add custom framework without embedding`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -151,8 +152,8 @@ struct AddFrameworkToolTests {
         #expect(!message.contains("(embedded)"))
     }
 
-    @Test("Add custom framework with embedding")
-    func addCustomFrameworkWithEmbedding() throws {
+    @Test
+    func `Add custom framework with embedding`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -203,8 +204,8 @@ struct AddFrameworkToolTests {
         #expect(hasEmbedPhase == true)
     }
 
-    @Test("Add duplicate framework")
-    func addDuplicateFramework() throws {
+    @Test
+    func `Add duplicate framework`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -242,8 +243,8 @@ struct AddFrameworkToolTests {
         #expect(message.contains("already exists"))
     }
 
-    @Test("Add framework to non-existent target")
-    func addFrameworkToNonExistentTarget() throws {
+    @Test
+    func `Add framework to non-existent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -275,8 +276,9 @@ struct AddFrameworkToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Add developer framework uses developerDir sourceTree and sets FRAMEWORK_SEARCH_PATHS")
-    func addDeveloperFramework() throws {
+    @Test
+    func `Add developer framework uses developerDir sourceTree and sets FRAMEWORK_SEARCH_PATHS`(
+    ) throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -325,8 +327,8 @@ struct AddFrameworkToolTests {
         #expect(searchPaths == .array(["$(inherited)", "$(DEVELOPER_FRAMEWORKS_DIR)"]))
     }
 
-    @Test("Reuses existing BUILT_PRODUCTS_DIR file reference instead of creating duplicate")
-    func reusesBuiltProductsRef() throws {
+    @Test
+    func `Reuses existing BUILT_PRODUCTS_DIR file reference instead of creating duplicate`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

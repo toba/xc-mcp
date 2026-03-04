@@ -3,10 +3,9 @@ import Testing
 @testable import XCMCPCore
 @testable import XCMCPTools
 
-@Suite("GetTestAttachmentsTool Tests")
 struct GetTestAttachmentsToolTests {
-    @Test("Tool schema has correct name and description")
-    func toolSchema() {
+    @Test
+    func `Tool schema has correct name and description`() {
         let tool = GetTestAttachmentsTool()
         let schema = tool.tool()
 
@@ -14,8 +13,8 @@ struct GetTestAttachmentsToolTests {
         #expect(schema.description?.contains("attachments") == true)
     }
 
-    @Test("Tool schema includes all expected parameters")
-    func toolParameters() {
+    @Test
+    func `Tool schema includes all expected parameters`() {
         let tool = GetTestAttachmentsTool()
         let schema = tool.tool()
 
@@ -32,8 +31,8 @@ struct GetTestAttachmentsToolTests {
         #expect(properties["only_failures"] != nil)
     }
 
-    @Test("Tool schema requires result_bundle_path")
-    func requiredParams() {
+    @Test
+    func `Tool schema requires result_bundle_path`() {
         let tool = GetTestAttachmentsTool()
         let schema = tool.tool()
 
@@ -47,16 +46,16 @@ struct GetTestAttachmentsToolTests {
         #expect(required.contains(.string("result_bundle_path")))
     }
 
-    @Test("Execute with missing result_bundle_path throws invalidParams")
-    func missingRequiredParam() async {
+    @Test
+    func `Execute with missing result_bundle_path throws invalidParams`() async {
         let tool = GetTestAttachmentsTool()
         await #expect(throws: MCPError.self) {
             _ = try await tool.execute(arguments: [:])
         }
     }
 
-    @Test("Execute with nonexistent path throws invalidParams")
-    func nonexistentPath() async {
+    @Test
+    func `Execute with nonexistent path throws invalidParams`() async {
         let tool = GetTestAttachmentsTool()
         await #expect(throws: MCPError.self) {
             _ = try await tool.execute(arguments: [
@@ -65,8 +64,8 @@ struct GetTestAttachmentsToolTests {
         }
     }
 
-    @Test("flattenManifest parses nested attachments array")
-    func flattenManifestArray() {
+    @Test
+    func `flattenManifest parses nested attachments array`() {
         let manifest: [[String: Any]] = [
             [
                 "testIdentifier": "ThesisUITests/SideNoteTests/testCitationFlow()",
@@ -101,8 +100,8 @@ struct GetTestAttachmentsToolTests {
         #expect(attachments[1].isAssociatedWithFailure == true)
     }
 
-    @Test("flattenManifest parses single attachment object")
-    func flattenManifestSingleObject() {
+    @Test
+    func `flattenManifest parses single attachment object`() {
         let manifest: [[String: Any]] = [
             [
                 "testIdentifier": "Tests/MyTest/testFoo()",
@@ -121,8 +120,8 @@ struct GetTestAttachmentsToolTests {
         #expect(attachments[0].testIdentifier == "Tests/MyTest/testFoo()")
     }
 
-    @Test("flattenManifest uses exportedFileName when name is missing")
-    func flattenManifestFallbackName() {
+    @Test
+    func `flattenManifest uses exportedFileName when name is missing`() {
         let manifest: [[String: Any]] = [
             [
                 "testIdentifier": "Tests/MyTest/testBar()",
@@ -140,8 +139,8 @@ struct GetTestAttachmentsToolTests {
         #expect(attachments[0].exportedFileName == "auto-screenshot.png")
     }
 
-    @Test("flattenManifest skips entries without attachments")
-    func flattenManifestNoAttachments() {
+    @Test
+    func `flattenManifest skips entries without attachments`() {
         let manifest: [[String: Any]] = [
             ["testIdentifier": "Tests/MyTest/testEmpty()"],
         ]
@@ -150,8 +149,8 @@ struct GetTestAttachmentsToolTests {
         #expect(attachments.isEmpty)
     }
 
-    @Test("formatAttachments includes export paths when exportDir is provided")
-    func formatAttachmentsWithExportDir() {
+    @Test
+    func `formatAttachments includes export paths when exportDir is provided`() {
         let attachments = [
             GetTestAttachmentsTool.Attachment(
                 testIdentifier: "Tests/MyTest/testFoo()",
@@ -169,8 +168,8 @@ struct GetTestAttachmentsToolTests {
         #expect(output.contains("Tests/MyTest/testFoo()"))
     }
 
-    @Test("formatAttachments omits paths when exportDir is nil")
-    func formatAttachmentsMetadataOnly() {
+    @Test
+    func `formatAttachments omits paths when exportDir is nil`() {
         let attachments = [
             GetTestAttachmentsTool.Attachment(
                 testIdentifier: nil,

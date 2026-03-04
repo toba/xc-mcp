@@ -7,7 +7,7 @@ import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
-struct AddDependencyMissingParamTestCase: Sendable {
+struct AddDependencyMissingParamTestCase {
     let description: String
     let arguments: [String: Value]
 
@@ -17,10 +17,9 @@ struct AddDependencyMissingParamTestCase: Sendable {
     }
 }
 
-@Suite("AddDependencyTool Tests")
 struct AddDependencyToolTests {
-    @Test("Tool creation")
-    func toolCreation() {
+    @Test
+    func `Tool creation`() {
         let tool = AddDependencyTool(pathUtility: PathUtility(basePath: "/tmp"))
         let toolDefinition = tool.tool()
 
@@ -52,8 +51,10 @@ struct AddDependencyToolTests {
         ),
     ]
 
-    @Test("Add dependency with missing parameter", arguments: missingParamCases)
-    func addDependencyWithMissingParameters(_ testCase: AddDependencyMissingParamTestCase) throws {
+    @Test(arguments: missingParamCases)
+    func `Add dependency with missing parameter`(
+        _ testCase: AddDependencyMissingParamTestCase,
+    ) throws {
         let tool = AddDependencyTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
@@ -61,8 +62,8 @@ struct AddDependencyToolTests {
         }
     }
 
-    @Test("Add dependency between targets")
-    func addDependencyBetweenTargets() throws {
+    @Test
+    func `Add dependency between targets`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -118,8 +119,8 @@ struct AddDependencyToolTests {
         #expect(hasDependency == true)
     }
 
-    @Test("Add duplicate dependency")
-    func addDuplicateDependency() throws {
+    @Test
+    func `Add duplicate dependency`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -167,8 +168,8 @@ struct AddDependencyToolTests {
         #expect(message.contains("already depends on"))
     }
 
-    @Test("Add dependency with non-existent target")
-    func addDependencyWithNonExistentTarget() throws {
+    @Test
+    func `Add dependency with non-existent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -200,8 +201,8 @@ struct AddDependencyToolTests {
         #expect(message.contains("not found"))
     }
 
-    @Test("Add dependency with non-existent dependency")
-    func addDependencyWithNonExistentDependency() throws {
+    @Test
+    func `Add dependency with non-existent dependency`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
