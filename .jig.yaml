@@ -92,6 +92,13 @@ citations:
             - Documentation/**
             - LICENSE
             - '*.md'
+    - repo: peripheryapp/periphery
+      branch: master
+      notes: A tool to identify unused code in Swift projects.
+      paths:
+        high: [Sources/**/*.swift]
+        medium: [Package.swift]
+        low: [.github/**, README.md, LICENSE]
 nope:
     rules:
         - name: git-checkout-switch

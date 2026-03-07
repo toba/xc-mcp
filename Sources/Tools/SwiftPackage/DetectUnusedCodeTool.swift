@@ -72,7 +72,7 @@ public struct DetectUnusedCodeTool: Sendable {
                     "mark": .object([
                         "type": .string("object"),
                         "description": .string(
-                            "Mark checklist items by index. A checklist is always maintained on disk — use this to track progress. Properties: indices (array of 1-based integers), status (\"done\"|\"skipped\"|\"false_positive\"|\"pending\"), note (optional string).",
+                            "Mark checklist items by index. Indices are shown as #N in detail output. Properties: indices (array of 1-based integers), status (\"done\"|\"skipped\"|\"false_positive\"|\"pending\"), note (optional string).",
                         ),
                         "properties": .object([
                             "indices": .object([
@@ -91,6 +91,16 @@ public struct DetectUnusedCodeTool: Sendable {
                             ]),
                         ]),
                         "required": .array([.string("indices"), .string("status")]),
+                    ]),
+                    "mark_filtered": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Mark ALL items matching the current filters (kind_filter, file_filter, status_filter) with this status. Eliminates the need to specify indices manually. Value: \"done\"|\"skipped\"|\"false_positive\"|\"pending\".",
+                        ),
+                        "enum": .array([
+                            .string("done"), .string("skipped"),
+                            .string("false_positive"), .string("pending"),
+                        ]),
                     ]),
                     "limit": .object([
                         "type": .string("integer"),
@@ -118,6 +128,13 @@ public struct DetectUnusedCodeTool: Sendable {
                             "Path to cached Periphery JSON from a previous scan. Skips the scan entirely and reads results from this file. All filtering and format params still apply.",
                         ),
                     ]),
+                    "status_filter": .object([
+                        "type": .string("array"),
+                        "items": .object(["type": .string("string")]),
+                        "description": .string(
+                            "Filter by checklist status (e.g. [\"pending\"]). Only items with matching status are shown. Valid values: pending, done, skipped, false_positive. Empty = all.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -129,6 +146,7 @@ public struct DetectUnusedCodeTool: Sendable {
         let limit = arguments.getInt("limit") ?? 100
         let kindFilter = arguments.getStringArray("kind_filter")
         let fileFilter = arguments.getStringArray("file_filter")
+        let statusFilter = arguments.getStringArray("status_filter")
         let resultFile = arguments.getString("result_file")
 
         let declarations: [UnusedDeclaration]
@@ -163,7 +181,7 @@ public struct DetectUnusedCodeTool: Sendable {
             state = Self.createChecklist(from: declarations, cachePath: cachePath)
         }
 
-        // Apply mark actions
+        // Apply mark actions (by explicit indices)
         if let markAction = Self.parseMarkAction(from: arguments) {
             for index in markAction.indices {
                 let zeroIndex = index - 1
@@ -175,22 +193,36 @@ public struct DetectUnusedCodeTool: Sendable {
             }
         }
 
-        try Self.saveChecklist(state, path: clPath)
-
-        // Apply filters (only to pending items for summary/detail display)
+        // Apply filters (kind, file, and checklist status)
         let filtered = Self.applyFilters(
             declarations, kindFilter: kindFilter, fileFilter: fileFilter,
+            statusFilter: statusFilter, state: state,
         )
+
+        // Apply mark_filtered (mark ALL items matching the current filters)
+        let markFilteredStr = arguments.getString("mark_filtered")
+        if let markFilteredStr, let markStatus = ChecklistStatus(rawValue: markFilteredStr) {
+            let filteredIDs = Set(filtered.map { Self.makeItemID($0) })
+            for i in state.items.indices where filteredIDs.contains(state.items[i].id) {
+                state.items[i].status = markStatus
+            }
+        }
+
+        try Self.saveChecklist(state, path: clPath)
 
         if filtered.isEmpty, declarations.isEmpty {
             return CallTool.Result(content: [.text("No unused code found.")])
         }
+
+        // Build declaration → checklist index map (1-based)
+        let indexMap = Self.buildIndexMap(declarations: declarations, state: state)
 
         let message: String
         if format == "detail" {
             message = Self.formatDetail(
                 filtered, limit: limit, totalUnfiltered: declarations.count,
                 cachePath: cachePath, checklistPath: clPath, state: state,
+                indexMap: indexMap,
             )
         } else {
             message = Self.formatSummary(
@@ -305,8 +337,12 @@ public struct DetectUnusedCodeTool: Sendable {
         _ declarations: [UnusedDeclaration],
         kindFilter: [String],
         fileFilter: [String],
+        statusFilter: [String] = [],
+        state: ChecklistState? = nil,
     ) -> [UnusedDeclaration] {
-        if kindFilter.isEmpty, fileFilter.isEmpty { return declarations }
+        if kindFilter.isEmpty, fileFilter.isEmpty, statusFilter.isEmpty { return declarations }
+
+        let statusSet = Set(statusFilter.compactMap { ChecklistStatus(rawValue: $0) })
 
         return declarations.filter { decl in
             if !kindFilter.isEmpty, !kindFilter.contains(formatKind(decl.kind)) {
@@ -314,6 +350,13 @@ public struct DetectUnusedCodeTool: Sendable {
             }
             if !fileFilter.isEmpty, !fileFilter.contains(where: { decl.file.contains($0) }) {
                 return false
+            }
+            if !statusSet.isEmpty, let state {
+                let itemID = makeItemID(decl)
+                let itemStatus = state.items.first { $0.id == itemID }?.status ?? .pending
+                if !statusSet.contains(itemStatus) {
+                    return false
+                }
             }
             return true
         }
@@ -472,6 +515,7 @@ public struct DetectUnusedCodeTool: Sendable {
         cachePath: String,
         checklistPath: String,
         state: ChecklistState,
+        indexMap: [String: Int] = [:],
     ) -> String {
         let effectiveLimit = limit == 0 ? declarations.count : limit
         let truncated = declarations.count > effectiveLimit
@@ -500,8 +544,10 @@ public struct DetectUnusedCodeTool: Sendable {
             for d in fileDeclarations {
                 let hintsStr = d.hints.joined(separator: ", ")
                 let kindLabel = Self.formatKind(d.kind)
+                let itemID = makeItemID(d)
+                let indexLabel = indexMap[itemID].map { "#\($0) " } ?? ""
                 lines.append(
-                    "  \(d.line):\(d.column) \(kindLabel) \(d.name) [\(hintsStr)] (\(d.accessibility))",
+                    "  \(indexLabel)\(d.line):\(d.column) \(kindLabel) \(d.name) [\(hintsStr)] (\(d.accessibility))",
                 )
             }
         }
@@ -531,6 +577,14 @@ public struct DetectUnusedCodeTool: Sendable {
     3. If it is NOT unused (false positive) → add `// periphery:ignore` on the \
     line above the declaration, then mark the item false_positive.
     Every item must be checked off — do not leave items pending.
+
+    WORKFLOW — Always use this tool's parameters for filtering and drill-down. \
+    Do NOT parse the checklist JSON manually via bash/python/jq.
+    • To see remaining work: call with result_file + status_filter: ["pending"]
+    • To filter by kind: kind_filter: ["property", "func", "import"]
+    • To filter by file: file_filter: ["Admin/", "Models.swift"]
+    • To mark specific items: mark: { indices: [1,2,3], status: "done" } (use #N from detail output)
+    • To mark ALL filtered items at once: mark_filtered: "done" (applies to current filter results)
     """
 
     // MARK: - Checklist Helpers
@@ -590,6 +644,28 @@ public struct DetectUnusedCodeTool: Sendable {
             note = n
         }
         return MarkAction(indices: indices, status: status, note: note)
+    }
+
+    /// Maps declaration IDs to their 1-based checklist index.
+    static func buildIndexMap(
+        declarations: [UnusedDeclaration], state: ChecklistState,
+    ) -> [String: Int] {
+        // Build reverse lookup: item ID → 1-based index in checklist
+        var idToIndex: [String: Int] = [:]
+        idToIndex.reserveCapacity(state.items.count)
+        for (i, item) in state.items.enumerated() {
+            idToIndex[item.id] = i + 1
+        }
+        // Map declaration IDs to their checklist indices
+        var result: [String: Int] = [:]
+        result.reserveCapacity(declarations.count)
+        for decl in declarations {
+            let itemID = makeItemID(decl)
+            if let index = idToIndex[itemID] {
+                result[itemID] = index
+            }
+        }
+        return result
     }
 
     static func formatChecklistProgress(_ state: ChecklistState) -> [String] {
