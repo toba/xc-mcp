@@ -218,6 +218,14 @@ public struct DetectUnusedCodeTool: Sendable {
                 timeout: .seconds(600),
             )
 
+            if result.exitCode != 0 {
+                let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+                let detail = stderr.isEmpty ? result.stdout : stderr
+                throw MCPError.internalError(
+                    "Periphery exited with code \(result.exitCode):\n\(detail)",
+                )
+            }
+
             // Cache raw JSON to disk
             let hashInput = "\(packagePath)|\(project ?? "")|\(schemes.joined(separator: ","))"
             let hash = Self.shortHash(hashInput)
@@ -227,6 +235,8 @@ public struct DetectUnusedCodeTool: Sendable {
             )
 
             return (result.stdout, cacheFile)
+        } catch let error as MCPError {
+            throw error
         } catch {
             throw error.asMCPError()
         }
