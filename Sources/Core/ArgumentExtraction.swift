@@ -7,6 +7,7 @@ public struct TestParameters: Sendable {
     public let enableCodeCoverage: Bool
     public let resultBundlePath: String?
     public let timeout: Int?
+    public let outputTimeout: Int?
 }
 
 /// Extension providing convenient argument extraction methods for MCP tool parameters.
@@ -101,6 +102,7 @@ extension [String: Value] {
             enableCodeCoverage: getBool("enable_code_coverage"),
             resultBundlePath: getString("result_bundle_path"),
             timeout: getInt("timeout"),
+            outputTimeout: getInt("output_timeout"),
         )
     }
 
@@ -140,6 +142,12 @@ extension [String: Value] {
                 "type": .string("integer"),
                 "description": .string(
                     "Maximum time in seconds for the test run. Defaults to 300 (5 minutes).",
+                ),
+            ]),
+            "output_timeout": .object([
+                "type": .string("integer"),
+                "description": .string(
+                    "Maximum seconds to wait without output before assuming the process is stuck. Defaults to 120 for test commands. Set to 0 to disable. XCUI and performance tests may need higher values.",
                 ),
             ]),
         ]

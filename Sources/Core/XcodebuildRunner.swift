@@ -29,8 +29,14 @@ public struct XcodebuildRunner: Sendable {
     /// Default timeout for build operations (5 minutes)
     public static let defaultTimeout: TimeInterval = 300
 
-    /// Timeout for no-output detection (30 seconds without output = stuck)
+    /// Default timeout for no-output detection (30 seconds without output = stuck).
+    /// Test commands use ``defaultTestOutputTimeout`` instead.
     public static let outputTimeout: Duration = .seconds(30)
+
+    /// Default no-output timeout for test commands (120 seconds).
+    /// XCUI and performance tests routinely have long output gaps during
+    /// app launch, UI waits, and measure block iterations.
+    public static let defaultTestOutputTimeout: Duration = .seconds(120)
 
     /// Creates a new xcodebuild runner.
     public init() {}
@@ -62,6 +68,7 @@ public struct XcodebuildRunner: Sendable {
         arguments: [String],
         environment: Environment = .inherit,
         timeout: TimeInterval,
+        outputTimeout: Duration? = outputTimeout,
         onProgress: (@Sendable (String) -> Void)?,
     ) async throws -> XcodebuildResult {
         let outputCollector = OutputCollector()
@@ -117,16 +124,18 @@ public struct XcodebuildRunner: Sendable {
                             )
                         }
 
-                        let timeSinceLastOutput = lastOutputTime.timeSinceLastOutput()
-                        if timeSinceLastOutput > Self.outputTimeout {
-                            let (stdout, stderr) = outputCollector.getOutput()
-                            let seconds =
-                                Double(timeSinceLastOutput.components.seconds)
-                                    + Double(timeSinceLastOutput.components.attoseconds) / 1e18
-                            throw XcodebuildError.stuckProcess(
-                                noOutputFor: seconds,
-                                partialOutput: stdout + stderr,
-                            )
+                        if let outputTimeout {
+                            let timeSinceLastOutput = lastOutputTime.timeSinceLastOutput()
+                            if timeSinceLastOutput > outputTimeout {
+                                let (stdout, stderr) = outputCollector.getOutput()
+                                let seconds =
+                                    Double(timeSinceLastOutput.components.seconds)
+                                        + Double(timeSinceLastOutput.components.attoseconds) / 1e18
+                                throw XcodebuildError.stuckProcess(
+                                    noOutputFor: seconds,
+                                    partialOutput: stdout + stderr,
+                                )
+                            }
                         }
                     }
                 }
@@ -285,6 +294,7 @@ public struct XcodebuildRunner: Sendable {
         additionalArguments: [String] = [],
         environment: Environment = .inherit,
         timeout: TimeInterval = defaultTimeout,
+        outputTimeout: Duration? = defaultTestOutputTimeout,
     ) async throws -> XcodebuildResult {
         var args: [String] = []
 
@@ -327,7 +337,8 @@ public struct XcodebuildRunner: Sendable {
 
         return try await run(
             arguments: args, environment: environment,
-            timeout: timeout, onProgress: nil,
+            timeout: timeout, outputTimeout: outputTimeout,
+            onProgress: nil,
         )
     }
 

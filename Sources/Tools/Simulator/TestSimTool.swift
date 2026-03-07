@@ -79,6 +79,13 @@ public struct TestSimTool: Sendable {
         do {
             let destination = "platform=iOS Simulator,id=\(simulator)"
 
+            let outputTimeout: Duration? =
+                if let seconds = testParams.outputTimeout {
+                    seconds == 0 ? nil : .seconds(seconds)
+                } else {
+                    XcodebuildRunner.defaultTestOutputTimeout
+                }
+
             let result = try await xcodebuildRunner.test(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
@@ -91,6 +98,7 @@ public struct TestSimTool: Sendable {
                 resultBundlePath: resultBundlePath,
                 environment: environment,
                 timeout: TimeInterval(testParams.timeout ?? 300),
+                outputTimeout: outputTimeout,
             )
 
             defer {
