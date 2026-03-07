@@ -5,7 +5,9 @@
 ### ✨ Features
 
 - Add `detect_unused_code` tool wrapping Periphery CLI; finds unused declarations, redundant imports, assign-only properties, and redundant public accessibility in Swift projects ([#171](https://github.com/toba/xc-mcp/issues/171))
-- `test_macos` now returns XCTest `measure()` timing data in results; average, relative standard deviation, and individual values
+- `test_macos` now returns XCTest `measure()` timing data in results; average, relative standard deviation, and individual values ([#169](https://github.com/toba/xc-mcp/issues/169))
+- `test_macos` now surfaces per-test results with skip reasons and performance metrics; no more "1 passed" when 2 tests were silently skipped ([#180](https://github.com/toba/xc-mcp/issues/180))
+- `search_crash_reports` now shows symbolicated crashing thread stack trace; top 15 frames with image names, symbols, and source locations ([#182](https://github.com/toba/xc-mcp/issues/182))
 - Add JSON output mode (`format: "json"`) and field selection (`fields`) to discovery tools; `show_build_settings`, `list_schemes`, `list_test_plan_targets`, `discover_projs` ([#163](https://github.com/toba/xc-mcp/issues/163))
 - Add `get_coverage_report` and `get_file_coverage` tools; per-target and function-level coverage from xcresult bundles
 - Add `validate_project` tool; catches dangling copy-files refs, orphaned build files, unreferenced phases, and inconsistent embedding ([#134](https://github.com/toba/xc-mcp/issues/134))
@@ -13,7 +15,10 @@
 
 ### 🐞 Fixes
 
-- Fix `detect_unused_code` checklist format exceeding MCP token limit on large projects; replace separate checklist mode with always-on disk checklist and compact summary output
+- Fix `detect_unused_code` checklist format exceeding MCP token limit on large projects; replace separate checklist mode with always-on disk checklist and compact summary output ([#183](https://github.com/toba/xc-mcp/issues/183))
+- Fix `test_macos` false-positive stuck timeout on XCUI performance tests; increase default no-output timeout from 30s to 120s for test commands ([#178](https://github.com/toba/xc-mcp/issues/178))
+- Fix `list_test_plan_targets` returning "no test plans found" for schemes with inline test targets; falls back to scheme `<TestAction>` testable references ([#179](https://github.com/toba/xc-mcp/issues/179))
+- Document `only_testing` method-level filter limitation for XCUI test targets; xcodebuild silently runs 0 tests; suggest class-level filtering in error message ([#181](https://github.com/toba/xc-mcp/issues/181))
 - Fix subprocess orphan processes on MCP abort/timeout; configure `teardownSequence` (SIGTERM → 5s → SIGKILL) so cancelled builds/tests don't hold the SPM lock ([#171](https://github.com/toba/xc-mcp/issues/171))
 - Fix `validate_project` crash from `PBXBuildFile` Hashable violation; use `ObjectIdentifier` instead of `Set<PBXBuildFile>`
 - Fix `formatTestToolResult` exit-code override suppressing failures when no tests ran; guard with `totalTestCount > 0` ([#166](https://github.com/toba/xc-mcp/issues/166))
@@ -24,11 +29,11 @@
 - Fix `add_file` path doubling when adding files to groups with a filesystem `path`; file reference now computed relative to the group location ([#155](https://github.com/toba/xc-mcp/issues/155))
 - Default `ONLY_ACTIVE_ARCH=YES` for Debug in all target-creation tools; prevents cross-compilation failures with SPM dependencies ([#151](https://github.com/toba/xc-mcp/issues/151))
 - Fix `add_target`, `add_app_extension`, `add_swift_package`, `add_framework`, and `create_xcodeproj` issues found during extension setup; orphan targets, missing framework linking, wrong `sourceTree` for developer frameworks, macOS `TARGETED_DEVICE_FAMILY`, `ALWAYS_SEARCH_USER_PATHS` ([#150](https://github.com/toba/xc-mcp/issues/150))
-- Fix `add_target` only creating Debug/Release configs; now matches all project-level build configurations
-- Fix `add_target` creating groups at project root; add `parent_group` parameter for nesting under existing groups
-- Fix `add_target` adding extraneous build settings; minimize to `PRODUCT_BUNDLE_IDENTIFIER`, `PRODUCT_NAME`, `GENERATE_INFOPLIST_FILE`
-- Fix `add_to_copy_files_phase` missing `CodeSignOnCopy`/`RemoveHeadersOnCopy` attributes; add `attributes` parameter with auto-defaults for Embed Frameworks
-- Fix `add_file` rejecting slash-separated group paths like `Components/TableView`; unify group path resolution across all tools
+- Fix `add_target` only creating Debug/Release configs; now matches all project-level build configurations ([#176](https://github.com/toba/xc-mcp/issues/176))
+- Fix `add_target` creating groups at project root; add `parent_group` parameter for nesting under existing groups ([#174](https://github.com/toba/xc-mcp/issues/174))
+- Fix `add_target` adding extraneous build settings; minimize to `PRODUCT_BUNDLE_IDENTIFIER`, `PRODUCT_NAME`, `GENERATE_INFOPLIST_FILE` ([#173](https://github.com/toba/xc-mcp/issues/173))
+- Fix `add_to_copy_files_phase` missing `CodeSignOnCopy`/`RemoveHeadersOnCopy` attributes; add `attributes` parameter with auto-defaults for Embed Frameworks ([#175](https://github.com/toba/xc-mcp/issues/175))
+- Fix `add_file` rejecting slash-separated group paths like `Components/TableView`; unify group path resolution across all tools ([#172](https://github.com/toba/xc-mcp/issues/172))
 
 ### 🗜️ Tweaks
 
@@ -36,6 +41,7 @@
 - Enhance test plan error hints with scheme awareness; suggests the correct scheme when a test target isn't in the specified scheme
 - Trim verbose tool descriptions; reduce token overhead for 7 tools ([#163](https://github.com/toba/xc-mcp/issues/163))
 - Evaluate MCP vs CLI architecture; concluded MCP should be kept with incremental improvements ([#161](https://github.com/toba/xc-mcp/issues/161))
+- Investigate XcodeBuildMCP coverage tools; no new tools needed; our `get_coverage_report` and `get_file_coverage` already cover the use cases ([#168](https://github.com/toba/xc-mcp/issues/168))
 - Investigate XcodeBuildMCP xcresult/stderr output fixes; no action needed; our combined-stream approach avoids the issues by design
 - Review XcodeBuildMCP v2.1.0 changes; no actionable items for xc-mcp ([#164](https://github.com/toba/xc-mcp/issues/164))
 - Review Sentry XcodeBuildMCP session defaults hardening; our Swift actor approach already covers the key patterns ([#94](https://github.com/toba/xc-mcp/issues/94))

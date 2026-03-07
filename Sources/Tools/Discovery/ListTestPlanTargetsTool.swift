@@ -1,5 +1,7 @@
 import MCP
+import PathKit
 import XCMCPCore
+import XcodeProj
 import Foundation
 
 public struct ListTestPlanTargetsTool: Sendable {
@@ -81,6 +83,26 @@ public struct ListTestPlanTargetsTool: Sendable {
             )
 
             if testPlanNames.isEmpty {
+                // Fall back to scheme testable references
+                let projectFile = projectPath ?? workspacePath
+                if let projectFile,
+                   let targets = fetchSchemeTestableTargets(
+                       scheme: scheme, projectPath: projectFile,
+                   )
+                {
+                    if format == "json" {
+                        return try formatSchemeTestableJSON(
+                            targets: targets, scheme: scheme,
+                        )
+                    }
+                    var output =
+                        "Scheme '\(scheme)' (no test plan — using scheme test action):\n"
+                    for target in targets {
+                        let suffix = target.skipped ? " (skipped)" : ""
+                        output += "  - \(target.name)\(suffix)\n"
+                    }
+                    return CallTool.Result(content: [.text(output)])
+                }
                 return CallTool.Result(
                     content: [
                         .text("No test plans found for scheme '\(scheme)'."),
@@ -177,6 +199,59 @@ public struct ListTestPlanTargetsTool: Sendable {
         }
 
         return testPlans.compactMap { $0["name"] as? String }
+    }
+
+    // MARK: - Scheme Testable Fallback
+
+    struct SchemeTestTarget {
+        let name: String
+        let skipped: Bool
+    }
+
+    /// Parses the xcscheme's `<TestAction><Testables>` for testable target names.
+    private func fetchSchemeTestableTargets(
+        scheme: String, projectPath: String,
+    ) -> [SchemeTestTarget]? {
+        guard let schemePath = SchemePathResolver.findScheme(
+            named: scheme, in: projectPath,
+        )
+        else { return nil }
+
+        guard let xcscheme = try? XCScheme(path: Path(schemePath)) else {
+            return nil
+        }
+
+        let testables = xcscheme.testAction?.testables ?? []
+        if testables.isEmpty { return nil }
+
+        return testables.map { testable in
+            SchemeTestTarget(
+                name: testable.buildableReference.blueprintName,
+                skipped: testable.skipped,
+            )
+        }
+    }
+
+    private func formatSchemeTestableJSON(
+        targets: [SchemeTestTarget], scheme: String,
+    ) throws -> CallTool.Result {
+        struct TargetEntry: Encodable {
+            let name: String
+            let skipped: Bool
+        }
+        struct Result: Encodable {
+            let scheme: String
+            let source: String
+            let targets: [TargetEntry]
+        }
+
+        let result = Result(
+            scheme: scheme,
+            source: "scheme_test_action",
+            targets: targets.map { TargetEntry(name: $0.name, skipped: $0.skipped) },
+        )
+        let json = try encodePrettyJSON(result)
+        return CallTool.Result(content: [.text(json)])
     }
 
     /// Finds and parses a `.xctestplan` file to extract test target names and enabled status.

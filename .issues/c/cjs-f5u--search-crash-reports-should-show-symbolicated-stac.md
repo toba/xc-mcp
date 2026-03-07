@@ -1,17 +1,17 @@
 ---
 # cjs-f5u
 title: search_crash_reports should show symbolicated stack trace of crashing thread
-status: ready
+status: completed
 type: feature
 priority: normal
 tags:
     - enhancement
 created_at: 2026-03-07T21:38:25Z
-updated_at: 2026-03-07T21:38:25Z
+updated_at: 2026-03-07T21:54:04Z
 sync:
     github:
         issue_number: "182"
-        synced_at: "2026-03-07T21:39:58Z"
+        synced_at: "2026-03-07T21:56:31Z"
 ---
 
 ## Problem
@@ -46,3 +46,7 @@ Crashing Thread 6:
 ```
 
 The .ips JSON already contains `faultingThread`, thread frames with `symbol`, `symbolLocation`, `sourceFile`, and `sourceLine`.
+
+## Summary of Changes
+
+Added crashing thread stack trace parsing to `CrashReportParser`. The `CrashSummary` now includes `crashingThread` (thread index) and `crashingThreadFrames` (top 15 symbolicated frames). The `formatted()` output appends the crashing thread with image names, symbols, offsets, and source locations resolved from the .ips JSON's `faultingThread`, `threads`, and `usedImages` arrays.

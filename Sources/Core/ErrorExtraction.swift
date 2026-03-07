@@ -61,7 +61,8 @@ public enum ErrorExtractor {
            let xcresultData = await XCResultParser.parseTestResults(at: xcresultPath)
         {
             testResult = formatXCResultData(xcresultData)
-            totalTestCount = xcresultData.passedCount + xcresultData.failedCount
+            totalTestCount = xcresultData.passedCount + xcresultData.failedCount + xcresultData
+                .skippedCount
 
             // Override exit code when xcresult confirms all tests passed
             if !succeeded, xcresultData.failedCount == 0, xcresultData.passedCount > 0 {
@@ -141,8 +142,9 @@ public enum ErrorExtractor {
                     + "Filters: \(filters)\n\n"
                     + "Check that identifiers use the correct format: "
                     + "\"TargetName/TestClassName/testMethodName\". "
-                    +
-                    "For Swift Testing, the class name is the struct/class name, not the file name.",
+                    + "For Swift Testing, the class name is the struct/class name, not the file name. "
+                    + "Note: method-level filtering may not work for XCUI test targets — "
+                    + "use class-level filtering instead (e.g. \"TargetName/TestClassName\").",
             )
         }
 
@@ -210,6 +212,8 @@ public enum ErrorExtractor {
         // Header
         let passed = data.passedCount
         let failed = data.failedCount
+        let skipped = data.skippedCount
+        let total = passed + failed + skipped
         var header: String
         if failed == 0, passed > 0 {
             header = "Tests passed"
@@ -220,8 +224,10 @@ public enum ErrorExtractor {
         }
 
         var details: [String] = []
+        if total > 0 { details.append("\(total) total") }
         if passed > 0 { details.append("\(passed) passed") }
         if failed > 0 { details.append("\(failed) failed") }
+        if skipped > 0 { details.append("\(skipped) skipped") }
         if let duration = data.duration {
             details.append(String(format: "%.1fs", duration))
         }
@@ -230,8 +236,36 @@ public enum ErrorExtractor {
         }
         parts.append(header)
 
-        // Failures
-        if !data.failures.isEmpty {
+        // Per-test details (only when there are skips, failures, or small enough to list)
+        if !data.tests.isEmpty, skipped > 0 || failed > 0 || total <= 50 {
+            var lines: [String] = []
+            for test in data.tests {
+                switch test.status {
+                    case .passed:
+                        let dur = test.duration.map { String(format: " (%.1fs)", $0) } ?? ""
+                        lines.append("  ✓ \(test.name)\(dur)")
+                    case .failed:
+                        let dur = test.duration.map { String(format: " (%.1fs)", $0) } ?? ""
+                        let msg = test.failureMessage.map { " — \($0)" } ?? ""
+                        lines.append("  ✗ \(test.name)\(dur)\(msg)")
+                    case .skipped:
+                        let reason = test.skipReason.map { " — skipped: \($0)" } ?? " — skipped"
+                        lines.append("  ⊘ \(test.name)\(reason)")
+                    case .expectedFailure:
+                        let dur = test.duration.map { String(format: " (%.1fs)", $0) } ?? ""
+                        lines.append("  ✓ \(test.name)\(dur) (expected failure)")
+                }
+                for metric in test.performanceMetrics {
+                    lines.append(
+                        "    \(metric.name): avg \(formatMetricValue(metric.average, unit: metric.unit)), "
+                            + "stddev \(formatMetricValue(metric.standardDeviation, unit: metric.unit)) "
+                            + "(\(metric.iterations) iterations)",
+                    )
+                }
+            }
+            parts.append(lines.joined(separator: "\n"))
+        } else if !data.failures.isEmpty {
+            // Fall back to failure-only listing for large test suites
             var lines = ["Failures:"]
             for test in data.failures {
                 var detail = "  \(test.test) — \(test.message)"
@@ -253,6 +287,16 @@ public enum ErrorExtractor {
         }
 
         return parts.joined(separator: "\n\n")
+    }
+
+    private static func formatMetricValue(_ value: Double, unit: String) -> String {
+        switch unit {
+            case "ms": return String(format: "%.2fms", value)
+            case "s": return String(format: "%.1fs", value)
+            case "kB", "KB": return String(format: "%.1fkB", value)
+            case "MB": return String(format: "%.1fMB", value)
+            default: return String(format: "%.2f%@", value, unit)
+        }
     }
 
     // MARK: - Test Plan Error Enhancement

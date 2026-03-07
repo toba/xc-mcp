@@ -102,6 +102,76 @@ struct CrashReportParserTests {
     }
 
     @Test
+    func `Parses crashing thread stack frames`() {
+        let json: [String: Any] = [
+            "procName": "CrashApp",
+            "faultingThread": 2,
+            "exception": [
+                "type": "EXC_BREAKPOINT",
+                "signal": "SIGTRAP",
+            ] as [String: Any],
+            "usedImages": [
+                ["name": "CrashApp"],
+                ["name": "Swift"],
+                ["name": "CoreFoundation"],
+            ] as [[String: Any]],
+            "threads": [
+                ["frames": []] as [String: Any],
+                ["frames": []] as [String: Any],
+                ["frames": [
+                    [
+                        "imageIndex": 1,
+                        "symbol": "_assertionFailure",
+                        "symbolLocation": 100,
+                    ] as [String: Any],
+                    [
+                        "imageIndex": 0,
+                        "symbol": "Diagnostic.log(_:for:file:method:line:showInConsole:fail:as:)",
+                        "symbolLocation": 356,
+                        "sourceFile": "Diagnostic.swift",
+                        "sourceLine": 152,
+                    ] as [String: Any],
+                    [
+                        "imageIndex": 2,
+                        "symbol": "CFRunLoopRun",
+                        "symbolLocation": 42,
+                    ] as [String: Any],
+                ]] as [String: Any],
+            ] as [[String: Any]],
+        ]
+
+        let summary = CrashReportParser.parseJSON(json)
+        #expect(summary.crashingThread == 2)
+        #expect(summary.crashingThreadFrames.count == 3)
+
+        let frame0 = summary.crashingThreadFrames[0]
+        #expect(frame0.imageName == "Swift")
+        #expect(frame0.symbol == "_assertionFailure")
+        #expect(frame0.symbolOffset == 100)
+
+        let frame1 = summary.crashingThreadFrames[1]
+        #expect(frame1.imageName == "CrashApp")
+        #expect(frame1.sourceFile == "Diagnostic.swift")
+        #expect(frame1.sourceLine == 152)
+
+        let formatted = summary.formatted()
+        #expect(formatted.contains("Crashing Thread 2:"))
+        #expect(formatted.contains("Swift  _assertionFailure +100"))
+        #expect(formatted.contains("Diagnostic.swift:152"))
+    }
+
+    @Test
+    func `No crashing thread when faultingThread missing`() {
+        let json: [String: Any] = [
+            "procName": "NoCrashApp",
+        ]
+        let summary = CrashReportParser.parseJSON(json)
+        #expect(summary.crashingThread == nil)
+        #expect(summary.crashingThreadFrames.isEmpty)
+        #expect(!summary.formatted().contains("Crashing Thread"))
+    }
+
+    @Test
     func `Search returns empty for nonexistent process`() {
         let results = CrashReportParser.search(
             processName: "NonExistentApp_\(UUID().uuidString)",

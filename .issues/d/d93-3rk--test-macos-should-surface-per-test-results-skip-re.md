@@ -1,17 +1,17 @@
 ---
 # d93-3rk
 title: test_macos should surface per-test results, skip reasons, and performance metrics
-status: ready
+status: completed
 type: feature
 priority: high
 tags:
     - enhancement
 created_at: 2026-03-07T21:38:25Z
-updated_at: 2026-03-07T21:38:25Z
+updated_at: 2026-03-07T21:54:04Z
 sync:
     github:
         issue_number: "180"
-        synced_at: "2026-03-07T21:39:58Z"
+        synced_at: "2026-03-07T21:56:31Z"
 ---
 
 ## Problem
@@ -59,3 +59,13 @@ Parse via: `xcrun xcresulttool get test-results tests --path <bundle>` (JSON out
 ## Related
 
 This would also eliminate the need for a separate "read xcresult" tool in most cases.
+
+## Summary of Changes
+
+Added per-test result surfacing to `test_macos` via `XCResultParser`:
+- New `TestDetail` struct with per-test name, status, duration, skip reason, failure message, and performance metrics
+- `TestResults` now includes `skippedCount` and `tests: [TestDetail]`
+- `collectTestCases` tracks passed/failed/skipped/expectedFailure with skip reason extraction
+- `formatXCResultData` renders per-test lines: ✓ passed, ✗ failed, ⊘ skipped with reasons
+- Header now shows total/passed/failed/skipped counts
+- Per-test listing shown when there are skips, failures, or ≤50 total tests

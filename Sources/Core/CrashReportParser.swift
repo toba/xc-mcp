@@ -5,6 +5,29 @@ import Foundation
 /// The `.ips` format consists of a JSON header line followed by a JSON body containing
 /// exception info, termination reasons, thread backtraces, and loaded images.
 public enum CrashReportParser: Sendable {
+    /// A single frame in a crashing thread's stack trace.
+    public struct StackFrame: Sendable {
+        public let index: Int
+        public let imageName: String
+        public let symbol: String?
+        public let symbolOffset: Int?
+        public let sourceFile: String?
+        public let sourceLine: Int?
+
+        public func formatted() -> String {
+            var line = "  \(index)  \(imageName)"
+            if let symbol {
+                line += "  \(symbol)"
+                if let symbolOffset { line += " +\(symbolOffset)" }
+            }
+            if let sourceFile {
+                line += "  \(sourceFile)"
+                if let sourceLine { line += ":\(sourceLine)" }
+            }
+            return line
+        }
+    }
+
     /// A summary of a parsed crash report.
     public struct CrashSummary: Sendable {
         public let processName: String?
@@ -17,6 +40,8 @@ public enum CrashReportParser: Sendable {
         public let terminationReasons: [String]
         public let terminationDetails: [String]
         public let isFatalDyldError: Bool
+        public let crashingThread: Int?
+        public let crashingThreadFrames: [StackFrame]
 
         /// Formats the summary as a human-readable string.
         public func formatted() -> String {
@@ -56,6 +81,16 @@ public enum CrashReportParser: Sendable {
                !parts.contains(where: { $0.contains("DYLD") || $0.contains("Symbol") })
             {
                 parts.append("Fatal dyld error (missing symbol or library)")
+            }
+
+            // Crashing thread stack trace
+            if !crashingThreadFrames.isEmpty {
+                let threadLabel = crashingThread.map { "Crashing Thread \($0)" } ?? "Crashing Thread"
+                var lines = ["\(threadLabel):"]
+                for frame in crashingThreadFrames {
+                    lines.append(frame.formatted())
+                }
+                parts.append(lines.joined(separator: "\n"))
             }
 
             return parts.joined(separator: "\n")
@@ -100,6 +135,8 @@ public enum CrashReportParser: Sendable {
         let termination = json["termination"] as? [String: Any]
         let bundleInfo = json["bundleInfo"] as? [String: Any]
 
+        let (crashingThread, crashingThreadFrames) = parseCrashingThread(from: json)
+
         return CrashSummary(
             processName: json["procName"] as? String,
             bundleID: bundleInfo?["CFBundleIdentifier"] as? String,
@@ -112,7 +149,58 @@ public enum CrashReportParser: Sendable {
             terminationDetails: termination?["details"] as? [String] ?? [],
             isFatalDyldError: (json["fatalDyldError"] as? Int) != nil
                 && (json["fatalDyldError"] as? Int) != 0,
+            crashingThread: crashingThread,
+            crashingThreadFrames: crashingThreadFrames,
         )
+    }
+
+    /// Extracts the crashing thread's stack frames from the JSON body.
+    private static func parseCrashingThread(
+        from json: [String: Any],
+    ) -> (threadIndex: Int?, frames: [StackFrame]) {
+        guard let faultingThread = json["faultingThread"] as? Int,
+              let threads = json["threads"] as? [[String: Any]],
+              faultingThread < threads.count
+        else {
+            return (nil, [])
+        }
+
+        let thread = threads[faultingThread]
+        guard let rawFrames = thread["frames"] as? [[String: Any]] else {
+            return (faultingThread, [])
+        }
+
+        // Resolve image names from usedImages array
+        let usedImages = json["usedImages"] as? [[String: Any]] ?? []
+
+        let maxFrames = min(rawFrames.count, 15)
+        var frames: [StackFrame] = []
+        frames.reserveCapacity(maxFrames)
+
+        for i in 0 ..< maxFrames {
+            let raw = rawFrames[i]
+
+            // Resolve image name from imageIndex → usedImages
+            var imageName = "???"
+            if let imageIndex = raw["imageIndex"] as? Int,
+               imageIndex < usedImages.count
+            {
+                if let name = usedImages[imageIndex]["name"] as? String {
+                    imageName = name
+                }
+            }
+
+            frames.append(StackFrame(
+                index: i,
+                imageName: imageName,
+                symbol: raw["symbol"] as? String,
+                symbolOffset: raw["symbolLocation"] as? Int,
+                sourceFile: raw["sourceFile"] as? String,
+                sourceLine: raw["sourceLine"] as? Int,
+            ))
+        }
+
+        return (faultingThread, frames)
     }
 
     /// Searches `~/Library/Logs/DiagnosticReports/` for recent `.ips` crash reports.
