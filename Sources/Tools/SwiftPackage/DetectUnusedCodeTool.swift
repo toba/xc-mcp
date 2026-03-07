@@ -573,10 +573,15 @@ public struct DetectUnusedCodeTool: Sendable {
     static let agentInstructions = """
     IMPORTANT — Periphery can report false positives. For EVERY finding you must:
     1. Read the code and verify whether it is truly unused.
-    2. If it IS unused → remove the dead code, then mark the item done.
+    2. If it IS unused → remove the dead code, then IMMEDIATELY mark the item done.
     3. If it is NOT unused (false positive) → add `// periphery:ignore` on the \
-    line above the declaration, then mark the item false_positive.
-    Every item must be checked off — do not leave items pending.
+    line above the declaration, then IMMEDIATELY mark the item false_positive.
+
+    CRITICAL — Mark items done AS YOU GO. After resolving each item (or batch), \
+    call this tool with `mark` to update the checklist BEFORE moving on. \
+    The checklist is how you track progress across calls. If you remove code \
+    but don't mark items done, they will still appear as pending on the next call. \
+    Never leave resolved items unmarked.
 
     WORKFLOW — Always use this tool's parameters for filtering and drill-down. \
     Do NOT parse the checklist JSON manually via bash/python/jq.

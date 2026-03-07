@@ -97,11 +97,18 @@ public struct StartMacLogCapTool: Sendable {
                 var predicateParts: [String] = []
 
                 if let bundleId {
-                    // Use the last component of the bundle ID as the process name,
-                    // since processImagePath may not contain the bundle identifier.
-                    // e.g., "com.thesisapp.TestApp" → process == "TestApp"
-                    let appName = bundleId.split(separator: ".").last.map(String.init) ?? bundleId
-                    predicateParts.append("process == \"\(appName)\"")
+                    // Resolve the actual executable name from the app bundle when
+                    // possible, since the last component of the bundle ID may not
+                    // match the binary name (e.g., "com.thesisapp.testapp" but
+                    // the executable is "TestApp").
+                    let appName: String
+                    if let resolved = await Self.resolveExecutableName(bundleId: bundleId) {
+                        appName = resolved
+                        predicateParts.append("process == \"\(appName)\"")
+                    } else {
+                        appName = bundleId.split(separator: ".").last.map(String.init) ?? bundleId
+                        predicateParts.append("process ==[cd] \"\(appName)\"")
+                    }
                 }
                 if let processName {
                     predicateParts.append("process == \"\(processName)\"")
@@ -141,5 +148,38 @@ public struct StartMacLogCapTool: Sendable {
         } catch {
             throw error.asMCPError()
         }
+    }
+
+    /// Resolves the actual executable name from an app bundle's Info.plist.
+    /// Uses `mdfind` to locate the app by bundle ID, then reads CFBundleExecutable.
+    static func resolveExecutableName(bundleId: String) async -> String? {
+        guard let result = try? await ProcessResult.run(
+            "/usr/bin/mdfind",
+            arguments: ["kMDItemCFBundleIdentifier == '\(bundleId)'"],
+            timeout: .seconds(5),
+        ), result.succeeded else {
+            return nil
+        }
+
+        guard let appPath = result.stdout
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: .newlines)
+            .first(where: { $0.hasSuffix(".app") }), !appPath.isEmpty
+        else {
+            return nil
+        }
+
+        let infoPlistURL = URL(fileURLWithPath: appPath)
+            .appendingPathComponent("Contents/Info.plist")
+        guard let data = try? Data(contentsOf: infoPlistURL),
+              let plist = try? PropertyListSerialization.propertyList(
+                  from: data, format: nil,
+              ) as? [String: Any],
+              let executable = plist["CFBundleExecutable"] as? String
+        else {
+            return nil
+        }
+
+        return executable
     }
 }

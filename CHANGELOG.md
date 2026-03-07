@@ -7,7 +7,8 @@
 - Add `detect_unused_code` tool wrapping Periphery CLI; finds unused declarations, redundant imports, assign-only properties, and redundant public accessibility in Swift projects ([#171](https://github.com/toba/xc-mcp/issues/171))
 - `test_macos` now returns XCTest `measure()` timing data in results; average, relative standard deviation, and individual values ([#169](https://github.com/toba/xc-mcp/issues/169))
 - `test_macos` now surfaces per-test results with skip reasons and performance metrics; no more "1 passed" when 2 tests were silently skipped ([#180](https://github.com/toba/xc-mcp/issues/180))
-- `test_macos` error output now lists failed test names prominently; no more scanning 3600+ lines to find 4 failures
+- `test_macos` error output now lists failed test names prominently; no more scanning 3600+ lines to find 4 failures ([#185](https://github.com/toba/xc-mcp/issues/185))
+- `search_crash_reports` now supports `report_path` for reading a specific crash report directly; agents can search → get path → read full report without re-searching ([#186](https://github.com/toba/xc-mcp/issues/186))
 - `search_crash_reports` now shows symbolicated crashing thread stack trace; top 15 frames with image names, symbols, and source locations ([#182](https://github.com/toba/xc-mcp/issues/182))
 - Add JSON output mode (`format: "json"`) and field selection (`fields`) to discovery tools; `show_build_settings`, `list_schemes`, `list_test_plan_targets`, `discover_projs` ([#163](https://github.com/toba/xc-mcp/issues/163))
 - Add `get_coverage_report` and `get_file_coverage` tools; per-target and function-level coverage from xcresult bundles
@@ -27,6 +28,8 @@
 - Fix `add_file` creating duplicate `PBXFileReference` entries and miscomputing paths for groups with a `path` property; uses `sourceRoot` when file is outside the group's resolved path, deduplicates existing refs ([#159](https://github.com/toba/xc-mcp/issues/159))
 - Fix `remove_file` removing files from all targets when multiple targets have files with the same name; now matches by full path via `fullPath(sourceRoot:)` instead of filename ([#156](https://github.com/toba/xc-mcp/issues/156))
 - Fix `add_swift_package` returning "already exists" instead of linking product to a new target; now links the product and detects duplicates ([#154](https://github.com/toba/xc-mcp/issues/154))
+- Fix `start_mac_log_cap` process name derivation; resolve actual executable name from app bundle `Info.plist` instead of lowercased bundle ID suffix; case-insensitive fallback when bundle not found ([#186](https://github.com/toba/xc-mcp/issues/186))
+- Fix `detect_unused_code` checklist not reconciling with already-removed code; strengthen agent instructions to mark items done immediately after each resolution ([#187](https://github.com/toba/xc-mcp/issues/187))
 - Fix `add_file` path doubling when adding files to groups with a filesystem `path`; file reference now computed relative to the group location ([#155](https://github.com/toba/xc-mcp/issues/155))
 - Default `ONLY_ACTIVE_ARCH=YES` for Debug in all target-creation tools; prevents cross-compilation failures with SPM dependencies ([#151](https://github.com/toba/xc-mcp/issues/151))
 - Fix `add_target`, `add_app_extension`, `add_swift_package`, `add_framework`, and `create_xcodeproj` issues found during extension setup; orphan targets, missing framework linking, wrong `sourceTree` for developer frameworks, macOS `TARGETED_DEVICE_FAMILY`, `ALWAYS_SEARCH_USER_PATHS` ([#150](https://github.com/toba/xc-mcp/issues/150))

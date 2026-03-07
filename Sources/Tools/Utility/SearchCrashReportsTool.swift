@@ -9,8 +9,8 @@ public struct SearchCrashReportsTool: Sendable {
         Tool(
             name: "search_crash_reports",
             description:
-            "Search ~/Library/Logs/DiagnosticReports/ for recent .ips crash reports. "
-                + "Returns exception type, signal, termination reason, and details for each match. "
+            "Search ~/Library/Logs/DiagnosticReports/ for recent .ips crash reports, or read a specific report by path. "
+                + "Returns exception type, signal, termination reason, crashing thread stack trace, and details. "
                 + "Useful after an app crash to diagnose the cause without opening Console.app.",
             inputSchema: .object([
                 "type": .string("object"),
@@ -35,6 +35,12 @@ public struct SearchCrashReportsTool: Sendable {
                             "Only include reports from the last N minutes. Defaults to 5.",
                         ),
                     ]),
+                    "report_path": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Path to a specific .ips crash report file to read. When provided, skips the search and parses this file directly. The path is returned by a previous search_crash_reports call.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -42,6 +48,20 @@ public struct SearchCrashReportsTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) -> CallTool.Result {
+        // Direct read mode: parse a specific crash report file
+        if let reportPath = arguments.getString("report_path") {
+            guard let summary = CrashReportParser.parse(at: reportPath) else {
+                return CallTool.Result(
+                    content: [.text("Could not parse crash report at: \(reportPath)")],
+                    isError: true,
+                )
+            }
+            var output = "File: \(reportPath)\n"
+            output += summary.formatted()
+            return CallTool.Result(content: [.text(output)])
+        }
+
+        // Search mode
         let processName = arguments.getString("process_name")
         let bundleID = arguments.getString("bundle_id")
         let minutes = arguments.getInt("minutes") ?? 5
@@ -74,6 +94,8 @@ public struct SearchCrashReportsTool: Sendable {
             output += result.summary.formatted()
             output += "\n"
         }
+
+        output += "\nUse report_path to read a specific report again without re-searching."
 
         return CallTool.Result(content: [.text(output)])
     }
