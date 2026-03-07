@@ -303,7 +303,8 @@ public enum ErrorExtractor {
         // If no test plan targets found, use scheme targets instead
         if allTargets.isEmpty {
             // Prefer targets from the current scheme
-            if let scheme, let currentSchemeTargets = schemeMap[scheme], !currentSchemeTargets.isEmpty
+            if let scheme, let currentSchemeTargets = schemeMap[scheme],
+               !currentSchemeTargets.isEmpty
             {
                 allTargets = currentSchemeTargets.sorted()
             } else {
@@ -343,7 +344,8 @@ public enum ErrorExtractor {
             // Extract the class/method part from the bad identifier to build a better example
             let classOrMethod: String
             if let slashIndex = badIdentifiers[0].firstIndex(of: "/") {
-                classOrMethod = String(badIdentifiers[0][badIdentifiers[0].index(after: slashIndex)...])
+                classOrMethod =
+                    String(badIdentifiers[0][badIdentifiers[0].index(after: slashIndex)...])
             } else {
                 classOrMethod = badIdentifiers[0]
             }

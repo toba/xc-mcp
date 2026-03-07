@@ -437,6 +437,103 @@ struct AddToCopyFilesPhaseTests {
     }
 
     @Test
+    func `Applies explicit attributes to build file`() throws {
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a framework file to the project
+        let fwPath = Path(tempDir) + "MyLib.framework"
+        try FileManager.default.createDirectory(
+            atPath: fwPath.string, withIntermediateDirectories: true,
+        )
+
+        let addFileTool = AddFileTool(pathUtility: pathUtility)
+        _ = try addFileTool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "file_path": .string(fwPath.string),
+        ])
+
+        // Add an Embed Frameworks copy files phase
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let copyPhase = PBXCopyFilesBuildPhase(
+            dstPath: "",
+            dstSubfolderSpec: .frameworks,
+            name: "Embed Frameworks",
+        )
+        xcodeproj.pbxproj.add(object: copyPhase)
+        target.buildPhases.append(copyPhase)
+        try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
+
+        // Add file with explicit attributes
+        let tool = AddToCopyFilesPhase(pathUtility: pathUtility)
+        _ = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "phase_name": .string("Embed Frameworks"),
+            "files": .array([.string(fwPath.string)]),
+            "attributes": .array([.string("CodeSignOnCopy")]),
+        ])
+
+        let updated = try XcodeProj(path: projectPath)
+        let updatedTarget = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
+        let updatedPhase = updatedTarget.buildPhases
+            .compactMap { $0 as? PBXCopyFilesBuildPhase }
+            .first { $0.name == "Embed Frameworks" }
+        let buildFile = try #require(updatedPhase?.files?.first)
+        #expect(buildFile.attributes == ["CodeSignOnCopy"])
+    }
+
+    @Test
+    func `Auto-defaults attributes for Embed Frameworks phase`() throws {
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let fwPath = Path(tempDir) + "Other.framework"
+        try FileManager.default.createDirectory(
+            atPath: fwPath.string, withIntermediateDirectories: true,
+        )
+
+        let addFileTool = AddFileTool(pathUtility: pathUtility)
+        _ = try addFileTool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "file_path": .string(fwPath.string),
+        ])
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let copyPhase = PBXCopyFilesBuildPhase(
+            dstPath: "",
+            dstSubfolderSpec: .frameworks,
+            name: "Embed Frameworks",
+        )
+        xcodeproj.pbxproj.add(object: copyPhase)
+        target.buildPhases.append(copyPhase)
+        try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
+
+        // Add file WITHOUT explicit attributes — should auto-default
+        let tool = AddToCopyFilesPhase(pathUtility: pathUtility)
+        _ = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "phase_name": .string("Embed Frameworks"),
+            "files": .array([.string(fwPath.string)]),
+        ])
+
+        let updated = try XcodeProj(path: projectPath)
+        let updatedTarget = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
+        let updatedPhase = updatedTarget.buildPhases
+            .compactMap { $0 as? PBXCopyFilesBuildPhase }
+            .first { $0.name == "Embed Frameworks" }
+        let buildFile = try #require(updatedPhase?.files?.first)
+        #expect(buildFile.attributes == ["CodeSignOnCopy", "RemoveHeadersOnCopy"])
+    }
+
+    @Test
     func `Reports files not found in project`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(

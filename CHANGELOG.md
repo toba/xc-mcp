@@ -20,6 +20,11 @@
 - Fix `add_file` path doubling when adding files to groups with a filesystem `path`; file reference now computed relative to the group location ([#155](https://github.com/toba/xc-mcp/issues/155))
 - Default `ONLY_ACTIVE_ARCH=YES` for Debug in all target-creation tools; prevents cross-compilation failures with SPM dependencies ([#151](https://github.com/toba/xc-mcp/issues/151))
 - Fix `add_target`, `add_app_extension`, `add_swift_package`, `add_framework`, and `create_xcodeproj` issues found during extension setup; orphan targets, missing framework linking, wrong `sourceTree` for developer frameworks, macOS `TARGETED_DEVICE_FAMILY`, `ALWAYS_SEARCH_USER_PATHS` ([#150](https://github.com/toba/xc-mcp/issues/150))
+- Fix `add_target` only creating Debug/Release configs; now matches all project-level build configurations
+- Fix `add_target` creating groups at project root; add `parent_group` parameter for nesting under existing groups
+- Fix `add_target` adding extraneous build settings; minimize to `PRODUCT_BUNDLE_IDENTIFIER`, `PRODUCT_NAME`, `GENERATE_INFOPLIST_FILE`
+- Fix `add_to_copy_files_phase` missing `CodeSignOnCopy`/`RemoveHeadersOnCopy` attributes; add `attributes` parameter with auto-defaults for Embed Frameworks
+- Fix `add_file` rejecting slash-separated group paths like `Components/TableView`; unify group path resolution across all tools
 
 ### 🗜️ Tweaks
 

@@ -41,6 +41,15 @@ public struct AddToCopyFilesPhase: Sendable {
                             "type": .string("string"),
                         ]),
                     ]),
+                    "attributes": .object([
+                        "type": .string("array"),
+                        "description": .string(
+                            "Build file attributes (e.g. ['CodeSignOnCopy', 'RemoveHeadersOnCopy']). Auto-defaults for 'Embed Frameworks' phases.",
+                        ),
+                        "items": .object([
+                            "type": .string("string"),
+                        ]),
+                    ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("target_name"), .string("phase_name"),
@@ -59,6 +68,17 @@ public struct AddToCopyFilesPhase: Sendable {
             throw MCPError.invalidParams(
                 "project_path, target_name, phase_name, and files are required",
             )
+        }
+
+        // Parse explicit attributes
+        let explicitAttributes: [String]?
+        if case let .array(attrsArray) = arguments["attributes"] {
+            explicitAttributes = attrsArray.compactMap { value -> String? in
+                if case let .string(s) = value { return s }
+                return nil
+            }
+        } else {
+            explicitAttributes = nil
         }
 
         do {
@@ -127,7 +147,19 @@ public struct AddToCopyFilesPhase: Sendable {
                     if alreadyInPhase {
                         addedFiles.append("\(fileName) (already present)")
                     } else {
-                        let buildFile = PBXBuildFile(file: fileRef)
+                        // Determine attributes: explicit > auto-default for Embed Frameworks > none
+                        let attrs =
+                            explicitAttributes
+                                ?? (phaseName.contains("Embed Frameworks")
+                                    ? ["CodeSignOnCopy", "RemoveHeadersOnCopy"]
+                                    : nil)
+                        let settings: [String: BuildFileSetting]? =
+                            if let attrs {
+                                ["ATTRIBUTES": .array(attrs)]
+                            } else {
+                                nil
+                            }
+                        let buildFile = PBXBuildFile(file: fileRef, settings: settings)
                         xcodeproj.pbxproj.add(object: buildFile)
                         copyFilesPhase.files?.append(buildFile)
                         addedFiles.append(fileName)

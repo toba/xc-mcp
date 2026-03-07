@@ -48,6 +48,12 @@ public struct AddTargetTool: Sendable {
                         "type": .string("string"),
                         "description": .string("Deployment target version (optional)"),
                     ]),
+                    "parent_group": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Group to nest the target's folder under (e.g. 'Components' or 'Modules/UI'). Optional, defaults to project root.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("target_name"), .string("product_type"),
@@ -80,6 +86,13 @@ public struct AddTargetTool: Sendable {
             deploymentTarget = target
         } else {
             deploymentTarget = nil
+        }
+
+        let parentGroupPath: String?
+        if case let .string(pg) = arguments["parent_group"] {
+            parentGroupPath = pg
+        } else {
+            parentGroupPath = nil
         }
 
         // Map product type string to PBXProductType
@@ -165,59 +178,56 @@ public struct AddTargetTool: Sendable {
                 )
             }
 
-            // Create build configurations for target
-            var debugSettings: [String: BuildSetting] = [
-                "PRODUCT_NAME": .string(targetName),
-                "BUNDLE_IDENTIFIER": .string(bundleIdentifier),
-                "INFOPLIST_FILE": .string("\(targetName)/Info.plist"),
-                "SWIFT_VERSION": .string("5.0"),
-                "ALWAYS_SEARCH_USER_PATHS": .string("NO"),
-                "ONLY_ACTIVE_ARCH": .string("YES"),
-            ]
-            var releaseSettings: [String: BuildSetting] = [
-                "PRODUCT_NAME": .string(targetName),
-                "BUNDLE_IDENTIFIER": .string(bundleIdentifier),
-                "INFOPLIST_FILE": .string("\(targetName)/Info.plist"),
-                "SWIFT_VERSION": .string("5.0"),
-                "ALWAYS_SEARCH_USER_PATHS": .string("NO"),
-            ]
-
-            // TARGETED_DEVICE_FAMILY is only meaningful for iOS/tvOS/watchOS, not macOS
-            if platform != "macOS" {
-                let deviceFamily = platform == "iOS" ? "1,2" : "1"
-                debugSettings["TARGETED_DEVICE_FAMILY"] = .string(deviceFamily)
-                releaseSettings["TARGETED_DEVICE_FAMILY"] = .string(deviceFamily)
+            // Introspect project-level build configurations to match all config names
+            let projectConfigs: [XCBuildConfiguration]
+            if let projectConfigList = xcodeproj.pbxproj.rootObject?.buildConfigurationList {
+                projectConfigs = projectConfigList.buildConfigurations
+            } else {
+                projectConfigs = []
             }
 
-            let targetDebugConfig = XCBuildConfiguration(
-                name: "Debug",
-                buildSettings: debugSettings,
-            )
+            // If project has configs, use those names; otherwise fall back to Debug/Release
+            let configNames: [String]
+            if projectConfigs.isEmpty {
+                configNames = ["Debug", "Release"]
+            } else {
+                configNames = projectConfigs.map(\.name)
+            }
 
-            let targetReleaseConfig = XCBuildConfiguration(
-                name: "Release",
-                buildSettings: releaseSettings,
-            )
+            // Minimal target-specific settings
+            let baseSettings: [String: BuildSetting] = [
+                "PRODUCT_NAME": .string(targetName),
+                "PRODUCT_BUNDLE_IDENTIFIER": .string(bundleIdentifier),
+                "GENERATE_INFOPLIST_FILE": .string("YES"),
+            ]
 
             // Add deployment target if specified
-            if let deploymentTarget {
-                let deploymentKey =
+            let deploymentKey: String? =
+                if let deploymentTarget {
                     platform == "iOS"
                         ? "IPHONEOS_DEPLOYMENT_TARGET"
                         : platform == "macOS"
                         ? "MACOSX_DEPLOYMENT_TARGET"
                         : platform == "tvOS"
                         ? "TVOS_DEPLOYMENT_TARGET" : "WATCHOS_DEPLOYMENT_TARGET"
-                targetDebugConfig.buildSettings[deploymentKey] = .string(deploymentTarget)
-                targetReleaseConfig.buildSettings[deploymentKey] = .string(deploymentTarget)
-            }
+                } else {
+                    nil
+                }
 
-            xcodeproj.pbxproj.add(object: targetDebugConfig)
-            xcodeproj.pbxproj.add(object: targetReleaseConfig)
+            var targetBuildConfigs: [XCBuildConfiguration] = []
+            for configName in configNames {
+                var settings = baseSettings
+                if let deploymentKey, let deploymentTarget {
+                    settings[deploymentKey] = .string(deploymentTarget)
+                }
+                let config = XCBuildConfiguration(name: configName, buildSettings: settings)
+                xcodeproj.pbxproj.add(object: config)
+                targetBuildConfigs.append(config)
+            }
 
             // Create target configuration list
             let targetConfigurationList = XCConfigurationList(
-                buildConfigurations: [targetDebugConfig, targetReleaseConfig],
+                buildConfigurations: targetBuildConfigs,
                 defaultConfigurationName: "Release",
             )
             xcodeproj.pbxproj.add(object: targetConfigurationList)
@@ -265,13 +275,20 @@ public struct AddTargetTool: Sendable {
                 project.productsGroup?.children.append(productReference)
             }
 
-            // Create target folder in main group
+            // Create target folder in the appropriate group
             if let project = try xcodeproj.pbxproj.rootProject(),
                let mainGroup = project.mainGroup
             {
                 let targetGroup = PBXGroup(sourceTree: .group, name: targetName)
                 xcodeproj.pbxproj.add(object: targetGroup)
-                mainGroup.children.append(targetGroup)
+
+                let containerGroup: PBXGroup
+                if let parentGroupPath {
+                    containerGroup = try mainGroup.resolveGroupPath(parentGroupPath)
+                } else {
+                    containerGroup = mainGroup
+                }
+                containerGroup.children.append(targetGroup)
             }
 
             // Save project

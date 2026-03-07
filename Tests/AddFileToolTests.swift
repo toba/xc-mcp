@@ -260,7 +260,7 @@ struct AddFileToolTests {
         let args: [String: Value] = [
             "project_path": Value.string(projectPath.string),
             "file_path": Value.string(filePath.path),
-            "group_name": Value.string("Models"),
+            "group_name": Value.string("App/Models"),
         ]
 
         let result = try tool.execute(arguments: args)
@@ -354,7 +354,7 @@ struct AddFileToolTests {
         let args: [String: Value] = [
             "project_path": Value.string(projectPath.string),
             "file_path": Value.string(filePath.path),
-            "group_name": Value.string("Views"),
+            "group_name": Value.string("SwiftiomaticApp/Views"),
         ]
 
         let result = try tool.execute(arguments: args)
@@ -377,6 +377,93 @@ struct AddFileToolTests {
             fileRef?.path == "SwiftiomaticApp/Views/AboutTab.swift",
             "Path should be relative to project root, got: \(fileRef?.path ?? "nil")",
         )
+    }
+
+    @Test
+    func `Add file to slash-separated group path`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        // Create project with Components/TableView group hierarchy
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        let pbxproj = PBXProj()
+
+        let mainGroup = PBXGroup(sourceTree: .group)
+        pbxproj.add(object: mainGroup)
+        let productsGroup = PBXGroup(children: [], sourceTree: .group, name: "Products")
+        pbxproj.add(object: productsGroup)
+
+        let componentsGroup = PBXGroup(
+            children: [], sourceTree: .group, name: "Components", path: "Components",
+        )
+        pbxproj.add(object: componentsGroup)
+        mainGroup.children.append(componentsGroup)
+
+        let tableViewGroup = PBXGroup(
+            children: [], sourceTree: .group, name: "TableView", path: "TableView",
+        )
+        pbxproj.add(object: tableViewGroup)
+        componentsGroup.children.append(tableViewGroup)
+
+        let debugConfig = XCBuildConfiguration(name: "Debug", buildSettings: [:])
+        let releaseConfig = XCBuildConfiguration(name: "Release", buildSettings: [:])
+        pbxproj.add(object: debugConfig)
+        pbxproj.add(object: releaseConfig)
+        let configList = XCConfigurationList(
+            buildConfigurations: [debugConfig, releaseConfig],
+            defaultConfigurationName: "Release",
+        )
+        pbxproj.add(object: configList)
+
+        let project = PBXProject(
+            name: "TestProject",
+            buildConfigurationList: configList,
+            compatibilityVersion: "Xcode 14.0",
+            preferredProjectObjectVersion: 56,
+            minimizedProjectReferenceProxies: 0,
+            mainGroup: mainGroup,
+            developmentRegion: "en",
+            knownRegions: ["en", "Base"],
+            productsGroup: productsGroup,
+        )
+        pbxproj.add(object: project)
+        pbxproj.rootObject = project
+
+        let workspace = XCWorkspace(data: XCWorkspaceData(children: []))
+        let xcodeproj = XcodeProj(workspace: workspace, pbxproj: pbxproj)
+        try xcodeproj.write(path: projectPath)
+
+        // Create the file on disk
+        let fileDir = tempDir.appendingPathComponent("Components/TableView")
+        try FileManager.default.createDirectory(at: fileDir, withIntermediateDirectories: true)
+        let filePath = fileDir.appendingPathComponent("TableViewCell.swift")
+        try "// test".write(to: filePath, atomically: true, encoding: .utf8)
+
+        // Add file using slash-separated path
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(filePath.path),
+            "group_name": Value.string("Components/TableView"),
+        ])
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added file 'TableViewCell.swift'"))
+
+        // Verify file is in the TableView group
+        let reloaded = try XcodeProj(path: projectPath)
+        let tvGroup = reloaded.pbxproj.groups.first { $0.name == "TableView" }
+        let childNames = tvGroup?.children.compactMap { ($0 as? PBXFileReference)?.name } ?? []
+        #expect(childNames.contains("TableViewCell.swift"))
     }
 
     @Test

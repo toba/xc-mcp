@@ -88,37 +88,16 @@ public struct CreateGroupTool: Sendable {
             xcodeproj.pbxproj.add(object: newGroup)
 
             // Find parent group
+            guard let project = try xcodeproj.pbxproj.rootProject(),
+                  let mainGroup = project.mainGroup
+            else {
+                throw MCPError.internalError("Main group not found in project")
+            }
+
             let parentGroup: PBXGroup
             if let parentGroupName {
-                // Support path-based lookup (e.g., "Integrations/BibTeX")
-                let pathComponents = parentGroupName.split(separator: "/").map(String.init)
-
-                guard let project = try xcodeproj.pbxproj.rootProject(),
-                      let mainGroup = project.mainGroup
-                else {
-                    throw MCPError.internalError("Main group not found in project")
-                }
-
-                var currentGroup: PBXGroup = mainGroup
-                for component in pathComponents {
-                    if let childGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                        where: { $0.name == component || $0.path == component },
-                    ) {
-                        currentGroup = childGroup
-                    } else {
-                        throw MCPError.invalidParams(
-                            "Parent group '\(parentGroupName)' not found in project (failed at '\(component)')",
-                        )
-                    }
-                }
-                parentGroup = currentGroup
+                parentGroup = try mainGroup.resolveGroupPath(parentGroupName)
             } else {
-                // Use main group
-                guard let project = try xcodeproj.pbxproj.rootProject(),
-                      let mainGroup = project.mainGroup
-                else {
-                    throw MCPError.internalError("Main group not found in project")
-                }
                 parentGroup = mainGroup
             }
 

@@ -65,39 +65,17 @@ public struct RenameGroupTool: Sendable {
             }
 
             // Walk the path to find the target group
-            let pathComponents = groupPath.split(separator: "/").map(String.init)
-
-            var currentGroup: PBXGroup = mainGroup
-            for component in pathComponents.dropLast() {
-                guard
-                    let childGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                        where: { $0.name == component || $0.path == component },
-                    )
-                else {
-                    return CallTool.Result(
-                        content: [
-                            .text(
-                                "Group '\(groupPath)' not found in project (failed at '\(component)')",
-                            ),
-                        ],
-                    )
-                }
-                currentGroup = childGroup
-            }
-
-            let targetName = pathComponents.last!
-            guard
-                let targetGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                    where: { $0.name == targetName || $0.path == targetName },
-                )
-            else {
+            let targetGroup: PBXGroup
+            do {
+                targetGroup = try mainGroup.resolveGroupPath(groupPath)
+            } catch {
                 return CallTool.Result(
                     content: [.text("Group '\(groupPath)' not found in project")],
                 )
             }
 
             // Update group name and path
-            let oldName = targetGroup.name ?? targetGroup.path ?? targetName
+            let oldName = targetGroup.name ?? targetGroup.path ?? groupPath
             targetGroup.name = newName
             if targetGroup.path == oldName {
                 targetGroup.path = newName

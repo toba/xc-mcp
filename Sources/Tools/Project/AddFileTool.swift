@@ -41,7 +41,7 @@ public struct AddFileTool: Sendable {
                     "group_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the group to add the file to (optional, defaults to main group)",
+                            "Group to add the file to, supports slash-separated paths (e.g. 'Components/TableView'). Optional, defaults to main group.",
                         ),
                     ]),
                     "target_name": .object([
@@ -91,23 +91,16 @@ public struct AddFileTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the group to add the file to
+            guard let project = try xcodeproj.pbxproj.rootProject(),
+                  let mainGroup = project.mainGroup
+            else {
+                throw MCPError.internalError("Main group not found in project")
+            }
+
             let targetGroup: PBXGroup
             if let groupName {
-                // Find group by name or path
-                if let foundGroup = xcodeproj.pbxproj.groups.first(where: {
-                    $0.name == groupName || $0.path == groupName
-                }) {
-                    targetGroup = foundGroup
-                } else {
-                    throw MCPError.invalidParams("Group '\(groupName)' not found in project")
-                }
+                targetGroup = try mainGroup.resolveGroupPath(groupName)
             } else {
-                // Use main group
-                guard let project = try xcodeproj.pbxproj.rootProject(),
-                      let mainGroup = project.mainGroup
-                else {
-                    throw MCPError.internalError("Main group not found in project")
-                }
                 targetGroup = mainGroup
             }
 

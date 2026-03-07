@@ -91,37 +91,16 @@ public struct AddFolderTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the group to add the folder to (must be done before calculating relative path)
+            guard let project = try xcodeproj.pbxproj.rootProject(),
+                  let mainGroup = project.mainGroup
+            else {
+                throw MCPError.internalError("Main group not found in project")
+            }
+
             let targetGroup: PBXGroup
             if let groupName {
-                // Support path-based lookup (e.g., "Integrations/BibTeX")
-                let pathComponents = groupName.split(separator: "/").map(String.init)
-
-                guard let project = try xcodeproj.pbxproj.rootProject(),
-                      let mainGroup = project.mainGroup
-                else {
-                    throw MCPError.internalError("Main group not found in project")
-                }
-
-                var currentGroup: PBXGroup = mainGroup
-                for component in pathComponents {
-                    if let childGroup = currentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                        where: { $0.name == component || $0.path == component },
-                    ) {
-                        currentGroup = childGroup
-                    } else {
-                        throw MCPError.invalidParams(
-                            "Group '\(groupName)' not found in project (failed at '\(component)')",
-                        )
-                    }
-                }
-                targetGroup = currentGroup
+                targetGroup = try mainGroup.resolveGroupPath(groupName)
             } else {
-                // Use main group
-                guard let project = try xcodeproj.pbxproj.rootProject(),
-                      let mainGroup = project.mainGroup
-                else {
-                    throw MCPError.internalError("Main group not found in project")
-                }
                 targetGroup = mainGroup
             }
 

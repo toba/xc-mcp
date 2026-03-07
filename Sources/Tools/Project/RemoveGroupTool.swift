@@ -69,35 +69,22 @@ public struct RemoveGroupTool: Sendable {
             }
 
             // Walk the path to find the target group and its parent
-            let pathComponents = groupName.split(separator: "/").map(String.init)
-
-            var parentGroup: PBXGroup = mainGroup
-            for component in pathComponents.dropLast() {
-                guard
-                    let childGroup = parentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                        where: { $0.name == component || $0.path == component },
-                    )
-                else {
-                    return CallTool.Result(
-                        content: [
-                            .text(
-                                "Group '\(groupName)' not found in project (failed at '\(component)')",
-                            ),
-                        ],
-                    )
-                }
-                parentGroup = childGroup
-            }
-
-            let targetName = pathComponents.last!
-            guard
-                let targetGroup = parentGroup.children.compactMap({ $0 as? PBXGroup }).first(
-                    where: { $0.name == targetName || $0.path == targetName },
-                )
-            else {
+            let targetGroup: PBXGroup
+            do {
+                targetGroup = try mainGroup.resolveGroupPath(groupName)
+            } catch {
                 return CallTool.Result(
                     content: [.text("Group '\(groupName)' not found in project")],
                 )
+            }
+
+            let pathComponents = groupName.split(separator: "/")
+            let parentGroup: PBXGroup
+            if pathComponents.count > 1 {
+                let parentPath = pathComponents.dropLast().joined(separator: "/")
+                parentGroup = try mainGroup.resolveGroupPath(parentPath)
+            } else {
+                parentGroup = mainGroup
             }
 
             // Check for children when not recursive
