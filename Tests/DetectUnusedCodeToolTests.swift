@@ -34,6 +34,11 @@ struct DetectUnusedCodeToolTests {
         #expect(properties["skip_build"] != nil)
         #expect(properties["exclude_targets"] != nil)
         #expect(properties["report_exclude"] != nil)
+        #expect(properties["format"] != nil)
+        #expect(properties["limit"] != nil)
+        #expect(properties["kind_filter"] != nil)
+        #expect(properties["file_filter"] != nil)
+        #expect(properties["result_file"] != nil)
     }
 
     @Test
@@ -141,7 +146,7 @@ struct DetectUnusedCodeToolTests {
     }
 
     @Test
-    func `Formats results grouped by file`() {
+    func `Formats detail results grouped by file`() {
         let declarations = [
             DetectUnusedCodeTool.UnusedDeclaration(
                 name: "unusedFunc()", kind: "function.free",
@@ -159,7 +164,10 @@ struct DetectUnusedCodeToolTests {
                 file: "/path/to/Bar.swift", line: 1, column: 1,
             ),
         ]
-        let output = DetectUnusedCodeTool.formatResults(declarations)
+        let output = DetectUnusedCodeTool.formatDetail(
+            declarations, limit: 0, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json",
+        )
         #expect(output.contains("3 unused declaration(s) found:"))
         #expect(output.contains("/path/to/Bar.swift"))
         #expect(output.contains("/path/to/Foo.swift"))
@@ -199,5 +207,221 @@ struct DetectUnusedCodeToolTests {
         #expect(file == "/path/to/file.swift")
         #expect(line == 0)
         #expect(column == 0)
+    }
+
+    // MARK: - Summary format tests
+
+    @Test
+    func `Summary format shows kind and file breakdown`() {
+        let declarations = Self.sampleDeclarations()
+        let output = DetectUnusedCodeTool.formatSummary(
+            declarations, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/periphery-abc123.json",
+        )
+
+        #expect(output.contains("5 unused declaration(s) in 3 file(s)"))
+        #expect(output.contains("By kind:"))
+        #expect(output.contains("func"))
+        #expect(output.contains("import"))
+        #expect(output.contains("property"))
+        #expect(output.contains("By file"))
+        #expect(output.contains("Results cached: /tmp/periphery-abc123.json"))
+        #expect(output.contains("Pass result_file to drill into results without re-scanning."))
+    }
+
+    @Test
+    func `Summary format shows filtered count`() {
+        let declarations = Self.sampleDeclarations()
+        let filtered = Array(declarations.prefix(2))
+        let output = DetectUnusedCodeTool.formatSummary(
+            filtered, totalUnfiltered: declarations.count, cachePath: "/tmp/test.json",
+        )
+
+        #expect(output.contains("2 unused declaration(s) in"))
+        #expect(output.contains("filtered from 5 total"))
+    }
+
+    // MARK: - Detail format tests
+
+    @Test
+    func `Detail format shows declarations with cache path`() {
+        let declarations = Self.sampleDeclarations()
+        let output = DetectUnusedCodeTool.formatDetail(
+            declarations, limit: 100, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/periphery-abc123.json",
+        )
+
+        #expect(output.contains("5 unused declaration(s) found:"))
+        #expect(output.contains("func unusedFunc()"))
+        #expect(output.contains("Results cached: /tmp/periphery-abc123.json"))
+    }
+
+    @Test
+    func `Detail format truncates at limit`() {
+        let declarations = Self.sampleDeclarations()
+        let output = DetectUnusedCodeTool.formatDetail(
+            declarations, limit: 2, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json",
+        )
+
+        #expect(output.contains("3 more declaration(s) omitted (limit: 2)"))
+    }
+
+    @Test
+    func `Detail format with limit 0 shows all`() {
+        let declarations = Self.sampleDeclarations()
+        let output = DetectUnusedCodeTool.formatDetail(
+            declarations, limit: 0, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json",
+        )
+
+        #expect(!output.contains("omitted"))
+        #expect(output.contains("5 unused declaration(s) found:"))
+    }
+
+    @Test
+    func `Detail format shows filtered count`() {
+        let declarations = Self.sampleDeclarations()
+        let output = DetectUnusedCodeTool.formatDetail(
+            Array(declarations.prefix(2)), limit: 100,
+            totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json",
+        )
+
+        #expect(output.contains("filtered from 5 total"))
+    }
+
+    // MARK: - Filter tests
+
+    @Test
+    func `Kind filter includes matching declarations`() {
+        let declarations = Self.sampleDeclarations()
+        let filtered = DetectUnusedCodeTool.applyFilters(
+            declarations, kindFilter: ["import"], fileFilter: [],
+        )
+
+        #expect(filtered.count == 1)
+        #expect(filtered[0].name == "Foundation")
+    }
+
+    @Test
+    func `Kind filter with multiple kinds`() {
+        let declarations = Self.sampleDeclarations()
+        let filtered = DetectUnusedCodeTool.applyFilters(
+            declarations, kindFilter: ["func", "import"], fileFilter: [],
+        )
+
+        #expect(filtered.count == 2)
+    }
+
+    @Test
+    func `File filter includes matching declarations`() {
+        let declarations = Self.sampleDeclarations()
+        let filtered = DetectUnusedCodeTool.applyFilters(
+            declarations, kindFilter: [], fileFilter: ["Foo.swift"],
+        )
+
+        #expect(filtered.count == 2)
+        #expect(filtered.allSatisfy { $0.file.contains("Foo.swift") })
+    }
+
+    @Test
+    func `File filter with directory substring`() {
+        let declarations = Self.sampleDeclarations()
+        let filtered = DetectUnusedCodeTool.applyFilters(
+            declarations, kindFilter: [], fileFilter: ["/path/to/"],
+        )
+
+        #expect(filtered.count == 5) // all match
+    }
+
+    @Test
+    func `Combined kind and file filters`() {
+        let declarations = Self.sampleDeclarations()
+        let filtered = DetectUnusedCodeTool.applyFilters(
+            declarations, kindFilter: ["func"], fileFilter: ["Foo.swift"],
+        )
+
+        #expect(filtered.count == 1)
+        #expect(filtered[0].name == "unusedFunc()")
+    }
+
+    @Test
+    func `Empty filters return all declarations`() {
+        let declarations = Self.sampleDeclarations()
+        let filtered = DetectUnusedCodeTool.applyFilters(
+            declarations, kindFilter: [], fileFilter: [],
+        )
+
+        #expect(filtered.count == declarations.count)
+    }
+
+    // MARK: - Hash tests
+
+    @Test
+    func `Short hash produces 12 char hex string`() throws {
+        let hash = DetectUnusedCodeTool.shortHash("test input")
+        #expect(hash.count == 12) // 6 bytes * 2 hex chars
+        #expect(try hash.allSatisfy(\.isHexDigit))
+    }
+
+    @Test
+    func `Short hash is deterministic`() {
+        let hash1 = DetectUnusedCodeTool.shortHash("same input")
+        let hash2 = DetectUnusedCodeTool.shortHash("same input")
+        #expect(hash1 == hash2)
+    }
+
+    @Test
+    func `Short hash differs for different inputs`() {
+        let hash1 = DetectUnusedCodeTool.shortHash("input A")
+        let hash2 = DetectUnusedCodeTool.shortHash("input B")
+        #expect(hash1 != hash2)
+    }
+
+    // MARK: - Compact path tests
+
+    @Test
+    func `Compact path strips Users prefix`() {
+        let result = DetectUnusedCodeTool.compactPath("/Users/jason/Developer/project/Foo.swift")
+        #expect(result == "~/Developer/project/Foo.swift")
+    }
+
+    @Test
+    func `Compact path leaves non-Users paths unchanged`() {
+        let result = DetectUnusedCodeTool.compactPath("/var/tmp/Foo.swift")
+        #expect(result == "/var/tmp/Foo.swift")
+    }
+
+    // MARK: - Helpers
+
+    static func sampleDeclarations() -> [DetectUnusedCodeTool.UnusedDeclaration] {
+        [
+            DetectUnusedCodeTool.UnusedDeclaration(
+                name: "unusedFunc()", kind: "function.free",
+                hints: ["unused"], accessibility: "internal",
+                file: "/path/to/Foo.swift", line: 12, column: 6,
+            ),
+            DetectUnusedCodeTool.UnusedDeclaration(
+                name: "oldProperty", kind: "var.instance",
+                hints: ["unused"], accessibility: "internal",
+                file: "/path/to/Foo.swift", line: 45, column: 8,
+            ),
+            DetectUnusedCodeTool.UnusedDeclaration(
+                name: "Foundation", kind: "import",
+                hints: ["unusedImport"], accessibility: "internal",
+                file: "/path/to/Bar.swift", line: 1, column: 1,
+            ),
+            DetectUnusedCodeTool.UnusedDeclaration(
+                name: "helperMethod()", kind: "function.method.instance",
+                hints: ["unused"], accessibility: "public",
+                file: "/path/to/Baz.swift", line: 20, column: 5,
+            ),
+            DetectUnusedCodeTool.UnusedDeclaration(
+                name: "debugFlag", kind: "var.instance",
+                hints: ["assignOnlyProperty"], accessibility: "internal",
+                file: "/path/to/Baz.swift", line: 10, column: 9,
+            ),
+        ]
     }
 }
