@@ -459,6 +459,8 @@ public struct DetectUnusedCodeTool: Sendable {
         lines.append("Results cached: \(cachePath)")
         lines.append("Checklist: \(checklistPath)")
         lines.append("Use result_file to drill in without re-scanning. Use mark to track progress.")
+        lines.append("")
+        lines.append(Self.agentInstructions)
 
         return lines.joined(separator: "\n")
     }
@@ -514,9 +516,22 @@ public struct DetectUnusedCodeTool: Sendable {
         lines.append("Results cached: \(cachePath)")
         lines.append("Checklist: \(checklistPath)")
         lines.append("Use result_file to drill in without re-scanning. Use mark to track progress.")
+        lines.append("")
+        lines.append(Self.agentInstructions)
 
         return lines.joined(separator: "\n")
     }
+
+    // MARK: - Agent Instructions
+
+    static let agentInstructions = """
+    IMPORTANT — Periphery can report false positives. For EVERY finding you must:
+    1. Read the code and verify whether it is truly unused.
+    2. If it IS unused → remove the dead code, then mark the item done.
+    3. If it is NOT unused (false positive) → add `// periphery:ignore` on the \
+    line above the declaration, then mark the item false_positive.
+    Every item must be checked off — do not leave items pending.
+    """
 
     // MARK: - Checklist Helpers
 
