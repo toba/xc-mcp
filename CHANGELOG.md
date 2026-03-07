@@ -13,6 +13,7 @@
 
 ### 🐞 Fixes
 
+- Fix `detect_unused_code` checklist format exceeding MCP token limit on large projects; replace separate checklist mode with always-on disk checklist and compact summary output
 - Fix subprocess orphan processes on MCP abort/timeout; configure `teardownSequence` (SIGTERM → 5s → SIGKILL) so cancelled builds/tests don't hold the SPM lock ([#171](https://github.com/toba/xc-mcp/issues/171))
 - Fix `validate_project` crash from `PBXBuildFile` Hashable violation; use `ObjectIdentifier` instead of `Set<PBXBuildFile>`
 - Fix `formatTestToolResult` exit-code override suppressing failures when no tests ran; guard with `totalTestCount > 0` ([#166](https://github.com/toba/xc-mcp/issues/166))

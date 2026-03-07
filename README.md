@@ -19,6 +19,7 @@ This project [iterates rapidly](CHANGELOG.md). Fairly complex issues had to be s
 - **Gesture presets**: `gesture` provides named presets — `scroll_up`, `pull_to_refresh`, `swipe_from_left_edge`, etc. — so agents don't have to do coordinate math every time they want to scroll a list. Eight presets, all computed as fractions of the screen dimensions you give it.
 - **Xcode state sync**: `sync_xcode_defaults` reads your active scheme and run destination straight from Xcode's `UserInterfaceState.xcuserstate`. Open a project in Xcode, pick your scheme, then let the agent inherit that context without manual configuration.
 - **Persistent environment variables**: `set_session_defaults(env: {"DYLD_PRINT_LIBRARIES": "1"})` sets custom env vars that automatically apply to *every* build, test, and run command for the session. Per-invocation env overrides session defaults (same key wins). Useful for `DYLD_` debugging vars, custom build flags, CI env passthrough. `clear_session_defaults` resets everything.
+- **Unused code detection**: `detect_unused_code` wraps [Periphery](https://github.com/peripheryapp/periphery) to find unused declarations, redundant imports, assign-only properties, and unnecessarily public symbols across Swift packages and Xcode projects. Returns a summary by default; drill into cached results with `format: "detail"` or `format: "checklist"` — the checklist format gives agents a persistent, numbered list they can mark off as they clean up, without re-scanning every time.
 - **Dynamic tool workflows**: `manage_workflows` lets you enable or disable entire tool categories (project, simulator, debug, etc.) at runtime. When an agent doesn't need 130 tools cluttering its context, disable the irrelevant ones. The server sends `tools/list_changed` notifications so clients update automatically.
 
 ## Built On
@@ -47,7 +48,7 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
   - [Discovery](#discovery-6-tools)
   - [Instruments](#instruments-3-tools)
   - [Logging](#logging-4-tools)
-  - [Swift Package Manager](#swift-package-manager-9-tools)
+  - [Swift Package Manager](#swift-package-manager-10-tools)
   - [Localization](#localization-24-tools)
   - [Session & Utilities](#session--utilities-8-tools)
 - [Tests](#tests)
@@ -408,7 +409,7 @@ Profiling via `xctrace` — record traces, list available templates and instrume
 | `start_device_log_cap` | Start capturing device logs |
 | `stop_device_log_cap` | Stop capturing device logs |
 
-### Swift Package Manager (9 tools)
+### Swift Package Manager (10 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -421,6 +422,7 @@ Profiling via `xctrace` — record traces, list available templates and instrume
 | `swift_format` | Run `swiftformat` on a package or specific paths. Supports `dry_run` to preview changes. Auto-detects `.swiftformat` config |
 | `swift_lint` | Run `swiftlint` on a package or specific paths. Parses JSON output into structured violations grouped by file. Supports `fix` mode for auto-correction. Auto-detects `.swiftlint.yml` config |
 | `swift_diagnostics` | Clean-build a package and collect *all* compiler warnings, errors, and lint violations in one shot. Cached builds swallow warnings on success — this forces recompilation so nothing hides. Optionally includes swiftlint. Returns diagnostics even when the build succeeds |
+| `detect_unused_code` | Find unused code via [Periphery](https://github.com/peripheryapp/periphery). Scans Swift packages or Xcode projects for unused declarations, redundant imports, assign-only properties, and redundant public accessibility. Three output formats: `summary` (counts by kind + top files), `detail` (per-declaration, grouped by file), `checklist` (persistent numbered list with mark/status tracking). Results are cached to disk — pass `result_file` to filter and drill down without re-scanning. Supports `kind_filter`, `file_filter`, `retain_public`, `skip_build`, `exclude_targets`, and `report_exclude` |
 
 ### Localization (24 tools)
 

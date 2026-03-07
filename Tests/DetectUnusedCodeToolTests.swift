@@ -166,9 +166,14 @@ struct DetectUnusedCodeToolTests {
                 file: "/path/to/Bar.swift", line: 1, column: 1,
             ),
         ]
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
         let output = DetectUnusedCodeTool.formatDetail(
             declarations, limit: 0, totalUnfiltered: declarations.count,
             cachePath: "/tmp/test.json",
+            checklistPath: "/tmp/test-checklist.json",
+            state: state,
         )
         #expect(output.contains("3 unused declaration(s) found:"))
         #expect(output.contains("/path/to/Bar.swift"))
@@ -216,9 +221,14 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `Summary format shows kind and file breakdown`() {
         let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/periphery-abc123.json",
+        )
         let output = DetectUnusedCodeTool.formatSummary(
             declarations, totalUnfiltered: declarations.count,
             cachePath: "/tmp/periphery-abc123.json",
+            checklistPath: "/tmp/periphery-abc123-checklist.json",
+            state: state,
         )
 
         #expect(output.contains("5 unused declaration(s) in 3 file(s)"))
@@ -228,15 +238,20 @@ struct DetectUnusedCodeToolTests {
         #expect(output.contains("property"))
         #expect(output.contains("By file"))
         #expect(output.contains("Results cached: /tmp/periphery-abc123.json"))
-        #expect(output.contains("Pass result_file to drill into results without re-scanning."))
     }
 
     @Test
     func `Summary format shows filtered count`() {
         let declarations = Self.sampleDeclarations()
         let filtered = Array(declarations.prefix(2))
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
         let output = DetectUnusedCodeTool.formatSummary(
-            filtered, totalUnfiltered: declarations.count, cachePath: "/tmp/test.json",
+            filtered, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json",
+            checklistPath: "/tmp/test-checklist.json",
+            state: state,
         )
 
         #expect(output.contains("2 unused declaration(s) in"))
@@ -248,9 +263,14 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `Detail format shows declarations with cache path`() {
         let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/periphery-abc123.json",
+        )
         let output = DetectUnusedCodeTool.formatDetail(
             declarations, limit: 100, totalUnfiltered: declarations.count,
             cachePath: "/tmp/periphery-abc123.json",
+            checklistPath: "/tmp/periphery-abc123-checklist.json",
+            state: state,
         )
 
         #expect(output.contains("5 unused declaration(s) found:"))
@@ -261,9 +281,14 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `Detail format truncates at limit`() {
         let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
         let output = DetectUnusedCodeTool.formatDetail(
             declarations, limit: 2, totalUnfiltered: declarations.count,
             cachePath: "/tmp/test.json",
+            checklistPath: "/tmp/test-checklist.json",
+            state: state,
         )
 
         #expect(output.contains("3 more declaration(s) omitted (limit: 2)"))
@@ -272,9 +297,14 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `Detail format with limit 0 shows all`() {
         let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
         let output = DetectUnusedCodeTool.formatDetail(
             declarations, limit: 0, totalUnfiltered: declarations.count,
             cachePath: "/tmp/test.json",
+            checklistPath: "/tmp/test-checklist.json",
+            state: state,
         )
 
         #expect(!output.contains("omitted"))
@@ -284,10 +314,15 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `Detail format shows filtered count`() {
         let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
         let output = DetectUnusedCodeTool.formatDetail(
             Array(declarations.prefix(2)), limit: 100,
             totalUnfiltered: declarations.count,
             cachePath: "/tmp/test.json",
+            checklistPath: "/tmp/test-checklist.json",
+            state: state,
         )
 
         #expect(output.contains("filtered from 5 total"))
@@ -398,55 +433,48 @@ struct DetectUnusedCodeToolTests {
     // MARK: - Checklist tests
 
     @Test
-    func `Checklist format renders numbered items with pending markers`() {
+    func `Summary includes checklist path when state exists`() {
         let declarations = Self.sampleDeclarations()
         let state = DetectUnusedCodeTool.createChecklist(
             from: declarations, cachePath: "/tmp/periphery-abc123.json",
         )
 
-        let output = DetectUnusedCodeTool.formatChecklist(
-            state: state, declarations: declarations,
-            kindFilter: [], fileFilter: [],
-            checklistPath: "/tmp/periphery-abc123-checklist.json",
+        let output = DetectUnusedCodeTool.formatSummary(
+            declarations, totalUnfiltered: declarations.count,
             cachePath: "/tmp/periphery-abc123.json",
+            checklistPath: "/tmp/periphery-abc123-checklist.json",
+            state: state,
         )
 
-        #expect(output.contains("5/5 remaining"))
-        #expect(output.contains("[ ]"))
-        #expect(output.contains("func unusedFunc()"))
-        #expect(output.contains("property oldProperty"))
-        #expect(output.contains("import Foundation"))
-        #expect(output.contains("[unused]"))
+        // Fresh checklist — no progress line (all pending)
+        #expect(!output.contains("Progress:"))
         #expect(output.contains("Checklist: /tmp/periphery-abc123-checklist.json"))
+        #expect(output.contains("By kind:"))
+        #expect(output.contains("func"))
     }
 
     @Test
-    func `Mark updates item status and persists note`() {
+    func `Summary shows progress after marking items`() {
         let declarations = Self.sampleDeclarations()
         var state = DetectUnusedCodeTool.createChecklist(
             from: declarations, cachePath: "/tmp/test.json",
         )
 
-        // Mark item 2 as done with a note
         state.items[1].status = .done
         state.items[1].note = "Removed"
-
-        // Mark item 3 as skipped
         state.items[2].status = .skipped
         state.items[2].note = "Needed for NSObject"
 
-        let output = DetectUnusedCodeTool.formatChecklist(
-            state: state, declarations: declarations,
-            kindFilter: [], fileFilter: [],
-            checklistPath: "/tmp/test-checklist.json",
+        let output = DetectUnusedCodeTool.formatSummary(
+            declarations, totalUnfiltered: declarations.count,
             cachePath: "/tmp/test.json",
+            checklistPath: "/tmp/test-checklist.json",
+            state: state,
         )
 
-        #expect(output.contains("3/5 remaining"))
-        #expect(output.contains("[x]"))
-        #expect(output.contains("(done: Removed)"))
-        #expect(output.contains("[-]"))
-        #expect(output.contains("(skipped: Needed for NSObject)"))
+        #expect(output.contains("3 pending"))
+        #expect(output.contains("1 done"))
+        #expect(output.contains("1 skipped"))
     }
 
     @Test
@@ -488,28 +516,6 @@ struct DetectUnusedCodeToolTests {
     }
 
     @Test
-    func `Filtered checklist preserves global indices`() {
-        let declarations = Self.sampleDeclarations()
-        let state = DetectUnusedCodeTool.createChecklist(
-            from: declarations, cachePath: "/tmp/test.json",
-        )
-
-        let output = DetectUnusedCodeTool.formatChecklist(
-            state: state, declarations: declarations,
-            kindFilter: ["import"], fileFilter: [],
-            checklistPath: "/tmp/test-checklist.json",
-            cachePath: "/tmp/test.json",
-        )
-
-        // Should show only item 3 (Foundation import) but with index 3
-        #expect(output.contains("3  . [ ]"))
-        // Should NOT show items that don't match the filter
-        #expect(!output.contains("unusedFunc"))
-        #expect(!output.contains("oldProperty"))
-        #expect(output.contains("filtered view"))
-    }
-
-    @Test
     func `makeItemID is deterministic`() {
         let decl = DetectUnusedCodeTool.UnusedDeclaration(
             name: "foo()", kind: "function.free",
@@ -545,7 +551,7 @@ struct DetectUnusedCodeToolTests {
     }
 
     @Test
-    func `false_positive marker renders correctly`() {
+    func `false_positive is tracked in progress`() {
         let declarations = Self.sampleDeclarations()
         var state = DetectUnusedCodeTool.createChecklist(
             from: declarations, cachePath: "/tmp/test.json",
@@ -554,16 +560,15 @@ struct DetectUnusedCodeToolTests {
         state.items[4].status = .falsePositive
         state.items[4].note = "Used via reflection"
 
-        let output = DetectUnusedCodeTool.formatChecklist(
-            state: state, declarations: declarations,
-            kindFilter: [], fileFilter: [],
-            checklistPath: "/tmp/test-checklist.json",
+        let output = DetectUnusedCodeTool.formatSummary(
+            declarations, totalUnfiltered: declarations.count,
             cachePath: "/tmp/test.json",
+            checklistPath: "/tmp/test-checklist.json",
+            state: state,
         )
 
-        #expect(output.contains("[!]"))
-        #expect(output.contains("(false_positive: Used via reflection)"))
-        #expect(output.contains("4/5 remaining"))
+        #expect(output.contains("4 pending"))
+        #expect(output.contains("1 false positive"))
     }
 
     // MARK: - Helpers
