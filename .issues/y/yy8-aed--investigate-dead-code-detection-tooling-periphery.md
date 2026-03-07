@@ -1,15 +1,15 @@
 ---
 # yy8-aed
 title: Investigate dead code detection tooling (Periphery or equivalent)
-status: in-progress
+status: review
 type: feature
 priority: normal
 created_at: 2026-03-07T18:49:04Z
-updated_at: 2026-03-07T19:07:05Z
+updated_at: 2026-03-07T20:02:41Z
 sync:
     github:
         issue_number: "171"
-        synced_at: "2026-03-07T19:13:25Z"
+        synced_at: "2026-03-07T20:08:09Z"
 ---
 
 Investigate integrating [Periphery](https://github.com/peripheryapp/periphery) or building equivalent functionality to detect unused code in Swift projects.
@@ -273,3 +273,20 @@ Reading index store data via libIndexStore is well within the same toolchain sur
 5. Consider adding swift-syntax later for higher precision if needed
 
 This phased approach ships value immediately while keeping the door open for deeper integration.
+
+
+## Summary of Changes
+
+Committed in v1.25.0:
+
+1. **`detect_unused_code` tool** — wraps `periphery scan --format json`, registered in xc-swift and monolithic servers. Parses Periphery JSON output into structured text grouped by file, consistent with `swift_lint` output format. 10 unit tests.
+
+2. **Subprocess teardown fix** — configured `PlatformOptions.teardownSequence` with graceful shutdown (SIGTERM → 5s → SIGKILL) in `ProcessResult.runSubprocess`. Prevents orphan child processes on MCP abort/timeout that were blocking subsequent builds/tests by holding the SPM build lock.
+
+3. **`ServerToolDirectory` backfill** — added missing `swift_format`, `swift_lint`, `get_coverage_report`, `get_file_coverage` entries.
+
+4. **swift-review skill** — added Subprocess teardown learning to §4 Structured Concurrency.
+
+### Remaining
+
+E2E testing against real projects (SPM package and Xcode project with schemes).

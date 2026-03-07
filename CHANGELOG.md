@@ -4,6 +4,7 @@
 
 ### ✨ Features
 
+- Add `detect_unused_code` tool wrapping Periphery CLI; finds unused declarations, redundant imports, assign-only properties, and redundant public accessibility in Swift projects ([#171](https://github.com/toba/xc-mcp/issues/171))
 - `test_macos` now returns XCTest `measure()` timing data in results; average, relative standard deviation, and individual values
 - Add JSON output mode (`format: "json"`) and field selection (`fields`) to discovery tools; `show_build_settings`, `list_schemes`, `list_test_plan_targets`, `discover_projs` ([#163](https://github.com/toba/xc-mcp/issues/163))
 - Add `get_coverage_report` and `get_file_coverage` tools; per-target and function-level coverage from xcresult bundles
@@ -12,6 +13,8 @@
 
 ### 🐞 Fixes
 
+- Fix subprocess orphan processes on MCP abort/timeout; configure `teardownSequence` (SIGTERM → 5s → SIGKILL) so cancelled builds/tests don't hold the SPM lock ([#171](https://github.com/toba/xc-mcp/issues/171))
+- Fix `validate_project` crash from `PBXBuildFile` Hashable violation; use `ObjectIdentifier` instead of `Set<PBXBuildFile>`
 - Fix `formatTestToolResult` exit-code override suppressing failures when no tests ran; guard with `totalTestCount > 0` ([#166](https://github.com/toba/xc-mcp/issues/166))
 - Fix `swift_package_test` reporting passing tests as MCP error -32603; override non-zero exit code when parsed output confirms all tests passed ([#160](https://github.com/toba/xc-mcp/issues/160))
 - Fix `add_file` creating duplicate `PBXFileReference` entries and miscomputing paths for groups with a `path` property; uses `sourceRoot` when file is outside the group's resolved path, deduplicates existing refs ([#159](https://github.com/toba/xc-mcp/issues/159))
@@ -28,6 +31,8 @@
 
 ### 🗜️ Tweaks
 
+- Isolate session defaults by PPID so parallel MCP clients don't clobber each other
+- Enhance test plan error hints with scheme awareness; suggests the correct scheme when a test target isn't in the specified scheme
 - Trim verbose tool descriptions; reduce token overhead for 7 tools ([#163](https://github.com/toba/xc-mcp/issues/163))
 - Evaluate MCP vs CLI architecture; concluded MCP should be kept with incremental improvements ([#161](https://github.com/toba/xc-mcp/issues/161))
 - Investigate XcodeBuildMCP xcresult/stderr output fixes; no action needed; our combined-stream approach avoids the issues by design
