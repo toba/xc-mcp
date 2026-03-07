@@ -66,8 +66,31 @@ public struct DetectUnusedCodeTool: Sendable {
                     "format": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Output format: \"summary\" (default) shows counts by kind and top files; \"detail\" shows per-declaration output grouped by file.",
+                            "Output format: \"summary\" (default) shows counts by kind and top files; \"detail\" shows per-declaration output grouped by file; \"checklist\" shows a numbered, markable list for iterative cleanup.",
                         ),
+                    ]),
+                    "mark": .object([
+                        "type": .string("object"),
+                        "description": .string(
+                            "Mark checklist items (only with format: \"checklist\"). Properties: indices (array of 1-based integers), status (\"done\"|\"skipped\"|\"false_positive\"|\"pending\"), note (optional string).",
+                        ),
+                        "properties": .object([
+                            "indices": .object([
+                                "type": .string("array"),
+                                "items": .object(["type": .string("integer")]),
+                            ]),
+                            "status": .object([
+                                "type": .string("string"),
+                                "enum": .array([
+                                    .string("done"), .string("skipped"),
+                                    .string("false_positive"), .string("pending"),
+                                ]),
+                            ]),
+                            "note": .object([
+                                "type": .string("string"),
+                            ]),
+                        ]),
+                        "required": .array([.string("indices"), .string("status")]),
                     ]),
                     "limit": .object([
                         "type": .string("integer"),
@@ -125,6 +148,41 @@ public struct DetectUnusedCodeTool: Sendable {
             let (rawJSON, cPath) = try await runPeripheryScan(arguments: arguments)
             declarations = Self.parseJSONOutput(rawJSON)
             cachePath = cPath
+        }
+
+        if format == "checklist" {
+            let clPath = Self.checklistPath(forCache: cachePath)
+            var state: ChecklistState
+
+            if let existing = Self.loadChecklist(path: clPath) {
+                state = existing
+            } else {
+                if declarations.isEmpty {
+                    return CallTool.Result(content: [.text("No unused code found.")])
+                }
+                state = Self.createChecklist(from: declarations, cachePath: cachePath)
+            }
+
+            // Apply mark actions
+            if let markAction = Self.parseMarkAction(from: arguments) {
+                for index in markAction.indices {
+                    let zeroIndex = index - 1
+                    guard zeroIndex >= 0, zeroIndex < state.items.count else { continue }
+                    state.items[zeroIndex].status = markAction.status
+                    if let note = markAction.note {
+                        state.items[zeroIndex].note = note
+                    }
+                }
+            }
+
+            try Self.saveChecklist(state, path: clPath)
+
+            let message = Self.formatChecklist(
+                state: state, declarations: declarations,
+                kindFilter: kindFilter, fileFilter: fileFilter,
+                checklistPath: clPath, cachePath: cachePath,
+            )
+            return CallTool.Result(content: [.text(message)])
         }
 
         // Apply filters
@@ -280,6 +338,33 @@ public struct DetectUnusedCodeTool: Sendable {
         let column: Int
     }
 
+    // MARK: - Checklist Models
+
+    struct ChecklistItem: Codable {
+        let id: String
+        var status: ChecklistStatus
+        var note: String?
+    }
+
+    enum ChecklistStatus: String, Codable {
+        case pending
+        case done
+        case skipped
+        case falsePositive = "false_positive"
+    }
+
+    struct ChecklistState: Codable {
+        let version: Int
+        let source: String
+        var items: [ChecklistItem]
+    }
+
+    struct MarkAction {
+        let indices: [Int]
+        let status: ChecklistStatus
+        let note: String?
+    }
+
     private struct PeripheryEntry: Decodable {
         let name: String
         let kind: String
@@ -423,6 +508,151 @@ public struct DetectUnusedCodeTool: Sendable {
         lines.append("")
         lines.append("Results cached: \(cachePath)")
         lines.append("Pass result_file to drill into results without re-scanning.")
+
+        return lines.joined(separator: "\n")
+    }
+
+    // MARK: - Checklist Helpers
+
+    static func makeItemID(_ decl: UnusedDeclaration) -> String {
+        "\(decl.file):\(decl.line):\(decl.column):\(decl.name)"
+    }
+
+    static func checklistPath(forCache cachePath: String) -> String {
+        if cachePath.hasSuffix(".json") {
+            return String(cachePath.dropLast(5)) + "-checklist.json"
+        }
+        return cachePath + "-checklist"
+    }
+
+    static func loadChecklist(path: String) -> ChecklistState? {
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
+              let state = try? JSONDecoder().decode(ChecklistState.self, from: data)
+        else {
+            return nil
+        }
+        return state
+    }
+
+    static func saveChecklist(_ state: ChecklistState, path: String) throws {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(state)
+        try data.write(to: URL(fileURLWithPath: path))
+    }
+
+    static func createChecklist(
+        from declarations: [UnusedDeclaration], cachePath: String,
+    ) -> ChecklistState {
+        let items = declarations.map { decl in
+            ChecklistItem(id: makeItemID(decl), status: .pending)
+        }
+        return ChecklistState(version: 1, source: cachePath, items: items)
+    }
+
+    static func parseMarkAction(from arguments: [String: Value]) -> MarkAction? {
+        guard case let .object(markObj) = arguments["mark"],
+              case let .array(indicesArray) = markObj["indices"],
+              case let .string(statusStr) = markObj["status"],
+              let status = ChecklistStatus(rawValue: statusStr)
+        else {
+            return nil
+        }
+        let indices = indicesArray.compactMap { value -> Int? in
+            if case let .int(i) = value { return i }
+            if case let .double(d) = value, d == d.rounded() { return Int(d) }
+            return nil
+        }
+        guard !indices.isEmpty else { return nil }
+        var note: String?
+        if case let .string(n) = markObj["note"] {
+            note = n
+        }
+        return MarkAction(indices: indices, status: status, note: note)
+    }
+
+    static func formatChecklist(
+        state: ChecklistState,
+        declarations: [UnusedDeclaration],
+        kindFilter: [String],
+        fileFilter: [String],
+        checklistPath: String,
+        cachePath _: String,
+    ) -> String {
+        let pendingCount = state.items.count { $0.status == .pending }
+        var lines: [String] = []
+
+        lines.append(
+            "Unused Code Checklist (\(pendingCount)/\(state.items.count) remaining)",
+        )
+        lines.append("Checklist: \(checklistPath)")
+        lines.append("")
+
+        let hasFilters = !kindFilter.isEmpty || !fileFilter.isEmpty
+
+        for (index, item) in state.items.enumerated() {
+            let oneBasedIndex = index + 1
+
+            // Apply filters: hide non-matching items but keep indices stable
+            if hasFilters, index < declarations.count {
+                let decl = declarations[index]
+                if !kindFilter.isEmpty, !kindFilter.contains(formatKind(decl.kind)) {
+                    continue
+                }
+                if !fileFilter.isEmpty, !fileFilter.contains(where: { decl.file.contains($0) }) {
+                    continue
+                }
+            }
+
+            let marker: String
+            let suffix: String
+            switch item.status {
+                case .pending:
+                    marker = "[ ]"
+                    suffix = ""
+                case .done:
+                    marker = "[x]"
+                    let noteStr = item.note.map { ": \($0)" } ?? ""
+                    suffix = " (done\(noteStr))"
+                case .skipped:
+                    marker = "[-]"
+                    let noteStr = item.note.map { ": \($0)" } ?? ""
+                    suffix = " (skipped\(noteStr))"
+                case .falsePositive:
+                    marker = "[!]"
+                    let noteStr = item.note.map { ": \($0)" } ?? ""
+                    suffix = " (false_positive\(noteStr))"
+            }
+
+            if index < declarations.count {
+                let decl = declarations[index]
+                let displayPath = compactPath(decl.file)
+                let kindLabel = formatKind(decl.kind)
+                let hintsStr = decl.hints.joined(separator: ", ")
+                lines.append(
+                    "\(String(oneBasedIndex).padding(toLength: 3, withPad: " ", startingAt: 0)). \(marker) \(displayPath):\(decl.line):\(decl.column) — \(kindLabel) \(decl.name) [\(hintsStr)]\(suffix)",
+                )
+            } else {
+                lines.append(
+                    "\(String(oneBasedIndex).padding(toLength: 3, withPad: " ", startingAt: 0)). \(marker) \(item.id)\(suffix)",
+                )
+            }
+        }
+
+        if hasFilters {
+            lines.append("")
+            lines.append("(filtered view — some items hidden, indices are global)")
+        }
+
+        if pendingCount > 0 {
+            // Find first pending index
+            if let firstPending = state.items.firstIndex(where: { $0.status == .pending }) {
+                lines.append("")
+                lines.append(
+                    "Next: review item \(firstPending + 1), then mark(indices:[\(firstPending + 1)], status:\"done\"|\"skipped\"|\"false_positive\")",
+                )
+            }
+        }
 
         return lines.joined(separator: "\n")
     }

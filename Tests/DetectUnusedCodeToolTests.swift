@@ -1,6 +1,7 @@
 import MCP
 import Testing
 @testable import XCMCPCore
+import Foundation
 @testable import XCMCPTools
 
 struct DetectUnusedCodeToolTests {
@@ -39,6 +40,7 @@ struct DetectUnusedCodeToolTests {
         #expect(properties["kind_filter"] != nil)
         #expect(properties["file_filter"] != nil)
         #expect(properties["result_file"] != nil)
+        #expect(properties["mark"] != nil)
     }
 
     @Test
@@ -391,6 +393,177 @@ struct DetectUnusedCodeToolTests {
     func `Compact path leaves non-Users paths unchanged`() {
         let result = DetectUnusedCodeTool.compactPath("/var/tmp/Foo.swift")
         #expect(result == "/var/tmp/Foo.swift")
+    }
+
+    // MARK: - Checklist tests
+
+    @Test
+    func `Checklist format renders numbered items with pending markers`() {
+        let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/periphery-abc123.json",
+        )
+
+        let output = DetectUnusedCodeTool.formatChecklist(
+            state: state, declarations: declarations,
+            kindFilter: [], fileFilter: [],
+            checklistPath: "/tmp/periphery-abc123-checklist.json",
+            cachePath: "/tmp/periphery-abc123.json",
+        )
+
+        #expect(output.contains("5/5 remaining"))
+        #expect(output.contains("[ ]"))
+        #expect(output.contains("func unusedFunc()"))
+        #expect(output.contains("property oldProperty"))
+        #expect(output.contains("import Foundation"))
+        #expect(output.contains("[unused]"))
+        #expect(output.contains("Checklist: /tmp/periphery-abc123-checklist.json"))
+    }
+
+    @Test
+    func `Mark updates item status and persists note`() {
+        let declarations = Self.sampleDeclarations()
+        var state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
+
+        // Mark item 2 as done with a note
+        state.items[1].status = .done
+        state.items[1].note = "Removed"
+
+        // Mark item 3 as skipped
+        state.items[2].status = .skipped
+        state.items[2].note = "Needed for NSObject"
+
+        let output = DetectUnusedCodeTool.formatChecklist(
+            state: state, declarations: declarations,
+            kindFilter: [], fileFilter: [],
+            checklistPath: "/tmp/test-checklist.json",
+            cachePath: "/tmp/test.json",
+        )
+
+        #expect(output.contains("3/5 remaining"))
+        #expect(output.contains("[x]"))
+        #expect(output.contains("(done: Removed)"))
+        #expect(output.contains("[-]"))
+        #expect(output.contains("(skipped: Needed for NSObject)"))
+    }
+
+    @Test
+    func `ChecklistState round trips through JSON`() throws {
+        let state = DetectUnusedCodeTool.ChecklistState(
+            version: 1, source: "/tmp/test.json",
+            items: [
+                .init(id: "file:1:2:foo", status: .pending),
+                .init(id: "file:3:4:bar", status: .done, note: "Removed"),
+                .init(id: "file:5:6:baz", status: .falsePositive),
+            ],
+        )
+
+        let encoder = JSONEncoder()
+        let data = try encoder.encode(state)
+        let decoded = try JSONDecoder().decode(
+            DetectUnusedCodeTool.ChecklistState.self, from: data,
+        )
+
+        #expect(decoded.version == 1)
+        #expect(decoded.source == "/tmp/test.json")
+        #expect(decoded.items.count == 3)
+        #expect(decoded.items[0].status == .pending)
+        #expect(decoded.items[1].status == .done)
+        #expect(decoded.items[1].note == "Removed")
+        #expect(decoded.items[2].status == .falsePositive)
+    }
+
+    @Test
+    func `checklistPath derivation`() {
+        #expect(
+            DetectUnusedCodeTool.checklistPath(forCache: "/tmp/periphery-abc123.json")
+                == "/tmp/periphery-abc123-checklist.json",
+        )
+        #expect(
+            DetectUnusedCodeTool.checklistPath(forCache: "/tmp/results.json")
+                == "/tmp/results-checklist.json",
+        )
+    }
+
+    @Test
+    func `Filtered checklist preserves global indices`() {
+        let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
+
+        let output = DetectUnusedCodeTool.formatChecklist(
+            state: state, declarations: declarations,
+            kindFilter: ["import"], fileFilter: [],
+            checklistPath: "/tmp/test-checklist.json",
+            cachePath: "/tmp/test.json",
+        )
+
+        // Should show only item 3 (Foundation import) but with index 3
+        #expect(output.contains("3  . [ ]"))
+        // Should NOT show items that don't match the filter
+        #expect(!output.contains("unusedFunc"))
+        #expect(!output.contains("oldProperty"))
+        #expect(output.contains("filtered view"))
+    }
+
+    @Test
+    func `makeItemID is deterministic`() {
+        let decl = DetectUnusedCodeTool.UnusedDeclaration(
+            name: "foo()", kind: "function.free",
+            hints: ["unused"], accessibility: "internal",
+            file: "/path/to/Foo.swift", line: 12, column: 6,
+        )
+        let id1 = DetectUnusedCodeTool.makeItemID(decl)
+        let id2 = DetectUnusedCodeTool.makeItemID(decl)
+        #expect(id1 == id2)
+        #expect(id1 == "/path/to/Foo.swift:12:6:foo()")
+    }
+
+    @Test
+    func `parseMarkAction extracts mark object from arguments`() {
+        let arguments: [String: Value] = [
+            "mark": .object([
+                "indices": .array([.int(1), .int(3)]),
+                "status": .string("done"),
+                "note": .string("Removed"),
+            ]),
+        ]
+        let action = DetectUnusedCodeTool.parseMarkAction(from: arguments)
+        #expect(action != nil)
+        #expect(action?.indices == [1, 3])
+        #expect(action?.status == .done)
+        #expect(action?.note == "Removed")
+    }
+
+    @Test
+    func `parseMarkAction returns nil for missing mark`() {
+        let arguments: [String: Value] = [:]
+        #expect(DetectUnusedCodeTool.parseMarkAction(from: arguments) == nil)
+    }
+
+    @Test
+    func `false_positive marker renders correctly`() {
+        let declarations = Self.sampleDeclarations()
+        var state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
+
+        state.items[4].status = .falsePositive
+        state.items[4].note = "Used via reflection"
+
+        let output = DetectUnusedCodeTool.formatChecklist(
+            state: state, declarations: declarations,
+            kindFilter: [], fileFilter: [],
+            checklistPath: "/tmp/test-checklist.json",
+            cachePath: "/tmp/test.json",
+        )
+
+        #expect(output.contains("[!]"))
+        #expect(output.contains("(false_positive: Used via reflection)"))
+        #expect(output.contains("4/5 remaining"))
     }
 
     // MARK: - Helpers
