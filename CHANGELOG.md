@@ -7,6 +7,7 @@
 - Add `detect_unused_code` tool wrapping Periphery CLI; finds unused declarations, redundant imports, assign-only properties, and redundant public accessibility in Swift projects ([#171](https://github.com/toba/xc-mcp/issues/171))
 - `test_macos` now returns XCTest `measure()` timing data in results; average, relative standard deviation, and individual values ([#169](https://github.com/toba/xc-mcp/issues/169))
 - `test_macos` now surfaces per-test results with skip reasons and performance metrics; no more "1 passed" when 2 tests were silently skipped ([#180](https://github.com/toba/xc-mcp/issues/180))
+- `test_macos` error output now lists failed test names prominently; no more scanning 3600+ lines to find 4 failures
 - `search_crash_reports` now shows symbolicated crashing thread stack trace; top 15 frames with image names, symbols, and source locations ([#182](https://github.com/toba/xc-mcp/issues/182))
 - Add JSON output mode (`format: "json"`) and field selection (`fields`) to discovery tools; `show_build_settings`, `list_schemes`, `list_test_plan_targets`, `discover_projs` ([#163](https://github.com/toba/xc-mcp/issues/163))
 - Add `get_coverage_report` and `get_file_coverage` tools; per-target and function-level coverage from xcresult bundles

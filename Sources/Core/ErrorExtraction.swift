@@ -236,39 +236,52 @@ public enum ErrorExtractor {
         }
         parts.append(header)
 
-        // Per-test details (only when there are skips, failures, or small enough to list)
-        if !data.tests.isEmpty, skipped > 0 || failed > 0 || total <= 50 {
-            var lines: [String] = []
-            for test in data.tests {
-                switch test.status {
-                    case .passed:
-                        let dur = test.duration.map { String(format: " (%.1fs)", $0) } ?? ""
-                        lines.append("  ✓ \(test.name)\(dur)")
-                    case .failed:
-                        let dur = test.duration.map { String(format: " (%.1fs)", $0) } ?? ""
-                        let msg = test.failureMessage.map { " — \($0)" } ?? ""
-                        lines.append("  ✗ \(test.name)\(dur)\(msg)")
-                    case .skipped:
-                        let reason = test.skipReason.map { " — skipped: \($0)" } ?? " — skipped"
-                        lines.append("  ⊘ \(test.name)\(reason)")
-                    case .expectedFailure:
-                        let dur = test.duration.map { String(format: " (%.1fs)", $0) } ?? ""
-                        lines.append("  ✓ \(test.name)\(dur) (expected failure)")
+        // Per-test details
+        if !data.tests.isEmpty {
+            if total <= 50 || (failed == 0 && skipped == 0) {
+                // Small suite or all passed: list every test
+                var lines: [String] = []
+                for test in data.tests {
+                    lines.append(formatTestLine(test))
+                    for metric in test.performanceMetrics {
+                        lines.append(
+                            "    \(metric.name): avg \(formatMetricValue(metric.average, unit: metric.unit)), "
+                                + "stddev \(formatMetricValue(metric.standardDeviation, unit: metric.unit)) "
+                                + "(\(metric.iterations) iterations)",
+                        )
+                    }
                 }
-                for metric in test.performanceMetrics {
-                    lines.append(
-                        "    \(metric.name): avg \(formatMetricValue(metric.average, unit: metric.unit)), "
-                            + "stddev \(formatMetricValue(metric.standardDeviation, unit: metric.unit)) "
-                            + "(\(metric.iterations) iterations)",
-                    )
+                parts.append(lines.joined(separator: "\n"))
+            } else {
+                // Large suite with failures or skips: show only non-passing tests
+                var lines: [String] = []
+
+                let failedTests = data.tests.filter { $0.status == .failed }
+                if !failedTests.isEmpty {
+                    lines.append("Failed:")
+                    for test in failedTests {
+                        lines.append(formatTestLine(test))
+                    }
+                }
+
+                let skippedTests = data.tests.filter { $0.status == .skipped }
+                if !skippedTests.isEmpty {
+                    if !lines.isEmpty { lines.append("") }
+                    lines.append("Skipped:")
+                    for test in skippedTests {
+                        lines.append(formatTestLine(test))
+                    }
+                }
+
+                if !lines.isEmpty {
+                    parts.append(lines.joined(separator: "\n"))
                 }
             }
-            parts.append(lines.joined(separator: "\n"))
         } else if !data.failures.isEmpty {
-            // Fall back to failure-only listing for large test suites
-            var lines = ["Failures:"]
+            // Fall back to failure-only listing when per-test details unavailable
+            var lines = ["Failed:"]
             for test in data.failures {
-                var detail = "  \(test.test) — \(test.message)"
+                var detail = "  ✗ \(test.test) — \(test.message)"
                 if let file = test.file {
                     detail += " (\(file)"
                     if let line = test.line {
@@ -287,6 +300,24 @@ public enum ErrorExtractor {
         }
 
         return parts.joined(separator: "\n\n")
+    }
+
+    private static func formatTestLine(_ test: XCResultParser.TestDetail) -> String {
+        switch test.status {
+            case .passed:
+                let dur = test.duration.map { String(format: " (%.1fs)", $0) } ?? ""
+                return "  ✓ \(test.name)\(dur)"
+            case .failed:
+                let dur = test.duration.map { String(format: " (%.1fs)", $0) } ?? ""
+                let msg = test.failureMessage.map { " — \($0)" } ?? ""
+                return "  ✗ \(test.name)\(dur)\(msg)"
+            case .skipped:
+                let reason = test.skipReason.map { " — skipped: \($0)" } ?? " — skipped"
+                return "  ⊘ \(test.name)\(reason)"
+            case .expectedFailure:
+                let dur = test.duration.map { String(format: " (%.1fs)", $0) } ?? ""
+                return "  ✓ \(test.name)\(dur) (expected failure)"
+        }
     }
 
     private static func formatMetricValue(_ value: Double, unit: String) -> String {
