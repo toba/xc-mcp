@@ -177,6 +177,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case swiftFormat = "swift_format"
     case swiftLint = "swift_lint"
     case swiftDiagnostics = "swift_diagnostics"
+    case detectUnusedCode = "detect_unused_code"
 
     // Instruments tools
     case xctraceRecord = "xctrace_record"
@@ -257,7 +258,7 @@ public enum ToolName: String, CaseIterable, Sendable {
             // Swift Package
             case .swiftPackageBuild, .swiftPackageTest, .swiftPackageRun, .swiftPackageClean,
                  .swiftPackageList, .swiftPackageStop, .swiftFormat, .swiftLint,
-                 .swiftDiagnostics:
+                 .swiftDiagnostics, .detectUnusedCode:
                 return .swiftPackage
             // Instruments
             case .xctraceRecord, .xctraceList, .xctraceExport:
@@ -587,6 +588,7 @@ public struct XcodeMCPServer: Sendable {
         let swiftDiagnosticsTool = SwiftDiagnosticsTool(
             swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
+        let detectUnusedCodeTool = DetectUnusedCodeTool(sessionManager: sessionManager)
 
         // Create interact tools
         let interactRunner = InteractRunner()
@@ -769,6 +771,7 @@ public struct XcodeMCPServer: Sendable {
             (.swiftFormat, swiftFormatTool.tool()),
             (.swiftLint, swiftLintTool.tool()),
             (.swiftDiagnostics, swiftDiagnosticsTool.tool()),
+            (.detectUnusedCode, detectUnusedCodeTool.tool()),
             // Interact tools
             (.interactUITree, interactUITreeTool.tool()),
             (.interactClick, interactClickTool.tool()),
@@ -1120,6 +1123,8 @@ public struct XcodeMCPServer: Sendable {
                     return try await swiftLintTool.execute(arguments: arguments)
                 case .swiftDiagnostics:
                     return try await swiftDiagnosticsTool.execute(arguments: arguments)
+                case .detectUnusedCode:
+                    return try await detectUnusedCodeTool.execute(arguments: arguments)
                 // Interact tools
                 case .interactUITree:
                     return try await interactUITreeTool.execute(arguments: arguments)

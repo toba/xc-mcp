@@ -117,6 +117,17 @@ extension ProcessResult {
         environment: Environment = .inherit,
         timeout: Duration? = nil,
     ) async throws -> ProcessResult {
+        // Configure teardown so child processes are killed on task cancellation
+        // (e.g. MCP abort, timeout). Without this, orphan processes hold the
+        // SPM build lock and block subsequent builds/tests.
+        let platformOptions: PlatformOptions = {
+            var opts = PlatformOptions()
+            opts.teardownSequence = [
+                .gracefulShutDown(allowedDurationToNextStep: .seconds(5)),
+            ]
+            return opts
+        }()
+
         if mergeStderr {
             let run: @Sendable () async throws -> CollectedResult<
                 StringOutput<Unicode.UTF8>,
@@ -127,6 +138,7 @@ extension ProcessResult {
                     arguments: arguments,
                     environment: environment,
                     workingDirectory: workingDirectory,
+                    platformOptions: platformOptions,
                     output: .string(limit: outputLimit),
                     error: .combineWithOutput,
                 )
@@ -152,6 +164,7 @@ extension ProcessResult {
                     arguments: arguments,
                     environment: environment,
                     workingDirectory: workingDirectory,
+                    platformOptions: platformOptions,
                     output: .string(limit: outputLimit),
                     error: .string(limit: errorLimit),
                 )

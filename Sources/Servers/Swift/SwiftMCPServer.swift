@@ -15,6 +15,7 @@ public enum SwiftToolName: String, CaseIterable, Sendable {
     case swiftFormat = "swift_format"
     case swiftLint = "swift_lint"
     case swiftDiagnostics = "swift_diagnostics"
+    case detectUnusedCode = "detect_unused_code"
 
     // Coverage tools
     case getCoverageReport = "get_coverage_report"
@@ -93,6 +94,7 @@ public struct SwiftMCPServer: Sendable {
         let swiftDiagnosticsTool = SwiftDiagnosticsTool(
             swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
+        let detectUnusedCodeTool = DetectUnusedCodeTool(sessionManager: sessionManager)
 
         // Create coverage tools
         let getCoverageReportTool = GetCoverageReportTool()
@@ -115,6 +117,7 @@ public struct SwiftMCPServer: Sendable {
                 swiftFormatTool.tool(),
                 swiftLintTool.tool(),
                 swiftDiagnosticsTool.tool(),
+                detectUnusedCodeTool.tool(),
                 // Coverage tools
                 getCoverageReportTool.tool(),
                 getFileCoverageTool.tool(),
@@ -156,6 +159,8 @@ public struct SwiftMCPServer: Sendable {
                     return try await swiftLintTool.execute(arguments: arguments)
                 case .swiftDiagnostics:
                     return try await swiftDiagnosticsTool.execute(arguments: arguments)
+                case .detectUnusedCode:
+                    return try await detectUnusedCodeTool.execute(arguments: arguments)
                 // Coverage tools
                 case .getCoverageReport:
                     return try await getCoverageReportTool.execute(arguments: arguments)
