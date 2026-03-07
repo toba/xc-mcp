@@ -571,25 +571,15 @@ public struct DetectUnusedCodeTool: Sendable {
     // MARK: - Agent Instructions
 
     static let agentInstructions = """
-    IMPORTANT — Periphery can report false positives. For EVERY finding you must:
-    1. Read the code and verify whether it is truly unused.
-    2. If it IS unused → remove the dead code, then IMMEDIATELY mark the item done.
-    3. If it is NOT unused (false positive) → add `// periphery:ignore` on the \
-    line above the declaration, then IMMEDIATELY mark the item false_positive.
+    For EACH finding: read the code, then either remove it (mark done) or add \
+    `// periphery:ignore` above it (mark false_positive). Mark items IMMEDIATELY \
+    after resolving — unmarked items reappear as pending.
 
-    CRITICAL — Mark items done AS YOU GO. After resolving each item (or batch), \
-    call this tool with `mark` to update the checklist BEFORE moving on. \
-    The checklist is how you track progress across calls. If you remove code \
-    but don't mark items done, they will still appear as pending on the next call. \
-    Never leave resolved items unmarked.
-
-    WORKFLOW — Always use this tool's parameters for filtering and drill-down. \
-    Do NOT parse the checklist JSON manually via bash/python/jq.
-    • To see remaining work: call with result_file + status_filter: ["pending"]
-    • To filter by kind: kind_filter: ["property", "func", "import"]
-    • To filter by file: file_filter: ["Admin/", "Models.swift"]
-    • To mark specific items: mark: { indices: [1,2,3], status: "done" } (use #N from detail output)
-    • To mark ALL filtered items at once: mark_filtered: "done" (applies to current filter results)
+    Do NOT parse checklist JSON via bash/jq. Use this tool's parameters:
+    • Remaining: result_file + status_filter: ["pending"]
+    • Filter: kind_filter / file_filter
+    • Mark: mark: { indices: [1,2,3], status: "done" } (#N from detail output)
+    • Bulk: mark_filtered: "done" (marks all current filter results)
     """
 
     // MARK: - Checklist Helpers
