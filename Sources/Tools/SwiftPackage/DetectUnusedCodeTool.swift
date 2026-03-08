@@ -135,6 +135,15 @@ public struct DetectUnusedCodeTool: Sendable {
                             "Filter by checklist status (e.g. [\"pending\"]). Only items with matching status are shown. Valid values: pending, done, skipped, false_positive. Empty = all.",
                         ),
                     ]),
+                    "group_by": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Group the summary by a dimension: \"target\" groups by module/target from Periphery output; \"kind\" groups by declaration kind; \"directory\" groups by top-level directory relative to project root. Each group shows count, file count, and top declaration kinds. Works with both fresh scans and result_file.",
+                        ),
+                        "enum": .array([
+                            .string("target"), .string("kind"), .string("directory"),
+                        ]),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -148,6 +157,7 @@ public struct DetectUnusedCodeTool: Sendable {
         let fileFilter = arguments.getStringArray("file_filter")
         let statusFilter = arguments.getStringArray("status_filter")
         let resultFile = arguments.getString("result_file")
+        let groupBy = arguments.getString("group_by")
 
         let declarations: [UnusedDeclaration]
         let cachePath: String
@@ -218,7 +228,13 @@ public struct DetectUnusedCodeTool: Sendable {
         let indexMap = Self.buildIndexMap(declarations: declarations, state: state)
 
         let message: String
-        if format == "detail" {
+        if let groupBy {
+            message = Self.formatGroupedSummary(
+                filtered, totalUnfiltered: declarations.count,
+                cachePath: cachePath, checklistPath: clPath, state: state,
+                groupBy: groupBy,
+            )
+        } else if format == "detail" {
             message = Self.formatDetail(
                 filtered, limit: limit, totalUnfiltered: declarations.count,
                 cachePath: cachePath, checklistPath: clPath, state: state,
@@ -295,11 +311,18 @@ public struct DetectUnusedCodeTool: Sendable {
             args.append(glob)
         }
 
+        let guardPath = skipBuild ? nil : (project ?? packagePath)
+        if let guardPath {
+            try await BuildGuard.shared.acquire(
+                path: guardPath, description: "periphery scan",
+            )
+        }
         do {
             let result = try await ProcessResult.run(
                 executablePath, arguments: args, mergeStderr: false,
                 timeout: .seconds(600),
             )
+            if let guardPath { await BuildGuard.shared.release(path: guardPath) }
 
             if result.exitCode != 0 {
                 let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -321,6 +344,7 @@ public struct DetectUnusedCodeTool: Sendable {
         } catch let error as MCPError {
             throw error
         } catch {
+            if let guardPath { await BuildGuard.shared.release(path: guardPath) }
             throw error.asMCPError()
         }
     }
@@ -369,6 +393,7 @@ public struct DetectUnusedCodeTool: Sendable {
         let kind: String
         let hints: [String]
         let accessibility: String
+        let module: String
         let file: String
         let line: Int
         let column: Int
@@ -406,6 +431,7 @@ public struct DetectUnusedCodeTool: Sendable {
         let kind: String
         let hints: [String]
         let accessibility: String?
+        let modules: [String]?
         let location: String
     }
 
@@ -423,6 +449,7 @@ public struct DetectUnusedCodeTool: Sendable {
             return UnusedDeclaration(
                 name: entry.name, kind: entry.kind, hints: entry.hints,
                 accessibility: entry.accessibility ?? "internal",
+                module: entry.modules?.first ?? "",
                 file: file, line: line, column: column,
             )
         }
@@ -506,6 +533,117 @@ public struct DetectUnusedCodeTool: Sendable {
         lines.append(Self.agentInstructions)
 
         return lines.joined(separator: "\n")
+    }
+
+    static func formatGroupedSummary(
+        _ declarations: [UnusedDeclaration],
+        totalUnfiltered: Int,
+        cachePath: String,
+        checklistPath: String,
+        state: ChecklistState,
+        groupBy: String,
+    ) -> String {
+        let fileCount = Set(declarations.map(\.file)).count
+        var lines: [String] = []
+
+        if declarations.count != totalUnfiltered {
+            lines.append(
+                "\(declarations.count) unused declaration(s) in \(fileCount) file(s) (filtered from \(totalUnfiltered) total)",
+            )
+        } else {
+            lines.append(
+                "\(declarations.count) unused declaration(s) in \(fileCount) file(s)",
+            )
+        }
+
+        // Checklist progress
+        lines.append(contentsOf: Self.formatChecklistProgress(state))
+
+        // Group declarations by the requested dimension
+        let grouped: [(key: String, decls: [UnusedDeclaration])]
+        let header: String
+
+        switch groupBy {
+            case "target":
+                let byModule = Dictionary(grouping: declarations) {
+                    $0.module.isEmpty ? "(unknown)" : $0.module
+                }
+                grouped = byModule.sorted { $0.value.count > $1.value.count }
+                    .map { (key: $0.key, decls: $0.value) }
+                header = "By target:"
+
+            case "kind":
+                let byKind = Dictionary(grouping: declarations) { formatKind($0.kind) }
+                grouped = byKind.sorted { $0.value.count > $1.value.count }
+                    .map { (key: $0.key, decls: $0.value) }
+                header = "By kind:"
+
+            case "directory":
+                let byDir = Dictionary(grouping: declarations) { directoryGroup($0.file) }
+                grouped = byDir.sorted { $0.value.count > $1.value.count }
+                    .map { (key: $0.key, decls: $0.value) }
+                header = "By directory:"
+
+            default:
+                // Fallback — treat as target
+                let byModule = Dictionary(grouping: declarations) {
+                    $0.module.isEmpty ? "(unknown)" : $0.module
+                }
+                grouped = byModule.sorted { $0.value.count > $1.value.count }
+                    .map { (key: $0.key, decls: $0.value) }
+                header = "By target:"
+        }
+
+        lines.append("")
+        lines.append(header)
+        let maxKeyLen = grouped.map(\.key.count).max() ?? 10
+        let padLen = min(max(maxKeyLen + 2, 16), 40)
+
+        for (key, decls) in grouped {
+            let groupFileCount = Set(decls.map(\.file)).count
+            let fileSuffix = groupFileCount == 1 ? "file" : "files"
+
+            // Top 3 kinds for this group
+            var kindCounts: [String: Int] = [:]
+            for d in decls {
+                kindCounts[formatKind(d.kind), default: 0] += 1
+            }
+            let topKinds = kindCounts.sorted { $0.value > $1.value }.prefix(3)
+            let kindStr = topKinds.map { "\($0.key) (\($0.value))" }
+                .joined(separator: ", ")
+
+            let paddedKey = key.padding(toLength: padLen, withPad: " ", startingAt: 0)
+            let countStr = String(decls.count).padding(
+                toLength: 5, withPad: " ", startingAt: 0,
+            )
+            lines.append(
+                "  \(paddedKey)\(countStr)(\(groupFileCount) \(fileSuffix))  — \(kindStr)",
+            )
+        }
+
+        lines.append("")
+        lines.append("Results cached: \(cachePath)")
+        lines.append("Checklist: \(checklistPath)")
+        lines.append("Use result_file to drill in without re-scanning. Use mark to track progress.")
+        lines.append("")
+        lines.append(Self.agentInstructions)
+
+        return lines.joined(separator: "\n")
+    }
+
+    /// Extracts a directory group from a file path.
+    /// Uses the last two directory components before the filename
+    /// (e.g. "/Users/x/Dev/proj/Core/Sources/Foo.swift" → "Core/Sources").
+    static func directoryGroup(_ filePath: String) -> String {
+        let url = URL(fileURLWithPath: filePath)
+        let dir = url.deletingLastPathComponent()
+        let components = dir
+            .pathComponents // e.g. ["/", "Users", "x", "Dev", "proj", "Core", "Sources"]
+        if components.count >= 2 {
+            let last2 = components.suffix(2)
+            return last2.joined(separator: "/")
+        }
+        return dir.lastPathComponent
     }
 
     static func formatDetail(

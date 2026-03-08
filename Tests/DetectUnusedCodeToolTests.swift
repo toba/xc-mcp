@@ -41,6 +41,7 @@ struct DetectUnusedCodeToolTests {
         #expect(properties["file_filter"] != nil)
         #expect(properties["result_file"] != nil)
         #expect(properties["mark"] != nil)
+        #expect(properties["group_by"] != nil)
     }
 
     @Test
@@ -153,16 +154,19 @@ struct DetectUnusedCodeToolTests {
             DetectUnusedCodeTool.UnusedDeclaration(
                 name: "unusedFunc()", kind: "function.free",
                 hints: ["unused"], accessibility: "internal",
+                module: "MyModule",
                 file: "/path/to/Foo.swift", line: 12, column: 6,
             ),
             DetectUnusedCodeTool.UnusedDeclaration(
                 name: "OldStruct", kind: "struct",
                 hints: ["unused"], accessibility: "internal",
+                module: "MyModule",
                 file: "/path/to/Foo.swift", line: 45, column: 8,
             ),
             DetectUnusedCodeTool.UnusedDeclaration(
                 name: "Foundation", kind: "import",
                 hints: ["unusedImport"], accessibility: "internal",
+                module: "MyModule",
                 file: "/path/to/Bar.swift", line: 1, column: 1,
             ),
         ]
@@ -520,6 +524,7 @@ struct DetectUnusedCodeToolTests {
         let decl = DetectUnusedCodeTool.UnusedDeclaration(
             name: "foo()", kind: "function.free",
             hints: ["unused"], accessibility: "internal",
+            module: "MyModule",
             file: "/path/to/Foo.swift", line: 12, column: 6,
         )
         let id1 = DetectUnusedCodeTool.makeItemID(decl)
@@ -571,6 +576,186 @@ struct DetectUnusedCodeToolTests {
         #expect(output.contains("1 false positive"))
     }
 
+    // MARK: - Group by tests
+
+    @Test
+    func `Grouped summary by target shows per-module breakdown`() {
+        let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
+        let output = DetectUnusedCodeTool.formatGroupedSummary(
+            declarations, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json", checklistPath: "/tmp/test-checklist.json",
+            state: state, groupBy: "target",
+        )
+
+        #expect(output.contains("5 unused declaration(s) in 3 file(s)"))
+        #expect(output.contains("By target:"))
+        #expect(output.contains("Core"))
+        #expect(output.contains("Tests"))
+        #expect(output.contains("DocX"))
+    }
+
+    @Test
+    func `Grouped summary by target shows top kinds per group`() {
+        let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
+        let output = DetectUnusedCodeTool.formatGroupedSummary(
+            declarations, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json", checklistPath: "/tmp/test-checklist.json",
+            state: state, groupBy: "target",
+        )
+
+        // Core has func(1) and property(1)
+        #expect(output.contains("func (1)"))
+        #expect(output.contains("property (1)"))
+    }
+
+    @Test
+    func `Grouped summary by kind shows per-kind breakdown`() {
+        let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
+        let output = DetectUnusedCodeTool.formatGroupedSummary(
+            declarations, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json", checklistPath: "/tmp/test-checklist.json",
+            state: state, groupBy: "kind",
+        )
+
+        #expect(output.contains("By kind:"))
+        #expect(output.contains("property"))
+        #expect(output.contains("func"))
+        #expect(output.contains("import"))
+        #expect(output.contains("method"))
+    }
+
+    @Test
+    func `Grouped summary by directory groups by last two path components`() {
+        let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
+        let output = DetectUnusedCodeTool.formatGroupedSummary(
+            declarations, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json", checklistPath: "/tmp/test-checklist.json",
+            state: state, groupBy: "directory",
+        )
+
+        #expect(output.contains("By directory:"))
+        #expect(output.contains("path/to"))
+    }
+
+    @Test
+    func `Grouped summary shows filtered count`() {
+        let declarations = Self.sampleDeclarations()
+        let filtered = Array(declarations.prefix(2))
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
+        let output = DetectUnusedCodeTool.formatGroupedSummary(
+            filtered, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json", checklistPath: "/tmp/test-checklist.json",
+            state: state, groupBy: "target",
+        )
+
+        #expect(output.contains("2 unused declaration(s)"))
+        #expect(output.contains("filtered from 5 total"))
+    }
+
+    @Test
+    func `Grouped summary works with cached results`() {
+        let declarations = Self.sampleDeclarations()
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/periphery-abc123.json",
+        )
+        let output = DetectUnusedCodeTool.formatGroupedSummary(
+            declarations, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/periphery-abc123.json",
+            checklistPath: "/tmp/periphery-abc123-checklist.json",
+            state: state, groupBy: "target",
+        )
+
+        #expect(output.contains("Results cached: /tmp/periphery-abc123.json"))
+    }
+
+    @Test
+    func `directoryGroup extracts last two components`() {
+        #expect(
+            DetectUnusedCodeTool.directoryGroup("/Users/x/Dev/proj/Core/Sources/Foo.swift")
+                == "Core/Sources",
+        )
+        #expect(
+            DetectUnusedCodeTool.directoryGroup("/a/b/File.swift")
+                == "a/b",
+        )
+    }
+
+    @Test
+    func `Grouped summary by target handles empty module`() {
+        let declarations = [
+            DetectUnusedCodeTool.UnusedDeclaration(
+                name: "orphan()", kind: "function.free",
+                hints: ["unused"], accessibility: "internal",
+                module: "",
+                file: "/path/to/Orphan.swift", line: 1, column: 1,
+            ),
+        ]
+        let state = DetectUnusedCodeTool.createChecklist(
+            from: declarations, cachePath: "/tmp/test.json",
+        )
+        let output = DetectUnusedCodeTool.formatGroupedSummary(
+            declarations, totalUnfiltered: declarations.count,
+            cachePath: "/tmp/test.json", checklistPath: "/tmp/test-checklist.json",
+            state: state, groupBy: "target",
+        )
+
+        #expect(output.contains("(unknown)"))
+    }
+
+    @Test
+    func `parseJSONOutput extracts module from modules array`() {
+        let json = """
+        [
+          {
+            "name": "foo()",
+            "kind": "function.free",
+            "hints": ["unused"],
+            "accessibility": "internal",
+            "location": "/path/to/Foo.swift:1:1",
+            "modules": ["CoreModule"],
+            "ids": [],
+            "attributes": [],
+            "modifiers": []
+          }
+        ]
+        """
+        let results = DetectUnusedCodeTool.parseJSONOutput(json)
+        #expect(results.count == 1)
+        #expect(results[0].module == "CoreModule")
+    }
+
+    @Test
+    func `parseJSONOutput uses empty string when modules missing`() {
+        let json = """
+        [
+          {
+            "name": "foo()",
+            "kind": "function.free",
+            "hints": ["unused"],
+            "accessibility": "internal",
+            "location": "/path/to/Foo.swift:1:1"
+          }
+        ]
+        """
+        let results = DetectUnusedCodeTool.parseJSONOutput(json)
+        #expect(results.count == 1)
+        #expect(results[0].module == "")
+    }
+
     // MARK: - Helpers
 
     static func sampleDeclarations() -> [DetectUnusedCodeTool.UnusedDeclaration] {
@@ -578,26 +763,31 @@ struct DetectUnusedCodeToolTests {
             DetectUnusedCodeTool.UnusedDeclaration(
                 name: "unusedFunc()", kind: "function.free",
                 hints: ["unused"], accessibility: "internal",
+                module: "Core",
                 file: "/path/to/Foo.swift", line: 12, column: 6,
             ),
             DetectUnusedCodeTool.UnusedDeclaration(
                 name: "oldProperty", kind: "var.instance",
                 hints: ["unused"], accessibility: "internal",
+                module: "Core",
                 file: "/path/to/Foo.swift", line: 45, column: 8,
             ),
             DetectUnusedCodeTool.UnusedDeclaration(
                 name: "Foundation", kind: "import",
                 hints: ["unusedImport"], accessibility: "internal",
+                module: "Tests",
                 file: "/path/to/Bar.swift", line: 1, column: 1,
             ),
             DetectUnusedCodeTool.UnusedDeclaration(
                 name: "helperMethod()", kind: "function.method.instance",
                 hints: ["unused"], accessibility: "public",
+                module: "Tests",
                 file: "/path/to/Baz.swift", line: 20, column: 5,
             ),
             DetectUnusedCodeTool.UnusedDeclaration(
                 name: "debugFlag", kind: "var.instance",
                 hints: ["assignOnlyProperty"], accessibility: "internal",
+                module: "DocX",
                 file: "/path/to/Baz.swift", line: 10, column: 9,
             ),
         ]

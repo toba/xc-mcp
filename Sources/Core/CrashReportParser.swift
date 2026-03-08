@@ -203,6 +203,35 @@ public enum CrashReportParser: Sendable {
         return (faultingThread, frames)
     }
 
+    /// Searches for recent crash reports and appends a formatted summary to the given message.
+    ///
+    /// Does nothing if no crash reports are found.
+    /// - Parameters:
+    ///   - message: The string to append the crash report summary to.
+    ///   - processName: Optional process name to filter by.
+    ///   - bundleID: Optional bundle ID to filter by.
+    ///   - minutes: Only include reports from the last N minutes. Defaults to 2.
+    public static func appendCrashReports(
+        to message: inout String,
+        processName: String? = nil,
+        bundleID: String? = nil,
+        minutes: Int = 2,
+    ) {
+        let crashes = search(processName: processName, bundleID: bundleID, minutes: minutes)
+        guard !crashes.isEmpty else { return }
+
+        message += "\n\n" + String(repeating: "═", count: 60)
+        message += "\nCrash Report\(crashes.count == 1 ? "" : "s") Found"
+        message += "\n" + String(repeating: "═", count: 60)
+        for (i, crash) in crashes.enumerated() {
+            if i > 0 {
+                message += "\n" + String(repeating: "─", count: 60)
+            }
+            message += "\nFile: \(crash.path)\n"
+            message += crash.summary.formatted()
+        }
+    }
+
     /// Searches `~/Library/Logs/DiagnosticReports/` for recent `.ips` crash reports.
     ///
     /// - Parameters:

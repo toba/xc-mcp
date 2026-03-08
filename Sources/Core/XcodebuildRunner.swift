@@ -71,6 +71,45 @@ public struct XcodebuildRunner: Sendable {
         outputTimeout: Duration? = outputTimeout,
         onProgress: (@Sendable (String) -> Void)?,
     ) async throws -> XcodebuildResult {
+        let guardPath = Self.extractProjectPath(from: arguments)
+        if let guardPath {
+            try await BuildGuard.shared.acquire(
+                path: guardPath, description: "xcodebuild \(arguments.first ?? "")",
+            )
+        }
+
+        let result: XcodebuildResult
+        do {
+            result = try await runProcess(
+                arguments: arguments, environment: environment,
+                timeout: timeout, outputTimeout: outputTimeout,
+                onProgress: onProgress,
+            )
+        } catch {
+            if let guardPath { await BuildGuard.shared.release(path: guardPath) }
+            throw error
+        }
+        if let guardPath { await BuildGuard.shared.release(path: guardPath) }
+        return result
+    }
+
+    /// Extracts the project or workspace path from xcodebuild arguments.
+    static func extractProjectPath(from arguments: [String]) -> String? {
+        for (i, arg) in arguments.enumerated() where i + 1 < arguments.count {
+            if arg == "-project" || arg == "-workspace" {
+                return arguments[i + 1]
+            }
+        }
+        return nil
+    }
+
+    private func runProcess(
+        arguments: [String],
+        environment: Environment = .inherit,
+        timeout: TimeInterval,
+        outputTimeout: Duration? = outputTimeout,
+        onProgress: (@Sendable (String) -> Void)?,
+    ) async throws -> XcodebuildResult {
         let outputCollector = OutputCollector()
         let lastOutputTime = LastOutputTime()
         let startTime = ContinuousClock.now

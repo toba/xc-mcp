@@ -142,6 +142,10 @@ public struct BuildRunMacOSTool: Sendable {
                         message += "\nPID: \(pid)"
                     } else {
                         message += "\nPID: \(pid) (exited — app may have crashed on launch)"
+
+                        CrashReportParser.appendCrashReports(
+                            to: &message, processName: appName, bundleID: bundleId,
+                        )
                     }
                 }
 

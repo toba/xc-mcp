@@ -137,7 +137,20 @@ public struct CleanTool: Sendable {
                 // DerivedData folders are named like "ProjectName-hashstring"
                 if item.hasPrefix(projectName + "-") || item == projectName {
                     let fullPath = derivedDataPath + "/" + item
-                    try fileManager.removeItem(atPath: fullPath)
+                    do {
+                        try fileManager.removeItem(atPath: fullPath)
+                    } catch {
+                        // FileManager can fail on directories with restrictive permissions;
+                        // fall back to rm -rf which handles this reliably.
+                        let process = Process()
+                        process.executableURL = URL(fileURLWithPath: "/bin/rm")
+                        process.arguments = ["-rf", fullPath]
+                        try process.run()
+                        process.waitUntilExit()
+                        guard process.terminationStatus == 0 else {
+                            throw error // throw the original FileManager error
+                        }
+                    }
                     deletedPaths.append(item)
                 }
             }

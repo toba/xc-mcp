@@ -43,13 +43,27 @@ public struct SwiftRunner: Sendable {
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
     ) async throws -> SwiftResult {
-        try await ProcessResult.runSubprocess(
-            .path("/usr/bin/swift"),
-            arguments: Arguments(arguments),
-            workingDirectory: workingDirectory.map { FilePath($0) },
-            environment: environment,
-            timeout: timeout,
-        )
+        let guardPath = workingDirectory
+        if let guardPath {
+            try await BuildGuard.shared.acquire(
+                path: guardPath,
+                description: "swift \(arguments.first ?? "")",
+            )
+        }
+        do {
+            let result = try await ProcessResult.runSubprocess(
+                .path("/usr/bin/swift"),
+                arguments: Arguments(arguments),
+                workingDirectory: workingDirectory.map { FilePath($0) },
+                environment: environment,
+                timeout: timeout,
+            )
+            if let guardPath { await BuildGuard.shared.release(path: guardPath) }
+            return result
+        } catch {
+            if let guardPath { await BuildGuard.shared.release(path: guardPath) }
+            throw error
+        }
     }
 
     /// Builds a Swift package.

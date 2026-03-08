@@ -48,10 +48,23 @@ public struct DebugProcessStatusTool: Sendable {
             )
         }
 
+        let bundleId = arguments.getString("bundle_id")
+
         do {
             let result = try await lldbRunner.processStatus(pid: targetPID)
 
-            let message = "Process status for \(targetPID):\n\n\(result.output)"
+            var message = "Process status for \(targetPID):\n\n\(result.output)"
+
+            // If the process exited, auto-search for crash reports
+            let output = result.output.lowercased()
+            if output.contains("exited") || output.contains("crashed")
+                || output.contains("signal")
+            {
+                CrashReportParser.appendCrashReports(
+                    to: &message, bundleID: bundleId,
+                )
+            }
+
             return CallTool.Result(content: [.text(message)])
         } catch {
             throw error.asMCPError()
