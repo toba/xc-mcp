@@ -479,7 +479,7 @@ public struct DetectUnusedCodeTool: Sendable {
         state: ChecklistState,
     ) -> String {
         let fileCount = Set(declarations.map(\.file)).count
-        var lines: [String] = []
+        var lines: [String] = [Self.falsePositivePreamble, ""]
 
         if declarations.count != totalUnfiltered {
             lines.append(
@@ -544,7 +544,7 @@ public struct DetectUnusedCodeTool: Sendable {
         groupBy: String,
     ) -> String {
         let fileCount = Set(declarations.map(\.file)).count
-        var lines: [String] = []
+        var lines: [String] = [Self.falsePositivePreamble, ""]
 
         if declarations.count != totalUnfiltered {
             lines.append(
@@ -662,7 +662,7 @@ public struct DetectUnusedCodeTool: Sendable {
         let grouped = Dictionary(grouping: shown) { $0.file }
         let sortedFiles = grouped.keys.sorted()
 
-        var lines: [String] = []
+        var lines: [String] = [Self.falsePositivePreamble, ""]
 
         if declarations.count != totalUnfiltered {
             lines.append(
@@ -707,6 +707,9 @@ public struct DetectUnusedCodeTool: Sendable {
     }
 
     // MARK: - Agent Instructions
+
+    static let falsePositivePreamble =
+        "⚠️ False positives: add `// periphery:ignore` on the line ABOVE the declaration, then mark false_positive."
 
     static let agentInstructions = """
     For EACH finding: read the code, then either remove it (mark done) or add \
