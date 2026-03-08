@@ -18,6 +18,7 @@ public enum BuildResultFormatter {
     public static func formatBuildResult(
         _ result: BuildResult,
         projectRoot: String? = nil,
+        errorsOnly: Bool = false,
     ) -> String {
         var parts: [String] = []
 
@@ -34,8 +35,8 @@ public enum BuildResultFormatter {
             parts.append(formatLinkerErrors(result.linkerErrors))
         }
 
-        // Warnings (only if non-trivial count)
-        if !result.warnings.isEmpty {
+        // Warnings (only if non-trivial count and not suppressed)
+        if !result.warnings.isEmpty, !errorsOnly {
             if let projectRoot {
                 // On success, warnings are already counted in the header — omit them
                 if result.status == "success" {
@@ -94,7 +95,10 @@ public enum BuildResultFormatter {
     ///   MyTests.testLogin — Expected true, got false (Sources/MyTests.swift:55)
     ///   MyTests.testLogout — Timeout after 5.0s
     /// ```
-    public static func formatTestResult(_ result: BuildResult) -> String {
+    public static func formatTestResult(
+        _ result: BuildResult,
+        errorsOnly _: Bool = false,
+    ) -> String {
         var parts: [String] = []
 
         // Header line

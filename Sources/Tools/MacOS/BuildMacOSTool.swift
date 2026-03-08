@@ -52,6 +52,12 @@ public struct BuildMacOSTool: Sendable {
                             "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture.",
                         ),
                     ]),
+                    "errors_only": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "When true, only show compiler errors, linker errors, and the build summary — all warnings are suppressed. Useful for iterating on build errors without warning noise.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -67,6 +73,7 @@ public struct BuildMacOSTool: Sendable {
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let arch = arguments.getString("arch")
+        let errorsOnly = arguments.getBool("errors_only")
 
         do {
             var destination = "platform=macOS"
@@ -86,7 +93,9 @@ public struct BuildMacOSTool: Sendable {
             let projectRoot = ErrorExtractor.projectRoot(
                 projectPath: projectPath, workspacePath: workspacePath,
             )
-            try ErrorExtractor.checkBuildSuccess(result, projectRoot: projectRoot)
+            try ErrorExtractor.checkBuildSuccess(
+                result, projectRoot: projectRoot, errorsOnly: errorsOnly,
+            )
 
             return CallTool.Result(
                 content: [

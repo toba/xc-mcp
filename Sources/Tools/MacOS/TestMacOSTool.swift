@@ -53,6 +53,12 @@ public struct TestMacOSTool: Sendable {
                                 "Architecture to test on (arm64 or x86_64). Defaults to the current machine's architecture.",
                             ),
                         ]),
+                        "errors_only": .object([
+                            "type": .string("boolean"),
+                            "description": .string(
+                                "When true, only show compiler errors, linker errors, and the build summary — all warnings are suppressed. Useful for iterating on build errors without warning noise.",
+                            ),
+                        ]),
                     ].merging([String: Value].testSchemaProperties) { _, new in new },
                 ),
                 "required": .array([]),
@@ -69,6 +75,7 @@ public struct TestMacOSTool: Sendable {
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let arch = arguments.getString("arch")
+        let errorsOnly = arguments.getBool("errors_only")
 
         let testParams = arguments.testParameters()
 
@@ -123,6 +130,7 @@ public struct TestMacOSTool: Sendable {
                 workspacePath: workspacePath,
                 onlyTesting: testParams.onlyTesting,
                 scheme: scheme,
+                errorsOnly: errorsOnly,
             )
         } catch {
             if isTemporaryBundle {

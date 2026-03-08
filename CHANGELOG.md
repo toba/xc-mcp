@@ -1,5 +1,17 @@
 # Changelog
 
+## Week of Mar 8 – Mar 14, 2026
+
+### ✨ Features
+
+- `build_macos` / `test_macos`: add `errors_only` parameter to suppress warnings from output; show only compiler errors, linker errors, and build summary ([#195](https://github.com/toba/xc-mcp/issues/195))
+- Add `sample_mac_app` and `profile_app_launch` profiling tools; extract `PIDResolver` to Core; parse sample output into agent-friendly summaries
+- Integrate Swift Backtrace API (SE-0419); attach symbolicated backtraces to unexpected `MCPError.internalError` on macOS 26+
+
+### 🐞 Fixes
+
+- Fix `sample_mac_app` bundle ID lookup and output capture; use `NSRunningApplication` instead of `pgrep` and `-file` flag for reliable `sample` output
+
 ## Week of Mar 1 – Mar 7, 2026
 
 ### ✨ Features

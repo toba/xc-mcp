@@ -2,16 +2,16 @@
 # xav-ojz
 title: 'xc-project: add_target gaps and scaffold_module composite tool'
 status: ready
-type: feature
+type: epic
 priority: high
 tags:
     - enhancement
 created_at: 2026-03-07T18:53:19Z
-updated_at: 2026-03-07T18:53:19Z
+updated_at: 2026-03-08T17:51:27Z
 sync:
     github:
         issue_number: "170"
-        synced_at: "2026-03-07T19:13:25Z"
+        synced_at: "2026-03-08T17:51:35Z"
 ---
 
 Gaps identified from a real-world session adding a new framework module (TableView) to an Xcode project with 40+ targets. The task required ~30 MCP tool calls plus 3 manual Python scripts to patch project.pbxproj.

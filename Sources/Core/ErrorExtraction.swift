@@ -12,20 +12,26 @@ public enum ErrorExtractor {
     public static func extractBuildErrors(
         from output: String,
         projectRoot: String? = nil,
+        errorsOnly: Bool = false,
     ) -> String {
         let parser = BuildOutputParser()
         let result = parser.parse(input: output)
-        return BuildResultFormatter.formatBuildResult(result, projectRoot: projectRoot)
+        return BuildResultFormatter.formatBuildResult(
+            result, projectRoot: projectRoot, errorsOnly: errorsOnly,
+        )
     }
 
     /// Parses test output and returns a formatted summary of test results.
     ///
     /// - Parameter output: The full test output to parse.
     /// - Returns: A formatted string describing the test result.
-    public static func extractTestResults(from output: String) -> String {
+    public static func extractTestResults(
+        from output: String,
+        errorsOnly: Bool = false,
+    ) -> String {
         let parser = BuildOutputParser()
         let result = parser.parse(input: output)
-        return BuildResultFormatter.formatTestResult(result)
+        return BuildResultFormatter.formatTestResult(result, errorsOnly: errorsOnly)
     }
 
     /// Formats test output into a `CallTool.Result`, throwing on failure.
@@ -51,6 +57,7 @@ public enum ErrorExtractor {
         workspacePath: String? = nil,
         onlyTesting: [String]? = nil,
         scheme: String? = nil,
+        errorsOnly: Bool = false,
     ) async throws -> CallTool.Result {
         var succeeded = inputSucceeded
         var testResult: String
@@ -73,7 +80,7 @@ public enum ErrorExtractor {
             // the build likely failed before tests could execute. Fall back to parsing
             // stdout for compiler/linker errors that the xcresult doesn't capture.
             if !succeeded, xcresultData.passedCount == 0, xcresultData.failedCount == 0 {
-                let buildErrors = extractTestResults(from: output)
+                let buildErrors = extractTestResults(from: output, errorsOnly: errorsOnly)
                 if !buildErrors.isEmpty {
                     testResult += "\n\n" + buildErrors
                 }
@@ -87,7 +94,7 @@ public enum ErrorExtractor {
                 )
             }
         } else {
-            testResult = extractTestResults(from: output)
+            testResult = extractTestResults(from: output, errorsOnly: errorsOnly)
 
             // Extract test count and parsed status from output
             let parsed = parseBuildOutput(output)
@@ -191,6 +198,7 @@ public enum ErrorExtractor {
     public static func checkBuildSuccess(
         _ result: ProcessResult,
         projectRoot: String?,
+        errorsOnly: Bool = false,
     ) throws(MCPError) {
         let buildResult = parseBuildOutput(result.output)
 
@@ -199,7 +207,7 @@ public enum ErrorExtractor {
         }
 
         let errorOutput = BuildResultFormatter.formatBuildResult(
-            buildResult, projectRoot: projectRoot,
+            buildResult, projectRoot: projectRoot, errorsOnly: errorsOnly,
         )
         throw .internalError("Build failed:\n\(errorOutput)")
     }
