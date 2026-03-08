@@ -30,7 +30,16 @@ public struct CreateSchemeTool: Sendable {
                     ]),
                     "build_target": .object([
                         "type": .string("string"),
-                        "description": .string("Target name for the BuildAction"),
+                        "description": .string(
+                            "Target name for the BuildAction (use build_targets for multiple)",
+                        ),
+                    ]),
+                    "build_targets": .object([
+                        "type": .string("array"),
+                        "items": .object(["type": .string("string")]),
+                        "description": .string(
+                            "Target names for the BuildAction (first target is primary for launch/test). Overrides build_target if both provided",
+                        ),
                     ]),
                     "test_targets": .object([
                         "type": .string("array"),
@@ -65,7 +74,7 @@ public struct CreateSchemeTool: Sendable {
                     ]),
                 ]),
                 "required": .array([
-                    .string("project_path"), .string("scheme_name"), .string("build_target"),
+                    .string("project_path"), .string("scheme_name"),
                 ]),
             ]),
         )
@@ -73,12 +82,28 @@ public struct CreateSchemeTool: Sendable {
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(schemeName) = arguments["scheme_name"],
-              case let .string(buildTargetName) = arguments["build_target"]
+              case let .string(schemeName) = arguments["scheme_name"]
         else {
             throw MCPError.invalidParams(
-                "project_path, scheme_name, and build_target are required",
+                "project_path and scheme_name are required",
             )
+        }
+
+        // Resolve build target names: prefer build_targets array, fall back to build_target string
+        let buildTargetNames: [String]
+        if case let .array(targets) = arguments["build_targets"] {
+            buildTargetNames = targets
+                .compactMap { if case let .string(name) = $0 { name } else { nil } }
+        } else if case let .string(single) = arguments["build_target"] {
+            buildTargetNames = [single]
+        } else {
+            throw MCPError.invalidParams(
+                "Either build_target or build_targets is required",
+            )
+        }
+
+        guard !buildTargetNames.isEmpty else {
+            throw MCPError.invalidParams("build_targets must not be empty")
         }
 
         let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -103,30 +128,36 @@ public struct CreateSchemeTool: Sendable {
 
         do {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
+            let containerPath = "container:\(projectURL.lastPathComponent)"
 
-            // Resolve build target
-            guard
-                let buildTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
-                    $0.name == buildTargetName
-                })
-            else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            "Build target '\(buildTargetName)' not found in project",
-                        ),
-                    ],
+            // Resolve all build targets
+            var buildRefs: [XCScheme.BuildableReference] = []
+            for targetName in buildTargetNames {
+                guard
+                    let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                        $0.name == targetName
+                    })
+                else {
+                    return CallTool.Result(
+                        content: [
+                            .text(
+                                "Build target '\(targetName)' not found in project",
+                            ),
+                        ],
+                    )
+                }
+                buildRefs.append(
+                    XCScheme.BuildableReference(
+                        referencedContainer: containerPath,
+                        blueprint: target,
+                        buildableName: buildableName(for: target),
+                        blueprintName: targetName,
+                    ),
                 )
             }
 
-            let containerPath = "container:\(projectURL.lastPathComponent)"
-
-            let buildRef = XCScheme.BuildableReference(
-                referencedContainer: containerPath,
-                blueprint: buildTarget,
-                buildableName: buildableName(for: buildTarget),
-                blueprintName: buildTargetName,
-            )
+            // First build ref is the primary (used for launch, test macro expansion, pre-actions)
+            let primaryBuildRef = buildRefs[0]
 
             // BuildAction
             var preActions: [XCScheme.ExecutionAction] = []
@@ -140,20 +171,22 @@ public struct CreateSchemeTool: Sendable {
                             XCScheme.ExecutionAction(
                                 scriptText: scriptText,
                                 title: title,
-                                environmentBuildable: buildRef,
+                                environmentBuildable: primaryBuildRef,
                             ),
                         )
                     }
                 }
             }
 
-            let buildActionEntry = XCScheme.BuildAction.Entry(
-                buildableReference: buildRef,
-                buildFor: XCScheme.BuildAction.Entry.BuildFor.default,
-            )
+            let buildActionEntries = buildRefs.map {
+                XCScheme.BuildAction.Entry(
+                    buildableReference: $0,
+                    buildFor: XCScheme.BuildAction.Entry.BuildFor.default,
+                )
+            }
 
             let buildAction = XCScheme.BuildAction(
-                buildActionEntries: [buildActionEntry],
+                buildActionEntries: buildActionEntries,
                 preActions: preActions,
                 parallelizeBuild: true,
                 buildImplicitDependencies: true,
@@ -223,7 +256,7 @@ public struct CreateSchemeTool: Sendable {
 
             let testAction = XCScheme.TestAction(
                 buildConfiguration: buildConfiguration,
-                macroExpansion: buildRef,
+                macroExpansion: primaryBuildRef,
                 testables: testables,
                 testPlans: testPlanRefs,
             )
@@ -231,7 +264,7 @@ public struct CreateSchemeTool: Sendable {
             // LaunchAction
             let launchAction = XCScheme.LaunchAction(
                 runnable: XCScheme.BuildableProductRunnable(
-                    buildableReference: buildRef,
+                    buildableReference: primaryBuildRef,
                 ),
                 buildConfiguration: buildConfiguration,
             )
@@ -265,7 +298,7 @@ public struct CreateSchemeTool: Sendable {
             try scheme.write(path: Path(schemePath), override: false)
 
             var summary = "Created scheme '\(schemeName)' at \(schemePath)"
-            summary += "\n  Build target: \(buildTargetName)"
+            summary += "\n  Build targets: \(buildTargetNames.joined(separator: ", "))"
             summary += "\n  Configuration: \(buildConfiguration)"
             if !testables.isEmpty {
                 let names = testables.map(\.buildableReference.blueprintName)

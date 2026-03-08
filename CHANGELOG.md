@@ -8,6 +8,7 @@
 - Add `sample_mac_app` and `profile_app_launch` profiling tools; extract `PIDResolver` to Core; parse sample output into agent-friendly summaries
 - Integrate Swift Backtrace API (SE-0419); attach symbolicated backtraces to unexpected `MCPError.internalError` on macOS 26+
 - Add `scaffold_module` composite tool; create a framework module with test target, sync folders, dependencies, embedding, and test plan entry in one call ([#177](https://github.com/toba/xc-mcp/issues/177))
+- `create_scheme`: accept `build_targets` array for multiple build action entries; first target is primary for launch/test
 
 ### 🐞 Fixes
 
