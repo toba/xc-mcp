@@ -118,6 +118,7 @@ swift test
 - **Create an issue before starting work**: `jig todo create "title" -t <type> -s in-progress`
 - **Mark completed when done**: `jig todo update <id> -s completed`
 - The `/commit` skill generates changelog entries from completed issues — if no issue exists, the work won't appear in the changelog.
+- **Never commit automatically** — wait for the user to say `/commit` or explicitly ask to commit.
 
 ## Testing Rules
 

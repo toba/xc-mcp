@@ -54,6 +54,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addToCopyFilesPhase = "add_to_copy_files_phase"
     case removeCopyFilesPhase = "remove_copy_files_phase"
     case validateProject = "validate_project"
+    case scaffoldModule = "scaffold_module"
     case listDocumentTypes = "list_document_types"
     case manageDocumentType = "manage_document_type"
     case listTypeIdentifiers = "list_type_identifiers"
@@ -212,7 +213,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
                  .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
                  .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
-                 .validateProject,
+                 .validateProject, .scaffoldModule,
                  .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
                  .manageTypeIdentifier, .listURLTypes, .manageURLType:
                 return .project
@@ -388,6 +389,7 @@ public struct XcodeMCPServer: Sendable {
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
         let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
+        let scaffoldModuleTool = ScaffoldModuleTool(pathUtility: pathUtility)
         let listDocumentTypesTool = ListDocumentTypesTool(pathUtility: pathUtility)
         let manageDocumentTypeTool = ManageDocumentTypeTool(pathUtility: pathUtility)
         let listTypeIdentifiersTool = ListTypeIdentifiersTool(pathUtility: pathUtility)
@@ -677,6 +679,7 @@ public struct XcodeMCPServer: Sendable {
             (.addToCopyFilesPhase, addToCopyFilesPhase.tool()),
             (.removeCopyFilesPhase, removeCopyFilesPhase.tool()),
             (.validateProject, validateProjectTool.tool()),
+            (.scaffoldModule, scaffoldModuleTool.tool()),
             (.listDocumentTypes, listDocumentTypesTool.tool()),
             (.manageDocumentType, manageDocumentTypeTool.tool()),
             (.listTypeIdentifiers, listTypeIdentifiersTool.tool()),
@@ -927,6 +930,8 @@ public struct XcodeMCPServer: Sendable {
                     return try removeCopyFilesPhase.execute(arguments: arguments)
                 case .validateProject:
                     return try validateProjectTool.execute(arguments: arguments)
+                case .scaffoldModule:
+                    return try scaffoldModuleTool.execute(arguments: arguments)
                 case .listDocumentTypes:
                     return try listDocumentTypesTool.execute(arguments: arguments)
                 case .manageDocumentType:

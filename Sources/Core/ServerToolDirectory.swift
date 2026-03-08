@@ -95,6 +95,7 @@ public enum ServerToolDirectory {
         "list_type_identifiers", "manage_type_identifier",
         "list_url_types", "manage_url_type",
         "validate_project",
+        "scaffold_module",
     ]
 
     private static let deviceTools: [String] = [
