@@ -14,7 +14,7 @@ public struct DetectUnusedCodeTool: Sendable {
         Tool(
             name: "detect_unused_code",
             description:
-            "Detect unused code in a Swift package or Xcode project using Periphery. Returns a compact summary by default; use format: \"detail\" to see per-declaration output. Automatically maintains a checklist for iterative cleanup — use mark to track progress. Supports cached results via result_file for instant drill-down without re-scanning. Requires the 'periphery' CLI (brew install periphery).",
+            "Detect unused code in a Swift package or Xcode project using Periphery. By default, reuses cached scan results from /tmp if available — set fresh_scan: true to force a new build+scan. Returns a compact summary by default; use format: \"detail\" to see per-declaration output. Automatically maintains a checklist for iterative cleanup — use mark to track progress. Supports cached results via result_file for instant drill-down without re-scanning. Requires the 'periphery' CLI (brew install periphery).",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -47,6 +47,12 @@ public struct DetectUnusedCodeTool: Sendable {
                         "type": .string("boolean"),
                         "description": .string(
                             "Skip the build step and use existing index store data. Faster but requires a prior build. Defaults to false.",
+                        ),
+                    ]),
+                    "fresh_scan": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "Force a fresh Periphery build+scan even when cached results exist in /tmp. Defaults to false.",
                         ),
                     ]),
                     "exclude_targets": .object([
@@ -157,13 +163,14 @@ public struct DetectUnusedCodeTool: Sendable {
         let fileFilter = arguments.getStringArray("file_filter")
         let statusFilter = arguments.getStringArray("status_filter")
         let resultFile = arguments.getString("result_file")
+        let freshScan = arguments.getBool("fresh_scan")
         let groupBy = arguments.getString("group_by")
 
         let declarations: [UnusedDeclaration]
         let cachePath: String
 
         if let resultFile {
-            // Read from cached file — skip scan entirely
+            // Read from explicit cached file — skip scan entirely
             let fileURL = URL(fileURLWithPath: resultFile)
             let data = try Data(contentsOf: fileURL)
             guard let jsonString = String(data: data, encoding: .utf8) else {
@@ -171,8 +178,12 @@ public struct DetectUnusedCodeTool: Sendable {
             }
             declarations = Self.parseJSONOutput(jsonString)
             cachePath = resultFile
+        } else if !freshScan, let cached = try await findCachedResult(arguments: arguments) {
+            // Reuse existing cached results from /tmp
+            declarations = Self.parseJSONOutput(cached.json)
+            cachePath = cached.path
         } else {
-            // Run Periphery scan
+            // Run Periphery scan (no cache found, or fresh_scan requested)
             let (rawJSON, cPath) = try await runPeripheryScan(arguments: arguments)
             declarations = Self.parseJSONOutput(rawJSON)
             cachePath = cPath
@@ -248,6 +259,42 @@ public struct DetectUnusedCodeTool: Sendable {
         }
 
         return CallTool.Result(content: [.text(message)])
+    }
+
+    /// Resolves the cache file path for the given arguments without running a scan.
+    private func cacheFilePath(arguments: [String: Value]) async throws -> String {
+        let project = arguments.getString("project")
+        let packagePath: String
+        do {
+            packagePath = try await sessionManager.resolvePackagePath(from: arguments)
+        } catch {
+            if let project,
+               project.hasSuffix(".xcodeproj") || project.hasSuffix(".xcworkspace")
+            {
+                let url = URL(fileURLWithPath: project)
+                packagePath = url.deletingLastPathComponent().path
+            } else {
+                throw error
+            }
+        }
+        let schemes = arguments.getStringArray("schemes")
+        let hashInput = "\(packagePath)|\(project ?? "")|\(schemes.joined(separator: ","))"
+        let hash = Self.shortHash(hashInput)
+        return "/tmp/periphery-\(hash).json"
+    }
+
+    /// Returns cached scan results from /tmp if the cache file exists.
+    private func findCachedResult(arguments: [String: Value]) async throws -> (
+        json: String, path: String,
+    )? {
+        let cacheFile = try await cacheFilePath(arguments: arguments)
+        guard FileManager.default.fileExists(atPath: cacheFile),
+              let data = try? Data(contentsOf: URL(fileURLWithPath: cacheFile)),
+              let json = String(data: data, encoding: .utf8)
+        else {
+            return nil
+        }
+        return (json, cacheFile)
     }
 
     private func runPeripheryScan(arguments: [String: Value]) async throws -> (

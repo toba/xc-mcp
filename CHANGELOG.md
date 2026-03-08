@@ -15,6 +15,7 @@
 - Add `get_coverage_report` and `get_file_coverage` tools; per-target and function-level coverage from xcresult bundles
 - Add `validate_project` tool; catches dangling copy-files refs, orphaned build files, unreferenced phases, and inconsistent embedding ([#134](https://github.com/toba/xc-mcp/issues/134))
 - Add `remove_framework` tool; remove framework dependencies from one or all targets, cleaning up link phases, embed phases, and orphaned file references ([#158](https://github.com/toba/xc-mcp/issues/158))
+- `detect_unused_code`: add `group_by` parameter for per-target, per-kind, and per-directory summaries ([#188](https://github.com/toba/xc-mcp/issues/188))
 
 ### 🐞 Fixes
 
