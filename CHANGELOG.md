@@ -18,6 +18,7 @@
 - `detect_unused_code`: add `group_by` parameter for per-target, per-kind, and per-directory summaries ([#188](https://github.com/toba/xc-mcp/issues/188))
 - Add `sample_mac_app`, `profile_app_launch`, and `SampleOutputParser`; profiling and performance capture tools for xc-build with parsed call-stack summaries
 - `sample_mac_app` parses raw `sample` output into agent-friendly summaries; heaviest functions table, call paths, idle thread filtering
+- Integrate Swift Backtrace API (SE-0419); attach symbolicated backtraces to unexpected `MCPError.internalError` on macOS 26+ ([#184](https://github.com/toba/xc-mcp/issues/184))
 
 ### 🐞 Fixes
 

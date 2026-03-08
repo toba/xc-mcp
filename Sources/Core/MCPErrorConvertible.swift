@@ -1,4 +1,5 @@
 import MCP
+import Runtime
 
 /// Protocol for errors that can be converted to MCPError for tool responses.
 ///
@@ -14,7 +15,8 @@ extension Swift.Error {
     ///
     /// - If the error is already an MCPError, returns it unchanged.
     /// - If the error conforms to MCPErrorConvertible, uses `toMCPError()`.
-    /// - Otherwise, wraps the error message in `MCPError.internalError`.
+    /// - Otherwise, wraps the error message in `MCPError.internalError`,
+    ///   with a backtrace appended on macOS 26+.
     public func asMCPError() -> MCPError {
         if let mcpError = self as? MCPError {
             return mcpError
@@ -22,6 +24,18 @@ extension Swift.Error {
         if let convertible = self as? MCPErrorConvertible {
             return convertible.toMCPError()
         }
-        return MCPError.internalError(localizedDescription)
+        var message = localizedDescription
+        if let backtrace = Self.captureBacktrace() {
+            message += "\n\nBacktrace:\n\(backtrace)"
+        }
+        return MCPError.internalError(message)
+    }
+
+    private static func captureBacktrace() -> String? {
+        if #available(macOS 26.0, *) {
+            guard let bt = try? Backtrace.capture() else { return nil }
+            return String(describing: bt.symbolicated)
+        }
+        return nil
     }
 }

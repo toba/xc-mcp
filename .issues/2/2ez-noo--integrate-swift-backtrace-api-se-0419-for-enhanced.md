@@ -1,15 +1,15 @@
 ---
 # 2ez-noo
 title: Integrate Swift Backtrace API (SE-0419) for enhanced error diagnostics
-status: draft
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-07T22:02:18Z
-updated_at: 2026-03-07T22:02:18Z
+updated_at: 2026-03-08T06:00:07Z
 sync:
     github:
         issue_number: "184"
-        synced_at: "2026-03-07T22:39:35Z"
+        synced_at: "2026-03-08T06:08:48Z"
 ---
 
 ## Context
@@ -36,7 +36,7 @@ Note: captures backtraces of the *current* process only — not applicable to de
 
 ## Integration Points
 
-- [ ] `MCPErrorConvertible.asMCPError()` — attach backtrace to `MCPError.internalError` for unexpected failures
+- [x] `MCPErrorConvertible.asMCPError()` — attach backtrace to `MCPError.internalError` for unexpected failures
 - [ ] Evaluate other error paths in Core runners where diagnostic context would help
 
 ## Constraints
@@ -44,3 +44,8 @@ Note: captures backtraces of the *current* process only — not applicable to de
 - Not async-signal-safe — not for crash reporters
 - macOS 26+ only at runtime
 - xc-mcp minimum deployment target stays at macOS 15
+
+
+## Summary of Changes
+
+Added `import Runtime` and a `captureBacktrace()` helper to `MCPErrorConvertible.swift`. When an unexpected error (not `MCPError` or `MCPErrorConvertible`) hits `asMCPError()`, a symbolicated backtrace is appended to the error message on macOS 26+. On older systems, behavior is unchanged. No new dependencies — `Runtime` is a stdlib module gated behind `#available(macOS 26.0, *)`.
