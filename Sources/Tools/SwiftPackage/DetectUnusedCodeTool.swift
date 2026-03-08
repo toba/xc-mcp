@@ -329,10 +329,12 @@ public struct DetectUnusedCodeTool: Sendable {
                 )
             }
 
-            // Cache raw JSON to disk
+            // Cache raw JSON to disk, removing any stale checklist from a prior scan
             let hashInput = "\(packagePath)|\(project ?? "")|\(schemes.joined(separator: ","))"
             let hash = Self.shortHash(hashInput)
             let cacheFile = "/tmp/periphery-\(hash).json"
+            let oldChecklist = Self.checklistPath(forCache: cacheFile)
+            try? FileManager.default.removeItem(atPath: oldChecklist)
             try result.stdout.write(
                 toFile: cacheFile, atomically: true, encoding: .utf8,
             )

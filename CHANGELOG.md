@@ -29,6 +29,7 @@
 - Fix `remove_file` removing files from all targets when multiple targets have files with the same name; now matches by full path via `fullPath(sourceRoot:)` instead of filename ([#156](https://github.com/toba/xc-mcp/issues/156))
 - Fix `add_swift_package` returning "already exists" instead of linking product to a new target; now links the product and detects duplicates ([#154](https://github.com/toba/xc-mcp/issues/154))
 - Fix `start_mac_log_cap` process name derivation; resolve actual executable name from app bundle `Info.plist` instead of lowercased bundle ID suffix; case-insensitive fallback when bundle not found ([#186](https://github.com/toba/xc-mcp/issues/186))
+- Fix `detect_unused_code` `result_file` returning stale entries from prior scans; delete old checklist when a new scan overwrites the cache file
 - Fix `detect_unused_code` checklist not reconciling with already-removed code; strengthen agent instructions to mark items done immediately after each resolution ([#187](https://github.com/toba/xc-mcp/issues/187))
 - Fix `add_file` path doubling when adding files to groups with a filesystem `path`; file reference now computed relative to the group location ([#155](https://github.com/toba/xc-mcp/issues/155))
 - Default `ONLY_ACTIVE_ARCH=YES` for Debug in all target-creation tools; prevents cross-compilation failures with SPM dependencies ([#151](https://github.com/toba/xc-mcp/issues/151))
