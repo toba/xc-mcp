@@ -182,12 +182,8 @@ public enum BuildResultFormatter {
         }
 
         var details: [String] = []
-        if passed > 0 {
-            details.append("\(passed) passed")
-        }
-        if failed > 0 {
-            details.append("\(failed) failed")
-        }
+        details.append("\(passed) passed")
+        details.append("\(failed) failed")
         if let testTime = result.summary.testTime {
             details.append(testTime)
         }

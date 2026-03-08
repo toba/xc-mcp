@@ -225,8 +225,8 @@ public enum ErrorExtractor {
 
         var details: [String] = []
         if total > 0 { details.append("\(total) total") }
-        if passed > 0 { details.append("\(passed) passed") }
-        if failed > 0 { details.append("\(failed) failed") }
+        details.append("\(passed) passed")
+        details.append("\(failed) failed")
         if skipped > 0 { details.append("\(skipped) skipped") }
         if let duration = data.duration {
             details.append(String(format: "%.1fs", duration))

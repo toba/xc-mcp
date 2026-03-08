@@ -314,6 +314,24 @@ struct BuildResultFormatterTests {
     }
 
     @Test
+    func `Format test results always includes both passed and failed counts`() {
+        let allPassed = BuildResult(
+            status: "success",
+            summary: BuildSummary(
+                errors: 0, warnings: 0, failedTests: 0, passedTests: 12, buildTime: nil,
+                testTime: "1.0s",
+            ),
+            errors: [],
+            warnings: [],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatTestResult(allPassed)
+        #expect(formatted.contains("12 passed"))
+        #expect(formatted.contains("0 failed"))
+    }
+
+    @Test
     func `ErrorExtractor.extractTestResults integration`() {
         let output = """
         Test Case 'MyTests.testA' passed (0.001 seconds).

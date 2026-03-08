@@ -8,6 +8,7 @@
 - `test_macos` now returns XCTest `measure()` timing data in results; average, relative standard deviation, and individual values ([#169](https://github.com/toba/xc-mcp/issues/169))
 - `test_macos` now surfaces per-test results with skip reasons and performance metrics; no more "1 passed" when 2 tests were silently skipped ([#180](https://github.com/toba/xc-mcp/issues/180))
 - `test_macos` error output now lists failed test names prominently; no more scanning 3600+ lines to find 4 failures ([#185](https://github.com/toba/xc-mcp/issues/185))
+- `test_macos` output now always includes both passed and failed counts in the summary line; grep-friendly even with `-quiet` builds
 - `search_crash_reports` now supports `report_path` for reading a specific crash report directly; agents can search → get path → read full report without re-searching ([#186](https://github.com/toba/xc-mcp/issues/186))
 - `search_crash_reports` now shows symbolicated crashing thread stack trace; top 15 frames with image names, symbols, and source locations ([#182](https://github.com/toba/xc-mcp/issues/182))
 - Add JSON output mode (`format: "json"`) and field selection (`fields`) to discovery tools; `show_build_settings`, `list_schemes`, `list_test_plan_targets`, `discover_projs` ([#163](https://github.com/toba/xc-mcp/issues/163))
