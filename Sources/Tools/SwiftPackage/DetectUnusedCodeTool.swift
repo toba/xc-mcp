@@ -311,18 +311,15 @@ public struct DetectUnusedCodeTool: Sendable {
             args.append(glob)
         }
 
-        let guardPath = skipBuild ? nil : (project ?? packagePath)
-        if let guardPath {
-            try await BuildGuard.shared.acquire(
-                path: guardPath, description: "periphery scan",
-            )
-        }
+        let guardFD = skipBuild ? nil : try BuildGuard.acquire(
+            path: project ?? packagePath, description: "periphery scan",
+        )
         do {
             let result = try await ProcessResult.run(
                 executablePath, arguments: args, mergeStderr: false,
                 timeout: .seconds(600),
             )
-            if let guardPath { await BuildGuard.shared.release(path: guardPath) }
+            if let guardFD { BuildGuard.release(fd: guardFD) }
 
             if result.exitCode != 0 {
                 let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -342,9 +339,10 @@ public struct DetectUnusedCodeTool: Sendable {
 
             return (result.stdout, cacheFile)
         } catch let error as MCPError {
+            if let guardFD { BuildGuard.release(fd: guardFD) }
             throw error
         } catch {
-            if let guardPath { await BuildGuard.shared.release(path: guardPath) }
+            if let guardFD { BuildGuard.release(fd: guardFD) }
             throw error.asMCPError()
         }
     }

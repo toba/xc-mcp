@@ -43,12 +43,8 @@ public struct SwiftRunner: Sendable {
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
     ) async throws -> SwiftResult {
-        let guardPath = workingDirectory
-        if let guardPath {
-            try await BuildGuard.shared.acquire(
-                path: guardPath,
-                description: "swift \(arguments.first ?? "")",
-            )
+        let guardFD = try workingDirectory.map {
+            try BuildGuard.acquire(path: $0, description: "swift \(arguments.first ?? "")")
         }
         do {
             let result = try await ProcessResult.runSubprocess(
@@ -58,10 +54,10 @@ public struct SwiftRunner: Sendable {
                 environment: environment,
                 timeout: timeout,
             )
-            if let guardPath { await BuildGuard.shared.release(path: guardPath) }
+            if let guardFD { BuildGuard.release(fd: guardFD) }
             return result
         } catch {
-            if let guardPath { await BuildGuard.shared.release(path: guardPath) }
+            if let guardFD { BuildGuard.release(fd: guardFD) }
             throw error
         }
     }

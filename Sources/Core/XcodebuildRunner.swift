@@ -72,10 +72,8 @@ public struct XcodebuildRunner: Sendable {
         onProgress: (@Sendable (String) -> Void)?,
     ) async throws -> XcodebuildResult {
         let guardPath = Self.extractProjectPath(from: arguments)
-        if let guardPath {
-            try await BuildGuard.shared.acquire(
-                path: guardPath, description: "xcodebuild \(arguments.first ?? "")",
-            )
+        let guardFD = try guardPath.map {
+            try BuildGuard.acquire(path: $0, description: "xcodebuild \(arguments.first ?? "")")
         }
 
         let result: XcodebuildResult
@@ -86,10 +84,10 @@ public struct XcodebuildRunner: Sendable {
                 onProgress: onProgress,
             )
         } catch {
-            if let guardPath { await BuildGuard.shared.release(path: guardPath) }
+            if let guardFD { BuildGuard.release(fd: guardFD) }
             throw error
         }
-        if let guardPath { await BuildGuard.shared.release(path: guardPath) }
+        if let guardFD { BuildGuard.release(fd: guardFD) }
         return result
     }
 
