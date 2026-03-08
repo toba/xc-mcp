@@ -1,5 +1,5 @@
 import MCP
-import Runtime
+@_weakLinked import Runtime
 
 /// Protocol for errors that can be converted to MCPError for tool responses.
 ///

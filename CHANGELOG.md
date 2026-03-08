@@ -44,6 +44,7 @@
 - Fix `add_target` adding extraneous build settings; minimize to `PRODUCT_BUNDLE_IDENTIFIER`, `PRODUCT_NAME`, `GENERATE_INFOPLIST_FILE` ([#173](https://github.com/toba/xc-mcp/issues/173))
 - Fix `add_to_copy_files_phase` missing `CodeSignOnCopy`/`RemoveHeadersOnCopy` attributes; add `attributes` parameter with auto-defaults for Embed Frameworks ([#175](https://github.com/toba/xc-mcp/issues/175))
 - Fix `add_file` rejecting slash-separated group paths like `Components/TableView`; unify group path resolution across all tools ([#172](https://github.com/toba/xc-mcp/issues/172))
+- Fix `sample_mac_app` failing for apps with spaces/parens in name; use `NSRunningApplication` for bundle ID lookup and `-file` flag for reliable `sample` output capture
 
 ### 🗜️ Tweaks
 

@@ -84,7 +84,9 @@ public struct SampleMacAppTool: Sendable {
         if let directPID = arguments.getInt("pid") {
             pid = directPID
         } else if let bundleId = arguments.getString("bundle_id") {
-            guard let resolved = await PIDResolver.findPID(matching: bundleId) else {
+            guard let resolved = await MainActor.run(body: {
+                PIDResolver.findPID(forBundleID: bundleId)
+            }) else {
                 throw MCPError.invalidParams(
                     "No running process found for bundle ID '\(bundleId)'. Is the app running?",
                 )
@@ -96,11 +98,14 @@ public struct SampleMacAppTool: Sendable {
 
         let duration = arguments.getInt("duration") ?? 5
         let interval = arguments.getInt("interval") ?? 1
+        let outputFile = "/tmp/sample_\(pid)_\(ProcessInfo.processInfo.processIdentifier).txt"
 
         do {
             let result = try await ProcessResult.run(
                 "/usr/bin/sample",
-                arguments: ["\(pid)", "\(duration)", "\(interval)"],
+                arguments: [
+                    "\(pid)", "\(duration)", "\(interval)", "-file", outputFile,
+                ],
                 timeout: .seconds(duration + 30),
             )
 
@@ -110,7 +115,19 @@ public struct SampleMacAppTool: Sendable {
                 )
             }
 
-            let rawOutput = result.stdout.isEmpty ? result.stderr : result.stdout
+            // Read sample data from the output file
+            let rawOutput: String
+            if let data = FileManager.default.contents(atPath: outputFile),
+               let text = String(data: data, encoding: .utf8), !text.isEmpty
+            {
+                rawOutput = text
+            } else {
+                // Fall back to stdout if file wasn't written
+                rawOutput = result.stdout.isEmpty ? result.stderr : result.stdout
+            }
+
+            // Clean up the temp file
+            try? FileManager.default.removeItem(atPath: outputFile)
 
             // Return raw output if requested
             if arguments.getBool("raw") {
