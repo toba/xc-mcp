@@ -36,6 +36,10 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     case searchCrashReports = "search_crash_reports"
     case diagnostics
 
+    // Instruments tools
+    case sampleMacApp = "sample_mac_app"
+    case profileAppLaunch = "profile_app_launch"
+
     // Session tools
     case setSessionDefaults = "set_session_defaults"
     case showSessionDefaults = "show_session_defaults"
@@ -140,6 +144,13 @@ public struct BuildMCPServer: Sendable {
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
 
+        // Create instruments tools
+        let sampleMacAppTool = SampleMacAppTool()
+        let profileAppLaunchTool = ProfileAppLaunchTool(
+            xcodebuildRunner: xcodebuildRunner,
+            sessionManager: sessionManager,
+        )
+
         // Create session tools
         let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
         let showSessionDefaultsTool = ShowSessionDefaultsTool(sessionManager: sessionManager)
@@ -174,6 +185,9 @@ public struct BuildMCPServer: Sendable {
                 scaffoldMacOSTool.tool(),
                 searchCrashReportsTool.tool(),
                 diagnosticsTool.tool(),
+                // Instruments tools
+                sampleMacAppTool.tool(),
+                profileAppLaunchTool.tool(),
                 // Session tools
                 setSessionDefaultsTool.tool(),
                 showSessionDefaultsTool.tool(),
@@ -243,6 +257,11 @@ public struct BuildMCPServer: Sendable {
                     return searchCrashReportsTool.execute(arguments: arguments)
                 case .diagnostics:
                     return try await diagnosticsTool.execute(arguments: arguments)
+                // Instruments tools
+                case .sampleMacApp:
+                    return try await sampleMacAppTool.execute(arguments: arguments)
+                case .profileAppLaunch:
+                    return try await profileAppLaunchTool.execute(arguments: arguments)
                 // Session tools
                 case .setSessionDefaults:
                     return try await setSessionDefaultsTool.execute(arguments: arguments)

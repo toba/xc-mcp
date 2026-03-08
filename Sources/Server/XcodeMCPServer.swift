@@ -183,6 +183,8 @@ public enum ToolName: String, CaseIterable, Sendable {
     case xctraceRecord = "xctrace_record"
     case xctraceList = "xctrace_list"
     case xctraceExport = "xctrace_export"
+    case sampleMacApp = "sample_mac_app"
+    case profileAppLaunch = "profile_app_launch"
 
     // Utility tools
     case clean
@@ -261,7 +263,8 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .swiftDiagnostics, .detectUnusedCode:
                 return .swiftPackage
             // Instruments
-            case .xctraceRecord, .xctraceList, .xctraceExport:
+            case .xctraceRecord, .xctraceList, .xctraceExport,
+                 .sampleMacApp, .profileAppLaunch:
                 return .instruments
             // Utility
             case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS, .searchCrashReports, .diagnostics:
@@ -608,6 +611,12 @@ public struct XcodeMCPServer: Sendable {
         )
         let xctraceListTool = XctraceListTool(xctraceRunner: xctraceRunner)
         let xctraceExportTool = XctraceExportTool(xctraceRunner: xctraceRunner)
+        let sampleMacAppTool = SampleMacAppTool()
+        let profileAppLaunchTool = ProfileAppLaunchTool(
+            xcodebuildRunner: xcodebuildRunner,
+            xctraceRunner: xctraceRunner,
+            sessionManager: sessionManager,
+        )
 
         // Create utility tools
         let cleanTool = CleanTool(
@@ -785,6 +794,8 @@ public struct XcodeMCPServer: Sendable {
             (.xctraceRecord, xctraceRecordTool.tool()),
             (.xctraceList, xctraceListTool.tool()),
             (.xctraceExport, xctraceExportTool.tool()),
+            (.sampleMacApp, sampleMacAppTool.tool()),
+            (.profileAppLaunch, profileAppLaunchTool.tool()),
             // Utility tools
             (.clean, cleanTool.tool()),
             (.doctor, doctorTool.tool()),
@@ -1149,6 +1160,10 @@ public struct XcodeMCPServer: Sendable {
                     return try await xctraceListTool.execute(arguments: arguments)
                 case .xctraceExport:
                     return try await xctraceExportTool.execute(arguments: arguments)
+                case .sampleMacApp:
+                    return try await sampleMacAppTool.execute(arguments: arguments)
+                case .profileAppLaunch:
+                    return try await profileAppLaunchTool.execute(arguments: arguments)
                 // Utility tools
                 case .clean:
                     return try await cleanTool.execute(arguments: arguments)

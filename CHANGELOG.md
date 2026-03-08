@@ -16,6 +16,8 @@
 - Add `validate_project` tool; catches dangling copy-files refs, orphaned build files, unreferenced phases, and inconsistent embedding ([#134](https://github.com/toba/xc-mcp/issues/134))
 - Add `remove_framework` tool; remove framework dependencies from one or all targets, cleaning up link phases, embed phases, and orphaned file references ([#158](https://github.com/toba/xc-mcp/issues/158))
 - `detect_unused_code`: add `group_by` parameter for per-target, per-kind, and per-directory summaries ([#188](https://github.com/toba/xc-mcp/issues/188))
+- Add `sample_mac_app`, `profile_app_launch`, and `SampleOutputParser`; profiling and performance capture tools for xc-build with parsed call-stack summaries
+- `sample_mac_app` parses raw `sample` output into agent-friendly summaries; heaviest functions table, call paths, idle thread filtering
 
 ### 🐞 Fixes
 

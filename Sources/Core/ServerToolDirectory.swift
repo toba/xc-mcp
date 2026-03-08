@@ -48,6 +48,7 @@ public enum ServerToolDirectory {
         "get_app_bundle_id", "get_mac_bundle_id", "list_test_plan_targets",
         "clean", "doctor", "scaffold_ios_project", "scaffold_macos_project",
         "search_crash_reports", "diagnostics",
+        "sample_mac_app", "profile_app_launch",
     ]
 
     private static let simulatorTools: [String] = [

@@ -1,25 +1,32 @@
 import MCP
 import XCMCPCore
 import Foundation
-import Subprocess
 
-public struct BuildRunMacOSTool: Sendable {
+/// One-shot app launch profiling that builds, launches with xctrace "App Launch" template,
+/// and returns the trace summary.
+///
+/// Combines build → xctrace record (App Launch template) → export summary into a single
+/// tool call to answer "why is my app slow to become responsive?"
+public struct ProfileAppLaunchTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
+    private let xctraceRunner: XctraceRunner
     private let sessionManager: SessionManager
 
     public init(
         xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xctraceRunner: XctraceRunner = XctraceRunner(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
+        self.xctraceRunner = xctraceRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
         Tool(
-            name: "build_run_macos",
+            name: "profile_app_launch",
             description:
-            "Build and run an Xcode project or workspace on macOS. This combines build_macos and launch_mac_app into a single operation.",
+            "Build a macOS app and profile its launch using Instruments 'App Launch' template. Returns trace file path and exported summary. Single tool call to diagnose slow app startup.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -47,16 +54,17 @@ public struct BuildRunMacOSTool: Sendable {
                             "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
-                    "arch": .object([
+                    "template": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture.",
+                            "Instruments template to use. Defaults to 'App Launch'. Other useful options: 'Time Profiler', 'Animation Hitches'.",
                         ),
                     ]),
-                    "args": .object([
-                        "type": .string("array"),
-                        "items": .object(["type": .string("string")]),
-                        "description": .string("Optional arguments to pass to the app."),
+                    "duration": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Recording duration in seconds after app launch. Default: 15.",
+                        ),
                     ]),
                 ]),
                 "required": .array([]),
@@ -71,27 +79,21 @@ public struct BuildRunMacOSTool: Sendable {
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
-        let arch = arguments.getString("arch")
-        let launchArgs = arguments.getStringArray("args")
+        let template = arguments.getString("template") ?? "App Launch"
+        let duration = arguments.getInt("duration") ?? 15
 
         do {
-            var destination = "platform=macOS"
-            if let arch {
-                destination += ",arch=\(arch)"
-            }
-
             // Step 1: Build
             let buildResult = try await xcodebuildRunner.build(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
-                destination: destination,
+                destination: "platform=macOS",
                 configuration: configuration,
                 environment: environment,
             )
 
             let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)
-
             if !buildResult.succeeded, parsedBuild.status != "success" {
                 let errorOutput = BuildResultFormatter.formatBuildResult(parsedBuild)
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
@@ -105,13 +107,14 @@ public struct BuildRunMacOSTool: Sendable {
                 configuration: configuration,
             )
 
-            guard let appPath = extractAppPath(from: buildSettings.stdout) else {
+            guard let appPath = BuildSettingExtractor.extractAppPath(from: buildSettings.stdout)
+            else {
                 throw MCPError.internalError(
                     "Could not determine app path from build settings.",
                 )
             }
 
-            // Step 3: Prepare app bundle for launch (symlink non-embedded frameworks)
+            // Prepare app bundle
             let builtProductsDir = BuildSettingExtractor.extractSetting(
                 "BUILT_PRODUCTS_DIR", from: buildSettings.stdout,
             )
@@ -119,53 +122,57 @@ public struct BuildRunMacOSTool: Sendable {
                 appPath: appPath, builtProductsDir: builtProductsDir,
             )
 
-            // Step 4: Launch app using open command
-            var openArgs = [appPath]
-            if !launchArgs.isEmpty {
-                openArgs.append("--args")
-                openArgs.append(contentsOf: launchArgs)
-            }
+            // Step 3: Record with xctrace using the app launch template
+            let timestamp = ISO8601DateFormatter().string(from: Date())
+                .replacingOccurrences(of: ":", with: "-")
+            let tracePath = "/tmp/launch_profile_\(timestamp).trace"
 
-            let result = try await ProcessResult.run("/usr/bin/open", arguments: openArgs)
+            let process = try xctraceRunner.record(
+                template: template,
+                outputPath: tracePath,
+                device: nil,
+                timeLimit: "\(duration)s",
+                attachPID: nil,
+                attachName: nil,
+                allProcesses: false,
+                launchPath: appPath,
+            )
 
-            if result.succeeded {
-                var message = "Successfully built and launched '\(scheme)' on macOS"
-                message += "\nApp path: \(appPath)"
-
-                // Resolve PID and check liveness
-                let appName = URL(fileURLWithPath: appPath).deletingPathExtension()
-                    .lastPathComponent
-                let bundleId = extractBundleId(from: buildSettings.stdout)
-                if let pid = await PIDResolver.findLaunchedPID(
-                    bundleId: bundleId,
-                    appName: appName,
-                ) {
-                    try await Task.sleep(for: .seconds(1))
-                    if kill(pid, 0) == 0 {
-                        message += "\nPID: \(pid)"
-                    } else {
-                        message += "\nPID: \(pid) (exited — app may have crashed on launch)"
-
-                        CrashReportParser.appendCrashReports(
-                            to: &message, processName: appName, bundleID: bundleId,
-                        )
-                    }
+            // Wait for xctrace to finish (it auto-stops after time_limit)
+            // Use continuation to avoid blocking the cooperative thread pool.
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                process.terminationHandler = { _ in
+                    continuation.resume()
                 }
-
-                return CallTool.Result(content: [.text(message)])
-            } else {
-                throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }
+
+            var message = "Profile complete for '\(scheme)' with template '\(template)'\n"
+            message += "Trace file: \(tracePath)\n"
+            message += "Duration: \(duration)s\n\n"
+
+            // Step 4: Export table of contents
+            let tocResult = try await xctraceRunner.export(
+                inputPath: tracePath,
+                xpath: nil,
+                toc: true,
+            )
+
+            if tocResult.succeeded, !tocResult.stdout.isEmpty {
+                message += "--- Trace Table of Contents ---\n"
+                message += tocResult.stdout
+            } else {
+                message +=
+                    "Note: Could not export trace summary. Open \(tracePath) in Instruments.app for full analysis."
+                if !tocResult.stderr.isEmpty {
+                    message += "\nxctrace export stderr: \(tocResult.stderr)"
+                }
+            }
+
+            return CallTool.Result(content: [.text(message)])
+        } catch let error as MCPError {
+            throw error
         } catch {
             throw error.asMCPError()
         }
-    }
-
-    private func extractAppPath(from buildSettings: String) -> String? {
-        BuildSettingExtractor.extractAppPath(from: buildSettings)
-    }
-
-    private func extractBundleId(from buildSettings: String) -> String? {
-        BuildSettingExtractor.extractBundleId(from: buildSettings)
     }
 }

@@ -203,3 +203,86 @@ struct XctraceExportToolTests {
         }
     }
 }
+
+struct SampleMacAppToolTests {
+    @Test
+    func toolSchema() {
+        let tool = SampleMacAppTool()
+        let schema = tool.tool()
+
+        #expect(schema.name == "sample_mac_app")
+        #expect(schema.description?.contains("Sample") == true)
+        #expect(schema.description?.contains("call stacks") == true)
+    }
+
+    @Test
+    func `Tool schema includes expected parameters`() {
+        let tool = SampleMacAppTool()
+        let schema = tool.tool()
+
+        guard case let .object(inputSchema) = schema.inputSchema,
+              case let .object(properties) = inputSchema["properties"]
+        else {
+            Issue.record("Expected object input schema with properties")
+            return
+        }
+
+        #expect(properties["pid"] != nil)
+        #expect(properties["bundle_id"] != nil)
+        #expect(properties["duration"] != nil)
+        #expect(properties["interval"] != nil)
+    }
+
+    @Test
+    func `Execute with no pid or bundle_id throws invalidParams`() async throws {
+        let tool = SampleMacAppTool()
+
+        await #expect(throws: MCPError.self) {
+            try await tool.execute(arguments: [:])
+        }
+    }
+
+    @Test
+    func `Execute with invalid bundle_id throws invalidParams`() async throws {
+        let tool = SampleMacAppTool()
+
+        await #expect(throws: MCPError.self) {
+            try await tool.execute(arguments: [
+                "bundle_id": .string("com.nonexistent.app.12345"),
+            ])
+        }
+    }
+}
+
+struct ProfileAppLaunchToolTests {
+    @Test
+    func toolSchema() {
+        let tool = ProfileAppLaunchTool(sessionManager: SessionManager())
+        let schema = tool.tool()
+
+        #expect(schema.name == "profile_app_launch")
+        #expect(schema.description?.contains("launch") == true)
+        #expect(schema.description?.contains("profile") == true || schema.description?
+            .contains("Profile") == true)
+    }
+
+    @Test
+    func `Tool schema includes expected parameters`() {
+        let tool = ProfileAppLaunchTool(sessionManager: SessionManager())
+        let schema = tool.tool()
+
+        guard case let .object(inputSchema) = schema.inputSchema,
+              case let .object(properties) = inputSchema["properties"]
+        else {
+            Issue.record("Expected object input schema with properties")
+            return
+        }
+
+        #expect(properties["project_path"] != nil)
+        #expect(properties["workspace_path"] != nil)
+        #expect(properties["scheme"] != nil)
+        #expect(properties["configuration"] != nil)
+        #expect(properties["template"] != nil)
+        #expect(properties["duration"] != nil)
+    }
+}

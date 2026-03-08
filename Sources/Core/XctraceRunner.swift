@@ -49,6 +49,7 @@ public struct XctraceRunner: Sendable {
     ///   - attachPID: Optional PID to attach to.
     ///   - attachName: Optional process name to attach to.
     ///   - allProcesses: Whether to record system-wide.
+    ///   - launchPath: Optional path to an app bundle to launch under xctrace.
     /// - Returns: The running Process instance.
     /// - Throws: An error if the process fails to launch.
     public func record(
@@ -59,6 +60,7 @@ public struct XctraceRunner: Sendable {
         attachPID: String?,
         attachName: String?,
         allProcesses: Bool,
+        launchPath: String? = nil,
     ) throws -> Process {
         var args = ["record", "--template", template, "--output", outputPath]
 
@@ -70,11 +72,11 @@ public struct XctraceRunner: Sendable {
             args += ["--time-limit", timeLimit]
         }
 
-        if let attachPID {
+        if let launchPath {
+            args += ["--launch", "--", launchPath]
+        } else if let attachPID {
             args += ["--attach", attachPID]
-        }
-
-        if let attachName {
+        } else if let attachName {
             args += ["--attach", attachName]
         }
 
