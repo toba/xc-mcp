@@ -15,6 +15,7 @@
 
 - Fix `sample_mac_app` bundle ID lookup and output capture; use `NSRunningApplication` instead of `pgrep` and `-file` flag for reliable `sample` output
 - Fix `detect_unused_code` `result_file` returning stale entries from prior scans
+- Fix `test_macos` `only_testing` failing to match Swift Testing functions with backtick-escaped names containing spaces; auto-normalize identifiers by wrapping in backticks and appending `()`
 
 ## Week of Mar 1 – Mar 7, 2026
 

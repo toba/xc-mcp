@@ -93,9 +93,13 @@ extension [String: Value] {
     }
 
     /// Extracts test selection and coverage parameters from arguments.
+    ///
+    /// Normalizes test identifiers that use Swift Testing backtick-escaped names.
+    /// If a method component contains spaces but is missing backticks and trailing `()`,
+    /// they are added automatically so xcodebuild can match them.
     public func testParameters() -> TestParameters {
-        let onlyTestingArray = getStringArray("only_testing")
-        let skipTestingArray = getStringArray("skip_testing")
+        let onlyTestingArray = getStringArray("only_testing").map(Self.normalizeTestIdentifier)
+        let skipTestingArray = getStringArray("skip_testing").map(Self.normalizeTestIdentifier)
         return TestParameters(
             onlyTesting: onlyTestingArray.isEmpty ? nil : onlyTestingArray,
             skipTesting: skipTestingArray.isEmpty ? nil : skipTestingArray,
@@ -104,6 +108,35 @@ extension [String: Value] {
             timeout: getInt("timeout"),
             outputTimeout: getInt("output_timeout"),
         )
+    }
+
+    /// Normalizes a test identifier for xcodebuild's `-only-testing:` / `-skip-testing:` flags.
+    ///
+    /// xcodebuild expects Swift Testing backtick-escaped function names in the format:
+    /// ``TargetName/TestClass/`function name with spaces`()``
+    ///
+    /// LLMs often pass the display name without backticks or parentheses:
+    /// `"TargetName/TestClass/function name with spaces"`
+    ///
+    /// This method detects the method component (after the second `/`), and if it contains
+    /// spaces but is not already backtick-wrapped, wraps it in backticks and appends `()`.
+    private static func normalizeTestIdentifier(_ identifier: String) -> String {
+        // Split into components: Target/Class/Method
+        let parts = identifier.split(separator: "/", maxSplits: 2)
+        guard parts.count == 3 else { return identifier }
+
+        let method = parts[2]
+
+        // Already properly formatted (has backticks or no spaces)
+        guard method.contains(" ") else { return identifier }
+        if method.hasPrefix("`") { return identifier }
+
+        // Wrap in backticks and add () if missing
+        var normalized = "`\(method)`"
+        if !method.hasSuffix("()") {
+            normalized += "()"
+        }
+        return "\(parts[0])/\(parts[1])/\(normalized)"
     }
 
     /// Schema properties for test selection and coverage parameters.
@@ -116,14 +149,18 @@ extension [String: Value] {
                 "type": .string("array"),
                 "items": .object(["type": .string("string")]),
                 "description": .string(
-                    "Test identifiers to run exclusively (e.g., 'MyTests/testFoo').",
+                    "Test identifiers to run exclusively. Format: 'TargetName/TestClass/testMethod'. "
+                        + "For Swift Testing functions with backtick-escaped names containing spaces, "
+                        + "use the format 'TargetName/TestClass/`method name with spaces`()'. "
+                        +
+                        "If backticks are omitted from names with spaces, they are added automatically.",
                 ),
             ]),
             "skip_testing": .object([
                 "type": .string("array"),
                 "items": .object(["type": .string("string")]),
                 "description": .string(
-                    "Test identifiers to skip.",
+                    "Test identifiers to skip. Same format as only_testing.",
                 ),
             ]),
             "enable_code_coverage": .object([
