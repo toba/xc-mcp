@@ -9,10 +9,12 @@
 - Integrate Swift Backtrace API (SE-0419); attach symbolicated backtraces to unexpected `MCPError.internalError` on macOS 26+
 - Add `scaffold_module` composite tool; create a framework module with test target, sync folders, dependencies, embedding, and test plan entry in one call ([#177](https://github.com/toba/xc-mcp/issues/177))
 - `create_scheme`: accept `build_targets` array for multiple build action entries; first target is primary for launch/test
+- `detect_unused_code`: filter out Periphery's `superfluousIgnoreComment` warnings; these are an unresolvable cycle on assign-only properties with `// periphery:ignore` comments ([#198](https://github.com/toba/xc-mcp/issues/198))
 
 ### 🐞 Fixes
 
 - Fix `sample_mac_app` bundle ID lookup and output capture; use `NSRunningApplication` instead of `pgrep` and `-file` flag for reliable `sample` output
+- Fix `detect_unused_code` `result_file` returning stale entries from prior scans
 
 ## Week of Mar 1 – Mar 7, 2026
 

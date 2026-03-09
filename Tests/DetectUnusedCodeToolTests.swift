@@ -756,6 +756,84 @@ struct DetectUnusedCodeToolTests {
         #expect(results[0].module == "")
     }
 
+    // MARK: - Superfluous ignore comment filtering
+
+    @Test
+    func `filterSuperfluousIgnoreComments removes superfluous entries`() {
+        let declarations = [
+            DetectUnusedCodeTool.UnusedDeclaration(
+                name: "unusedFunc()", kind: "function.free",
+                hints: ["unused"], accessibility: "internal",
+                module: "Core",
+                file: "/path/to/Foo.swift", line: 12, column: 6,
+            ),
+            DetectUnusedCodeTool.UnusedDeclaration(
+                name: "decodedProp", kind: "var.instance",
+                hints: ["superfluousIgnoreComment"], accessibility: "internal",
+                module: "Core",
+                file: "/path/to/Foo.swift", line: 20, column: 9,
+            ),
+            DetectUnusedCodeTool.UnusedDeclaration(
+                name: "anotherProp", kind: "var.instance",
+                hints: ["superfluousIgnoreComment"], accessibility: "internal",
+                module: "Core",
+                file: "/path/to/Bar.swift", line: 5, column: 9,
+            ),
+        ]
+
+        let (filtered, removedCount) = DetectUnusedCodeTool
+            .filterSuperfluousIgnoreComments(declarations)
+        #expect(filtered.count == 1)
+        #expect(filtered[0].name == "unusedFunc()")
+        #expect(removedCount == 2)
+    }
+
+    @Test
+    func `filterSuperfluousIgnoreComments keeps all when none superfluous`() {
+        let declarations = Self.sampleDeclarations()
+        let (filtered, removedCount) = DetectUnusedCodeTool
+            .filterSuperfluousIgnoreComments(declarations)
+        #expect(filtered.count == declarations.count)
+        #expect(removedCount == 0)
+    }
+
+    @Test
+    func `parseJSONOutput includes superfluous hints for filtering`() {
+        let json = """
+        [
+          {
+            "name": "ignoredProp",
+            "kind": "var.instance",
+            "hints": ["superfluousIgnoreComment"],
+            "accessibility": "internal",
+            "location": "/path/to/Foo.swift:10:9",
+            "modules": ["M"],
+            "ids": [],
+            "attributes": [],
+            "modifiers": []
+          },
+          {
+            "name": "reallyUnused()",
+            "kind": "function.free",
+            "hints": ["unused"],
+            "accessibility": "internal",
+            "location": "/path/to/Foo.swift:20:5",
+            "modules": ["M"],
+            "ids": [],
+            "attributes": [],
+            "modifiers": []
+          }
+        ]
+        """
+        let all = DetectUnusedCodeTool.parseJSONOutput(json)
+        #expect(all.count == 2)
+
+        let (filtered, removedCount) = DetectUnusedCodeTool.filterSuperfluousIgnoreComments(all)
+        #expect(filtered.count == 1)
+        #expect(filtered[0].name == "reallyUnused()")
+        #expect(removedCount == 1)
+    }
+
     // MARK: - Helpers
 
     static func sampleDeclarations() -> [DetectUnusedCodeTool.UnusedDeclaration] {

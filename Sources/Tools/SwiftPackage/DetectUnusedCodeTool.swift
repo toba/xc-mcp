@@ -166,7 +166,7 @@ public struct DetectUnusedCodeTool: Sendable {
         let freshScan = arguments.getBool("fresh_scan")
         let groupBy = arguments.getString("group_by")
 
-        let declarations: [UnusedDeclaration]
+        let allDeclarations: [UnusedDeclaration]
         let cachePath: String
 
         if let resultFile {
@@ -176,18 +176,23 @@ public struct DetectUnusedCodeTool: Sendable {
             guard let jsonString = String(data: data, encoding: .utf8) else {
                 throw MCPError.invalidParams("Could not read result_file as UTF-8")
             }
-            declarations = Self.parseJSONOutput(jsonString)
+            allDeclarations = Self.parseJSONOutput(jsonString)
             cachePath = resultFile
         } else if !freshScan, let cached = try await findCachedResult(arguments: arguments) {
             // Reuse existing cached results from /tmp
-            declarations = Self.parseJSONOutput(cached.json)
+            allDeclarations = Self.parseJSONOutput(cached.json)
             cachePath = cached.path
         } else {
             // Run Periphery scan (no cache found, or fresh_scan requested)
             let (rawJSON, cPath) = try await runPeripheryScan(arguments: arguments)
-            declarations = Self.parseJSONOutput(rawJSON)
+            allDeclarations = Self.parseJSONOutput(rawJSON)
             cachePath = cPath
         }
+
+        // Filter out "Superfluous ignore comment" warnings — these are a Periphery bug
+        // where adding `// periphery:ignore` for an assign-only property suppresses the
+        // original warning but then triggers a superfluous-ignore warning instead.
+        let (declarations, superfluousCount) = Self.filterSuperfluousIgnoreComments(allDeclarations)
 
         // Always maintain a checklist for iterative cleanup
         let clPath = Self.checklistPath(forCache: cachePath)
@@ -238,7 +243,7 @@ public struct DetectUnusedCodeTool: Sendable {
         // Build declaration → checklist index map (1-based)
         let indexMap = Self.buildIndexMap(declarations: declarations, state: state)
 
-        let message: String
+        var message: String
         if let groupBy {
             message = Self.formatGroupedSummary(
                 filtered, totalUnfiltered: declarations.count,
@@ -256,6 +261,10 @@ public struct DetectUnusedCodeTool: Sendable {
                 filtered, totalUnfiltered: declarations.count,
                 cachePath: cachePath, checklistPath: clPath, state: state,
             )
+        }
+
+        if superfluousCount > 0 {
+            message += "\n\(superfluousCount) superfluous ignore comment warning(s) filtered (Periphery bug)"
         }
 
         return CallTool.Result(content: [.text(message)])
@@ -403,6 +412,18 @@ public struct DetectUnusedCodeTool: Sendable {
     }
 
     // MARK: - Filtering
+
+    /// Filters out Periphery's "Superfluous ignore comment" warnings which arise from
+    /// an unresolvable cycle: adding `// periphery:ignore` for assign-only properties
+    /// suppresses the original warning but triggers a superfluous-ignore warning instead.
+    static func filterSuperfluousIgnoreComments(
+        _ declarations: [UnusedDeclaration],
+    ) -> (filtered: [UnusedDeclaration], removedCount: Int) {
+        let filtered = declarations.filter { decl in
+            !decl.hints.contains("superfluousIgnoreComment")
+        }
+        return (filtered, declarations.count - filtered.count)
+    }
 
     static func applyFilters(
         _ declarations: [UnusedDeclaration],
