@@ -24,7 +24,7 @@ extension Swift.Error {
         if let convertible = self as? MCPErrorConvertible {
             return convertible.toMCPError()
         }
-        var message = localizedDescription
+        var message = String(describing: self)
         if let backtrace = Self.captureBacktrace() {
             message += "\n\nBacktrace:\n\(backtrace)"
         }
