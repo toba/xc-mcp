@@ -87,35 +87,41 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                 )
             }
 
-            // Find the exception set for this target
-            guard
-                let exceptionIndex = syncGroup.exceptions?.firstIndex(where: {
-                    guard let buildException = $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
-                    else { return false }
-                    return buildException.target?.name == targetName
-                }),
-                let exceptionSet = syncGroup.exceptions?[exceptionIndex]
-                as? PBXFileSystemSynchronizedBuildFileExceptionSet
-            else {
+            // Find all exception sets for this target
+            let matchingIndices: [(
+                index: Int,
+                set: PBXFileSystemSynchronizedBuildFileExceptionSet,
+            )] =
+                syncGroup.exceptions?.enumerated().compactMap { index, exception in
+                    guard let buildException =
+                        exception as? PBXFileSystemSynchronizedBuildFileExceptionSet,
+                        buildException.target?.name == targetName
+                    else { return nil }
+                    return (index, buildException)
+                } ?? []
+
+            guard !matchingIndices.isEmpty else {
                 throw MCPError.invalidParams(
                     "No exception set found for target '\(targetName)' on synchronized folder '\(folderPath)'",
                 )
             }
 
             if let fileName {
-                // Remove a single file from the exception set
-                guard let fileIndex = exceptionSet.membershipExceptions?.firstIndex(of: fileName)
-                else {
+                // Find which exception set contains this file
+                guard let match = matchingIndices.first(where: {
+                    $0.set.membershipExceptions?.contains(fileName) == true
+                }) else {
                     throw MCPError.invalidParams(
                         "File '\(fileName)' not found in exception set for target '\(targetName)'",
                     )
                 }
-                exceptionSet.membershipExceptions?.remove(at: fileIndex)
+
+                match.set.membershipExceptions?.removeAll { $0 == fileName }
 
                 // If exception set is now empty, remove it entirely
-                if exceptionSet.membershipExceptions?.isEmpty == true {
-                    syncGroup.exceptions?.remove(at: exceptionIndex)
-                    xcodeproj.pbxproj.delete(object: exceptionSet)
+                if match.set.membershipExceptions?.isEmpty == true {
+                    syncGroup.exceptions?.remove(at: match.index)
+                    xcodeproj.pbxproj.delete(object: match.set)
 
                     try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
                     return CallTool.Result(
@@ -136,9 +142,11 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                     ],
                 )
             } else {
-                // Remove the entire exception set
-                syncGroup.exceptions?.remove(at: exceptionIndex)
-                xcodeproj.pbxproj.delete(object: exceptionSet)
+                // Remove all exception sets for this target (handles duplicates)
+                for match in matchingIndices.reversed() {
+                    syncGroup.exceptions?.remove(at: match.index)
+                    xcodeproj.pbxproj.delete(object: match.set)
+                }
 
                 try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
                 return CallTool.Result(

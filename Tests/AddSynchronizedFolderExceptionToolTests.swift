@@ -125,6 +125,70 @@ struct AddSynchronizedFolderExceptionToolTests {
     }
 
     @Test
+    func `Appends to existing exception set instead of creating duplicate`() throws {
+        let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithSyncFolder(
+            name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
+            membershipExceptions: ["File1.swift", "File2.swift"], at: projectPath,
+        )
+
+        // Add more files to the same target — should append, not create a second set
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Sources"),
+            "target_name": .string("AppTarget"),
+            "files": .array([.string("File3.swift"), .string("File4.swift")]),
+        ])
+
+        if case let .text(message) = result.content.first {
+            #expect(message.contains("Successfully added membership exceptions"))
+        } else {
+            Issue.record("Expected text result")
+        }
+
+        // Verify only one exception set exists with all four files
+        let updated = try XcodeProj(path: projectPath)
+        let exceptionSets = updated.pbxproj.fileSystemSynchronizedBuildFileExceptionSets
+        #expect(exceptionSets.count == 1)
+        #expect(exceptionSets.first?.membershipExceptions?.count == 4)
+        #expect(exceptionSets.first?.membershipExceptions?.contains("File1.swift") == true)
+        #expect(exceptionSets.first?.membershipExceptions?.contains("File3.swift") == true)
+    }
+
+    @Test
+    func `Skips duplicate files when appending to existing exception set`() throws {
+        let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithSyncFolder(
+            name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
+            membershipExceptions: ["File1.swift", "File2.swift"], at: projectPath,
+        )
+
+        // Try to add a file that already exists
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Sources"),
+            "target_name": .string("AppTarget"),
+            "files": .array([.string("File1.swift")]),
+        ])
+
+        if case let .text(message) = result.content.first {
+            #expect(message.contains("already in the exception set"))
+        } else {
+            Issue.record("Expected text result")
+        }
+
+        // Verify no duplicates were added
+        let updated = try XcodeProj(path: projectPath)
+        let exceptionSets = updated.pbxproj.fileSystemSynchronizedBuildFileExceptionSets
+        #expect(exceptionSets.count == 1)
+        #expect(exceptionSets.first?.membershipExceptions?.count == 2)
+    }
+
+    @Test
     func `Fails when sync folder not found`() throws {
         let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 

@@ -103,22 +103,45 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
                 throw MCPError.invalidParams("Target '\(targetName)' not found in project")
             }
 
-            // Create the exception set
-            let exceptionSet = PBXFileSystemSynchronizedBuildFileExceptionSet(
-                target: target,
-                membershipExceptions: files,
-                publicHeaders: nil,
-                privateHeaders: nil,
-                additionalCompilerFlagsByRelativePath: nil,
-                attributesByRelativePath: nil,
-            )
-            xcodeproj.pbxproj.add(object: exceptionSet)
+            // Check for an existing exception set for this target
+            let existingExceptionSet = syncGroup.exceptions?.first(where: {
+                guard let buildException = $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
+                else { return false }
+                return buildException.target?.name == targetName
+            }) as? PBXFileSystemSynchronizedBuildFileExceptionSet
 
-            // Add exception set to the sync group's exceptions
-            if syncGroup.exceptions == nil {
-                syncGroup.exceptions = [exceptionSet]
+            if let existingExceptionSet {
+                // Append to existing exception set, skipping duplicates
+                let existing = Set(existingExceptionSet.membershipExceptions ?? [])
+                let newFiles = files.filter { !existing.contains($0) }
+                if newFiles.isEmpty {
+                    return CallTool.Result(
+                        content: [
+                            .text(
+                                "All specified files are already in the exception set for target '\(targetName)' on '\(folderPath)'",
+                            ),
+                        ],
+                    )
+                }
+                existingExceptionSet.membershipExceptions =
+                    (existingExceptionSet.membershipExceptions ?? []) + newFiles
             } else {
-                syncGroup.exceptions?.append(exceptionSet)
+                // Create a new exception set
+                let exceptionSet = PBXFileSystemSynchronizedBuildFileExceptionSet(
+                    target: target,
+                    membershipExceptions: files,
+                    publicHeaders: nil,
+                    privateHeaders: nil,
+                    additionalCompilerFlagsByRelativePath: nil,
+                    attributesByRelativePath: nil,
+                )
+                xcodeproj.pbxproj.add(object: exceptionSet)
+
+                if syncGroup.exceptions == nil {
+                    syncGroup.exceptions = [exceptionSet]
+                } else {
+                    syncGroup.exceptions?.append(exceptionSet)
+                }
             }
 
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))

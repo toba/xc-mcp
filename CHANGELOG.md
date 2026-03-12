@@ -14,6 +14,7 @@
 
 ### 🐞 Fixes
 
+- Fix `add_synchronized_folder_exception` creating duplicate exception sets; append to existing set for the same target instead of creating a second one. Fix `remove_synchronized_folder_exception` only checking the first exception set for a target
 - Fix `sample_mac_app` bundle ID lookup and output capture; use `NSRunningApplication` instead of `pgrep` and `-file` flag for reliable `sample` output
 - Fix `detect_unused_code` `result_file` returning stale entries from prior scans
 - Fix `test_macos` `only_testing` failing to match Swift Testing functions with backtick-escaped names containing spaces; auto-normalize identifiers by wrapping in backticks and appending `()`
