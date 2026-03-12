@@ -220,6 +220,7 @@ public struct XcodebuildRunner: Sendable {
         scheme: String,
         destination: String,
         configuration: String = "Debug",
+        action: String = "build",
         additionalArguments: [String] = [],
         environment: Environment = .inherit,
         timeout: TimeInterval = defaultTimeout,
@@ -237,7 +238,7 @@ public struct XcodebuildRunner: Sendable {
             "-scheme", scheme,
             "-destination", destination,
             "-configuration", configuration,
-            "build",
+            action,
         ]
 
         args += additionalArguments
@@ -328,6 +329,7 @@ public struct XcodebuildRunner: Sendable {
         skipTesting: [String]? = nil,
         enableCodeCoverage: Bool = false,
         resultBundlePath: String? = nil,
+        testPlan: String? = nil,
         additionalArguments: [String] = [],
         environment: Environment = .inherit,
         timeout: TimeInterval = defaultTimeout,
@@ -346,6 +348,11 @@ public struct XcodebuildRunner: Sendable {
             "-destination", destination,
             "-configuration", configuration,
         ]
+
+        // Add test plan selection
+        if let testPlan {
+            args += ["-testPlan", testPlan]
+        }
 
         // Add test selection arguments
         if let onlyTesting {

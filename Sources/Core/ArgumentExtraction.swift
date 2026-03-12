@@ -6,6 +6,7 @@ public struct TestParameters: Sendable {
     public let skipTesting: [String]?
     public let enableCodeCoverage: Bool
     public let resultBundlePath: String?
+    public let testPlan: String?
     public let timeout: Int?
     public let outputTimeout: Int?
 }
@@ -105,6 +106,7 @@ extension [String: Value] {
             skipTesting: skipTestingArray.isEmpty ? nil : skipTestingArray,
             enableCodeCoverage: getBool("enable_code_coverage"),
             resultBundlePath: getString("result_bundle_path"),
+            testPlan: getString("test_plan"),
             timeout: getInt("timeout"),
             outputTimeout: getInt("output_timeout"),
         )
@@ -173,6 +175,12 @@ extension [String: Value] {
                 "type": .string("string"),
                 "description": .string(
                     "Path to store the .xcresult bundle for coverage and test results.",
+                ),
+            ]),
+            "test_plan": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Name of the test plan to use (e.g. 'Performance'). Overrides the scheme's default test plan. Use list_test_plan_targets to discover available test plans.",
                 ),
             ]),
             "timeout": .object([

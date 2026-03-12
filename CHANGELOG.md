@@ -10,6 +10,7 @@
 - Add `scaffold_module` composite tool; create a framework module with test target, sync folders, dependencies, embedding, and test plan entry in one call ([#177](https://github.com/toba/xc-mcp/issues/177))
 - `create_scheme`: accept `build_targets` array for multiple build action entries; first target is primary for launch/test
 - `detect_unused_code`: filter out Periphery's `superfluousIgnoreComment` warnings; these are an unresolvable cycle on assign-only properties with `// periphery:ignore` comments ([#198](https://github.com/toba/xc-mcp/issues/198))
+- `build_macos`: add `for_testing` parameter to run `build-for-testing`; compiles test targets without executing them. `test_macos`/`test_sim`/`test_device`: add `test_plan` parameter to target non-default test plans. `list_test_plan_targets`: add `test_plan` and `all_plans` parameters to query plans not attached to a scheme
 
 ### 🐞 Fixes
 

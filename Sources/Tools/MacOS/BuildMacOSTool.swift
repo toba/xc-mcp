@@ -58,6 +58,12 @@ public struct BuildMacOSTool: Sendable {
                             "When true, only show compiler errors, linker errors, and the build summary — all warnings are suppressed. Useful for iterating on build errors without warning noise.",
                         ),
                     ]),
+                    "for_testing": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "When true, runs 'build-for-testing' instead of 'build'. This compiles all test targets without executing them — useful for verifying test code compiles before committing to a full test run.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -74,6 +80,7 @@ public struct BuildMacOSTool: Sendable {
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let arch = arguments.getString("arch")
         let errorsOnly = arguments.getBool("errors_only")
+        let forTesting = arguments.getBool("for_testing")
 
         do {
             var destination = "platform=macOS"
@@ -81,12 +88,15 @@ public struct BuildMacOSTool: Sendable {
                 destination += ",arch=\(arch)"
             }
 
+            let action = forTesting ? "build-for-testing" : "build"
+
             let result = try await xcodebuildRunner.build(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
+                action: action,
                 environment: environment,
             )
 
@@ -97,9 +107,10 @@ public struct BuildMacOSTool: Sendable {
                 result, projectRoot: projectRoot, errorsOnly: errorsOnly,
             )
 
+            let label = forTesting ? "Build-for-testing" : "Build"
             return CallTool.Result(
                 content: [
-                    .text("Build succeeded for scheme '\(scheme)' on macOS"),
+                    .text("\(label) succeeded for scheme '\(scheme)' on macOS"),
                 ],
             )
         } catch {

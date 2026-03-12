@@ -106,6 +106,7 @@ public struct TestMacOSTool: Sendable {
                 skipTesting: testParams.skipTesting,
                 enableCodeCoverage: testParams.enableCodeCoverage,
                 resultBundlePath: resultBundlePath,
+                testPlan: testParams.testPlan,
                 environment: environment,
                 timeout: TimeInterval(testParams.timeout ?? 300),
                 outputTimeout: outputTimeout,
