@@ -60,6 +60,86 @@ public enum XCResultParser {
         return parseTestJSON(json)
     }
 
+    // MARK: - Performance Metrics
+
+    /// A performance metric result parsed from `xcresulttool get test-results metrics`.
+    public struct PerformanceMetricResult: Sendable, Codable {
+        public let testIdentifier: String
+        public let testIdentifierURL: String?
+        public let testRuns: [TestRunWithMetrics]
+    }
+
+    public struct TestRunWithMetrics: Sendable, Codable {
+        public let testPlanConfiguration: MetricConfiguration
+        public let device: MetricDevice
+        public let metrics: [PerformanceMetric]
+    }
+
+    public struct MetricConfiguration: Sendable, Codable {
+        public let configurationId: String
+        public let configurationName: String
+    }
+
+    public struct MetricDevice: Sendable, Codable {
+        public let deviceId: String
+        public let deviceName: String
+    }
+
+    public struct PerformanceMetric: Sendable, Codable {
+        public let displayName: String
+        public let unitOfMeasurement: String
+        public let measurements: [Double]
+        public let identifier: String?
+        public let baselineName: String?
+        public let baselineAverage: Double?
+        public let maxRegression: Double?
+        public let maxPercentRegression: Double?
+        public let maxStandardDeviation: Double?
+        public let maxPercentRelativeStandardDeviation: Double?
+        public let polarity: String?
+    }
+
+    /// Parses performance metrics from an xcresult bundle.
+    ///
+    /// - Parameters:
+    ///   - path: Path to the `.xcresult` bundle.
+    ///   - testId: Optional test identifier to filter results.
+    /// - Returns: Parsed performance metric results, or nil if parsing fails.
+    public static func parsePerformanceMetrics(
+        at path: String, testId: String? = nil,
+    ) async -> [PerformanceMetricResult]? {
+        var arguments = [
+            "xcresulttool", "get", "test-results", "metrics",
+            "--path", path, "--compact",
+        ]
+        if let testId {
+            arguments.append(contentsOf: ["--test-id", testId])
+        }
+
+        guard
+            let result = try? await ProcessResult.runSubprocess(
+                .name("xcrun"),
+                arguments: Arguments(arguments),
+                outputLimit: 31_457_280,
+            )
+        else { return nil }
+
+        guard result.succeeded,
+              let data = result.stdout.data(using: .utf8),
+              !data.isEmpty
+        else { return nil }
+
+        let decoder = JSONDecoder()
+        // Try decoding as array first, then as single object
+        if let array = try? decoder.decode([PerformanceMetricResult].self, from: data) {
+            return array
+        }
+        if let single = try? decoder.decode(PerformanceMetricResult.self, from: data) {
+            return [single]
+        }
+        return nil
+    }
+
     // MARK: - Private
 
     private static func runXCResultTool(path: String) async -> [String: Any]? {

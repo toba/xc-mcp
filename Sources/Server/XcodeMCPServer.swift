@@ -103,6 +103,8 @@ public enum ToolName: String, CaseIterable, Sendable {
     case getTestAttachments = "get_test_attachments"
     case getCoverageReport = "get_coverage_report"
     case getFileCoverage = "get_file_coverage"
+    case getPerformanceMetrics = "get_performance_metrics"
+    case setPerformanceBaseline = "set_performance_baseline"
     case startMacLogCap = "start_mac_log_cap"
     case stopMacLogCap = "stop_mac_log_cap"
     case screenshotMacWindow = "screenshot_mac_window"
@@ -234,6 +236,7 @@ public enum ToolName: String, CaseIterable, Sendable {
             // macOS
             case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
                  .testMacOS, .getTestAttachments, .getCoverageReport, .getFileCoverage,
+                 .getPerformanceMetrics, .setPerformanceBaseline,
                  .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
                 return .macos
             // Discovery
@@ -483,6 +486,10 @@ public struct XcodeMCPServer: Sendable {
         let getTestAttachmentsTool = GetTestAttachmentsTool()
         let getCoverageReportTool = GetCoverageReportTool()
         let getFileCoverageTool = GetFileCoverageTool()
+        let getPerformanceMetricsTool = GetPerformanceMetricsTool()
+        let setPerformanceBaselineTool = SetPerformanceBaselineTool(
+            sessionManager: sessionManager,
+        )
         let startMacLogCapTool = StartMacLogCapTool(sessionManager: sessionManager)
         let stopMacLogCapTool = StopMacLogCapTool(sessionManager: sessionManager)
         let screenshotMacWindowTool = ScreenshotMacWindowTool()
@@ -724,6 +731,8 @@ public struct XcodeMCPServer: Sendable {
             (.getTestAttachments, getTestAttachmentsTool.tool()),
             (.getCoverageReport, getCoverageReportTool.tool()),
             (.getFileCoverage, getFileCoverageTool.tool()),
+            (.getPerformanceMetrics, getPerformanceMetricsTool.tool()),
+            (.setPerformanceBaseline, setPerformanceBaselineTool.tool()),
             (.startMacLogCap, startMacLogCapTool.tool()),
             (.stopMacLogCap, stopMacLogCapTool.tool()),
             (.screenshotMacWindow, screenshotMacWindowTool.tool()),
@@ -1027,6 +1036,10 @@ public struct XcodeMCPServer: Sendable {
                     return try await getCoverageReportTool.execute(arguments: arguments)
                 case .getFileCoverage:
                     return try await getFileCoverageTool.execute(arguments: arguments)
+                case .getPerformanceMetrics:
+                    return try await getPerformanceMetricsTool.execute(arguments: arguments)
+                case .setPerformanceBaseline:
+                    return try await setPerformanceBaselineTool.execute(arguments: arguments)
                 case .startMacLogCap:
                     return try await startMacLogCapTool.execute(arguments: arguments)
                 case .stopMacLogCap:

@@ -36,6 +36,10 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     case searchCrashReports = "search_crash_reports"
     case diagnostics
 
+    // Performance tools
+    case getPerformanceMetrics = "get_performance_metrics"
+    case setPerformanceBaseline = "set_performance_baseline"
+
     // Instruments tools
     case sampleMacApp = "sample_mac_app"
     case profileAppLaunch = "profile_app_launch"
@@ -144,6 +148,12 @@ public struct BuildMCPServer: Sendable {
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
 
+        // Create performance tools
+        let getPerformanceMetricsTool = GetPerformanceMetricsTool()
+        let setPerformanceBaselineTool = SetPerformanceBaselineTool(
+            sessionManager: sessionManager,
+        )
+
         // Create instruments tools
         let sampleMacAppTool = SampleMacAppTool()
         let profileAppLaunchTool = ProfileAppLaunchTool(
@@ -185,6 +195,9 @@ public struct BuildMCPServer: Sendable {
                 scaffoldMacOSTool.tool(),
                 searchCrashReportsTool.tool(),
                 diagnosticsTool.tool(),
+                // Performance tools
+                getPerformanceMetricsTool.tool(),
+                setPerformanceBaselineTool.tool(),
                 // Instruments tools
                 sampleMacAppTool.tool(),
                 profileAppLaunchTool.tool(),
@@ -257,6 +270,11 @@ public struct BuildMCPServer: Sendable {
                     return searchCrashReportsTool.execute(arguments: arguments)
                 case .diagnostics:
                     return try await diagnosticsTool.execute(arguments: arguments)
+                // Performance tools
+                case .getPerformanceMetrics:
+                    return try await getPerformanceMetricsTool.execute(arguments: arguments)
+                case .setPerformanceBaseline:
+                    return try await setPerformanceBaselineTool.execute(arguments: arguments)
                 // Instruments tools
                 case .sampleMacApp:
                     return try await sampleMacAppTool.execute(arguments: arguments)

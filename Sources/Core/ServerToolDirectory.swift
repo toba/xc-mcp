@@ -43,7 +43,10 @@ public enum ServerToolDirectory {
 
     private static let buildTools: [String] = [
         "build_macos", "build_run_macos", "launch_mac_app", "stop_mac_app",
-        "get_mac_app_path", "test_macos", "start_mac_log_cap", "stop_mac_log_cap",
+        "get_mac_app_path", "test_macos",
+        "get_test_attachments", "get_coverage_report", "get_file_coverage",
+        "get_performance_metrics", "set_performance_baseline",
+        "start_mac_log_cap", "stop_mac_log_cap",
         "discover_projs", "list_schemes", "show_build_settings",
         "get_app_bundle_id", "get_mac_bundle_id", "list_test_plan_targets",
         "clean", "doctor", "scaffold_ios_project", "scaffold_macos_project",

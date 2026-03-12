@@ -4,6 +4,7 @@
 
 ### ✨ Features
 
+- Add `get_performance_metrics` and `set_performance_baseline` tools to xc-build; extract `measure(metrics:)` results from xcresult bundles and create/update `.xcbaseline` plists for automatic regression detection
 - `build_macos` / `test_macos`: add `errors_only` parameter to suppress warnings from output; show only compiler errors, linker errors, and build summary ([#195](https://github.com/toba/xc-mcp/issues/195))
 - Add `sample_mac_app` and `profile_app_launch` profiling tools; extract `PIDResolver` to Core; parse sample output into agent-friendly summaries
 - Integrate Swift Backtrace API (SE-0419); attach symbolicated backtraces to unexpected `MCPError.internalError` on macOS 26+
