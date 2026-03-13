@@ -111,7 +111,11 @@ public struct SetPerformanceBaselineTool: Sendable {
         }
 
         // Find target UUID from the pbxproj
-        let targetUUID = try findTargetUUID(projectPath: projectPath, targetName: targetName)
+        guard let targetUUID = PBXTargetMap.findUUID(
+            projectPath: projectPath, targetName: targetName,
+        ) else {
+            throw MCPError.invalidParams("Target '\(targetName)' not found in project.")
+        }
 
         // Collect baselines from xcresult or manual entries
         var baselineEntries: [BaselineEntry] = []
@@ -171,71 +175,6 @@ public struct SetPerformanceBaselineTool: Sendable {
         return CallTool.Result(content: [.text(
             "Set \(count) performance baseline(s) for target '\(targetName)'.\nPath: \(baselineDir)",
         )])
-    }
-
-    // MARK: - Target UUID Resolution
-
-    private func findTargetUUID(
-        projectPath: String, targetName: String,
-    ) throws(MCPError) -> String {
-        let pbxprojPath = "\(projectPath)/project.pbxproj"
-        guard let data = FileManager.default.contents(atPath: pbxprojPath),
-              let content = String(data: data, encoding: .utf8)
-        else {
-            throw .invalidParams("Cannot read project.pbxproj at: \(pbxprojPath)")
-        }
-
-        // Look for PBXNativeTarget with matching name
-        // Pattern: <UUID> /* <name> */ = {isa = PBXNativeTarget; ... name = <name>;
-        let lines = content.components(separatedBy: "\n")
-        var inTarget = false
-        var currentUUID: String?
-
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-
-            if trimmed.contains("isa = PBXNativeTarget") {
-                inTarget = true
-                // UUID is at the start of the block declaration line
-                // Format: <TAB><TAB>UUID /* Name */ = {
-                if let range = trimmed.range(of: #"^([A-F0-9]{24})"#, options: .regularExpression) {
-                    currentUUID = String(trimmed[range])
-                }
-            }
-
-            if inTarget, trimmed.hasPrefix("name = ") {
-                let name = trimmed
-                    .replacingOccurrences(of: "name = ", with: "")
-                    .replacingOccurrences(of: ";", with: "")
-                    .trimmingCharacters(in: .whitespaces)
-                    .replacingOccurrences(of: "\"", with: "")
-
-                if name == targetName, let uuid = currentUUID {
-                    return uuid
-                }
-                inTarget = false
-                currentUUID = nil
-            }
-
-            if inTarget, trimmed == "};" {
-                inTarget = false
-                currentUUID = nil
-            }
-        }
-
-        // Fallback: scan for the UUID in the line containing the target name
-        for line in lines {
-            if line.contains("PBXNativeTarget") || line.contains("isa = PBXNativeTarget") {
-                continue
-            }
-            if line.contains("/* \(targetName) */"),
-               let range = line.range(of: #"[A-F0-9]{24}"#, options: .regularExpression)
-            {
-                return String(line[range])
-            }
-        }
-
-        throw .invalidParams("Target '\(targetName)' not found in project.")
     }
 
     // MARK: - Baseline Entry Extraction

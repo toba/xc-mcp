@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>059592BF-E310-A11C-B55D-69567B514C2E</key>
+	<dict>
+		<key>cpuCount</key>
+		<integer>10</integer>
+		<key>cpuKind</key>
+		<string>Apple M1 Max</string>
+		<key>cpuSpeedInMHz</key>
+		<integer>0</integer>
+		<key>modelCode</key>
+		<string>Mac13,1</string>
+		<key>physicalRAMAmountInMegabytes</key>
+		<integer>65536</integer>
+	</dict>
+</dict>
+</plist>

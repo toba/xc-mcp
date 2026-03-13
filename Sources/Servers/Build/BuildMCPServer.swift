@@ -39,6 +39,7 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     // Performance tools
     case getPerformanceMetrics = "get_performance_metrics"
     case setPerformanceBaseline = "set_performance_baseline"
+    case showPerformanceBaselines = "show_performance_baselines"
 
     // Instruments tools
     case sampleMacApp = "sample_mac_app"
@@ -153,6 +154,9 @@ public struct BuildMCPServer: Sendable {
         let setPerformanceBaselineTool = SetPerformanceBaselineTool(
             sessionManager: sessionManager,
         )
+        let showPerformanceBaselinesTool = ShowPerformanceBaselinesTool(
+            sessionManager: sessionManager,
+        )
 
         // Create instruments tools
         let sampleMacAppTool = SampleMacAppTool()
@@ -198,6 +202,7 @@ public struct BuildMCPServer: Sendable {
                 // Performance tools
                 getPerformanceMetricsTool.tool(),
                 setPerformanceBaselineTool.tool(),
+                showPerformanceBaselinesTool.tool(),
                 // Instruments tools
                 sampleMacAppTool.tool(),
                 profileAppLaunchTool.tool(),
@@ -275,6 +280,8 @@ public struct BuildMCPServer: Sendable {
                     return try await getPerformanceMetricsTool.execute(arguments: arguments)
                 case .setPerformanceBaseline:
                     return try await setPerformanceBaselineTool.execute(arguments: arguments)
+                case .showPerformanceBaselines:
+                    return try await showPerformanceBaselinesTool.execute(arguments: arguments)
                 // Instruments tools
                 case .sampleMacApp:
                     return try await sampleMacAppTool.execute(arguments: arguments)
