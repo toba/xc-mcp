@@ -25,6 +25,7 @@
 - Fix `detect_unused_code` `result_file` returning stale entries from prior scans
 - Fix `test_macos` `only_testing` failing to match Swift Testing functions with backtick-escaped names containing spaces; auto-normalize identifiers by wrapping in backticks and appending `()`
 - Fix `stop_app_device` failing with "Missing expected argument `--pid`"; resolve bundle identifier to PID via `devicectl device info processes` before terminating (cfo-jj0)
+- Fix `start_device_log_cap` producing empty log files; replace nonexistent `devicectl device info syslog` with `log collect --device-udid` + `log show` collection-based approach (m5k-jma)
 
 ## Week of Mar 1 – Mar 7, 2026
 
