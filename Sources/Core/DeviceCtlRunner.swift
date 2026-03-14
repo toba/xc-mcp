@@ -179,9 +179,11 @@ public struct DeviceCtlRunner: Sendable {
                 continue
             }
 
+            let hardwareProperties = device["hardwareProperties"] as? [String: Any]
             let deviceType =
-                (deviceProperties["productType"] as? String)
-                    ?? (deviceProperties["deviceType"] as? String) ?? "Unknown"
+                (hardwareProperties?["marketingName"] as? String)
+                    ?? (hardwareProperties?["productType"] as? String)
+                    ?? (hardwareProperties?["deviceType"] as? String) ?? "Unknown"
             let osVersion = (deviceProperties["osVersionNumber"] as? String) ?? "Unknown"
             let connectionType = (connectionProperties["transportType"] as? String) ?? "Unknown"
 

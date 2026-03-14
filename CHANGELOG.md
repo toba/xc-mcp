@@ -13,9 +13,12 @@
 - `create_scheme`: accept `build_targets` array for multiple build action entries; first target is primary for launch/test
 - `detect_unused_code`: filter out Periphery's `superfluousIgnoreComment` warnings; these are an unresolvable cycle on assign-only properties with `// periphery:ignore` comments ([#198](https://github.com/toba/xc-mcp/issues/198))
 - `build_macos`: add `for_testing` parameter to run `build-for-testing`; compiles test targets without executing them. `test_macos`/`test_sim`/`test_device`: add `test_plan` parameter to target non-default test plans. `list_test_plan_targets`: add `test_plan` and `all_plans` parameters to query plans not attached to a scheme
+- `build_device` now returns the built `.app` path in its output; enables seamless `build_device` → `install_app_device` → `launch_app_device` pipeline
 
 ### 🐞 Fixes
 
+- Fix `build_device` false "build appears stuck" error; increase no-output timeout from 30s to 120s for device builds where code signing produces long output gaps
+- Fix `list_devices` showing "Type: Unknown" for iPad Mini; read `marketingName` from `hardwareProperties` instead of `deviceProperties`
 - `build_macos` / `build_run_macos` / `test_macos` / `build_debug_macos` now reject iOS-only projects with a clear error instead of silently building; checks `SUPPORTED_PLATFORMS` and suggests xc-simulator tools
 - Fix `add_synchronized_folder_exception` creating duplicate exception sets; append to existing set for the same target instead of creating a second one. Fix `remove_synchronized_folder_exception` only checking the first exception set for a target
 - Fix `sample_mac_app` bundle ID lookup and output capture; use `NSRunningApplication` instead of `pgrep` and `-file` flag for reliable `sample` output

@@ -38,6 +38,11 @@ public struct XcodebuildRunner: Sendable {
     /// app launch, UI waits, and measure block iterations.
     public static let defaultTestOutputTimeout: Duration = .seconds(120)
 
+    /// Default no-output timeout for device builds (120 seconds).
+    /// Code signing and asset processing for physical devices routinely
+    /// produce long output gaps that exceed the standard 30-second threshold.
+    public static let deviceOutputTimeout: Duration = .seconds(120)
+
     /// Creates a new xcodebuild runner.
     public init() {}
 
@@ -224,6 +229,7 @@ public struct XcodebuildRunner: Sendable {
         additionalArguments: [String] = [],
         environment: Environment = .inherit,
         timeout: TimeInterval = defaultTimeout,
+        outputTimeout: Duration? = outputTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> XcodebuildResult {
         var args: [String] = []
@@ -245,7 +251,8 @@ public struct XcodebuildRunner: Sendable {
 
         return try await run(
             arguments: args, environment: environment,
-            timeout: timeout, onProgress: onProgress,
+            timeout: timeout, outputTimeout: outputTimeout,
+            onProgress: onProgress,
         )
     }
 

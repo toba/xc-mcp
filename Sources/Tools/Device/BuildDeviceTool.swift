@@ -79,13 +79,31 @@ public struct BuildDeviceTool: Sendable {
                 destination: destination,
                 configuration: configuration,
                 environment: environment,
+                outputTimeout: XcodebuildRunner.deviceOutputTimeout,
             )
 
             try ErrorExtractor.checkBuildSuccess(result, projectRoot: nil)
 
+            // Extract the built .app path from build settings
+            var appPathLine = ""
+            let buildSettings = try? await xcodebuildRunner.showBuildSettings(
+                projectPath: projectPath,
+                workspacePath: workspacePath,
+                scheme: scheme,
+                configuration: configuration,
+                destination: destination,
+            )
+            if let buildSettings,
+               let appPath = BuildSettingExtractor.extractAppPath(from: buildSettings.stdout)
+            {
+                appPathLine = "\nApp path: \(appPath)"
+            }
+
             return CallTool.Result(
                 content: [
-                    .text("Build succeeded for scheme '\(scheme)' on device '\(device)'"),
+                    .text(
+                        "Build succeeded for scheme '\(scheme)' on device '\(device)'\(appPathLine)",
+                    ),
                 ],
             )
         } catch {

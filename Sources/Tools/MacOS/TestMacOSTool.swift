@@ -90,7 +90,6 @@ public struct TestMacOSTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 configuration: configuration,
-                toolName: "test_macos",
             )
 
             var destination = "platform=macOS"

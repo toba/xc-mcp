@@ -89,7 +89,6 @@ public struct BuildMacOSTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 configuration: configuration,
-                toolName: "build_macos",
             )
 
             var destination = "platform=macOS"

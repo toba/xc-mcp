@@ -15,14 +15,12 @@ public enum BuildSettingExtractor {
     ///   - workspacePath: Path to the .xcworkspace file.
     ///   - scheme: The scheme to check.
     ///   - configuration: Build configuration (Debug or Release).
-    ///   - toolName: The macOS tool name for the error message (e.g. "build_macos").
     public static func validateMacOSSupport(
         runner: XcodebuildRunner,
         projectPath: String?,
         workspacePath: String?,
         scheme: String,
         configuration: String,
-        toolName _: String,
     ) async throws {
         let settings = try await runner.showBuildSettings(
             projectPath: projectPath,
