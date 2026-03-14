@@ -5,13 +5,16 @@ import Subprocess
 
 public struct TestDeviceTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
+    private let deviceCtlRunner: DeviceCtlRunner
     private let sessionManager: SessionManager
 
     public init(
         xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
+        self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
     }
 
@@ -78,7 +81,10 @@ public struct TestDeviceTool: Sendable {
         let isTemporaryBundle = testParams.resultBundlePath == nil
 
         do {
-            let destination = "id=\(device)"
+            // Look up the device to get its platform — xcodebuild doesn't recognize
+            // CoreDevice UDIDs, so we build with a generic platform destination instead
+            let connectedDevice = try await deviceCtlRunner.lookupDevice(udid: device)
+            let destination = "generic/platform=\(connectedDevice.platform)"
 
             let outputTimeout: Duration? =
                 if let seconds = testParams.outputTimeout {

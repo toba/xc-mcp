@@ -21,6 +21,9 @@ public struct ConnectedDevice: Sendable {
     /// Connection type ("usb" or "network").
     public let connectionType: String
 
+    /// Device platform (e.g., "iOS", "tvOS", "watchOS").
+    public let platform: String
+
     /// Creates a new connected device instance.
     public init(
         udid: String,
@@ -28,12 +31,14 @@ public struct ConnectedDevice: Sendable {
         deviceType: String,
         osVersion: String,
         connectionType: String,
+        platform: String = "iOS",
     ) {
         self.udid = udid
         self.name = name
         self.deviceType = deviceType
         self.osVersion = osVersion
         self.connectionType = connectionType
+        self.platform = platform
     }
 }
 
@@ -91,6 +96,19 @@ public struct DeviceCtlRunner: Sendable {
 
         // Parse the JSON output
         return try parseDeviceList(from: result.stdout)
+    }
+
+    /// Looks up a connected device by UDID.
+    ///
+    /// - Parameter udid: The device UDID to find.
+    /// - Returns: The ``ConnectedDevice`` matching the UDID.
+    /// - Throws: ``DeviceCtlError/deviceNotFound(_:)`` if no device matches.
+    public func lookupDevice(udid: String) async throws(DeviceCtlError) -> ConnectedDevice {
+        let devices = try await listDevices()
+        guard let device = devices.first(where: { $0.udid == udid }) else {
+            throw DeviceCtlError.deviceNotFound(udid)
+        }
+        return device
     }
 
     /// Installs an app on a physical device.
@@ -187,12 +205,15 @@ public struct DeviceCtlRunner: Sendable {
             let osVersion = (deviceProperties["osVersionNumber"] as? String) ?? "Unknown"
             let connectionType = (connectionProperties["transportType"] as? String) ?? "Unknown"
 
+            let platform = (hardwareProperties?["platform"] as? String) ?? "iOS"
+
             let connectedDevice = ConnectedDevice(
                 udid: identifier,
                 name: name,
                 deviceType: deviceType,
                 osVersion: osVersion,
                 connectionType: connectionType,
+                platform: platform,
             )
             connectedDevices.append(connectedDevice)
         }
