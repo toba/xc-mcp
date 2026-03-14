@@ -1,7 +1,51 @@
+import MCP
 import Foundation
 
 /// Extracts build settings from xcodebuild output (JSON or text format).
 public enum BuildSettingExtractor {
+    /// Checks whether a scheme supports macOS by inspecting `SUPPORTED_PLATFORMS`.
+    ///
+    /// Queries build settings for the scheme and checks if `macosx` is among
+    /// the supported platforms. Throws an `MCPError` with actionable guidance
+    /// if the project only targets iOS or other non-macOS platforms.
+    ///
+    /// - Parameters:
+    ///   - runner: The xcodebuild runner to query build settings.
+    ///   - projectPath: Path to the .xcodeproj file.
+    ///   - workspacePath: Path to the .xcworkspace file.
+    ///   - scheme: The scheme to check.
+    ///   - configuration: Build configuration (Debug or Release).
+    ///   - toolName: The macOS tool name for the error message (e.g. "build_macos").
+    public static func validateMacOSSupport(
+        runner: XcodebuildRunner,
+        projectPath: String?,
+        workspacePath: String?,
+        scheme: String,
+        configuration: String,
+        toolName _: String,
+    ) async throws {
+        let settings = try await runner.showBuildSettings(
+            projectPath: projectPath,
+            workspacePath: workspacePath,
+            scheme: scheme,
+            configuration: configuration,
+        )
+
+        guard let platforms = extractSetting("SUPPORTED_PLATFORMS", from: settings.stdout) else {
+            return // Can't determine platforms — proceed optimistically
+        }
+
+        let platformList = platforms.split(separator: " ").map(String.init)
+        if !platformList.contains("macosx") {
+            let platformDesc = platformList.joined(separator: ", ")
+            throw MCPError.invalidRequest(
+                "Scheme '\(scheme)' does not support macOS (supported platforms: \(platformDesc)). "
+                    + "Use the xc-simulator server's build/test tools for iOS projects, "
+                    + "or add Mac Catalyst support in the Xcode project.",
+            )
+        }
+    }
+
     /// Extracts a raw build setting value by key from xcodebuild output.
     ///
     /// Tries JSON format first (`-showBuildSettings -json`), then falls back

@@ -16,6 +16,7 @@
 
 ### 🐞 Fixes
 
+- `build_macos` / `build_run_macos` / `test_macos` / `build_debug_macos` now reject iOS-only projects with a clear error instead of silently building; checks `SUPPORTED_PLATFORMS` and suggests xc-simulator tools
 - Fix `add_synchronized_folder_exception` creating duplicate exception sets; append to existing set for the same target instead of creating a second one. Fix `remove_synchronized_folder_exception` only checking the first exception set for a target
 - Fix `sample_mac_app` bundle ID lookup and output capture; use `NSRunningApplication` instead of `pgrep` and `-file` flag for reliable `sample` output
 - Fix `detect_unused_code` `result_file` returning stale entries from prior scans

@@ -83,6 +83,15 @@ public struct BuildMacOSTool: Sendable {
         let forTesting = arguments.getBool("for_testing")
 
         do {
+            try await BuildSettingExtractor.validateMacOSSupport(
+                runner: xcodebuildRunner,
+                projectPath: projectPath,
+                workspacePath: workspacePath,
+                scheme: scheme,
+                configuration: configuration,
+                toolName: "build_macos",
+            )
+
             var destination = "platform=macOS"
             if let arch {
                 destination += ",arch=\(arch)"

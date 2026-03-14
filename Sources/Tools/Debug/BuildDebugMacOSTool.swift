@@ -120,6 +120,21 @@ public struct BuildDebugMacOSTool: Sendable {
                 configuration: configuration,
             )
 
+            // Validate that this scheme supports macOS before building
+            if let platforms = BuildSettingExtractor.extractSetting(
+                "SUPPORTED_PLATFORMS", from: buildSettings.stdout,
+            ) {
+                let platformList = platforms.split(separator: " ").map(String.init)
+                if !platformList.contains("macosx") {
+                    let platformDesc = platformList.joined(separator: ", ")
+                    throw MCPError.invalidRequest(
+                        "Scheme '\(scheme)' does not support macOS (supported platforms: \(platformDesc)). "
+                            + "Use the xc-simulator server's build/test tools for iOS projects, "
+                            + "or add Mac Catalyst support in the Xcode project.",
+                    )
+                }
+            }
+
             let bundleId = extractBuildSetting(
                 "PRODUCT_BUNDLE_IDENTIFIER", from: buildSettings.stdout,
             )

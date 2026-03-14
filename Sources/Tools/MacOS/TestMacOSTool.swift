@@ -84,6 +84,15 @@ public struct TestMacOSTool: Sendable {
         let isTemporaryBundle = testParams.resultBundlePath == nil
 
         do {
+            try await BuildSettingExtractor.validateMacOSSupport(
+                runner: xcodebuildRunner,
+                projectPath: projectPath,
+                workspacePath: workspacePath,
+                scheme: scheme,
+                configuration: configuration,
+                toolName: "test_macos",
+            )
+
             var destination = "platform=macOS"
             if let arch {
                 destination += ",arch=\(arch)"
