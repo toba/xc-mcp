@@ -14,6 +14,8 @@ public enum DeviceToolName: String, CaseIterable, Sendable {
     case stopAppDevice = "stop_app_device"
     case getDeviceAppPath = "get_device_app_path"
     case testDevice = "test_device"
+    case deployDevice = "deploy_device"
+    case buildDeployDevice = "build_deploy_device"
 
     // Logging tools
     case startDeviceLogCap = "start_device_log_cap"
@@ -83,6 +85,13 @@ public struct DeviceMCPServer: Sendable {
         let testDeviceTool = TestDeviceTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let deployDeviceTool = DeployDeviceTool(
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
+        )
+        let buildDeployDeviceTool = BuildDeployDeviceTool(
+            xcodebuildRunner: xcodebuildRunner, deviceCtlRunner: deviceCtlRunner,
+            sessionManager: sessionManager,
+        )
 
         // Create logging tools
         let startDeviceLogCapTool = StartDeviceLogCapTool(
@@ -106,6 +115,8 @@ public struct DeviceMCPServer: Sendable {
                 stopAppDeviceTool.tool(),
                 getDeviceAppPathTool.tool(),
                 testDeviceTool.tool(),
+                deployDeviceTool.tool(),
+                buildDeployDeviceTool.tool(),
                 // Logging tools
                 startDeviceLogCapTool.tool(),
                 stopDeviceLogCapTool.tool(),
@@ -144,6 +155,10 @@ public struct DeviceMCPServer: Sendable {
                     return try await getDeviceAppPathTool.execute(arguments: arguments)
                 case .testDevice:
                     return try await testDeviceTool.execute(arguments: arguments)
+                case .deployDevice:
+                    return try await deployDeviceTool.execute(arguments: arguments)
+                case .buildDeployDevice:
+                    return try await buildDeployDeviceTool.execute(arguments: arguments)
                 // Logging tools
                 case .startDeviceLogCap:
                     return try await startDeviceLogCapTool.execute(arguments: arguments)

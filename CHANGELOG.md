@@ -14,6 +14,7 @@
 - `detect_unused_code`: filter out Periphery's `superfluousIgnoreComment` warnings; these are an unresolvable cycle on assign-only properties with `// periphery:ignore` comments ([#198](https://github.com/toba/xc-mcp/issues/198))
 - `build_macos`: add `for_testing` parameter to run `build-for-testing`; compiles test targets without executing them. `test_macos`/`test_sim`/`test_device`: add `test_plan` parameter to target non-default test plans. `list_test_plan_targets`: add `test_plan` and `all_plans` parameters to query plans not attached to a scheme
 - `build_device` now returns the built `.app` path in its output; enables seamless `build_device` → `install_app_device` → `launch_app_device` pipeline
+- Add `deploy_device` and `build_deploy_device` composite tools; stop → install → launch (or build → stop → install → launch) in a single call (bpv-4ka)
 
 ### 🐞 Fixes
 

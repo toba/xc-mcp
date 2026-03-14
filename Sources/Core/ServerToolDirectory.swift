@@ -104,6 +104,7 @@ public enum ServerToolDirectory {
     private static let deviceTools: [String] = [
         "list_devices", "build_device", "install_app_device",
         "launch_app_device", "stop_app_device", "get_device_app_path", "test_device",
+        "deploy_device", "build_deploy_device",
         "start_device_log_cap", "stop_device_log_cap",
     ]
 

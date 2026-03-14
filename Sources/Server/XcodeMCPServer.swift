@@ -92,6 +92,8 @@ public enum ToolName: String, CaseIterable, Sendable {
     case stopAppDevice = "stop_app_device"
     case getDeviceAppPath = "get_device_app_path"
     case testDevice = "test_device"
+    case deployDevice = "deploy_device"
+    case buildDeployDevice = "build_deploy_device"
 
     // macOS tools
     case buildMacOS = "build_macos"
@@ -232,7 +234,8 @@ public enum ToolName: String, CaseIterable, Sendable {
                 return .simulator
             // Device
             case .listDevices, .buildDevice, .installAppDevice, .launchAppDevice,
-                 .stopAppDevice, .getDeviceAppPath, .testDevice:
+                 .stopAppDevice, .getDeviceAppPath, .testDevice,
+                 .deployDevice, .buildDeployDevice:
                 return .device
             // macOS
             case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
@@ -467,6 +470,13 @@ public struct XcodeMCPServer: Sendable {
         )
         let testDeviceTool = TestDeviceTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let deployDeviceTool = DeployDeviceTool(
+            deviceCtlRunner: deviceCtlRunner, sessionManager: sessionManager,
+        )
+        let buildDeployDeviceTool = BuildDeployDeviceTool(
+            xcodebuildRunner: xcodebuildRunner, deviceCtlRunner: deviceCtlRunner,
+            sessionManager: sessionManager,
         )
 
         // Create macOS tools
@@ -725,6 +735,8 @@ public struct XcodeMCPServer: Sendable {
             (.stopAppDevice, stopAppDeviceTool.tool()),
             (.getDeviceAppPath, getDeviceAppPathTool.tool()),
             (.testDevice, testDeviceTool.tool()),
+            (.deployDevice, deployDeviceTool.tool()),
+            (.buildDeployDevice, buildDeployDeviceTool.tool()),
             // macOS tools
             (.buildMacOS, buildMacOSTool.tool()),
             (.buildRunMacOS, buildRunMacOSTool.tool()),
@@ -1022,6 +1034,10 @@ public struct XcodeMCPServer: Sendable {
                     return try await getDeviceAppPathTool.execute(arguments: arguments)
                 case .testDevice:
                     return try await testDeviceTool.execute(arguments: arguments)
+                case .deployDevice:
+                    return try await deployDeviceTool.execute(arguments: arguments)
+                case .buildDeployDevice:
+                    return try await buildDeployDeviceTool.execute(arguments: arguments)
                 // macOS tools
                 case .buildMacOS:
                     return try await buildMacOSTool.execute(arguments: arguments)

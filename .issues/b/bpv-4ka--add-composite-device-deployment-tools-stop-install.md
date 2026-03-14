@@ -1,15 +1,15 @@
 ---
 # bpv-4ka
 title: Add composite device deployment tools (stop + install + launch)
-status: ready
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-14T01:41:56Z
-updated_at: 2026-03-14T01:41:56Z
+updated_at: 2026-03-14T01:48:06Z
 sync:
     github:
         issue_number: "215"
-        synced_at: "2026-03-14T01:42:16Z"
+        synced_at: "2026-03-14T01:49:00Z"
 ---
 
 ## Description
@@ -23,7 +23,7 @@ When deploying an app to a physical device during development, agents (and human
 
 This is tedious and error-prone. The current `build_device` tool doesn't work (see gl6-64d), so agents fall back to `xcodebuild` + manual devicectl commands.
 
-## Proposed Tools
+## Implemented Tools
 
 ### `deploy_device` (or enhance `build_run_device` if it exists)
 Combine stop → install → launch into a single tool call:
@@ -52,3 +52,16 @@ During a debugging session, I needed to deploy ~6 iterations of an app to an iPa
 
 - gl6-64d: `build_device` fails to find connected device by UDID (xcodebuild destination issue)
 - cfo-jj0: `stop_app_device` doesn't resolve bundle_id to PID
+
+
+## Summary of Changes
+
+### New Tools
+
+- **`deploy_device`** — stop (if running) → install → launch in a single call. Takes `app_path`, `bundle_id`, and `device`.
+- **`build_deploy_device`** — full pipeline: build → extract app path + bundle ID from build settings → stop → install → launch. Takes the same params as `build_device`.
+
+### Registration
+
+- Added to `DeviceToolName` enum, `DeviceMCPServer`, monolithic `XcodeMCPServer`, and `ServerToolDirectory`
+- Both tools gracefully handle the case where the app isn't currently running (no error, just a skip message)
