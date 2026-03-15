@@ -112,7 +112,7 @@ public enum ServerToolDirectory {
         "swift_package_build", "swift_package_test", "swift_package_run",
         "swift_package_clean", "swift_package_list", "swift_package_stop",
         "swift_diagnostics", "swift_format", "swift_lint",
-        "detect_unused_code",
+        "detect_unused_code", "swift_symbols",
         "get_coverage_report", "get_file_coverage",
     ]
 

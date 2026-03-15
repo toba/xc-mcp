@@ -5,6 +5,7 @@
 ### ✨ Features
 
 - Add `show_mac_log` tool to query historical macOS unified logs via `log show`; filter by bundle ID, process name, subsystem, or custom predicate with configurable time range and tail lines (43e-vc0)
+- Add `swift_symbols` tool to extract and query public APIs of Swift modules via `swift-symbolgraph-extract`; filter by name, symbol kind, and platform (jb9-qp0)
 
 ## Week of Mar 8 – Mar 14, 2026
 

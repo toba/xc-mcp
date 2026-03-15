@@ -120,6 +120,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case getAppBundleId = "get_app_bundle_id"
     case getMacBundleId = "get_mac_bundle_id"
     case listTestPlanTargets = "list_test_plan_targets"
+    case swiftSymbols = "swift_symbols"
 
     // Logging tools
     case startSimLogCap = "start_sim_log_cap"
@@ -246,7 +247,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                 return .macos
             // Discovery
             case .discoverProjs, .listSchemes, .showBuildSettings, .getAppBundleId,
-                 .getMacBundleId, .listTestPlanTargets:
+                 .getMacBundleId, .listTestPlanTargets, .swiftSymbols:
                 return .discovery
             // Logging
             case .startSimLogCap, .stopSimLogCap, .startDeviceLogCap, .stopDeviceLogCap:
@@ -527,6 +528,7 @@ public struct XcodeMCPServer: Sendable {
         let listTestPlanTargetsTool = ListTestPlanTargetsTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let swiftSymbolsTool = SwiftSymbolsTool()
 
         // Create logging tools
         let startSimLogCapTool = StartSimLogCapTool(
@@ -763,6 +765,7 @@ public struct XcodeMCPServer: Sendable {
             (.getAppBundleId, getAppBundleIdTool.tool()),
             (.getMacBundleId, getMacBundleIdTool.tool()),
             (.listTestPlanTargets, listTestPlanTargetsTool.tool()),
+            (.swiftSymbols, swiftSymbolsTool.tool()),
             // Logging tools
             (.startSimLogCap, startSimLogCapTool.tool()),
             (.stopSimLogCap, stopSimLogCapTool.tool()),
@@ -1087,6 +1090,8 @@ public struct XcodeMCPServer: Sendable {
                     return try await getMacBundleIdTool.execute(arguments: arguments)
                 case .listTestPlanTargets:
                     return try await listTestPlanTargetsTool.execute(arguments: arguments)
+                case .swiftSymbols:
+                    return try await swiftSymbolsTool.execute(arguments: arguments)
                 // Logging tools
                 case .startSimLogCap:
                     return try await startSimLogCapTool.execute(arguments: arguments)
