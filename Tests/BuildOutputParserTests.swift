@@ -693,4 +693,61 @@ struct BuildOutputParserTests {
         #expect(formatted.contains("avg: 0.037"))
         #expect(formatted.contains("std dev: 112.3%"))
     }
+
+    // MARK: - Swift Testing custom #expect comments
+
+    @Test
+    func swiftTestingCustomExpectComment() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+            􀢄  Test "Domain stays free" recorded an issue at File.swift:16:17: Expectation failed: !(forbiddenImports.contains(import.name))
+            􀄵  Domain must not import SwiftData
+            􀢄  Test "Domain stays free" failed after 0.986 seconds with 1 issue.
+            """)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].message.contains("Domain must not import SwiftData"))
+        #expect(result.failedTests[0].file == "File.swift")
+        #expect(result.failedTests[0].line == 16)
+    }
+
+    @Test
+    func swiftTestingCustomExpectCommentLinuxFallback() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+            ✘ Test "Domain stays free" recorded an issue at File.swift:16:17: Expectation failed: !(forbiddenImports.contains(import.name))
+            ↳ Domain must not import SwiftData
+            ✘ Test "Domain stays free" failed after 0.986 seconds with 1 issue.
+            """)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].message.contains("Domain must not import SwiftData"))
+    }
+
+    @Test
+    func swiftTestingNoCustomComment() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+            􀢄  Test shouldFail() recorded an issue at File.swift:9:5: Expectation failed: Bool(false)
+            􀢄  Test shouldFail() failed after 0.001 seconds with 1 issue.
+            """)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].message == "Expectation failed: Bool(false)")
+    }
+
+    @Test
+    func swiftTestingMultipleIssuesWithComments() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+            􀢄  Test "test A" recorded an issue at File.swift:10:5: Expectation failed: A
+            􀄵  Comment A
+            􀢄  Test "test B" recorded an issue at File.swift:20:5: Expectation failed: B
+            􀄵  Comment B
+            """)
+
+        #expect(result.failedTests.count == 2)
+        #expect(result.failedTests[0].message.contains("Comment A"))
+        #expect(result.failedTests[1].message.contains("Comment B"))
+    }
 }
