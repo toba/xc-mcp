@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Mar 15 – Mar 21, 2026
+
+### ✨ Features
+
+- Add `show_mac_log` tool to query historical macOS unified logs via `log show`; filter by bundle ID, process name, subsystem, or custom predicate with configurable time range and tail lines (43e-vc0)
+
 ## Week of Mar 8 – Mar 14, 2026
 
 ### ✨ Features

@@ -1,15 +1,15 @@
 ---
 # t7x-axh
 title: Session defaults not shared across MCP servers (xc-device, xc-build, etc.)
-status: ready
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-14T00:32:28Z
-updated_at: 2026-03-14T00:35:39Z
+updated_at: 2026-03-15T16:37:28Z
 sync:
     github:
         issue_number: "208"
-        synced_at: "2026-03-14T00:58:32Z"
+        synced_at: "2026-03-15T16:56:53Z"
 ---
 
 ## Problem

@@ -110,6 +110,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case showPerformanceBaselines = "show_performance_baselines"
     case startMacLogCap = "start_mac_log_cap"
     case stopMacLogCap = "stop_mac_log_cap"
+    case showMacLog = "show_mac_log"
     case screenshotMacWindow = "screenshot_mac_window"
 
     // Discovery tools
@@ -241,7 +242,7 @@ public enum ToolName: String, CaseIterable, Sendable {
             case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
                  .testMacOS, .getTestAttachments, .getCoverageReport, .getFileCoverage,
                  .getPerformanceMetrics, .setPerformanceBaseline, .showPerformanceBaselines,
-                 .startMacLogCap, .stopMacLogCap, .screenshotMacWindow:
+                 .startMacLogCap, .stopMacLogCap, .showMacLog, .screenshotMacWindow:
                 return .macos
             // Discovery
             case .discoverProjs, .listSchemes, .showBuildSettings, .getAppBundleId,
@@ -506,6 +507,7 @@ public struct XcodeMCPServer: Sendable {
         )
         let startMacLogCapTool = StartMacLogCapTool(sessionManager: sessionManager)
         let stopMacLogCapTool = StopMacLogCapTool(sessionManager: sessionManager)
+        let showMacLogTool = ShowMacLogTool(sessionManager: sessionManager)
         let screenshotMacWindowTool = ScreenshotMacWindowTool()
 
         // Create discovery tools
@@ -752,6 +754,7 @@ public struct XcodeMCPServer: Sendable {
             (.showPerformanceBaselines, showPerformanceBaselinesTool.tool()),
             (.startMacLogCap, startMacLogCapTool.tool()),
             (.stopMacLogCap, stopMacLogCapTool.tool()),
+            (.showMacLog, showMacLogTool.tool()),
             (.screenshotMacWindow, screenshotMacWindowTool.tool()),
             // Discovery tools
             (.discoverProjs, discoverProjsTool.tool()),
@@ -1067,6 +1070,8 @@ public struct XcodeMCPServer: Sendable {
                     return try await startMacLogCapTool.execute(arguments: arguments)
                 case .stopMacLogCap:
                     return await stopMacLogCapTool.execute(arguments: arguments)
+                case .showMacLog:
+                    return try await showMacLogTool.execute(arguments: arguments)
                 case .screenshotMacWindow:
                     return try await screenshotMacWindowTool.execute(arguments: arguments)
                 // Discovery tools

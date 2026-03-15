@@ -1,15 +1,15 @@
 ---
 # gl6-64d
 title: build_device fails to find connected device by UDID
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-03-14T01:10:38Z
-updated_at: 2026-03-14T01:13:41Z
+updated_at: 2026-03-15T16:44:05Z
 sync:
     github:
         issue_number: "212"
-        synced_at: "2026-03-14T01:24:34Z"
+        synced_at: "2026-03-15T16:56:53Z"
 ---
 
 ## Description
@@ -71,3 +71,7 @@ xcrun devicectl device process launch --device <UDID> com.example.foo
 ```
 
 This successfully builds, installs, and launches on the device.
+
+## Summary of Changes
+
+Fixed in commits 4afa66f and cd2ab7f. Build operations now use `generic/platform=<platform>` destination instead of device-specific UDIDs. Added `lookupDevice(udid:)` to `DeviceCtlRunner` and composite tools (`deploy_device`, `build_deploy_device`) that use `devicectl` for install/launch.

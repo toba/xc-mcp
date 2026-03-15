@@ -1,15 +1,15 @@
 ---
 # yy8-aed
 title: Investigate dead code detection tooling (Periphery or equivalent)
-status: review
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-07T18:49:04Z
-updated_at: 2026-03-07T20:02:41Z
+updated_at: 2026-03-15T16:37:18Z
 sync:
     github:
         issue_number: "171"
-        synced_at: "2026-03-07T20:08:09Z"
+        synced_at: "2026-03-15T16:56:53Z"
 ---
 
 Investigate integrating [Periphery](https://github.com/peripheryapp/periphery) or building equivalent functionality to detect unused code in Swift projects.

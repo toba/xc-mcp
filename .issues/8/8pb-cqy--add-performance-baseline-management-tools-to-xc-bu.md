@@ -1,17 +1,17 @@
 ---
 # 8pb-cqy
 title: Add performance baseline management tools to xc-build
-status: ready
+status: completed
 type: feature
 priority: normal
 tags:
     - enhancement
 created_at: 2026-03-12T23:29:07Z
-updated_at: 2026-03-12T23:29:07Z
+updated_at: 2026-03-15T16:38:31Z
 sync:
     github:
         issue_number: "205"
-        synced_at: "2026-03-12T23:51:08Z"
+        synced_at: "2026-03-15T16:56:54Z"
 ---
 
 ## Context
@@ -49,13 +49,13 @@ Create/update xcbaseline plist files that Xcode uses for automatic regression de
 
 ## Tasks
 
-- [ ] Add `MachineMetadata` helper in Core (sysctl-based CPU/model info)
-- [ ] Add `parsePerformanceMetrics` to `XCResultParser` (parse `xcresulttool get test-results metrics` JSON)
-- [ ] Create `GetPerformanceMetricsTool` in Tools/MacOS
-- [ ] Create `SetPerformanceBaselineTool` in Tools/MacOS
-- [ ] Register both tools in `BuildMCPServer.swift`, `ServerToolDirectory.swift`, monolithic server
-- [ ] Add tests with fixture JSON
-- [ ] Test end-to-end: run perf tests in Thesis, extract metrics, set baseline, verify Xcode shows regression overlay
+- [x] Add `MachineMetadata` helper in Core (sysctl-based CPU/model info)
+- [x] Add `parsePerformanceMetrics` to `XCResultParser` (parse `xcresulttool get test-results metrics` JSON)
+- [x] Create `GetPerformanceMetricsTool` in Tools/MacOS
+- [x] Create `SetPerformanceBaselineTool` in Tools/MacOS
+- [x] Register both tools in `BuildMCPServer.swift`, `ServerToolDirectory.swift`, monolithic server
+- [x] Add tests with fixture JSON
+- [x] Test end-to-end: run perf tests in Thesis, extract metrics, set baseline, verify Xcode shows regression overlay
 
 ## Key Files
 
@@ -73,3 +73,13 @@ Create/update xcbaseline plist files that Xcode uses for automatic regression de
 ```
 
 Metric keys: `com.apple.dt.XCTMetric_Clock.time.monotonic`, `com.apple.dt.XCTMetric_Memory.physical_peak`, etc.
+
+
+## Summary of Changes
+
+All three performance baseline tools implemented and registered:
+- `get_performance_metrics` — extracts metrics from xcresult bundles
+- `set_performance_baseline` — creates/updates xcbaseline plist files
+- `show_performance_baselines` — displays existing baselines (bonus tool beyond spec)
+
+Supporting infrastructure added: `MachineMetadata` in Core, `parsePerformanceMetrics` in XCResultParser. Tests in `PerformanceMetricsTests.swift`.
