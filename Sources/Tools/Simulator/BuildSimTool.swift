@@ -93,6 +93,7 @@ public struct BuildSimTool: Sendable {
                 destination: destination,
                 configuration: configuration,
                 environment: environment,
+                outputTimeout: XcodebuildRunner.deviceOutputTimeout,
             )
 
             let projectRoot = ErrorExtractor.projectRoot(

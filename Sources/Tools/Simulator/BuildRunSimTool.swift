@@ -82,7 +82,8 @@ public struct BuildRunSimTool: Sendable {
         do {
             let destination = "platform=iOS Simulator,id=\(simulator)"
 
-            // Step 1: Build
+            // Step 1: Build (use longer output timeout — linking/signing
+            // phases routinely produce no output for >30 seconds)
             let buildResult = try await xcodebuildRunner.build(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
@@ -90,6 +91,7 @@ public struct BuildRunSimTool: Sendable {
                 destination: destination,
                 configuration: configuration,
                 environment: environment,
+                outputTimeout: XcodebuildRunner.deviceOutputTimeout,
             )
 
             if !buildResult.succeeded {
@@ -122,7 +124,15 @@ public struct BuildRunSimTool: Sendable {
                 appPath = extractAppPath(from: buildSettings.stdout) ?? ""
             }
 
-            // Step 3: Install app
+            // Step 3: Boot simulator if needed
+            let devices = try await simctlRunner.listDevices()
+            if let device = devices.first(where: { $0.udid == simulator }),
+               device.state != "Booted"
+            {
+                _ = try await simctlRunner.boot(udid: simulator)
+            }
+
+            // Step 4: Install app
             if !appPath.isEmpty {
                 let installResult = try await simctlRunner.install(
                     udid: simulator, appPath: appPath,
@@ -134,7 +144,7 @@ public struct BuildRunSimTool: Sendable {
                 }
             }
 
-            // Step 4: Launch app
+            // Step 5: Launch app
             let launchResult = try await simctlRunner.launch(
                 udid: simulator,
                 bundleId: resolvedBundleId,
