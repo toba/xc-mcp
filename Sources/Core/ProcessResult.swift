@@ -218,6 +218,25 @@ extension ProcessResult {
     }
 }
 
+// MARK: - Process Lifecycle
+
+extension ProcessResult {
+    /// Polls `kill -0` to check if a process is still alive, returning true if it exits within timeout.
+    ///
+    /// - Parameters:
+    ///   - pid: The process ID to monitor.
+    ///   - timeout: Maximum time to wait for exit.
+    /// - Returns: `true` if the process exited within the timeout, `false` if still alive.
+    public static func waitForProcessExit(pid: Int32, timeout: Duration = .seconds(5)) async -> Bool {
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            if kill(pid, 0) != 0 { return true }
+            try? await Task.sleep(for: .milliseconds(100))
+        }
+        return false
+    }
+}
+
 // MARK: - Simctl Helpers
 
 extension ProcessResult {
@@ -349,18 +368,26 @@ public enum LogCapture {
 
     /// Stops a log capture process by PID or pattern-based kill.
     ///
+    /// Sends SIGTERM and waits for the process to exit, escalating to SIGKILL if needed.
+    ///
     /// - Parameters:
     ///   - pid: Specific process ID to kill. If nil, uses pkill patterns.
     ///   - pkillPatterns: Patterns to pass to `pkill -f` as fallback.
     public static func stopCapture(pid: Int?, pkillPatterns: [String]) async {
         if let pid {
             _ = try? await ProcessResult.run("/bin/kill", arguments: ["\(pid)"])
+            let exited = await ProcessResult.waitForProcessExit(pid: Int32(pid))
+            if !exited {
+                _ = try? await ProcessResult.run("/bin/kill", arguments: ["-9", "\(pid)"])
+            }
         } else {
             for pattern in pkillPatterns {
                 _ = try? await ProcessResult.run(
                     "/usr/bin/pkill", arguments: ["-f", pattern],
                 )
             }
+            // Brief delay to allow signal delivery for pattern-based kills
+            try? await Task.sleep(for: .milliseconds(500))
         }
     }
 }

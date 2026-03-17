@@ -55,20 +55,40 @@ public struct SwiftPackageStopTool: Sendable {
         let signalArg = signal == "KILL" ? "-9" : "-15"
 
         do {
+            // Find matching PIDs before sending the signal
+            let pgrepResult = try await ProcessResult.run(
+                "/usr/bin/pgrep", arguments: ["-f", executable], mergeStderr: false,
+            )
+            guard pgrepResult.succeeded else {
+                throw MCPError.invalidParams("No running process found matching '\(executable)'")
+            }
+            let pids = pgrepResult.stdout
+                .split(separator: "\n")
+                .compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
+
             let result = try await ProcessResult.run(
                 "/usr/bin/pkill", arguments: [signalArg, "-f", executable], mergeStderr: false,
             )
 
             if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            "Successfully sent \(signal) signal to process '\(executable)'",
-                        ),
-                    ],
-                )
+                // Wait for processes to actually exit
+                var allExited = true
+                for pid in pids {
+                    let exited = await ProcessResult.waitForProcessExit(pid: pid)
+                    if !exited {
+                        // Escalate to SIGKILL
+                        _ = try? await ProcessResult.run(
+                            "/bin/kill", arguments: ["-9", "\(pid)"],
+                        )
+                        allExited = false
+                    }
+                }
+                let detail = allExited
+                    ? "Successfully stopped '\(executable)'"
+                    : "Stopped '\(executable)' (escalated to SIGKILL after SIGTERM timeout)"
+                return CallTool.Result(content: [.text(detail)])
             } else if result.exitCode == 1 {
-                // pkill returns 1 when no process found
+                // pkill returns 1 when no process found (race: exited between pgrep and pkill)
                 throw MCPError.invalidParams("No running process found matching '\(executable)'")
             } else {
                 throw MCPError.internalError("Failed to stop process: \(result.stderr)")

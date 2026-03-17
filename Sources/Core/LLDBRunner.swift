@@ -308,28 +308,26 @@ public actor LLDBSession {
     }
 
     /// Terminates the LLDB process and closes PTY file descriptors.
-    public func terminate() {
+    ///
+    /// Sends `quit` to LLDB and waits for exit, escalating to SIGTERM then SIGKILL if needed.
+    public func terminate() async {
         if process.isRunning {
             // Try graceful quit first
             let quitData = Data("quit\n".utf8)
             try? stdin.write(contentsOf: quitData)
 
-            // Give it a moment, then force kill
-            let fds = ptyFDs
-            let proc = process
-            Task {
-                try? await Task.sleep(for: .seconds(1))
-                if proc.isRunning {
-                    proc.terminate()
-                }
-                for fd in fds {
-                    close(fd)
+            let pid = process.processIdentifier
+            let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(2))
+            if !exited, process.isRunning {
+                process.terminate() // SIGTERM
+                let exitedAfterTerm = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(3))
+                if !exitedAfterTerm, process.isRunning {
+                    kill(pid, SIGKILL)
                 }
             }
-        } else {
-            for fd in ptyFDs {
-                close(fd)
-            }
+        }
+        for fd in ptyFDs {
+            close(fd)
         }
     }
 

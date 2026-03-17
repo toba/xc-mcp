@@ -6,6 +6,18 @@
 
 - Add `show_mac_log` tool to query historical macOS unified logs via `log show`; filter by bundle ID, process name, subsystem, or custom predicate with configurable time range and tail lines ([#216](https://github.com/toba/xc-mcp/issues/216))
 - Add `swift_symbols` tool to extract and query public APIs of Swift modules via `swift-symbolgraph-extract`; filter by name, symbol kind, and platform ([#217](https://github.com/toba/xc-mcp/issues/217))
+- Investigate dead code detection tooling; evaluated Periphery alternatives and confirmed it as the best option (yy8-aed)
+- Share session defaults across all focused MCP servers; `set_session_defaults` in one server applies everywhere (t7x-axh)
+
+### 🐛 Fixes
+
+- Fix `build_device` failing to find connected device by UDID; improve device lookup to match partial UDIDs (gl6-64d)
+- Wait for process exit after SIGTERM in `swift_package_stop`, `LogCapture.stopCapture`, and `LLDBRunner.terminate()`; poll with `kill -0` and escalate to SIGKILL (mx2-mwz)
+
+### 🗜️ Tweaks
+
+- Review XcodeBuildMCP v2.3.0 changes for applicability; no gaps in list-schemes or simulator init, confirmed SIGTERM fix needed (x62-nw2)
+- Upgrade MCP Swift SDK from 0.10.2 to 0.11.0; adds 2025-11-25 spec coverage, icons/metadata, elicitation, HTTP transport (7za-g6e)
 
 ## Week of Mar 8 – Mar 14, 2026
 

@@ -153,7 +153,7 @@ public struct StopMacAppTool: Sendable {
         }
 
         // Wait up to 5 seconds for the process to exit
-        if await waitForProcessExit(pid: pid, timeout: .seconds(5)) {
+        if await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(5)) {
             return CallTool.Result(
                 content: [.text("Successfully stopped '\(identifier)'")],
             )
@@ -235,15 +235,4 @@ public struct StopMacAppTool: Sendable {
         }
     }
 
-    /// Polls `kill -0` to check if a process is still alive, returning true if it exits within timeout.
-    private func waitForProcessExit(pid: Int32, timeout: Duration) async -> Bool {
-        let deadline = ContinuousClock.now + timeout
-        while ContinuousClock.now < deadline {
-            // kill -0 checks existence without sending a signal
-            let alive = kill(pid, 0) == 0
-            if !alive { return true }
-            try? await Task.sleep(for: .milliseconds(200))
-        }
-        return false
-    }
 }
