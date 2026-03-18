@@ -2,29 +2,27 @@ import Logging
 import Foundation
 import ArgumentParser
 
-/// Command-line interface for the xc-strings MCP server.
+/// Command-line interface for the xc-build MCP server.
 ///
-/// This focused server provides Xcode String Catalog (.xcstrings) manipulation tools
-/// with minimal token overhead (~6K tokens).
+/// This focused server provides macOS build, discovery, and utility tools
+/// with moderate token overhead (~3K tokens vs ~50K for the full xc-mcp server).
 ///
 /// ## Usage
 ///
 /// ```bash
 /// # Start with default settings (current directory)
-/// xc-strings
+/// xc-build
 ///
 /// # Start with a specific base path
-/// xc-strings /path/to/project
+/// xc-build /path/to/project
 ///
 /// # Enable verbose logging
-/// xc-strings --verbose
+/// xc-build --verbose
 /// ```
-@main
-struct StringsServerCLI: AsyncParsableCommand {
+struct BuildServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "xc-strings",
-        abstract:
-        "MCP server for Xcode String Catalog (.xcstrings) file manipulation (18 tools, ~6K tokens)",
+        commandName: "xc-build",
+        abstract: "MCP server for macOS builds, discovery, and utilities (18 tools, ~3K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")
@@ -46,11 +44,11 @@ struct StringsServerCLI: AsyncParsableCommand {
             return handler
         }
 
-        let logger = Logger(label: "com.toba.xc-strings")
+        let logger = Logger(label: "com.toba.xc-build")
 
         let resolvedBasePath = basePath ?? FileManager.default.currentDirectoryPath
 
-        let server = StringsMCPServer(
+        let server = BuildMCPServer(
             basePath: resolvedBasePath,
             sandboxEnabled: !noSandbox,
             logger: logger,

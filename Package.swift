@@ -14,17 +14,8 @@ let package = Package(
         .macOS(.v15),
     ],
     products: [
-        // Monolithic server (all tools)
+        // Single multicall binary — symlinks (xc-build, xc-debug, etc.) select the focused server
         .executable(name: "xc-mcp", targets: ["xc-mcp"]),
-
-        // Focused servers for reduced token overhead
-        .executable(name: "xc-project", targets: ["xc-project"]),
-        .executable(name: "xc-simulator", targets: ["xc-simulator"]),
-        .executable(name: "xc-device", targets: ["xc-device"]),
-        .executable(name: "xc-debug", targets: ["xc-debug"]),
-        .executable(name: "xc-swift", targets: ["xc-swift"]),
-        .executable(name: "xc-build", targets: ["xc-build"]),
-        .executable(name: "xc-strings", targets: ["xc-strings"]),
 
         // Shared libraries
         .library(name: "XCMCPCore", targets: ["XCMCPCore"]),
@@ -65,6 +56,8 @@ let package = Package(
 
         // MARK: - Monolithic Server (all tools)
 
+        // Single multicall binary — argv[0] selects the focused server variant.
+        // Symlinks (xc-build, xc-debug, etc.) are created at install time.
         .executableTarget(
             name: "xc-mcp",
             dependencies: [
@@ -76,115 +69,23 @@ let package = Package(
             path: "Sources",
             sources: [
                 "CLI.swift",
+                "Server/MonolithicCLI.swift",
                 "Server/XcodeMCPServer.swift",
+                "Servers/Build/BuildCLI.swift",
+                "Servers/Build/BuildMCPServer.swift",
+                "Servers/Debug/DebugCLI.swift",
+                "Servers/Debug/DebugMCPServer.swift",
+                "Servers/Device/DeviceCLI.swift",
+                "Servers/Device/DeviceMCPServer.swift",
+                "Servers/Project/ProjectCLI.swift",
+                "Servers/Project/ProjectMCPServer.swift",
+                "Servers/Simulator/SimulatorCLI.swift",
+                "Servers/Simulator/SimulatorMCPServer.swift",
+                "Servers/Strings/StringsCLI.swift",
+                "Servers/Strings/StringsMCPServer.swift",
+                "Servers/Swift/SwiftCLI.swift",
+                "Servers/Swift/SwiftMCPServer.swift",
             ],
-            swiftSettings: sharedSwiftSettings,
-        ),
-
-        // MARK: - Focused Servers
-
-        // Project manipulation server (23 tools, ~5K tokens)
-        // Stateless - uses XcodeProj for .xcodeproj file manipulation
-        .executableTarget(
-            name: "xc-project",
-            dependencies: [
-                "XCMCPCore",
-                "XCMCPTools",
-                .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ],
-            path: "Sources/Servers/Project",
-            sources: ["CLI.swift", "ProjectMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings,
-        ),
-
-        // Simulator management server (26 tools, ~6K tokens)
-        // Includes simulator tools, UI automation, and simulator logging
-        .executableTarget(
-            name: "xc-simulator",
-            dependencies: [
-                "XCMCPCore",
-                "XCMCPTools",
-                .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ],
-            path: "Sources/Servers/Simulator",
-            sources: ["CLI.swift", "SimulatorMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings,
-        ),
-
-        // Physical device server (9 tools, ~2K tokens)
-        // Device operations and device logging
-        .executableTarget(
-            name: "xc-device",
-            dependencies: [
-                "XCMCPCore",
-                "XCMCPTools",
-                .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ],
-            path: "Sources/Servers/Device",
-            sources: ["CLI.swift", "DeviceMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings,
-        ),
-
-        // Debug server (8 tools, ~2K tokens)
-        // LLDB debug sessions with persistent state
-        .executableTarget(
-            name: "xc-debug",
-            dependencies: [
-                "XCMCPCore",
-                "XCMCPTools",
-                .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ],
-            path: "Sources/Servers/Debug",
-            sources: ["CLI.swift", "DebugMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings,
-        ),
-
-        // Swift Package Manager server (6 tools, ~1.5K tokens)
-        // SPM build, test, run operations
-        .executableTarget(
-            name: "xc-swift",
-            dependencies: [
-                "XCMCPCore",
-                "XCMCPTools",
-                .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ],
-            path: "Sources/Servers/Swift",
-            sources: ["CLI.swift", "SwiftMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings,
-        ),
-
-        // Build orchestration server (12 tools, ~3K tokens)
-        // macOS builds, discovery, and utility tools
-        .executableTarget(
-            name: "xc-build",
-            dependencies: [
-                "XCMCPCore",
-                "XCMCPTools",
-                .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ],
-            path: "Sources/Servers/Build",
-            sources: ["CLI.swift", "BuildMCPServer.swift"],
-            swiftSettings: sharedSwiftSettings,
-        ),
-
-        // XCStrings server (18 tools, ~6K tokens)
-        // xcstrings file manipulation for localization management
-        .executableTarget(
-            name: "xc-strings",
-            dependencies: [
-                "XCMCPCore",
-                "XCMCPTools",
-                .product(name: "MCP", package: "swift-sdk"),
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ],
-            path: "Sources/Servers/Strings",
-            sources: ["CLI.swift", "StringsMCPServer.swift"],
             swiftSettings: sharedSwiftSettings,
         ),
 

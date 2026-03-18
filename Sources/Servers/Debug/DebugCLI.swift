@@ -2,28 +2,27 @@ import Logging
 import Foundation
 import ArgumentParser
 
-/// Command-line interface for the xc-simulator MCP server.
+/// Command-line interface for the xc-debug MCP server.
 ///
-/// This focused server provides iOS Simulator tools with moderate
-/// token overhead (~6K tokens vs ~50K for the full xc-mcp server).
+/// This focused server provides LLDB debugging tools with minimal
+/// token overhead (~2K tokens vs ~50K for the full xc-mcp server).
 ///
 /// ## Usage
 ///
 /// ```bash
 /// # Start with default settings (current directory)
-/// xc-simulator
+/// xc-debug
 ///
 /// # Start with a specific base path
-/// xc-simulator /path/to/project
+/// xc-debug /path/to/project
 ///
 /// # Enable verbose logging
-/// xc-simulator --verbose
+/// xc-debug --verbose
 /// ```
-@main
-struct SimulatorServerCLI: AsyncParsableCommand {
+struct DebugServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "xc-simulator",
-        abstract: "MCP server for iOS Simulator operations (29 tools, ~6K tokens)",
+        commandName: "xc-debug",
+        abstract: "MCP server for LLDB debugging operations (8 tools, ~2K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")
@@ -40,11 +39,11 @@ struct SimulatorServerCLI: AsyncParsableCommand {
             return handler
         }
 
-        let logger = Logger(label: "com.toba.xc-simulator")
+        let logger = Logger(label: "com.toba.xc-debug")
 
         let resolvedBasePath = basePath ?? FileManager.default.currentDirectoryPath
 
-        let server = SimulatorMCPServer(basePath: resolvedBasePath, logger: logger)
+        let server = DebugMCPServer(basePath: resolvedBasePath, logger: logger)
         try await server.run()
     }
 }

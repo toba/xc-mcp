@@ -21,15 +21,12 @@ jobs:
     - name: Create archive
       run: |
         mkdir -p dist
-        cp .build/release/xc-mcp dist/
-        cp .build/release/xc-project dist/
-        cp .build/release/xc-simulator dist/
-        cp .build/release/xc-device dist/
-        cp .build/release/xc-debug dist/
-        cp .build/release/xc-swift dist/
-        cp .build/release/xc-build dist/
-        cp .build/release/xc-strings dist/
-        cd dist && tar -czvf ../xc-mcp-${{ github.ref_name }}-arm64.tar.gz *
+        strip -x -o dist/xc-mcp .build/release/xc-mcp
+        cd dist
+        for name in xc-build xc-debug xc-device xc-project xc-simulator xc-strings xc-swift; do
+          ln -s xc-mcp "$name"
+        done
+        tar -czhvf ../xc-mcp-${{ github.ref_name }}-arm64.tar.gz *
 
     - name: Generate SHA256
       run: shasum -a 256 xc-mcp-${{ github.ref_name }}-arm64.tar.gz > xc-mcp-${{ github.ref_name }}-arm64.tar.gz.sha256
@@ -89,13 +86,9 @@ jobs:
 
             def install
               bin.install "xc-mcp"
-              bin.install "xc-project"
-              bin.install "xc-simulator"
-              bin.install "xc-device"
-              bin.install "xc-debug"
-              bin.install "xc-swift"
-              bin.install "xc-build"
-              bin.install "xc-strings"
+              %w[xc-build xc-debug xc-device xc-project xc-simulator xc-strings xc-swift].each do |name|
+                bin.install_symlink "xc-mcp" => name
+              end
             end
 
             def caveats

@@ -2,28 +2,27 @@ import Logging
 import Foundation
 import ArgumentParser
 
-/// Command-line interface for the xc-project MCP server.
+/// Command-line interface for the xc-device MCP server.
 ///
-/// This focused server provides Xcode project manipulation tools with minimal
-/// token overhead (~5K tokens vs ~50K for the full xc-mcp server).
+/// This focused server provides physical iOS device tools with minimal
+/// token overhead (~2K tokens vs ~50K for the full xc-mcp server).
 ///
 /// ## Usage
 ///
 /// ```bash
 /// # Start with default settings (current directory)
-/// xc-project
+/// xc-device
 ///
 /// # Start with a specific base path
-/// xc-project /path/to/project
+/// xc-device /path/to/project
 ///
 /// # Enable verbose logging
-/// xc-project --verbose
+/// xc-device --verbose
 /// ```
-@main
-struct ProjectServerCLI: AsyncParsableCommand {
+struct DeviceServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "xc-project",
-        abstract: "MCP server for Xcode project file manipulation (23 tools, ~5K tokens)",
+        commandName: "xc-device",
+        abstract: "MCP server for physical iOS device operations (12 tools, ~2K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")
@@ -31,11 +30,6 @@ struct ProjectServerCLI: AsyncParsableCommand {
 
     @Flag(name: .shortAndLong, help: "Enable verbose logging (debug level)")
     var verbose: Bool = false
-
-    @Flag(
-        name: .long, help: "Disable path sandboxing (allow access to paths outside base directory)",
-    )
-    var noSandbox: Bool = false
 
     mutating func run() async throws {
         let logLevel: Logger.Level = verbose ? .debug : .info
@@ -45,15 +39,11 @@ struct ProjectServerCLI: AsyncParsableCommand {
             return handler
         }
 
-        let logger = Logger(label: "com.toba.xc-project")
+        let logger = Logger(label: "com.toba.xc-device")
 
         let resolvedBasePath = basePath ?? FileManager.default.currentDirectoryPath
 
-        let server = ProjectMCPServer(
-            basePath: resolvedBasePath,
-            sandboxEnabled: !noSandbox,
-            logger: logger,
-        )
+        let server = DeviceMCPServer(basePath: resolvedBasePath, logger: logger)
         try await server.run()
     }
 }

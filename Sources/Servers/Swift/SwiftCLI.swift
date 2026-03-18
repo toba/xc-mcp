@@ -19,7 +19,6 @@ import ArgumentParser
 /// # Enable verbose logging
 /// xc-swift --verbose
 /// ```
-@main
 struct SwiftServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-swift",

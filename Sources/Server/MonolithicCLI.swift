@@ -2,28 +2,11 @@ import Logging
 import Foundation
 import ArgumentParser
 
-/// Command-line interface for the xc-device MCP server.
-///
-/// This focused server provides physical iOS device tools with minimal
-/// token overhead (~2K tokens vs ~50K for the full xc-mcp server).
-///
-/// ## Usage
-///
-/// ```bash
-/// # Start with default settings (current directory)
-/// xc-device
-///
-/// # Start with a specific base path
-/// xc-device /path/to/project
-///
-/// # Enable verbose logging
-/// xc-device --verbose
-/// ```
-@main
-struct DeviceServerCLI: AsyncParsableCommand {
+/// Command-line interface for the monolithic Xcode MCP server.
+struct XcodeMCPServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        commandName: "xc-device",
-        abstract: "MCP server for physical iOS device operations (12 tools, ~2K tokens)",
+        commandName: "xc-mcp",
+        abstract: "MCP server for Xcode project manipulation, building, and testing",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")
@@ -40,11 +23,11 @@ struct DeviceServerCLI: AsyncParsableCommand {
             return handler
         }
 
-        let logger = Logger(label: "com.toba.xc-device")
+        let logger = Logger(label: "com.toba.xc-mcp")
 
         let resolvedBasePath = basePath ?? FileManager.default.currentDirectoryPath
 
-        let server = DeviceMCPServer(basePath: resolvedBasePath, logger: logger)
+        let server = XcodeMCPServer(basePath: resolvedBasePath, logger: logger)
         try await server.run()
     }
 }
