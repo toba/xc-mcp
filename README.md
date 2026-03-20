@@ -117,7 +117,7 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 ### Homebrew (Recommended)
 
 ```bash
-brew tap toba/xc-mcp
+brew tap toba/tap
 brew install xc-mcp
 ```
 
