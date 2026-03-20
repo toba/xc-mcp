@@ -1,6 +1,6 @@
 # xc-mcp
 
-An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 181 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, localization, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 190 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, localization, and SwiftUI preview capture.
 
 I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
@@ -20,6 +20,8 @@ This project [iterates rapidly](CHANGELOG.md). Fairly complex issues had to be s
 - **Xcode state sync**: `sync_xcode_defaults` reads your active scheme and run destination straight from Xcode's `UserInterfaceState.xcuserstate`. Open a project in Xcode, pick your scheme, then let the agent inherit that context without manual configuration.
 - **Persistent environment variables**: `set_session_defaults(env: {"DYLD_PRINT_LIBRARIES": "1"})` sets custom env vars that automatically apply to *every* build, test, and run command for the session. Per-invocation env overrides session defaults (same key wins). Useful for `DYLD_` debugging vars, custom build flags, CI env passthrough. `clear_session_defaults` resets everything.
 - **Unused code detection**: `detect_unused_code` wraps [Periphery](https://github.com/peripheryapp/periphery) to find unused declarations, redundant imports, assign-only properties, and unnecessarily public symbols across Swift packages and Xcode projects. Returns a summary by default; drill into cached results with `format: "detail"` or `format: "checklist"` — the checklist format gives agents a persistent, numbered list they can mark off as they clean up, without re-scanning every time.
+- **One-call device deployment**: `build_deploy_device` builds for a connected device, stops any running instance, installs the new build, and launches — all in one tool call. No more four-step `build_device` → `stop_app_device` → `install_app_device` → `launch_app_device` dance. `deploy_device` does the post-build half if you've already got a `.app`.
+- **Performance baselines**: `get_performance_metrics` extracts `XCTest.measure()` timing data from `.xcresult` bundles. `set_performance_baseline` creates the `.xcbaseline` plist files that Xcode uses for automatic regression detection. `show_performance_baselines` reads existing baselines in human-readable form. The whole measure → baseline → regress loop, from the CLI.
 - **Dynamic tool workflows**: `manage_workflows` lets you enable or disable entire tool categories (project, simulator, debug, etc.) at runtime. When an agent doesn't need 130 tools cluttering its context, disable the irrelevant ones. The server sends `tools/list_changed` notifications so clients update automatically.
 
 ## Built On
@@ -38,17 +40,17 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
 - [Requirements](#requirements)
 - [Tools](#tools)
   - [macOS UI Automation](#macos-ui-automation-8-tools)
-  - [macOS Screenshots & Builds](#macos-screenshots--builds-11-tools)
+  - [macOS Screenshots & Builds](#macos-screenshots--builds-14-tools)
   - [SwiftUI Preview Capture](#swiftui-preview-capture-1-tool)
   - [Debug](#debug-18-tools)
   - [Simulator](#simulator-17-tools)
   - [Simulator UI Automation](#simulator-ui-automation-8-tools)
-  - [Device](#device-7-tools)
-  - [Project Management](#project-management-57-tools)
+  - [Device](#device-9-tools)
+  - [Project Management](#project-management-58-tools)
   - [Discovery](#discovery-6-tools)
   - [Instruments](#instruments-3-tools)
   - [Logging](#logging-4-tools)
-  - [Swift Package Manager](#swift-package-manager-10-tools)
+  - [Swift Package Manager](#swift-package-manager-12-tools)
   - [Localization](#localization-24-tools)
   - [Session & Utilities](#session--utilities-8-tools)
 - [Tests](#tests)
@@ -61,14 +63,14 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 159 | ~28K | Full monolithic server |
+| `xc-mcp` | 168 | ~30K | Full monolithic server |
 | `xc-project` | 61 | ~9K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~5K | Simulator, UI automation, simulator logs |
-| `xc-build` | 24 | ~5K | macOS builds, discovery, logging, diagnostics, utilities |
-| `xc-debug` | 23 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
+| `xc-build` | 31 | ~6K | macOS builds, profiling, discovery, logging, diagnostics, utilities |
+| `xc-debug` | 22 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
 | `xc-strings` | 24 | ~3K | Xcode String Catalog (.xcstrings) localization |
-| `xc-swift` | 12 | ~2K | Swift Package Manager, swiftformat, swiftlint, diagnostics + session defaults |
-| `xc-device` | 12 | ~2K | Physical iOS devices |
+| `xc-swift` | 15 | ~3K | Swift Package Manager, swiftformat, swiftlint, diagnostics, coverage |
+| `xc-device` | 14 | ~3K | Physical iOS devices, deployment pipelines |
 
 **When to use focused servers:**
 - Use `xc-project` for project file editing (no CLI alternative exists)
@@ -194,7 +196,7 @@ Semantic UI automation for macOS apps via the Accessibility API. These work on *
 | `interact_key` | Send keyboard input to the focused element |
 | `interact_find` | Search for UI elements by properties |
 
-### macOS Screenshots & Builds (11 tools)
+### macOS Screenshots & Builds (14 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -208,6 +210,13 @@ Semantic UI automation for macOS apps via the Accessibility API. These work on *
 | `start_mac_log_cap` | Start capturing macOS app logs via unified logging |
 | `stop_mac_log_cap` | Stop capturing and return macOS log results |
 | `get_test_attachments` | Extract test attachments (screenshots, data files) from an `.xcresult` bundle. Exports files and returns structured metadata from the manifest. Filter by test ID or failures only |
+| `sample_mac_app` | Sample a running macOS app's call stacks via `/usr/bin/sample`. Parses raw output into agent-friendly summaries: heaviest functions, call paths, idle thread filtering |
+| `profile_app_launch` | Profile app launch performance — build, launch, sample call stacks during startup, and report which functions dominate launch time |
+| `get_coverage_report` | Extract per-target code coverage from `.xcresult` bundles — file count, line coverage percentage, and covered/executable line counts |
+| `get_file_coverage` | Drill into per-function coverage for a specific file within an `.xcresult` bundle |
+| `get_performance_metrics` | Extract `measure(metrics:)` timing data from `.xcresult` bundles — average, std dev, units, iteration count, and existing baselines |
+| `set_performance_baseline` | Create or update `.xcbaseline` plist files that Xcode uses for automatic regression detection |
+| `show_performance_baselines` | Read and display existing `.xcbaseline` plists with human-readable metric names. Filter by target, test class, or metric type |
 | `diagnostics` | Clean-build an Xcode project and collect all compiler warnings, errors, and lint violations. Same idea as `swift_diagnostics` but for `.xcodeproj`/`.xcworkspace` projects. Filters out dependency warnings so you only see your own code's problems |
 
 ### SwiftUI Preview Capture (1 tool)
@@ -305,7 +314,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `button` | Press hardware button |
 | `screenshot` | Take simulator screenshot |
 
-### Device (7 tools)
+### Device (9 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -313,11 +322,13 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `build_device` | Build for physical device |
 | `install_app_device` | Install on physical device |
 | `launch_app_device` | Launch on physical device |
-| `stop_app_device` | Stop app on physical device |
+| `stop_app_device` | Stop app on physical device — resolves bundle ID to PID via `devicectl device info processes` |
 | `get_device_app_path` | Get path to installed app |
 | `test_device` | Run tests on physical device |
+| `deploy_device` | Stop → install → launch in one call. For when you've already built the `.app` and just want it on the device |
+| `build_deploy_device` | Full pipeline: build → stop → install → launch. Extracts the `.app` path and bundle ID from build settings automatically — no need to know either up front |
 
-### Project Management (57 tools)
+### Project Management (58 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -378,6 +389,7 @@ Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`
 | `list_url_types` | List URL types (`CFBundleURLTypes`) — custom URL schemes the app handles |
 | `manage_url_type` | Add, update, or remove a URL type (custom URL scheme) |
 | `validate_project` | Validate an Xcode project for common configuration issues — checks embed phase settings (`dstSubfolderSpec`), detects frameworks that are linked but not embedded (or vice versa), flags duplicate embeds across copy-files phases, empty copy-files phases, and missing or unused target dependencies |
+| `scaffold_module` | Create a framework module in one call — target, test target, synchronized folders, inter-target dependency, embed phase, and test plan entry. The composite version of calling `add_target` + `add_synchronized_folder` + `add_dependency` + `add_to_copy_files_phase` + `add_target_to_test_plan` individually |
 
 ### Discovery (6 tools)
 
@@ -409,7 +421,7 @@ Profiling via `xctrace` — record traces, list available templates and instrume
 | `start_device_log_cap` | Start capturing device logs |
 | `stop_device_log_cap` | Stop capturing device logs |
 
-### Swift Package Manager (10 tools)
+### Swift Package Manager (12 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -423,6 +435,8 @@ Profiling via `xctrace` — record traces, list available templates and instrume
 | `swift_lint` | Run `swiftlint` on a package or specific paths. Parses JSON output into structured violations grouped by file. Supports `fix` mode for auto-correction. Auto-detects `.swiftlint.yml` config |
 | `swift_diagnostics` | Clean-build a package and collect *all* compiler warnings, errors, and lint violations in one shot. Cached builds swallow warnings on success — this forces recompilation so nothing hides. Optionally includes swiftlint. Returns diagnostics even when the build succeeds |
 | `detect_unused_code` | Find unused code via [Periphery](https://github.com/peripheryapp/periphery). Scans Swift packages or Xcode projects for unused declarations, redundant imports, assign-only properties, and redundant public accessibility. Three output formats: `summary` (counts by kind + top files), `detail` (per-declaration, grouped by file), `checklist` (persistent numbered list with mark/status tracking). Results are cached to disk — pass `result_file` to filter and drill down without re-scanning. Supports `kind_filter`, `file_filter`, `retain_public`, `skip_build`, `exclude_targets`, and `report_exclude` |
+| `get_coverage_report` | Extract per-target code coverage from `.xcresult` bundles — file count, line coverage percentage, and covered/executable line counts |
+| `get_file_coverage` | Drill into per-function coverage for a specific file within an `.xcresult` bundle — which functions are covered, which aren't, and how many executable lines each has |
 
 ### Localization (24 tools)
 
@@ -481,7 +495,7 @@ Test tools parse both **XCTest** and **Swift Testing** output formats, extractin
 
 ## Tests
 
-667 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
+826 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
 
 ### Unit Tests
 

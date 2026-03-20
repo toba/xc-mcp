@@ -35,6 +35,7 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     case scaffoldMacOS = "scaffold_macos_project"
 
     case searchCrashReports = "search_crash_reports"
+    case exportIcon = "export_icon"
     case diagnostics
 
     // Performance tools
@@ -147,6 +148,7 @@ public struct BuildMCPServer: Sendable {
         let scaffoldIOSTool = ScaffoldIOSProjectTool(pathUtility: pathUtility)
         let scaffoldMacOSTool = ScaffoldMacOSProjectTool(pathUtility: pathUtility)
         let searchCrashReportsTool = SearchCrashReportsTool()
+        let exportIconTool = ExportIconTool()
         let diagnosticsTool = DiagnosticsTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
@@ -201,6 +203,7 @@ public struct BuildMCPServer: Sendable {
                 scaffoldIOSTool.tool(),
                 scaffoldMacOSTool.tool(),
                 searchCrashReportsTool.tool(),
+                exportIconTool.tool(),
                 diagnosticsTool.tool(),
                 // Performance tools
                 getPerformanceMetricsTool.tool(),
@@ -278,6 +281,8 @@ public struct BuildMCPServer: Sendable {
                     return try scaffoldMacOSTool.execute(arguments: arguments)
                 case .searchCrashReports:
                     return searchCrashReportsTool.execute(arguments: arguments)
+                case .exportIcon:
+                    return try await exportIconTool.execute(arguments: arguments)
                 case .diagnostics:
                     return try await diagnosticsTool.execute(arguments: arguments)
                 // Performance tools

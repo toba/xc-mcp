@@ -234,5 +234,4 @@ public struct StopMacAppTool: Sendable {
             )
         }
     }
-
 }

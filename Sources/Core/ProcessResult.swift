@@ -227,7 +227,9 @@ extension ProcessResult {
     ///   - pid: The process ID to monitor.
     ///   - timeout: Maximum time to wait for exit.
     /// - Returns: `true` if the process exited within the timeout, `false` if still alive.
-    public static func waitForProcessExit(pid: Int32, timeout: Duration = .seconds(5)) async -> Bool {
+    public static func waitForProcessExit(pid: Int32,
+                                          timeout: Duration = .seconds(5)) async -> Bool
+    {
         let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline {
             if kill(pid, 0) != 0 { return true }

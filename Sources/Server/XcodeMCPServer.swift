@@ -200,6 +200,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case scaffoldIOS = "scaffold_ios_project"
     case scaffoldMacOS = "scaffold_macos_project"
     case searchCrashReports = "search_crash_reports"
+    case exportIcon = "export_icon"
     case diagnostics
     /// The workflow category this tool belongs to.
     public var workflow: Workflow {
@@ -277,7 +278,8 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .sampleMacApp, .profileAppLaunch:
                 return .instruments
             // Utility
-            case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS, .searchCrashReports, .diagnostics:
+            case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS, .searchCrashReports, .exportIcon,
+                 .diagnostics:
                 return .utility
         }
     }
@@ -653,6 +655,7 @@ public struct XcodeMCPServer: Sendable {
         let scaffoldIOSTool = ScaffoldIOSProjectTool(pathUtility: pathUtility)
         let scaffoldMacOSTool = ScaffoldMacOSProjectTool(pathUtility: pathUtility)
         let searchCrashReportsTool = SearchCrashReportsTool()
+        let exportIconTool = ExportIconTool()
         let diagnosticsTool = DiagnosticsTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
@@ -837,6 +840,7 @@ public struct XcodeMCPServer: Sendable {
             (.scaffoldIOS, scaffoldIOSTool.tool()),
             (.scaffoldMacOS, scaffoldMacOSTool.tool()),
             (.searchCrashReports, searchCrashReportsTool.tool()),
+            (.exportIcon, exportIconTool.tool()),
             (.diagnostics, diagnosticsTool.tool()),
         ]
 
@@ -1226,6 +1230,8 @@ public struct XcodeMCPServer: Sendable {
                     return try scaffoldMacOSTool.execute(arguments: arguments)
                 case .searchCrashReports:
                     return searchCrashReportsTool.execute(arguments: arguments)
+                case .exportIcon:
+                    return try await exportIconTool.execute(arguments: arguments)
                 case .diagnostics:
                     return try await diagnosticsTool.execute(arguments: arguments)
             }

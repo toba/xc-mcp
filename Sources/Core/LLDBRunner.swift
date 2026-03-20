@@ -320,7 +320,10 @@ public actor LLDBSession {
             let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(2))
             if !exited, process.isRunning {
                 process.terminate() // SIGTERM
-                let exitedAfterTerm = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(3))
+                let exitedAfterTerm = await ProcessResult.waitForProcessExit(
+                    pid: pid,
+                    timeout: .seconds(3),
+                )
                 if !exitedAfterTerm, process.isRunning {
                     kill(pid, SIGKILL)
                 }

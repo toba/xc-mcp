@@ -79,7 +79,7 @@ public final class BuildOutputParser: @unchecked Sendable {
                 let nextLine = lines[index + 1].trimmingCharacters(in: .whitespaces)
                 if nextLine.hasPrefix("􀄵") || nextLine.hasPrefix("↳") {
                     let comment = String(
-                        nextLine.drop(while: { $0 != " " }).drop(while: { $0 == " " })
+                        nextLine.drop(while: { $0 != " " }).drop(while: { $0 == " " }),
                     )
                     if !comment.isEmpty, let lastIdx = failedTests.indices.last {
                         let existing = failedTests[lastIdx]

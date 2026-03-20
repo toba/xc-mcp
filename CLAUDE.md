@@ -174,7 +174,7 @@ Xcode build system knowledge for injected targets (via XcodeProj). Reference fil
 
 ## Swift Code Quality Standards
 
-These standards apply to all code changes. Run `/swift-review` periodically to check for regressions.
+These standards apply to all code changes. Run `/swift` periodically to check for regressions.
 
 ### Concurrency
 

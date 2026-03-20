@@ -4,11 +4,11 @@ import Foundation
 
 struct WaitForProcessExitTests {
     @Test
-    func `Returns true for already-exited process`() async {
+    func `Returns true for already-exited process`() async throws {
         // Launch a process and wait for it to finish before checking
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/true")
-        try! process.run()
+        try process.run()
         process.waitUntilExit()
         let pid = process.processIdentifier
 
@@ -17,11 +17,11 @@ struct WaitForProcessExitTests {
     }
 
     @Test
-    func `Returns true when process exits within timeout`() async {
+    func `Returns true when process exits within timeout`() async throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sleep")
         process.arguments = ["0.1"]
-        try! process.run()
+        try process.run()
         let pid = process.processIdentifier
 
         let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(3))
@@ -29,11 +29,11 @@ struct WaitForProcessExitTests {
     }
 
     @Test
-    func `Returns false when process outlives timeout`() async {
+    func `Returns false when process outlives timeout`() async throws {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sleep")
         process.arguments = ["60"]
-        try! process.run()
+        try process.run()
         let pid = process.processIdentifier
 
         let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .milliseconds(200))
@@ -45,12 +45,12 @@ struct WaitForProcessExitTests {
     }
 
     @Test
-    func `Detects process killed by SIGKILL mid-wait`() async {
+    func `Detects process killed by SIGKILL mid-wait`() async throws {
         // Launch a long-lived process, then kill it partway through the wait
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sleep")
         process.arguments = ["60"]
-        try! process.run()
+        try process.run()
         let pid = process.processIdentifier
 
         // Kill it after 300ms from a separate task
@@ -64,12 +64,12 @@ struct WaitForProcessExitTests {
     }
 
     @Test
-    func `Timeout is bounded`() async {
+    func `Timeout is bounded`() async throws {
         // Verify the function returns in reasonable time, not hanging
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sleep")
         process.arguments = ["60"]
-        try! process.run()
+        try process.run()
         let pid = process.processIdentifier
 
         let start = ContinuousClock.now
