@@ -96,6 +96,18 @@ public struct StopMacAppTool: Sendable {
         return await LLDBSessionManager.shared.getPID(bundleId: bundleId)
     }
 
+    /// Detaches LLDB from a process if it has an active debug session.
+    ///
+    /// A process traced by LLDB (TX state) cannot be killed by signals — they are
+    /// intercepted by the debugger. Detaching releases the traced state so
+    /// SIGTERM/SIGKILL can be delivered.
+    private func detachDebuggerIfNeeded(pid: Int32) async {
+        if let session = await LLDBSessionManager.shared.getSession(pid: pid) {
+            _ = try? await session.sendCommand("detach")
+            await LLDBSessionManager.shared.removeSession(pid: pid)
+        }
+    }
+
     /// Force-kills by PID or pkill pattern.
     private func forceKill(
         pid: Int32?,
@@ -104,6 +116,7 @@ public struct StopMacAppTool: Sendable {
         identifier: String,
     ) async throws -> CallTool.Result {
         if let pid {
+            await detachDebuggerIfNeeded(pid: pid)
             let result = try await ProcessResult.run(
                 "/bin/kill", arguments: ["-9", "\(pid)"],
             )
@@ -143,6 +156,9 @@ public struct StopMacAppTool: Sendable {
         pid: Int32,
         identifier: String,
     ) async throws -> CallTool.Result {
+        // Detach LLDB first — a traced process (TX state) ignores signals
+        await detachDebuggerIfNeeded(pid: pid)
+
         // Send SIGTERM
         let termResult = try await ProcessResult.run(
             "/bin/kill", arguments: ["-TERM", "\(pid)"],
@@ -211,6 +227,12 @@ public struct StopMacAppTool: Sendable {
             throw MCPError.internalError("Failed to stop app: \(result.stdout)")
         } catch is ProcessError {
             // osascript timed out — app is hung/crashed/under debugger
+            // Detach LLDB if active — traced processes ignore signals
+            if let bundleId,
+               let debugPID = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
+            {
+                await detachDebuggerIfNeeded(pid: debugPID)
+            }
             // Fall back to pkill
             let pattern = bundleId ?? appName!
             let termResult = try await ProcessResult.run(

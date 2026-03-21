@@ -252,6 +252,27 @@ public actor LLDBSession {
         return fileOutput + "\n" + launchOutput
     }
 
+    /// Drains any pending LLDB output that accumulated asynchronously.
+    ///
+    /// After `sendCommandNoWait` (used for `continue`), LLDB may emit output
+    /// when the process stops (breakpoint hit, crash, signal). This output
+    /// sits in the PTY buffer. If not drained, `readUntilPrompt` would return
+    /// the stale output instead of the response to the next command.
+    ///
+    /// Uses `poll()` to check for pending data without blocking, then reads
+    /// complete prompt-delimited chunks via `readUntilPrompt()`.
+    func drainPendingOutput() async {
+        let fd = stdout.fileDescriptor
+        for _ in 0 ..< 10 {
+            var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+            let result = poll(&pollFD, 1, 0)
+            guard result > 0, pollFD.revents & Int16(POLLIN) != 0 else { return }
+
+            guard let output = try? await readUntilPrompt() else { return }
+            updateProcessState(from: output)
+        }
+    }
+
     /// Sends a command to the LLDB process and waits for the response.
     ///
     /// - Parameter command: The LLDB command to execute.
@@ -266,6 +287,9 @@ public actor LLDBSession {
                 "LLDB session is poisoned by a previous timeout — session will be recreated",
             )
         }
+
+        // Drain any stale output from async events (e.g. breakpoint hit after continue)
+        await drainPendingOutput()
 
         let commandData = Data((command + "\n").utf8)
         do {
