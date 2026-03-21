@@ -94,20 +94,27 @@ public struct ListFilesTool: Sendable {
             var syncFolders: [String] = []
             var visitedSyncGroups: Set<ObjectIdentifier> = []
 
-            // Helper to format a sync group entry for this target
-            func formatSyncGroup(_ syncGroup: PBXFileSystemSynchronizedRootGroup) -> String? {
+            // Helper to format a sync group entry for this target.
+            // `targetOwnsSyncGroup` indicates whether the target directly references this
+            // sync group via fileSystemSynchronizedGroups. This changes the semantics:
+            //   - true:  all files compiled by default; membershipExceptions = files EXCLUDED
+            //   - false: no files compiled by default; membershipExceptions = files INCLUDED
+            func formatSyncGroup(
+                _ syncGroup: PBXFileSystemSynchronizedRootGroup,
+                targetOwnsSyncGroup: Bool,
+            ) -> String? {
                 guard let path = syncGroup.path else { return nil }
                 // Skip if already visited
                 guard visitedSyncGroups.insert(ObjectIdentifier(syncGroup)).inserted else {
                     return nil
                 }
 
-                var excluded: [String] = []
+                var membershipExceptions: [String] = []
                 if let exceptions = syncGroup.exceptions {
                     let targetExceptions = exceptions.compactMap {
                         $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
                     }.filter { $0.target === target }
-                    excluded = targetExceptions.flatMap {
+                    membershipExceptions = targetExceptions.flatMap {
                         $0.membershipExceptions ?? []
                     }
                 }
@@ -127,7 +134,7 @@ public struct ListFilesTool: Sendable {
                     includingPropertiesForKeys: [.isRegularFileKey],
                     options: [.skipsHiddenFiles],
                 ) {
-                    let excludedSet = Set(excluded)
+                    let exceptionSet = Set(membershipExceptions)
                     let prefix = folderURL.path(percentEncoded: false)
                     for case let fileURL as URL in enumerator {
                         let isFile =
@@ -149,20 +156,35 @@ public struct ListFilesTool: Sendable {
                         } else {
                             relativePath = fileURL.lastPathComponent
                         }
-                        if !excludedSet.contains(relativePath) {
-                            diskFiles.append(relativePath)
+                        if targetOwnsSyncGroup {
+                            // Target owns folder: all files included, exceptions are excluded
+                            if !exceptionSet.contains(relativePath) {
+                                diskFiles.append(relativePath)
+                            }
+                        } else {
+                            // Target doesn't own folder: only exception files are included
+                            if exceptionSet.contains(relativePath) {
+                                diskFiles.append(relativePath)
+                            }
                         }
                     }
                 }
 
                 var line = "  - \(path)"
-                if !excluded.isEmpty {
-                    line += " (excludes: \(excluded.joined(separator: ", ")))"
+                if !membershipExceptions.isEmpty {
+                    if targetOwnsSyncGroup {
+                        line +=
+                            " (membership exceptions — not compiled: \(membershipExceptions.joined(separator: ", ")))"
+                    } else {
+                        line +=
+                            " (membership exceptions — compiled as exceptions: \(membershipExceptions.joined(separator: ", ")))"
+                    }
                 }
                 if !diskFiles.isEmpty {
                     diskFiles.sort()
+                    let label = targetOwnsSyncGroup ? "Compiled files" : "Compiled files (via exceptions)"
                     line +=
-                        "\n    Files (\(diskFiles.count)):\n"
+                        "\n    \(label) (\(diskFiles.count)):\n"
                         + diskFiles.map { "      \($0)" }.joined(separator: "\n")
                 }
                 return line
@@ -171,13 +193,14 @@ public struct ListFilesTool: Sendable {
             // 1. Sync groups directly referenced by the target
             if let syncGroups = target.fileSystemSynchronizedGroups {
                 for syncGroup in syncGroups {
-                    if let line = formatSyncGroup(syncGroup) {
+                    if let line = formatSyncGroup(syncGroup, targetOwnsSyncGroup: true) {
                         syncFolders.append(line)
                     }
                 }
             }
 
-            // 2. Project-level sync groups associated via exception sets
+            // 2. Project-level sync groups associated via exception sets (target
+            //    does NOT directly own these folders — membershipExceptions = included)
             for syncGroup in xcodeproj.pbxproj.fileSystemSynchronizedRootGroups {
                 guard let exceptions = syncGroup.exceptions else { continue }
                 let hasTargetException = exceptions.contains { exception in
@@ -188,7 +211,7 @@ public struct ListFilesTool: Sendable {
                     return buildException.target === target
                 }
                 if hasTargetException {
-                    if let line = formatSyncGroup(syncGroup) {
+                    if let line = formatSyncGroup(syncGroup, targetOwnsSyncGroup: false) {
                         syncFolders.append(line)
                     }
                 }

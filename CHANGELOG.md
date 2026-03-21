@@ -6,23 +6,24 @@
 
 - Add `show_mac_log` tool to query historical macOS unified logs via `log show`; filter by bundle ID, process name, subsystem, or custom predicate with configurable time range and tail lines ([#216](https://github.com/toba/xc-mcp/issues/216))
 - Add `swift_symbols` tool to extract and query public APIs of Swift modules via `swift-symbolgraph-extract`; filter by name, symbol kind, and platform ([#217](https://github.com/toba/xc-mcp/issues/217))
-- Investigate dead code detection tooling; evaluated Periphery alternatives and confirmed it as the best option (yy8-aed)
-- Share session defaults across all focused MCP servers; `set_session_defaults` in one server applies everywhere (t7x-axh)
-- Add `get_performance_metrics`, `set_performance_baseline`, and `show_performance_baselines` tools; extract `measure(metrics:)` results from xcresult bundles and create/update `.xcbaseline` plists for automatic regression detection (8pb-cqy)
-- Add `set_test_plan_skipped_tags` tool; add or remove `skippedTags` at plan-level or per-target in `.xctestplan` files (ra3-56u)
+- Investigate dead code detection tooling; evaluated Periphery alternatives and confirmed it as the best option ([#171](https://github.com/toba/xc-mcp/issues/171))
+- Share session defaults across all focused MCP servers; `set_session_defaults` in one server applies everywhere ([#208](https://github.com/toba/xc-mcp/issues/208))
+- Add `get_performance_metrics`, `set_performance_baseline`, and `show_performance_baselines` tools; extract `measure(metrics:)` results from xcresult bundles and create/update `.xcbaseline` plists for automatic regression detection ([#205](https://github.com/toba/xc-mcp/issues/205))
+- Add `set_test_plan_skipped_tags` tool; add or remove `skippedTags` at plan-level or per-target in `.xctestplan` files ([#225](https://github.com/toba/xc-mcp/issues/225))
 
 ### 🐛 Fixes
 
-- Fix `build_run_sim` false "build appears stuck" error; increase no-output timeout from 30s to 120s for simulator builds where linking/signing produces long output gaps; auto-boot shutdown simulators before install/launch (1w3-m4e, 13d-kpq)
-- Fix `build_device` failing to find connected device by UDID; improve device lookup to match partial UDIDs (gl6-64d)
-- Wait for process exit after SIGTERM in `swift_package_stop`, `LogCapture.stopCapture`, and `LLDBRunner.terminate()`; poll with `kill -0` and escalate to SIGKILL (mx2-mwz)
-- Fix `debug_evaluate` and `debug_lldb_command` returning empty output at breakpoints; drain stale PTY output before sending commands (gbs-n88)
-- Fix `stop_mac_app` failing to kill debugger-attached processes in TX state; detach LLDB before sending SIGTERM/SIGKILL (w1v-gz9)
+- Fix `build_run_sim` false "build appears stuck" error; increase no-output timeout from 30s to 120s for simulator builds where linking/signing produces long output gaps; auto-boot shutdown simulators before install/launch ([#223](https://github.com/toba/xc-mcp/issues/223), [#222](https://github.com/toba/xc-mcp/issues/222))
+- Fix `build_device` failing to find connected device by UDID; improve device lookup to match partial UDIDs ([#212](https://github.com/toba/xc-mcp/issues/212))
+- Wait for process exit after SIGTERM in `swift_package_stop`, `LogCapture.stopCapture`, and `LLDBRunner.terminate()`; poll with `kill -0` and escalate to SIGKILL ([#221](https://github.com/toba/xc-mcp/issues/221))
+- Fix `debug_evaluate` and `debug_lldb_command` returning empty output at breakpoints; drain stale PTY output before sending commands ([#226](https://github.com/toba/xc-mcp/issues/226))
+- Fix `stop_mac_app` failing to kill debugger-attached processes in TX state; detach LLDB before sending SIGTERM/SIGKILL ([#224](https://github.com/toba/xc-mcp/issues/224))
+- Fix `list_files` misleading `membershipExceptions` label; fix `remove_synchronized_folder_exception` not finding auto-created exception sets; add `add_package_product` tool for linking existing SPM products to targets ([#227](https://github.com/toba/xc-mcp/issues/227))
 
 ### 🗜️ Tweaks
 
-- Review XcodeBuildMCP v2.3.0 changes for applicability; no gaps in list-schemes or simulator init, confirmed SIGTERM fix needed (x62-nw2)
-- Upgrade MCP Swift SDK from 0.10.2 to 0.11.0; adds 2025-11-25 spec coverage, icons/metadata, elicitation, HTTP transport (7za-g6e)
+- Review XcodeBuildMCP v2.3.0 changes for applicability; no gaps in list-schemes or simulator init, confirmed SIGTERM fix needed ([#220](https://github.com/toba/xc-mcp/issues/220))
+- Upgrade MCP Swift SDK from 0.10.2 to 0.11.0; adds 2025-11-25 spec coverage, icons/metadata, elicitation, HTTP transport ([#219](https://github.com/toba/xc-mcp/issues/219))
 
 ## Week of Mar 8 – Mar 14, 2026
 

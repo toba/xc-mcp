@@ -263,7 +263,7 @@ struct ListFilesToolTests {
         if case let .text(content) = result.content[0] {
             #expect(content.contains("Synchronized folders:"))
             #expect(content.contains("App/Sources"))
-            #expect(content.contains("excludes:"))
+            #expect(content.contains("membership exceptions — not compiled:"))
             #expect(content.contains("Excluded.swift"))
             #expect(content.contains("TestHelper.swift"))
         } else {
@@ -303,7 +303,7 @@ struct ListFilesToolTests {
             atomically: true, encoding: .utf8,
         )
         try "// C".write(
-            to: syncFolderPath.appendingPathComponent("Excluded.swift"),
+            to: syncFolderPath.appendingPathComponent("Included.swift"),
             atomically: true, encoding: .utf8,
         )
 
@@ -312,17 +312,18 @@ struct ListFilesToolTests {
         let mainGroup = try #require(xcodeproj.pbxproj.rootObject?.mainGroup)
 
         // Add a synchronized root group NOT on target.fileSystemSynchronizedGroups
-        // but associated via an exception set referencing the target
+        // but associated via an exception set referencing the target.
+        // In this case membershipExceptions lists files that ARE compiled (included).
         let syncGroup = PBXFileSystemSynchronizedRootGroup(
             sourceTree: .group, path: "SyncFolder",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
         mainGroup.children.append(syncGroup)
-        // Do NOT set target.fileSystemSynchronizedGroups — this is the bug scenario
+        // Do NOT set target.fileSystemSynchronizedGroups — exception-only association
 
         let exceptionSet = PBXFileSystemSynchronizedBuildFileExceptionSet(
             target: target,
-            membershipExceptions: ["Excluded.swift"],
+            membershipExceptions: ["Included.swift"],
             publicHeaders: nil,
             privateHeaders: nil,
             additionalCompilerFlagsByRelativePath: nil,
@@ -342,17 +343,18 @@ struct ListFilesToolTests {
         if case let .text(content) = result.content[0] {
             #expect(content.contains("Synchronized folders:"))
             #expect(content.contains("SyncFolder"))
-            #expect(content.contains("excludes:"))
-            #expect(content.contains("Excluded.swift"))
-            // Files on disk minus excluded
-            #expect(content.contains("FileA.swift"))
-            #expect(content.contains("FileB.swift"))
-            // Excluded.swift appears in the "excludes:" line but not in the file listing.
-            // Split on "Files" to check the file listing section doesn't contain it.
-            let parts = content.components(separatedBy: "Files (")
+            // Exception-only: membershipExceptions = files compiled as exceptions
+            #expect(content.contains("membership exceptions — compiled as exceptions:"))
+            #expect(content.contains("Included.swift"))
+            // Only the exception file should appear in the compiled listing
+            #expect(content.contains("Compiled files (via exceptions)"))
+            // FileA and FileB are NOT compiled (target doesn't own the folder)
+            let parts = content.components(separatedBy: "Compiled files (via exceptions)")
             if parts.count > 1 {
                 let fileListing = parts[1]
-                #expect(!fileListing.contains("Excluded.swift"))
+                #expect(fileListing.contains("Included.swift"))
+                #expect(!fileListing.contains("FileA.swift"))
+                #expect(!fileListing.contains("FileB.swift"))
             }
         } else {
             Issue.record("Expected text content")

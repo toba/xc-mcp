@@ -42,6 +42,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addBuildPhase = "add_build_phase"
     case duplicateTarget = "duplicate_target"
     case addSwiftPackage = "add_swift_package"
+    case addPackageProduct = "add_package_product"
     case listSwiftPackages = "list_swift_packages"
     case removeSwiftPackage = "remove_swift_package"
     case listGroups = "list_groups"
@@ -218,8 +219,8 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .renameGroup,
                  .addDependency, .setBuildSetting,
                  .addFramework, .removeFramework,
-                 .addBuildPhase, .duplicateTarget, .addSwiftPackage, .listSwiftPackages,
-                 .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
+                 .addBuildPhase, .duplicateTarget, .addSwiftPackage, .addPackageProduct,
+                 .listSwiftPackages, .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
                  .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
                  .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
                  .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
@@ -386,6 +387,7 @@ public struct XcodeMCPServer: Sendable {
         let addBuildPhaseTool = AddBuildPhaseTool(pathUtility: pathUtility)
         let duplicateTargetTool = DuplicateTargetTool(pathUtility: pathUtility)
         let addSwiftPackageTool = AddSwiftPackageTool(pathUtility: pathUtility)
+        let addPackageProductTool = AddPackageProductTool(pathUtility: pathUtility)
         let listSwiftPackagesTool = ListSwiftPackagesTool(pathUtility: pathUtility)
         let removeSwiftPackageTool = RemoveSwiftPackageTool(pathUtility: pathUtility)
         let listGroupsTool = ListGroupsTool(pathUtility: pathUtility)
@@ -698,6 +700,7 @@ public struct XcodeMCPServer: Sendable {
             (.addBuildPhase, addBuildPhaseTool.tool()),
             (.duplicateTarget, duplicateTargetTool.tool()),
             (.addSwiftPackage, addSwiftPackageTool.tool()),
+            (.addPackageProduct, addPackageProductTool.tool()),
             (.listSwiftPackages, listSwiftPackagesTool.tool()),
             (.removeSwiftPackage, removeSwiftPackageTool.tool()),
             (.listGroups, listGroupsTool.tool()),
@@ -946,6 +949,8 @@ public struct XcodeMCPServer: Sendable {
                     return try duplicateTargetTool.execute(arguments: arguments)
                 case .addSwiftPackage:
                     return try addSwiftPackageTool.execute(arguments: arguments)
+                case .addPackageProduct:
+                    return try addPackageProductTool.execute(arguments: arguments)
                 case .listSwiftPackages:
                     return try listSwiftPackagesTool.execute(arguments: arguments)
                 case .removeSwiftPackage:

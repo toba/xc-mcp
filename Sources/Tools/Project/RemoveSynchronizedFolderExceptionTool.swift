@@ -87,18 +87,73 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                 )
             }
 
-            // Find all exception sets for this target
-            let matchingIndices: [(
+            // Resolve the target by name
+            guard let resolvedTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                throw MCPError.invalidParams("Target '\(targetName)' not found in project")
+            }
+
+            // Find all exception sets for this target.
+            // Primary: match via the resolved exceptions array on the sync group.
+            // Fallback: if the sync group's exceptions don't resolve references correctly
+            // (e.g. auto-created exception sets), search all exception sets in the project
+            // and match by target identity.
+            var matchingIndices: [(
                 index: Int,
                 set: PBXFileSystemSynchronizedBuildFileExceptionSet,
             )] =
                 syncGroup.exceptions?.enumerated().compactMap { index, exception in
                     guard let buildException =
                         exception as? PBXFileSystemSynchronizedBuildFileExceptionSet,
-                        buildException.target?.name == targetName
+                        buildException.target === resolvedTarget
+                        || buildException.target?.name == targetName
                     else { return nil }
                     return (index, buildException)
                 } ?? []
+
+            // Fallback: search all exception sets in the project by target UUID
+            if matchingIndices.isEmpty {
+                let targetUUID = resolvedTarget.uuid
+                let allExceptionSets = xcodeproj.pbxproj
+                    .fileSystemSynchronizedBuildFileExceptionSets
+                let fallbackSets = allExceptionSets.filter { exceptionSet in
+                    // Match by target identity, name, or by checking if this exception set
+                    // is referenced in the sync group's raw exception references
+                    exceptionSet.target === resolvedTarget
+                        || exceptionSet.target?.name == targetName
+                        || exceptionSet.target?.uuid == targetUUID
+                }
+
+                // Re-map with indices if these sets are in the sync group's exceptions
+                if !fallbackSets.isEmpty, let exceptions = syncGroup.exceptions {
+                    for (index, exception) in exceptions.enumerated() {
+                        if let buildException =
+                            exception as? PBXFileSystemSynchronizedBuildFileExceptionSet,
+                            fallbackSets.contains(where: { $0 === buildException })
+                        {
+                            matchingIndices.append((index, buildException))
+                        }
+                    }
+                }
+
+                // If still no index-mapped matches, use the fallback sets directly
+                // (they exist in pbxproj but may not appear in the resolved exceptions array)
+                if matchingIndices.isEmpty, !fallbackSets.isEmpty {
+                    for fallbackSet in fallbackSets {
+                        syncGroup.exceptions?.removeAll { $0 === fallbackSet }
+                        xcodeproj.pbxproj.delete(object: fallbackSet)
+                    }
+                    try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+                    return CallTool.Result(
+                        content: [
+                            .text(
+                                "Removed exception set for target '\(targetName)' from synchronized folder '\(folderPath)'",
+                            ),
+                        ],
+                    )
+                }
+            }
 
             guard !matchingIndices.isEmpty else {
                 throw MCPError.invalidParams(
