@@ -367,9 +367,12 @@ public struct DetectUnusedCodeTool: Sendable {
             args.append(glob)
         }
 
-        let guardFD = skipBuild ? nil : try BuildGuard.acquire(
-            path: project ?? packagePath, description: "periphery scan",
-        )
+        var guardFD: Int32?
+        if !skipBuild {
+            guardFD = try await BuildGuard.acquire(
+                path: project ?? packagePath, description: "periphery scan",
+            )
+        }
         do {
             let result = try await ProcessResult.run(
                 executablePath, arguments: args, mergeStderr: false,

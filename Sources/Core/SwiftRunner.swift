@@ -43,8 +43,12 @@ public struct SwiftRunner: Sendable {
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
     ) async throws -> SwiftResult {
-        let guardFD = try workingDirectory.map {
-            try BuildGuard.acquire(path: $0, description: "swift \(arguments.first ?? "")")
+        var guardFD: Int32?
+        if let workingDirectory {
+            guardFD = try await BuildGuard.acquire(
+                path: workingDirectory,
+                description: "swift \(arguments.first ?? "")",
+            )
         }
         do {
             let result = try await ProcessResult.runSubprocess(

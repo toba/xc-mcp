@@ -77,8 +77,12 @@ public struct XcodebuildRunner: Sendable {
         onProgress: (@Sendable (String) -> Void)?,
     ) async throws -> XcodebuildResult {
         let guardPath = Self.extractProjectPath(from: arguments)
-        let guardFD = try guardPath.map {
-            try BuildGuard.acquire(path: $0, description: "xcodebuild \(arguments.first ?? "")")
+        var guardFD: Int32?
+        if let guardPath {
+            guardFD = try await BuildGuard.acquire(
+                path: guardPath,
+                description: "xcodebuild \(arguments.first ?? "")",
+            )
         }
 
         let result: XcodebuildResult

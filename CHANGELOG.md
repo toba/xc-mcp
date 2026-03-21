@@ -11,6 +11,7 @@
 - Add `get_performance_metrics`, `set_performance_baseline`, and `show_performance_baselines` tools; extract `measure(metrics:)` results from xcresult bundles and create/update `.xcbaseline` plists for automatic regression detection ([#205](https://github.com/toba/xc-mcp/issues/205))
 - Add `set_test_plan_skipped_tags` tool; add or remove `skippedTags` at plan-level or per-target in `.xctestplan` files ([#225](https://github.com/toba/xc-mcp/issues/225))
 - `build_macos`: truncate cascade errors when root cause is a `PhaseScriptExecution` failure; collapse "Unable to find module dependency" noise into a single summary line ([#230](https://github.com/toba/xc-mcp/issues/230))
+- `BuildGuard`: wait for build lock with 5-minute timeout instead of failing immediately; concurrent agents now queue instead of erroring ([#231](https://github.com/toba/xc-mcp/issues/231))
 
 ### 🐛 Fixes
 
