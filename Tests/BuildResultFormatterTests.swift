@@ -343,4 +343,95 @@ struct BuildResultFormatterTests {
         #expect(formatted.contains("Tests passed"))
         #expect(formatted.contains("2 passed"))
     }
+
+    // MARK: - Cascade Error Truncation
+
+    @Test
+    func `Script phase failure truncates cascade errors`() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 4, warnings: 0, failedTests: 0, passedTests: nil, buildTime: "5.0s",
+            ),
+            errors: [
+                BuildError(
+                    file: nil, line: nil,
+                    message: "Error: Unknown option --srcdir Command PhaseScriptExecution failed with a nonzero exit code",
+                ),
+                BuildError(
+                    file: "Target1.swift", line: 1,
+                    message: "Unable to find module dependency: 'GRDB'",
+                ),
+                BuildError(
+                    file: "Target2.swift", line: 1,
+                    message: "Unable to find module dependency: 'GRDB'",
+                ),
+                BuildError(
+                    file: "Target3.swift", line: 1,
+                    message: "No such file or directory",
+                ),
+            ],
+            warnings: [],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(result)
+        // Root cause is shown
+        #expect(formatted.contains("PhaseScriptExecution failed"))
+        // Cascade errors are hidden
+        #expect(!formatted.contains("Unable to find module dependency"))
+        #expect(!formatted.contains("No such file or directory"))
+        // Summary of hidden cascade errors
+        #expect(formatted.contains("+3 cascade errors from downstream targets hidden"))
+    }
+
+    @Test
+    func `No cascade truncation without script phase failure`() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 2, warnings: 0, failedTests: 0, passedTests: nil, buildTime: nil,
+            ),
+            errors: [
+                BuildError(
+                    file: "Foo.swift", line: 1,
+                    message: "Unable to find module dependency: 'Bar'",
+                ),
+                BuildError(file: "Baz.swift", line: 2, message: "missing return"),
+            ],
+            warnings: [],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(result)
+        // Without a script phase failure, all errors are shown
+        #expect(formatted.contains("Unable to find module dependency"))
+        #expect(formatted.contains("missing return"))
+        #expect(!formatted.contains("cascade"))
+    }
+
+    @Test
+    func `Cascade truncation singular form`() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 2, warnings: 0, failedTests: 0, passedTests: nil, buildTime: nil,
+            ),
+            errors: [
+                BuildError(
+                    file: nil, line: nil,
+                    message: "Command PhaseScriptExecution failed with a nonzero exit code",
+                ),
+                BuildError(
+                    file: "Target.swift", line: 1,
+                    message: "Unable to find module dependency: 'Foo'",
+                ),
+            ],
+            warnings: [],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(result)
+        #expect(formatted.contains("+1 cascade error from downstream targets hidden"))
+    }
 }

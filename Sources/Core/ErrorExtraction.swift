@@ -339,6 +339,110 @@ public enum ErrorExtractor {
         }
     }
 
+    // MARK: - only_testing Pre-Validation
+
+    /// Result of validating `only_testing` entries against available test targets.
+    public struct OnlyTestingValidation {
+        /// Entries whose target component matches a known test target.
+        public let valid: [String]
+        /// Human-readable warning about removed entries, or nil if all were valid.
+        public let warning: String?
+    }
+
+    /// Validates `only_testing` entries against the scheme's available test targets.
+    ///
+    /// Extracts the target component (before the first `/`) from each entry and checks
+    /// it against test plan targets and scheme testable references.
+    ///
+    /// - Returns: The valid entries and an optional warning about removed invalid entries.
+    public static func validateOnlyTesting(
+        _ entries: [String],
+        projectRoot: String,
+        projectPath: String?,
+        workspacePath: String?,
+        scheme: String?,
+    ) -> OnlyTestingValidation {
+        let availableTargets = discoverTestTargets(
+            projectRoot: projectRoot,
+            projectPath: projectPath,
+            workspacePath: workspacePath,
+            scheme: scheme,
+        )
+
+        // If we can't discover any targets, skip validation to avoid false positives
+        guard !availableTargets.isEmpty else {
+            return OnlyTestingValidation(valid: entries, warning: nil)
+        }
+
+        var valid: [String] = []
+        var invalid: [String] = []
+        for entry in entries {
+            let targetName = extractTargetName(from: entry)
+            if availableTargets.contains(targetName) {
+                valid.append(entry)
+            } else {
+                invalid.append(entry)
+            }
+        }
+
+        guard !invalid.isEmpty else {
+            return OnlyTestingValidation(valid: entries, warning: nil)
+        }
+
+        let invalidList = invalid.map { "\"\($0)\"" }.joined(separator: ", ")
+        let availableList = availableTargets.sorted().joined(separator: ", ")
+        let warning =
+            "Warning: Removed invalid only_testing entries: \(invalidList). "
+                + "Available test targets: \(availableList)."
+
+        return OnlyTestingValidation(valid: valid, warning: warning)
+    }
+
+    /// Extracts the target name (first path component) from a test identifier.
+    private static func extractTargetName(from identifier: String) -> String {
+        if let slashIndex = identifier.firstIndex(of: "/") {
+            return String(identifier[..<slashIndex])
+        }
+        return identifier
+    }
+
+    /// Discovers available test targets from test plans and scheme files.
+    private static func discoverTestTargets(
+        projectRoot: String,
+        projectPath: String?,
+        workspacePath: String?,
+        scheme: String?,
+    ) -> Set<String> {
+        var targets: Set<String> = []
+
+        // Discover from .xctestplan files
+        let testPlanFiles = TestPlanFile.findFiles(under: projectRoot)
+        for planFile in testPlanFiles {
+            let entries = TestPlanFile.targetEntries(from: planFile.json)
+            for entry in entries where entry.enabled {
+                targets.insert(entry.name)
+            }
+        }
+
+        // Also discover from scheme files
+        let projectPaths = discoverProjectPaths(
+            projectPath: projectPath, workspacePath: workspacePath,
+        )
+        let schemeMap = buildSchemeTestTargetMap(projectPaths: projectPaths)
+
+        if targets.isEmpty {
+            if let scheme, let schemeTargets = schemeMap[scheme] {
+                targets = schemeTargets
+            } else {
+                for schemeTargets in schemeMap.values {
+                    targets.formUnion(schemeTargets)
+                }
+            }
+        }
+
+        return targets
+    }
+
     // MARK: - Test Plan Error Enhancement
 
     /// Detects "not a member of the specified test plan or scheme" errors and enhances

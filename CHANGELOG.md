@@ -10,6 +10,7 @@
 - Share session defaults across all focused MCP servers; `set_session_defaults` in one server applies everywhere ([#208](https://github.com/toba/xc-mcp/issues/208))
 - Add `get_performance_metrics`, `set_performance_baseline`, and `show_performance_baselines` tools; extract `measure(metrics:)` results from xcresult bundles and create/update `.xcbaseline` plists for automatic regression detection ([#205](https://github.com/toba/xc-mcp/issues/205))
 - Add `set_test_plan_skipped_tags` tool; add or remove `skippedTags` at plan-level or per-target in `.xctestplan` files ([#225](https://github.com/toba/xc-mcp/issues/225))
+- `build_macos`: truncate cascade errors when root cause is a `PhaseScriptExecution` failure; collapse "Unable to find module dependency" noise into a single summary line ([#230](https://github.com/toba/xc-mcp/issues/230))
 
 ### 🐛 Fixes
 
@@ -19,6 +20,7 @@
 - Fix `debug_evaluate` and `debug_lldb_command` returning empty output at breakpoints; drain stale PTY output before sending commands ([#226](https://github.com/toba/xc-mcp/issues/226))
 - Fix `stop_mac_app` failing to kill debugger-attached processes in TX state; detach LLDB before sending SIGTERM/SIGKILL ([#224](https://github.com/toba/xc-mcp/issues/224))
 - Fix `list_files` misleading `membershipExceptions` label; fix `remove_synchronized_folder_exception` not finding auto-created exception sets; add `add_package_product` tool for linking existing SPM products to targets ([#227](https://github.com/toba/xc-mcp/issues/227))
+- Fix `test_macos` failing entire run when one `only_testing` target is invalid; pre-validate entries against available test targets and filter out invalid ones with a warning ([#229](https://github.com/toba/xc-mcp/issues/229))
 
 ### 🗜️ Tweaks
 

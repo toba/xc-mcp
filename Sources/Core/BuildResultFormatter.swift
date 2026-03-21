@@ -27,7 +27,15 @@ public enum BuildResultFormatter {
 
         // Errors
         if !result.errors.isEmpty {
-            parts.append(formatErrors(result.errors))
+            let (displayed, cascadeCount) = partitionCascadeErrors(result.errors)
+            if !displayed.isEmpty {
+                parts.append(formatErrors(displayed))
+            }
+            if cascadeCount > 0 {
+                parts.append(
+                    "(+\(cascadeCount) cascade error\(cascadeCount == 1 ? "" : "s") from downstream targets hidden)",
+                )
+            }
         }
 
         // Linker errors
@@ -61,6 +69,57 @@ public enum BuildResultFormatter {
         }
 
         return parts.joined(separator: "\n\n")
+    }
+
+    // MARK: - Cascade Error Filtering
+
+    /// Known cascade error patterns that follow a script phase failure.
+    ///
+    /// When a `PhaseScriptExecution` fails, downstream targets often emit dozens of
+    /// these errors because intermediate products were never built. They are noise —
+    /// the actionable root cause is the script phase error itself.
+    private static let cascadePatterns: [String] = [
+        "Unable to find module dependency:",
+        "No such file or directory",
+        "missing required module",
+        "could not build module",
+        "module '", // partial match: "module 'Foo' was not compiled"
+        "unable to load standard library",
+        "build input file cannot be found",
+    ]
+
+    /// When a script-phase error is present, separates root-cause errors from cascade noise.
+    ///
+    /// Returns the errors to display and the count of hidden cascade errors.
+    private static func partitionCascadeErrors(
+        _ errors: [BuildError],
+    ) -> (displayed: [BuildError], cascadeCount: Int) {
+        let hasScriptPhaseFailure = errors.contains {
+            $0.message.contains("PhaseScriptExecution failed")
+        }
+        guard hasScriptPhaseFailure else {
+            return (errors, 0)
+        }
+
+        var displayed: [BuildError] = []
+        var cascadeCount = 0
+        for error in errors {
+            if isCascadeError(error) {
+                cascadeCount += 1
+            } else {
+                displayed.append(error)
+            }
+        }
+        return (displayed, cascadeCount)
+    }
+
+    private static func isCascadeError(_ error: BuildError) -> Bool {
+        for pattern in cascadePatterns {
+            if error.message.contains(pattern) {
+                return true
+            }
+        }
+        return false
     }
 
     // MARK: - Warning Filtering

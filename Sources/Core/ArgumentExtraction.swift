@@ -9,6 +9,24 @@ public struct TestParameters: Sendable {
     public let testPlan: String?
     public let timeout: Int?
     public let outputTimeout: Int?
+
+    public init(
+        onlyTesting: [String]?,
+        skipTesting: [String]?,
+        enableCodeCoverage: Bool,
+        resultBundlePath: String?,
+        testPlan: String?,
+        timeout: Int?,
+        outputTimeout: Int?,
+    ) {
+        self.onlyTesting = onlyTesting
+        self.skipTesting = skipTesting
+        self.enableCodeCoverage = enableCodeCoverage
+        self.resultBundlePath = resultBundlePath
+        self.testPlan = testPlan
+        self.timeout = timeout
+        self.outputTimeout = outputTimeout
+    }
 }
 
 /// Extension providing convenient argument extraction methods for MCP tool parameters.
