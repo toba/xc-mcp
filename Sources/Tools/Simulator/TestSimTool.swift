@@ -61,7 +61,6 @@ public struct TestSimTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
             from: arguments,
         )
@@ -70,110 +69,22 @@ public struct TestSimTool: Sendable {
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
 
-        var testParams = arguments.testParameters()
+        let testParams = arguments.testParameters()
+        let (validated, warning) = try TestToolHelper.validateTestParams(
+            testParams, projectPath: projectPath, workspacePath: workspacePath, scheme: scheme,
+        )
 
-        // Pre-validate only_testing entries to avoid xcodebuild rejecting the entire run
-        var validationWarning: String?
-        if let onlyTesting = testParams.onlyTesting, !onlyTesting.isEmpty {
-            let projectRoot = (workspacePath ?? projectPath)
-                .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
-            if let projectRoot {
-                let validation = ErrorExtractor.validateOnlyTesting(
-                    onlyTesting,
-                    projectRoot: projectRoot,
-                    projectPath: projectPath,
-                    workspacePath: workspacePath,
-                    scheme: scheme,
-                )
-                if validation.valid.isEmpty {
-                    throw MCPError.invalidParams(
-                        "All only_testing entries are invalid. " + (validation.warning ?? ""),
-                    )
-                }
-                if validation.valid.count < onlyTesting.count {
-                    testParams = TestParameters(
-                        onlyTesting: validation.valid,
-                        skipTesting: testParams.skipTesting,
-                        enableCodeCoverage: testParams.enableCodeCoverage,
-                        resultBundlePath: testParams.resultBundlePath,
-                        testPlan: testParams.testPlan,
-                        timeout: testParams.timeout,
-                        outputTimeout: testParams.outputTimeout,
-                    )
-                    validationWarning = validation.warning
-                }
-            }
-        }
-
-        // Always create a result bundle for detailed test results
-        let resultBundlePath = testParams.resultBundlePath ?? createTempResultBundlePath()
-        let isTemporaryBundle = testParams.resultBundlePath == nil
-
-        do {
-            let destination = "platform=iOS Simulator,id=\(simulator)"
-
-            let outputTimeout: Duration? =
-                if let seconds = testParams.outputTimeout {
-                    seconds == 0 ? nil : .seconds(seconds)
-                } else {
-                    XcodebuildRunner.defaultTestOutputTimeout
-                }
-
-            let result = try await xcodebuildRunner.test(
-                projectPath: projectPath,
-                workspacePath: workspacePath,
-                scheme: scheme,
-                destination: destination,
-                configuration: configuration,
-                onlyTesting: testParams.onlyTesting,
-                skipTesting: testParams.skipTesting,
-                enableCodeCoverage: testParams.enableCodeCoverage,
-                resultBundlePath: resultBundlePath,
-                testPlan: testParams.testPlan,
-                environment: environment,
-                timeout: TimeInterval(testParams.timeout ?? 300),
-                outputTimeout: outputTimeout,
-            )
-
-            defer {
-                if isTemporaryBundle {
-                    try? FileManager.default.removeItem(atPath: resultBundlePath)
-                }
-            }
-
-            let projectRoot = (workspacePath ?? projectPath)
-                .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
-
-            var testToolResult = try await ErrorExtractor.formatTestToolResult(
-                output: result.output, succeeded: result.succeeded,
-                context: "scheme '\(scheme)' on simulator '\(simulator)'",
-                xcresultPath: resultBundlePath,
-                stderr: result.stderr,
-                projectRoot: projectRoot,
-                projectPath: projectPath,
-                workspacePath: workspacePath,
-                onlyTesting: testParams.onlyTesting,
-                scheme: scheme,
-            )
-
-            if let validationWarning {
-                testToolResult = CallTool.Result(
-                    content: [.text(validationWarning)] + testToolResult.content,
-                    isError: testToolResult.isError,
-                )
-            }
-
-            return testToolResult
-        } catch {
-            if isTemporaryBundle {
-                try? FileManager.default.removeItem(atPath: resultBundlePath)
-            }
-            throw error.asMCPError()
-        }
+        return try await TestToolHelper.runAndFormat(
+            runner: xcodebuildRunner,
+            testParams: validated,
+            validationWarning: warning,
+            projectPath: projectPath,
+            workspacePath: workspacePath,
+            scheme: scheme,
+            destination: "platform=iOS Simulator,id=\(simulator)",
+            configuration: configuration,
+            environment: environment,
+            context: "scheme '\(scheme)' on simulator '\(simulator)'",
+        )
     }
-}
-
-private func createTempResultBundlePath() -> String {
-    let tempDir = FileManager.default.temporaryDirectory.path
-    return "\(tempDir)/xc-mcp-test-\(UUID().uuidString).xcresult"
 }

@@ -218,38 +218,29 @@ public struct DeviceCtlRunner: Sendable {
         ])
     }
 
+    private static let decoder = JSONDecoder()
+
     private func parseProcessList(from jsonString: String) throws(DeviceCtlError)
         -> [DeviceProcess]
     {
         guard let data = jsonString.data(using: .utf8) else {
             throw DeviceCtlError.invalidOutput
         }
-
-        let parsed: Any
         do {
-            parsed = try JSONSerialization.jsonObject(with: data)
+            let response = try Self.decoder.decode(
+                DeviceCtlResponse<ProcessListResult>.self,
+                from: data,
+            )
+            return response.result.runningProcesses.compactMap { process in
+                guard let pid = process.processIdentifier else { return nil }
+                return DeviceProcess(
+                    processIdentifier: pid,
+                    executable: process.executable,
+                    bundleURL: process.bundleURL,
+                )
+            }
         } catch {
             throw DeviceCtlError.invalidOutput
-        }
-
-        guard let json = parsed as? [String: Any],
-              let result = json["result"] as? [String: Any],
-              let processes = result["runningProcesses"] as? [[String: Any]]
-        else {
-            throw DeviceCtlError.invalidOutput
-        }
-
-        return processes.compactMap { process in
-            guard let pid = process["processIdentifier"] as? Int else {
-                return nil
-            }
-            let executable = process["executable"] as? String
-            let bundleURL = process["bundleURL"] as? String
-            return DeviceProcess(
-                processIdentifier: pid,
-                executable: executable,
-                bundleURL: bundleURL,
-            )
         }
     }
 
@@ -259,58 +250,78 @@ public struct DeviceCtlRunner: Sendable {
         guard let data = jsonString.data(using: .utf8) else {
             throw DeviceCtlError.invalidOutput
         }
-
-        let parsed: Any
         do {
-            parsed = try JSONSerialization.jsonObject(with: data)
+            let response = try Self.decoder.decode(
+                DeviceCtlResponse<DeviceListResult>.self,
+                from: data,
+            )
+            return response.result.devices.compactMap { device in
+                guard let name = device.deviceProperties?.name,
+                      let connectionProperties = device.connectionProperties
+                else { return nil }
+
+                let hw = device.hardwareProperties
+                let deviceType =
+                    hw?.marketingName ?? hw?.productType ?? hw?.deviceType ?? "Unknown"
+
+                return ConnectedDevice(
+                    udid: device.identifier,
+                    name: name,
+                    deviceType: deviceType,
+                    osVersion: device.deviceProperties?.osVersionNumber ?? "Unknown",
+                    connectionType: connectionProperties.transportType ?? "Unknown",
+                    platform: hw?.platform ?? "iOS",
+                    hardwareUDID: hw?.udid,
+                )
+            }
         } catch {
             throw DeviceCtlError.invalidOutput
         }
-
-        guard let json = parsed as? [String: Any],
-              let result = json["result"] as? [String: Any],
-              let devices = result["devices"] as? [[String: Any]]
-        else {
-            throw DeviceCtlError.invalidOutput
-        }
-
-        var connectedDevices: [ConnectedDevice] = []
-
-        for device in devices {
-            guard
-                let identifier = device["identifier"] as? String,
-                let deviceProperties = device["deviceProperties"] as? [String: Any],
-                let name = deviceProperties["name"] as? String,
-                let connectionProperties = device["connectionProperties"] as? [String: Any]
-            else {
-                continue
-            }
-
-            let hardwareProperties = device["hardwareProperties"] as? [String: Any]
-            let deviceType =
-                (hardwareProperties?["marketingName"] as? String)
-                    ?? (hardwareProperties?["productType"] as? String)
-                    ?? (hardwareProperties?["deviceType"] as? String) ?? "Unknown"
-            let osVersion = (deviceProperties["osVersionNumber"] as? String) ?? "Unknown"
-            let connectionType = (connectionProperties["transportType"] as? String) ?? "Unknown"
-
-            let platform = (hardwareProperties?["platform"] as? String) ?? "iOS"
-            let hardwareUDID = hardwareProperties?["udid"] as? String
-
-            let connectedDevice = ConnectedDevice(
-                udid: identifier,
-                name: name,
-                deviceType: deviceType,
-                osVersion: osVersion,
-                connectionType: connectionType,
-                platform: platform,
-                hardwareUDID: hardwareUDID,
-            )
-            connectedDevices.append(connectedDevice)
-        }
-
-        return connectedDevices
     }
+}
+
+// MARK: - devicectl JSON Response Types
+
+private struct DeviceCtlResponse<T: Decodable & Sendable>: Decodable {
+    let result: T
+}
+
+private struct ProcessListResult: Decodable {
+    let runningProcesses: [ProcessEntry]
+}
+
+private struct ProcessEntry: Decodable {
+    let processIdentifier: Int?
+    let executable: String?
+    let bundleURL: String?
+}
+
+private struct DeviceListResult: Decodable {
+    let devices: [DeviceEntry]
+}
+
+private struct DeviceEntry: Decodable {
+    let identifier: String
+    let deviceProperties: DeviceProperties?
+    let hardwareProperties: HardwareProperties?
+    let connectionProperties: ConnectionProperties?
+}
+
+private struct DeviceProperties: Decodable {
+    let name: String?
+    let osVersionNumber: String?
+}
+
+private struct HardwareProperties: Decodable {
+    let marketingName: String?
+    let productType: String?
+    let deviceType: String?
+    let platform: String?
+    let udid: String?
+}
+
+private struct ConnectionProperties: Decodable {
+    let transportType: String?
 }
 
 /// A running process on a physical device.

@@ -187,8 +187,8 @@ public struct ScaffoldModuleTool: Sendable {
         }
 
         // Absolute paths on disk
-        let sourceAbsPath = (projectDir as NSString).appendingPathComponent(sourcePath)
-        let testAbsPath = (projectDir as NSString).appendingPathComponent(testPath)
+        let sourceAbsPath = URL(fileURLWithPath: projectDir).appendingPathComponent(sourcePath).path
+        let testAbsPath = URL(fileURLWithPath: projectDir).appendingPathComponent(testPath).path
 
         // Track created directories for cleanup on failure
         var createdDirs: [String] = []
@@ -219,12 +219,12 @@ public struct ScaffoldModuleTool: Sendable {
             let allLinkTargetNames = Array(Set(linkToNames + embedInNames))
 
             // Validate link_to / embed_in targets exist
-            for targetName in allLinkTargetNames {
-                if !xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) {
-                    throw MCPError.invalidParams(
-                        "Target '\(targetName)' not found in project",
-                    )
-                }
+            for targetName in allLinkTargetNames
+                where !xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName })
+            {
+                throw MCPError.invalidParams(
+                    "Target '\(targetName)' not found in project",
+                )
             }
 
             // Introspect project configs
@@ -417,19 +417,11 @@ public struct ScaffoldModuleTool: Sendable {
             return CallTool.Result(
                 content: [.text(summary.joined(separator: "\n"))],
             )
-        } catch let error as MCPError {
-            // Clean up created directories on failure
-            for dir in createdDirs.reversed() {
-                try? FileManager.default.removeItem(atPath: dir)
-            }
-            throw error
         } catch {
             for dir in createdDirs.reversed() {
                 try? FileManager.default.removeItem(atPath: dir)
             }
-            throw MCPError.internalError(
-                "Failed to scaffold module: \(error.localizedDescription)",
-            )
+            throw error.asMCPError()
         }
     }
 

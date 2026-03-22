@@ -149,10 +149,10 @@ public struct StartDeviceLogCapTool: Sendable {
     }
 
     private func findIdevicesyslog() async throws(MCPError) -> String {
-        for path in ["/opt/homebrew/bin/idevicesyslog", "/usr/local/bin/idevicesyslog"] {
-            if FileManager.default.isExecutableFile(atPath: path) {
-                return path
-            }
+        for path in ["/opt/homebrew/bin/idevicesyslog", "/usr/local/bin/idevicesyslog"]
+            where FileManager.default.isExecutableFile(atPath: path)
+        {
+            return path
         }
 
         do {

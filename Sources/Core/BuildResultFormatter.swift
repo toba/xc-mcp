@@ -114,12 +114,7 @@ public enum BuildResultFormatter {
     }
 
     private static func isCascadeError(_ error: BuildError) -> Bool {
-        for pattern in cascadePatterns {
-            if error.message.contains(pattern) {
-                return true
-            }
-        }
-        return false
+        cascadePatterns.contains { error.message.contains($0) }
     }
 
     // MARK: - Warning Filtering

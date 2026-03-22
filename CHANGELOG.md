@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Mar 22 – Mar 28, 2026
+
+### 🗜️ Tweaks
+
+- Extract `TestToolHelper` to deduplicate test tool validation/bundle/formatting logic across `TestSimTool`, `TestMacOSTool`, `TestDeviceTool`; replace `[String: Any]` with `Decodable` types in `DeviceCtlRunner`; fix lint warnings in `BuildResultFormatter`, `StartDeviceLogCapTool`, `ScaffoldModuleTool`
+
 ## Week of Mar 15 – Mar 21, 2026
 
 ### ✨ Features

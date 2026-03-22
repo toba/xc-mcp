@@ -37,6 +37,7 @@ struct SwiftSymbolsToolTests {
     }
 
     // MARK: - Integration tests (require SDK + time)
+
     // Foundation symbol graph extraction takes 30-60s, too slow for CI.
     // Testing module is fast (~18s) and validates the same code path.
 
