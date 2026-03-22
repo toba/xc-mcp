@@ -191,6 +191,7 @@ public struct RemoveSwiftPackageTool: Sendable {
                         dependency.package == nil && dependency.productName == packageName
                     }
                     for dependency in dependenciesToRemove {
+                        removeBuildFiles(xcodeproj: xcodeproj, target: target, product: dependency)
                         target.packageProductDependencies?.removeAll { $0 === dependency }
                         xcodeproj.pbxproj.delete(object: dependency)
                     }
@@ -222,9 +223,25 @@ public struct RemoveSwiftPackageTool: Sendable {
                 }
 
                 for dependency in dependenciesToRemove {
+                    removeBuildFiles(xcodeproj: xcodeproj, target: target, product: dependency)
                     target.packageProductDependencies?.removeAll { $0 === dependency }
                     xcodeproj.pbxproj.delete(object: dependency)
                 }
+            }
+        }
+    }
+
+    private func removeBuildFiles(
+        xcodeproj: XcodeProj,
+        target: PBXNativeTarget,
+        product: XCSwiftPackageProductDependency,
+    ) {
+        for phase in target.buildPhases {
+            guard let files = phase.files else { continue }
+            let stale = files.filter { $0.product === product }
+            for buildFile in stale {
+                phase.files?.removeAll { $0 === buildFile }
+                xcodeproj.pbxproj.delete(object: buildFile)
             }
         }
     }

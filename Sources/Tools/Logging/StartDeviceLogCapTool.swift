@@ -92,7 +92,7 @@ public struct StartDeviceLogCapTool: Sendable {
         }
 
         do {
-            var args = ["stream", "--style", "compact"]
+            var args = ["stream", "--device-udid", device, "--style", "compact"]
 
             // Add log level flags
             if let level {

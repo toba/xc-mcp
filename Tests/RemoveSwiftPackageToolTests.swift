@@ -181,13 +181,19 @@ struct RemoveSwiftPackageToolTests {
         #expect(message.contains("Successfully removed Swift Package"))
         #expect(message.contains("and all targets"))
 
-        // Verify package and dependencies were removed
+        // Verify package, dependencies, and build files were removed
         let updatedXcodeproj = try XcodeProj(path: projectPath)
         let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
         let updatedTarget = updatedXcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
 
         #expect(updatedProject?.remotePackages.isEmpty == true)
         #expect(updatedTarget?.packageProductDependencies?.isEmpty == true)
+
+        // Verify no stale PBXBuildFile entries referencing the product remain
+        let frameworksPhase = updatedTarget?.buildPhases
+            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let packageBuildFiles = frameworksPhase?.files?.filter { $0.product != nil } ?? []
+        #expect(packageBuildFiles.isEmpty)
     }
 
     @Test
@@ -291,6 +297,56 @@ struct RemoveSwiftPackageToolTests {
         let updatedXcodeproj = try XcodeProj(path: projectPath)
         let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
         #expect(updatedProject?.localPackages.isEmpty == true)
+    }
+
+    @Test
+    func `Remove local package cleans up build files`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        // Add a local package with a product linked to the target
+        let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../Macros"),
+            "target_name": Value.string("TestApp"),
+            "product_name": Value.string("Macros"),
+        ])
+
+        // Verify build file was added
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+        let frameworksPhase = target?.buildPhases
+            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let buildFilesBefore = frameworksPhase?.files?.filter { $0.product != nil } ?? []
+        #expect(buildFilesBefore.count == 1)
+
+        // Remove the local package
+        let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try removeTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_path": Value.string("../Macros"),
+        ])
+
+        // Verify build files were cleaned up
+        let updatedXcodeproj = try XcodeProj(path: projectPath)
+        let updatedTarget = updatedXcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+        let updatedPhase = updatedTarget?.buildPhases
+            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let buildFilesAfter = updatedPhase?.files?.filter { $0.product != nil } ?? []
+        #expect(buildFilesAfter.isEmpty)
+        #expect(updatedTarget?.packageProductDependencies?.isEmpty == true)
     }
 
     @Test

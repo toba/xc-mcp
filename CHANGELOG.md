@@ -24,6 +24,8 @@
 - Fix `test_macos` failing entire run when one `only_testing` target is invalid; pre-validate entries against available test targets and filter out invalid ones with a warning ([#229](https://github.com/toba/xc-mcp/issues/229))
 - Fix `stop_device_log_cap` failing to collect logs from physical devices; correct `log collect --start` date format from ISO8601 to `yyyy-MM-dd HH:mm:ss`; surface error details when `log collect` writes diagnostics to stdout
 - Fix device log capture requiring sudo; switch from `log collect --device-udid` to `log stream` background process ([#233](https://github.com/toba/xc-mcp/issues/233))
+- Fix `remove_swift_package` leaving stale `PBXBuildFile` and `PBXSwiftPackageProductDependency` entries in pbxproj ([#234](https://github.com/toba/xc-mcp/issues/234))
+- Fix `start_device_log_cap` streaming local Mac logs instead of device logs; add `--device-udid` flag to `log stream` ([#235](https://github.com/toba/xc-mcp/issues/235))
 
 ### 🗜️ Tweaks
 
