@@ -15,7 +15,7 @@ public struct StartDeviceLogCapTool: Sendable {
         Tool(
             name: "start_device_log_cap",
             description:
-            "Start capturing logs from a physical device. Records the start time so stop_device_log_cap can collect logs from this point forward using `log collect`.",
+            "Start capturing logs related to a physical device. Streams logs in real-time using `log stream` and writes them to a file. Use stop_device_log_cap to stop and retrieve the captured logs.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -75,7 +75,7 @@ public struct StartDeviceLogCapTool: Sendable {
         let customPredicate = arguments.getString("predicate")
         let level = arguments.getString("level")
 
-        // Build the predicate for log show filtering
+        // Build the predicate
         let predicate: String?
         if let customPredicate {
             predicate = customPredicate
@@ -91,47 +91,67 @@ public struct StartDeviceLogCapTool: Sendable {
             predicate = parts.isEmpty ? nil : parts.joined(separator: " AND ")
         }
 
-        // Save capture metadata so stop_device_log_cap can collect logs
-        let metadata = DeviceLogCapMetadata(
-            device: device,
-            startTime: {
-                let fmt = DateFormatter()
-                fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
-                fmt.timeZone = .current
-                return fmt.string(from: Date())
-            }(),
-            outputFile: outputFile,
-            predicate: predicate,
-            level: level,
-        )
-        let metadataPath = DeviceLogCapMetadata.path(for: device)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .prettyPrinted
-        let data = try encoder.encode(metadata)
-        FileManager.default.createFile(atPath: metadataPath, contents: data)
+        do {
+            var args = ["stream", "--style", "compact"]
 
-        var message = "Started log capture for device '\(device)'\n"
-        message += "Output file: \(outputFile)\n"
-        message += "Start time: \(metadata.startTime)\n"
-        if let predicate {
-            message += "Predicate: \(predicate)\n"
-        }
-        if let level, level != "default" {
-            message += "Level: \(level)\n"
-        }
-        message += "\nUse stop_device_log_cap to collect and filter logs since this point."
+            // Add log level flags
+            if let level {
+                switch level {
+                    case "debug":
+                        args.append("--debug")
+                    case "info":
+                        args.append("--info")
+                    default:
+                        break
+                }
+            }
 
-        return CallTool.Result(content: [.text(message)])
+            if let predicate {
+                args.append(contentsOf: ["--predicate", predicate])
+            }
+
+            let pid = try LogCapture.launchStreamProcess(
+                executable: "/usr/bin/log", arguments: args, outputFile: outputFile,
+            )
+
+            // Verify the log stream process is still running after a brief delay
+            try await LogCapture.verifyStreamHealth(pid: pid, outputFile: outputFile)
+
+            // Save capture metadata so stop_device_log_cap can find the process
+            let metadata = DeviceLogCapMetadata(
+                device: device,
+                pid: pid,
+                outputFile: outputFile,
+            )
+            let metadataPath = DeviceLogCapMetadata.path(for: device)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(metadata)
+            FileManager.default.createFile(atPath: metadataPath, contents: data)
+
+            var message = "Started log capture for device '\(device)'\n"
+            message += "Output file: \(outputFile)\n"
+            message += "Process ID: \(pid)\n"
+            if let predicate {
+                message += "Predicate: \(predicate)\n"
+            }
+            if let level, level != "default" {
+                message += "Level: \(level)\n"
+            }
+            message += "\nUse stop_device_log_cap to stop the capture and retrieve logs."
+
+            return CallTool.Result(content: [.text(message)])
+        } catch {
+            throw error.asMCPError()
+        }
     }
 }
 
 /// Metadata saved by start_device_log_cap for stop_device_log_cap to consume.
 struct DeviceLogCapMetadata: Codable {
     let device: String
-    let startTime: String
+    let pid: Int32
     let outputFile: String
-    let predicate: String?
-    let level: String?
 
     static func path(for device: String) -> String {
         "/tmp/device_log_cap_\(device).json"

@@ -13,7 +13,7 @@ public struct StopDeviceLogCapTool: Sendable {
         Tool(
             name: "stop_device_log_cap",
             description:
-            "Collect and filter device logs since start_device_log_cap was called. Uses `log collect` to fetch logs from the device, then `log show` to filter with the configured predicate.",
+            "Stop capturing device logs and return the captured output. Kills the log stream process started by start_device_log_cap and returns the last N lines of the log file.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -26,7 +26,7 @@ public struct StopDeviceLogCapTool: Sendable {
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to write filtered logs to. Overrides the path from start_device_log_cap.",
+                            "Path to the log file to return the last N lines from. Overrides the path from start_device_log_cap.",
                         ),
                     ]),
                     "tail_lines": .object([
@@ -68,73 +68,18 @@ public struct StopDeviceLogCapTool: Sendable {
         }
 
         let outputFile = arguments.getString("output_file") ?? metadata.outputFile
-        let archivePath = "/tmp/device_log_\(device).logarchive"
 
-        // Remove any existing archive to avoid conflicts
-        try? FileManager.default.removeItem(atPath: archivePath)
-
-        // Collect logs from the device since start time
-        var collectArgs = [
-            "collect",
-            "--device-udid", device,
-            "--start", metadata.startTime,
-            "--output", archivePath,
-        ]
-        // Apply predicate at collection time for efficiency
-        if let predicate = metadata.predicate {
-            collectArgs.append(contentsOf: ["--predicate", predicate])
-        }
-
-        let collectResult = try await ProcessResult.run(
-            "/usr/bin/log", arguments: collectArgs, timeout: .seconds(60),
+        // Stop the stream process
+        await LogCapture.stopCapture(
+            pid: Int(metadata.pid),
+            pkillPatterns: [],
         )
-
-        guard collectResult.succeeded else {
-            let detail = collectResult.stderr.isEmpty
-                ? collectResult.stdout : collectResult.stderr
-            throw MCPError.internalError(
-                "Failed to collect device logs: \(detail)",
-            )
-        }
-
-        // Show logs from the archive with filtering
-        var showArgs = [
-            "show", archivePath,
-            "--style", "compact",
-        ]
-        if let level = metadata.level {
-            switch level {
-                case "debug":
-                    showArgs.append("--debug")
-                case "info":
-                    showArgs.append("--info")
-                default:
-                    break
-            }
-        }
-        if let predicate = metadata.predicate {
-            showArgs.append(contentsOf: ["--predicate", predicate])
-        }
-
-        let showResult = try await ProcessResult.run(
-            "/usr/bin/log", arguments: showArgs, timeout: .seconds(30),
-        )
-
-        // Write filtered output to the log file
-        if let data = showResult.stdout.data(using: .utf8) {
-            FileManager.default.createFile(atPath: outputFile, contents: data)
-        }
 
         // Clean up metadata file
         try? FileManager.default.removeItem(atPath: metadataPath)
 
-        var message = "Collected logs for device '\(device)'\n"
-        message += "Time range: \(metadata.startTime) → now\n"
-        message += "Output file: \(outputFile)\n"
-        message += "Archive: \(archivePath)\n"
-        if let predicate = metadata.predicate {
-            message += "Predicate: \(predicate)\n"
-        }
+        var message = "Stopped log capture for device '\(device)'\n"
+        message += "Output file: \(outputFile)"
 
         await LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
 

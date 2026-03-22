@@ -1,15 +1,15 @@
 ---
 # x5i-0xp
 title: 'xc-project: synchronized folder and SPM product tooling gaps'
-status: review
+status: completed
 type: bug
 priority: high
 created_at: 2026-03-21T03:50:48Z
-updated_at: 2026-03-21T04:14:19Z
+updated_at: 2026-03-22T01:33:03Z
 sync:
     github:
         issue_number: "227"
-        synced_at: "2026-03-21T04:15:28Z"
+        synced_at: "2026-03-22T02:08:11Z"
 ---
 
 Multiple issues discovered during a Thesis session where I needed to add `MockHTTPTransport.swift` to the `TestSupport` target and add `HTTPTypes` SPM product as a dependency.
