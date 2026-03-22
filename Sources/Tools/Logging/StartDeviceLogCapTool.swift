@@ -3,11 +3,13 @@ import XCMCPCore
 import Foundation
 
 public struct StartDeviceLogCapTool: Sendable {
+    private let deviceCtlRunner: DeviceCtlRunner
     private let sessionManager: SessionManager
 
     public init(
-        deviceCtlRunner _: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
+        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
     ) {
+        self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
     }
 
@@ -15,14 +17,14 @@ public struct StartDeviceLogCapTool: Sendable {
         Tool(
             name: "start_device_log_cap",
             description:
-            "Start capturing logs related to a physical device. Streams logs in real-time using `log stream` and writes them to a file. Use stop_device_log_cap to stop and retrieve the captured logs.",
+            "Start capturing logs from a physical device in real-time using idevicesyslog (libimobiledevice). Streams device unified logs over USB. Filter by string match or process name. Requires `brew install libimobiledevice`. Use stop_device_log_cap to stop and retrieve the captured logs.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "device": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Device UDID. Uses session default if not specified.",
+                            "Device UDID (CoreDevice or hardware format). Uses session default if not specified.",
                         ),
                     ]),
                     "output_file": .object([
@@ -31,34 +33,23 @@ public struct StartDeviceLogCapTool: Sendable {
                             "Path to write filtered logs to. Defaults to /tmp/device_log_<udid>.log",
                         ),
                     ]),
-                    "bundle_id": .object([
+                    "match": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional bundle identifier to filter logs to a specific app's process.",
+                            "Only capture lines containing this string (e.g., subsystem name like 'app.toba.myapp'). Maps to idevicesyslog -m.",
                         ),
                     ]),
-                    "subsystem": .object([
+                    "process": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional OSLog subsystem to filter logs (e.g., 'com.example.myapp').",
+                            "Only capture lines from this process name. Maps to idevicesyslog -p.",
                         ),
                     ]),
-                    "predicate": .object([
-                        "type": .string("string"),
+                    "quiet": .object([
+                        "type": .string("boolean"),
                         "description": .string(
-                            "Optional NSPredicate to filter logs. Overrides bundle_id and subsystem filters.",
+                            "Exclude common noisy system processes. Default: true.",
                         ),
-                    ]),
-                    "level": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Log level: 'default', 'info', or 'debug'. Default is 'default'.",
-                        ),
-                        "enum": .array([
-                            .string("default"),
-                            .string("info"),
-                            .string("debug"),
-                        ]),
                     ]),
                 ]),
                 "required": .array([]),
@@ -70,51 +61,38 @@ public struct StartDeviceLogCapTool: Sendable {
         let device = try await sessionManager.resolveDevice(from: arguments)
         let outputFile = arguments.getString("output_file")
             ?? "/tmp/device_log_\(device).log"
-        let bundleId = arguments.getString("bundle_id")
-        let subsystem = arguments.getString("subsystem")
-        let customPredicate = arguments.getString("predicate")
-        let level = arguments.getString("level")
-
-        // Build the predicate
-        let predicate: String?
-        if let customPredicate {
-            predicate = customPredicate
+        let match = arguments.getString("match")
+        let process = arguments.getString("process")
+        let quiet: Bool
+        if case let .bool(q) = arguments["quiet"] {
+            quiet = q
         } else {
-            var parts: [String] = []
-            if let bundleId {
-                let appName = bundleId.split(separator: ".").last.map(String.init) ?? bundleId
-                parts.append("process ==[cd] \"\(appName)\"")
-            }
-            if let subsystem {
-                parts.append("subsystem == \"\(subsystem)\"")
-            }
-            predicate = parts.isEmpty ? nil : parts.joined(separator: " AND ")
+            quiet = true
         }
 
         do {
-            var args = ["stream", "--device-udid", device, "--style", "compact"]
+            let idevicesyslog = try await findIdevicesyslog()
 
-            // Add log level flags
-            if let level {
-                switch level {
-                    case "debug":
-                        args.append("--debug")
-                    case "info":
-                        args.append("--info")
-                    default:
-                        break
-                }
+            // Resolve hardware UDID — idevicesyslog uses Apple hardware UDIDs,
+            // not CoreDevice UUIDs
+            let hwUDID = try await resolveHardwareUDID(coreDeviceUDID: device)
+
+            var args = ["-u", hwUDID, "-x", "--no-colors"]
+            if quiet {
+                args.append("-q")
             }
-
-            if let predicate {
-                args.append(contentsOf: ["--predicate", predicate])
+            if let match {
+                args.append(contentsOf: ["-m", match])
+            }
+            if let process {
+                args.append(contentsOf: ["-p", process])
             }
 
             let pid = try LogCapture.launchStreamProcess(
-                executable: "/usr/bin/log", arguments: args, outputFile: outputFile,
+                executable: idevicesyslog, arguments: args, outputFile: outputFile,
             )
 
-            // Verify the log stream process is still running after a brief delay
+            // Verify the process is still running after a brief delay
             try await LogCapture.verifyStreamHealth(pid: pid, outputFile: outputFile)
 
             // Save capture metadata so stop_device_log_cap can find the process
@@ -132,17 +110,57 @@ public struct StartDeviceLogCapTool: Sendable {
             var message = "Started log capture for device '\(device)'\n"
             message += "Output file: \(outputFile)\n"
             message += "Process ID: \(pid)\n"
-            if let predicate {
-                message += "Predicate: \(predicate)\n"
+            message += "Backend: idevicesyslog (hardware UDID: \(hwUDID))\n"
+            if let match {
+                message += "Match filter: \(match)\n"
             }
-            if let level, level != "default" {
-                message += "Level: \(level)\n"
+            if let process {
+                message += "Process filter: \(process)\n"
             }
             message += "\nUse stop_device_log_cap to stop the capture and retrieve logs."
 
             return CallTool.Result(content: [.text(message)])
         } catch {
             throw error.asMCPError()
+        }
+    }
+
+    /// Resolves a CoreDevice UUID to the Apple hardware UDID that idevicesyslog expects.
+    /// If the input is already a hardware UDID (not UUID format), returns it as-is.
+    private func resolveHardwareUDID(coreDeviceUDID: String) async throws -> String {
+        // Hardware UDIDs are hex strings like "00008110-00116D221AA1801E"
+        // CoreDevice UUIDs are standard UUIDs like "A5CC2917-0B66-5306-8C9F-A60BFEB112C1"
+        // Heuristic: CoreDevice UUIDs have 5 groups (8-4-4-4-12), hardware UDIDs have 2 groups (8-16)
+        let parts = coreDeviceUDID.split(separator: "-")
+        if parts.count == 2 {
+            // Already looks like a hardware UDID
+            return coreDeviceUDID
+        }
+
+        // Look up via devicectl
+        let device = try await deviceCtlRunner.lookupDevice(udid: coreDeviceUDID)
+        guard let hwUDID = device.hardwareUDID else {
+            throw MCPError.internalError(
+                "Could not resolve hardware UDID for device '\(coreDeviceUDID)'. "
+                    + "Try passing the hardware UDID directly (visible via `idevice_id -l`).",
+            )
+        }
+        return hwUDID
+    }
+
+    private func findIdevicesyslog() async throws(MCPError) -> String {
+        for path in ["/opt/homebrew/bin/idevicesyslog", "/usr/local/bin/idevicesyslog"] {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                return path
+            }
+        }
+
+        do {
+            return try await BinaryLocator.find("idevicesyslog")
+        } catch {
+            throw MCPError.internalError(
+                "idevicesyslog not found. Install it with: brew install libimobiledevice",
+            )
         }
     }
 }

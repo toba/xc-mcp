@@ -5,11 +5,11 @@ status: completed
 type: bug
 priority: high
 created_at: 2026-03-22T02:19:03Z
-updated_at: 2026-03-22T02:22:18Z
+updated_at: 2026-03-22T02:35:46Z
 sync:
     github:
         issue_number: "235"
-        synced_at: "2026-03-22T02:23:10Z"
+        synced_at: "2026-03-22T02:44:55Z"
 ---
 
 ## Problem
@@ -35,4 +35,4 @@ sync:
 
 ## Summary of Changes
 
-Added `--device-udid <UDID>` to the `log stream` arguments in `StartDeviceLogCapTool`. Without this flag, `log stream` only captured logs from the local Mac, not the connected iOS device. Confirmed via `man log` that `log stream --device-udid` does not require sudo (only `log collect` did).
+Rewrote `StartDeviceLogCapTool` to use `idevicesyslog` from libimobiledevice instead of `/usr/bin/log stream`. `log stream` has no device flags at all — it is local Mac only. `idevicesyslog` streams unified logs from a physical device over USB without sudo. The tool auto-locates the binary via Homebrew paths or PATH, and errors with install instructions if not found. Filter parameters updated to match idevicesyslog's `-m` (match string) and `-p` (process name) flags.

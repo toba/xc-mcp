@@ -24,6 +24,10 @@ public struct ConnectedDevice: Sendable {
     /// Device platform (e.g., "iOS", "tvOS", "watchOS").
     public let platform: String
 
+    /// Hardware UDID (Apple format, e.g., "00008110-00116D221AA1801E").
+    /// Differs from the CoreDevice UUID identifier. Used by libimobiledevice tools.
+    public let hardwareUDID: String?
+
     /// Creates a new connected device instance.
     public init(
         udid: String,
@@ -32,6 +36,7 @@ public struct ConnectedDevice: Sendable {
         osVersion: String,
         connectionType: String,
         platform: String = "iOS",
+        hardwareUDID: String? = nil,
     ) {
         self.udid = udid
         self.name = name
@@ -39,6 +44,7 @@ public struct ConnectedDevice: Sendable {
         self.osVersion = osVersion
         self.connectionType = connectionType
         self.platform = platform
+        self.hardwareUDID = hardwareUDID
     }
 }
 
@@ -289,6 +295,7 @@ public struct DeviceCtlRunner: Sendable {
             let connectionType = (connectionProperties["transportType"] as? String) ?? "Unknown"
 
             let platform = (hardwareProperties?["platform"] as? String) ?? "iOS"
+            let hardwareUDID = hardwareProperties?["udid"] as? String
 
             let connectedDevice = ConnectedDevice(
                 udid: identifier,
@@ -297,6 +304,7 @@ public struct DeviceCtlRunner: Sendable {
                 osVersion: osVersion,
                 connectionType: connectionType,
                 platform: platform,
+                hardwareUDID: hardwareUDID,
             )
             connectedDevices.append(connectedDevice)
         }

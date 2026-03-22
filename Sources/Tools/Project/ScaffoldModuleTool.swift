@@ -253,7 +253,7 @@ public struct ScaffoldModuleTool: Sendable {
             }
 
             // 3. Create framework target
-            let frameworkTarget = try createTarget(
+            let frameworkTarget = createTarget(
                 xcodeproj: xcodeproj,
                 project: project,
                 name: name,
@@ -277,7 +277,7 @@ public struct ScaffoldModuleTool: Sendable {
             xcodeproj.pbxproj.add(object: frameworkGroup)
             containerGroup.children.append(frameworkGroup)
 
-            let frameworkSyncFolder = createSyncFolder(
+            createSyncFolder(
                 xcodeproj: xcodeproj,
                 folderAbsPath: sourceAbsPath,
                 containerGroup: frameworkGroup,
@@ -288,7 +288,7 @@ public struct ScaffoldModuleTool: Sendable {
             // 5. Create test target (if with_tests)
             var testTarget: PBXNativeTarget?
             if withTests {
-                let tt = try createTarget(
+                let tt = createTarget(
                     xcodeproj: xcodeproj,
                     project: project,
                     name: testTargetName,
@@ -320,7 +320,7 @@ public struct ScaffoldModuleTool: Sendable {
                 xcodeproj.pbxproj.add(object: testGroup)
                 containerGroup.children.append(testGroup)
 
-                let testSyncFolder = createSyncFolder(
+                createSyncFolder(
                     xcodeproj: xcodeproj,
                     folderAbsPath: testAbsPath,
                     containerGroup: testGroup,

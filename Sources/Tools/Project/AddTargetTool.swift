@@ -203,7 +203,7 @@ public struct AddTargetTool: Sendable {
 
             // Add deployment target if specified
             let deploymentKey: String? =
-                if let deploymentTarget {
+                if deploymentTarget != nil {
                     platform == "iOS"
                         ? "IPHONEOS_DEPLOYMENT_TARGET"
                         : platform == "macOS"
