@@ -90,8 +90,10 @@ public struct StopDeviceLogCapTool: Sendable {
         )
 
         guard collectResult.succeeded else {
+            let detail = collectResult.stderr.isEmpty
+                ? collectResult.stdout : collectResult.stderr
             throw MCPError.internalError(
-                "Failed to collect device logs: \(collectResult.stderr)",
+                "Failed to collect device logs: \(detail)",
             )
         }
 

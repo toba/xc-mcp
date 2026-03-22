@@ -94,7 +94,12 @@ public struct StartDeviceLogCapTool: Sendable {
         // Save capture metadata so stop_device_log_cap can collect logs
         let metadata = DeviceLogCapMetadata(
             device: device,
-            startTime: ISO8601DateFormatter().string(from: Date()),
+            startTime: {
+                let fmt = DateFormatter()
+                fmt.dateFormat = "yyyy-MM-dd HH:mm:ss"
+                fmt.timeZone = .current
+                return fmt.string(from: Date())
+            }(),
             outputFile: outputFile,
             predicate: predicate,
             level: level,
