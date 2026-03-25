@@ -2,6 +2,10 @@
 
 ## Week of Mar 22 – Mar 28, 2026
 
+### 🐛 Fixes
+
+- Fix `remove_target` leaving orphaned `PBXContainerItemProxy` and `PBXTargetDependency` entries in pbxproj; also search all target types instead of only native targets ([#237](https://github.com/toba/xc-mcp/issues/237))
+
 ### 🗜️ Tweaks
 
 - Extract `TestToolHelper` to deduplicate test tool validation/bundle/formatting logic across `TestSimTool`, `TestMacOSTool`, `TestDeviceTool`; replace `[String: Any]` with `Decodable` types in `DeviceCtlRunner`; fix lint warnings in `BuildResultFormatter`, `StartDeviceLogCapTool`, `ScaffoldModuleTool`

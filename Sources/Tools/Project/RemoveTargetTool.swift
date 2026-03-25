@@ -48,11 +48,9 @@ public struct RemoveTargetTool: Sendable {
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            // Find the target to remove
-            guard
-                let targetIndex = xcodeproj.pbxproj.nativeTargets.firstIndex(where: {
-                    $0.name == targetName
-                })
+            // Find the target to remove (check all target types, not just native)
+            guard let project = xcodeproj.pbxproj.rootObject,
+                  let target = project.targets.first(where: { $0.name == targetName })
             else {
                 return CallTool.Result(
                     content: [
@@ -61,13 +59,24 @@ public struct RemoveTargetTool: Sendable {
                 )
             }
 
-            let target = xcodeproj.pbxproj.nativeTargets[targetIndex]
-
-            // Remove target dependencies from other targets
-            for otherTarget in xcodeproj.pbxproj.nativeTargets {
-                otherTarget.dependencies.removeAll { dependency in
-                    dependency.target == target
+            // Remove target dependencies from other targets, plus their proxy objects
+            let remoteGlobalID = PBXContainerItemProxy.RemoteGlobalID.object(target)
+            for otherTarget in project.targets where otherTarget != target {
+                let orphaned = otherTarget.dependencies.filter { $0.target == target }
+                for dependency in orphaned {
+                    if let proxy = dependency.targetProxy {
+                        xcodeproj.pbxproj.delete(object: proxy)
+                    }
+                    xcodeproj.pbxproj.delete(object: dependency)
                 }
+                otherTarget.dependencies.removeAll { $0.target == target }
+            }
+
+            // Remove any remaining PBXContainerItemProxy entries referencing the target
+            for proxy in xcodeproj.pbxproj.containerItemProxies
+                where proxy.remoteGlobalID == remoteGlobalID
+            {
+                xcodeproj.pbxproj.delete(object: proxy)
             }
 
             // Remove build phases
@@ -85,19 +94,12 @@ public struct RemoveTargetTool: Sendable {
 
             // Remove product reference if exists
             if let productRef = target.product {
-                // Remove from products group
-                if let project = xcodeproj.pbxproj.rootObject,
-                   let productsGroup = project.productsGroup
-                {
-                    productsGroup.children.removeAll { $0 == productRef }
-                }
+                project.productsGroup?.children.removeAll { $0 == productRef }
                 xcodeproj.pbxproj.delete(object: productRef)
             }
 
             // Remove target from project
-            if let project = xcodeproj.pbxproj.rootObject {
-                project.targets.removeAll { $0 == target }
-            }
+            project.targets.removeAll { $0 == target }
 
             // Remove target group if exists
             if let project = try xcodeproj.pbxproj.rootProject(),

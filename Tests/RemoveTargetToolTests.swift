@@ -162,4 +162,70 @@ struct RemoveTargetToolTests {
         #expect(xcodeproj.pbxproj.nativeTargets.count == 1)
         #expect(xcodeproj.pbxproj.nativeTargets.first?.name == "MainApp")
     }
+
+    @Test
+    func `Remove target cleans up dependency and proxy objects`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // Create a project with two targets where AppTarget depends on LibTarget
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "AppTarget", target2: "LibTarget", at: projectPath,
+        )
+
+        // Wire up a real dependency: AppTarget depends on LibTarget
+        var xcodeproj = try XcodeProj(path: projectPath)
+        let appTarget = try #require(xcodeproj.pbxproj.nativeTargets
+            .first { $0.name == "AppTarget" })
+        let libTarget = try #require(xcodeproj.pbxproj.nativeTargets
+            .first { $0.name == "LibTarget" })
+
+        let proxy = try PBXContainerItemProxy(
+            containerPortal: .project(#require(xcodeproj.pbxproj.rootObject)),
+            remoteGlobalID: .object(libTarget),
+            proxyType: .nativeTarget,
+            remoteInfo: "LibTarget",
+        )
+        xcodeproj.pbxproj.add(object: proxy)
+
+        let dependency = PBXTargetDependency(
+            name: "LibTarget",
+            target: libTarget,
+            targetProxy: proxy,
+        )
+        xcodeproj.pbxproj.add(object: dependency)
+        appTarget.dependencies.append(dependency)
+
+        try xcodeproj.write(path: projectPath)
+
+        // Verify the dependency objects exist
+        xcodeproj = try XcodeProj(path: projectPath)
+        #expect(xcodeproj.pbxproj.targetDependencies.count == 1)
+        #expect(xcodeproj.pbxproj.containerItemProxies.count == 1)
+
+        // Remove LibTarget
+        let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("LibTarget"),
+        ])
+
+        guard case let .text(message) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed target 'LibTarget'"))
+
+        // Verify orphaned objects were cleaned up
+        xcodeproj = try XcodeProj(path: projectPath)
+        #expect(xcodeproj.pbxproj.nativeTargets.count == 1)
+        #expect(xcodeproj.pbxproj.nativeTargets.first?.name == "AppTarget")
+        #expect(xcodeproj.pbxproj.targetDependencies.isEmpty)
+        #expect(xcodeproj.pbxproj.containerItemProxies.isEmpty)
+        #expect(xcodeproj.pbxproj.nativeTargets.first?.dependencies.isEmpty == true)
+    }
 }
