@@ -69,22 +69,33 @@ public struct Variations: Codable, Sendable {
     }
 }
 
+/// Wrapper for a variation category value.
+///
+/// In xcstrings JSON, each variation value is `{ "stringUnit": { "state": "...", "value": "..." } }`.
+public struct VariationValue: Codable, Sendable {
+    public var stringUnit: StringUnit?
+
+    public init(stringUnit: StringUnit? = nil) {
+        self.stringUnit = stringUnit
+    }
+}
+
 /// Plural variation
 public struct PluralVariation: Codable, Sendable {
-    public var zero: StringUnit?
-    public var one: StringUnit?
-    public var two: StringUnit?
-    public var few: StringUnit?
-    public var many: StringUnit?
-    public var other: StringUnit?
+    public var zero: VariationValue?
+    public var one: VariationValue?
+    public var two: VariationValue?
+    public var few: VariationValue?
+    public var many: VariationValue?
+    public var other: VariationValue?
 
     public init(
-        zero: StringUnit? = nil,
-        one: StringUnit? = nil,
-        two: StringUnit? = nil,
-        few: StringUnit? = nil,
-        many: StringUnit? = nil,
-        other: StringUnit? = nil,
+        zero: VariationValue? = nil,
+        one: VariationValue? = nil,
+        two: VariationValue? = nil,
+        few: VariationValue? = nil,
+        many: VariationValue? = nil,
+        other: VariationValue? = nil,
     ) {
         self.zero = zero
         self.one = one
@@ -97,18 +108,18 @@ public struct PluralVariation: Codable, Sendable {
 
 /// Device variation
 public struct DeviceVariation: Codable, Sendable {
-    public var iphone: StringUnit?
-    public var ipad: StringUnit?
-    public var mac: StringUnit?
-    public var applewatch: StringUnit?
-    public var appletv: StringUnit?
+    public var iphone: VariationValue?
+    public var ipad: VariationValue?
+    public var mac: VariationValue?
+    public var applewatch: VariationValue?
+    public var appletv: VariationValue?
 
     public init(
-        iphone: StringUnit? = nil,
-        ipad: StringUnit? = nil,
-        mac: StringUnit? = nil,
-        applewatch: StringUnit? = nil,
-        appletv: StringUnit? = nil,
+        iphone: VariationValue? = nil,
+        ipad: VariationValue? = nil,
+        mac: VariationValue? = nil,
+        applewatch: VariationValue? = nil,
+        appletv: VariationValue? = nil,
     ) {
         self.iphone = iphone
         self.ipad = ipad

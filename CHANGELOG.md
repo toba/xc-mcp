@@ -5,6 +5,7 @@
 ### 🐛 Fixes
 
 - Fix `remove_target` leaving orphaned `PBXContainerItemProxy` and `PBXTargetDependency` entries in pbxproj; also search all target types instead of only native targets ([#237](https://github.com/toba/xc-mcp/issues/237))
+- Fix `PluralVariation` and `DeviceVariation` field types to match xcstrings JSON format; add `VariationValue` wrapper for correct decoding of plural/device variations ([#239](https://github.com/toba/xc-mcp/issues/239))
 
 ### 🗜️ Tweaks
 
