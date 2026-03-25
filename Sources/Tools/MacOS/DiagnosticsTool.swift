@@ -133,7 +133,7 @@ public struct DiagnosticsTool: Sendable {
         let hasErrors = !parsed.errors.isEmpty || !parsed.linkerErrors.isEmpty
 
         if hasWarnings || hasErrors || buildFailed {
-            let header = BuildResultFormatter.formatBuildResult(parsed)
+            let header = BuildResultFormatter.formatBuildResult(parsed, showWarnings: true)
             sections.append("## Build Diagnostics\n\n\(header)")
         }
 

@@ -13,11 +13,13 @@ public enum ErrorExtractor {
         from output: String,
         projectRoot: String? = nil,
         errorsOnly: Bool = false,
+        showWarnings: Bool = false,
     ) -> String {
         let parser = BuildOutputParser()
         let result = parser.parse(input: output)
         return BuildResultFormatter.formatBuildResult(
             result, projectRoot: projectRoot, errorsOnly: errorsOnly,
+            showWarnings: showWarnings,
         )
     }
 

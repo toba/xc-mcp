@@ -19,6 +19,7 @@ public enum BuildResultFormatter {
         _ result: BuildResult,
         projectRoot: String? = nil,
         errorsOnly: Bool = false,
+        showWarnings: Bool = false,
     ) -> String {
         var parts: [String] = []
 
@@ -45,12 +46,10 @@ public enum BuildResultFormatter {
 
         // Warnings (only if non-trivial count and not suppressed)
         if !result.warnings.isEmpty, !errorsOnly {
-            if let projectRoot {
-                // On success, warnings are already counted in the header — omit them
-                if result.status == "success" {
-                    // No warning details needed
-                } else {
-                    // On failure, show only project-local warnings
+            // On success, only show warning details when explicitly requested
+            let shouldShowDetails = result.status != "success" || showWarnings
+            if shouldShowDetails {
+                if let projectRoot {
                     let (projectWarnings, externalCount) = partitionWarnings(
                         result.warnings, projectRoot: projectRoot,
                     )
@@ -62,9 +61,9 @@ public enum BuildResultFormatter {
                             "(+\(externalCount) warning\(externalCount == 1 ? "" : "s") from dependencies hidden)",
                         )
                     }
+                } else {
+                    parts.append(formatWarnings(result.warnings))
                 }
-            } else {
-                parts.append(formatWarnings(result.warnings))
             }
         }
 

@@ -58,6 +58,12 @@ public struct BuildMacOSTool: Sendable {
                             "When true, only show compiler errors, linker errors, and the build summary — all warnings are suppressed. Useful for iterating on build errors without warning noise.",
                         ),
                     ]),
+                    "show_warnings": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "When true, include detailed compiler warnings in the output. By default, successful builds only report the warning count in the summary header.",
+                        ),
+                    ]),
                     "for_testing": .object([
                         "type": .string("boolean"),
                         "description": .string(
@@ -80,6 +86,7 @@ public struct BuildMacOSTool: Sendable {
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let arch = arguments.getString("arch")
         let errorsOnly = arguments.getBool("errors_only")
+        let showWarnings = arguments.getBool("show_warnings")
         let forTesting = arguments.getBool("for_testing")
 
         do {
@@ -116,10 +123,16 @@ public struct BuildMacOSTool: Sendable {
             )
 
             let label = forTesting ? "Build-for-testing" : "Build"
+            let summary = ErrorExtractor.extractBuildErrors(
+                from: result.output, projectRoot: projectRoot, errorsOnly: errorsOnly,
+                showWarnings: showWarnings,
+            )
+            var text = "\(label) succeeded for scheme '\(scheme)' on macOS"
+            if !summary.isEmpty, summary != "Build succeeded" {
+                text += "\n\n" + summary
+            }
             return CallTool.Result(
-                content: [
-                    .text("\(label) succeeded for scheme '\(scheme)' on macOS"),
-                ],
+                content: [.text(text)],
             )
         } catch {
             throw error.asMCPError()
