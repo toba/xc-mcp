@@ -26,7 +26,7 @@ jobs:
         for name in xc-build xc-debug xc-device xc-project xc-simulator xc-strings xc-swift; do
           ln -s xc-mcp "$name"
         done
-        tar -czhvf ../xc-mcp-${{ github.ref_name }}-arm64.tar.gz *
+        tar -czvf ../xc-mcp-${{ github.ref_name }}-arm64.tar.gz *
 
     - name: Generate SHA256
       run: shasum -a 256 xc-mcp-${{ github.ref_name }}-arm64.tar.gz > xc-mcp-${{ github.ref_name }}-arm64.tar.gz.sha256
