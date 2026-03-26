@@ -6,8 +6,9 @@
 
 - Support project-level build settings in `set_build_setting`; omit `target_name` to apply settings at the project level instead of a specific target
 
-### 🐛 Fixes
+### 🐞 Fixes
 
+- Fix `add_swift_package` crashing with SIGTRAP on projects with sub-project references; work around XcodeProj `sortProjectReferences` force-unwrap of nil `PBXFileElement.name` by backfilling from `path`
 - Fix `remove_target` leaving orphaned `PBXContainerItemProxy` and `PBXTargetDependency` entries in pbxproj; also search all target types instead of only native targets ([#237](https://github.com/toba/xc-mcp/issues/237))
 - Fix `PluralVariation` and `DeviceVariation` field types to match xcstrings JSON format; add `VariationValue` wrapper for correct decoding of plural/device variations ([#239](https://github.com/toba/xc-mcp/issues/239))
 
@@ -29,7 +30,7 @@
 - `build_macos`: truncate cascade errors when root cause is a `PhaseScriptExecution` failure; collapse "Unable to find module dependency" noise into a single summary line ([#230](https://github.com/toba/xc-mcp/issues/230))
 - `BuildGuard`: wait for build lock with 5-minute timeout instead of failing immediately; concurrent agents now queue instead of erroring ([#231](https://github.com/toba/xc-mcp/issues/231))
 
-### 🐛 Fixes
+### 🐞 Fixes
 
 - Fix `build_run_sim` false "build appears stuck" error; increase no-output timeout from 30s to 120s for simulator builds where linking/signing produces long output gaps; auto-boot shutdown simulators before install/launch ([#223](https://github.com/toba/xc-mcp/issues/223), [#222](https://github.com/toba/xc-mcp/issues/222))
 - Fix `build_device` failing to find connected device by UDID; improve device lookup to match partial UDIDs ([#212](https://github.com/toba/xc-mcp/issues/212))

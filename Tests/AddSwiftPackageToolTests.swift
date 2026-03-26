@@ -624,6 +624,146 @@ struct AddSwiftPackageToolTests {
         }
     }
 
+    /// Reproducer for issue 2fi-f1h: add_swift_package crashes with SIGTRAP when the project
+    /// already has existing SPM packages (like the Thesis project with 5 remote + 1 local).
+    @Test
+    func `Add package to project with existing packages`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "Core", at: projectPath,
+        )
+
+        // Pre-populate with existing SPM packages (simulating Thesis-like project)
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let project = try #require(try xcodeproj.pbxproj.rootProject())
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "Core" })
+
+        let existingPackages: [(url: String, version: String, product: String)] = [
+            ("https://github.com/apple/swift-collections.git", "1.1.0", "Collections"),
+            ("https://github.com/apple/swift-async-algorithms.git", "1.0.0", "AsyncAlgorithms"),
+            ("https://github.com/apple/swift-log.git", "1.5.0", "Logging"),
+        ]
+
+        for pkg in existingPackages {
+            let pkgRef = XCRemoteSwiftPackageReference(
+                repositoryURL: pkg.url,
+                versionRequirement: .upToNextMajorVersion(pkg.version),
+            )
+            xcodeproj.pbxproj.add(object: pkgRef)
+            project.remotePackages.append(pkgRef)
+
+            let productDep = XCSwiftPackageProductDependency(
+                productName: pkg.product, package: pkgRef,
+            )
+            xcodeproj.pbxproj.add(object: productDep)
+            if target.packageProductDependencies == nil {
+                target.packageProductDependencies = []
+            }
+            target.packageProductDependencies?.append(productDep)
+
+            let buildFile = PBXBuildFile(product: productDep)
+            xcodeproj.pbxproj.add(object: buildFile)
+
+            let fwPhase = target.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+                as? PBXFrameworksBuildPhase
+                ?? {
+                    let phase = PBXFrameworksBuildPhase()
+                    xcodeproj.pbxproj.add(object: phase)
+                    target.buildPhases.append(phase)
+                    return phase
+                }()
+            fwPhase.files?.append(buildFile)
+        }
+
+        // Also add a local package (simulating the macro package)
+        let localRef = XCLocalSwiftPackageReference(relativePath: "../MacroKit")
+        xcodeproj.pbxproj.add(object: localRef)
+        project.localPackages.append(localRef)
+
+        try xcodeproj.write(path: projectPath)
+
+        // NOW use the tool to add a new package — this is the crash scenario
+        let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/pointfreeco/swift-dependencies"),
+            "requirement": Value.string("from: 1.8.1"),
+            "target_name": Value.string("Core"),
+            "product_name": Value.string("Dependencies"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added Swift Package"))
+
+        // Verify the new package was added alongside existing ones
+        let reloaded = try XcodeProj(path: projectPath)
+        let reloadedProject = try #require(try reloaded.pbxproj.rootProject())
+        let remoteCount = reloadedProject.remotePackages.count
+        #expect(
+            remoteCount == 4,
+            "Should have 3 existing + 1 new remote package, got \(remoteCount)",
+        )
+
+        let reloadedTarget = try #require(reloaded.pbxproj.nativeTargets
+            .first { $0.name == "Core" })
+        let depCount = reloadedTarget.packageProductDependencies?.count ?? 0
+        #expect(depCount == 4, "Should have 3 existing + 1 new product dependency, got \(depCount)")
+    }
+
+    /// Regression test for the PBXProjWriter workaround (issue 2fi-f1h): projects with sub-project references
+    /// where the PBXFileReference has only `path` (no `name`) would crash in
+    /// PBXProjEncoder.sortProjectReferences due to a force-unwrap of `name`.
+    @Test
+    func `Write project with nameless project reference`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Reload, add a sub-project reference with path but NO name (triggers the bug)
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let project = try #require(try xcodeproj.pbxproj.rootProject())
+
+        let subProjectRef = PBXFileReference(
+            sourceTree: .group,
+            path: "Vendor/Sub.xcodeproj",
+        )
+        // name is intentionally nil — this is the crash scenario
+        #expect(subProjectRef.name == nil)
+        xcodeproj.pbxproj.add(object: subProjectRef)
+
+        let productsGroup = PBXGroup(children: [], sourceTree: .group, name: "Products")
+        xcodeproj.pbxproj.add(object: productsGroup)
+
+        project.projects = [[
+            "ProjectRef": subProjectRef,
+            "ProductGroup": productsGroup,
+        ]]
+
+        // Without the PBXProjWriter workaround this crashes with SIGTRAP in release mode
+        try PBXProjWriter.write(xcodeproj, to: projectPath)
+
+        // Verify name was backfilled from path
+        #expect(subProjectRef.name == "Vendor/Sub.xcodeproj")
+    }
+
     @Test
     func `Add package with invalid target`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
