@@ -72,7 +72,7 @@ struct DocumentTypeToolsTests {
             "target_name": .string("NonExistent"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -95,7 +95,7 @@ struct DocumentTypeToolsTests {
             "target_name": .string("App"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -132,7 +132,7 @@ struct DocumentTypeToolsTests {
             "target_name": .string("App"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -184,7 +184,7 @@ struct DocumentTypeToolsTests {
             "handler_rank": .string("Owner"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -227,7 +227,7 @@ struct DocumentTypeToolsTests {
             "name": .string("Test Document"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -265,7 +265,7 @@ struct DocumentTypeToolsTests {
             "handler_rank": .string("Owner"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -296,7 +296,7 @@ struct DocumentTypeToolsTests {
             "name": .string("NonExistent"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -329,7 +329,7 @@ struct DocumentTypeToolsTests {
             "name": .string("Test Document"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -359,7 +359,7 @@ struct DocumentTypeToolsTests {
             "additional_properties": .string("{\"CustomKey\": \"CustomValue\"}"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -393,7 +393,7 @@ struct DocumentTypeToolsTests {
             "content_types": .array([.string("com.example.new")]),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -434,7 +434,7 @@ struct DocumentTypeToolsTests {
             "project_path": .string(projectPath.string),
             "target_name": .string("App"),
         ])
-        guard case let .text(listMessage) = listResult.content.first else {
+        guard case let .text(listMessage, _, _) = listResult.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -455,7 +455,7 @@ struct DocumentTypeToolsTests {
             "project_path": .string(projectPath.string),
             "target_name": .string("App"),
         ])
-        guard case let .text(listMessage2) = listResult2.content.first else {
+        guard case let .text(listMessage2, _, _) = listResult2.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -468,7 +468,7 @@ struct DocumentTypeToolsTests {
             "action": .string("remove"),
             "name": .string("My Document"),
         ])
-        guard case let .text(removeMessage) = removeResult.content.first else {
+        guard case let .text(removeMessage, _, _) = removeResult.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -479,7 +479,7 @@ struct DocumentTypeToolsTests {
             "project_path": .string(projectPath.string),
             "target_name": .string("App"),
         ])
-        guard case let .text(listMessage3) = listResult3.content.first else {
+        guard case let .text(listMessage3, _, _) = listResult3.content.first else {
             Issue.record("Expected text result")
             return
         }

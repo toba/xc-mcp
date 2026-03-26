@@ -53,7 +53,7 @@ struct CopyFilesPhaseToolsTests {
             "target_name": .string("App"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -94,7 +94,7 @@ struct CopyFilesPhaseToolsTests {
             "target_name": .string("App"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -125,7 +125,7 @@ struct CopyFilesPhaseToolsTests {
             "target_name": .string("NonExistent"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -182,7 +182,7 @@ struct CopyFilesPhaseToolsTests {
             "subpath": .string("styles"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -262,7 +262,7 @@ struct CopyFilesPhaseToolsTests {
             "destination": .string("frameworks"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -339,7 +339,7 @@ struct CopyFilesPhaseToolsTests {
             "files": .array([.string(testFilePath)]),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -379,7 +379,7 @@ struct CopyFilesPhaseToolsTests {
             "files": .array([.string("/some/file.txt")]),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -420,7 +420,7 @@ struct CopyFilesPhaseToolsTests {
             "files": .array([.string("/nonexistent/file.txt")]),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -490,7 +490,7 @@ struct CopyFilesPhaseToolsTests {
             "phase_name": .string("Copy Styles"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -526,7 +526,7 @@ struct CopyFilesPhaseToolsTests {
             "phase_name": .string("NonExistent"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -556,7 +556,7 @@ struct CopyFilesPhaseToolsTests {
             "phase_name": .string("SomePhase"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -607,7 +607,7 @@ struct CopyFilesPhaseToolsTests {
             "destination": .string("resources"),
             "subpath": .string("styles"),
         ])
-        guard case let .text(createMessage) = createResult.content.first else {
+        guard case let .text(createMessage, _, _) = createResult.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -621,7 +621,7 @@ struct CopyFilesPhaseToolsTests {
             "phase_name": .string("Copy Styles"),
             "files": .array([.string(file1Path), .string(file2Path)]),
         ])
-        guard case let .text(addToMessage) = addToResult.content.first else {
+        guard case let .text(addToMessage, _, _) = addToResult.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -633,7 +633,7 @@ struct CopyFilesPhaseToolsTests {
             "project_path": .string(projectPath.string),
             "target_name": .string("App"),
         ])
-        guard case let .text(listMessage) = listResult.content.first else {
+        guard case let .text(listMessage, _, _) = listResult.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -649,7 +649,7 @@ struct CopyFilesPhaseToolsTests {
             "target_name": .string("App"),
             "phase_name": .string("Copy Styles"),
         ])
-        guard case let .text(removeMessage) = removeResult.content.first else {
+        guard case let .text(removeMessage, _, _) = removeResult.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -660,7 +660,7 @@ struct CopyFilesPhaseToolsTests {
             "project_path": .string(projectPath.string),
             "target_name": .string("App"),
         ])
-        guard case let .text(finalListMessage) = finalListResult.content.first else {
+        guard case let .text(finalListMessage, _, _) = finalListResult.content.first else {
             Issue.record("Expected text result")
             return
         }

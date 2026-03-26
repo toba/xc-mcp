@@ -1,17 +1,16 @@
-// swift-tools-version: 6.2
+// swift-tools-version: 6.3
 
 import PackageDescription
 
 /// Shared Swift settings for all targets
 let sharedSwiftSettings: [SwiftSetting] = [
     .swiftLanguageMode(.v6),
-    .enableExperimentalFeature("StrictConcurrency"),
 ]
 
 let package = Package(
     name: "xc-mcp",
     platforms: [
-        .macOS(.v15),
+        .macOS(.v26),
     ],
     products: [
         // Single multicall binary — symlinks (xc-build, xc-debug, etc.) select the focused server
@@ -22,7 +21,7 @@ let package = Package(
         .library(name: "XCMCPTools", targets: ["XCMCPTools"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/modelcontextprotocol/swift-sdk", from: "0.11.0"),
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk", from: "0.12.0"),
         .package(url: "https://github.com/tuist/xcodeproj", from: "9.10.1"),
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.7.0"),
         .package(url: "https://github.com/swiftlang/swift-subprocess", from: "0.3.0"),

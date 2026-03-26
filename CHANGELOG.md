@@ -2,6 +2,10 @@
 
 ## Week of Mar 22 – Mar 28, 2026
 
+### ✨ Features
+
+- Support project-level build settings in `set_build_setting`; omit `target_name` to apply settings at the project level instead of a specific target
+
 ### 🐛 Fixes
 
 - Fix `remove_target` leaving orphaned `PBXContainerItemProxy` and `PBXTargetDependency` entries in pbxproj; also search all target types instead of only native targets ([#237](https://github.com/toba/xc-mcp/issues/237))
@@ -10,6 +14,7 @@
 ### 🗜️ Tweaks
 
 - Extract `TestToolHelper` to deduplicate test tool validation/bundle/formatting logic across `TestSimTool`, `TestMacOSTool`, `TestDeviceTool`; replace `[String: Any]` with `Decodable` types in `DeviceCtlRunner`; fix lint warnings in `BuildResultFormatter`, `StartDeviceLogCapTool`, `ScaffoldModuleTool`
+- Upgrade to Swift 6.3, macOS 26, MCP SDK 0.12.0, `swift-subprocess` 0.4.0; migrate `TerminationStatus.unhandledException` to `.signaled`, `.combineWithOutput` to `.combinedWithOutput`, `.text` pattern matching to 3-element tuple
 
 ## Week of Mar 15 – Mar 21, 2026
 

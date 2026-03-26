@@ -106,7 +106,7 @@ struct AddTargetToSynchronizedFolderToolTests {
             "target_name": .string("DiagnosticTarget"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Successfully added"))
             #expect(message.contains("DiagnosticTarget"))
         } else {
@@ -154,7 +154,7 @@ struct AddTargetToSynchronizedFolderToolTests {
             "target_name": .string("AppTarget"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("already in target"))
         } else {
             Issue.record("Expected text result")

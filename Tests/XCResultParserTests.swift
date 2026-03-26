@@ -24,7 +24,7 @@ struct ErrorExtractorInfrastructureTests {
             stderr: stderr,
         )
         let text = result.content.compactMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         }.joined()
         #expect(text.contains("Warning: testmanagerd crashed"))
@@ -40,7 +40,7 @@ struct ErrorExtractorInfrastructureTests {
             stderr: stderr,
         )
         let text = result.content.compactMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         }.joined()
         #expect(text.contains("Warning: testmanagerd crashed"))
@@ -56,7 +56,7 @@ struct ErrorExtractorInfrastructureTests {
             stderr: stderr,
         )
         let text = result.content.compactMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         }.joined()
         #expect(text.contains("Warning: testmanagerd terminated unexpectedly"))
@@ -72,7 +72,7 @@ struct ErrorExtractorInfrastructureTests {
             stderr: stderr,
         )
         let text = result.content.compactMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         }.joined()
         #expect(!text.contains("Warning:"))
@@ -86,7 +86,7 @@ struct ErrorExtractorInfrastructureTests {
             context: "scheme 'Foo' on macOS",
         )
         let text = result.content.compactMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         }.joined()
         #expect(!text.contains("Warning:"))
@@ -120,7 +120,7 @@ struct ErrorExtractorInfrastructureTests {
             stderr: stderr,
         )
         let text = result.content.compactMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         }.joined()
         #expect(text.contains("Warning: The test runner daemon crashed"))
@@ -154,7 +154,7 @@ struct ErrorExtractorZeroTestTests {
             onlyTesting: ["MathViewTests/AnalysisTests/analysis(_:)"],
         )
         let text = result.content.compactMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         }.joined()
         #expect(text.contains("Tests passed"))
@@ -169,7 +169,7 @@ struct ErrorExtractorZeroTestTests {
             context: "scheme 'Standard' on macOS",
         )
         let text = result.content.compactMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         }.joined()
         #expect(text.contains("Test run completed"))
@@ -210,7 +210,7 @@ struct ErrorExtractorExitCodeOverrideTests {
             context: "swift package",
         )
         let text = result.content.compactMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         }.joined()
         #expect(text.contains("Tests passed"))

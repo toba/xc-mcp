@@ -70,7 +70,7 @@ struct RemoveSynchronizedFolderExceptionToolTests {
             "target_name": .string("AppTarget"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Removed exception set"))
             #expect(message.contains("AppTarget"))
         } else {
@@ -102,7 +102,7 @@ struct RemoveSynchronizedFolderExceptionToolTests {
             "file_name": .string("File1.swift"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Removed 'File1.swift'"))
         } else {
             Issue.record("Expected text result")
@@ -132,7 +132,7 @@ struct RemoveSynchronizedFolderExceptionToolTests {
             "file_name": .string("OnlyFile.swift"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Exception set was empty and has been removed"))
         } else {
             Issue.record("Expected text result")

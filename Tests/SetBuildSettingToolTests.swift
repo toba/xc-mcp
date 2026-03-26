@@ -24,7 +24,7 @@ struct SetBuildSettingToolTests {
         let toolDefinition = tool.tool()
 
         #expect(toolDefinition.name == "set_build_setting")
-        #expect(toolDefinition.description == "Modify build settings for a target")
+        #expect(toolDefinition.description?.contains("Modify build settings") == true)
     }
 
     static let missingParamCases: [SetBuildSettingMissingParamTestCase] = [
@@ -32,15 +32,6 @@ struct SetBuildSettingToolTests {
             "Missing project_path",
             [
                 "target_name": Value.string("App"),
-                "configuration": Value.string("Debug"),
-                "setting_name": Value.string("SWIFT_VERSION"),
-                "setting_value": Value.string("5.0"),
-            ],
-        ),
-        SetBuildSettingMissingParamTestCase(
-            "Missing target_name",
-            [
-                "project_path": Value.string("/path/to/project.xcodeproj"),
                 "configuration": Value.string("Debug"),
                 "setting_name": Value.string("SWIFT_VERSION"),
                 "setting_value": Value.string("5.0"),
@@ -117,7 +108,7 @@ struct SetBuildSettingToolTests {
         let result = try tool.execute(arguments: args)
 
         // Check the result contains success message
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -170,7 +161,7 @@ struct SetBuildSettingToolTests {
         let result = try tool.execute(arguments: args)
 
         // Check the result contains success message
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -220,7 +211,7 @@ struct SetBuildSettingToolTests {
         let result = try tool.execute(arguments: args)
 
         // Check the result contains not found message
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -421,10 +412,103 @@ struct SetBuildSettingToolTests {
         let result = try tool.execute(arguments: args)
 
         // Check the result contains not found message
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
         #expect(message.contains("Configuration 'Production' not found"))
+    }
+
+    @Test
+    func `Set project-level build setting for specific configuration`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Set project-level build setting (no target_name)
+        let tool = SetBuildSettingTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "configuration": Value.string("Debug"),
+            "setting_name": Value.string("SWIFT_VERSION"),
+            "setting_value": Value.string("6.0"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully set 'SWIFT_VERSION' to '6.0'"))
+        #expect(message.contains("project"))
+        #expect(message.contains("Debug"))
+
+        // Verify project-level setting was changed
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let projectConfig = xcodeproj.pbxproj.rootObject?.buildConfigurationList?
+            .buildConfigurations.first { $0.name == "Debug" }
+        #expect(projectConfig?.buildSettings["SWIFT_VERSION"]?.stringValue == "6.0")
+
+        // Verify target-level setting was NOT changed
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
+        let targetDebugConfig = target?.buildConfigurationList?.buildConfigurations.first {
+            $0.name == "Debug"
+        }
+        #expect(targetDebugConfig?.buildSettings["SWIFT_VERSION"]?.stringValue != "6.0")
+    }
+
+    @Test
+    func `Set project-level build setting for all configurations`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let tool = SetBuildSettingTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "configuration": Value.string("All"),
+            "setting_name": Value.string("CLANG_ENABLE_MODULES"),
+            "setting_value": Value.string("YES"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully set 'CLANG_ENABLE_MODULES' to 'YES'"))
+        #expect(message.contains("project"))
+        #expect(message.contains("Debug"))
+        #expect(message.contains("Release"))
+
+        // Verify both project-level configs were changed
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let configs = xcodeproj.pbxproj.rootObject?.buildConfigurationList?
+            .buildConfigurations ?? []
+        for config in configs {
+            #expect(config.buildSettings["CLANG_ENABLE_MODULES"]?.stringValue == "YES")
+        }
     }
 }

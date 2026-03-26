@@ -140,14 +140,14 @@ extension ProcessResult {
                     workingDirectory: workingDirectory,
                     platformOptions: platformOptions,
                     output: .string(limit: outputLimit),
-                    error: .combineWithOutput,
+                    error: .combinedWithOutput,
                 )
             }
             let result = try await raceTimeout(timeout, run: run)
             let exitCode: Int32 =
                 switch result.terminationStatus {
                     case let .exited(code): code
-                    case let .unhandledException(code): code
+                    case let .signaled(code): code
                 }
             return ProcessResult(
                 exitCode: exitCode,
@@ -173,7 +173,7 @@ extension ProcessResult {
             let exitCode: Int32 =
                 switch result.terminationStatus {
                     case let .exited(code): code
-                    case let .unhandledException(code): code
+                    case let .signaled(code): code
                 }
             return ProcessResult(
                 exitCode: exitCode,

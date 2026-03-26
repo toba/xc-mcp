@@ -69,7 +69,7 @@ struct ListFilesToolTests {
         let result = try tool.execute(arguments: listArguments)
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("TestProject"))
             #expect(content.contains("No files found"))
         } else {
@@ -159,7 +159,7 @@ struct ListFilesToolTests {
         let result = try tool.execute(arguments: listArguments)
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("TestFile.swift"))
             #expect(content.contains("Sources:"))
         } else {
@@ -204,7 +204,7 @@ struct ListFilesToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Synchronized folders:"))
             #expect(content.contains("App/Sources"))
         } else {
@@ -260,7 +260,7 @@ struct ListFilesToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Synchronized folders:"))
             #expect(content.contains("App/Sources"))
             #expect(content.contains("membership exceptions — not compiled:"))
@@ -340,7 +340,7 @@ struct ListFilesToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Synchronized folders:"))
             #expect(content.contains("SyncFolder"))
             // Exception-only: membershipExceptions = files compiled as exceptions

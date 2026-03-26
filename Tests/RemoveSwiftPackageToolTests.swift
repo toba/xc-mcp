@@ -74,7 +74,7 @@ struct RemoveSwiftPackageToolTests {
 
         let result = try tool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -117,7 +117,7 @@ struct RemoveSwiftPackageToolTests {
 
         let result = try removeTool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -174,7 +174,7 @@ struct RemoveSwiftPackageToolTests {
 
         let result = try removeTool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -236,7 +236,7 @@ struct RemoveSwiftPackageToolTests {
 
         let result = try removeTool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -286,7 +286,7 @@ struct RemoveSwiftPackageToolTests {
             "package_path": Value.string("../MyLocalPackage"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -369,7 +369,7 @@ struct RemoveSwiftPackageToolTests {
             "package_path": Value.string("../NonExistent"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }

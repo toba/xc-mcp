@@ -69,7 +69,7 @@ struct TypeIdentifierToolsTests {
             "target_name": .string("App"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -107,7 +107,7 @@ struct TypeIdentifierToolsTests {
             "kind": .string("exported"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -144,7 +144,7 @@ struct TypeIdentifierToolsTests {
             "kind": .string("all"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -198,7 +198,7 @@ struct TypeIdentifierToolsTests {
             "extensions": .array([.string("thesis.project")]),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -238,7 +238,7 @@ struct TypeIdentifierToolsTests {
             "mime_types": .array([.string("application/x-example")]),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -278,7 +278,7 @@ struct TypeIdentifierToolsTests {
             "identifier": .string("com.example.dup"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -317,7 +317,7 @@ struct TypeIdentifierToolsTests {
             "icon_name": .string("MyIcon"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -356,7 +356,7 @@ struct TypeIdentifierToolsTests {
             "identifier": .string("com.example.remove"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -388,7 +388,7 @@ struct TypeIdentifierToolsTests {
             "identifier": .string("com.example.new"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -441,7 +441,7 @@ struct TypeIdentifierToolsTests {
             "project_path": .string(projectPath.string),
             "target_name": .string("App"),
         ])
-        guard case let .text(listMessage) = listResult.content.first else {
+        guard case let .text(listMessage, _, _) = listResult.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -463,7 +463,7 @@ struct TypeIdentifierToolsTests {
             "target_name": .string("App"),
             "kind": .string("exported"),
         ])
-        guard case let .text(listMessage2) = listResult2.content.first else {
+        guard case let .text(listMessage2, _, _) = listResult2.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -475,7 +475,7 @@ struct TypeIdentifierToolsTests {
             "target_name": .string("App"),
             "kind": .string("imported"),
         ])
-        guard case let .text(listMessage3) = listResult3.content.first else {
+        guard case let .text(listMessage3, _, _) = listResult3.content.first else {
             Issue.record("Expected text result")
             return
         }

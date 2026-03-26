@@ -94,7 +94,7 @@ struct RemoveFrameworkToolTests {
             "framework_name": Value.string("UIKit"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -174,7 +174,7 @@ struct RemoveFrameworkToolTests {
             "framework_name": Value.string("Custom.framework"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -280,7 +280,7 @@ struct RemoveFrameworkToolTests {
             "target_name": Value.string("App"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -387,7 +387,7 @@ struct RemoveFrameworkToolTests {
             "framework_name": Value.string("UIKit"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -440,7 +440,7 @@ struct RemoveFrameworkToolTests {
             "framework_name": Value.string("NonExistent"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -470,7 +470,7 @@ struct RemoveFrameworkToolTests {
             "target_name": Value.string("NonExistentTarget"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -510,7 +510,7 @@ struct RemoveFrameworkToolTests {
             "framework_name": Value.string("UIKit.framework"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }

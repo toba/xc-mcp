@@ -49,7 +49,7 @@ struct SwiftSymbolsToolTests {
         ])
 
         let text = try #require(result.content.first.flatMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         })
 
@@ -65,7 +65,7 @@ struct SwiftSymbolsToolTests {
         ])
 
         let text = try #require(result.content.first.flatMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         })
 
@@ -82,7 +82,7 @@ struct SwiftSymbolsToolTests {
         ])
 
         let text = try #require(result.content.first.flatMap {
-            if case let .text(t) = $0 { return t }
+            if case let .text(t, _, _) = $0 { return t }
             return nil
         })
 

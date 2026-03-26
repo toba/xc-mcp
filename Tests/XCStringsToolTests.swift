@@ -155,7 +155,7 @@ struct XCStringsListKeysToolTests {
         let result = try await tool.execute(arguments: ["file": .string(filePath)])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("hello"))
             #expect(content.contains("goodbye"))
             #expect(content.contains("untranslated_key"))
@@ -198,7 +198,7 @@ struct XCStringsListLanguagesToolTests {
         let result = try await tool.execute(arguments: ["file": .string(filePath)])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("en"))
             #expect(content.contains("ja"))
             #expect(content.contains("fr"))
@@ -241,7 +241,7 @@ struct XCStringsGetSourceLanguageToolTests {
         let result = try await tool.execute(arguments: ["file": .string(filePath)])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content == "ja")
         } else {
             Issue.record("Expected text content")
@@ -289,7 +289,7 @@ struct XCStringsGetKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Hello"))
             #expect(content.contains("こんにちは"))
             #expect(content.contains("Bonjour"))
@@ -316,7 +316,7 @@ struct XCStringsGetKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("こんにちは"))
         } else {
             Issue.record("Expected text content")
@@ -384,7 +384,7 @@ struct XCStringsCheckKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content == "true")
         } else {
             Issue.record("Expected text content")
@@ -408,7 +408,7 @@ struct XCStringsCheckKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content == "false")
         } else {
             Issue.record("Expected text content")
@@ -433,7 +433,7 @@ struct XCStringsCheckKeyToolTests {
             "key": .string("hello"),
             "language": .string("ja"),
         ])
-        if case let .text(content) = resultExists.content[0] {
+        if case let .text(content, _, _) = resultExists.content[0] {
             #expect(content == "true")
         }
 
@@ -443,7 +443,7 @@ struct XCStringsCheckKeyToolTests {
             "key": .string("untranslated_key"),
             "language": .string("fr"),
         ])
-        if case let .text(content) = resultMissing.content[0] {
+        if case let .text(content, _, _) = resultMissing.content[0] {
             #expect(content == "false")
         }
     }
@@ -489,7 +489,7 @@ struct XCStringsListUntranslatedToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             // "goodbye" and "untranslated_key" don't have French translations
             #expect(content.contains("goodbye") || content.contains("untranslated_key"))
         } else {
@@ -538,7 +538,7 @@ struct XCStringsStatsCoverageToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("totalKeys"))
             #expect(content.contains("sourceLanguage"))
         } else {
@@ -560,7 +560,7 @@ struct XCStringsStatsCoverageToolTests {
         let result = try await tool.execute(arguments: ["file": .string(filePath)])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("totalKeys"))
         } else {
             Issue.record("Expected text content")
@@ -608,7 +608,7 @@ struct XCStringsStatsProgressToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("translated") || content.contains("coveragePercent"))
         } else {
             Issue.record("Expected text content")
@@ -654,7 +654,7 @@ struct XCStringsBatchStatsCoverageToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("files"))
             #expect(content.contains("aggregated"))
         } else {
@@ -700,7 +700,7 @@ struct XCStringsCreateFileToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Created xcstrings file"))
             #expect(content.contains("ja"))
         } else {
@@ -745,7 +745,7 @@ struct XCStringsCreateFileToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Created xcstrings file"))
         } else {
             Issue.record("Expected text content")
@@ -798,7 +798,7 @@ struct XCStringsAddTranslationToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translation added successfully"))
         } else {
             Issue.record("Expected text content")
@@ -858,7 +858,7 @@ struct XCStringsAddTranslationsToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translations added successfully"))
             #expect(content.contains("2 languages"))
         } else {
@@ -905,7 +905,7 @@ struct XCStringsUpdateTranslationToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translation updated successfully"))
         } else {
             Issue.record("Expected text content")
@@ -988,7 +988,7 @@ struct XCStringsUpdateTranslationsToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translations updated successfully"))
             #expect(content.contains("2 languages"))
         } else {
@@ -1041,7 +1041,7 @@ struct XCStringsRenameKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Key renamed"))
             #expect(content.contains("hello"))
             #expect(content.contains("greeting"))
@@ -1112,7 +1112,7 @@ struct XCStringsDeleteKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Key deleted successfully"))
         } else {
             Issue.record("Expected text content")
@@ -1184,7 +1184,7 @@ struct XCStringsDeleteTranslationToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translation for 'fr' deleted successfully"))
         } else {
             Issue.record("Expected text content")
@@ -1263,7 +1263,7 @@ struct XCStringsDeleteTranslationsToolTests {
         ])
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translations deleted successfully"))
             #expect(content.contains("2 languages"))
         } else {
@@ -1298,7 +1298,7 @@ struct XCStringsListStaleToolTests {
         let tool = XCStringsListStaleTool(pathUtility: PathUtility(basePath: tempDir))
         let result = try await tool.execute(arguments: ["file": .string(filePath)])
 
-        if case let .text(json) = result.content[0] {
+        if case let .text(json, _, _) = result.content[0] {
             #expect(json.contains("stale_key_1"))
             #expect(json.contains("stale_key_2"))
             #expect(!json.contains("active_key") || json.contains("\"count\" : 2"))
@@ -1322,7 +1322,7 @@ struct XCStringsListStaleToolTests {
         let tool = XCStringsListStaleTool(pathUtility: PathUtility(basePath: tempDir))
         let result = try await tool.execute(arguments: ["file": .string(filePath)])
 
-        if case let .text(json) = result.content[0] {
+        if case let .text(json, _, _) = result.content[0] {
             #expect(json.contains("\"count\" : 0"))
         } else {
             Issue.record("Expected text content")
@@ -1352,7 +1352,7 @@ struct XCStringsBatchListStaleToolTests {
             "files": .array([.string(file1), .string(file2)]),
         ])
 
-        if case let .text(json) = result.content[0] {
+        if case let .text(json, _, _) = result.content[0] {
             #expect(json.contains("totalStaleKeys"))
             #expect(json.contains("stale_key_1"))
         } else {
@@ -1390,7 +1390,7 @@ struct XCStringsBatchCheckKeysToolTests {
             "keys": .array([.string("hello"), .string("nonexistent"), .string("goodbye")]),
         ])
 
-        if case let .text(json) = result.content[0] {
+        if case let .text(json, _, _) = result.content[0] {
             #expect(json.contains("\"existCount\" : 2"))
             #expect(json.contains("\"missingCount\" : 1"))
         } else {
@@ -1418,7 +1418,7 @@ struct XCStringsBatchCheckKeysToolTests {
             "language": .string("fr"),
         ])
 
-        if case let .text(json) = result.content[0] {
+        if case let .text(json, _, _) = result.content[0] {
             #expect(json.contains("\"existCount\" : 1"))
             #expect(json.contains("\"missingCount\" : 1"))
         } else {
@@ -1473,7 +1473,7 @@ struct XCStringsBatchAddTranslationsToolTests {
             ]),
         ])
 
-        if case let .text(json) = result.content[0] {
+        if case let .text(json, _, _) = result.content[0] {
             #expect(json.contains("\"succeeded\" : 2"))
         } else {
             Issue.record("Expected text content")
@@ -1530,7 +1530,7 @@ struct XCStringsBatchUpdateTranslationsToolTests {
             ]),
         ])
 
-        if case let .text(json) = result.content[0] {
+        if case let .text(json, _, _) = result.content[0] {
             // First key succeeds, second fails
             #expect(json.contains("\"succeeded\" : 1"))
             #expect(json.contains("\"errors\""))
@@ -1570,7 +1570,7 @@ struct XCStringsCheckCoverageToolTests {
             "key": .string("hello"),
         ])
 
-        if case let .text(json) = result.content[0] {
+        if case let .text(json, _, _) = result.content[0] {
             #expect(json.contains("coveragePercent"))
             #expect(json.contains("translatedLanguages"))
         } else {

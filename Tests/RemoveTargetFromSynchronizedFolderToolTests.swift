@@ -71,7 +71,7 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
             "target_name": .string("AppTarget"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Successfully removed"))
             #expect(message.contains("AppTarget"))
         } else {
@@ -102,7 +102,7 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
             "target_name": .string("AppTarget"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Successfully removed"))
         } else {
             Issue.record("Expected text result")
@@ -143,7 +143,7 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
             "target_name": .string("AppTarget"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("does not reference"))
         } else {
             Issue.record("Expected text result")

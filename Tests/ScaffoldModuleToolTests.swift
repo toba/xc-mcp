@@ -41,7 +41,7 @@ struct ScaffoldModuleToolTests {
             "bundle_identifier": Value.string("com.test.networkkit"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -104,7 +104,7 @@ struct ScaffoldModuleToolTests {
             "with_tests": Value.bool(false),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -314,7 +314,7 @@ struct ScaffoldModuleToolTests {
             "test_plan": Value.string(testPlanPath),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }

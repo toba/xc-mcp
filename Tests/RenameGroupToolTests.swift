@@ -73,7 +73,7 @@ struct RenameGroupToolTests {
             "new_name": Value.string("NewGroup"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -125,7 +125,7 @@ struct RenameGroupToolTests {
             "new_name": Value.string("NewModule"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -164,7 +164,7 @@ struct RenameGroupToolTests {
             "new_name": Value.string("NewGroup"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }

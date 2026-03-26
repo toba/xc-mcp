@@ -102,7 +102,7 @@ struct AddSynchronizedFolderExceptionToolTests {
             "files": .array([.string("DiagnosticApp.swift"), .string("TestHelper.swift")]),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Successfully added membership exceptions"))
             #expect(message.contains("DiagnosticApp.swift"))
             #expect(message.contains("TestHelper.swift"))
@@ -142,7 +142,7 @@ struct AddSynchronizedFolderExceptionToolTests {
             "files": .array([.string("File3.swift"), .string("File4.swift")]),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Successfully added membership exceptions"))
         } else {
             Issue.record("Expected text result")
@@ -175,7 +175,7 @@ struct AddSynchronizedFolderExceptionToolTests {
             "files": .array([.string("File1.swift")]),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("already in the exception set"))
         } else {
             Issue.record("Expected text result")

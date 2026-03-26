@@ -66,7 +66,7 @@ struct ListSynchronizedFolderExceptionsToolTests {
             "folder_path": .string("Sources"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("No exception sets"))
         } else {
             Issue.record("Expected text result")
@@ -88,7 +88,7 @@ struct ListSynchronizedFolderExceptionsToolTests {
             "folder_path": .string("Sources"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Target: AppTarget"))
             #expect(message.contains("File1.swift"))
             #expect(message.contains("File2.swift"))
@@ -153,7 +153,7 @@ struct ListSynchronizedFolderExceptionsToolTests {
             "folder_path": .string("Sources"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Target: AppTarget"))
             #expect(message.contains("Target: TestTarget"))
             #expect(message.contains("File1.swift"))

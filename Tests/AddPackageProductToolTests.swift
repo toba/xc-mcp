@@ -87,7 +87,7 @@ struct AddPackageProductToolTests {
             "product_name": Value.string("HTTPTypes"),
         ])
 
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Linked product 'HTTPTypes' to target 'Tests'"))
         } else {
             Issue.record("Expected text content")

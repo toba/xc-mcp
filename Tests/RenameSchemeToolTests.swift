@@ -72,7 +72,7 @@ struct RenameSchemeToolTests {
             "new_name": Value.string("NewScheme"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -104,7 +104,7 @@ struct RenameSchemeToolTests {
             "new_name": Value.string("NewScheme"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -144,7 +144,7 @@ struct RenameSchemeToolTests {
             "new_name": Value.string("SchemeB"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }

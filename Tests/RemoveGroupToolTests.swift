@@ -64,7 +64,7 @@ struct RemoveGroupToolTests {
             "group_name": Value.string("EmptyGroup"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -96,7 +96,7 @@ struct RemoveGroupToolTests {
             "group_name": Value.string("DoesNotExist"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -136,7 +136,7 @@ struct RemoveGroupToolTests {
             "group_name": Value.string("ParentGroup"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -178,7 +178,7 @@ struct RemoveGroupToolTests {
             "recursive": Value.bool(true),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -223,7 +223,7 @@ struct RemoveGroupToolTests {
             "group_name": Value.string("Sources/Models"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }

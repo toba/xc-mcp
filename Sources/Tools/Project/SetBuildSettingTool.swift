@@ -14,7 +14,8 @@ public struct SetBuildSettingTool: Sendable {
     public func tool() -> Tool {
         Tool(
             name: "set_build_setting",
-            description: "Modify build settings for a target",
+            description:
+            "Modify build settings for a target or the project. Omit target_name to set project-level build settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -26,7 +27,9 @@ public struct SetBuildSettingTool: Sendable {
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
-                        "description": .string("Name of the target to modify"),
+                        "description": .string(
+                            "Name of the target to modify. Omit to set project-level build settings.",
+                        ),
                     ]),
                     "configuration": .object([
                         "type": .string("string"),
@@ -42,7 +45,7 @@ public struct SetBuildSettingTool: Sendable {
                     ]),
                 ]),
                 "required": .array([
-                    .string("project_path"), .string("target_name"), .string("configuration"),
+                    .string("project_path"), .string("configuration"),
                     .string("setting_name"), .string("setting_value"),
                 ]),
             ]),
@@ -51,14 +54,20 @@ public struct SetBuildSettingTool: Sendable {
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
               case let .string(configuration) = arguments["configuration"],
               case let .string(settingName) = arguments["setting_name"],
               case let .string(settingValue) = arguments["setting_value"]
         else {
             throw MCPError.invalidParams(
-                "project_path, target_name, configuration, setting_name, and setting_value are required",
+                "project_path, configuration, setting_name, and setting_value are required",
             )
+        }
+
+        let targetName: String?
+        if case let .string(name) = arguments["target_name"] {
+            targetName = name
+        } else {
+            targetName = nil
         }
 
         do {
@@ -68,24 +77,45 @@ public struct SetBuildSettingTool: Sendable {
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            // Find the target
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
-            else {
-                return CallTool.Result(
-                    content: [
-                        .text("Target '\(targetName)' not found in project"),
-                    ],
-                )
-            }
+            let configList: XCConfigurationList
+            let scopeLabel: String
 
-            // Get the build configuration list for the target
-            guard let configList = target.buildConfigurationList else {
-                return CallTool.Result(
-                    content: [
-                        .text("Target '\(targetName)' has no build configuration list"),
-                    ],
-                )
+            if let targetName {
+                // Target-level build settings
+                guard
+                    let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                        $0.name == targetName
+                    })
+                else {
+                    return CallTool.Result(
+                        content: [
+                            .text("Target '\(targetName)' not found in project"),
+                        ],
+                    )
+                }
+
+                guard let list = target.buildConfigurationList else {
+                    return CallTool.Result(
+                        content: [
+                            .text("Target '\(targetName)' has no build configuration list"),
+                        ],
+                    )
+                }
+                configList = list
+                scopeLabel = "target '\(targetName)'"
+            } else {
+                // Project-level build settings
+                guard let project = xcodeproj.pbxproj.rootObject,
+                      let list = project.buildConfigurationList
+                else {
+                    return CallTool.Result(
+                        content: [
+                            .text("Project has no build configuration list"),
+                        ],
+                    )
+                }
+                configList = list
+                scopeLabel = "project"
             }
 
             var modifiedConfigurations: [String] = []
@@ -106,7 +136,7 @@ public struct SetBuildSettingTool: Sendable {
                     return CallTool.Result(
                         content: [
                             .text(
-                                "Configuration '\(configuration)' not found for target '\(targetName)'",
+                                "Configuration '\(configuration)' not found for \(scopeLabel)",
                             ),
                         ],
                     )
@@ -123,7 +153,7 @@ public struct SetBuildSettingTool: Sendable {
             return CallTool.Result(
                 content: [
                     .text(
-                        "Successfully set '\(settingName)' to '\(settingValue)' for target '\(targetName)' in configuration(s): \(configurationsText)",
+                        "Successfully set '\(settingName)' to '\(settingValue)' for \(scopeLabel) in configuration(s): \(configurationsText)",
                     ),
                 ],
             )

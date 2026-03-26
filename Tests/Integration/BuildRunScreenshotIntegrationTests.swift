@@ -67,7 +67,7 @@ struct BuildIntegrationTests {
 
     private func textContent(_ result: CallTool.Result) -> String {
         result.content.compactMap { item in
-            if case let .text(text) = item { return text }
+            if case let .text(text, _, _) = item { return text }
             return nil
         }.joined(separator: "\n")
     }
@@ -182,7 +182,7 @@ struct SlowIntegrationTests {
 
     private func textContent(_ result: CallTool.Result) -> String {
         result.content.compactMap { item in
-            if case let .text(text) = item { return text }
+            if case let .text(text, _, _) = item { return text }
             return nil
         }.joined(separator: "\n")
     }

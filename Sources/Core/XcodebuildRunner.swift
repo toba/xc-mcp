@@ -202,7 +202,7 @@ public struct XcodebuildRunner: Sendable {
         let exitCode: Int32 =
             switch executionResult.terminationStatus {
                 case let .exited(code): code
-                case let .unhandledException(code): code
+                case let .signaled(code): code
             }
 
         return XcodebuildResult(

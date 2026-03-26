@@ -117,7 +117,7 @@ struct AddSwiftPackageToolTests {
 
         let result = try tool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -167,7 +167,7 @@ struct AddSwiftPackageToolTests {
 
         let result = try tool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -214,7 +214,7 @@ struct AddSwiftPackageToolTests {
         // Try to add same package again
         let result = try tool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -243,7 +243,7 @@ struct AddSwiftPackageToolTests {
 
         let result = try tool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -285,7 +285,7 @@ struct AddSwiftPackageToolTests {
         // Try to add same package again
         let result = try tool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -318,7 +318,7 @@ struct AddSwiftPackageToolTests {
 
         let result = try tool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -400,7 +400,7 @@ struct AddSwiftPackageToolTests {
             "product_name": Value.string("Collections"),
         ]
         let result1 = try tool.execute(arguments: args1)
-        guard case let .text(msg1) = result1.content.first else {
+        guard case let .text(msg1, _, _) = result1.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -415,7 +415,7 @@ struct AddSwiftPackageToolTests {
             "product_name": Value.string("Collections"),
         ]
         let result2 = try tool.execute(arguments: args2)
-        guard case let .text(msg2) = result2.content.first else {
+        guard case let .text(msg2, _, _) = result2.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -473,7 +473,7 @@ struct AddSwiftPackageToolTests {
             "product_name": Value.string("SharedKit"),
         ]
         let result2 = try tool.execute(arguments: args2)
-        guard case let .text(msg2) = result2.content.first else {
+        guard case let .text(msg2, _, _) = result2.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -511,7 +511,7 @@ struct AddSwiftPackageToolTests {
             "product_name": Value.string("SwiftiomaticLib"),
         ]
         let result1 = try tool.execute(arguments: args1)
-        guard case let .text(msg1) = result1.content.first else {
+        guard case let .text(msg1, _, _) = result1.content.first else {
             Issue.record("Expected text result for first add")
             return
         }
@@ -525,7 +525,7 @@ struct AddSwiftPackageToolTests {
             "product_name": Value.string("SwiftiomaticLib"),
         ]
         let result2 = try tool.execute(arguments: args2)
-        guard case let .text(msg2) = result2.content.first else {
+        guard case let .text(msg2, _, _) = result2.content.first else {
             Issue.record("Expected text result for second add")
             return
         }

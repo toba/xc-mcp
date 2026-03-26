@@ -91,7 +91,7 @@ struct XctraceRecordToolTests {
 
         let result = try await tool.execute(arguments: ["action": .string("list")])
 
-        guard case let .text(text) = result.content.first else {
+        guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -147,7 +147,7 @@ struct XctraceListToolTests {
         let tool = XctraceListTool()
         let result = try await tool.execute(arguments: ["kind": .string("templates")])
 
-        guard case let .text(text) = result.content.first else {
+        guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }

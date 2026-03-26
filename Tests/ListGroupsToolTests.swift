@@ -74,7 +74,7 @@ struct ListGroupsToolTests {
         ])
 
         // Verify the result
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(
                 message.contains("Groups, folder references, and synchronized groups in project:"),
             )
@@ -123,7 +123,7 @@ struct ListGroupsToolTests {
         ])
 
         // Verify the result
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(
                 message.contains("Groups, folder references, and synchronized groups in project:"),
             )
@@ -189,7 +189,7 @@ struct ListGroupsToolTests {
         ])
 
         // Verify the result
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(
                 message.contains("Groups, folder references, and synchronized groups in project:"),
             )
@@ -237,7 +237,7 @@ struct ListGroupsToolTests {
         ])
 
         // Verify the result
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(
                 message.contains("Groups, folder references, and synchronized groups in project:"),
             )

@@ -86,7 +86,7 @@ struct AddFileToolTests {
         let result = try tool.execute(arguments: arguments)
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Successfully added file 'file.swift'"))
         } else {
             Issue.record("Expected text content")
@@ -126,7 +126,7 @@ struct AddFileToolTests {
         let result = try tool.execute(arguments: arguments)
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Successfully added file 'file.swift'"))
         } else {
             Issue.record("Expected text content")
@@ -168,7 +168,7 @@ struct AddFileToolTests {
         let result = try tool.execute(arguments: arguments)
 
         #expect(result.content.count == 1)
-        if case let .text(content) = result.content[0] {
+        if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Successfully added file 'file.swift' to target 'TestApp'"))
         } else {
             Issue.record("Expected text content")
@@ -265,7 +265,7 @@ struct AddFileToolTests {
 
         let result = try tool.execute(arguments: args)
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -358,7 +358,7 @@ struct AddFileToolTests {
         ]
 
         let result = try tool.execute(arguments: args)
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -453,7 +453,7 @@ struct AddFileToolTests {
             "group_name": Value.string("Components/TableView"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }

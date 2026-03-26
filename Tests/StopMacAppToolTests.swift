@@ -61,7 +61,7 @@ struct StopMacAppToolTests {
             "pid": .int(Int(pid)),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -91,7 +91,7 @@ struct StopMacAppToolTests {
             "force": .bool(true),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -108,7 +108,7 @@ struct StopMacAppToolTests {
             "pid": .int(99999),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -134,7 +134,7 @@ struct StopMacAppToolTests {
             // force: false (default) — should try SIGTERM, timeout, then SIGKILL
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -151,7 +151,7 @@ struct StopMacAppToolTests {
             "app_name": .string("NonExistentApp_XCMCPTest_12345"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }

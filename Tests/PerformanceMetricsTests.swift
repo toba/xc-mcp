@@ -372,7 +372,7 @@ struct PerformanceMetricsTests {
             "project_path": .string(projDir.path),
         ])
 
-        guard case let .text(text) = result.content.first else {
+        guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -456,7 +456,7 @@ struct PerformanceMetricsTests {
             "project_path": .string(projDir.path),
         ])
 
-        guard case let .text(text) = result.content.first else {
+        guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -552,7 +552,7 @@ struct PerformanceMetricsTests {
             "target_name": .string("TargetA"),
         ])
 
-        guard case let .text(text) = result.content.first else {
+        guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -606,7 +606,7 @@ struct PerformanceMetricsTests {
             "project_path": .string(projDir.path),
         ])
 
-        guard case let .text(text) = result.content.first else {
+        guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -689,7 +689,7 @@ struct PerformanceMetricsTests {
             "metric_filter": .string("memory"),
         ])
 
-        guard case let .text(text) = result.content.first else {
+        guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }

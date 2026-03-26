@@ -74,7 +74,7 @@ struct AddCopyFilesPhaseTests {
             "destination": .string("resources"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Successfully created Copy Files phase"))
             #expect(message.contains("Copy Styles"))
             #expect(message.contains("resources"))
@@ -108,7 +108,7 @@ struct AddCopyFilesPhaseTests {
             "subpath": .string("Extensions"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Subpath: Extensions"))
         } else {
             Issue.record("Expected text result")
@@ -147,7 +147,7 @@ struct AddCopyFilesPhaseTests {
             "destination": .string("resources"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("already exists"))
         } else {
             Issue.record("Expected text result")
@@ -189,7 +189,7 @@ struct AddCopyFilesPhaseTests {
             "destination": .string("resources"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("not found"))
         } else {
             Issue.record("Expected text result")
@@ -262,7 +262,7 @@ struct ListCopyFilesPhasesTests {
             "target_name": .string("App"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Copy Styles"))
             #expect(message.contains("Resources"))
             #expect(message.contains("Subpath: styles"))
@@ -284,7 +284,7 @@ struct ListCopyFilesPhasesTests {
             "target_name": .string("App"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("No Copy Files build phases found"))
         } else {
             Issue.record("Expected text result")
@@ -304,7 +304,7 @@ struct ListCopyFilesPhasesTests {
             "target_name": .string("NonExistent"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("not found"))
         } else {
             Issue.record("Expected text result")
@@ -399,7 +399,7 @@ struct AddToCopyFilesPhaseTests {
             "files": .array([.string(testFilePath.string)]),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Added"))
             #expect(message.contains("config.plist"))
         } else {
@@ -429,7 +429,7 @@ struct AddToCopyFilesPhaseTests {
             "files": .array([.string("file.swift")]),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("not found"))
         } else {
             Issue.record("Expected text result")
@@ -560,7 +560,7 @@ struct AddToCopyFilesPhaseTests {
             "files": .array([.string("nonexistent.plist")]),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("not found in project"))
         } else {
             Issue.record("Expected text result")
@@ -636,7 +636,7 @@ struct RemoveCopyFilesPhaseTests {
             "phase_name": .string("Copy Styles"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Successfully removed"))
             #expect(message.contains("Copy Styles"))
         } else {
@@ -665,7 +665,7 @@ struct RemoveCopyFilesPhaseTests {
             "phase_name": .string("NonExistent"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("not found"))
         } else {
             Issue.record("Expected text result")
@@ -686,7 +686,7 @@ struct RemoveCopyFilesPhaseTests {
             "phase_name": .string("Copy Styles"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("not found"))
         } else {
             Issue.record("Expected text result")
@@ -740,7 +740,7 @@ struct RemoveCopyFilesPhaseTests {
             "phase_name": .string("Copy Configs"),
         ])
 
-        if case let .text(message) = result.content.first {
+        if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Successfully removed"))
         } else {
             Issue.record("Expected text result")

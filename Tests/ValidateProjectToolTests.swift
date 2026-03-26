@@ -50,7 +50,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -100,7 +100,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -139,7 +139,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -200,7 +200,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -245,7 +245,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -302,7 +302,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -344,7 +344,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -433,7 +433,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -466,7 +466,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -515,7 +515,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }
@@ -582,7 +582,7 @@ struct ValidateProjectToolTests {
             "project_path": .string(projectPath.string),
         ])
 
-        guard case let .text(content) = result.content.first else {
+        guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
             return
         }

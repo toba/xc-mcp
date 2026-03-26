@@ -69,7 +69,7 @@ struct RemoveTargetToolTests {
         let result = try tool.execute(arguments: args)
 
         // Check the result contains success message
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -106,7 +106,7 @@ struct RemoveTargetToolTests {
         let result = try tool.execute(arguments: args)
 
         // Check the result contains not found message
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -151,7 +151,7 @@ struct RemoveTargetToolTests {
         let result = try removeTool.execute(arguments: removeArgs)
 
         // Check the result contains success message
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
@@ -214,7 +214,7 @@ struct RemoveTargetToolTests {
             "target_name": Value.string("LibTarget"),
         ])
 
-        guard case let .text(message) = result.content.first else {
+        guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
             return
         }
