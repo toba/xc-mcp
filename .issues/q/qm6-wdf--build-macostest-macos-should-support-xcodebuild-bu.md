@@ -7,11 +7,11 @@ priority: high
 tags:
     - xc-build
 created_at: 2026-03-27T00:14:19Z
-updated_at: 2026-03-27T00:29:33Z
+updated_at: 2026-03-27T01:06:15Z
 sync:
     github:
         issue_number: "243"
-        synced_at: "2026-03-27T00:34:35Z"
+        synced_at: "2026-03-27T01:08:28Z"
 ---
 
 ## Problem
@@ -114,3 +114,62 @@ Added `build_settings` parameter (object/dictionary) to all tools that invoke xc
 - **Sources/Tools/Device/BuildDeviceTool.swift** — added `build_settings` schema + pass to runner
 - **Sources/Tools/Device/BuildDeployDeviceTool.swift** — added `build_settings` schema + pass to runner
 - **Sources/Tools/Device/TestDeviceTool.swift** — added `build_settings` schema + pass to runner
+
+
+
+## Update: Not a missing feature — the setting IS being ignored
+
+Further testing shows that `xcrun xcodebuild -project ... -scheme Standard -destination platform=macOS -configuration Debug build` (the exact command the MCP tool constructs) works correctly from the shell — no parameter pack errors, target-level `SWIFT_ENABLE_EXPLICIT_MODULES = NO` is respected.
+
+The bug is specific to how the MCP tool invokes the process (via Swift `Subprocess`). Something in the `Subprocess.run(.name("xcrun"), arguments: ["xcodebuild"] + args, environment: environment)` call is causing the build setting to be ignored. Possible causes:
+- Environment variables stripped or different in `Subprocess` context
+- Working directory difference
+- Process inheritance difference
+- DerivedData cache corruption specific to MCP server process
+
+The `build_settings` override feature is still useful as a general-purpose workaround, but the root cause is the MCP tool's process invocation not matching shell behavior.
+
+
+
+## Investigation Results (2026-03-26)
+
+### Key Finding: NOT an xc-mcp bug
+
+The shell build fails identically to the MCP build. The original claim that "the identical command works from the shell" was incorrect.
+
+### Test Matrix
+
+| Test | Result |
+|------|--------|
+| MCP `build_macos` (no overrides) | FAIL — 5 param pack + 2 @SQLTable + 802 linker |
+| Shell `xcrun xcodebuild ... build` (no overrides) | FAIL — identical errors |
+| MCP with `SWIFT_ENABLE_EXPLICIT_MODULES=NO` | FAIL — same errors |
+| MCP with both `SWIFT_ENABLE_EXPLICIT_MODULES=NO` + `COMPILATION_CACHE_ENABLE_CACHING=NO` | FAIL — same errors |
+| Shell with both overrides + clean DerivedData | FAIL — same errors |
+| All tests confirm: `export SWIFT_ENABLE_EXPLICIT_MODULES\=NO` IS applied | Overrides work, errors persist |
+
+### Root Cause Analysis
+
+1. **Parameter pack errors are a Swift 6.2/Xcode 26.4 compiler bug** — NOT caused by explicit modules. The errors ("cannot convert value of type X to expected argument type X" where both types are identical) occur regardless of explicit modules setting.
+
+2. **Compilation caching overrides explicit modules** — `COMPILATION_CACHE_ENABLE_CACHING=YES` (set at project level in Thesis) forces `SWIFT_ENABLE_EXPLICIT_MODULES=YES` even when the Core target sets it to `NO`. xcodebuild emits: `warning: swift compiler caching requires explicit module build (SWIFT_ENABLE_EXPLICIT_MODULES=YES)`. However, this is a **separate issue** from the parameter pack errors.
+
+3. **`SWIFT_ENABLE_EXPLICIT_MODULES=NO` is on Core target only, NOT project level** — project-level build settings don't have it. In Xcode 26 where the default is YES, this means all other targets build with explicit modules.
+
+### Build Settings Audit (Thesis.xcodeproj)
+
+| Setting | Level | Value |
+|---------|-------|-------|
+| `COMPILATION_CACHE_ENABLE_CACHING` | Project (all configs) | `YES` |
+| `SWIFT_ENABLE_EXPLICIT_MODULES` | Core target (all configs) | `NO` |
+| `SWIFT_ENABLE_EXPLICIT_MODULES` | Project level | NOT SET (Xcode 26 default = YES) |
+
+### The `build_settings` Feature
+
+The `build_settings` parameter added in commit d9feb8d works correctly — overrides are passed as positional args and xcodebuild applies them. However, the parameter pack errors are not fixed by any combination of overrides because they're a Swift compiler bug, not a build settings issue.
+
+### References
+
+- Xcode 26 Release Notes: "Starting from Xcode 26, Swift explicit modules will be the default mode for building all Swift targets."
+- Compilation caching: "Compilation caching has been introduced as an opt-in feature" — it requires `SWIFT_ENABLE_EXPLICIT_MODULES=YES`
+- The 39 build failures break down as: 5 parameter pack type errors + 2 @SQLTable macro crashes + 32 cascading linker errors (Core fails → all dependents fail to link)
