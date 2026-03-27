@@ -41,7 +41,7 @@ struct SwiftSymbolsToolTests {
     // Foundation symbol graph extraction takes 30-60s, too slow for CI.
     // Testing module is fast (~18s) and validates the same code path.
 
-    @Test
+    @Test(.timeLimit(.minutes(2)))
     func `Extract Testing module and find Trait protocol`() async throws {
         let result = try await tool.execute(arguments: [
             "module": .string("Testing"),
@@ -57,7 +57,7 @@ struct SwiftSymbolsToolTests {
         #expect(text.lowercased().contains("trait"))
     }
 
-    @Test
+    @Test(.timeLimit(.minutes(2)))
     func `Query with no matches returns empty result`() async throws {
         let result = try await tool.execute(arguments: [
             "module": .string("Testing"),
@@ -73,7 +73,7 @@ struct SwiftSymbolsToolTests {
         #expect(text.contains("No symbols found."))
     }
 
-    @Test
+    @Test(.timeLimit(.minutes(2)))
     func `Kind filter restricts to protocols only`() async throws {
         let result = try await tool.execute(arguments: [
             "module": .string("Testing"),

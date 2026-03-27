@@ -104,7 +104,7 @@ public struct SwiftSymbolsTool: Sendable {
         let extractResult = try await ProcessResult.runSubprocess(
             .name("xcrun"),
             arguments: .init(extractArgs),
-            timeout: .seconds(30),
+            timeout: .seconds(60),
         )
         guard extractResult.succeeded else {
             throw MCPError.internalError(
