@@ -59,7 +59,8 @@ public struct TestMacOSTool: Sendable {
                                 "When true, only show compiler errors, linker errors, and the build summary — all warnings are suppressed. Useful for iterating on build errors without warning noise.",
                             ),
                         ]),
-                    ].merging([String: Value].testSchemaProperties) { _, new in new },
+                    ].merging([String: Value].testSchemaProperties) { _, new in new }
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -103,6 +104,7 @@ public struct TestMacOSTool: Sendable {
             scheme: scheme,
             destination: destination,
             configuration: configuration,
+            additionalArguments: arguments.buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on macOS",
             errorsOnly: errorsOnly,

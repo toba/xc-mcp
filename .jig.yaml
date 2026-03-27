@@ -3,7 +3,7 @@ citations:
       branch: main
       notes: Sources/Tools/Project/ (23 tools), Sources/Utilities/PathUtility.swift
       last_checked_sha: b29c9aae7fa57a9e65e50fa91dc55eebd1820d4b
-      last_checked_date: "2026-03-25T20:35:02Z"
+      last_checked_date: "2026-03-26T18:46:28Z"
       paths:
         high: [Sources/XcodeProjectMCP/*.swift]
         medium: [Package.swift, Tests/**]
@@ -12,7 +12,7 @@ citations:
       branch: master
       notes: Sources/Core/BuildOutputParser.swift, BuildOutputModels.swift, CoverageParser.swift
       last_checked_sha: 04b4352216a101470e54dd237ede2eb59e48709d
-      last_checked_date: "2026-03-25T20:35:02Z"
+      last_checked_date: "2026-03-26T18:46:28Z"
       paths:
         high: [Sources/OutputParser.swift, Sources/Models.swift, Sources/CoverageParser.swift]
         medium: [Sources/Configuration.swift, Package.swift, Tests/**]
@@ -21,7 +21,7 @@ citations:
       branch: main
       notes: Sources/Core/XCStrings/ (7 files)
       last_checked_sha: 3acc94fc608ef9a8588e43f6f15738e31690607f
-      last_checked_date: "2026-03-25T20:35:02Z"
+      last_checked_date: "2026-03-26T18:46:28Z"
       paths:
         high: [Sources/XCStringsKit/**]
         medium: [Sources/XCStringsMCP/**, Sources/XCStringsCLI/**, Tests/**]
@@ -29,8 +29,8 @@ citations:
     - repo: tuist/xcodeproj
       branch: main
       notes: All project manipulation tools via XcodeProj library
-      last_checked_sha: 8f9587fadc49e969642d24501bb60fb516c78827
-      last_checked_date: "2026-03-25T20:35:02Z"
+      last_checked_sha: 89a4ceb9f33d1baee06c9ef72f4ccb984a47a1e3
+      last_checked_date: "2026-03-26T18:46:28Z"
       paths:
         high: [Sources/XcodeProj/Objects/**, Sources/XcodeProj/Scheme/**, Sources/XcodeProj/Project/**]
         medium: [Sources/XcodeProj/Utils/**, Sources/XcodeProj/Extensions/**, Package.swift, CHANGELOG.md, Tests/**]
@@ -39,7 +39,7 @@ citations:
       branch: main
       notes: Monitor for features worth incorporating into xc-mcp
       last_checked_sha: b7f8a89a066a41f763637fa14354f15cb3fc3d27
-      last_checked_date: "2026-03-25T20:35:02Z"
+      last_checked_date: "2026-03-26T18:46:28Z"
       paths:
         high: [Sources/**/*Tool*.swift, Sources/**/*Handler*.swift]
         medium: [Sources/**/*.swift, Package.swift, Tests/**]
@@ -48,7 +48,7 @@ citations:
       branch: master
       notes: A tool to identify unused code in Swift projects.
       last_checked_sha: dcaddc2f713241d28d419cb2987af9ee5870592c
-      last_checked_date: "2026-03-25T20:35:02Z"
+      last_checked_date: "2026-03-26T18:46:28Z"
       paths:
         high: [Sources/**/*.swift]
         medium: [Package.swift]

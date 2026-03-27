@@ -5,17 +5,24 @@
 ### ✨ Features
 
 - Support project-level build settings in `set_build_setting`; omit `target_name` to apply settings at the project level instead of a specific target
+- Add `build_settings` parameter to all build/test tools; pass xcodebuild build setting overrides (e.g. `SWIFT_ENABLE_EXPLICIT_MODULES=NO`) as highest-precedence positional arguments ([#243](https://github.com/toba/xc-mcp/issues/243))
 
 ### 🐞 Fixes
 
 - Fix `add_swift_package` crashing with SIGTRAP on projects with sub-project references; work around XcodeProj `sortProjectReferences` force-unwrap of nil `PBXFileElement.name` by backfilling from `path`
 - Fix `remove_target` leaving orphaned `PBXContainerItemProxy` and `PBXTargetDependency` entries in pbxproj; also search all target types instead of only native targets ([#237](https://github.com/toba/xc-mcp/issues/237))
 - Fix `PluralVariation` and `DeviceVariation` field types to match xcstrings JSON format; add `VariationValue` wrapper for correct decoding of plural/device variations ([#239](https://github.com/toba/xc-mcp/issues/239))
+- Fix device log capture requiring sudo; switch from `log collect --device-udid` to `log stream` background process ([#233](https://github.com/toba/xc-mcp/issues/233))
+- Fix `list_files` misleading `membershipExceptions` label; fix `remove_synchronized_folder_exception` not finding auto-created exception sets; add `add_package_product` tool for linking existing SPM products to targets ([#227](https://github.com/toba/xc-mcp/issues/227))
+- Fix `start_device_log_cap` unable to capture device logs; switch to `idevicesyslog` from libimobiledevice with CoreDevice-to-hardware UDID resolution ([#235](https://github.com/toba/xc-mcp/issues/235))
+- Fix `stop_device_log_cap` failing to collect logs from physical devices; correct `log collect --start` date format from ISO8601 to `yyyy-MM-dd HH:mm:ss` ([#232](https://github.com/toba/xc-mcp/issues/232))
+- Fix `remove_swift_package` leaving stale `PBXBuildFile` and `PBXSwiftPackageProductDependency` entries in pbxproj ([#234](https://github.com/toba/xc-mcp/issues/234))
 
 ### 🗜️ Tweaks
 
 - Extract `TestToolHelper` to deduplicate test tool validation/bundle/formatting logic across `TestSimTool`, `TestMacOSTool`, `TestDeviceTool`; replace `[String: Any]` with `Decodable` types in `DeviceCtlRunner`; fix lint warnings in `BuildResultFormatter`, `StartDeviceLogCapTool`, `ScaffoldModuleTool`
 - Upgrade to Swift 6.3, macOS 26, MCP SDK 0.12.0, `swift-subprocess` 0.4.0; migrate `TerminationStatus.unhandledException` to `.signaled`, `.combineWithOutput` to `.combinedWithOutput`, `.text` pattern matching to 3-element tuple
+- Swift review fixes from 2026-03-21 changes ([#236](https://github.com/toba/xc-mcp/issues/236))
 
 ## Week of Mar 15 – Mar 21, 2026
 

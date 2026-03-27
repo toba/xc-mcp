@@ -57,7 +57,8 @@ public struct TestDeviceTool: Sendable {
                                 "Build configuration (Debug or Release). Defaults to Debug.",
                             ),
                         ]),
-                    ].merging([String: Value].testSchemaProperties) { _, new in new },
+                    ].merging([String: Value].testSchemaProperties) { _, new in new }
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -91,6 +92,7 @@ public struct TestDeviceTool: Sendable {
             scheme: scheme,
             destination: "generic/platform=\(connectedDevice.platform)",
             configuration: configuration,
+            additionalArguments: arguments.buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on device '\(device)'",
         )

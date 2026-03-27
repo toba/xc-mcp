@@ -70,7 +70,7 @@ public struct BuildMacOSTool: Sendable {
                             "When true, runs 'build-for-testing' instead of 'build'. This compiles all test targets without executing them — useful for verifying test code compiles before committing to a full test run.",
                         ),
                     ]),
-                ]),
+                ].merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
                 "required": .array([]),
             ]),
         )
@@ -112,6 +112,7 @@ public struct BuildMacOSTool: Sendable {
                 destination: destination,
                 configuration: configuration,
                 action: action,
+                additionalArguments: arguments.buildSettingOverrides(),
                 environment: environment,
             )
 

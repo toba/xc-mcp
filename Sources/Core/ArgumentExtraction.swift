@@ -95,6 +95,31 @@ extension [String: Value] {
         return nil
     }
 
+    /// Extracts a string-to-string dictionary for the given key.
+    ///
+    /// - Parameter key: The argument key to look up.
+    /// - Returns: A dictionary of string key-value pairs. Returns empty dictionary if key is missing or not an object.
+    public func getStringDictionary(_ key: String) -> [String: String] {
+        guard case let .object(obj) = self[key] else {
+            return [:]
+        }
+        var result: [String: String] = [:]
+        for (k, v) in obj {
+            if case let .string(s) = v {
+                result[k] = s
+            }
+        }
+        return result
+    }
+
+    /// Extracts xcodebuild build setting overrides and returns them as `["KEY=VALUE", ...]`.
+    ///
+    /// - Parameter key: The argument key to look up. Defaults to `"build_settings"`.
+    /// - Returns: An array of `KEY=VALUE` strings suitable for xcodebuild positional arguments.
+    public func buildSettingOverrides(_ key: String = "build_settings") -> [String] {
+        getStringDictionary(key).map { "\($0.key)=\($0.value)" }.sorted()
+    }
+
     /// Extracts a string array for the given key.
     ///
     /// - Parameter key: The argument key to look up.
@@ -157,6 +182,24 @@ extension [String: Value] {
             normalized += "()"
         }
         return "\(parts[0])/\(parts[1])/\(normalized)"
+    }
+
+    /// Schema property for xcodebuild build setting overrides.
+    ///
+    /// Returns the `build_settings` property used across build and test tools.
+    public static var buildSettingsSchemaProperty: [String: Value] {
+        [
+            "build_settings": .object([
+                "type": .string("object"),
+                "additionalProperties": .object(["type": .string("string")]),
+                "description": .string(
+                    "Xcodebuild build setting overrides (key-value pairs). "
+                        + "Each entry is appended as KEY=VALUE to the xcodebuild invocation, "
+                        + "taking highest precedence in setting resolution. "
+                        + "Example: {\"SWIFT_ENABLE_EXPLICIT_MODULES\": \"NO\"}",
+                ),
+            ]),
+        ]
     }
 
     /// Schema properties for test selection and coverage parameters.

@@ -62,7 +62,7 @@ public struct BuildRunSimTool: Sendable {
                             "Bundle identifier of the app to launch. If not provided, will be derived from build settings.",
                         ),
                     ]),
-                ]),
+                ].merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
                 "required": .array([]),
             ]),
         )
@@ -90,6 +90,7 @@ public struct BuildRunSimTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
+                additionalArguments: arguments.buildSettingOverrides(),
                 environment: environment,
                 outputTimeout: XcodebuildRunner.deviceOutputTimeout,
             )

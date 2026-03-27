@@ -80,7 +80,7 @@ public struct BuildDebugMacOSTool: Sendable {
                             "Stop at the entry point before running. Defaults to false.",
                         ),
                     ]),
-                ]),
+                ].merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
                 "required": .array([]),
             ]),
         )
@@ -160,6 +160,7 @@ public struct BuildDebugMacOSTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
+                additionalArguments: arguments.buildSettingOverrides(),
                 environment: resolvedEnv,
                 timeout: Self.buildTimeout,
                 onProgress: { line in

@@ -62,7 +62,7 @@ public struct BuildSimTool: Sendable {
                             "Build configuration (Debug or Release). Defaults to Debug.",
                         ),
                     ]),
-                ]),
+                ].merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
                 "required": .array([]),
             ]),
         )
@@ -92,6 +92,7 @@ public struct BuildSimTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
+                additionalArguments: arguments.buildSettingOverrides(),
                 environment: environment,
                 outputTimeout: XcodebuildRunner.deviceOutputTimeout,
             )
