@@ -43,6 +43,7 @@ public struct ShowPerformanceBaselinesTool: Sendable {
                     ]),
                 ]),
             ]),
+            annotations: .readOnly,
         )
     }
 

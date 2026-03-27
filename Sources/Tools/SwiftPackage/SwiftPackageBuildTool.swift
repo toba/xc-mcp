@@ -54,6 +54,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -62,6 +62,7 @@ public struct DebugWatchpointTool: Sendable {
                 ]),
                 "required": .array([.string("action")]),
             ]),
+            annotations: .mutation,
         )
     }
 

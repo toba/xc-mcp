@@ -35,6 +35,7 @@ public struct SetSimAppearanceTool: Sendable {
                 ]),
                 "required": .array([.string("appearance")]),
             ]),
+            annotations: .mutation,
         )
     }
 

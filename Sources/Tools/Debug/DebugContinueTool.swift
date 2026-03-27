@@ -32,6 +32,7 @@ public struct DebugContinueTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

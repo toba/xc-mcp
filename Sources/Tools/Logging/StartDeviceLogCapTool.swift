@@ -54,6 +54,7 @@ public struct StartDeviceLogCapTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

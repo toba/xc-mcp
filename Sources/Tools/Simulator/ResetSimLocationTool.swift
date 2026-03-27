@@ -28,6 +28,7 @@ public struct ResetSimLocationTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -42,6 +42,7 @@ public struct AddPackageProductTool: Sendable {
                     .string("project_path"), .string("target_name"), .string("product_name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

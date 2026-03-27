@@ -30,6 +30,7 @@ public struct XCStringsBatchStatsCoverageTool: Sendable {
                 ]),
                 "required": .array([.string("files")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

@@ -58,6 +58,7 @@ public struct AddBuildPhaseTool: Sendable {
                     .string("phase_type"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -27,6 +27,7 @@ public struct ListDevicesTool: Sendable {
                 "properties": .object([:]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

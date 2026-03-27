@@ -45,6 +45,7 @@ public struct AddFrameworkTool: Sendable {
                     .string("project_path"), .string("target_name"), .string("framework_name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

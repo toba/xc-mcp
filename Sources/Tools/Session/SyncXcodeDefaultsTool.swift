@@ -32,6 +32,7 @@ public struct SyncXcodeDefaultsTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

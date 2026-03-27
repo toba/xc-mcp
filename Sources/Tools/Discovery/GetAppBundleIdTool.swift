@@ -49,6 +49,7 @@ public struct GetAppBundleIdTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

@@ -72,6 +72,7 @@ public struct ExportIconTool: Sendable {
                 ]),
                 "required": .array([.string("icon_path"), .string("output_path")]),
             ]),
+            annotations: .mutation,
         )
     }
 

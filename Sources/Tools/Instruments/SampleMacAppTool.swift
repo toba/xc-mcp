@@ -76,6 +76,7 @@ public struct SampleMacAppTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

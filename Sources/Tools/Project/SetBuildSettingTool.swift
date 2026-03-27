@@ -49,6 +49,7 @@ public struct SetBuildSettingTool: Sendable {
                     .string("setting_name"), .string("setting_value"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

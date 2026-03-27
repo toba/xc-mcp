@@ -37,6 +37,7 @@ public struct RemoveCopyFilesPhase: Sendable {
                     .string("project_path"), .string("target_name"), .string("phase_name"),
                 ]),
             ]),
+            annotations: .destructive,
         )
     }
 

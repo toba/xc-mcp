@@ -61,6 +61,7 @@ public struct SetSessionDefaultsTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

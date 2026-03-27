@@ -39,6 +39,7 @@ public struct SwiftFormatTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

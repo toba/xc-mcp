@@ -56,6 +56,7 @@ public struct InteractFindTool: Sendable {
                     "required": .array([]),
                 ],
             ),
+            annotations: .readOnly,
         )
     }
 

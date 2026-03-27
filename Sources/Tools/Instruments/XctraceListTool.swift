@@ -33,6 +33,7 @@ public struct XctraceListTool: Sendable {
                 ]),
                 "required": .array([.string("kind")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

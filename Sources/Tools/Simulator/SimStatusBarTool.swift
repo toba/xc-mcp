@@ -76,6 +76,7 @@ public struct SimStatusBarTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

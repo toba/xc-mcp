@@ -51,6 +51,7 @@ public struct DiscoverProjectsTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

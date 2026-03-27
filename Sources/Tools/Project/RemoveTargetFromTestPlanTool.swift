@@ -27,6 +27,7 @@ public struct RemoveTargetFromTestPlanTool: Sendable {
                 ]),
                 "required": .array([.string("test_plan_path"), .string("target_name")]),
             ]),
+            annotations: .destructive,
         )
     }
 

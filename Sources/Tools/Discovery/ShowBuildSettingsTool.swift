@@ -69,6 +69,7 @@ public struct ShowBuildSettingsTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

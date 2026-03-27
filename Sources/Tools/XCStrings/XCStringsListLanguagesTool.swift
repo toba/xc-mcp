@@ -22,6 +22,7 @@ public struct XCStringsListLanguagesTool: Sendable {
                 ]),
                 "required": .array([.string("file")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

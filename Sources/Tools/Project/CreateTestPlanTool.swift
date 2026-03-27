@@ -46,6 +46,7 @@ public struct CreateTestPlanTool: Sendable {
                 ]),
                 "required": .array([.string("project_path"), .string("name")]),
             ]),
+            annotations: .mutation,
         )
     }
 

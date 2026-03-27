@@ -69,6 +69,7 @@ public struct ProfileAppLaunchTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

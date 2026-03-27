@@ -43,6 +43,7 @@ public struct RenameTargetTool: Sendable {
                     .string("project_path"), .string("target_name"), .string("new_name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

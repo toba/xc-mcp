@@ -38,6 +38,7 @@ public struct StopDeviceLogCapTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

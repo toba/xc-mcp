@@ -44,6 +44,7 @@ public struct SetTestPlanSkippedTagsTool: Sendable {
                 ]),
                 "required": .array([.string("test_plan_path"), .string("tags")]),
             ]),
+            annotations: .mutation,
         )
     }
 

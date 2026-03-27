@@ -40,6 +40,7 @@ public struct GetSimAppPathTool: Sendable {
                 ]),
                 "required": .array([.string("bundle_id")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

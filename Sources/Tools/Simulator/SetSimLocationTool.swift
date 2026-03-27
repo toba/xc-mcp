@@ -40,6 +40,7 @@ public struct SetSimLocationTool: Sendable {
                 ]),
                 "required": .array([.string("latitude"), .string("longitude")]),
             ]),
+            annotations: .mutation,
         )
     }
 

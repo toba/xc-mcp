@@ -53,6 +53,7 @@ public struct CreateXcodeprojTool: Sendable {
                 ]),
                 "required": .array([.string("project_name"), .string("path")]),
             ]),
+            annotations: .mutation,
         )
     }
 

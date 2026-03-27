@@ -26,6 +26,7 @@ public struct ListTestPlansTool: Sendable {
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

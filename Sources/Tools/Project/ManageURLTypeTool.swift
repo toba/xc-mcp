@@ -69,6 +69,7 @@ public struct ManageURLTypeTool: Sendable {
                     .string("name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

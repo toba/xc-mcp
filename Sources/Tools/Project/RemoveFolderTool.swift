@@ -34,6 +34,7 @@ public struct RemoveFolderTool: Sendable {
                 ]),
                 "required": .array([.string("project_path"), .string("folder_path")]),
             ]),
+            annotations: .destructive,
         )
     }
 

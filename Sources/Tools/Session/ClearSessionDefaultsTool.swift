@@ -19,6 +19,7 @@ public struct ClearSessionDefaultsTool: Sendable {
                 "properties": .object([:]),
                 "required": .array([]),
             ]),
+            annotations: .destructive,
         )
     }
 

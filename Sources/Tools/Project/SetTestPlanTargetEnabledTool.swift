@@ -36,6 +36,7 @@ public struct SetTestPlanTargetEnabledTool: Sendable {
                     .string("test_plan_path"), .string("target_name"), .string("enabled"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

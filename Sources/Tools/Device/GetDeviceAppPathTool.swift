@@ -36,6 +36,7 @@ public struct GetDeviceAppPathTool: Sendable {
                 ]),
                 "required": .array([.string("bundle_id")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

@@ -31,6 +31,7 @@ public struct ValidateProjectTool: Sendable {
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

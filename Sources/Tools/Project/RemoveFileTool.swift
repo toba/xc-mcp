@@ -39,6 +39,7 @@ public struct RemoveFileTool: Sendable {
                 ]),
                 "required": .array([.string("project_path"), .string("file_path")]),
             ]),
+            annotations: .destructive,
         )
     }
 

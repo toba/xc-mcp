@@ -42,6 +42,7 @@ public struct ManageWorkflowsTool: Sendable {
                 ]),
                 "required": .array([.string("action")]),
             ]),
+            annotations: .mutation,
         )
     }
 

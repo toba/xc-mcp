@@ -55,6 +55,7 @@ public struct GetMacAppPathTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

@@ -51,6 +51,7 @@ public struct AddCopyFilesPhase: Sendable {
                     .string("destination"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

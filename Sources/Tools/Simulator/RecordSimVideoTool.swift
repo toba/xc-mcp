@@ -66,6 +66,7 @@ public struct RecordSimVideoTool: Sendable {
                 ]),
                 "required": .array([.string("action")]),
             ]),
+            annotations: .mutation,
         )
     }
 

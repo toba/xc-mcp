@@ -83,6 +83,7 @@ public struct BuildDebugMacOSTool: Sendable {
                 ].merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

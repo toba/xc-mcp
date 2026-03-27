@@ -42,6 +42,7 @@ public struct DeployDeviceTool: Sendable {
                 ]),
                 "required": .array([.string("app_path"), .string("bundle_id")]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -27,6 +27,7 @@ public struct XCStringsDeleteKeyTool: Sendable {
                 ]),
                 "required": .array([.string("file"), .string("key")]),
             ]),
+            annotations: .destructive,
         )
     }
 

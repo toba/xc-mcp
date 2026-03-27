@@ -38,6 +38,7 @@ public struct InteractSetValueTool: Sendable {
                     "required": .array([.string("element_id"), .string("value")]),
                 ],
             ),
+            annotations: .mutation,
         )
     }
 

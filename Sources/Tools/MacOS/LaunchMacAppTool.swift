@@ -55,6 +55,7 @@ public struct LaunchMacAppTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -46,6 +46,7 @@ public struct LongPressTool: Sendable {
                 ]),
                 "required": .array([.string("x"), .string("y")]),
             ]),
+            annotations: .mutation,
         )
     }
 

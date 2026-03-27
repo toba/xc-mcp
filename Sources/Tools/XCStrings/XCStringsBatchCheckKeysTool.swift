@@ -33,6 +33,7 @@ public struct XCStringsBatchCheckKeysTool: Sendable {
                 ]),
                 "required": .array([.string("file"), .string("keys")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

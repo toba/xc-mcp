@@ -39,6 +39,7 @@ public struct RemoveFrameworkTool: Sendable {
                 ]),
                 "required": .array([.string("project_path"), .string("framework_name")]),
             ]),
+            annotations: .destructive,
         )
     }
 

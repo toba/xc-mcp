@@ -32,6 +32,7 @@ public struct RemoveAppExtensionTool: Sendable {
                 ]),
                 "required": .array([.string("project_path"), .string("extension_name")]),
             ]),
+            annotations: .destructive,
         )
     }
 

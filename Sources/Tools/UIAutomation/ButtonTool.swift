@@ -34,6 +34,7 @@ public struct ButtonTool: Sendable {
                 ]),
                 "required": .array([.string("button_name")]),
             ]),
+            annotations: .mutation,
         )
     }
 

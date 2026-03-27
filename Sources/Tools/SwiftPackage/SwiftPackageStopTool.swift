@@ -39,6 +39,7 @@ public struct SwiftPackageStopTool: Sendable {
                 ]),
                 "required": .array([.string("executable")]),
             ]),
+            annotations: .destructive,
         )
     }
 

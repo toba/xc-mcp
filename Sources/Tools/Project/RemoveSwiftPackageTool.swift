@@ -45,6 +45,7 @@ public struct RemoveSwiftPackageTool: Sendable {
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
+            annotations: .destructive,
         )
     }
 

@@ -44,6 +44,7 @@ public struct StopSimLogCapTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

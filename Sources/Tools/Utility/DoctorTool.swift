@@ -19,6 +19,7 @@ public struct DoctorTool: Sendable {
                 "properties": .object([:]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

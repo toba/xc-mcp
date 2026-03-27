@@ -25,6 +25,7 @@ public struct BootSimTool: Sendable {
                 ]),
                 "required": .array([.string("simulator")]),
             ]),
+            annotations: .mutation,
         )
     }
 

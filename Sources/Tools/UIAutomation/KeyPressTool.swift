@@ -34,6 +34,7 @@ public struct KeyPressTool: Sendable {
                 ]),
                 "required": .array([.string("key")]),
             ]),
+            annotations: .mutation,
         )
     }
 

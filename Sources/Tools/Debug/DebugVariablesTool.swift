@@ -38,6 +38,7 @@ public struct DebugVariablesTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

@@ -60,6 +60,7 @@ public struct DiagnosticsTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

@@ -79,6 +79,7 @@ public struct ShowMacLogTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

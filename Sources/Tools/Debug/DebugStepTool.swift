@@ -38,6 +38,7 @@ public struct DebugStepTool: Sendable {
                 ]),
                 "required": .array([.string("mode")]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -50,6 +50,7 @@ public struct DebugEvaluateTool: Sendable {
                 ]),
                 "required": .array([.string("expression")]),
             ]),
+            annotations: .mutation,
         )
     }
 

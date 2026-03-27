@@ -28,6 +28,7 @@ public struct SwiftPackageCleanTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .destructive,
         )
     }
 

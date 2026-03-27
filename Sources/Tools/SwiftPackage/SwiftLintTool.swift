@@ -39,6 +39,7 @@ public struct SwiftLintTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

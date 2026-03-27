@@ -37,6 +37,7 @@ public struct AddTargetToTestPlanTool: Sendable {
                     .string("project_path"), .string("test_plan_path"), .string("target_name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -30,6 +30,7 @@ public struct XCStringsGetKeyTool: Sendable {
                 ]),
                 "required": .array([.string("file"), .string("key")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

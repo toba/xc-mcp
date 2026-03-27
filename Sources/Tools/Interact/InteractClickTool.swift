@@ -43,6 +43,7 @@ public struct InteractClickTool: Sendable {
                     "required": .array([]),
                 ],
             ),
+            annotations: .mutation,
         )
     }
 

@@ -32,6 +32,7 @@ public struct DebugDetachTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .destructive,
         )
     }
 

@@ -23,6 +23,7 @@ public struct XCStringsListStaleTool: Sendable {
                 ]),
                 "required": .array([.string("file")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

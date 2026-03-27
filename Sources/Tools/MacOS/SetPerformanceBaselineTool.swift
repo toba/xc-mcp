@@ -85,6 +85,7 @@ public struct SetPerformanceBaselineTool: Sendable {
                 ]),
                 "required": .array([.string("target_name")]),
             ]),
+            annotations: .mutation,
         )
     }
 

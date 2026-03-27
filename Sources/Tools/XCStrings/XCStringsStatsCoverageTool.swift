@@ -29,6 +29,7 @@ public struct XCStringsStatsCoverageTool: Sendable {
                 ]),
                 "required": .array([.string("file")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

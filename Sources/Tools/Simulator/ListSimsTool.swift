@@ -38,6 +38,7 @@ public struct ListSimsTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

@@ -44,6 +44,7 @@ public struct LaunchAppSimTool: Sendable {
                 ]),
                 "required": .array([.string("bundle_id")]),
             ]),
+            annotations: .mutation,
         )
     }
 

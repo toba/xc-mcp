@@ -44,6 +44,7 @@ public struct SearchCrashReportsTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

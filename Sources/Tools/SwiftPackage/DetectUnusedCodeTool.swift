@@ -153,6 +153,7 @@ public struct DetectUnusedCodeTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

@@ -50,6 +50,7 @@ public struct DebugAttachSimTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

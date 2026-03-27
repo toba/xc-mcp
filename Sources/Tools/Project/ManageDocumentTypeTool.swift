@@ -83,6 +83,7 @@ public struct ManageDocumentTypeTool: Sendable {
                     .string("name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

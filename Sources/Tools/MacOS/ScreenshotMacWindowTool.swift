@@ -43,6 +43,7 @@ public struct ScreenshotMacWindowTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

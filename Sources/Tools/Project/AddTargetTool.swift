@@ -60,6 +60,7 @@ public struct AddTargetTool: Sendable {
                     .string("bundle_identifier"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

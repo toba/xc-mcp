@@ -77,6 +77,7 @@ public struct CreateSchemeTool: Sendable {
                     .string("project_path"), .string("scheme_name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

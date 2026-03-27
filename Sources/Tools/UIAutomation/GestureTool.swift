@@ -56,6 +56,7 @@ public struct GestureTool: Sendable {
                 ]),
                 "required": .array([.string("preset")]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -40,6 +40,7 @@ public struct TapTool: Sendable {
                 ]),
                 "required": .array([.string("x"), .string("y")]),
             ]),
+            annotations: .mutation,
         )
     }
 

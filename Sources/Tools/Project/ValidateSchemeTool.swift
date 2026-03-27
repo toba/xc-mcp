@@ -32,6 +32,7 @@ public struct ValidateSchemeTool: Sendable {
                 ]),
                 "required": .array([.string("project_path"), .string("scheme_name")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

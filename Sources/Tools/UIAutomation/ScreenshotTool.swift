@@ -40,6 +40,7 @@ public struct ScreenshotTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

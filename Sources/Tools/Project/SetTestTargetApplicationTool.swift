@@ -41,6 +41,7 @@ public struct SetTestTargetApplicationTool: Sendable {
                     .string("target_application"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

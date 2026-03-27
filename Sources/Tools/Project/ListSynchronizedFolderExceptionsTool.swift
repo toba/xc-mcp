@@ -36,6 +36,7 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
                     .string("project_path"), .string("folder_path"),
                 ]),
             ]),
+            annotations: .readOnly,
         )
     }
 

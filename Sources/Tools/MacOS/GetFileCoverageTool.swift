@@ -34,6 +34,7 @@ public struct GetFileCoverageTool: Sendable {
                 ]),
                 "required": .array([.string("result_bundle_path"), .string("file")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

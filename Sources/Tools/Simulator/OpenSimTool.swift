@@ -22,6 +22,7 @@ public struct OpenSimTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

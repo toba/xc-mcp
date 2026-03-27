@@ -27,6 +27,7 @@ public struct ListBuildConfigurationsTool: Sendable {
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

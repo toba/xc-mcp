@@ -35,6 +35,7 @@ public struct InteractKeyTool: Sendable {
                 ]),
                 "required": .array([.string("key")]),
             ]),
+            annotations: .mutation,
         )
     }
 

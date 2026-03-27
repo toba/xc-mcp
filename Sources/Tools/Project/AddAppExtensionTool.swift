@@ -145,6 +145,7 @@ public struct AddAppExtensionTool: Sendable {
                     .string("bundle_identifier"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

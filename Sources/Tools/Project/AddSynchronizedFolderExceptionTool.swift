@@ -52,6 +52,7 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
                     .string("files"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

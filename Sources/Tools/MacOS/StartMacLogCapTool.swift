@@ -61,6 +61,7 @@ public struct StartMacLogCapTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

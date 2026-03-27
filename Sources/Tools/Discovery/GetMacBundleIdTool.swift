@@ -55,6 +55,7 @@ public struct GetMacBundleIdTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

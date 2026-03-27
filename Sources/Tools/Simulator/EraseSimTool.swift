@@ -34,6 +34,7 @@ public struct EraseSimTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .destructive,
         )
     }
 

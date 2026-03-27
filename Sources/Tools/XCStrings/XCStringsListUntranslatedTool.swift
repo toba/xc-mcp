@@ -26,6 +26,7 @@ public struct XCStringsListUntranslatedTool: Sendable {
                 ]),
                 "required": .array([.string("file"), .string("language")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

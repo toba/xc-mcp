@@ -44,6 +44,7 @@ public struct ListSchemesTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

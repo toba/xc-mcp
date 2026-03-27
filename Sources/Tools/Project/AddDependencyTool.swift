@@ -39,6 +39,7 @@ public struct AddDependencyTool: Sendable {
                     .string("project_path"), .string("target_name"), .string("dependency_name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

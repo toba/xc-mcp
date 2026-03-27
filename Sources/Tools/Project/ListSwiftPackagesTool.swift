@@ -27,6 +27,7 @@ public struct ListSwiftPackagesTool: Sendable {
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

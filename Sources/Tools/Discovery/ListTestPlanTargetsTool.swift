@@ -70,6 +70,7 @@ public struct ListTestPlanTargetsTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

@@ -60,6 +60,7 @@ public struct SwiftPackageTestTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

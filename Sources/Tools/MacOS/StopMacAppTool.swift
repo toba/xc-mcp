@@ -44,6 +44,7 @@ public struct StopMacAppTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .destructive,
         )
     }
 

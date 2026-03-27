@@ -92,6 +92,7 @@ public struct PreviewCaptureTool: Sendable {
                 ]),
                 "required": .array([.string("file_path")]),
             ]),
+            annotations: .mutation,
         )
     }
 

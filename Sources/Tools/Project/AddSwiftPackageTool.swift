@@ -53,6 +53,7 @@ public struct AddSwiftPackageTool: Sendable {
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
+            annotations: .mutation,
         )
     }
 

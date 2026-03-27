@@ -64,6 +64,7 @@ public struct TestMacOSTool: Sendable {
                 ),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

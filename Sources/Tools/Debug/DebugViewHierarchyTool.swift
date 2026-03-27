@@ -50,6 +50,7 @@ public struct DebugViewHierarchyTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

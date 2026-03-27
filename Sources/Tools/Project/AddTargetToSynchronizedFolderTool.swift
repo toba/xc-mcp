@@ -42,6 +42,7 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
                     .string("project_path"), .string("folder_path"), .string("target_name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

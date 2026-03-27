@@ -22,6 +22,7 @@ public struct XCStringsListKeysTool: Sendable {
                 ]),
                 "required": .array([.string("file")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

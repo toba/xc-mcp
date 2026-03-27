@@ -24,6 +24,7 @@ public struct XCStringsBatchListStaleTool: Sendable {
                 ]),
                 "required": .array([.string("files")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

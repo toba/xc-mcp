@@ -33,6 +33,7 @@ public struct InteractFocusTool: Sendable {
                     "required": .array([]),
                 ],
             ),
+            annotations: .mutation,
         )
     }
 

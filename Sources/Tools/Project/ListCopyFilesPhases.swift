@@ -31,6 +31,7 @@ public struct ListCopyFilesPhases: Sendable {
                 ]),
                 "required": .array([.string("project_path"), .string("target_name")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

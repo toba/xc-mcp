@@ -33,6 +33,7 @@ public struct InteractMenuTool: Sendable {
                     "required": .array([.string("menu_path")]),
                 ],
             ),
+            annotations: .mutation,
         )
     }
 

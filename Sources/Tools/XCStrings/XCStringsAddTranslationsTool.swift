@@ -33,6 +33,7 @@ public struct XCStringsAddTranslationsTool: Sendable {
                 ]),
                 "required": .array([.string("file"), .string("key"), .string("translations")]),
             ]),
+            annotations: .mutation,
         )
     }
 

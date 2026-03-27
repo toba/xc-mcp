@@ -33,6 +33,7 @@ public struct InstallAppDeviceTool: Sendable {
                 ]),
                 "required": .array([.string("app_path")]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -32,6 +32,7 @@ public struct DebugProcessStatusTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

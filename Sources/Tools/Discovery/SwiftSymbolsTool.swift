@@ -49,6 +49,7 @@ public struct SwiftSymbolsTool: Sendable {
                 ]),
                 "required": .array([.string("module")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

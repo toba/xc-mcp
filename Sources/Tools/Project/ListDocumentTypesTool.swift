@@ -32,6 +32,7 @@ public struct ListDocumentTypesTool: Sendable {
                 ]),
                 "required": .array([.string("project_path"), .string("target_name")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

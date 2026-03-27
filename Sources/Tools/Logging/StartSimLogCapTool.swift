@@ -46,6 +46,7 @@ public struct StartSimLogCapTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

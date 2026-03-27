@@ -31,6 +31,7 @@ public struct XCStringsRenameKeyTool: Sendable {
                 ]),
                 "required": .array([.string("file"), .string("oldKey"), .string("newKey")]),
             ]),
+            annotations: .mutation,
         )
     }
 

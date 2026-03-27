@@ -52,6 +52,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
                 ]),
                 "required": .array([.string("project_name"), .string("path")]),
             ]),
+            annotations: .mutation,
         )
     }
 

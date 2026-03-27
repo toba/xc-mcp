@@ -41,6 +41,7 @@ public struct DuplicateTargetTool: Sendable {
                     .string("project_path"), .string("source_target"), .string("new_target_name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

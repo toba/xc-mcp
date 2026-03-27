@@ -27,6 +27,7 @@ public struct ListTargetsTool: Sendable {
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

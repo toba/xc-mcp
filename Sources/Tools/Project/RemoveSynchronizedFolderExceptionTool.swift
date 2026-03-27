@@ -48,6 +48,7 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                     .string("project_path"), .string("folder_path"), .string("target_name"),
                 ]),
             ]),
+            annotations: .destructive,
         )
     }
 

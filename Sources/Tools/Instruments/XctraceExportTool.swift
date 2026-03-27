@@ -46,6 +46,7 @@ public struct XctraceExportTool: Sendable {
                 ]),
                 "required": .array([.string("input_path")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

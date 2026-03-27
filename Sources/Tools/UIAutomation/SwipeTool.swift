@@ -60,6 +60,7 @@ public struct SwipeTool: Sendable {
                     .string("start_x"), .string("start_y"), .string("end_x"), .string("end_y"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -46,6 +46,7 @@ public struct SwiftDiagnosticsTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

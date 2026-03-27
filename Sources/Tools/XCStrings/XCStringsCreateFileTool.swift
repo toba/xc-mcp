@@ -33,6 +33,7 @@ public struct XCStringsCreateFileTool: Sendable {
                 ]),
                 "required": .array([.string("file")]),
             ]),
+            annotations: .mutation,
         )
     }
 

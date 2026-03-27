@@ -54,6 +54,7 @@ public struct CleanTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .destructive,
         )
     }
 

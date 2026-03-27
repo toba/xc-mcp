@@ -33,6 +33,7 @@ public struct InteractUITreeTool: Sendable {
                     "required": .array([]),
                 ],
             ),
+            annotations: .readOnly,
         )
     }
 

@@ -50,6 +50,7 @@ public struct DebugBreakpointAddTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -31,6 +31,7 @@ public struct InstallAppSimTool: Sendable {
                 ]),
                 "required": .array([.string("app_path")]),
             ]),
+            annotations: .mutation,
         )
     }
 

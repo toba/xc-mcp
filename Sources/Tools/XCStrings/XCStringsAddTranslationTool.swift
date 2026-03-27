@@ -37,6 +37,7 @@ public struct XCStringsAddTranslationTool: Sendable {
                     .string("file"), .string("key"), .string("language"), .string("value"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

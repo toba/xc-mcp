@@ -39,6 +39,7 @@ public struct RenameGroupTool: Sendable {
                     .string("project_path"), .string("group_path"), .string("new_name"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -58,6 +58,7 @@ public struct TestSimTool: Sendable {
                 ),
                 "required": .array([]),
             ]),
+            annotations: .mutation,
         )
     }
 

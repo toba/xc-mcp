@@ -38,6 +38,7 @@ public struct DebugBreakpointRemoveTool: Sendable {
                 ]),
                 "required": .array([.string("breakpoint_id")]),
             ]),
+            annotations: .destructive,
         )
     }
 

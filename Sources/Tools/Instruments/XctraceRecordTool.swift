@@ -101,6 +101,7 @@ public struct XctraceRecordTool: Sendable {
                 ]),
                 "required": .array([.string("action")]),
             ]),
+            annotations: .mutation,
         )
     }
 

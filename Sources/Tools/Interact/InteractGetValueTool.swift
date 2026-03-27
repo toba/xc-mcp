@@ -32,6 +32,7 @@ public struct InteractGetValueTool: Sendable {
                     "required": .array([.string("element_id")]),
                 ],
             ),
+            annotations: .readOnly,
         )
     }
 

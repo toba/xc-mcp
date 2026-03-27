@@ -19,6 +19,7 @@ public struct ShowSessionDefaultsTool: Sendable {
                 "properties": .object([:]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

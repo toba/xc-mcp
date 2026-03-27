@@ -56,6 +56,7 @@ public struct DebugSymbolLookupTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

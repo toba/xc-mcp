@@ -36,6 +36,7 @@ public struct StopAppDeviceTool: Sendable {
                 ]),
                 "required": .array([.string("bundle_id")]),
             ]),
+            annotations: .destructive,
         )
     }
 

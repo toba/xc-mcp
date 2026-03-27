@@ -34,6 +34,7 @@ public struct SwiftPackageListTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

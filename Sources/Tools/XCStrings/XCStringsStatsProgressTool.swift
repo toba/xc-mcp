@@ -26,6 +26,7 @@ public struct XCStringsStatsProgressTool: Sendable {
                 ]),
                 "required": .array([.string("file"), .string("language")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

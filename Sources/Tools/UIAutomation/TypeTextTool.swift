@@ -34,6 +34,7 @@ public struct TypeTextTool: Sendable {
                 ]),
                 "required": .array([.string("text")]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -39,6 +39,7 @@ public struct RemoveGroupTool: Sendable {
                 ]),
                 "required": .array([.string("project_path"), .string("group_name")]),
             ]),
+            annotations: .destructive,
         )
     }
 

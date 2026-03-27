@@ -94,6 +94,7 @@ public struct ScaffoldModuleTool: Sendable {
                     .string("project_path"), .string("name"), .string("bundle_identifier"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -38,6 +38,7 @@ public struct DebugLLDBCommandTool: Sendable {
                 ]),
                 "required": .array([.string("command")]),
             ]),
+            annotations: .destructive,
         )
     }
 

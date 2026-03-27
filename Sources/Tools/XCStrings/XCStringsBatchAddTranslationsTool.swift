@@ -45,6 +45,7 @@ public struct XCStringsBatchAddTranslationsTool: Sendable {
                 ]),
                 "required": .array([.string("file"), .string("entries")]),
             ]),
+            annotations: .mutation,
         )
     }
 

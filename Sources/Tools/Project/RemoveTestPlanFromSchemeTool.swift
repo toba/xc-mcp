@@ -37,6 +37,7 @@ public struct RemoveTestPlanFromSchemeTool: Sendable {
                     .string("project_path"), .string("scheme_name"), .string("test_plan_path"),
                 ]),
             ]),
+            annotations: .destructive,
         )
     }
 

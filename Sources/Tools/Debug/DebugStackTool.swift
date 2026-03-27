@@ -38,6 +38,7 @@ public struct DebugStackTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .readOnly,
         )
     }
 

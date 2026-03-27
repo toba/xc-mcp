@@ -56,6 +56,7 @@ public struct DebugMemoryTool: Sendable {
                 ]),
                 "required": .array([.string("address")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

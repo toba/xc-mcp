@@ -92,6 +92,7 @@ public struct ManageTypeIdentifierTool: Sendable {
                     .string("kind"), .string("identifier"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

@@ -33,6 +33,7 @@ public struct StopAppSimTool: Sendable {
                 ]),
                 "required": .array([.string("bundle_id")]),
             ]),
+            annotations: .destructive,
         )
     }
 

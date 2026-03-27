@@ -34,6 +34,7 @@ public struct XCStringsDeleteTranslationsTool: Sendable {
                 ]),
                 "required": .array([.string("file"), .string("key"), .string("languages")]),
             ]),
+            annotations: .destructive,
         )
     }
 

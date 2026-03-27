@@ -43,6 +43,7 @@ public struct MoveFileTool: Sendable {
                     .string("project_path"), .string("old_path"), .string("new_path"),
                 ]),
             ]),
+            annotations: .mutation,
         )
     }
 

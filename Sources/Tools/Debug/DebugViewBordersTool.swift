@@ -50,6 +50,7 @@ public struct DebugViewBordersTool: Sendable {
                 ]),
                 "required": .array([.string("enabled")]),
             ]),
+            annotations: .mutation,
         )
     }
 

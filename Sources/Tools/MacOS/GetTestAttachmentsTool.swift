@@ -41,6 +41,7 @@ public struct GetTestAttachmentsTool: Sendable {
                 ]),
                 "required": .array([.string("result_bundle_path")]),
             ]),
+            annotations: .readOnly,
         )
     }
 

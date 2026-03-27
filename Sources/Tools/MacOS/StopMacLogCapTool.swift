@@ -52,6 +52,7 @@ public struct StopMacLogCapTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
+            annotations: .destructive,
         )
     }
 
