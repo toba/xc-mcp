@@ -113,6 +113,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case startMacLogCap = "start_mac_log_cap"
     case stopMacLogCap = "stop_mac_log_cap"
     case showMacLog = "show_mac_log"
+    case showBuildLog = "show_build_log"
     case screenshotMacWindow = "screenshot_mac_window"
 
     // Discovery tools
@@ -247,7 +248,7 @@ public enum ToolName: String, CaseIterable, Sendable {
             case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
                  .testMacOS, .getTestAttachments, .getCoverageReport, .getFileCoverage,
                  .getPerformanceMetrics, .setPerformanceBaseline, .showPerformanceBaselines,
-                 .startMacLogCap, .stopMacLogCap, .showMacLog, .screenshotMacWindow:
+                 .startMacLogCap, .stopMacLogCap, .showMacLog, .showBuildLog, .screenshotMacWindow:
                 return .macos
             // Discovery
             case .discoverProjs, .listSchemes, .showBuildSettings, .getAppBundleId,
@@ -516,6 +517,9 @@ public struct XcodeMCPServer: Sendable {
         let startMacLogCapTool = StartMacLogCapTool(sessionManager: sessionManager)
         let stopMacLogCapTool = StopMacLogCapTool(sessionManager: sessionManager)
         let showMacLogTool = ShowMacLogTool(sessionManager: sessionManager)
+        let showBuildLogTool = ShowBuildLogTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
         let screenshotMacWindowTool = ScreenshotMacWindowTool()
 
         // Create discovery tools
@@ -767,6 +771,7 @@ public struct XcodeMCPServer: Sendable {
             (.startMacLogCap, startMacLogCapTool.tool()),
             (.stopMacLogCap, stopMacLogCapTool.tool()),
             (.showMacLog, showMacLogTool.tool()),
+            (.showBuildLog, showBuildLogTool.tool()),
             (.screenshotMacWindow, screenshotMacWindowTool.tool()),
             // Discovery tools
             (.discoverProjs, discoverProjsTool.tool()),
@@ -1090,6 +1095,8 @@ public struct XcodeMCPServer: Sendable {
                     return await stopMacLogCapTool.execute(arguments: arguments)
                 case .showMacLog:
                     return try await showMacLogTool.execute(arguments: arguments)
+                case .showBuildLog:
+                    return try await showBuildLogTool.execute(arguments: arguments)
                 case .screenshotMacWindow:
                     return try await screenshotMacWindowTool.execute(arguments: arguments)
                 // Discovery tools

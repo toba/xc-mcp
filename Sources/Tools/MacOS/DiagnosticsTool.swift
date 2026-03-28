@@ -57,7 +57,7 @@ public struct DiagnosticsTool: Sendable {
                             "Maximum time in seconds for the build. Defaults to 300 (5 minutes).",
                         ),
                     ]),
-                ]),
+                ].merging([String: Value].noSanitizersSchemaProperty) { _, new in new }),
                 "required": .array([]),
             ]),
             annotations: .readOnly,
@@ -91,13 +91,16 @@ public struct DiagnosticsTool: Sendable {
             let buildOutput: XcodebuildResult
             var timedOut = false
             do {
+                let hasExplicitTimeout = arguments["timeout"] != nil
                 buildOutput = try await xcodebuildRunner.build(
                     projectPath: projectPath,
                     workspacePath: workspacePath,
                     scheme: scheme,
                     destination: "platform=macOS",
                     configuration: configuration,
+                    additionalArguments: arguments.noSanitizersArgs(),
                     timeout: timeout,
+                    outputTimeout: hasExplicitTimeout ? nil : XcodebuildRunner.outputTimeout,
                 )
             } catch let error as XcodebuildError {
                 // On timeout, use partial output for diagnostics instead of failing
@@ -119,7 +122,8 @@ public struct DiagnosticsTool: Sendable {
 
             // Step 5: Format combined output
             var output = formatDiagnostics(
-                parsed: parsed, buildFailed: buildFailed, lintSection: lintSection,
+                parsed: parsed, buildFailed: buildFailed, timedOut: timedOut,
+                lintSection: lintSection,
             )
 
             if timedOut {
@@ -139,7 +143,7 @@ public struct DiagnosticsTool: Sendable {
     }
 
     private func formatDiagnostics(
-        parsed: BuildResult, buildFailed: Bool, lintSection: String?,
+        parsed: BuildResult, buildFailed: Bool, timedOut: Bool = false, lintSection: String?,
     ) -> String {
         var sections: [String] = []
 
@@ -150,7 +154,10 @@ public struct DiagnosticsTool: Sendable {
         let hasErrors = !parsed.errors.isEmpty || !parsed.linkerErrors.isEmpty
 
         if hasWarnings || hasErrors || buildFailed {
-            let header = BuildResultFormatter.formatBuildResult(parsed, showWarnings: true)
+            let header = BuildResultFormatter.formatBuildResult(
+                parsed, showWarnings: true,
+                statusOverride: timedOut ? "Build interrupted (did not complete)" : nil,
+            )
             sections.append("## Build Diagnostics\n\n\(header)")
         }
 

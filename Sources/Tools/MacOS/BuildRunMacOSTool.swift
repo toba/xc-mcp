@@ -67,6 +67,7 @@ public struct BuildRunMacOSTool: Sendable {
                         ),
                     ]),
                 ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
+                    .merging([String: Value].noSanitizersSchemaProperty) { _, new in new }
                     .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
                 "required": .array([]),
             ]),
@@ -105,6 +106,7 @@ public struct BuildRunMacOSTool: Sendable {
             }
 
             // Step 1: Build
+            let hasExplicitTimeout = arguments["timeout"] != nil
             let buildResult = try await xcodebuildRunner.build(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
@@ -112,9 +114,10 @@ public struct BuildRunMacOSTool: Sendable {
                 destination: destination,
                 configuration: configuration,
                 additionalArguments: arguments.continueBuildingArgs() + arguments
-                    .buildSettingOverrides(),
+                    .noSanitizersArgs() + arguments.buildSettingOverrides(),
                 environment: environment,
                 timeout: timeout,
+                outputTimeout: hasExplicitTimeout ? nil : XcodebuildRunner.outputTimeout,
             )
 
             let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)

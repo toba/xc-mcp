@@ -20,11 +20,12 @@ public enum BuildResultFormatter {
         projectRoot: String? = nil,
         errorsOnly: Bool = false,
         showWarnings: Bool = false,
+        statusOverride: String? = nil,
     ) -> String {
         var parts: [String] = []
 
         // Header line
-        parts.append(formatHeader(result))
+        parts.append(formatHeader(result, statusOverride: statusOverride))
 
         // Errors
         if !result.errors.isEmpty {
@@ -189,10 +190,14 @@ public enum BuildResultFormatter {
 
     // MARK: - Header Formatting
 
-    private static func formatHeader(_ result: BuildResult) -> String {
+    private static func formatHeader(_ result: BuildResult,
+                                     statusOverride: String? = nil) -> String
+    {
         var components: [String] = []
 
-        if result.status == "success" {
+        if let override = statusOverride {
+            components.append(override)
+        } else if result.status == "success" {
             components.append("Build succeeded")
         } else {
             components.append("Build failed")

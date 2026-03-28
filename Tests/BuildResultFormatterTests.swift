@@ -1,5 +1,6 @@
 import Testing
 @testable import XCMCPCore
+import Foundation
 
 struct BuildResultFormatterTests {
     @Test
@@ -433,5 +434,190 @@ struct BuildResultFormatterTests {
 
         let formatted = BuildResultFormatter.formatBuildResult(result)
         #expect(formatted.contains("+1 cascade error from downstream targets hidden"))
+    }
+
+    // MARK: - Status Override (timeout/stuck builds)
+
+    @Test
+    func `Status override replaces Build succeeded header`() {
+        let result = BuildResult(
+            status: "success",
+            summary: BuildSummary(
+                errors: 0, warnings: 5, failedTests: 0, passedTests: nil, buildTime: "45.2s",
+            ),
+            errors: [],
+            warnings: [],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(
+            result, statusOverride: "Build interrupted (did not complete)",
+        )
+        #expect(formatted.contains("Build interrupted (did not complete)"))
+        #expect(!formatted.contains("Build succeeded"))
+        // Counts still present
+        #expect(formatted.contains("5 warning"))
+        #expect(formatted.contains("45.2s"))
+    }
+
+    @Test
+    func `Status override replaces Build failed header`() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 2, warnings: 0, failedTests: 0, passedTests: nil, buildTime: nil,
+            ),
+            errors: [
+                BuildError(file: "Foo.swift", line: 1, message: "type error"),
+                BuildError(file: "Bar.swift", line: 2, message: "missing return"),
+            ],
+            warnings: [],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(
+            result, statusOverride: "Build interrupted (did not complete)",
+        )
+        #expect(formatted.contains("Build interrupted (did not complete)"))
+        #expect(!formatted.contains("Build failed"))
+        // Errors still shown
+        #expect(formatted.contains("type error"))
+        #expect(formatted.contains("missing return"))
+    }
+
+    @Test
+    func `Nil status override preserves default header`() {
+        let result = BuildResult(
+            status: "success",
+            summary: BuildSummary(
+                errors: 0, warnings: 0, failedTests: 0, passedTests: nil, buildTime: "1.0s",
+            ),
+            errors: [],
+            warnings: [],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(
+            result, statusOverride: nil,
+        )
+        #expect(formatted.contains("Build succeeded"))
+    }
+
+    @Test
+    func `formatPartialDiagnostics uses interrupted header not Build succeeded`() {
+        let error = XcodebuildError.timeout(
+            duration: 60,
+            partialOutput: """
+            /src/Foo.swift:10:5: warning: unused variable 'x'
+            Build succeeded
+            """,
+        )
+
+        let result = error.formatPartialDiagnostics(projectRoot: nil)
+        var text = ""
+        if case let .text(t, _, _) = result.content[0] { text = t }
+        #expect(text.contains("Build timed out after 60 seconds"))
+        #expect(text.contains("Build interrupted (did not complete)"))
+        // The formatted header must NOT say "Build succeeded" — only "Build interrupted"
+        // (The raw partial output is not appended when diagnostics are present)
+        #expect(!text.contains("Build succeeded"))
+        #expect(result.isError == true)
+    }
+
+    @Test
+    func `formatPartialDiagnostics for stuck process uses interrupted header`() {
+        let error = XcodebuildError.stuckProcess(
+            noOutputFor: 30,
+            partialOutput: """
+            /src/Bar.swift:5:1: warning: deprecated API
+            Build succeeded
+            """,
+        )
+
+        let result = error.formatPartialDiagnostics(projectRoot: nil)
+        var text = ""
+        if case let .text(t, _, _) = result.content[0] { text = t }
+        #expect(text.contains("Build appears stuck"))
+        #expect(text.contains("Build interrupted (did not complete)"))
+        #expect(!text.contains("Build succeeded"))
+        #expect(result.isError == true)
+    }
+
+    // MARK: - Realistic timeout scenarios (what an agent actually sees)
+
+    @Test
+    func `Realistic timeout with warnings mimics Thesis build`() {
+        // Simulates a real project that compiles with warnings but times out
+        let error = XcodebuildError.timeout(
+            duration: 30,
+            partialOutput: """
+            CompileSwift normal arm64 /Users/dev/thesis/Sources/Views/ContentView.swift
+            CompileSwift normal arm64 /Users/dev/thesis/Sources/Models/Document.swift
+            /Users/dev/thesis/Sources/Views/ContentView.swift:45:12: warning: immutable value 'result' was never used; consider replacing with '_' or removing it
+            /Users/dev/thesis/Sources/Views/ContentView.swift:102:8: warning: expression of type 'Bool' is unused
+            /Users/dev/thesis/Sources/Models/Document.swift:23:5: warning: 'init(from:)' is deprecated
+            CompileSwift normal arm64 /Users/dev/thesis/Sources/App/ThesisApp.swift
+            /Users/dev/thesis/Sources/App/ThesisApp.swift:15:20: warning: will never be executed
+            Linking Thesis
+            GenerateDSYMFile /Users/dev/DerivedData/Build/Products/Debug/Thesis.app.dSYM /Users/dev/DerivedData/Build/Products/Debug/Thesis.app/Contents/MacOS/Thesis
+            Touch /Users/dev/DerivedData/Build/Products/Debug/Thesis.app
+            RegisterExecutionPolicyException /Users/dev/DerivedData/Build/Products/Debug/Thesis.app
+            ** BUILD SUCCEEDED **
+            """,
+        )
+
+        let result = error.formatPartialDiagnostics(
+            projectRoot: "/Users/dev/thesis", errorsOnly: true,
+        )
+        var text = ""
+        if case let .text(t, _, _) = result.content[0] { text = t }
+
+        // Agent must see "interrupted", never "succeeded"
+        #expect(text.contains("Build interrupted (did not complete)"))
+        #expect(!text.contains("Build succeeded"))
+        #expect(!text.contains("BUILD SUCCEEDED"))
+        // Timeout header is present
+        #expect(text.contains("Build timed out after 30 seconds"))
+        // isError so agent knows it's not a success
+        #expect(result.isError == true)
+
+        // Print what the agent actually sees
+        print("--- Agent sees this output ---")
+        print(text)
+        print("--- End agent output ---")
+    }
+
+    @Test
+    func `Stuck build with compilation progress shows target info`() {
+        // Simulates a build that stalls during compilation — the progress
+        // summary should show which targets are in progress
+        let error = XcodebuildError.stuckProcess(
+            noOutputFor: 30,
+            partialOutput: """
+            SwiftDriver GRDBCustom normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GRDBCustom' from project 'GRDBCustom')
+            SwiftDriver Core normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Core' from project 'Thesis')
+            Linking GRDB (in target 'GRDBCustom' from project 'GRDBCustom')
+            """,
+        )
+
+        let result = error.formatPartialDiagnostics(projectRoot: "/Users/dev/thesis")
+        var text = ""
+        if case let .text(t, _, _) = result.content[0] { text = t }
+
+        // Must show build progress
+        #expect(text.contains("Build progress when interrupted:"))
+        #expect(text.contains("In progress:"))
+        #expect(text.contains("Core"))
+        #expect(text.contains("Completed: GRDB"))
+        // Must NOT dump build settings
+        #expect(!text.contains("PRODUCT_NAME"))
+        // Header is correct
+        #expect(text.contains("Build interrupted (did not complete)"))
+        #expect(text.contains("Build appears stuck"))
+        #expect(result.isError == true)
+
+        print("--- Agent sees this output ---")
+        print(text)
+        print("--- End agent output ---")
     }
 }

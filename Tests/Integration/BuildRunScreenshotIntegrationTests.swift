@@ -187,3 +187,82 @@ struct SlowIntegrationTests {
         }.joined(separator: "\n")
     }
 }
+
+// MARK: - Build timeout output tests (real xcodebuild, short timeout)
+
+/// Tests that build timeout output is unambiguous — agents must never see
+/// "Build succeeded" when the build was interrupted by a timeout.
+///
+/// Builds ../thesis (sibling repo) with a 30s timeout to force a timeout/stuck error,
+/// then asserts the formatted output says "Build interrupted" not "Build succeeded".
+///
+/// Disabled by default — set `RUN_SLOW_TESTS=1` to include.
+@Suite(
+    .enabled(if: ProcessInfo.processInfo.environment["RUN_SLOW_TESTS"] != nil),
+    .serialized,
+)
+struct BuildTimeoutOutputTests {
+    private let xcodebuildRunner = XcodebuildRunner()
+    private let sessionManager = SessionManager()
+
+    /// Path to Thesis.xcodeproj (sibling repo).
+    private static let thesisProjectPath: String = {
+        let file = URL(fileURLWithPath: #filePath)
+        return file
+            .deletingLastPathComponent() // Integration/
+            .deletingLastPathComponent() // Tests/
+            .deletingLastPathComponent() // xc-mcp/
+            .deletingLastPathComponent() // toba/
+            .appendingPathComponent("thesis/Thesis.xcodeproj")
+            .path
+    }()
+
+    static var thesisAvailable: Bool {
+        FileManager.default.fileExists(atPath: thesisProjectPath)
+    }
+
+    @Test(.enabled(if: thesisAvailable), .timeLimit(.minutes(2)))
+    func `Build timeout output never says Build succeeded`() async throws {
+        let tool = BuildMacOSTool(
+            xcodebuildRunner: xcodebuildRunner,
+            sessionManager: sessionManager,
+        )
+
+        // Disable sanitizers — TSan massively slows compilation and prevents
+        // the build from reaching the phase where errors appear within the timeout.
+        let result = try await tool.execute(arguments: [
+            "project_path": .string(Self.thesisProjectPath),
+            "scheme": .string("Standard"),
+            "errors_only": .bool(true),
+            "continue_building_after_errors": .bool(true),
+            "timeout": .int(60),
+            "build_settings": .object([
+                "ENABLE_THREAD_SANITIZER": .string("NO"),
+                "ENABLE_ADDRESS_SANITIZER": .string("NO"),
+                "ENABLE_UNDEFINED_BEHAVIOR_SANITIZER": .string("NO"),
+            ]),
+        ])
+
+        let text = result.content.compactMap { item -> String? in
+            if case let .text(t, _, _) = item { return t }
+            return nil
+        }.joined(separator: "\n")
+
+        print("--- Build timeout output ---")
+        print(text)
+        print("--- End output ---")
+
+        // The tool returns isError=true on timeout
+        #expect(result.isError == true)
+        // Must say "interrupted", never "succeeded"
+        #expect(text.contains("Build interrupted (did not complete)"))
+        #expect(!text.contains("Build succeeded"))
+        #expect(!text.contains("BUILD SUCCEEDED"))
+        // Must have the timeout/stuck header
+        let hasTimeoutHeader = text.contains("timed out") || text.contains("appears stuck")
+        #expect(hasTimeoutHeader)
+        // Must NOT dump build settings
+        #expect(!text.contains("PRODUCT_NAME ="))
+        #expect(!text.contains("PRODUCT_BUNDLE_IDENTIFIER ="))
+    }
+}

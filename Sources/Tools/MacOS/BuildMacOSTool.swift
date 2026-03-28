@@ -79,6 +79,7 @@ public struct BuildMacOSTool: Sendable {
                         ),
                     ]),
                 ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
+                    .merging([String: Value].noSanitizersSchemaProperty) { _, new in new }
                     .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
                 "required": .array([]),
             ]),
@@ -121,6 +122,10 @@ public struct BuildMacOSTool: Sendable {
 
             let action = forTesting ? "build-for-testing" : "build"
 
+            // When the user sets an explicit timeout, disable the no-output timeout.
+            // Large targets can compile silently for minutes — the overall timeout
+            // is sufficient, and the no-output heuristic would kill the build prematurely.
+            let hasExplicitTimeout = arguments["timeout"] != nil
             let result = try await xcodebuildRunner.build(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
@@ -129,9 +134,10 @@ public struct BuildMacOSTool: Sendable {
                 configuration: configuration,
                 action: action,
                 additionalArguments: arguments.continueBuildingArgs() + arguments
-                    .buildSettingOverrides(),
+                    .noSanitizersArgs() + arguments.buildSettingOverrides(),
                 environment: environment,
                 timeout: timeout,
+                outputTimeout: hasExplicitTimeout ? nil : XcodebuildRunner.outputTimeout,
             )
 
             try ErrorExtractor.checkBuildSuccess(

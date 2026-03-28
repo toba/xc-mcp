@@ -545,19 +545,97 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
         let diagnostics = BuildResultFormatter.formatBuildResult(
             parsed, projectRoot: projectRoot, errorsOnly: errorsOnly,
             showWarnings: showWarnings,
+            statusOverride: "Build interrupted (did not complete)",
         )
 
         var text = "⚠️ \(header)\n\nPartial diagnostics from output collected before timeout:\n\n"
         text += diagnostics
 
-        if parsed.errors.isEmpty, parsed.warnings.isEmpty, parsed.linkerErrors.isEmpty {
-            let outputTail = String(partialOutput.suffix(2000))
-            if !outputTail.isEmpty {
-                text += "\n\nLast output:\n\(outputTail)"
+        // When no errors were captured, include build progress context so the agent
+        // knows what the build was doing when it timed out (e.g., which target was compiling).
+        if parsed.errors.isEmpty, parsed.linkerErrors.isEmpty {
+            let progressSummary = Self.extractBuildProgress(from: partialOutput)
+            if !progressSummary.isEmpty {
+                text += "\n\n" + progressSummary
             }
         }
 
         return CallTool.Result(content: [.text(text)], isError: true)
+    }
+
+    /// Extracts a concise build progress summary from raw xcodebuild output.
+    ///
+    /// Identifies which targets were being compiled and what the build was doing
+    /// when it was interrupted, giving agents a toehold for diagnosis.
+    private static func extractBuildProgress(from output: String) -> String {
+        var completedTargets: [String] = []
+        var inProgressTargets: [String] = []
+        var lastAction = ""
+
+        // Track target compilation starts/completions
+        for line in output.split(separator: "\n") {
+            let trimmed = line.drop(while: \.isWhitespace)
+
+            // "SwiftDriver <Target> normal arm64" = compilation started
+            if trimmed.hasPrefix("SwiftDriver "), trimmed.contains(" normal "),
+               !trimmed.contains("JobDiscovery")
+            {
+                let parts = trimmed.dropFirst("SwiftDriver ".count)
+                if let spaceIdx = parts.firstIndex(of: " ") {
+                    let target = String(parts[parts.startIndex ..< spaceIdx])
+                    if !inProgressTargets.contains(target) {
+                        inProgressTargets.append(target)
+                    }
+                }
+            }
+
+            // "Linking <product>" or "CodeSign" = target completed
+            if trimmed.hasPrefix("Linking ") {
+                let product = String(trimmed.dropFirst("Linking ".count)
+                    .prefix(while: { !$0.isWhitespace }))
+                completedTargets.append(product)
+                inProgressTargets.removeAll { $0 == product }
+            }
+
+            // Track last meaningful action
+            if trimmed.hasPrefix("CompileSwift ") || trimmed.hasPrefix("SwiftCompile ") ||
+                trimmed.hasPrefix("Linking ") || trimmed.hasPrefix("CodeSign ") ||
+                trimmed.hasPrefix("Ld ") || trimmed.hasPrefix("SwiftDriver ")
+            {
+                // Extract action + target from "(in target 'X' from project 'Y')"
+                if let targetRange = line.range(of: "in target '"),
+                   let endRange = line[targetRange.upperBound...].range(of: "'")
+                {
+                    let target = String(line[targetRange.upperBound ..< endRange.lowerBound])
+                    let action = String(trimmed.prefix(while: { !$0.isWhitespace }))
+                    lastAction = "\(action) in target '\(target)'"
+                }
+            }
+        }
+
+        var parts: [String] = []
+        parts.append("Build progress when interrupted:")
+        if !completedTargets.isEmpty {
+            parts.append("  Completed: \(completedTargets.joined(separator: ", "))")
+        }
+        if !inProgressTargets.isEmpty {
+            parts.append("  In progress: \(inProgressTargets.joined(separator: ", "))")
+        }
+        if !lastAction.isEmpty {
+            parts.append("  Last action: \(lastAction)")
+        }
+
+        // If we found nothing useful, return empty
+        if completedTargets.isEmpty, inProgressTargets.isEmpty { return "" }
+
+        parts.append("")
+        parts.append(
+            "No errors captured yet — the build is blocked on compilation of the above targets. "
+                +
+                "Retry with: timeout: 300, continue_building_after_errors: true, no_sanitizers: true",
+        )
+
+        return parts.joined(separator: "\n")
     }
 }
 

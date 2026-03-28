@@ -212,6 +212,35 @@ extension [String: Value] {
         ]
     }
 
+    /// Returns build setting overrides to disable all sanitizers if requested.
+    ///
+    /// Disables Thread Sanitizer, Address Sanitizer, and Undefined Behavior Sanitizer.
+    /// Sanitizers significantly slow compilation — disabling them can make a build
+    /// that hangs at 60s complete in time to produce actionable errors.
+    public func noSanitizersArgs() -> [String] {
+        getBool("no_sanitizers")
+            ? [
+                "ENABLE_THREAD_SANITIZER=NO",
+                "ENABLE_ADDRESS_SANITIZER=NO",
+                "ENABLE_UNDEFINED_BEHAVIOR_SANITIZER=NO",
+            ]
+            : []
+    }
+
+    /// Schema property for the no-sanitizers option.
+    public static var noSanitizersSchemaProperty: [String: Value] {
+        [
+            "no_sanitizers": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "Disable all sanitizers (Thread, Address, Undefined Behavior). "
+                        + "Sanitizers significantly slow compilation — use this when the build "
+                        + "hangs or times out during compilation. Defaults to false.",
+                ),
+            ]),
+        ]
+    }
+
     /// Schema property for xcodebuild build setting overrides.
     ///
     /// Returns the `build_settings` property used across build and test tools.
