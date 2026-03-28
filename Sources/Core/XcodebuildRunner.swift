@@ -126,7 +126,12 @@ public struct XcodebuildRunner: Sendable {
             .name("xcrun"),
             arguments: Arguments(["xcodebuild"] + arguments),
             environment: environment,
-        ) { (_: Execution, _, stdoutSeq: AsyncBufferSequence, stderrSeq: AsyncBufferSequence) in
+        ) { (
+            execution: Execution,
+            _,
+            stdoutSeq: AsyncBufferSequence,
+            stderrSeq: AsyncBufferSequence,
+        ) in
             try await withThrowingTaskGroup(of: Void.self) { group in
                 // Read stdout
                 group.addTask {
@@ -163,6 +168,7 @@ public struct XcodebuildRunner: Sendable {
 
                         let elapsed = startTime.duration(to: .now)
                         if elapsed > timeoutDuration {
+                            try? execution.send(signal: .terminate)
                             let (stdout, stderr) = outputCollector.getOutput()
                             throw XcodebuildError.timeout(
                                 duration: timeout,
@@ -173,6 +179,7 @@ public struct XcodebuildRunner: Sendable {
                         if let outputTimeout {
                             let timeSinceLastOutput = lastOutputTime.timeSinceLastOutput()
                             if timeSinceLastOutput > outputTimeout {
+                                try? execution.send(signal: .terminate)
                                 let (stdout, stderr) = outputCollector.getOutput()
                                 let seconds =
                                     Double(timeSinceLastOutput.components.seconds)
