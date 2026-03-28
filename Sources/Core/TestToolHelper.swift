@@ -144,6 +144,15 @@ public enum TestToolHelper {
             }
 
             return toolResult
+        } catch let error as XcodebuildError {
+            if isTemporaryBundle {
+                try? FileManager.default.removeItem(atPath: resultBundlePath)
+            }
+            let projectRoot = (workspacePath ?? projectPath)
+                .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
+            return error.formatPartialDiagnostics(
+                projectRoot: projectRoot, errorsOnly: errorsOnly,
+            )
         } catch {
             if isTemporaryBundle {
                 try? FileManager.default.removeItem(atPath: resultBundlePath)

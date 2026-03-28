@@ -521,6 +521,37 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
         let detail = errors.isEmpty ? partialOutput.suffix(2000) : errors[...]
         return MCPError.internalError("\(errorDescription ?? "Build error")\n\n\(detail)")
     }
+
+    /// Formats the partial output captured before the timeout as a proper build diagnostics
+    /// result, suitable for returning from build tools instead of throwing an error.
+    ///
+    /// Unlike ``toMCPError()``, this produces a well-formatted diagnostics summary using
+    /// the same formatting pipeline as successful builds, so agents can read and act on
+    /// errors/warnings even when the build didn't finish.
+    public func formatPartialDiagnostics(
+        projectRoot: String?,
+        errorsOnly: Bool = false,
+        showWarnings: Bool = false,
+    ) -> CallTool.Result {
+        let parsed = ErrorExtractor.parseBuildOutput(partialOutput)
+        let header = errorDescription ?? "Build timed out"
+        let diagnostics = BuildResultFormatter.formatBuildResult(
+            parsed, projectRoot: projectRoot, errorsOnly: errorsOnly,
+            showWarnings: showWarnings,
+        )
+
+        var text = "⚠️ \(header)\n\nPartial diagnostics from output collected before timeout:\n\n"
+        text += diagnostics
+
+        if parsed.errors.isEmpty, parsed.warnings.isEmpty, parsed.linkerErrors.isEmpty {
+            let outputTail = String(partialOutput.suffix(2000))
+            if !outputTail.isEmpty {
+                text += "\n\nLast output:\n\(outputTail)"
+            }
+        }
+
+        return CallTool.Result(content: [.text(text)], isError: true)
+    }
 }
 
 /// Thread-safe output collector that appends Data synchronously from readabilityHandler

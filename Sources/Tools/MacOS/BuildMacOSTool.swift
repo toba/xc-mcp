@@ -70,6 +70,14 @@ public struct BuildMacOSTool: Sendable {
                             "When true, runs 'build-for-testing' instead of 'build'. This compiles all test targets without executing them — useful for verifying test code compiles before committing to a full test run.",
                         ),
                     ]),
+                    "timeout": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Maximum time in seconds for the build. Defaults to 300 (5 minutes). "
+                                + "When the build times out, partial diagnostics (errors and warnings "
+                                + "collected so far) are returned instead of an empty error.",
+                        ),
+                    ]),
                 ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                     .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
                 "required": .array([]),
@@ -90,6 +98,12 @@ public struct BuildMacOSTool: Sendable {
         let errorsOnly = arguments.getBool("errors_only")
         let showWarnings = arguments.getBool("show_warnings")
         let forTesting = arguments.getBool("for_testing")
+        let timeout = arguments.getInt("timeout").map { TimeInterval($0) }
+            ?? XcodebuildRunner.defaultTimeout
+
+        let projectRoot = ErrorExtractor.projectRoot(
+            projectPath: projectPath, workspacePath: workspacePath,
+        )
 
         do {
             try await BuildSettingExtractor.validateMacOSSupport(
@@ -117,11 +131,9 @@ public struct BuildMacOSTool: Sendable {
                 additionalArguments: arguments.continueBuildingArgs() + arguments
                     .buildSettingOverrides(),
                 environment: environment,
+                timeout: timeout,
             )
 
-            let projectRoot = ErrorExtractor.projectRoot(
-                projectPath: projectPath, workspacePath: workspacePath,
-            )
             try ErrorExtractor.checkBuildSuccess(
                 result, projectRoot: projectRoot, errorsOnly: errorsOnly,
             )
@@ -137,6 +149,10 @@ public struct BuildMacOSTool: Sendable {
             }
             return CallTool.Result(
                 content: [.text(text)],
+            )
+        } catch let error as XcodebuildError {
+            return error.formatPartialDiagnostics(
+                projectRoot: projectRoot, errorsOnly: errorsOnly, showWarnings: showWarnings,
             )
         } catch {
             throw error.asMCPError()

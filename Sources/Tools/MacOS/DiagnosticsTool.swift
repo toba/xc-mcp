@@ -88,18 +88,28 @@ public struct DiagnosticsTool: Sendable {
             )
 
             // Step 2: Build with macOS destination
-            let buildOutput = try await xcodebuildRunner.build(
-                projectPath: projectPath,
-                workspacePath: workspacePath,
-                scheme: scheme,
-                destination: "platform=macOS",
-                configuration: configuration,
-                timeout: timeout,
-            )
+            let buildOutput: XcodebuildResult
+            var timedOut = false
+            do {
+                buildOutput = try await xcodebuildRunner.build(
+                    projectPath: projectPath,
+                    workspacePath: workspacePath,
+                    scheme: scheme,
+                    destination: "platform=macOS",
+                    configuration: configuration,
+                    timeout: timeout,
+                )
+            } catch let error as XcodebuildError {
+                // On timeout, use partial output for diagnostics instead of failing
+                buildOutput = XcodebuildResult(
+                    exitCode: 1, stdout: error.partialOutput, stderr: "",
+                )
+                timedOut = true
+            }
 
             // Step 3: Parse build output for diagnostics
             let parsed = ErrorExtractor.parseBuildOutput(buildOutput.output)
-            let buildFailed = !buildOutput.succeeded && parsed.status != "success"
+            let buildFailed = timedOut || (!buildOutput.succeeded && parsed.status != "success")
 
             // Step 4: Optionally run swiftlint
             var lintSection: String?
@@ -108,9 +118,15 @@ public struct DiagnosticsTool: Sendable {
             }
 
             // Step 5: Format combined output
-            let output = formatDiagnostics(
+            var output = formatDiagnostics(
                 parsed: parsed, buildFailed: buildFailed, lintSection: lintSection,
             )
+
+            if timedOut {
+                output =
+                    "Build timed out after \(Int(timeout)) seconds. Partial diagnostics from output collected before timeout:\n\n"
+                        + output
+            }
 
             if buildFailed {
                 throw MCPError.internalError(output)

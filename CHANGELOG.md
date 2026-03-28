@@ -7,6 +7,7 @@
 - Support project-level build settings in `set_build_setting`; omit `target_name` to apply settings at the project level instead of a specific target
 - Add `build_settings` parameter to all build/test tools; pass xcodebuild build setting overrides (e.g. `SWIFT_ENABLE_EXPLICIT_MODULES=NO`) as highest-precedence positional arguments ([#243](https://github.com/toba/xc-mcp/issues/243))
 - Add MCP tool annotations to all 197 tools; explicit `readOnlyHint`/`destructiveHint`/`openWorldHint` so clients can auto-approve safe operations ([#244](https://github.com/toba/xc-mcp/issues/244))
+- Add `timeout` parameter to `build_macos` and `build_run_macos` tools; return partial diagnostics on timeout instead of an empty error ([#245](https://github.com/toba/xc-mcp/issues/245))
 
 ### 🐞 Fixes
 

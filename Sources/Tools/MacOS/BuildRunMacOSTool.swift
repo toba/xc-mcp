@@ -58,6 +58,14 @@ public struct BuildRunMacOSTool: Sendable {
                         "items": .object(["type": .string("string")]),
                         "description": .string("Optional arguments to pass to the app."),
                     ]),
+                    "timeout": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Maximum time in seconds for the build step. Defaults to 300 (5 minutes). "
+                                + "When the build times out, partial diagnostics (errors and warnings "
+                                + "collected so far) are returned instead of an empty error.",
+                        ),
+                    ]),
                 ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                     .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
                 "required": .array([]),
@@ -75,6 +83,12 @@ public struct BuildRunMacOSTool: Sendable {
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let arch = arguments.getString("arch")
         let launchArgs = arguments.getStringArray("args")
+        let timeout = arguments.getInt("timeout").map { TimeInterval($0) }
+            ?? XcodebuildRunner.defaultTimeout
+
+        let projectRoot = ErrorExtractor.projectRoot(
+            projectPath: projectPath, workspacePath: workspacePath,
+        )
 
         do {
             try await BuildSettingExtractor.validateMacOSSupport(
@@ -100,6 +114,7 @@ public struct BuildRunMacOSTool: Sendable {
                 additionalArguments: arguments.continueBuildingArgs() + arguments
                     .buildSettingOverrides(),
                 environment: environment,
+                timeout: timeout,
             )
 
             let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)
@@ -168,6 +183,8 @@ public struct BuildRunMacOSTool: Sendable {
             } else {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }
+        } catch let error as XcodebuildError {
+            return error.formatPartialDiagnostics(projectRoot: projectRoot)
         } catch {
             throw error.asMCPError()
         }
