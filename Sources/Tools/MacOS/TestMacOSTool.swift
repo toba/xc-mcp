@@ -60,6 +60,7 @@ public struct TestMacOSTool: Sendable {
                             ),
                         ]),
                     ].merging([String: Value].testSchemaProperties) { _, new in new }
+                        .merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
@@ -105,7 +106,8 @@ public struct TestMacOSTool: Sendable {
             scheme: scheme,
             destination: destination,
             configuration: configuration,
-            additionalArguments: arguments.buildSettingOverrides(),
+            additionalArguments: arguments.continueBuildingArgs() + arguments
+                .buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on macOS",
             errorsOnly: errorsOnly,

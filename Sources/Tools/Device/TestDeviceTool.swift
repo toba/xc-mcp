@@ -58,6 +58,7 @@ public struct TestDeviceTool: Sendable {
                             ),
                         ]),
                     ].merging([String: Value].testSchemaProperties) { _, new in new }
+                        .merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
@@ -93,7 +94,8 @@ public struct TestDeviceTool: Sendable {
             scheme: scheme,
             destination: "generic/platform=\(connectedDevice.platform)",
             configuration: configuration,
-            additionalArguments: arguments.buildSettingOverrides(),
+            additionalArguments: arguments.continueBuildingArgs() + arguments
+                .buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on device '\(device)'",
         )

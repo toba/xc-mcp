@@ -54,6 +54,7 @@ public struct TestSimTool: Sendable {
                             ),
                         ]),
                     ].merging([String: Value].testSchemaProperties) { _, new in new }
+                        .merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
@@ -85,7 +86,8 @@ public struct TestSimTool: Sendable {
             scheme: scheme,
             destination: "platform=iOS Simulator,id=\(simulator)",
             configuration: configuration,
-            additionalArguments: arguments.buildSettingOverrides(),
+            additionalArguments: arguments.continueBuildingArgs() + arguments
+                .buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on simulator '\(simulator)'",
         )

@@ -58,7 +58,8 @@ public struct BuildRunMacOSTool: Sendable {
                         "items": .object(["type": .string("string")]),
                         "description": .string("Optional arguments to pass to the app."),
                     ]),
-                ].merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
+                ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
+                    .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
                 "required": .array([]),
             ]),
             annotations: .mutation,
@@ -96,7 +97,8 @@ public struct BuildRunMacOSTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                additionalArguments: arguments.buildSettingOverrides(),
+                additionalArguments: arguments.continueBuildingArgs() + arguments
+                    .buildSettingOverrides(),
                 environment: environment,
             )
 

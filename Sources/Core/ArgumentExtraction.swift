@@ -184,6 +184,34 @@ extension [String: Value] {
         return "\(parts[0])/\(parts[1])/\(normalized)"
     }
 
+    /// Returns the `-IDEBuildingContinueBuildingAfterErrors=YES` flag if requested.
+    ///
+    /// xcodebuild stops on the first build error by default. When this parameter is true,
+    /// the IDE flag is appended so all targets continue building and all errors are reported.
+    public func continueBuildingArgs() -> [String] {
+        getBool("continue_building_after_errors")
+            ? ["-IDEBuildingContinueBuildingAfterErrors=YES"]
+            : []
+    }
+
+    /// Schema property for the continue-building-after-errors option.
+    ///
+    /// Maps to Xcode's "Continue building after errors" preference
+    /// (`-IDEBuildingContinueBuildingAfterErrors`).
+    public static var continueBuildingSchemaProperty: [String: Value] {
+        [
+            "continue_building_after_errors": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "When true, continue building remaining targets after a build error "
+                        + "instead of stopping immediately. Maps to Xcode's "
+                        + "'Continue building after errors' setting. "
+                        + "Defaults to false (stop on first error).",
+                ),
+            ]),
+        ]
+    }
+
     /// Schema property for xcodebuild build setting overrides.
     ///
     /// Returns the `build_settings` property used across build and test tools.
