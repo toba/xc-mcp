@@ -129,7 +129,7 @@ extension ProcessResult {
         }()
 
         if mergeStderr {
-            let run: @Sendable () async throws -> CollectedResult<
+            let run: @Sendable () async throws -> ExecutionRecord<
                 StringOutput<Unicode.UTF8>,
                 CombinedErrorOutput,
             > = {
@@ -155,7 +155,7 @@ extension ProcessResult {
                 stderr: "",
             )
         } else {
-            let run: @Sendable () async throws -> CollectedResult<
+            let run: @Sendable () async throws -> ExecutionRecord<
                 StringOutput<Unicode.UTF8>,
                 StringOutput<Unicode.UTF8>,
             > = {
