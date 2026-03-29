@@ -17,7 +17,7 @@ public struct StartDeviceLogCapTool: Sendable {
         Tool(
             name: "start_device_log_cap",
             description:
-            "Start capturing logs from a physical device in real-time using idevicesyslog (libimobiledevice). Streams device unified logs over USB. Filter by string match or process name. Requires `brew install libimobiledevice`. Use stop_device_log_cap to stop and retrieve the captured logs.",
+            "Start capturing logs from a physical device in real-time using idevicesyslog (libimobiledevice). Streams device unified logs over USB. Filter by process name or string match. Requires `brew install libimobiledevice`. Use stop_device_log_cap to stop and retrieve the captured logs.\n\n**iOS 26+ note**: NSLog output is privacy-redacted (shows as `<private>`). Use `os.Logger` / `os_log` with Swift string interpolation for visible log content. `print()` output does not appear in unified logs. Filter by process name (`process` parameter) for reliable matching since message content may be redacted.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -36,13 +36,13 @@ public struct StartDeviceLogCapTool: Sendable {
                     "match": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Only capture lines containing this string (e.g., subsystem name like 'app.toba.myapp'). Maps to idevicesyslog -m.",
+                            "Only capture lines containing this string (e.g., app name 'MyApp' or subsystem 'app.toba.myapp'). Maps to idevicesyslog -m. Note: on iOS 26+, NSLog message content is privacy-redacted as `<private>`, so match on process/app name rather than message content.",
                         ),
                     ]),
                     "process": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Only capture lines from this process name. Maps to idevicesyslog -p.",
+                            "Only capture lines from this process name (e.g., 'GamERG'). Maps to idevicesyslog -p. Preferred over `match` on iOS 26+ since it filters by process name rather than message content.",
                         ),
                     ]),
                     "quiet": .object([
@@ -118,6 +118,8 @@ public struct StartDeviceLogCapTool: Sendable {
             if let process {
                 message += "Process filter: \(process)\n"
             }
+            message +=
+                "\nNote: On iOS 26+, NSLog content is privacy-redacted. Use os.Logger for visible log output."
             message += "\nUse stop_device_log_cap to stop the capture and retrieve logs."
 
             return CallTool.Result(content: [.text(message)])
