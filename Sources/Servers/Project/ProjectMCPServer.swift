@@ -42,6 +42,8 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case addPackageProduct = "add_package_product"
     case listSwiftPackages = "list_swift_packages"
     case removeSwiftPackage = "remove_swift_package"
+    case removePackageProduct = "remove_package_product"
+    case listPackageProducts = "list_package_products"
     case listGroups = "list_groups"
     case addSynchronizedFolder = "add_synchronized_folder"
     case removeSynchronizedFolder = "remove_synchronized_folder"
@@ -157,6 +159,8 @@ public struct ProjectMCPServer: Sendable {
         let addPackageProductTool = AddPackageProductTool(pathUtility: pathUtility)
         let listSwiftPackagesTool = ListSwiftPackagesTool(pathUtility: pathUtility)
         let removeSwiftPackageTool = RemoveSwiftPackageTool(pathUtility: pathUtility)
+        let removePackageProductTool = RemovePackageProductTool(pathUtility: pathUtility)
+        let listPackageProductsTool = ListPackageProductsTool(pathUtility: pathUtility)
         let listGroupsTool = ListGroupsTool(pathUtility: pathUtility)
         let addSynchronizedFolderTool = AddFolderTool(pathUtility: pathUtility)
         let removeSynchronizedFolderTool = RemoveFolderTool(pathUtility: pathUtility)
@@ -229,6 +233,8 @@ public struct ProjectMCPServer: Sendable {
                 addPackageProductTool.tool(),
                 listSwiftPackagesTool.tool(),
                 removeSwiftPackageTool.tool(),
+                removePackageProductTool.tool(),
+                listPackageProductsTool.tool(),
                 listGroupsTool.tool(),
                 addSynchronizedFolderTool.tool(),
                 removeSynchronizedFolderTool.tool(),
@@ -339,6 +345,10 @@ public struct ProjectMCPServer: Sendable {
                     return try listSwiftPackagesTool.execute(arguments: arguments)
                 case .removeSwiftPackage:
                     return try removeSwiftPackageTool.execute(arguments: arguments)
+                case .removePackageProduct:
+                    return try removePackageProductTool.execute(arguments: arguments)
+                case .listPackageProducts:
+                    return try listPackageProductsTool.execute(arguments: arguments)
                 case .listGroups:
                     return try listGroupsTool.execute(arguments: arguments)
                 case .addSynchronizedFolder:

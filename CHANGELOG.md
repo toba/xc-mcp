@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Mar 29 – Apr 4, 2026
+
+### ✨ Features
+
+- Add `remove_package_product` and `list_package_products` tools; remove individual SPM product dependencies from targets and inspect per-target product linkage ([#247](https://github.com/toba/xc-mcp/issues/247))
+
 ## Week of Mar 22 – Mar 28, 2026
 
 ### ✨ Features

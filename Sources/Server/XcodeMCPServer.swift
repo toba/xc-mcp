@@ -45,6 +45,8 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addPackageProduct = "add_package_product"
     case listSwiftPackages = "list_swift_packages"
     case removeSwiftPackage = "remove_swift_package"
+    case removePackageProduct = "remove_package_product"
+    case listPackageProducts = "list_package_products"
     case listGroups = "list_groups"
     case addSynchronizedFolder = "add_synchronized_folder"
     case addTargetToSynchronizedFolder = "add_target_to_synchronized_folder"
@@ -221,7 +223,8 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .addDependency, .setBuildSetting,
                  .addFramework, .removeFramework,
                  .addBuildPhase, .duplicateTarget, .addSwiftPackage, .addPackageProduct,
-                 .listSwiftPackages, .removeSwiftPackage, .listGroups, .addSynchronizedFolder,
+                 .listSwiftPackages, .removeSwiftPackage, .removePackageProduct,
+                 .listPackageProducts, .listGroups, .addSynchronizedFolder,
                  .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
                  .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
                  .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
@@ -391,6 +394,8 @@ public struct XcodeMCPServer: Sendable {
         let addPackageProductTool = AddPackageProductTool(pathUtility: pathUtility)
         let listSwiftPackagesTool = ListSwiftPackagesTool(pathUtility: pathUtility)
         let removeSwiftPackageTool = RemoveSwiftPackageTool(pathUtility: pathUtility)
+        let removePackageProductTool = RemovePackageProductTool(pathUtility: pathUtility)
+        let listPackageProductsTool = ListPackageProductsTool(pathUtility: pathUtility)
         let listGroupsTool = ListGroupsTool(pathUtility: pathUtility)
         let addSynchronizedFolderTool = AddFolderTool(pathUtility: pathUtility)
         let addTargetToSynchronizedFolderTool = AddTargetToSynchronizedFolderTool(
@@ -707,6 +712,8 @@ public struct XcodeMCPServer: Sendable {
             (.addPackageProduct, addPackageProductTool.tool()),
             (.listSwiftPackages, listSwiftPackagesTool.tool()),
             (.removeSwiftPackage, removeSwiftPackageTool.tool()),
+            (.removePackageProduct, removePackageProductTool.tool()),
+            (.listPackageProducts, listPackageProductsTool.tool()),
             (.listGroups, listGroupsTool.tool()),
             (.addSynchronizedFolder, addSynchronizedFolderTool.tool()),
             (.addTargetToSynchronizedFolder, addTargetToSynchronizedFolderTool.tool()),
@@ -960,6 +967,10 @@ public struct XcodeMCPServer: Sendable {
                     return try listSwiftPackagesTool.execute(arguments: arguments)
                 case .removeSwiftPackage:
                     return try removeSwiftPackageTool.execute(arguments: arguments)
+                case .removePackageProduct:
+                    return try removePackageProductTool.execute(arguments: arguments)
+                case .listPackageProducts:
+                    return try listPackageProductsTool.execute(arguments: arguments)
                 case .listGroups:
                     return try listGroupsTool.execute(arguments: arguments)
                 case .addSynchronizedFolder:
