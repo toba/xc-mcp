@@ -67,6 +67,39 @@ struct TestIdentifierNormalizationTests {
         ])
     }
 
+    @Test func `swift keyword gets wrapped`() {
+        let params = makeParams(onlyTesting: ["CoreTests/DiffTests/class"])
+        #expect(params.onlyTesting == ["CoreTests/DiffTests/`class`()"])
+    }
+
+    @Test func `backtick-wrapped keyword without parens gets parens`() {
+        let params = makeParams(onlyTesting: ["CoreTests/DiffTests/`class`"])
+        #expect(params.onlyTesting == ["CoreTests/DiffTests/`class`()"])
+    }
+
+    @Test func `backtick-wrapped keyword with parens unchanged`() {
+        let params = makeParams(onlyTesting: ["CoreTests/DiffTests/`class`()"])
+        #expect(params.onlyTesting == ["CoreTests/DiffTests/`class`()"])
+    }
+
+    @Test func `non-keyword single word unchanged`() {
+        let params = makeParams(onlyTesting: ["AppTests/FooTests/testBar"])
+        #expect(params.onlyTesting == ["AppTests/FooTests/testBar"])
+    }
+
+    @Test func `multiple keywords normalized`() {
+        let params = makeParams(onlyTesting: [
+            "CoreTests/DiffTests/class",
+            "CoreTests/DiffTests/import",
+            "CoreTests/DiffTests/testRegular",
+        ])
+        #expect(params.onlyTesting == [
+            "CoreTests/DiffTests/`class`()",
+            "CoreTests/DiffTests/`import`()",
+            "CoreTests/DiffTests/testRegular",
+        ])
+    }
+
     // MARK: - Helpers
 
     private func makeParams(

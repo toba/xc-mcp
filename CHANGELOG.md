@@ -10,6 +10,7 @@
 
 - Fix `remove_package_product` corrupting pbxproj; clean up `PBXTargetDependency` entries with `productRef` created by Xcode GUI ([#248](https://github.com/toba/xc-mcp/issues/248))
 - Fix `add_framework` creating bogus `.framework` file reference for static libraries (`.a`); reuse existing product reference or create proper `archive.ar` entry in `BUILT_PRODUCTS_DIR` ([#250](https://github.com/toba/xc-mcp/issues/250))
+- Fix `test_macos` `only_testing` filter failing for Swift Testing backtick-escaped single-word method names; auto-wrap Swift keywords like `class` and `import` in backticks ([#251](https://github.com/toba/xc-mcp/issues/251))
 
 ## Week of Mar 22 – Mar 28, 2026
 

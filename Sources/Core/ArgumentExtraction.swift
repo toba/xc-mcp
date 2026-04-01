@@ -163,8 +163,8 @@ extension [String: Value] {
     /// LLMs often pass the display name without backticks or parentheses:
     /// `"TargetName/TestClass/function name with spaces"`
     ///
-    /// This method detects the method component (after the second `/`), and if it contains
-    /// spaces but is not already backtick-wrapped, wraps it in backticks and appends `()`.
+    /// This also handles single-word Swift keywords used as test names (e.g. `class`, `import`)
+    /// which need backtick wrapping even though they contain no spaces.
     private static func normalizeTestIdentifier(_ identifier: String) -> String {
         // Split into components: Target/Class/Method
         let parts = identifier.split(separator: "/", maxSplits: 2)
@@ -172,9 +172,15 @@ extension [String: Value] {
 
         let method = parts[2]
 
-        // Already properly formatted (has backticks or no spaces)
-        guard method.contains(" ") else { return identifier }
-        if method.hasPrefix("`") { return identifier }
+        // Already backtick-wrapped — ensure () suffix
+        if method.hasPrefix("`") {
+            if method.hasSuffix("()") { return identifier }
+            return "\(parts[0])/\(parts[1])/\(method)()"
+        }
+
+        let needsBackticks = method.contains(" ") || swiftKeywords.contains(String(method))
+
+        guard needsBackticks else { return identifier }
 
         // Wrap in backticks and add () if missing
         var normalized = "`\(method)`"
@@ -183,6 +189,23 @@ extension [String: Value] {
         }
         return "\(parts[0])/\(parts[1])/\(normalized)"
     }
+
+    /// Swift reserved words that require backtick escaping when used as test function names.
+    private static let swiftKeywords: Set<String> = [
+        // Declarations
+        "associatedtype", "class", "deinit", "enum", "extension", "fileprivate", "func",
+        "import", "init", "inout", "internal", "let", "open", "operator", "private",
+        "protocol", "public", "rethrows", "static", "struct", "subscript", "typealias", "var",
+        // Statements
+        "break", "case", "continue", "default", "defer", "do", "else", "fallthrough", "for",
+        "guard", "if", "in", "repeat", "return", "switch", "where", "while",
+        // Expressions and types
+        "as", "Any", "catch", "false", "is", "nil", "super", "self", "Self", "throw",
+        "throws", "true", "try",
+        // Context-sensitive (commonly used)
+        "async", "await", "some", "any", "consume", "consuming", "borrowing", "sending",
+        "isolated", "nonisolated", "macro",
+    ]
 
     /// Returns the `-IDEBuildingContinueBuildingAfterErrors=YES` flag if requested.
     ///
@@ -273,7 +296,9 @@ extension [String: Value] {
                         + "For Swift Testing functions with backtick-escaped names containing spaces, "
                         + "use the format 'TargetName/TestClass/`method name with spaces`()'. "
                         +
-                        "If backticks are omitted from names with spaces, they are added automatically.",
+                        "If backticks are omitted from names with spaces, they are added automatically. "
+                        +
+                        "Single-word Swift keywords (e.g. 'class', 'import') are also auto-wrapped.",
                 ),
             ]),
             "skip_testing": .object([
