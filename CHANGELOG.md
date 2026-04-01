@@ -6,6 +6,10 @@
 
 - Add `remove_package_product` and `list_package_products` tools; remove individual SPM product dependencies from targets and inspect per-target product linkage ([#247](https://github.com/toba/xc-mcp/issues/247))
 
+### 🐛 Fixes
+
+- Fix `remove_package_product` corrupting pbxproj; clean up `PBXTargetDependency` entries with `productRef` created by Xcode GUI ([#248](https://github.com/toba/xc-mcp/issues/248))
+
 ## Week of Mar 22 – Mar 28, 2026
 
 ### ✨ Features

@@ -96,6 +96,14 @@ public struct RemovePackageProductTool: Sendable {
             // Remove from target's packageProductDependencies
             target.packageProductDependencies?.removeAll { $0 === dependency }
 
+            // Remove PBXTargetDependency entries that reference this product
+            // (Xcode GUI creates these alongside packageProductDependencies)
+            let staleTargetDeps = target.dependencies.filter { $0.product === dependency }
+            for targetDep in staleTargetDeps {
+                target.dependencies.removeAll { $0 === targetDep }
+                xcodeproj.pbxproj.delete(object: targetDep)
+            }
+
             // Delete the dependency object if no other target references it
             let stillReferenced = xcodeproj.pbxproj.nativeTargets.contains { other in
                 guard other !== target else { return false }

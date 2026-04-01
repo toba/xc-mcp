@@ -155,6 +155,79 @@ struct RemovePackageProductToolTests {
     }
 
     @Test
+    func `Remove product cleans up PBXTargetDependency with productRef`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a package with a product linked to App
+        let addTool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/apple/swift-http-types.git"),
+            "requirement": Value.string("1.0.0"),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("HTTPTypes"),
+        ])
+
+        // Simulate what Xcode GUI does: add a PBXTargetDependency with productRef
+        // pointing to the XCSwiftPackageProductDependency
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let productDep = try #require(target.packageProductDependencies?.first)
+
+        let targetDependency = PBXTargetDependency(
+            name: productDep.productName,
+            product: productDep,
+        )
+        xcodeproj.pbxproj.add(object: targetDependency)
+        target.dependencies.append(targetDependency)
+        try PBXProjWriter.write(xcodeproj, to: projectPath)
+
+        // Verify PBXTargetDependency exists before removal
+        let before = try XcodeProj(path: projectPath)
+        let targetBefore = try #require(before.pbxproj.nativeTargets.first { $0.name == "App" })
+        #expect(targetBefore.dependencies.count == 1)
+        #expect(targetBefore.dependencies.first?.product != nil)
+
+        // Remove the product
+        let tool = RemovePackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("HTTPTypes"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Removed product 'HTTPTypes' from target 'App'"))
+
+        // Verify both packageProductDependencies AND PBXTargetDependency were cleaned up
+        let after = try XcodeProj(path: projectPath)
+        let targetAfter = try #require(after.pbxproj.nativeTargets.first { $0.name == "App" })
+        #expect(targetAfter.packageProductDependencies?.isEmpty == true)
+        #expect(targetAfter.dependencies.isEmpty)
+
+        // Verify no dangling references in the raw pbxproj file:
+        // the deleted PBXTargetDependency's UUID should not appear
+        let pbxprojPath = projectPath + "project.pbxproj"
+        let rawContents = try String(
+            contentsOf: URL(fileURLWithPath: pbxprojPath.string),
+            encoding: .utf8,
+        )
+        #expect(!rawContents.contains("PBXTargetDependency"))
+    }
+
+    @Test
     func `Remove product from one target leaves other target intact`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
