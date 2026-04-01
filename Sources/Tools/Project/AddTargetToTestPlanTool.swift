@@ -32,6 +32,56 @@ public struct AddTargetToTestPlanTool: Sendable {
                         "type": .string("string"),
                         "description": .string("Name of the test target to add"),
                     ]),
+                    "xctest_classes": .object([
+                        "type": .string("array"),
+                        "items": .object([
+                            "type": .string("object"),
+                            "properties": .object([
+                                "name": .object([
+                                    "type": .string("string"),
+                                    "description": .string("XCTest class name"),
+                                ]),
+                                "xctest_methods": .object([
+                                    "type": .string("array"),
+                                    "items": .object(["type": .string("string")]),
+                                    "description": .string(
+                                        "Specific XCTest methods to include (e.g. 'testDecodeSampleItems()'). "
+                                            + "Omit to include all methods.",
+                                    ),
+                                ]),
+                            ]),
+                            "required": .array([.string("name")]),
+                        ]),
+                        "description": .string(
+                            "XCTest classes to include in selectedTests (e.g. 'XMLDecoderPerformanceTests'). "
+                                + "Omit to include the entire target.",
+                        ),
+                    ]),
+                    "suites": .object([
+                        "type": .string("array"),
+                        "items": .object([
+                            "type": .string("object"),
+                            "properties": .object([
+                                "name": .object([
+                                    "type": .string("string"),
+                                    "description": .string("Swift Testing suite name"),
+                                ]),
+                                "test_functions": .object([
+                                    "type": .string("array"),
+                                    "items": .object(["type": .string("string")]),
+                                    "description": .string(
+                                        "Specific test functions to include (e.g. 'fetchKeys()'). "
+                                            + "Omit to include all functions in the suite.",
+                                    ),
+                                ]),
+                            ]),
+                            "required": .array([.string("name")]),
+                        ]),
+                        "description": .string(
+                            "Swift Testing suites to include in selectedTests. "
+                                + "Omit to include the entire target.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("test_plan_path"), .string("target_name"),
@@ -84,13 +134,19 @@ public struct AddTargetToTestPlanTool: Sendable {
             }
 
             let containerPath = TestPlanFile.containerPath(for: projectURL)
-            let entry: [String: Any] = [
+            var entry: [String: Any] = [
                 "target": [
                     "containerPath": containerPath,
                     "identifier": target.uuid,
                     "name": targetName,
                 ] as [String: Any],
             ]
+
+            let selectedTests = Self.buildSelectedTests(from: arguments)
+            if !selectedTests.isEmpty {
+                entry["selectedTests"] = selectedTests
+            }
+
             testTargets.append(entry)
             json["testTargets"] = testTargets
 
@@ -108,5 +164,60 @@ public struct AddTargetToTestPlanTool: Sendable {
                 "Failed to add target to test plan: \(error.localizedDescription)",
             )
         }
+    }
+
+    /// Builds a `selectedTests` dictionary from `xctest_classes` and `suites` parameters.
+    ///
+    /// Returns an empty dictionary when neither parameter is provided.
+    private static func buildSelectedTests(from arguments: [String: Value]) -> [String: Any] {
+        var selected: [String: Any] = [:]
+
+        if case let .array(classes) = arguments["xctest_classes"] {
+            var xctestClasses: [[String: Any]] = []
+            for item in classes {
+                guard case let .object(obj) = item,
+                      case let .string(name) = obj["name"]
+                else { continue }
+                var classEntry: [String: Any] = ["name": name]
+                if case let .array(methods) = obj["xctest_methods"] {
+                    let methodNames = methods.compactMap { value -> String? in
+                        guard case let .string(s) = value else { return nil }
+                        return s
+                    }
+                    if !methodNames.isEmpty {
+                        classEntry["xctestMethods"] = methodNames
+                    }
+                }
+                xctestClasses.append(classEntry)
+            }
+            if !xctestClasses.isEmpty {
+                selected["xctestClasses"] = xctestClasses
+            }
+        }
+
+        if case let .array(suiteValues) = arguments["suites"] {
+            var suites: [[String: Any]] = []
+            for item in suiteValues {
+                guard case let .object(obj) = item,
+                      case let .string(name) = obj["name"]
+                else { continue }
+                var suiteEntry: [String: Any] = ["name": name]
+                if case let .array(functions) = obj["test_functions"] {
+                    let funcNames = functions.compactMap { value -> String? in
+                        guard case let .string(s) = value else { return nil }
+                        return s
+                    }
+                    if !funcNames.isEmpty {
+                        suiteEntry["testFunctions"] = funcNames
+                    }
+                }
+                suites.append(suiteEntry)
+            }
+            if !suites.isEmpty {
+                selected["suites"] = suites
+            }
+        }
+
+        return selected
     }
 }

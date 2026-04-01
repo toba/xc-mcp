@@ -5,6 +5,7 @@
 ### ✨ Features
 
 - Add `remove_package_product` and `list_package_products` tools; remove individual SPM product dependencies from targets and inspect per-target product linkage ([#247](https://github.com/toba/xc-mcp/issues/247))
+- `add_target_to_test_plan`: support `selectedTests` filtering with `xctest_classes` and `suites` parameters; restrict test plan entries to specific classes, methods, or Swift Testing functions ([#252](https://github.com/toba/xc-mcp/issues/252))
 
 ### 🐛 Fixes
 
