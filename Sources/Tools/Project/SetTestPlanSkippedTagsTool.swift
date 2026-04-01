@@ -80,9 +80,10 @@ public struct SetTestPlanSkippedTagsTool: Sendable {
             let scope = targetName.map { "target '\($0)'" } ?? "plan-level defaults"
             let verb = action == "add" ? "Added" : "Removed"
             let tagList = tags.map { "'\($0)'" }.joined(separator: ", ")
-            let remaining = resultTags.isEmpty
-                ? " (no skipped tags remaining)"
-                : " — skipped tags: \(resultTags.joined(separator: ", "))"
+            let remaining =
+                resultTags.isEmpty
+                    ? " (no skipped tags remaining)"
+                    : " — skipped tags: \(resultTags.joined(separator: ", "))"
             return CallTool.Result(
                 content: [
                     .text("\(verb) \(tagList) in \(scope)\(remaining)"),
@@ -150,9 +151,11 @@ public struct SetTestPlanSkippedTagsTool: Sendable {
             throw MCPError.invalidParams("Test plan has no test targets")
         }
 
-        guard let index = testTargets.firstIndex(where: {
-            ($0["target"] as? [String: Any])?["name"] as? String == targetName
-        }) else {
+        guard
+            let index = testTargets.firstIndex(where: {
+                ($0["target"] as? [String: Any])?["name"] as? String == targetName
+            })
+        else {
             throw MCPError.invalidParams("Target '\(targetName)' not found in test plan")
         }
 

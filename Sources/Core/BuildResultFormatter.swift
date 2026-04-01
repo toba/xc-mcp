@@ -190,9 +190,10 @@ public enum BuildResultFormatter {
 
     // MARK: - Header Formatting
 
-    private static func formatHeader(_ result: BuildResult,
-                                     statusOverride: String? = nil) -> String
-    {
+    private static func formatHeader(
+        _ result: BuildResult,
+        statusOverride: String? = nil,
+    ) -> String {
         var components: [String] = []
 
         if let override = statusOverride {

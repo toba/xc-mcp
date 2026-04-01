@@ -295,8 +295,7 @@ extension [String: Value] {
                     "Test identifiers to run exclusively. Format: 'TargetName/TestClass/testMethod'. "
                         + "For Swift Testing functions with backtick-escaped names containing spaces, "
                         + "use the format 'TargetName/TestClass/`method name with spaces`()'. "
-                        +
-                        "If backticks are omitted from names with spaces, they are added automatically. "
+                        + "If backticks are omitted from names with spaces, they are added automatically. "
                         +
                         "Single-word Swift keywords (e.g. 'class', 'import') are also auto-wrapped.",
                 ),

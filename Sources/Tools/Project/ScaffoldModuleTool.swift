@@ -606,9 +606,10 @@ public struct ScaffoldModuleTool: Sendable {
         }
 
         // Check if already linked
-        let alreadyLinked = frameworksPhase.files?.contains { buildFile in
-            buildFile.file === product
-        } ?? false
+        let alreadyLinked =
+            frameworksPhase.files?.contains { buildFile in
+                buildFile.file === product
+            } ?? false
         if alreadyLinked { return }
 
         let buildFile = PBXBuildFile(file: product)

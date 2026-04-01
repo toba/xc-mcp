@@ -12,18 +12,22 @@ struct TestIdentifierNormalizationTests {
         let params = makeParams(onlyTesting: [
             "AppTests/FooTests/`method with spaces`()",
         ])
-        #expect(params.onlyTesting == [
-            "AppTests/FooTests/`method with spaces`()",
-        ])
+        #expect(
+            params.onlyTesting == [
+                "AppTests/FooTests/`method with spaces`()",
+            ],
+        )
     }
 
     @Test func `spaces without backticks get wrapped`() {
         let params = makeParams(onlyTesting: [
             "AppTests/TextViewCoordinatorSelectionTests/NSTextView shifts cursor when text inserted before cursor",
         ])
-        #expect(params.onlyTesting == [
-            "AppTests/TextViewCoordinatorSelectionTests/`NSTextView shifts cursor when text inserted before cursor`()",
-        ])
+        #expect(
+            params.onlyTesting == [
+                "AppTests/TextViewCoordinatorSelectionTests/`NSTextView shifts cursor when text inserted before cursor`()",
+            ],
+        )
     }
 
     @Test func `multiple identifiers normalized independently`() {
@@ -32,11 +36,13 @@ struct TestIdentifierNormalizationTests {
             "AppTests/BarTests/name with spaces",
             "AppTests/BazTests/`already wrapped`()",
         ])
-        #expect(params.onlyTesting == [
-            "AppTests/FooTests/testPlain",
-            "AppTests/BarTests/`name with spaces`()",
-            "AppTests/BazTests/`already wrapped`()",
-        ])
+        #expect(
+            params.onlyTesting == [
+                "AppTests/FooTests/testPlain",
+                "AppTests/BarTests/`name with spaces`()",
+                "AppTests/BazTests/`already wrapped`()",
+            ],
+        )
     }
 
     @Test func `target-only identifier unchanged`() {
@@ -53,18 +59,22 @@ struct TestIdentifierNormalizationTests {
         let params = makeParams(skipTesting: [
             "AppTests/FooTests/slow test method",
         ])
-        #expect(params.skipTesting == [
-            "AppTests/FooTests/`slow test method`()",
-        ])
+        #expect(
+            params.skipTesting == [
+                "AppTests/FooTests/`slow test method`()",
+            ],
+        )
     }
 
     @Test func `spaces with trailing parens not doubled`() {
         let params = makeParams(onlyTesting: [
             "AppTests/FooTests/method name()",
         ])
-        #expect(params.onlyTesting == [
-            "AppTests/FooTests/`method name()`",
-        ])
+        #expect(
+            params.onlyTesting == [
+                "AppTests/FooTests/`method name()`",
+            ],
+        )
     }
 
     @Test func `swift keyword gets wrapped`() {
@@ -93,11 +103,13 @@ struct TestIdentifierNormalizationTests {
             "CoreTests/DiffTests/import",
             "CoreTests/DiffTests/testRegular",
         ])
-        #expect(params.onlyTesting == [
-            "CoreTests/DiffTests/`class`()",
-            "CoreTests/DiffTests/`import`()",
-            "CoreTests/DiffTests/testRegular",
-        ])
+        #expect(
+            params.onlyTesting == [
+                "CoreTests/DiffTests/`class`()",
+                "CoreTests/DiffTests/`import`()",
+                "CoreTests/DiffTests/testRegular",
+            ],
+        )
     }
 
     // MARK: - Helpers

@@ -77,7 +77,8 @@ public struct AddSwiftPackageTool: Sendable {
         }
 
         guard packageURL != nil || packagePath != nil else {
-            throw MCPError
+            throw
+                MCPError
                 .invalidParams("Either package_url (remote) or package_path (local) is required")
         }
 

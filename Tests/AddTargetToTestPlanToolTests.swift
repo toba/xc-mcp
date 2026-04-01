@@ -1,8 +1,8 @@
 import MCP
 import Testing
 @testable import XCMCPCore
-@testable import XCMCPTools
 import Foundation
+@testable import XCMCPTools
 
 struct AddTargetToTestPlanToolTests {
     let pathUtility = PathUtility(basePath: "/")
@@ -16,11 +16,13 @@ struct AddTargetToTestPlanToolTests {
 
     private func emptyPlan() -> [String: Any] {
         [
-            "configurations": [[
-                "id": "DEFAULT",
-                "name": "Default",
-                "options": [:] as [String: Any],
-            ] as [String: Any]],
+            "configurations": [
+                [
+                    "id": "DEFAULT",
+                    "name": "Default",
+                    "options": [:] as [String: Any],
+                ] as [String: Any],
+            ],
             "defaultOptions": [:] as [String: Any],
             "testTargets": [] as [[String: Any]],
             "version": 1,

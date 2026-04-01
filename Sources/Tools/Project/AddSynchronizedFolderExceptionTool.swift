@@ -105,11 +105,12 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
             }
 
             // Check for an existing exception set for this target
-            let existingExceptionSet = syncGroup.exceptions?.first(where: {
-                guard let buildException = $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
-                else { return false }
-                return buildException.target?.name == targetName
-            }) as? PBXFileSystemSynchronizedBuildFileExceptionSet
+            let existingExceptionSet =
+                syncGroup.exceptions?.first(where: {
+                    guard let buildException = $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
+                    else { return false }
+                    return buildException.target?.name == targetName
+                }) as? PBXFileSystemSynchronizedBuildFileExceptionSet
 
             if let existingExceptionSet {
                 // Append to existing exception set, skipping duplicates

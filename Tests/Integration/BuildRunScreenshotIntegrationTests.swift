@@ -78,8 +78,10 @@ struct BuildIntegrationTests {
 /// Expensive integration tests that build, run, and screenshot full apps.
 /// Disabled by default — set `RUN_SLOW_TESTS=1` to include.
 @Suite(
-    .enabled(if: IntegrationFixtures.simulatorAvailable
-        && ProcessInfo.processInfo.environment["RUN_SLOW_TESTS"] != nil),
+    .enabled(
+        if: IntegrationFixtures.simulatorAvailable
+            && ProcessInfo.processInfo.environment["RUN_SLOW_TESTS"] != nil,
+    ),
     .serialized,
 )
 struct SlowIntegrationTests {
@@ -208,13 +210,14 @@ struct BuildTimeoutOutputTests {
     /// Path to Thesis.xcodeproj (sibling repo).
     private static let thesisProjectPath: String = {
         let file = URL(fileURLWithPath: #filePath)
-        return file
-            .deletingLastPathComponent() // Integration/
-            .deletingLastPathComponent() // Tests/
-            .deletingLastPathComponent() // xc-mcp/
-            .deletingLastPathComponent() // toba/
-            .appendingPathComponent("thesis/Thesis.xcodeproj")
-            .path
+        return
+            file
+                .deletingLastPathComponent() // Integration/
+                .deletingLastPathComponent() // Tests/
+                .deletingLastPathComponent() // xc-mcp/
+                .deletingLastPathComponent() // toba/
+                .appendingPathComponent("thesis/Thesis.xcodeproj")
+                .path
     }()
 
     static var thesisAvailable: Bool {

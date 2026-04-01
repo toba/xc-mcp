@@ -502,13 +502,18 @@ public struct CoverageParser: Sendable {
                 targetExecutable += file.executableLines
             }
 
-            targetCoverages.append(TargetCoverage(
-                name: targetName,
-                lineCoverage: coveragePercent(covered: targetCovered, executable: targetExecutable),
-                coveredLines: targetCovered,
-                executableLines: targetExecutable,
-                files: files,
-            ))
+            targetCoverages.append(
+                TargetCoverage(
+                    name: targetName,
+                    lineCoverage: coveragePercent(
+                        covered: targetCovered,
+                        executable: targetExecutable,
+                    ),
+                    coveredLines: targetCovered,
+                    executableLines: targetExecutable,
+                    files: files,
+                ),
+            )
             totalCovered += targetCovered
             totalExecutable += targetExecutable
         }
@@ -583,14 +588,16 @@ public struct CoverageParser: Sendable {
             let coverage = fn["lineCoverage"] as? Double ?? 0.0
             let executionCount = fn["executionCount"] as? Int ?? 0
 
-            functionCoverages.append(FunctionCoverage(
-                name: name,
-                lineNumber: lineNumber,
-                coveredLines: covered,
-                executableLines: executable,
-                lineCoverage: normalizeLineCoverage(coverage),
-                executionCount: executionCount,
-            ))
+            functionCoverages.append(
+                FunctionCoverage(
+                    name: name,
+                    lineNumber: lineNumber,
+                    coveredLines: covered,
+                    executableLines: executable,
+                    lineCoverage: normalizeLineCoverage(coverage),
+                    executionCount: executionCount,
+                ),
+            )
             totalCovered += covered
             totalExecutable += executable
         }

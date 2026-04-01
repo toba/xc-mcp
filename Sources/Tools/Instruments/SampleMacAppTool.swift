@@ -85,9 +85,11 @@ public struct SampleMacAppTool: Sendable {
         if let directPID = arguments.getInt("pid") {
             pid = directPID
         } else if let bundleId = arguments.getString("bundle_id") {
-            guard let resolved = await MainActor.run(body: {
-                PIDResolver.findPID(forBundleID: bundleId)
-            }) else {
+            guard
+                let resolved = await MainActor.run(body: {
+                    PIDResolver.findPID(forBundleID: bundleId)
+                })
+            else {
                 throw MCPError.invalidParams(
                     "No running process found for bundle ID '\(bundleId)'. Is the app running?",
                 )

@@ -74,7 +74,8 @@ public struct ShowBuildLogTool: Sendable {
         )
 
         // Step 2: Find the most recent non-empty .xcactivitylog
-        let logsDir = (derivedDataPath as NSString).appendingPathComponent("Logs/Build")
+        let logsDir = URL(fileURLWithPath: derivedDataPath).appendingPathComponent("Logs/Build")
+            .path
         let fm = FileManager.default
 
         guard let entries = try? fm.contentsOfDirectory(atPath: logsDir) else {
@@ -83,7 +84,7 @@ public struct ShowBuildLogTool: Sendable {
 
         let logs = entries.filter { $0.hasSuffix(".xcactivitylog") }
             .compactMap { name -> (path: String, date: Date, size: UInt64)? in
-                let path = (logsDir as NSString).appendingPathComponent(name)
+                let path = URL(fileURLWithPath: logsDir).appendingPathComponent(name).path
                 guard let attrs = try? fm.attributesOfItem(atPath: path),
                       let date = attrs[.modificationDate] as? Date,
                       let size = attrs[.size] as? UInt64, size > 0

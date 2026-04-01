@@ -1,7 +1,7 @@
 import MCP
 import XCMCPCore
-import Subprocess
 import Foundation
+import Subprocess
 
 public struct SwiftPackageTestTool: Sendable {
     private let swiftRunner: SwiftRunner
@@ -70,8 +70,9 @@ public struct SwiftPackageTestTool: Sendable {
         let skip = arguments.getString("skip")
         let parallel: Bool? = if case let .bool(value) = arguments["parallel"] { value }
         else { nil }
-        let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
-            ?? SwiftRunner.defaultTimeout
+        let timeout =
+            arguments.getInt("timeout").map { Duration.seconds($0) }
+                ?? SwiftRunner.defaultTimeout
 
         // Merge session env with per-invocation env (per-invocation wins)
         let environment = await sessionManager.resolveEnvironment(from: arguments)

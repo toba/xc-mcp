@@ -69,8 +69,9 @@ public struct GetTestAttachmentsTool: Sendable {
                 atPath: exportDir, withIntermediateDirectories: true,
             )
         } else {
-            exportDir = FileManager.default.temporaryDirectory
-                .appendingPathComponent("xc-mcp-attachments-\(UUID().uuidString)").path
+            exportDir =
+                FileManager.default.temporaryDirectory
+                    .appendingPathComponent("xc-mcp-attachments-\(UUID().uuidString)").path
             isTemporary = true
             try FileManager.default.createDirectory(
                 atPath: exportDir, withIntermediateDirectories: true,
@@ -117,7 +118,8 @@ public struct GetTestAttachmentsTool: Sendable {
             return CallTool.Result(content: [.text("No attachments found in the result bundle.")])
         }
 
-        guard let manifest = try? JSONSerialization
+        guard
+            let manifest = try? JSONSerialization
             .jsonObject(with: manifestData) as? [[String: Any]]
         else {
             return CallTool.Result(content: [.text("No attachments found in the result bundle.")])
@@ -169,13 +171,15 @@ public struct GetTestAttachmentsTool: Sendable {
                 let isFailure = att["isAssociatedWithFailure"] as? Bool ?? false
                 let timestamp = att["timestamp"] as? Double
 
-                result.append(Attachment(
-                    testIdentifier: testIdentifier,
-                    exportedFileName: exportedFileName,
-                    name: name,
-                    isAssociatedWithFailure: isFailure,
-                    timestamp: timestamp,
-                ))
+                result.append(
+                    Attachment(
+                        testIdentifier: testIdentifier,
+                        exportedFileName: exportedFileName,
+                        name: name,
+                        isAssociatedWithFailure: isFailure,
+                        timestamp: timestamp,
+                    ),
+                )
             }
         }
 

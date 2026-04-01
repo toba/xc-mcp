@@ -101,6 +101,53 @@ public enum CrashReportParser: Sendable {
     public static let diagnosticReportsDir: String = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Logs/DiagnosticReports").path
 
+    // MARK: - JSON Models
+
+    /// JSON body of an `.ips` crash report file.
+    private struct CrashBody: Decodable {
+        let procName: String?
+        let captureTime: String?
+        let faultingThread: Int?
+        let fatalDyldError: Int?
+        let exception: ExceptionInfo?
+        let termination: TerminationInfo?
+        let bundleInfo: BundleInfo?
+        let threads: [ThreadInfo]?
+        let usedImages: [UsedImage]?
+    }
+
+    private struct ExceptionInfo: Decodable {
+        let type: String?
+        let signal: String?
+    }
+
+    private struct TerminationInfo: Decodable {
+        let namespace: String?
+        let indicator: String?
+        let reasons: [String]?
+        let details: [String]?
+    }
+
+    private struct BundleInfo: Decodable {
+        let CFBundleIdentifier: String?
+    }
+
+    private struct ThreadInfo: Decodable {
+        let frames: [FrameInfo]?
+    }
+
+    private struct FrameInfo: Decodable {
+        let imageIndex: Int?
+        let symbol: String?
+        let symbolLocation: Int?
+        let sourceFile: String?
+        let sourceLine: Int?
+    }
+
+    private struct UsedImage: Decodable {
+        let name: String?
+    }
+
     /// Parses an `.ips` crash report file at the given path.
     ///
     /// - Parameter path: Absolute path to the `.ips` file.
@@ -119,59 +166,68 @@ public enum CrashReportParser: Sendable {
 
         let bodyString = String(content[content.index(after: firstNewline)...])
         guard let bodyData = bodyString.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any]
+              let body = try? JSONDecoder().decode(CrashBody.self, from: bodyData)
         else {
             return nil
         }
 
-        return parseJSON(json)
+        return makeSummary(from: body)
     }
 
     /// Parses a crash report from its JSON body dictionary.
     ///
     /// Exposed for testing without needing a file on disk.
     public static func parseJSON(_ json: [String: Any]) -> CrashSummary {
-        let exception = json["exception"] as? [String: Any]
-        let termination = json["termination"] as? [String: Any]
-        let bundleInfo = json["bundleInfo"] as? [String: Any]
+        guard let data = try? JSONSerialization.data(withJSONObject: json),
+              let body = try? JSONDecoder().decode(CrashBody.self, from: data)
+        else {
+            return CrashSummary(
+                processName: nil, bundleID: nil, captureTime: nil,
+                exceptionType: nil, signal: nil, terminationNamespace: nil,
+                terminationIndicator: nil, terminationReasons: [], terminationDetails: [],
+                isFatalDyldError: false, crashingThread: nil, crashingThreadFrames: [],
+            )
+        }
+        return makeSummary(from: body)
+    }
 
-        let (crashingThread, crashingThreadFrames) = parseCrashingThread(from: json)
+    private static func makeSummary(from body: CrashBody) -> CrashSummary {
+        let (crashingThread, crashingThreadFrames) = parseCrashingThread(from: body)
 
         return CrashSummary(
-            processName: json["procName"] as? String,
-            bundleID: bundleInfo?["CFBundleIdentifier"] as? String,
-            captureTime: json["captureTime"] as? String,
-            exceptionType: exception?["type"] as? String,
-            signal: exception?["signal"] as? String,
-            terminationNamespace: termination?["namespace"] as? String,
-            terminationIndicator: termination?["indicator"] as? String,
-            terminationReasons: termination?["reasons"] as? [String] ?? [],
-            terminationDetails: termination?["details"] as? [String] ?? [],
-            isFatalDyldError: (json["fatalDyldError"] as? Int) != nil
-                && (json["fatalDyldError"] as? Int) != 0,
+            processName: body.procName,
+            bundleID: body.bundleInfo?.CFBundleIdentifier,
+            captureTime: body.captureTime,
+            exceptionType: body.exception?.type,
+            signal: body.exception?.signal,
+            terminationNamespace: body.termination?.namespace,
+            terminationIndicator: body.termination?.indicator,
+            terminationReasons: body.termination?.reasons ?? [],
+            terminationDetails: body.termination?.details ?? [],
+            isFatalDyldError: body.fatalDyldError != nil && body.fatalDyldError != 0,
             crashingThread: crashingThread,
             crashingThreadFrames: crashingThreadFrames,
         )
     }
 
-    /// Extracts the crashing thread's stack frames from the JSON body.
+    /// Extracts the crashing thread's stack frames from the decoded body.
     private static func parseCrashingThread(
-        from json: [String: Any],
+        from body: CrashBody,
     ) -> (threadIndex: Int?, frames: [StackFrame]) {
-        guard let faultingThread = json["faultingThread"] as? Int,
-              let threads = json["threads"] as? [[String: Any]],
+        guard let faultingThread = body.faultingThread,
+              let threads = body.threads,
               faultingThread < threads.count
         else {
             return (nil, [])
         }
 
         let thread = threads[faultingThread]
-        guard let rawFrames = thread["frames"] as? [[String: Any]] else {
+        guard let rawFrames = thread.frames else {
             return (faultingThread, [])
         }
 
         // Resolve image names from usedImages array
-        let usedImages = json["usedImages"] as? [[String: Any]] ?? []
+        let usedImages = body.usedImages ?? []
 
         let maxFrames = min(rawFrames.count, 15)
         var frames: [StackFrame] = []
@@ -182,22 +238,23 @@ public enum CrashReportParser: Sendable {
 
             // Resolve image name from imageIndex → usedImages
             var imageName = "???"
-            if let imageIndex = raw["imageIndex"] as? Int,
-               imageIndex < usedImages.count
+            if let imageIndex = raw.imageIndex,
+               imageIndex < usedImages.count,
+               let name = usedImages[imageIndex].name
             {
-                if let name = usedImages[imageIndex]["name"] as? String {
-                    imageName = name
-                }
+                imageName = name
             }
 
-            frames.append(StackFrame(
-                index: i,
-                imageName: imageName,
-                symbol: raw["symbol"] as? String,
-                symbolOffset: raw["symbolLocation"] as? Int,
-                sourceFile: raw["sourceFile"] as? String,
-                sourceLine: raw["sourceLine"] as? Int,
-            ))
+            frames.append(
+                StackFrame(
+                    index: i,
+                    imageName: imageName,
+                    symbol: raw.symbol,
+                    symbolOffset: raw.symbolLocation,
+                    sourceFile: raw.sourceFile,
+                    sourceLine: raw.sourceLine,
+                ),
+            )
         }
 
         return (faultingThread, frames)

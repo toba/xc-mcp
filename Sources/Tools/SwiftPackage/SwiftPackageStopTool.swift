@@ -84,9 +84,10 @@ public struct SwiftPackageStopTool: Sendable {
                         allExited = false
                     }
                 }
-                let detail = allExited
-                    ? "Successfully stopped '\(executable)'"
-                    : "Stopped '\(executable)' (escalated to SIGKILL after SIGTERM timeout)"
+                let detail =
+                    allExited
+                        ? "Successfully stopped '\(executable)'"
+                        : "Stopped '\(executable)' (escalated to SIGKILL after SIGTERM timeout)"
                 return CallTool.Result(content: [.text(detail)])
             } else if result.exitCode == 1 {
                 // pkill returns 1 when no process found (race: exited between pgrep and pkill)

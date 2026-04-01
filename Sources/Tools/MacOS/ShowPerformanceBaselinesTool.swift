@@ -75,18 +75,22 @@ public struct ShowPerformanceBaselinesTool: Sendable {
         let fm = FileManager.default
 
         guard fm.fileExists(atPath: baselinesDir) else {
-            return CallTool.Result(content: [.text(
-                "No performance baselines found. The directory does not exist:\n\(baselinesDir)",
-            )])
+            return CallTool.Result(content: [
+                .text(
+                    "No performance baselines found. The directory does not exist:\n\(baselinesDir)",
+                ),
+            ])
         }
 
         let contents = (try? fm.contentsOfDirectory(atPath: baselinesDir)) ?? []
         let baselineDirs = contents.filter { $0.hasSuffix(".xcbaseline") }
 
         guard !baselineDirs.isEmpty else {
-            return CallTool.Result(content: [.text(
-                "No .xcbaseline directories found in:\n\(baselinesDir)",
-            )])
+            return CallTool.Result(content: [
+                .text(
+                    "No .xcbaseline directories found in:\n\(baselinesDir)",
+                ),
+            ])
         }
 
         // Build target UUID → name map from pbxproj
@@ -200,14 +204,18 @@ public struct ShowPerformanceBaselinesTool: Sendable {
         }
 
         if output.isEmpty {
-            return CallTool.Result(content: [.text(
-                "No baselines match the specified filters.",
-            )])
+            return CallTool.Result(content: [
+                .text(
+                    "No baselines match the specified filters.",
+                ),
+            ])
         }
 
-        return CallTool.Result(content: [.text(
-            output.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
-        )])
+        return CallTool.Result(content: [
+            .text(
+                output.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
+            ),
+        ])
     }
 
     // MARK: - Machine Info Parsing

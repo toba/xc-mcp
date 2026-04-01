@@ -93,8 +93,9 @@ public struct CreateSchemeTool: Sendable {
         // Resolve build target names: prefer build_targets array, fall back to build_target string
         let buildTargetNames: [String]
         if case let .array(targets) = arguments["build_targets"] {
-            buildTargetNames = targets
-                .compactMap { if case let .string(name) = $0 { name } else { nil } }
+            buildTargetNames =
+                targets
+                    .compactMap { if case let .string(name) = $0 { name } else { nil } }
         } else if case let .string(single) = arguments["build_target"] {
             buildTargetNames = [single]
         } else {

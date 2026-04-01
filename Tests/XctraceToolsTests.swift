@@ -262,8 +262,11 @@ struct ProfileAppLaunchToolTests {
 
         #expect(schema.name == "profile_app_launch")
         #expect(schema.description?.contains("launch") == true)
-        #expect(schema.description?.contains("profile") == true || schema.description?
-            .contains("Profile") == true)
+        #expect(
+            schema.description?.contains("profile") == true
+                || schema.description?
+                .contains("Profile") == true,
+        )
     }
 
     @Test

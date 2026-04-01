@@ -50,13 +50,17 @@ public struct GetFileCoverageTool: Sendable {
         }
 
         let parser = CoverageParser()
-        guard let fileCoverage = await parser.parseFunctionCoverage(
-            xcresultPath: resultBundlePath,
-            filePath: filePath,
-        ) else {
-            return CallTool.Result(content: [.text(
-                "No coverage data found for file: \(filePath). Ensure the file is part of a target that was tested with coverage enabled.",
-            )])
+        guard
+            let fileCoverage = await parser.parseFunctionCoverage(
+                xcresultPath: resultBundlePath,
+                filePath: filePath,
+            )
+        else {
+            return CallTool.Result(content: [
+                .text(
+                    "No coverage data found for file: \(filePath). Ensure the file is part of a target that was tested with coverage enabled.",
+                ),
+            ])
         }
 
         var output = Self.formatFileCoverage(fileCoverage)
@@ -77,12 +81,14 @@ public struct GetFileCoverageTool: Sendable {
     static func formatFileCoverage(_ coverage: FileFunctionCoverage) -> String {
         var lines: [String] = []
         lines.append("File Coverage: \(coverage.path)")
-        lines.append(String(
-            format: "Coverage: %.1f%% (%d/%d lines)",
-            coverage.lineCoverage,
-            coverage.coveredLines,
-            coverage.executableLines,
-        ))
+        lines.append(
+            String(
+                format: "Coverage: %.1f%% (%d/%d lines)",
+                coverage.lineCoverage,
+                coverage.coveredLines,
+                coverage.executableLines,
+            ),
+        )
         lines.append("")
 
         // Sort: uncovered first, then by line number
@@ -95,16 +101,18 @@ public struct GetFileCoverageTool: Sendable {
         lines.append("Functions:")
         for fn in sorted {
             let prefix = fn.executionCount == 0 ? "[NOT COVERED] " : ""
-            lines.append(String(
-                format: "  %@L%d %@: %.1f%% (%d/%d, called %dx)",
-                prefix,
-                fn.lineNumber,
-                fn.name,
-                fn.lineCoverage,
-                fn.coveredLines,
-                fn.executableLines,
-                fn.executionCount,
-            ))
+            lines.append(
+                String(
+                    format: "  %@L%d %@: %.1f%% (%d/%d, called %dx)",
+                    prefix,
+                    fn.lineNumber,
+                    fn.name,
+                    fn.lineCoverage,
+                    fn.coveredLines,
+                    fn.executableLines,
+                    fn.executionCount,
+                ),
+            )
         }
 
         return lines.joined(separator: "\n")

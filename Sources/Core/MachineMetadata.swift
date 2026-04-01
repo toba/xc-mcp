@@ -28,7 +28,8 @@ public enum MachineMetadata {
         guard sysctlbyname(name, &buffer, &size, nil, 0) == 0 else { return nil }
         // Truncate at null terminator before decoding
         let length = buffer.firstIndex(of: 0) ?? size
-        return String(decoding: buffer[..<length], as: UTF8.self)
+        return String(decoding: buffer[..<length],
+                      as: UTF8.self) // swiftlint:disable:this optional_data_string_conversion
     }
 
     private static func sysctlInt(_ name: String) -> Int? {

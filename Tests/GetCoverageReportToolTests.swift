@@ -1,7 +1,7 @@
 import Testing
 @testable import XCMCPCore
-@testable import XCMCPTools
 import Foundation
+@testable import XCMCPTools
 
 struct GetCoverageReportToolTests {
     @Test

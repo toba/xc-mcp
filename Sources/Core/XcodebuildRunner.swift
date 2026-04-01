@@ -126,12 +126,13 @@ public struct XcodebuildRunner: Sendable {
             .name("xcrun"),
             arguments: Arguments(["xcodebuild"] + arguments),
             environment: environment,
-        ) { (
-            execution: Execution,
-            _,
-            stdoutSeq: AsyncBufferSequence,
-            stderrSeq: AsyncBufferSequence,
-        ) in
+        ) {
+            (
+                execution: Execution,
+                _,
+                stdoutSeq: AsyncBufferSequence,
+                stderrSeq: AsyncBufferSequence,
+            ) in
             try await withThrowingTaskGroup(of: Void.self) { group in
                 // Read stdout
                 group.addTask {
@@ -591,16 +592,18 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
 
             // "Linking <product>" or "CodeSign" = target completed
             if trimmed.hasPrefix("Linking ") {
-                let product = String(trimmed.dropFirst("Linking ".count)
-                    .prefix(while: { !$0.isWhitespace }))
+                let product = String(
+                    trimmed.dropFirst("Linking ".count)
+                        .prefix(while: { !$0.isWhitespace }),
+                )
                 completedTargets.append(product)
                 inProgressTargets.removeAll { $0 == product }
             }
 
             // Track last meaningful action
-            if trimmed.hasPrefix("CompileSwift ") || trimmed.hasPrefix("SwiftCompile ") ||
-                trimmed.hasPrefix("Linking ") || trimmed.hasPrefix("CodeSign ") ||
-                trimmed.hasPrefix("Ld ") || trimmed.hasPrefix("SwiftDriver ")
+            if trimmed.hasPrefix("CompileSwift ") || trimmed.hasPrefix("SwiftCompile ")
+                || trimmed.hasPrefix("Linking ") || trimmed.hasPrefix("CodeSign ")
+                || trimmed.hasPrefix("Ld ") || trimmed.hasPrefix("SwiftDriver ")
             {
                 // Extract action + target from "(in target 'X' from project 'Y')"
                 if let targetRange = line.range(of: "in target '"),

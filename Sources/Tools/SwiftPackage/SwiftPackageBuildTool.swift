@@ -64,8 +64,9 @@ public struct SwiftPackageBuildTool: Sendable {
         let product = arguments.getString("product")
         let buildTests = arguments.getBool("build_tests")
         let environment = await sessionManager.resolveEnvironment(from: arguments)
-        let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
-            ?? SwiftRunner.defaultTimeout
+        let timeout =
+            arguments.getInt("timeout").map { Duration.seconds($0) }
+                ?? SwiftRunner.defaultTimeout
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(

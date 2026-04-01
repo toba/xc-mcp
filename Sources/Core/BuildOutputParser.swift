@@ -5,7 +5,7 @@ import Foundation
 ///
 /// Extracts errors, warnings, linker errors, test failures, build timing,
 /// and code coverage from raw build output text.
-public final class BuildOutputParser: @unchecked Sendable {
+public final class BuildOutputParser {
     private var errors: [BuildError] = []
     private var warnings: [BuildWarning] = []
     private var failedTests: [FailedTest] = []
@@ -126,12 +126,15 @@ public final class BuildOutputParser: @unchecked Sendable {
         if testRunFailed, let testName = lastStartedTestName {
             let normalizedName = normalizeTestName(testName)
             if !hasSeenSimilarTest(normalizedName) {
-                let message = pendingSignalCode.map {
-                    "Crashed (signal \($0)): last test started before crash"
-                } ?? "Test did not complete — possible crash"
-                failedTests.append(FailedTest(
-                    test: testName, message: message, file: nil, line: nil,
-                ))
+                let message =
+                    pendingSignalCode.map {
+                        "Crashed (signal \($0)): last test started before crash"
+                    } ?? "Test did not complete — possible crash"
+                failedTests.append(
+                    FailedTest(
+                        test: testName, message: message, file: nil, line: nil,
+                    ),
+                )
                 seenTestNames.insert(normalizedName)
             }
             lastStartedTestName = nil
@@ -423,12 +426,15 @@ public final class BuildOutputParser: @unchecked Sendable {
         if line.contains("Restarting after"), let testName = lastStartedTestName {
             let normalizedName = normalizeTestName(testName)
             if !hasSeenSimilarTest(normalizedName) {
-                let message = pendingSignalCode.map {
-                    "Crashed (signal \($0)): last test started before crash"
-                } ?? "Crashed: last test started before crash"
-                failedTests.append(FailedTest(
-                    test: testName, message: message, file: nil, line: nil,
-                ))
+                let message =
+                    pendingSignalCode.map {
+                        "Crashed (signal \($0)): last test started before crash"
+                    } ?? "Crashed: last test started before crash"
+                failedTests.append(
+                    FailedTest(
+                        test: testName, message: message, file: nil, line: nil,
+                    ),
+                )
                 seenTestNames.insert(normalizedName)
             }
             lastStartedTestName = nil
@@ -1012,13 +1018,15 @@ public final class BuildOutputParser: @unchecked Sendable {
         }
 
         let testName = lastStartedTestName ?? "unknown"
-        performanceMeasurements.append(PerformanceMeasurement(
-            test: testName,
-            metric: metric,
-            average: average,
-            relativeStandardDeviation: rsd,
-            values: values,
-        ))
+        performanceMeasurements.append(
+            PerformanceMeasurement(
+                test: testName,
+                metric: metric,
+                average: average,
+                relativeStandardDeviation: rsd,
+                values: values,
+            ),
+        )
     }
 
     private func parseFailedTest(_ line: String) -> FailedTest? {

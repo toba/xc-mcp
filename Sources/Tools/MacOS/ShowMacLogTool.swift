@@ -130,13 +130,15 @@ public struct ShowMacLogTool: Sendable {
                 var predicateParts: [String] = []
 
                 if let bundleId {
-                    if let resolved = await StartMacLogCapTool
-                        .resolveExecutableName(bundleId: bundleId)
+                    if let resolved =
+                        await StartMacLogCapTool
+                            .resolveExecutableName(bundleId: bundleId)
                     {
                         predicateParts.append("process == \"\(resolved)\"")
                     } else {
-                        let appName = bundleId.split(separator: ".").last
-                            .map(String.init) ?? bundleId
+                        let appName =
+                            bundleId.split(separator: ".").last
+                                .map(String.init) ?? bundleId
                         predicateParts.append("process ==[cd] \"\(appName)\"")
                     }
                 }

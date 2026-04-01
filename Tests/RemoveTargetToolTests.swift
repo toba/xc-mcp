@@ -179,10 +179,14 @@ struct RemoveTargetToolTests {
 
         // Wire up a real dependency: AppTarget depends on LibTarget
         var xcodeproj = try XcodeProj(path: projectPath)
-        let appTarget = try #require(xcodeproj.pbxproj.nativeTargets
-            .first { $0.name == "AppTarget" })
-        let libTarget = try #require(xcodeproj.pbxproj.nativeTargets
-            .first { $0.name == "LibTarget" })
+        let appTarget = try #require(
+            xcodeproj.pbxproj.nativeTargets
+                .first { $0.name == "AppTarget" },
+        )
+        let libTarget = try #require(
+            xcodeproj.pbxproj.nativeTargets
+                .first { $0.name == "LibTarget" },
+        )
 
         let proxy = try PBXContainerItemProxy(
             containerPortal: .project(#require(xcodeproj.pbxproj.rootObject)),

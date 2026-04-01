@@ -357,7 +357,8 @@ struct BuildResultFormatterTests {
             errors: [
                 BuildError(
                     file: nil, line: nil,
-                    message: "Error: Unknown option --srcdir Command PhaseScriptExecution failed with a nonzero exit code",
+                    message:
+                    "Error: Unknown option --srcdir Command PhaseScriptExecution failed with a nonzero exit code",
                 ),
                 BuildError(
                     file: "Target1.swift", line: 1,

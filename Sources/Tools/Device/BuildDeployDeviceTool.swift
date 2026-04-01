@@ -25,39 +25,41 @@ public struct BuildDeployDeviceTool: Sendable {
             "Build, install, and launch an app on a connected device in one step. Builds for the device platform, stops any running instance, installs the .app, and launches it.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "project_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "workspace_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "scheme": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "The scheme to build. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "device": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Device UDID. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "configuration": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug.",
-                        ),
-                    ]),
-                ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                    .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
+                "properties": .object(
+                    [
+                        "project_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcodeproj file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "workspace_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcworkspace file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "scheme": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "The scheme to build. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "device": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Device UDID. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "configuration": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Build configuration (Debug or Release). Defaults to Debug.",
+                            ),
+                        ]),
+                    ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                ),
                 "required": .array([]),
             ]),
             annotations: .mutation,
@@ -87,7 +89,8 @@ public struct BuildDeployDeviceTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                additionalArguments: arguments.continueBuildingArgs() + arguments
+                additionalArguments: arguments.continueBuildingArgs()
+                    + arguments
                     .buildSettingOverrides(),
                 environment: environment,
                 outputTimeout: XcodebuildRunner.deviceOutputTimeout,
@@ -104,17 +107,21 @@ public struct BuildDeployDeviceTool: Sendable {
                 destination: destination,
             )
 
-            guard let appPath = BuildSettingExtractor.extractAppPath(
-                from: buildSettings.stdout,
-            ) else {
+            guard
+                let appPath = BuildSettingExtractor.extractAppPath(
+                    from: buildSettings.stdout,
+                )
+            else {
                 throw MCPError.internalError(
                     "Build succeeded but could not determine .app path from build settings.",
                 )
             }
 
-            guard let bundleId = BuildSettingExtractor.extractBundleId(
-                from: buildSettings.stdout,
-            ) else {
+            guard
+                let bundleId = BuildSettingExtractor.extractBundleId(
+                    from: buildSettings.stdout,
+                )
+            else {
                 throw MCPError.internalError(
                     "Build succeeded but could not determine bundle identifier from build settings.",
                 )

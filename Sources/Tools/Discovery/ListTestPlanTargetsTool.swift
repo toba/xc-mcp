@@ -347,9 +347,10 @@ public struct ListTestPlanTargetsTool: Sendable {
     private func fetchSchemeTestableTargets(
         scheme: String, projectPath: String,
     ) -> [SchemeTestTarget]? {
-        guard let schemePath = SchemePathResolver.findScheme(
-            named: scheme, in: projectPath,
-        )
+        guard
+            let schemePath = SchemePathResolver.findScheme(
+                named: scheme, in: projectPath,
+            )
         else { return nil }
 
         guard let xcscheme = try? XCScheme(path: Path(schemePath)) else {

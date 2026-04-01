@@ -129,20 +129,21 @@ extension ProcessResult {
         }()
 
         if mergeStderr {
-            let run: @Sendable () async throws -> ExecutionRecord<
-                StringOutput<Unicode.UTF8>,
-                CombinedErrorOutput,
-            > = {
-                try await Subprocess.run(
-                    executable,
-                    arguments: arguments,
-                    environment: environment,
-                    workingDirectory: workingDirectory,
-                    platformOptions: platformOptions,
-                    output: .string(limit: outputLimit),
-                    error: .combinedWithOutput,
-                )
-            }
+            let run:
+                @Sendable () async throws -> ExecutionRecord<
+                    StringOutput<Unicode.UTF8>,
+                    CombinedErrorOutput,
+                > = {
+                    try await Subprocess.run(
+                        executable,
+                        arguments: arguments,
+                        environment: environment,
+                        workingDirectory: workingDirectory,
+                        platformOptions: platformOptions,
+                        output: .string(limit: outputLimit),
+                        error: .combinedWithOutput,
+                    )
+                }
             let result = try await raceTimeout(timeout, run: run)
             let exitCode: Int32 =
                 switch result.terminationStatus {
@@ -155,20 +156,21 @@ extension ProcessResult {
                 stderr: "",
             )
         } else {
-            let run: @Sendable () async throws -> ExecutionRecord<
-                StringOutput<Unicode.UTF8>,
-                StringOutput<Unicode.UTF8>,
-            > = {
-                try await Subprocess.run(
-                    executable,
-                    arguments: arguments,
-                    environment: environment,
-                    workingDirectory: workingDirectory,
-                    platformOptions: platformOptions,
-                    output: .string(limit: outputLimit),
-                    error: .string(limit: errorLimit),
-                )
-            }
+            let run:
+                @Sendable () async throws -> ExecutionRecord<
+                    StringOutput<Unicode.UTF8>,
+                    StringOutput<Unicode.UTF8>,
+                > = {
+                    try await Subprocess.run(
+                        executable,
+                        arguments: arguments,
+                        environment: environment,
+                        workingDirectory: workingDirectory,
+                        platformOptions: platformOptions,
+                        output: .string(limit: outputLimit),
+                        error: .string(limit: errorLimit),
+                    )
+                }
             let result = try await raceTimeout(timeout, run: run)
             let exitCode: Int32 =
                 switch result.terminationStatus {
@@ -227,9 +229,10 @@ extension ProcessResult {
     ///   - pid: The process ID to monitor.
     ///   - timeout: Maximum time to wait for exit.
     /// - Returns: `true` if the process exited within the timeout, `false` if still alive.
-    public static func waitForProcessExit(pid: Int32,
-                                          timeout: Duration = .seconds(5)) async -> Bool
-    {
+    public static func waitForProcessExit(
+        pid: Int32,
+        timeout: Duration = .seconds(5),
+    ) async -> Bool {
         let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline {
             if kill(pid, 0) != 0 { return true }

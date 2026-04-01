@@ -132,8 +132,9 @@ public struct LaunchMacAppTool: Sendable {
                 }
 
                 // Resolve PID and check liveness
-                let appName = appPath
-                    .map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
+                let appName =
+                    appPath
+                        .map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
                 if let pid = await PIDResolver.findLaunchedPID(
                     bundleId: bundleId,
                     appName: appName,

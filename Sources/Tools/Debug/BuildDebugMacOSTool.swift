@@ -31,57 +31,59 @@ public struct BuildDebugMacOSTool: Sendable {
             "Build and launch a macOS app under LLDB debugger. This is the equivalent of Xcode's Run button — it builds incrementally, launches via Launch Services with DYLD_FRAMEWORK_PATH for non-embedded frameworks, and attaches the debugger. Use all existing debug tools (debug_stack, debug_breakpoint_add, etc.) with the returned PID.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "project_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "workspace_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "scheme": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "The scheme to build. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "configuration": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug.",
-                        ),
-                    ]),
-                    "arch": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture.",
-                        ),
-                    ]),
-                    "args": .object([
-                        "type": .string("array"),
-                        "items": .object(["type": .string("string")]),
-                        "description": .string("Optional arguments to pass to the app."),
-                    ]),
-                    "env": .object([
-                        "type": .string("object"),
-                        "additionalProperties": .object(["type": .string("string")]),
-                        "description": .string(
-                            "Additional environment variables to set (key-value pairs).",
-                        ),
-                    ]),
-                    "stop_at_entry": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Stop at the entry point before running. Defaults to false.",
-                        ),
-                    ]),
-                ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                    .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
+                "properties": .object(
+                    [
+                        "project_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcodeproj file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "workspace_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcworkspace file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "scheme": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "The scheme to build. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "configuration": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Build configuration (Debug or Release). Defaults to Debug.",
+                            ),
+                        ]),
+                        "arch": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture.",
+                            ),
+                        ]),
+                        "args": .object([
+                            "type": .string("array"),
+                            "items": .object(["type": .string("string")]),
+                            "description": .string("Optional arguments to pass to the app."),
+                        ]),
+                        "env": .object([
+                            "type": .string("object"),
+                            "additionalProperties": .object(["type": .string("string")]),
+                            "description": .string(
+                                "Additional environment variables to set (key-value pairs).",
+                            ),
+                        ]),
+                        "stop_at_entry": .object([
+                            "type": .string("boolean"),
+                            "description": .string(
+                                "Stop at the entry point before running. Defaults to false.",
+                            ),
+                        ]),
+                    ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                ),
                 "required": .array([]),
             ]),
             annotations: .mutation,
@@ -162,7 +164,8 @@ public struct BuildDebugMacOSTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                additionalArguments: arguments.continueBuildingArgs() + arguments
+                additionalArguments: arguments.continueBuildingArgs()
+                    + arguments
                     .buildSettingOverrides(),
                 environment: resolvedEnv,
                 timeout: Self.buildTimeout,

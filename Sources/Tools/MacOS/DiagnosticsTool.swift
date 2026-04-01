@@ -20,44 +20,46 @@ public struct DiagnosticsTool: Sendable {
             "Collect all compiler warnings, errors, and lint violations for an Xcode project. Performs a clean build so all diagnostics are emitted.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "project_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "workspace_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "scheme": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "The scheme to build. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "configuration": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug.",
-                        ),
-                    ]),
-                    "include_lint": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Run swiftlint after building to include style violations. Defaults to true.",
-                        ),
-                    ]),
-                    "timeout": .object([
-                        "type": .string("integer"),
-                        "description": .string(
-                            "Maximum time in seconds for the build. Defaults to 300 (5 minutes).",
-                        ),
-                    ]),
-                ].merging([String: Value].noSanitizersSchemaProperty) { _, new in new }),
+                "properties": .object(
+                    [
+                        "project_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcodeproj file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "workspace_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcworkspace file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "scheme": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "The scheme to build. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "configuration": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Build configuration (Debug or Release). Defaults to Debug.",
+                            ),
+                        ]),
+                        "include_lint": .object([
+                            "type": .string("boolean"),
+                            "description": .string(
+                                "Run swiftlint after building to include style violations. Defaults to true.",
+                            ),
+                        ]),
+                        "timeout": .object([
+                            "type": .string("integer"),
+                            "description": .string(
+                                "Maximum time in seconds for the build. Defaults to 300 (5 minutes).",
+                            ),
+                        ]),
+                    ].merging([String: Value].noSanitizersSchemaProperty) { _, new in new },
+                ),
                 "required": .array([]),
             ]),
             annotations: .readOnly,
@@ -71,8 +73,9 @@ public struct DiagnosticsTool: Sendable {
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let includeLint = arguments.getBool("include_lint", default: true)
-        let timeout = arguments.getInt("timeout").map { TimeInterval($0) }
-            ?? XcodebuildRunner.defaultTimeout
+        let timeout =
+            arguments.getInt("timeout").map { TimeInterval($0) }
+                ?? XcodebuildRunner.defaultTimeout
 
         let projectRoot = ErrorExtractor.projectRoot(
             projectPath: projectPath, workspacePath: workspacePath,
@@ -189,9 +192,11 @@ public struct DiagnosticsTool: Sendable {
 
         args.append(projectRoot)
 
-        guard let result = try? await ProcessResult.run(
-            executablePath, arguments: args, mergeStderr: false,
-        ) else {
+        guard
+            let result = try? await ProcessResult.run(
+                executablePath, arguments: args, mergeStderr: false,
+            )
+        else {
             return nil
         }
 

@@ -277,8 +277,9 @@ struct AddFrameworkToolTests {
     }
 
     @Test
-    func `Add developer framework uses developerDir sourceTree and sets FRAMEWORK_SEARCH_PATHS`(
-    ) throws {
+    func `Add developer framework uses developerDir sourceTree and sets FRAMEWORK_SEARCH_PATHS`()
+        throws
+    {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )

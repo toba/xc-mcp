@@ -38,11 +38,12 @@ public enum PBXTargetMap {
             }
 
             if inTarget, trimmed.hasPrefix("name = ") {
-                let name = trimmed
-                    .dropFirst("name = ".count)
-                    .replacingOccurrences(of: ";", with: "")
-                    .trimmingCharacters(in: .whitespaces)
-                    .replacingOccurrences(of: "\"", with: "")
+                let name =
+                    trimmed
+                        .dropFirst("name = ".count)
+                        .replacingOccurrences(of: ";", with: "")
+                        .trimmingCharacters(in: .whitespaces)
+                        .replacingOccurrences(of: "\"", with: "")
 
                 if let uuid = currentUUID {
                     map[uuid] = name

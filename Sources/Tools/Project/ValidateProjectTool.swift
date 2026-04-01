@@ -73,8 +73,9 @@ public struct ValidateProjectTool: Sendable {
             var diagnostics = [Diagnostic]()
 
             let copyFilesPhases = target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
-            let frameworksPhase = target.buildPhases
-                .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+            let frameworksPhase =
+                target.buildPhases
+                    .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
 
             // --- Embed phase validation ---
             checkEmbedPhases(copyFilesPhases, diagnostics: &diagnostics)
@@ -275,15 +276,13 @@ public struct ValidateProjectTool: Sendable {
     ) {
         for phase in phases {
             let phaseName = phase.name ?? "(unnamed)"
-            for buildFile in phase.files ?? [] {
-                if buildFile.file == nil {
-                    diagnostics.append(
-                        Diagnostic(
-                            .warning,
-                            "Copy-files phase \"\(phaseName)\" contains a build file with a dangling reference",
-                        ),
-                    )
-                }
+            for buildFile in phase.files ?? [] where buildFile.file == nil {
+                diagnostics.append(
+                    Diagnostic(
+                        .warning,
+                        "Copy-files phase \"\(phaseName)\" contains a build file with a dangling reference",
+                    ),
+                )
             }
         }
     }
@@ -307,8 +306,9 @@ public struct ValidateProjectTool: Sendable {
             }
         }
         let allBuildFiles = xcodeproj.pbxproj.buildFiles
-        let orphanCount = allBuildFiles
-            .count(where: { !referencedBuildFileIDs.contains(ObjectIdentifier($0)) })
+        let orphanCount =
+            allBuildFiles
+                .count(where: { !referencedBuildFileIDs.contains(ObjectIdentifier($0)) })
         if orphanCount > 0 {
             diagnostics.append(
                 Diagnostic(
@@ -321,8 +321,9 @@ public struct ValidateProjectTool: Sendable {
         // Build phases not referenced by any target
         let targetPhases = Set(targets.flatMap(\.buildPhases).map(ObjectIdentifier.init))
         let allPhases = xcodeproj.pbxproj.buildPhases
-        let unreferencedCount = allPhases
-            .count(where: { !targetPhases.contains(ObjectIdentifier($0)) })
+        let unreferencedCount =
+            allPhases
+                .count(where: { !targetPhases.contains(ObjectIdentifier($0)) })
         if unreferencedCount > 0 {
             diagnostics.append(
                 Diagnostic(
@@ -353,8 +354,9 @@ public struct ValidateProjectTool: Sendable {
         let allEmbedded = embeddedByTarget.values.reduce(into: Set<String>()) { $0.formUnion($1) }
 
         for name in allEmbedded.sorted() {
-            let targetsWithFramework = appTargets
-                .filter { embeddedByTarget[$0.name]?.contains(name) == true }
+            let targetsWithFramework =
+                appTargets
+                    .filter { embeddedByTarget[$0.name]?.contains(name) == true }
             if targetsWithFramework.count < appTargets.count {
                 let havingNames = targetsWithFramework.map(\.name).sorted().joined(separator: ", ")
                 diagnostics.append(
@@ -375,8 +377,9 @@ public struct ValidateProjectTool: Sendable {
         targetProductNames: [String: String],
         diagnostics: inout [Diagnostic],
     ) {
-        let frameworksPhase = target.buildPhases
-            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworksPhase =
+            target.buildPhases
+                .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
 
         let linkedFiles = frameworksPhase?.files ?? []
 

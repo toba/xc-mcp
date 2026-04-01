@@ -22,53 +22,55 @@ public struct BuildRunMacOSTool: Sendable {
             "Build and run an Xcode project or workspace on macOS. This combines build_macos and launch_mac_app into a single operation.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "project_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "workspace_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "scheme": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "The scheme to build. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "configuration": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug.",
-                        ),
-                    ]),
-                    "arch": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture.",
-                        ),
-                    ]),
-                    "args": .object([
-                        "type": .string("array"),
-                        "items": .object(["type": .string("string")]),
-                        "description": .string("Optional arguments to pass to the app."),
-                    ]),
-                    "timeout": .object([
-                        "type": .string("integer"),
-                        "description": .string(
-                            "Maximum time in seconds for the build step. Defaults to 300 (5 minutes). "
-                                + "When the build times out, partial diagnostics (errors and warnings "
-                                + "collected so far) are returned instead of an empty error.",
-                        ),
-                    ]),
-                ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                    .merging([String: Value].noSanitizersSchemaProperty) { _, new in new }
-                    .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }),
+                "properties": .object(
+                    [
+                        "project_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcodeproj file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "workspace_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcworkspace file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "scheme": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "The scheme to build. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "configuration": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Build configuration (Debug or Release). Defaults to Debug.",
+                            ),
+                        ]),
+                        "arch": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture.",
+                            ),
+                        ]),
+                        "args": .object([
+                            "type": .string("array"),
+                            "items": .object(["type": .string("string")]),
+                            "description": .string("Optional arguments to pass to the app."),
+                        ]),
+                        "timeout": .object([
+                            "type": .string("integer"),
+                            "description": .string(
+                                "Maximum time in seconds for the build step. Defaults to 300 (5 minutes). "
+                                    + "When the build times out, partial diagnostics (errors and warnings "
+                                    + "collected so far) are returned instead of an empty error.",
+                            ),
+                        ]),
+                    ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
+                        .merging([String: Value].noSanitizersSchemaProperty) { _, new in new }
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                ),
                 "required": .array([]),
             ]),
             annotations: .mutation,
@@ -84,8 +86,9 @@ public struct BuildRunMacOSTool: Sendable {
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let arch = arguments.getString("arch")
         let launchArgs = arguments.getStringArray("args")
-        let timeout = arguments.getInt("timeout").map { TimeInterval($0) }
-            ?? XcodebuildRunner.defaultTimeout
+        let timeout =
+            arguments.getInt("timeout").map { TimeInterval($0) }
+                ?? XcodebuildRunner.defaultTimeout
 
         let projectRoot = ErrorExtractor.projectRoot(
             projectPath: projectPath, workspacePath: workspacePath,
@@ -113,7 +116,8 @@ public struct BuildRunMacOSTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                additionalArguments: arguments.continueBuildingArgs() + arguments
+                additionalArguments: arguments.continueBuildingArgs()
+                    + arguments
                     .noSanitizersArgs() + arguments.buildSettingOverrides(),
                 environment: environment,
                 timeout: timeout,

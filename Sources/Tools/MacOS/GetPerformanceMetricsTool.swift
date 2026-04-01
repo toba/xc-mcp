@@ -42,12 +42,16 @@ public struct GetPerformanceMetricsTool: Sendable {
             )
         }
 
-        guard let results = await XCResultParser.parsePerformanceMetrics(
-            at: resultBundlePath, testId: testId,
-        ), !results.isEmpty else {
-            return CallTool.Result(content: [.text(
-                "No performance metrics found in the result bundle. Ensure tests use measure(metrics:) blocks.",
-            )])
+        guard
+            let results = await XCResultParser.parsePerformanceMetrics(
+                at: resultBundlePath, testId: testId,
+            ), !results.isEmpty
+        else {
+            return CallTool.Result(content: [
+                .text(
+                    "No performance metrics found in the result bundle. Ensure tests use measure(metrics:) blocks.",
+                ),
+            ])
         }
 
         let output = Self.formatMetrics(results)
@@ -69,8 +73,9 @@ public struct GetPerformanceMetricsTool: Sendable {
                     guard !measurements.isEmpty else { continue }
 
                     let avg = measurements.reduce(0, +) / Double(measurements.count)
-                    let variance = measurements.reduce(0) { $0 + ($1 - avg) * ($1 - avg) }
-                        / Double(measurements.count)
+                    let variance =
+                        measurements.reduce(0) { $0 + ($1 - avg) * ($1 - avg) }
+                            / Double(measurements.count)
                     let stdDev = variance.squareRoot()
 
                     var line = String(

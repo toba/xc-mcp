@@ -154,15 +154,18 @@ public struct StartMacLogCapTool: Sendable {
     /// Resolves the actual executable name from an app bundle's Info.plist.
     /// Uses `mdfind` to locate the app by bundle ID, then reads CFBundleExecutable.
     static func resolveExecutableName(bundleId: String) async -> String? {
-        guard let result = try? await ProcessResult.run(
-            "/usr/bin/mdfind",
-            arguments: ["kMDItemCFBundleIdentifier == '\(bundleId)'"],
-            timeout: .seconds(5),
-        ), result.succeeded else {
+        guard
+            let result = try? await ProcessResult.run(
+                "/usr/bin/mdfind",
+                arguments: ["kMDItemCFBundleIdentifier == '\(bundleId)'"],
+                timeout: .seconds(5),
+            ), result.succeeded
+        else {
             return nil
         }
 
-        guard let appPath = result.stdout
+        guard
+            let appPath = result.stdout
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: .newlines)
             .first(where: { $0.hasSuffix(".app") }), !appPath.isEmpty

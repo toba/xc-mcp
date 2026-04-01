@@ -265,7 +265,8 @@ public struct DetectUnusedCodeTool: Sendable {
         }
 
         if superfluousCount > 0 {
-            message += "\n\(superfluousCount) superfluous ignore comment warning(s) filtered (Periphery bug)"
+            message +=
+                "\n\(superfluousCount) superfluous ignore comment warning(s) filtered (Periphery bug)"
         }
 
         return CallTool.Result(content: [.text(message)])

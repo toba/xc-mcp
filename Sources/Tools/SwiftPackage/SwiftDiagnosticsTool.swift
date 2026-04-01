@@ -54,8 +54,9 @@ public struct SwiftDiagnosticsTool: Sendable {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let buildTests = arguments.getBool("build_tests", default: true)
         let includeLint = arguments.getBool("include_lint", default: true)
-        let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
-            ?? SwiftRunner.defaultTimeout
+        let timeout =
+            arguments.getInt("timeout").map { Duration.seconds($0) }
+                ?? SwiftRunner.defaultTimeout
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
@@ -145,9 +146,11 @@ public struct SwiftDiagnosticsTool: Sendable {
 
         args.append(packagePath)
 
-        guard let result = try? await ProcessResult.run(
-            executablePath, arguments: args, mergeStderr: false,
-        ) else {
+        guard
+            let result = try? await ProcessResult.run(
+                executablePath, arguments: args, mergeStderr: false,
+            )
+        else {
             return nil
         }
 

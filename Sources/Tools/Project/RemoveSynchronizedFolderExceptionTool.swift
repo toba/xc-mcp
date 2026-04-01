@@ -89,9 +89,11 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
             }
 
             // Resolve the target by name
-            guard let resolvedTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
-                $0.name == targetName
-            }) else {
+            guard
+                let resolvedTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
+                    $0.name == targetName
+                })
+            else {
                 throw MCPError.invalidParams("Target '\(targetName)' not found in project")
             }
 
@@ -100,12 +102,14 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
             // Fallback: if the sync group's exceptions don't resolve references correctly
             // (e.g. auto-created exception sets), search all exception sets in the project
             // and match by target identity.
-            var matchingIndices: [(
-                index: Int,
-                set: PBXFileSystemSynchronizedBuildFileExceptionSet,
-            )] =
+            var matchingIndices:
+                [(
+                    index: Int,
+                    set: PBXFileSystemSynchronizedBuildFileExceptionSet,
+                )] =
                 syncGroup.exceptions?.enumerated().compactMap { index, exception in
-                    guard let buildException =
+                    guard
+                        let buildException =
                         exception as? PBXFileSystemSynchronizedBuildFileExceptionSet,
                         buildException.target === resolvedTarget
                         || buildException.target?.name == targetName
@@ -164,9 +168,11 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
 
             if let fileName {
                 // Find which exception set contains this file
-                guard let match = matchingIndices.first(where: {
-                    $0.set.membershipExceptions?.contains(fileName) == true
-                }) else {
+                guard
+                    let match = matchingIndices.first(where: {
+                        $0.set.membershipExceptions?.contains(fileName) == true
+                    })
+                else {
                     throw MCPError.invalidParams(
                         "File '\(fileName)' not found in exception set for target '\(targetName)'",
                     )

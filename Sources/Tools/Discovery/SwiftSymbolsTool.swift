@@ -69,7 +69,8 @@ public struct SwiftSymbolsTool: Sendable {
             timeout: .seconds(10),
         )
         guard sdkResult.succeeded else {
-            throw MCPError
+            throw
+                MCPError
                 .internalError(
                     "Failed to resolve SDK path for \(platform): \(sdkResult.errorOutput)",
                 )
@@ -156,12 +157,14 @@ private func resolveDeveloperFrameworkPath(sdkPath: String, platform _: String) 
     // We need        .../Platforms/MacOSX.platform/Developer/Library/Frameworks
     let sdkURL = URL(fileURLWithPath: sdkPath)
     // Go up from SDKs/<version>.sdk to Developer/
-    let developerDir = sdkURL
-        .deletingLastPathComponent() // SDKs/
-        .deletingLastPathComponent() // Developer/
-    let frameworksDir = developerDir
-        .appendingPathComponent("Library")
-        .appendingPathComponent("Frameworks")
+    let developerDir =
+        sdkURL
+            .deletingLastPathComponent() // SDKs/
+            .deletingLastPathComponent() // Developer/
+    let frameworksDir =
+        developerDir
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Frameworks")
 
     if FileManager.default.fileExists(atPath: frameworksDir.path) {
         return frameworksDir.path

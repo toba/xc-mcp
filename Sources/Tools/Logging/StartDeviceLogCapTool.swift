@@ -60,8 +60,9 @@ public struct StartDeviceLogCapTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let device = try await sessionManager.resolveDevice(from: arguments)
-        let outputFile = arguments.getString("output_file")
-            ?? "/tmp/device_log_\(device).log"
+        let outputFile =
+            arguments.getString("output_file")
+                ?? "/tmp/device_log_\(device).log"
         let match = arguments.getString("match")
         let process = arguments.getString("process")
         let quiet: Bool

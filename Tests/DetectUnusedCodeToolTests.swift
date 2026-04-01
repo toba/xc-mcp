@@ -753,7 +753,7 @@ struct DetectUnusedCodeToolTests {
         """
         let results = DetectUnusedCodeTool.parseJSONOutput(json)
         #expect(results.count == 1)
-        #expect(results[0].module == "")
+        #expect(results[0].module.isEmpty)
     }
 
     // MARK: - Superfluous ignore comment filtering
@@ -781,8 +781,9 @@ struct DetectUnusedCodeToolTests {
             ),
         ]
 
-        let (filtered, removedCount) = DetectUnusedCodeTool
-            .filterSuperfluousIgnoreComments(declarations)
+        let (filtered, removedCount) =
+            DetectUnusedCodeTool
+                .filterSuperfluousIgnoreComments(declarations)
         #expect(filtered.count == 1)
         #expect(filtered[0].name == "unusedFunc()")
         #expect(removedCount == 2)
@@ -791,8 +792,9 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `filterSuperfluousIgnoreComments keeps all when none superfluous`() {
         let declarations = Self.sampleDeclarations()
-        let (filtered, removedCount) = DetectUnusedCodeTool
-            .filterSuperfluousIgnoreComments(declarations)
+        let (filtered, removedCount) =
+            DetectUnusedCodeTool
+                .filterSuperfluousIgnoreComments(declarations)
         #expect(filtered.count == declarations.count)
         #expect(removedCount == 0)
     }

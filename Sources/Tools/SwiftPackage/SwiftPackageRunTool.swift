@@ -69,8 +69,9 @@ public struct SwiftPackageRunTool: Sendable {
         // Get arguments if specified
         let execArgs = arguments.getStringArray("arguments")
         let environment = await sessionManager.resolveEnvironment(from: arguments)
-        let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
-            ?? SwiftRunner.defaultTimeout
+        let timeout =
+            arguments.getInt("timeout").map { Duration.seconds($0) }
+                ?? SwiftRunner.defaultTimeout
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(

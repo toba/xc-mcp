@@ -110,8 +110,10 @@ public struct AddFrameworkTool: Sendable {
             let developerFrameworks: Set = [
                 "XcodeKit", "XCTest", "SpriteKit", "SceneKit",
             ]
-            let isDeveloperFramework = isSystemFramework && developerFrameworks
-                .contains(frameworkName)
+            let isDeveloperFramework =
+                isSystemFramework
+                    && developerFrameworks
+                    .contains(frameworkName)
 
             if isSystemFramework {
                 frameworkFileName = "\(frameworkName).framework"
@@ -246,7 +248,8 @@ public struct AddFrameworkTool: Sendable {
                 var embedPhase: PBXCopyFilesBuildPhase?
                 for phase in target.buildPhases {
                     if let copyPhase = phase as? PBXCopyFilesBuildPhase,
-                       copyPhase.dstSubfolderSpec == .frameworks || copyPhase
+                       copyPhase.dstSubfolderSpec == .frameworks
+                       || copyPhase
                        .dstSubfolder == .frameworks
                     {
                         embedPhase = copyPhase

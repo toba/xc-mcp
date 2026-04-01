@@ -364,9 +364,10 @@ struct AddSwiftPackageToolTests {
             target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
         #expect(frameworkPhase != nil, "Target should have a Frameworks build phase")
 
-        let hasPackageBuildFile = frameworkPhase?.files?.contains { buildFile in
-            buildFile.product?.productName == "SharedKit"
-        } ?? false
+        let hasPackageBuildFile =
+            frameworkPhase?.files?.contains { buildFile in
+                buildFile.product?.productName == "SharedKit"
+            } ?? false
         #expect(
             hasPackageBuildFile,
             "Frameworks build phase should contain a build file for the package product",
@@ -553,8 +554,9 @@ struct AddSwiftPackageToolTests {
         // Verify both targets have a Frameworks build phase with the product
         for targetName in ["SwiftiomaticApp", "SwiftiomaticExtension"] {
             let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == targetName }
-            let fwPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
-                as? PBXFrameworksBuildPhase
+            let fwPhase =
+                target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+                    as? PBXFrameworksBuildPhase
             #expect(fwPhase != nil, "\(targetName) should have a Frameworks build phase")
             let hasBuildFile =
                 fwPhase?.files?.contains { $0.product?.productName == "SwiftiomaticLib" }
@@ -670,14 +672,15 @@ struct AddSwiftPackageToolTests {
             let buildFile = PBXBuildFile(product: productDep)
             xcodeproj.pbxproj.add(object: buildFile)
 
-            let fwPhase = target.buildPhases.first { $0 is PBXFrameworksBuildPhase }
-                as? PBXFrameworksBuildPhase
-                ?? {
-                    let phase = PBXFrameworksBuildPhase()
-                    xcodeproj.pbxproj.add(object: phase)
-                    target.buildPhases.append(phase)
-                    return phase
-                }()
+            let fwPhase =
+                target.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+                    as? PBXFrameworksBuildPhase
+                    ?? {
+                        let phase = PBXFrameworksBuildPhase()
+                        xcodeproj.pbxproj.add(object: phase)
+                        target.buildPhases.append(phase)
+                        return phase
+                    }()
             fwPhase.files?.append(buildFile)
         }
 
@@ -715,8 +718,10 @@ struct AddSwiftPackageToolTests {
             "Should have 3 existing + 1 new remote package, got \(remoteCount)",
         )
 
-        let reloadedTarget = try #require(reloaded.pbxproj.nativeTargets
-            .first { $0.name == "Core" })
+        let reloadedTarget = try #require(
+            reloaded.pbxproj.nativeTargets
+                .first { $0.name == "Core" },
+        )
         let depCount = reloadedTarget.packageProductDependencies?.count ?? 0
         #expect(depCount == 4, "Should have 3 existing + 1 new product dependency, got \(depCount)")
     }
@@ -752,10 +757,12 @@ struct AddSwiftPackageToolTests {
         let productsGroup = PBXGroup(children: [], sourceTree: .group, name: "Products")
         xcodeproj.pbxproj.add(object: productsGroup)
 
-        project.projects = [[
-            "ProjectRef": subProjectRef,
-            "ProductGroup": productsGroup,
-        ]]
+        project.projects = [
+            [
+                "ProjectRef": subProjectRef,
+                "ProductGroup": productsGroup,
+            ],
+        ]
 
         // Without the PBXProjWriter workaround this crashes with SIGTRAP in release mode
         try PBXProjWriter.write(xcodeproj, to: projectPath)

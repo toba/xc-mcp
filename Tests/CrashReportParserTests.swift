@@ -118,25 +118,27 @@ struct CrashReportParserTests {
             "threads": [
                 ["frames": []] as [String: Any],
                 ["frames": []] as [String: Any],
-                ["frames": [
-                    [
-                        "imageIndex": 1,
-                        "symbol": "_assertionFailure",
-                        "symbolLocation": 100,
-                    ] as [String: Any],
-                    [
-                        "imageIndex": 0,
-                        "symbol": "Diagnostic.log(_:for:file:method:line:showInConsole:fail:as:)",
-                        "symbolLocation": 356,
-                        "sourceFile": "Diagnostic.swift",
-                        "sourceLine": 152,
-                    ] as [String: Any],
-                    [
-                        "imageIndex": 2,
-                        "symbol": "CFRunLoopRun",
-                        "symbolLocation": 42,
-                    ] as [String: Any],
-                ]] as [String: Any],
+                [
+                    "frames": [
+                        [
+                            "imageIndex": 1,
+                            "symbol": "_assertionFailure",
+                            "symbolLocation": 100,
+                        ] as [String: Any],
+                        [
+                            "imageIndex": 0,
+                            "symbol": "Diagnostic.log(_:for:file:method:line:showInConsole:fail:as:)",
+                            "symbolLocation": 356,
+                            "sourceFile": "Diagnostic.swift",
+                            "sourceLine": 152,
+                        ] as [String: Any],
+                        [
+                            "imageIndex": 2,
+                            "symbol": "CFRunLoopRun",
+                            "symbolLocation": 42,
+                        ] as [String: Any],
+                    ],
+                ] as [String: Any],
             ] as [[String: Any]],
         ]
 

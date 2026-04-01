@@ -14,7 +14,8 @@ public enum BuildGuard {
     /// when the build finishes.
     /// Waits up to `timeout` (default 5 minutes) for the lock to become available.
     public static func acquire(
-        path: String, description: String,
+        path: String,
+        description: String,
         timeout: Duration = defaultTimeout,
     ) async throws(BuildGuardError) -> Int32 {
         let lockFile = lockPath(for: path)
@@ -71,7 +72,8 @@ public struct BuildGuardError: Error, CustomStringConvertible, MCPErrorConvertib
 
     public var description: String {
         if timedOut {
-            return "Timed out waiting for build lock on \(path). Another process has been building this project for over 5 minutes."
+            return
+                "Timed out waiting for build lock on \(path). Another process has been building this project for over 5 minutes."
         }
         return "Failed to acquire build lock for \(path)."
     }

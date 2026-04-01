@@ -221,9 +221,11 @@ public struct ShowBuildSettingsTool: Sendable {
             ]
         }
 
-        guard let outputData = try? JSONSerialization.data(
-            withJSONObject: filtered, options: [.prettyPrinted, .sortedKeys],
-        ), let outputString = String(data: outputData, encoding: .utf8) else {
+        guard
+            let outputData = try? JSONSerialization.data(
+                withJSONObject: filtered, options: [.prettyPrinted, .sortedKeys],
+            ), let outputString = String(data: outputData, encoding: .utf8)
+        else {
             return json
         }
 

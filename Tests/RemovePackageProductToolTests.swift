@@ -120,8 +120,9 @@ struct RemovePackageProductToolTests {
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
         #expect(target.packageProductDependencies?.count == 1)
 
-        let frameworksPhase = target.buildPhases
-            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworksPhase =
+            target.buildPhases
+                .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
         let buildFilesBefore = frameworksPhase?.files?.filter { $0.product != nil } ?? []
         #expect(buildFilesBefore.count == 1)
 
@@ -144,8 +145,9 @@ struct RemovePackageProductToolTests {
         let updatedTarget = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
         #expect(updatedTarget.packageProductDependencies?.isEmpty == true)
 
-        let updatedPhase = updatedTarget.buildPhases
-            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let updatedPhase =
+            updatedTarget.buildPhases
+                .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
         let buildFilesAfter = updatedPhase?.files?.filter { $0.product != nil } ?? []
         #expect(buildFilesAfter.isEmpty)
 

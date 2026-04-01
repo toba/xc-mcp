@@ -106,7 +106,8 @@ public struct TestMacOSTool: Sendable {
             scheme: scheme,
             destination: destination,
             configuration: configuration,
-            additionalArguments: arguments.continueBuildingArgs() + arguments
+            additionalArguments: arguments.continueBuildingArgs()
+                + arguments
                 .buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on macOS",

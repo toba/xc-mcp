@@ -48,10 +48,12 @@ struct SwiftSymbolsToolTests {
             "query": .string("Trait"),
         ])
 
-        let text = try #require(result.content.first.flatMap {
-            if case let .text(t, _, _) = $0 { return t }
-            return nil
-        })
+        let text = try #require(
+            result.content.first.flatMap {
+                if case let .text(t, _, _) = $0 { return t }
+                return nil
+            },
+        )
 
         #expect(text.contains("Module: Testing"))
         #expect(text.lowercased().contains("trait"))
@@ -64,10 +66,12 @@ struct SwiftSymbolsToolTests {
             "query": .string("xyzzy_nonexistent_symbol_12345"),
         ])
 
-        let text = try #require(result.content.first.flatMap {
-            if case let .text(t, _, _) = $0 { return t }
-            return nil
-        })
+        let text = try #require(
+            result.content.first.flatMap {
+                if case let .text(t, _, _) = $0 { return t }
+                return nil
+            },
+        )
 
         #expect(text.contains("0 symbols"))
         #expect(text.contains("No symbols found."))
@@ -81,10 +85,12 @@ struct SwiftSymbolsToolTests {
             "query": .string("Trait"),
         ])
 
-        let text = try #require(result.content.first.flatMap {
-            if case let .text(t, _, _) = $0 { return t }
-            return nil
-        })
+        let text = try #require(
+            result.content.first.flatMap {
+                if case let .text(t, _, _) = $0 { return t }
+                return nil
+            },
+        )
 
         #expect(text.contains("protocol"))
         let lines = text.split(separator: "\n")

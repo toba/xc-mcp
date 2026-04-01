@@ -49,8 +49,12 @@ struct ExportIconToolTests {
 
     // MARK: - Integration test (requires Icon Composer installed)
 
-    @Test(.enabled(if: FileManager.default
-            .fileExists(atPath: "/Applications/Icon Composer.app/Contents/Executables/ictool")))
+    @Test(
+        .enabled(
+            if: FileManager.default
+                .fileExists(atPath: "/Applications/Icon Composer.app/Contents/Executables/ictool"),
+        ),
+    )
     func `Export thesis icon to PNG`() async throws {
         let iconPath = "/Users/jason/Developer/toba/thesis/AppIcon.icon"
         guard FileManager.default.fileExists(atPath: iconPath) else {
@@ -72,10 +76,12 @@ struct ExportIconToolTests {
             "scale": .int(1),
         ])
 
-        let text = try #require(result.content.first.flatMap {
-            if case let .text(t, _, _) = $0 { return t }
-            return nil
-        })
+        let text = try #require(
+            result.content.first.flatMap {
+                if case let .text(t, _, _) = $0 { return t }
+                return nil
+            },
+        )
         #expect(text.contains("Exported icon to"))
         #expect(text.contains("256x256"))
         #expect(FileManager.default.fileExists(atPath: outputPath))
@@ -89,8 +95,12 @@ struct ExportIconToolTests {
         #expect(data[3] == 0x47) // G
     }
 
-    @Test(.enabled(if: FileManager.default
-            .fileExists(atPath: "/Applications/Icon Composer.app/Contents/Executables/ictool")))
+    @Test(
+        .enabled(
+            if: FileManager.default
+                .fileExists(atPath: "/Applications/Icon Composer.app/Contents/Executables/ictool"),
+        ),
+    )
     func `Export at 2x scale produces larger file`() async throws {
         let iconPath = "/Users/jason/Developer/toba/thesis/AppIcon.icon"
         guard FileManager.default.fileExists(atPath: iconPath) else {
@@ -122,10 +132,14 @@ struct ExportIconToolTests {
             "scale": .int(2),
         ])
 
-        let size1x = try #require(FileManager.default
-            .attributesOfItem(atPath: output1x)[.size] as? UInt64)
-        let size2x = try #require(FileManager.default
-            .attributesOfItem(atPath: output2x)[.size] as? UInt64)
+        let size1x = try #require(
+            FileManager.default
+                .attributesOfItem(atPath: output1x)[.size] as? UInt64,
+        )
+        let size2x = try #require(
+            FileManager.default
+                .attributesOfItem(atPath: output2x)[.size] as? UInt64,
+        )
         #expect(size2x > size1x, "2x scale should produce a larger PNG than 1x")
     }
 }

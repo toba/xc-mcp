@@ -94,7 +94,8 @@ public struct TestDeviceTool: Sendable {
             scheme: scheme,
             destination: "generic/platform=\(connectedDevice.platform)",
             configuration: configuration,
-            additionalArguments: arguments.continueBuildingArgs() + arguments
+            additionalArguments: arguments.continueBuildingArgs()
+                + arguments
                 .buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on device '\(device)'",

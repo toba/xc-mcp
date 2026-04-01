@@ -140,9 +140,26 @@ public enum XCResultParser {
         return nil
     }
 
+    // MARK: - JSON Models
+
+    /// A node in the xcresulttool test results tree.
+    private struct TestNode: Decodable {
+        let name: String?
+        let nodeType: String?
+        let result: String?
+        let durationInSeconds: Double?
+        let details: String?
+        let children: [TestNode]?
+    }
+
+    /// Top-level response from `xcresulttool get test-results tests`.
+    private struct TestResultsJSON: Decodable {
+        let testNodes: [TestNode]?
+    }
+
     // MARK: - Private
 
-    private static func runXCResultTool(path: String) async -> [String: Any]? {
+    private static func runXCResultTool(path: String) async -> TestResultsJSON? {
         guard
             let result = try? await ProcessResult.runSubprocess(
                 .name("xcrun"),
@@ -155,13 +172,13 @@ public enum XCResultParser {
 
         guard result.succeeded,
               let data = result.stdout.data(using: .utf8),
-              !data.isEmpty,
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+              !data.isEmpty
         else { return nil }
-        return json
+
+        return try? JSONDecoder().decode(TestResultsJSON.self, from: data)
     }
 
-    private static func parseTestJSON(_ json: [String: Any]) -> TestResults {
+    private static func parseTestJSON(_ json: TestResultsJSON) -> TestResults {
         var failures: [FailedTest] = []
         var passedCount = 0
         var failedCount = 0
@@ -169,7 +186,7 @@ public enum XCResultParser {
         var tests: [TestDetail] = []
         var totalDuration: Double?
 
-        guard let testNodes = json["testNodes"] as? [[String: Any]] else {
+        guard let testNodes = json.testNodes else {
             return TestResults(
                 failures: [], passedCount: 0, failedCount: 0,
                 skippedCount: 0, tests: [], duration: nil, testOutput: nil,
@@ -178,7 +195,7 @@ public enum XCResultParser {
 
         // Collect duration from the top-level test plan node
         for node in testNodes {
-            if let dur = node["durationInSeconds"] as? Double {
+            if let dur = node.durationInSeconds {
                 totalDuration = (totalDuration ?? 0) + dur
             }
         }
@@ -207,21 +224,21 @@ public enum XCResultParser {
         )
     }
 
-    /// Walks a tree of xcresulttool JSON nodes, calling the visitor on each node.
+    /// Walks a tree of test nodes, calling the visitor on each node.
     private static func forEachNode(
-        in nodes: [[String: Any]],
-        body: (_ node: [String: Any]) -> Void,
+        in nodes: [TestNode],
+        body: (_ node: TestNode) -> Void,
     ) {
         for node in nodes {
             body(node)
-            if let children = node["children"] as? [[String: Any]] {
+            if let children = node.children {
                 forEachNode(in: children, body: body)
             }
         }
     }
 
     private static func collectTestCases(
-        from nodes: [[String: Any]],
+        from nodes: [TestNode],
         failures: inout [FailedTest],
         passedCount: inout Int,
         failedCount: inout Int,
@@ -229,63 +246,71 @@ public enum XCResultParser {
         tests: inout [TestDetail],
     ) {
         forEachNode(in: nodes) { node in
-            let nodeType = node["nodeType"] as? String ?? ""
-            let result = node["result"] as? String
+            let nodeType = node.nodeType ?? ""
+            let result = node.result
 
             if nodeType == "Test Case" {
-                let name = node["name"] as? String ?? "Unknown"
-                let duration = node["durationInSeconds"] as? Double
+                let name = node.name ?? "Unknown"
+                let duration = node.durationInSeconds
                 let status = TestStatus(rawValue: result ?? "") ?? .failed
 
                 switch status {
                     case .passed:
                         passedCount += 1
-                        tests.append(TestDetail(
-                            name: name, status: .passed, duration: duration,
-                            skipReason: nil, failureMessage: nil, performanceMetrics: [],
-                        ))
+                        tests.append(
+                            TestDetail(
+                                name: name, status: .passed, duration: duration,
+                                skipReason: nil, failureMessage: nil, performanceMetrics: [],
+                            ),
+                        )
                     case .failed:
                         failedCount += 1
                         let failure = extractFailure(from: node)
                         if let failure { failures.append(failure) }
-                        tests.append(TestDetail(
-                            name: name, status: .failed, duration: duration,
-                            skipReason: nil, failureMessage: failure?.message,
-                            performanceMetrics: [],
-                        ))
+                        tests.append(
+                            TestDetail(
+                                name: name, status: .failed, duration: duration,
+                                skipReason: nil, failureMessage: failure?.message,
+                                performanceMetrics: [],
+                            ),
+                        )
                     case .skipped:
                         skippedCount += 1
                         let reason = extractSkipReason(from: node)
-                        tests.append(TestDetail(
-                            name: name, status: .skipped, duration: duration,
-                            skipReason: reason, failureMessage: nil, performanceMetrics: [],
-                        ))
+                        tests.append(
+                            TestDetail(
+                                name: name, status: .skipped, duration: duration,
+                                skipReason: reason, failureMessage: nil, performanceMetrics: [],
+                            ),
+                        )
                     case .expectedFailure:
                         passedCount += 1
-                        tests.append(TestDetail(
-                            name: name, status: .expectedFailure, duration: duration,
-                            skipReason: nil, failureMessage: nil, performanceMetrics: [],
-                        ))
+                        tests.append(
+                            TestDetail(
+                                name: name, status: .expectedFailure, duration: duration,
+                                skipReason: nil, failureMessage: nil, performanceMetrics: [],
+                            ),
+                        )
                 }
             }
         }
     }
 
-    private static func extractSkipReason(from node: [String: Any]) -> String? {
-        guard let children = node["children"] as? [[String: Any]] else { return nil }
+    private static func extractSkipReason(from node: TestNode) -> String? {
+        guard let children = node.children else { return nil }
         for child in children {
-            let childType = child["nodeType"] as? String ?? ""
+            let childType = child.nodeType ?? ""
             if childType == "Failure Message" || childType == "Skip Message" {
-                if let name = child["name"] as? String, !name.isEmpty {
+                if let name = child.name, !name.isEmpty {
                     return name
                 }
             }
             // Check nested children
-            if let nested = child["children"] as? [[String: Any]] {
+            if let nested = child.children {
                 for nestedChild in nested {
-                    let nestedType = nestedChild["nodeType"] as? String ?? ""
+                    let nestedType = nestedChild.nodeType ?? ""
                     if nestedType == "Failure Message" || nestedType == "Skip Message" {
-                        if let name = nestedChild["name"] as? String, !name.isEmpty {
+                        if let name = nestedChild.name, !name.isEmpty {
                             return name
                         }
                     }
@@ -295,11 +320,11 @@ public enum XCResultParser {
         return nil
     }
 
-    private static func extractFailure(from testCase: [String: Any]) -> FailedTest? {
-        let testName = testCase["name"] as? String ?? "Unknown test"
-        let duration = testCase["durationInSeconds"] as? Double
+    private static func extractFailure(from testCase: TestNode) -> FailedTest? {
+        let testName = testCase.name ?? "Unknown test"
+        let duration = testCase.durationInSeconds
 
-        guard let children = testCase["children"] as? [[String: Any]] else {
+        guard let children = testCase.children else {
             return FailedTest(
                 test: testName, message: "Test failed", file: nil, line: nil, duration: duration,
             )
@@ -329,20 +354,20 @@ public enum XCResultParser {
     }
 
     private static func collectFailureDetails(
-        from nodes: [[String: Any]],
+        from nodes: [TestNode],
         messages: inout [String],
         file: inout String?,
         line: inout Int?,
     ) {
         forEachNode(in: nodes) { node in
-            let nodeType = node["nodeType"] as? String ?? ""
+            let nodeType = node.nodeType ?? ""
 
             if nodeType == "Failure Message" {
-                if let name = node["name"] as? String, !name.isEmpty {
+                if let name = node.name, !name.isEmpty {
                     messages.append(name)
                 }
             } else if nodeType == "Source Code Reference" {
-                if let name = node["name"] as? String {
+                if let name = node.name {
                     // Format: "file.swift:42"
                     let parts = name.split(separator: ":", maxSplits: 1)
                     if parts.count >= 1 {
@@ -356,25 +381,25 @@ public enum XCResultParser {
         }
     }
 
-    private static func collectTestOutput(from nodes: [[String: Any]]) -> String? {
+    private static func collectTestOutput(from nodes: [TestNode]) -> String? {
         var outputs: [String] = []
         collectOutputNodes(from: nodes, outputs: &outputs)
         return outputs.isEmpty ? nil : outputs.joined(separator: "\n")
     }
 
     private static func collectOutputNodes(
-        from nodes: [[String: Any]],
+        from nodes: [TestNode],
         outputs: inout [String],
     ) {
         forEachNode(in: nodes) { node in
-            let nodeType = node["nodeType"] as? String ?? ""
+            let nodeType = node.nodeType ?? ""
 
             // Attachments with "Standard Output" or similar names contain test stdout
             if nodeType == "Attachment" {
-                if let name = node["name"] as? String,
+                if let name = node.name,
                    name.localizedCaseInsensitiveContains("output")
                 {
-                    if let details = node["details"] as? String, !details.isEmpty {
+                    if let details = node.details, !details.isEmpty {
                         outputs.append(details)
                     }
                 }

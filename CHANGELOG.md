@@ -13,6 +13,10 @@
 - Fix `add_framework` creating bogus `.framework` file reference for static libraries (`.a`); reuse existing product reference or create proper `archive.ar` entry in `BUILT_PRODUCTS_DIR` ([#250](https://github.com/toba/xc-mcp/issues/250))
 - Fix `test_macos` `only_testing` filter failing for Swift Testing backtick-escaped single-word method names; auto-wrap Swift keywords like `class` and `import` in backticks ([#251](https://github.com/toba/xc-mcp/issues/251))
 
+### 🗜️ Tweaks
+
+- Remove unnecessary `@unchecked Sendable` from `BuildOutputParser`; replace `[String: Any]` JSON parsing with `Decodable` models in `XCResultParser` and `CrashReportParser`; fix 21 swiftlint warnings
+
 ## Week of Mar 22 – Mar 28, 2026
 
 ### ✨ Features

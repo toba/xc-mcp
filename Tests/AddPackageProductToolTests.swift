@@ -13,8 +13,10 @@ struct AddPackageProductToolTests {
         let toolDefinition = tool.tool()
 
         #expect(toolDefinition.name == "add_package_product")
-        #expect(toolDefinition.description?
-            .contains("Link an existing Swift Package product") == true)
+        #expect(
+            toolDefinition.description?
+                .contains("Link an existing Swift Package product") == true,
+        )
     }
 
     @Test
@@ -68,9 +70,11 @@ struct AddPackageProductToolTests {
             project.remotePackages.append(packageRef)
         }
 
-        let appTarget = try #require(xcodeproj.pbxproj.nativeTargets.first(where: {
-            $0.name == "App"
-        }))
+        let appTarget = try #require(
+            xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == "App"
+            }),
+        )
         let productDep = XCSwiftPackageProductDependency(
             productName: "HTTPTypes",
             package: packageRef,
@@ -95,9 +99,11 @@ struct AddPackageProductToolTests {
 
         // Verify the product was added
         let reloaded = try XcodeProj(path: projectPath)
-        let reloadedTests = try #require(reloaded.pbxproj.nativeTargets.first(where: {
-            $0.name == "Tests"
-        }))
+        let reloadedTests = try #require(
+            reloaded.pbxproj.nativeTargets.first(where: {
+                $0.name == "Tests"
+            }),
+        )
         #expect(reloadedTests.packageProductDependencies?.count == 1)
         #expect(reloadedTests.packageProductDependencies?.first?.productName == "HTTPTypes")
     }

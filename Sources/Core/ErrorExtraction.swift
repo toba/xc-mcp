@@ -70,8 +70,10 @@ public enum ErrorExtractor {
            let xcresultData = await XCResultParser.parseTestResults(at: xcresultPath)
         {
             testResult = formatXCResultData(xcresultData)
-            totalTestCount = xcresultData.passedCount + xcresultData.failedCount + xcresultData
-                .skippedCount
+            totalTestCount =
+                xcresultData.passedCount + xcresultData.failedCount
+                    + xcresultData
+                    .skippedCount
 
             // Override exit code when xcresult confirms all tests passed
             if !succeeded, xcresultData.failedCount == 0, xcresultData.passedCount > 0 {
@@ -91,9 +93,11 @@ public enum ErrorExtractor {
             // Performance measurements are in stdout, not in xcresult — parse them separately
             let parsed = parseBuildOutput(output)
             if !parsed.performanceMeasurements.isEmpty {
-                testResult += "\n\n" + BuildResultFormatter.formatPerformanceMeasurements(
-                    parsed.performanceMeasurements,
-                )
+                testResult +=
+                    "\n\n"
+                    + BuildResultFormatter.formatPerformanceMeasurements(
+                        parsed.performanceMeasurements,
+                    )
             }
         } else {
             testResult = extractTestResults(from: output, errorsOnly: errorsOnly)
@@ -580,10 +584,11 @@ public enum ErrorExtractor {
         // Find schemes that contain each target
         var suggestions: [String] = []
         for targetName in targetNames {
-            let matchingSchemes = schemeMap
-                .filter { $0.value.contains(targetName) }
-                .map(\.key)
-                .sorted()
+            let matchingSchemes =
+                schemeMap
+                    .filter { $0.value.contains(targetName) }
+                    .map(\.key)
+                    .sorted()
             if !matchingSchemes.isEmpty {
                 let schemeList = matchingSchemes.map { "'\($0)'" }.joined(separator: ", ")
                 suggestions.append(

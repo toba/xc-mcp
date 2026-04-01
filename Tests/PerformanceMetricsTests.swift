@@ -1,7 +1,7 @@
 import Testing
 @testable import XCMCPCore
-@testable import XCMCPTools
 import Foundation
+@testable import XCMCPTools
 
 struct PerformanceMetricsTests {
     // MARK: - Format Metrics
@@ -389,8 +389,9 @@ struct PerformanceMetricsTests {
             .appendingPathComponent("test-show-baselines-\(UUID().uuidString)")
         let projDir = tempDir.appendingPathComponent("Test.xcodeproj")
         let targetUUID = "AABBCCDD00112233AABBCCDD"
-        let baselineDir = projDir
-            .appendingPathComponent("xcshareddata/xcbaselines/\(targetUUID).xcbaseline")
+        let baselineDir =
+            projDir
+                .appendingPathComponent("xcshareddata/xcbaselines/\(targetUUID).xcbaseline")
         try FileManager.default.createDirectory(
             at: baselineDir, withIntermediateDirectories: true,
         )
@@ -480,10 +481,12 @@ struct PerformanceMetricsTests {
         let projDir = tempDir.appendingPathComponent("Test.xcodeproj")
         let uuid1 = "AABBCCDD00112233AABBCCDD"
         let uuid2 = "DDEEFF0011223344DDEEFF00"
-        let baselineDir1 = projDir
-            .appendingPathComponent("xcshareddata/xcbaselines/\(uuid1).xcbaseline")
-        let baselineDir2 = projDir
-            .appendingPathComponent("xcshareddata/xcbaselines/\(uuid2).xcbaseline")
+        let baselineDir1 =
+            projDir
+                .appendingPathComponent("xcshareddata/xcbaselines/\(uuid1).xcbaseline")
+        let baselineDir2 =
+            projDir
+                .appendingPathComponent("xcshareddata/xcbaselines/\(uuid2).xcbaseline")
         try FileManager.default.createDirectory(
             at: baselineDir1, withIntermediateDirectories: true,
         )
@@ -581,8 +584,9 @@ struct PerformanceMetricsTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .appendingPathComponent("fixtures/xcbaselines/966E72D22C1A222900AADDBD.xcbaseline")
-        let destDir = baselinesDir
-            .appendingPathComponent("966E72D22C1A222900AADDBD.xcbaseline")
+        let destDir =
+            baselinesDir
+                .appendingPathComponent("966E72D22C1A222900AADDBD.xcbaseline")
         try FileManager.default.copyItem(at: fixtureDir, to: destDir)
 
         // Write a pbxproj so the UUID maps to a target name
@@ -629,8 +633,9 @@ struct PerformanceMetricsTests {
             .appendingPathComponent("test-show-baselines-metric-\(UUID().uuidString)")
         let projDir = tempDir.appendingPathComponent("Test.xcodeproj")
         let targetUUID = "AABBCCDD00112233AABBCCDD"
-        let baselineDir = projDir
-            .appendingPathComponent("xcshareddata/xcbaselines/\(targetUUID).xcbaseline")
+        let baselineDir =
+            projDir
+                .appendingPathComponent("xcshareddata/xcbaselines/\(targetUUID).xcbaseline")
         try FileManager.default.createDirectory(
             at: baselineDir, withIntermediateDirectories: true,
         )
@@ -654,9 +659,11 @@ struct PerformanceMetricsTests {
 
         let runDestUUID = "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE"
         let infoPlist: [String: Any] = [
-            runDestUUID: ["cpuKind": "M1", "cpuCount": 8,
-                          "modelCode": "Mac14,1",
-                          "physicalRAMAmountInMegabytes": 16384] as [String: Any],
+            runDestUUID: [
+                "cpuKind": "M1", "cpuCount": 8,
+                "modelCode": "Mac14,1",
+                "physicalRAMAmountInMegabytes": 16384,
+            ] as [String: Any],
         ]
         let infoData = try PropertyListSerialization.data(
             fromPropertyList: infoPlist, format: .xml, options: 0,

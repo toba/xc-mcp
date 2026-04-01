@@ -86,9 +86,11 @@ public struct ExportIconTool: Sendable {
         let scale = arguments.getInt("scale") ?? 1
 
         // Find ictool
-        guard let ictoolPath = Self.ictoolSearchPaths.first(where: {
-            FileManager.default.fileExists(atPath: $0)
-        }) else {
+        guard
+            let ictoolPath = Self.ictoolSearchPaths.first(where: {
+                FileManager.default.fileExists(atPath: $0)
+            })
+        else {
             throw MCPError.internalError(
                 "ictool not found. Install Icon Composer from developer.apple.com/download or use Xcode 26+.",
             )

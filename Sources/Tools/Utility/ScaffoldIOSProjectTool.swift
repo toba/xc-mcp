@@ -288,9 +288,10 @@ public struct ScaffoldIOSProjectTool: Sendable {
         return target
     }
 
-    private func createProjectBuildSettings(debug: Bool,
-                                            deploymentTarget: String) -> BuildSettings
-    {
+    private func createProjectBuildSettings(
+        debug: Bool,
+        deploymentTarget: String,
+    ) -> BuildSettings {
         var settings: BuildSettings = [
             "ALWAYS_SEARCH_USER_PATHS": .string("NO"),
             "CLANG_ANALYZER_NONNULL": .string("YES"),

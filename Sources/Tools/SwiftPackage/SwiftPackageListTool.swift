@@ -51,8 +51,9 @@ public struct SwiftPackageListTool: Sendable {
             )
         }
 
-        let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
-            ?? SwiftRunner.defaultTimeout
+        let timeout =
+            arguments.getInt("timeout").map { Duration.seconds($0) }
+                ?? SwiftRunner.defaultTimeout
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(

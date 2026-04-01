@@ -196,9 +196,10 @@ public struct SimctlRunner: Sendable {
     ///   - udid: The UDID of the target simulator.
     ///   - bundleId: Bundle identifier of the app to uninstall.
     /// - Returns: The result containing exit code and output.
-    public func uninstall(udid: String,
-                          bundleId: String) async throws(SimctlError) -> SimctlResult
-    {
+    public func uninstall(
+        udid: String,
+        bundleId: String,
+    ) async throws(SimctlError) -> SimctlResult {
         try await run(arguments: ["uninstall", udid, bundleId])
     }
 
@@ -232,9 +233,10 @@ public struct SimctlRunner: Sendable {
     ///   - udid: The UDID of the target simulator.
     ///   - bundleId: Bundle identifier of the app to terminate.
     /// - Returns: The result containing exit code and output.
-    public func terminate(udid: String,
-                          bundleId: String) async throws(SimctlError) -> SimctlResult
-    {
+    public func terminate(
+        udid: String,
+        bundleId: String,
+    ) async throws(SimctlError) -> SimctlResult {
         try await run(arguments: ["terminate", udid, bundleId])
     }
 
@@ -274,9 +276,10 @@ public struct SimctlRunner: Sendable {
     ///   - udid: The UDID of the target simulator.
     ///   - outputPath: Path where the screenshot will be saved.
     /// - Returns: The result containing exit code and output.
-    public func screenshot(udid: String,
-                           outputPath: String) async throws(SimctlError) -> SimctlResult
-    {
+    public func screenshot(
+        udid: String,
+        outputPath: String,
+    ) async throws(SimctlError) -> SimctlResult {
         try await run(arguments: ["io", udid, "screenshot", outputPath])
     }
 
@@ -332,9 +335,10 @@ public struct SimctlRunner: Sendable {
     ///   - udid: The UDID of the target simulator.
     ///   - appearance: The appearance mode ("dark" or "light").
     /// - Returns: The result containing exit code and output.
-    public func setAppearance(udid: String,
-                              appearance: String) async throws(SimctlError) -> SimctlResult
-    {
+    public func setAppearance(
+        udid: String,
+        appearance: String,
+    ) async throws(SimctlError) -> SimctlResult {
         try await run(arguments: ["ui", udid, "appearance", appearance])
     }
 
@@ -391,9 +395,10 @@ public struct SimctlRunner: Sendable {
     ///   - udid: The UDID of the target simulator.
     ///   - options: Dictionary of status bar options to set.
     /// - Returns: The result containing exit code and output.
-    public func overrideStatusBar(udid: String,
-                                  options: [String: Any]) async throws(SimctlError) -> SimctlResult
-    {
+    public func overrideStatusBar(
+        udid: String,
+        options: [String: Any],
+    ) async throws(SimctlError) -> SimctlResult {
         var arguments = ["status_bar", udid, "override"]
 
         if let time = options["time"] as? String {

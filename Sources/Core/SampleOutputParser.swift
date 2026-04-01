@@ -173,13 +173,15 @@ public enum SampleOutputParser {
             if let match = trimmed.wholeMatch(of: /^(\d+)\s+(Thread_\S+.*)$/) {
                 if !currentThreadHeader.isEmpty {
                     let nodes = buildTree(from: currentFrames)
-                    threads.append(ThreadSample(
-                        name: currentThreadHeader,
-                        totalSamples: currentThreadSamples,
-                        isMainThread: currentThreadHeader.contains("main-thread")
-                            || currentThreadHeader.contains("main thread"),
-                        root: nodes,
-                    ))
+                    threads.append(
+                        ThreadSample(
+                            name: currentThreadHeader,
+                            totalSamples: currentThreadSamples,
+                            isMainThread: currentThreadHeader.contains("main-thread")
+                                || currentThreadHeader.contains("main thread"),
+                            root: nodes,
+                        ),
+                    )
                 }
                 currentThreadSamples = Int(match.1) ?? 0
                 currentThreadHeader = String(match.2)
@@ -190,25 +192,29 @@ public enum SampleOutputParser {
             // Frame line
             let depth = countPlusDepth(line)
             if let parsed = parseFrameLine(line) {
-                currentFrames.append((
-                    depth: depth,
-                    function: parsed.function,
-                    library: parsed.library,
-                    samples: parsed.samples,
-                ))
+                currentFrames.append(
+                    (
+                        depth: depth,
+                        function: parsed.function,
+                        library: parsed.library,
+                        samples: parsed.samples,
+                    ),
+                )
             }
         }
 
         // Save last thread
         if !currentThreadHeader.isEmpty {
             let nodes = buildTree(from: currentFrames)
-            threads.append(ThreadSample(
-                name: currentThreadHeader,
-                totalSamples: currentThreadSamples,
-                isMainThread: currentThreadHeader.contains("main-thread")
-                    || currentThreadHeader.contains("main thread"),
-                root: nodes,
-            ))
+            threads.append(
+                ThreadSample(
+                    name: currentThreadHeader,
+                    totalSamples: currentThreadSamples,
+                    isMainThread: currentThreadHeader.contains("main-thread")
+                        || currentThreadHeader.contains("main thread"),
+                    root: nodes,
+                ),
+            )
         }
 
         return threads
@@ -283,13 +289,15 @@ public enum SampleOutputParser {
 
         for frame in frames {
             let idx = entries.count
-            entries.append(FlatEntry(
-                function: frame.function,
-                library: frame.library,
-                samples: frame.samples,
-                depth: frame.depth,
-                childIndices: [],
-            ))
+            entries.append(
+                FlatEntry(
+                    function: frame.function,
+                    library: frame.library,
+                    samples: frame.samples,
+                    depth: frame.depth,
+                    childIndices: [],
+                ),
+            )
 
             // Pop stack until we find a parent with strictly lower depth
             while let last = stack.last, last.depth >= frame.depth {
@@ -429,10 +437,12 @@ public enum SampleOutputParser {
 
             if node.children.isEmpty {
                 if !currentPath.isEmpty {
-                    result.append(CallPath(
-                        path: currentPath.joined(separator: " → "),
-                        samples: node.samples,
-                    ))
+                    result.append(
+                        CallPath(
+                            path: currentPath.joined(separator: " → "),
+                            samples: node.samples,
+                        ),
+                    )
                 }
             } else {
                 for child in node.children {
@@ -479,15 +489,18 @@ public enum SampleOutputParser {
         let funcWidth = max(maxFunc, 8)
 
         var result = ""
-        result += "  \(pad("Samples", width: samplesWidth)) | \(pad("Function", width: -funcWidth)) | Library\n"
-        result += "  \(String(repeating: "-", count: samplesWidth))-+-\(String(repeating: "-", count: funcWidth))-+------------------\n"
+        result +=
+            "  \(pad("Samples", width: samplesWidth)) | \(pad("Function", width: -funcWidth)) | Library\n"
+        result +=
+            "  \(String(repeating: "-", count: samplesWidth))-+-\(String(repeating: "-", count: funcWidth))-+------------------\n"
 
         for fn in functions {
             let funcName =
                 fn.function.count > funcWidth
                     ? String(fn.function.prefix(funcWidth - 3)) + "..."
                     : fn.function
-            result += "  \(pad(String(fn.samples), width: samplesWidth)) | \(pad(funcName, width: -funcWidth)) | \(fn.library)\n"
+            result +=
+                "  \(pad(String(fn.samples), width: samplesWidth)) | \(pad(funcName, width: -funcWidth)) | \(fn.library)\n"
         }
 
         return result

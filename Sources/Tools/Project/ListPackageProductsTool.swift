@@ -81,8 +81,9 @@ public struct ListPackageProductsTool: Sendable {
                 }
 
                 // Collect build file products for this target's frameworks phase
-                let frameworksPhase = target.buildPhases
-                    .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+                let frameworksPhase =
+                    target.buildPhases
+                        .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
                 let buildFileProducts = Set(
                     frameworksPhase?.files?.compactMap(\.product) ?? [],
                 )

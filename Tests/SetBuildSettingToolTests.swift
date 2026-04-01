@@ -505,8 +505,9 @@ struct SetBuildSettingToolTests {
 
         // Verify both project-level configs were changed
         let xcodeproj = try XcodeProj(path: projectPath)
-        let configs = xcodeproj.pbxproj.rootObject?.buildConfigurationList?
-            .buildConfigurations ?? []
+        let configs =
+            xcodeproj.pbxproj.rootObject?.buildConfigurationList?
+                .buildConfigurations ?? []
         for config in configs {
             #expect(config.buildSettings["CLANG_ENABLE_MODULES"]?.stringValue == "YES")
         }

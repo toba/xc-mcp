@@ -370,11 +370,13 @@ public struct AddAppExtensionTool: Sendable {
 
             // Find or create "Embed App Extensions" copy files build phase
             let copyPhases = hostTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
-            var embedPhase = copyPhases
-                .first {
-                    $0.name == "Embed App Extensions" || $0.dstSubfolderSpec == .plugins || $0
-                        .dstSubfolder == .plugins
-                }
+            var embedPhase =
+                copyPhases
+                    .first {
+                        $0.name == "Embed App Extensions" || $0.dstSubfolderSpec == .plugins
+                            || $0
+                            .dstSubfolder == .plugins
+                    }
 
             if embedPhase == nil {
                 embedPhase = PBXCopyFilesBuildPhase(

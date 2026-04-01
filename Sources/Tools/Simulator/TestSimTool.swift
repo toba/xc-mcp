@@ -86,7 +86,8 @@ public struct TestSimTool: Sendable {
             scheme: scheme,
             destination: "platform=iOS Simulator,id=\(simulator)",
             configuration: configuration,
-            additionalArguments: arguments.continueBuildingArgs() + arguments
+            additionalArguments: arguments.continueBuildingArgs()
+                + arguments
                 .buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on simulator '\(simulator)'",

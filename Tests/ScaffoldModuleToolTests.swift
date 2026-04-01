@@ -66,9 +66,10 @@ struct ScaffoldModuleToolTests {
         #expect(dep?.target === fwTarget)
 
         // Verify framework product is linked in test target
-        let testFrameworksPhase = testTarget?.buildPhases.first {
-            $0 is PBXFrameworksBuildPhase
-        } as? PBXFrameworksBuildPhase
+        let testFrameworksPhase =
+            testTarget?.buildPhases.first {
+                $0 is PBXFrameworksBuildPhase
+            } as? PBXFrameworksBuildPhase
         let linkedProduct = testFrameworksPhase?.files?.first?.file
         #expect(linkedProduct === fwTarget?.product)
 
@@ -81,12 +82,13 @@ struct ScaffoldModuleToolTests {
         let projectDir = URL(fileURLWithPath: projectPath.string).deletingLastPathComponent().path
         #expect(
             FileManager.default.fileExists(
-                atPath: (projectDir as NSString).appendingPathComponent("NetworkKit"),
+                atPath: URL(fileURLWithPath: projectDir).appendingPathComponent("NetworkKit").path,
             ),
         )
         #expect(
             FileManager.default.fileExists(
-                atPath: (projectDir as NSString).appendingPathComponent("NetworkKitTests"),
+                atPath: URL(fileURLWithPath: projectDir).appendingPathComponent("NetworkKitTests")
+                    .path,
             ),
         )
     }
@@ -167,16 +169,19 @@ struct ScaffoldModuleToolTests {
 
         let xcodeproj = try XcodeProj(path: projectPath)
         let mainApp = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "MainApp" })
-        let featureKit = try #require(xcodeproj.pbxproj.nativeTargets
-            .first { $0.name == "FeatureKit" })
+        let featureKit = try #require(
+            xcodeproj.pbxproj.nativeTargets
+                .first { $0.name == "FeatureKit" },
+        )
 
         // Verify dependency
         #expect(mainApp.dependencies.contains { $0.target === featureKit })
 
         // Verify framework linked
-        let fwPhase = mainApp.buildPhases.first {
-            $0 is PBXFrameworksBuildPhase
-        } as? PBXFrameworksBuildPhase
+        let fwPhase =
+            mainApp.buildPhases.first {
+                $0 is PBXFrameworksBuildPhase
+            } as? PBXFrameworksBuildPhase
         let linkedFiles = fwPhase?.files?.compactMap(\.file) ?? []
         #expect(linkedFiles.contains { $0 === featureKit.product })
 
@@ -294,7 +299,8 @@ struct ScaffoldModuleToolTests {
         // Create a test plan file
         let projectDir = URL(fileURLWithPath: projectPath.string)
             .deletingLastPathComponent().path
-        let testPlanPath = (projectDir as NSString).appendingPathComponent("AllTests.xctestplan")
+        let testPlanPath = URL(fileURLWithPath: projectDir)
+            .appendingPathComponent("AllTests.xctestplan").path
         let initialPlan: [String: Any] = [
             "configurations": [["id": "1", "name": "Default", "options": [:]] as [String: Any]],
             "defaultOptions": [:] as [String: Any],
