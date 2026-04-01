@@ -96,9 +96,13 @@ public struct AddFrameworkTool: Sendable {
                 target.buildPhases.append(frameworksBuildPhase)
             }
 
+            // Check if this is a static library (.a) that already exists as a build product
+            let isStaticLibrary = frameworkName.hasSuffix(".a")
+
             // Determine if this is a system framework or custom framework
             let isSystemFramework =
-                !frameworkName.contains("/") && !frameworkName.hasSuffix(".framework")
+                !isStaticLibrary && !frameworkName.contains("/")
+                    && !frameworkName.hasSuffix(".framework")
             let frameworkFileName: String
             let frameworkPath: String
 
@@ -116,6 +120,9 @@ public struct AddFrameworkTool: Sendable {
                 } else {
                     frameworkPath = "System/Library/Frameworks/\(frameworkFileName)"
                 }
+            } else if isStaticLibrary {
+                frameworkFileName = frameworkName
+                frameworkPath = frameworkName
             } else {
                 // Resolve custom framework path
                 let resolvedFrameworkPath = try pathUtility.resolvePath(from: frameworkName)
@@ -147,7 +154,25 @@ public struct AddFrameworkTool: Sendable {
 
             // Find or create file reference for framework
             let frameworkFileRef: PBXFileReference
-            if isSystemFramework {
+            if isStaticLibrary {
+                // For static libraries, find the existing product reference
+                if let existingRef = xcodeproj.pbxproj.fileReferences.first(where: {
+                    ($0.path == frameworkName || $0.name == frameworkName)
+                        && ($0.sourceTree == .buildProductsDir
+                            || $0.explicitFileType == "archive.ar")
+                }) {
+                    frameworkFileRef = existingRef
+                } else {
+                    // Create a reference in BUILT_PRODUCTS_DIR as Xcode would
+                    frameworkFileRef = PBXFileReference(
+                        sourceTree: .buildProductsDir,
+                        name: frameworkFileName,
+                        explicitFileType: "archive.ar",
+                        path: frameworkPath,
+                    )
+                    xcodeproj.pbxproj.add(object: frameworkFileRef)
+                }
+            } else if isSystemFramework {
                 frameworkFileRef = PBXFileReference(
                     sourceTree: isDeveloperFramework ? .developerDir : .sdkRoot,
                     name: frameworkFileName,

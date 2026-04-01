@@ -396,4 +396,122 @@ struct AddFrameworkToolTests {
         }
         #expect(groupRelativeRefs.isEmpty)
     }
+
+    @Test
+    func `Add static library reuses existing product reference`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a static library product reference (as if another target produces libTestSupport.a)
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let productRef = PBXFileReference(
+            sourceTree: .buildProductsDir,
+            explicitFileType: "archive.ar",
+            path: "libTestSupport.a",
+            includeInIndex: false,
+        )
+        xcodeproj.pbxproj.add(object: productRef)
+
+        if let productsGroup = xcodeproj.pbxproj.rootObject?.productsGroup {
+            productsGroup.children.append(productRef)
+        }
+        try xcodeproj.write(path: projectPath)
+
+        // Add the static library via add_framework
+        let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "framework_name": Value.string("libTestSupport.a"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added framework 'libTestSupport.a'"))
+
+        // Verify: should reuse the existing BUILT_PRODUCTS_DIR reference
+        let updatedProj = try XcodeProj(path: projectPath)
+        let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
+        let frameworkPhase =
+            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+
+        let linkedRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
+            .first { $0.path == "libTestSupport.a" }
+        #expect(linkedRef != nil)
+        #expect(linkedRef?.sourceTree == .buildProductsDir)
+        #expect(linkedRef?.explicitFileType == "archive.ar")
+
+        // Verify no bogus .framework reference was created
+        let bogusRefs = updatedProj.pbxproj.fileReferences.filter {
+            ($0.path?.contains("libTestSupport.a.framework") ?? false)
+                || ($0.name?.contains("libTestSupport.a.framework") ?? false)
+        }
+        #expect(bogusRefs.isEmpty)
+    }
+
+    @Test
+    func `Add static library without existing reference creates proper archive ref`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add the static library with no pre-existing reference
+        let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "framework_name": Value.string("libFoo.a"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added framework 'libFoo.a'"))
+
+        // Verify: should create a BUILT_PRODUCTS_DIR reference with archive.ar type
+        let updatedProj = try XcodeProj(path: projectPath)
+        let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
+        let frameworkPhase =
+            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+
+        let linkedRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
+            .first { $0.path == "libFoo.a" }
+        #expect(linkedRef != nil)
+        #expect(linkedRef?.sourceTree == .buildProductsDir)
+        #expect(linkedRef?.explicitFileType == "archive.ar")
+
+        // Verify no .framework suffix was appended
+        let bogusRefs = updatedProj.pbxproj.fileReferences.filter {
+            $0.path?.hasSuffix(".a.framework") ?? false
+        }
+        #expect(bogusRefs.isEmpty)
+    }
 }
