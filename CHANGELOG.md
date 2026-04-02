@@ -6,6 +6,7 @@
 
 - Add `remove_package_product` and `list_package_products` tools; remove individual SPM product dependencies from targets and inspect per-target product linkage ([#247](https://github.com/toba/xc-mcp/issues/247))
 - `add_target_to_test_plan`: support `selectedTests` filtering with `xctest_classes` and `suites` parameters; restrict test plan entries to specific classes, methods, or Swift Testing functions ([#252](https://github.com/toba/xc-mcp/issues/252))
+- `move_file` now updates synchronized folder exception sets; renaming a file that appears in `membershipExceptions` no longer requires manual remove/add workaround ([#254](https://github.com/toba/xc-mcp/issues/254))
 
 ### 🐛 Fixes
 

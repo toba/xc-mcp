@@ -96,7 +96,36 @@ public struct MoveFileTool: Sendable {
                 }
             }
 
-            if fileMoved {
+            // Also check synchronized folder exception sets
+            var exceptionsUpdated = false
+            for exceptionSet in xcodeproj.pbxproj
+                .fileSystemSynchronizedBuildFileExceptionSets
+            {
+                guard var exceptions = exceptionSet.membershipExceptions else { continue }
+                var changed = false
+                for i in exceptions.indices {
+                    if exceptions[i] == oldPath || exceptions[i] == oldRelativePath
+                        || exceptions[i] == oldFileName
+                    {
+                        // Determine the new entry: use the same style as the old entry
+                        // (filename-only stays filename-only, path stays path)
+                        if exceptions[i] == oldFileName, !oldFileName.contains("/") {
+                            exceptions[i] = newFileName
+                        } else if exceptions[i] == oldPath {
+                            exceptions[i] = newPath
+                        } else {
+                            exceptions[i] = newRelativePath
+                        }
+                        changed = true
+                    }
+                }
+                if changed {
+                    exceptionSet.membershipExceptions = exceptions
+                    exceptionsUpdated = true
+                }
+            }
+
+            if fileMoved || exceptionsUpdated {
                 try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
                 // Optionally move on disk
@@ -118,10 +147,14 @@ public struct MoveFileTool: Sendable {
                     }
                 }
 
+                var message = "Successfully moved \(oldFileName) to \(newRelativePath)"
+                if exceptionsUpdated {
+                    message +=
+                        " (also updated synchronized folder exception sets)"
+                }
+
                 return CallTool.Result(
-                    content: [
-                        .text("Successfully moved \(oldFileName) to \(newRelativePath)"),
-                    ],
+                    content: [.text(message)],
                 )
             } else {
                 return CallTool.Result(

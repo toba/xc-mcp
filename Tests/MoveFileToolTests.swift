@@ -189,6 +189,58 @@ struct MoveFileToolTests {
     }
 
     @Test
+    func `Move file in synchronized folder exception set`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithSyncFolder(
+            name: "TestProject",
+            targetName: "TestApp",
+            folderPath: "TestSupport",
+            membershipExceptions: [
+                "Snapshots/Conformances/NSViewController.swift",
+            ],
+            at: projectPath,
+        )
+
+        let moveTool = MoveFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let moveArgs: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "old_path": Value.string(
+                "Snapshots/Conformances/NSViewController.swift",
+            ),
+            "new_path": Value.string(
+                "Snapshots/Conformances/NSViewController+snapshot.swift",
+            ),
+        ]
+
+        let result = try moveTool.execute(arguments: moveArgs)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully moved"))
+        #expect(message.contains("synchronized folder exception"))
+
+        // Verify the exception set was updated
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let exceptionSets = xcodeproj.pbxproj
+            .fileSystemSynchronizedBuildFileExceptionSets
+        #expect(exceptionSets.count == 1)
+        let exceptions = exceptionSets[0].membershipExceptions ?? []
+        #expect(exceptions.contains("Snapshots/Conformances/NSViewController+snapshot.swift"))
+        #expect(!exceptions.contains("Snapshots/Conformances/NSViewController.swift"))
+    }
+
+    @Test
     func `Move non-existent file`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
