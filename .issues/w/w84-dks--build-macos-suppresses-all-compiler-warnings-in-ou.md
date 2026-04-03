@@ -1,17 +1,17 @@
 ---
 # w84-dks
 title: build_macos suppresses all compiler warnings in output
-status: in-progress
+status: completed
 type: bug
 priority: high
 tags:
     - enhancement
 created_at: 2026-03-25T20:20:41Z
-updated_at: 2026-03-25T20:34:01Z
+updated_at: 2026-04-03T22:15:32Z
 sync:
     github:
         issue_number: "238"
-        synced_at: "2026-03-25T20:34:42Z"
+        synced_at: "2026-04-03T22:16:06Z"
 ---
 
 ## Problem
