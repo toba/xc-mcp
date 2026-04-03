@@ -13,6 +13,9 @@
 - Fix `remove_package_product` corrupting pbxproj; clean up `PBXTargetDependency` entries with `productRef` created by Xcode GUI ([#248](https://github.com/toba/xc-mcp/issues/248))
 - Fix `add_framework` creating bogus `.framework` file reference for static libraries (`.a`); reuse existing product reference or create proper `archive.ar` entry in `BUILT_PRODUCTS_DIR` ([#250](https://github.com/toba/xc-mcp/issues/250))
 - Fix `test_macos` `only_testing` filter failing for Swift Testing backtick-escaped single-word method names; auto-wrap Swift keywords like `class` and `import` in backticks ([#251](https://github.com/toba/xc-mcp/issues/251))
+- Fix `build_macos` suppressing all compiler warnings; add `show_warnings` parameter to list project-local warnings on successful builds ([#238](https://github.com/toba/xc-mcp/issues/238))
+- Fix synchronized folder exception tools corrupting pbxproj; use text-based `PBXProjTextEditor` instead of XcodeProj round-trip serializer ([#256](https://github.com/toba/xc-mcp/issues/256))
+- Fix `add_framework` silently failing to add local product frameworks; detect existing `BUILT_PRODUCTS_DIR` references before classifying bare names as system frameworks
 
 ### 🗜️ Tweaks
 

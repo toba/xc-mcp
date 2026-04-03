@@ -99,9 +99,25 @@ public struct AddFrameworkTool: Sendable {
             // Check if this is a static library (.a) that already exists as a build product
             let isStaticLibrary = frameworkName.hasSuffix(".a")
 
+            // Before classifying as system framework, check if a matching product
+            // reference exists in BUILT_PRODUCTS_DIR (e.g. a local framework target).
+            // This handles bare names like "Core" that match "Core.framework" products.
+            let hasLocalProduct: Bool
+            if !isStaticLibrary, !frameworkName.contains("/"),
+               !frameworkName.hasSuffix(".framework")
+            {
+                let candidateName = "\(frameworkName).framework"
+                hasLocalProduct = xcodeproj.pbxproj.fileReferences.contains {
+                    $0.sourceTree == .buildProductsDir
+                        && ($0.path == candidateName || $0.name == candidateName)
+                }
+            } else {
+                hasLocalProduct = false
+            }
+
             // Determine if this is a system framework or custom framework
             let isSystemFramework =
-                !isStaticLibrary && !frameworkName.contains("/")
+                !hasLocalProduct && !isStaticLibrary && !frameworkName.contains("/")
                     && !frameworkName.hasSuffix(".framework")
             let frameworkFileName: String
             let frameworkPath: String
@@ -125,6 +141,10 @@ public struct AddFrameworkTool: Sendable {
             } else if isStaticLibrary {
                 frameworkFileName = frameworkName
                 frameworkPath = frameworkName
+            } else if hasLocalProduct {
+                // Bare name matching a local framework product (e.g. "Core" → "Core.framework")
+                frameworkFileName = "\(frameworkName).framework"
+                frameworkPath = frameworkFileName
             } else {
                 // Resolve custom framework path
                 let resolvedFrameworkPath = try pathUtility.resolvePath(from: frameworkName)
@@ -139,7 +159,9 @@ public struct AddFrameworkTool: Sendable {
             let frameworkExists =
                 frameworksBuildPhase.files?.contains { buildFile in
                     if let fileRef = buildFile.file as? PBXFileReference {
-                        return fileRef.name == frameworkFileName || fileRef.path == frameworkName
+                        return fileRef.name == frameworkFileName
+                            || fileRef.path == frameworkName
+                            || fileRef.path == frameworkFileName
                     }
                     return false
                 } ?? false

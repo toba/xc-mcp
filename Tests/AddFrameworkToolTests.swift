@@ -515,4 +515,166 @@ struct AddFrameworkToolTests {
         }
         #expect(bogusRefs.isEmpty)
     }
+
+    @Test
+    func `Bare name finds existing BUILT_PRODUCTS_DIR product instead of creating system framework`(
+    )
+        throws
+    {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a product file reference for Core.framework (as if another target produces it)
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let productRef = PBXFileReference(
+            sourceTree: .buildProductsDir,
+            explicitFileType: "wrapper.framework",
+            path: "Core.framework",
+            includeInIndex: false,
+        )
+        xcodeproj.pbxproj.add(object: productRef)
+
+        if let productsGroup = xcodeproj.pbxproj.rootObject?.productsGroup {
+            productsGroup.children.append(productRef)
+        }
+        try xcodeproj.write(path: projectPath)
+
+        // Add framework using bare name "Core" (no .framework suffix)
+        let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "framework_name": Value.string("Core"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added framework 'Core'"))
+
+        // Verify: should reuse the BUILT_PRODUCTS_DIR reference, NOT create a system framework
+        let updatedProj = try XcodeProj(path: projectPath)
+        let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
+        let frameworkPhase =
+            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+
+        let linkedRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
+            .first { $0.path == "Core.framework" }
+        #expect(linkedRef != nil)
+        #expect(linkedRef?.sourceTree == .buildProductsDir)
+
+        // Verify no system framework reference was created
+        let systemRefs = updatedProj.pbxproj.fileReferences.filter {
+            $0.path == "System/Library/Frameworks/Core.framework"
+        }
+        #expect(systemRefs.isEmpty)
+    }
+
+    @Test
+    func `Bare name without existing product creates system framework`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // No product reference for Core — should fall through to system framework
+        let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "framework_name": Value.string("CoreFoundation"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added framework 'CoreFoundation'"))
+
+        let updatedProj = try XcodeProj(path: projectPath)
+        let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
+        let frameworkPhase =
+            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+
+        let linkedRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
+            .first { $0.name == "CoreFoundation.framework" }
+        #expect(linkedRef != nil)
+        #expect(linkedRef?.sourceTree == .sdkRoot)
+    }
+
+    @Test
+    func `Bare name duplicate detection works with existing BUILT_PRODUCTS_DIR product`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a product file reference for Core.framework
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let productRef = PBXFileReference(
+            sourceTree: .buildProductsDir,
+            explicitFileType: "wrapper.framework",
+            path: "Core.framework",
+            includeInIndex: false,
+        )
+        xcodeproj.pbxproj.add(object: productRef)
+
+        if let productsGroup = xcodeproj.pbxproj.rootObject?.productsGroup {
+            productsGroup.children.append(productRef)
+        }
+        try xcodeproj.write(path: projectPath)
+
+        let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "framework_name": Value.string("Core"),
+        ]
+
+        // Add first time
+        _ = try tool.execute(arguments: args)
+
+        // Add again — should detect duplicate
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("already exists"))
+    }
 }
