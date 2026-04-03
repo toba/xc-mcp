@@ -235,30 +235,29 @@ extension [String: Value] {
         ]
     }
 
-    /// Returns build setting overrides to disable all sanitizers if requested.
+    /// Returns build setting overrides to disable all sanitizers unless explicitly enabled.
     ///
-    /// Disables Thread Sanitizer, Address Sanitizer, and Undefined Behavior Sanitizer.
-    /// Sanitizers significantly slow compilation — disabling them can make a build
-    /// that hangs at 60s complete in time to produce actionable errors.
-    public func noSanitizersArgs() -> [String] {
-        getBool("no_sanitizers")
-            ? [
+    /// Disables Thread Sanitizer, Address Sanitizer, and Undefined Behavior Sanitizer
+    /// by default. Sanitizers significantly slow compilation, so they are opt-in.
+    public func enableSanitizersArgs() -> [String] {
+        getBool("enable_sanitizers")
+            ? []
+            : [
                 "ENABLE_THREAD_SANITIZER=NO",
                 "ENABLE_ADDRESS_SANITIZER=NO",
                 "ENABLE_UNDEFINED_BEHAVIOR_SANITIZER=NO",
             ]
-            : []
     }
 
-    /// Schema property for the no-sanitizers option.
-    public static var noSanitizersSchemaProperty: [String: Value] {
+    /// Schema property for the enable-sanitizers option.
+    public static var enableSanitizersSchemaProperty: [String: Value] {
         [
-            "no_sanitizers": .object([
+            "enable_sanitizers": .object([
                 "type": .string("boolean"),
                 "description": .string(
-                    "Disable all sanitizers (Thread, Address, Undefined Behavior). "
-                        + "Sanitizers significantly slow compilation — use this when the build "
-                        + "hangs or times out during compilation. Defaults to false.",
+                    "Enable sanitizers (Thread, Address, Undefined Behavior). "
+                        + "Sanitizers significantly slow compilation, so they are disabled "
+                        + "by default. Enable when diagnosing memory or concurrency issues.",
                 ),
             ]),
         ]

@@ -80,7 +80,7 @@ public struct BuildMacOSTool: Sendable {
                             ),
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                        .merging([String: Value].noSanitizersSchemaProperty) { _, new in new }
+                        .merging([String: Value].enableSanitizersSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
@@ -138,7 +138,7 @@ public struct BuildMacOSTool: Sendable {
                 action: action,
                 additionalArguments: arguments.continueBuildingArgs()
                     + arguments
-                    .noSanitizersArgs() + arguments.buildSettingOverrides(),
+                    .enableSanitizersArgs() + arguments.buildSettingOverrides(),
                 environment: environment,
                 timeout: timeout,
                 outputTimeout: hasExplicitTimeout ? nil : XcodebuildRunner.outputTimeout,

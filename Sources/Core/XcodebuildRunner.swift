@@ -635,7 +635,7 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
         parts.append(
             "No errors captured yet — the build is blocked on compilation of the above targets. "
                 +
-                "Retry with: timeout: 300, continue_building_after_errors: true, no_sanitizers: true",
+                "Retry with: timeout: 300, continue_building_after_errors: true",
         )
 
         return parts.joined(separator: "\n")

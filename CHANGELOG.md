@@ -8,7 +8,7 @@
 - `add_target_to_test_plan`: support `selectedTests` filtering with `xctest_classes` and `suites` parameters; restrict test plan entries to specific classes, methods, or Swift Testing functions ([#252](https://github.com/toba/xc-mcp/issues/252))
 - `move_file` now updates synchronized folder exception sets; renaming a file that appears in `membershipExceptions` no longer requires manual remove/add workaround ([#254](https://github.com/toba/xc-mcp/issues/254))
 
-### 🐛 Fixes
+### 🐞 Fixes
 
 - Fix `remove_package_product` corrupting pbxproj; clean up `PBXTargetDependency` entries with `productRef` created by Xcode GUI ([#248](https://github.com/toba/xc-mcp/issues/248))
 - Fix `add_framework` creating bogus `.framework` file reference for static libraries (`.a`); reuse existing product reference or create proper `archive.ar` entry in `BUILT_PRODUCTS_DIR` ([#250](https://github.com/toba/xc-mcp/issues/250))

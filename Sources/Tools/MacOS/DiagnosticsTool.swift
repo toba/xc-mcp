@@ -58,7 +58,7 @@ public struct DiagnosticsTool: Sendable {
                                 "Maximum time in seconds for the build. Defaults to 300 (5 minutes).",
                             ),
                         ]),
-                    ].merging([String: Value].noSanitizersSchemaProperty) { _, new in new },
+                    ].merging([String: Value].enableSanitizersSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -101,7 +101,7 @@ public struct DiagnosticsTool: Sendable {
                     scheme: scheme,
                     destination: "platform=macOS",
                     configuration: configuration,
-                    additionalArguments: arguments.noSanitizersArgs(),
+                    additionalArguments: arguments.enableSanitizersArgs(),
                     timeout: timeout,
                     outputTimeout: hasExplicitTimeout ? nil : XcodebuildRunner.outputTimeout,
                 )
