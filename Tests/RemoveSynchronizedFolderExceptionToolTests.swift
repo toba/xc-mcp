@@ -180,6 +180,96 @@ struct RemoveSynchronizedFolderExceptionToolTests {
     }
 
     @Test
+    func `Does not corrupt unrelated pbxproj sections`() throws {
+        let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithSyncFolder(
+            name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
+            membershipExceptions: ["File1.swift", "File2.swift"], at: projectPath,
+        )
+
+        // Snapshot the pbxproj before the edit
+        let pbxprojPath = (projectPath + "project.pbxproj").string
+        let before = try String(contentsOfFile: pbxprojPath, encoding: .utf8)
+
+        // Remove one file from the exception set
+        _ = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Sources"),
+            "target_name": .string("AppTarget"),
+            "file_name": .string("File1.swift"),
+        ])
+
+        let after = try String(contentsOfFile: pbxprojPath, encoding: .utf8)
+
+        // The only difference should be the removal of the File1.swift line
+        let beforeLines = Set(before.components(separatedBy: "\n"))
+        let afterLines = Set(after.components(separatedBy: "\n"))
+
+        let removed = beforeLines.subtracting(afterLines)
+        let added = afterLines.subtracting(beforeLines)
+
+        // Only the File1.swift entry should have been removed; nothing added
+        #expect(removed.count == 1, "Expected exactly one line removed, got \(removed)")
+        #expect(
+            removed.first?.trimmingCharacters(in: .whitespaces).hasPrefix("File1.swift") == true,
+            "Removed line should be the File1.swift entry, got: \(removed)",
+        )
+        #expect(added.isEmpty, "No lines should be added, got: \(added)")
+
+        // Verify the project still loads correctly
+        let updated = try XcodeProj(path: projectPath)
+        let exceptionSets = updated.pbxproj.fileSystemSynchronizedBuildFileExceptionSets
+        #expect(exceptionSets.count == 1)
+        #expect(exceptionSets.first?.membershipExceptions == ["File2.swift"])
+    }
+
+    @Test
+    func `Does not corrupt unrelated sections when removing entire exception set`() throws {
+        let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithSyncFolder(
+            name: "TestProject", targetName: "AppTarget", folderPath: "Sources",
+            membershipExceptions: ["File1.swift"], at: projectPath,
+        )
+
+        let pbxprojPath = (projectPath + "project.pbxproj").string
+        let before = try String(contentsOfFile: pbxprojPath, encoding: .utf8)
+
+        // Remove the entire exception set
+        _ = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Sources"),
+            "target_name": .string("AppTarget"),
+        ])
+
+        let after = try String(contentsOfFile: pbxprojPath, encoding: .utf8)
+
+        let beforeLines = before.components(separatedBy: "\n")
+        let afterLines = after.components(separatedBy: "\n")
+
+        // Lines removed should be: the exception set block (isa, membershipExceptions,
+        // file entry, closing paren, target, opening/closing braces) plus the reference
+        // in the sync group's exceptions array. No lines should be added.
+        let added = Set(afterLines).subtracting(Set(beforeLines))
+        #expect(added.isEmpty, "No lines should be added, got: \(added)")
+
+        // Every line in `after` should exist in `before` (only removals, no modifications)
+        for (i, line) in afterLines.enumerated() {
+            #expect(
+                beforeLines.contains(line),
+                "Line \(i) in output was not in original: \(line)",
+            )
+        }
+
+        // Verify the project still loads
+        let updated = try XcodeProj(path: projectPath)
+        #expect(updated.pbxproj.fileSystemSynchronizedBuildFileExceptionSets.isEmpty)
+    }
+
+    @Test
     func `Fails when file not in exception set`() throws {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
 

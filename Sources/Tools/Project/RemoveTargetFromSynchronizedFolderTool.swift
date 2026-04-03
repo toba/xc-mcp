@@ -39,7 +39,8 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
                     ]),
                 ]),
                 "required": .array([
-                    .string("project_path"), .string("folder_path"), .string("target_name"),
+                    .string("project_path"), .string("folder_path"),
+                    .string("target_name"),
                 ]),
             ]),
             annotations: .destructive,
@@ -57,34 +58,38 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
         }
 
         do {
-            let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
+            let resolvedProjectPath = try pathUtility.resolvePath(
+                from: projectPath,
+            )
             let projectURL = URL(filePath: resolvedProjectPath)
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            // Find the synchronized folder
             guard let project = try xcodeproj.pbxproj.rootProject(),
                   let mainGroup = project.mainGroup
             else {
                 throw MCPError.internalError("Main group not found in project")
             }
 
-            guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
+            guard
+                let syncGroup = SynchronizedFolderUtility.findSyncGroup(
+                    folderPath, in: mainGroup,
+                )
             else {
                 throw MCPError.invalidParams(
                     "Synchronized folder '\(folderPath)' not found in project",
                 )
             }
 
-            // Find the target
             guard
                 let target = xcodeproj.pbxproj.nativeTargets.first(where: {
                     $0.name == targetName
                 })
             else {
-                throw MCPError.invalidParams("Target '\(targetName)' not found in project")
+                throw MCPError.invalidParams(
+                    "Target '\(targetName)' not found in project",
+                )
             }
 
-            // Check if target actually references this sync group
             guard let syncGroups = target.fileSystemSynchronizedGroups,
                   syncGroups.contains(where: { $0 === syncGroup })
             else {
@@ -97,34 +102,34 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
                 )
             }
 
+            var text = try PBXProjTextEditor.read(
+                projectPath: projectURL.path,
+            )
+
             // Remove the sync group reference from the target
-            target.fileSystemSynchronizedGroups?.removeAll { $0 === syncGroup }
-            if target.fileSystemSynchronizedGroups?.isEmpty == true {
-                target.fileSystemSynchronizedGroups = nil
+            text = try PBXProjTextEditor.removeReference(
+                text, blockUUID: target.uuid,
+                field: "fileSystemSynchronizedGroups",
+                refUUID: syncGroup.uuid,
+            )
+
+            // Clean up orphaned exception sets for this target
+            let orphaned =
+                (syncGroup.exceptions ?? []).compactMap {
+                    $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
+                }.filter { $0.target === target }
+
+            for ex in orphaned {
+                text = try PBXProjTextEditor.removeBlock(
+                    text, uuid: ex.uuid,
+                )
+                text = try PBXProjTextEditor.removeReference(
+                    text, blockUUID: syncGroup.uuid,
+                    field: "exceptions", refUUID: ex.uuid,
+                )
             }
 
-            // Clean up exception sets that reference this target
-            if let exceptions = syncGroup.exceptions {
-                let orphaned = exceptions.filter { exceptionSet in
-                    if let buildFileException =
-                        exceptionSet as? PBXFileSystemSynchronizedBuildFileExceptionSet
-                    {
-                        return buildFileException.target === target
-                    }
-                    return false
-                }
-                syncGroup.exceptions?.removeAll { exceptionSet in
-                    orphaned.contains { $0 === exceptionSet }
-                }
-                for exceptionSet in orphaned {
-                    xcodeproj.pbxproj.delete(object: exceptionSet)
-                }
-                if syncGroup.exceptions?.isEmpty == true {
-                    syncGroup.exceptions = nil
-                }
-            }
-
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjTextEditor.write(text, projectPath: projectURL.path)
 
             return CallTool.Result(
                 content: [
