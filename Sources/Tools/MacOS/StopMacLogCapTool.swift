@@ -86,7 +86,7 @@ public struct StopMacLogCapTool: Sendable {
             }
         }
 
-        return CallTool.Result(content: [.text(message)])
+        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
 
     /// Checks whether log output contains indicators of a process crash.

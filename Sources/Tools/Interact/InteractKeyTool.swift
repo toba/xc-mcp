@@ -49,6 +49,6 @@ public struct InteractKeyTool: Sendable {
         if !modifiers.isEmpty {
             desc += " with modifiers: \(modifiers.joined(separator: "+"))"
         }
-        return CallTool.Result(content: [.text(desc)])
+        return CallTool.Result(content: [.text(text: desc, annotations: nil, _meta: nil)])
     }
 }

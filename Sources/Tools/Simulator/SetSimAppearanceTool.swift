@@ -72,9 +72,9 @@ public struct SetSimAppearanceTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Successfully set appearance to '\(appearance)' on simulator '\(simulator)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

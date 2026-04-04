@@ -57,14 +57,14 @@ public struct GetCoverageReportTool: Sendable {
             )
         else {
             return CallTool.Result(content: [
-                .text(
+                .text(text:
                     "No coverage data found in the result bundle. Ensure tests were run with code coverage enabled.",
-                ),
+                    annotations: nil, _meta: nil),
             ])
         }
 
         let output = Self.formatReport(report, showFiles: showFiles)
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 
     static func formatReport(_ report: CoverageReport, showFiles: Bool) -> String {

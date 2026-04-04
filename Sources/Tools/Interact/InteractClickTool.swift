@@ -88,6 +88,10 @@ public struct InteractClickTool: Sendable {
 
         let info = interactRunner.getAttributes(from: element)
         let desc = info.title ?? info.role ?? "element"
-        return CallTool.Result(content: [.text("Clicked \(desc) successfully.")])
+        return CallTool.Result(content: [.text(
+            text: "Clicked \(desc) successfully.",
+            annotations: nil,
+            _meta: nil,
+        )])
     }
 }

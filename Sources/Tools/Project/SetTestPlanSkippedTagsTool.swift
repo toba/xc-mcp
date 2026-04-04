@@ -86,7 +86,11 @@ public struct SetTestPlanSkippedTagsTool: Sendable {
                     : " — skipped tags: \(resultTags.joined(separator: ", "))"
             return CallTool.Result(
                 content: [
-                    .text("\(verb) \(tagList) in \(scope)\(remaining)"),
+                    .text(
+                        text: "\(verb) \(tagList) in \(scope)\(remaining)",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch let error as MCPError {

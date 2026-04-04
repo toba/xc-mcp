@@ -48,7 +48,7 @@ public struct DebugContinueTool: Sendable {
             }
 
             return CallTool.Result(content: [
-                .text(message),
+                .text(text: message, annotations: nil, _meta: nil),
             ])
         } catch {
             throw error.asMCPError()

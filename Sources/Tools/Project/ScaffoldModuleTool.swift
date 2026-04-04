@@ -416,7 +416,11 @@ public struct ScaffoldModuleTool: Sendable {
             }
 
             return CallTool.Result(
-                content: [.text(summary.joined(separator: "\n"))],
+                content: [.text(
+                    text: summary.joined(separator: "\n"),
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         } catch {
             for dir in createdDirs.reversed() {

@@ -99,9 +99,9 @@ public struct KeyPressTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Pressed key '\(key)' on simulator '\(simulator)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

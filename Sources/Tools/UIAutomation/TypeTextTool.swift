@@ -66,9 +66,9 @@ public struct TypeTextTool: Sendable {
                 let truncatedText = text.count > 20 ? String(text.prefix(20)) + "..." : text
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Typed '\(truncatedText)' on simulator '\(simulator)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

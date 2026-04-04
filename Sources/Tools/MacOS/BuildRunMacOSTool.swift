@@ -186,7 +186,11 @@ public struct BuildRunMacOSTool: Sendable {
                     }
                 }
 
-                return CallTool.Result(content: [.text(message)])
+                return CallTool.Result(content: [.text(
+                    text: message,
+                    annotations: nil,
+                    _meta: nil,
+                )])
             } else {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }

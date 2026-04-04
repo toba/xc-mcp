@@ -61,7 +61,11 @@ public struct RenameGroupTool: Sendable {
                   let mainGroup = project.mainGroup
             else {
                 return CallTool.Result(
-                    content: [.text("Could not find main group in project")],
+                    content: [.text(
+                        text: "Could not find main group in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -71,7 +75,11 @@ public struct RenameGroupTool: Sendable {
                 targetGroup = try mainGroup.resolveGroupPath(groupPath)
             } catch {
                 return CallTool.Result(
-                    content: [.text("Group '\(groupPath)' not found in project")],
+                    content: [.text(
+                        text: "Group '\(groupPath)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -87,7 +95,11 @@ public struct RenameGroupTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Successfully renamed group '\(oldName)' to '\(newName)'"),
+                    .text(
+                        text: "Successfully renamed group '\(oldName)' to '\(newName)'",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

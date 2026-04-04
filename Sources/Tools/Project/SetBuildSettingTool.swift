@@ -90,7 +90,11 @@ public struct SetBuildSettingTool: Sendable {
                 else {
                     return CallTool.Result(
                         content: [
-                            .text("Target '\(targetName)' not found in project"),
+                            .text(
+                                text: "Target '\(targetName)' not found in project",
+                                annotations: nil,
+                                _meta: nil,
+                            ),
                         ],
                     )
                 }
@@ -98,7 +102,11 @@ public struct SetBuildSettingTool: Sendable {
                 guard let list = target.buildConfigurationList else {
                     return CallTool.Result(
                         content: [
-                            .text("Target '\(targetName)' has no build configuration list"),
+                            .text(
+                                text: "Target '\(targetName)' has no build configuration list",
+                                annotations: nil,
+                                _meta: nil,
+                            ),
                         ],
                     )
                 }
@@ -111,7 +119,11 @@ public struct SetBuildSettingTool: Sendable {
                 else {
                     return CallTool.Result(
                         content: [
-                            .text("Project has no build configuration list"),
+                            .text(
+                                text: "Project has no build configuration list",
+                                annotations: nil,
+                                _meta: nil,
+                            ),
                         ],
                     )
                 }
@@ -136,9 +148,9 @@ public struct SetBuildSettingTool: Sendable {
                 else {
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Configuration '\(configuration)' not found for \(scopeLabel)",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
                 }
@@ -153,9 +165,9 @@ public struct SetBuildSettingTool: Sendable {
             let configurationsText = modifiedConfigurations.joined(separator: ", ")
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully set '\(settingName)' to '\(settingValue)' for \(scopeLabel) in configuration(s): \(configurationsText)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

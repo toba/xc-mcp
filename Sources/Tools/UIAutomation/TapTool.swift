@@ -85,9 +85,9 @@ public struct TapTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Tapped at (\(Int(x)), \(Int(y))) on simulator '\(simulator)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

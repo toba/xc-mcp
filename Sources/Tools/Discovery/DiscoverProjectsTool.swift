@@ -158,7 +158,7 @@ public struct DiscoverProjectsTool: Sendable {
             }
         }
 
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 
     private func formatDiscoveryJSON(
@@ -174,6 +174,6 @@ public struct DiscoverProjectsTool: Sendable {
             searchPath: searchPath, workspaces: workspaces, projects: projects,
         )
         let json = try encodePrettyJSON(result)
-        return CallTool.Result(content: [.text(json)])
+        return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
     }
 }

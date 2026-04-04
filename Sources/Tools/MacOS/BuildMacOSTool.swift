@@ -158,7 +158,7 @@ public struct BuildMacOSTool: Sendable {
                 text += "\n\n" + summary
             }
             return CallTool.Result(
-                content: [.text(text)],
+                content: [.text(text: text, annotations: nil, _meta: nil)],
             )
         } catch let error as XcodebuildError {
             return error.formatPartialDiagnostics(

@@ -64,6 +64,6 @@ public struct InteractFocusTool: Sendable {
             result += " Focused element \(elementId)."
         }
 
-        return CallTool.Result(content: [.text(result)])
+        return CallTool.Result(content: [.text(text: result, annotations: nil, _meta: nil)])
     }
 }

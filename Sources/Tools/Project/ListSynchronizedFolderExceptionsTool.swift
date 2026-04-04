@@ -71,9 +71,9 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
             if exceptions.isEmpty {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "No exception sets on synchronized folder '\(folderPath)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -123,7 +123,7 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
             }
 
             return CallTool.Result(
-                content: [.text(lines.joined(separator: "\n"))],
+                content: [.text(text: lines.joined(separator: "\n"), annotations: nil, _meta: nil)],
             )
         } catch let error as MCPError {
             throw error

@@ -561,7 +561,10 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
             }
         }
 
-        return CallTool.Result(content: [.text(text)], isError: true)
+        return CallTool.Result(
+            content: [.text(text: text, annotations: nil, _meta: nil)],
+            isError: true,
+        )
     }
 
     /// Extracts a concise build progress summary from raw xcodebuild output.

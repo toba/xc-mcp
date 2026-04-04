@@ -88,7 +88,7 @@ public struct SwiftPackageStopTool: Sendable {
                     allExited
                         ? "Successfully stopped '\(executable)'"
                         : "Stopped '\(executable)' (escalated to SIGKILL after SIGTERM timeout)"
-                return CallTool.Result(content: [.text(detail)])
+                return CallTool.Result(content: [.text(text: detail, annotations: nil, _meta: nil)])
             } else if result.exitCode == 1 {
                 // pkill returns 1 when no process found (race: exited between pgrep and pkill)
                 throw MCPError.invalidParams("No running process found matching '\(executable)'")

@@ -78,7 +78,11 @@ public struct ListSimsTool: Sendable {
             // Format output
             if devices.isEmpty {
                 return CallTool.Result(
-                    content: [.text("No simulators found matching the specified criteria.")],
+                    content: [.text(
+                        text: "No simulators found matching the specified criteria.",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -98,7 +102,7 @@ public struct ListSimsTool: Sendable {
                 output += "     State: \(device.state)\n"
             }
 
-            return CallTool.Result(content: [.text(output)])
+            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
         } catch {
             throw MCPError.internalError("Failed to list simulators: \(error.localizedDescription)")
         }

@@ -115,18 +115,30 @@ public struct GetTestAttachmentsTool: Sendable {
         guard FileManager.default.fileExists(atPath: manifestPath),
               let manifestData = FileManager.default.contents(atPath: manifestPath)
         else {
-            return CallTool.Result(content: [.text("No attachments found in the result bundle.")])
+            return CallTool.Result(content: [.text(
+                text: "No attachments found in the result bundle.",
+                annotations: nil,
+                _meta: nil,
+            )])
         }
 
         guard
             let manifest = try? JSONSerialization
             .jsonObject(with: manifestData) as? [[String: Any]]
         else {
-            return CallTool.Result(content: [.text("No attachments found in the result bundle.")])
+            return CallTool.Result(content: [.text(
+                text: "No attachments found in the result bundle.",
+                annotations: nil,
+                _meta: nil,
+            )])
         }
 
         if manifest.isEmpty {
-            return CallTool.Result(content: [.text("No attachments found in the result bundle.")])
+            return CallTool.Result(content: [.text(
+                text: "No attachments found in the result bundle.",
+                annotations: nil,
+                _meta: nil,
+            )])
         }
 
         // Parse the nested manifest structure:
@@ -134,11 +146,15 @@ public struct GetTestAttachmentsTool: Sendable {
         let attachments = Self.flattenManifest(manifest)
 
         if attachments.isEmpty {
-            return CallTool.Result(content: [.text("No attachments found in the result bundle.")])
+            return CallTool.Result(content: [.text(
+                text: "No attachments found in the result bundle.",
+                annotations: nil,
+                _meta: nil,
+            )])
         }
 
         let output = Self.formatAttachments(attachments, exportDir: isTemporary ? nil : exportDir)
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 
     struct Attachment {

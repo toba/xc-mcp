@@ -77,7 +77,11 @@ public struct DuplicateTargetTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Source target '\(sourceTargetName)' not found in project"),
+                        .text(
+                            text: "Source target '\(sourceTargetName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -86,7 +90,11 @@ public struct DuplicateTargetTool: Sendable {
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == newTargetName }) {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(newTargetName)' already exists in project"),
+                        .text(
+                            text: "Target '\(newTargetName)' already exists in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -221,9 +229,9 @@ public struct DuplicateTargetTool: Sendable {
                     ? " with bundle identifier '\(newBundleIdentifier!)'" : ""
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully duplicated target '\(sourceTargetName)' as '\(newTargetName)'\(bundleIdText)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

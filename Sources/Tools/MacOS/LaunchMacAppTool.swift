@@ -153,7 +153,7 @@ public struct LaunchMacAppTool: Sendable {
                 }
 
                 return CallTool.Result(content: [
-                    .text(message),
+                    .text(text: message, annotations: nil, _meta: nil),
                 ])
             } else {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")

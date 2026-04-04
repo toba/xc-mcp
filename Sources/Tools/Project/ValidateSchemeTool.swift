@@ -53,7 +53,11 @@ public struct ValidateSchemeTool: Sendable {
         else {
             return CallTool.Result(
                 content: [
-                    .text("Scheme '\(schemeName)' not found in project"),
+                    .text(
+                        text: "Scheme '\(schemeName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         }
@@ -138,14 +142,18 @@ public struct ValidateSchemeTool: Sendable {
 
             if issues.isEmpty {
                 return CallTool.Result(
-                    content: [.text("Scheme '\(schemeName)' is valid")],
+                    content: [.text(
+                        text: "Scheme '\(schemeName)' is valid",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             } else {
                 var result = "Scheme '\(schemeName)' has \(issues.count) issue(s):\n"
                 for issue in issues {
                     result += "  - \(issue)\n"
                 }
-                return CallTool.Result(content: [.text(result)])
+                return CallTool.Result(content: [.text(text: result, annotations: nil, _meta: nil)])
             }
         } catch {
             throw MCPError.internalError(

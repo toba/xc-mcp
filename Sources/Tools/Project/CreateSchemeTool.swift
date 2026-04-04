@@ -124,7 +124,11 @@ public struct CreateSchemeTool: Sendable {
 
         if FileManager.default.fileExists(atPath: schemePath) {
             return CallTool.Result(
-                content: [.text("Scheme '\(schemeName)' already exists")],
+                content: [.text(
+                    text: "Scheme '\(schemeName)' already exists",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         }
 
@@ -142,9 +146,9 @@ public struct CreateSchemeTool: Sendable {
                 else {
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Build target '\(targetName)' not found in project",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
                 }
@@ -206,9 +210,9 @@ public struct CreateSchemeTool: Sendable {
                     else {
                         return CallTool.Result(
                             content: [
-                                .text(
+                                .text(text:
                                     "Test target '\(testTargetName)' not found in project",
-                                ),
+                                    annotations: nil, _meta: nil),
                             ],
                         )
                     }
@@ -310,7 +314,7 @@ public struct CreateSchemeTool: Sendable {
                 summary += "\n  Test plans: \(refs.count)"
             }
 
-            return CallTool.Result(content: [.text(summary)])
+            return CallTool.Result(content: [.text(text: summary, annotations: nil, _meta: nil)])
         } catch {
             throw MCPError.internalError(
                 "Failed to create scheme: \(error.localizedDescription)",

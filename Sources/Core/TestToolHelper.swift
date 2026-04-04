@@ -138,7 +138,8 @@ public enum TestToolHelper {
 
             if let validationWarning {
                 toolResult = CallTool.Result(
-                    content: [.text(validationWarning)] + toolResult.content,
+                    content: [.text(text: validationWarning, annotations: nil, _meta: nil)] +
+                        toolResult.content,
                     isError: toolResult.isError,
                 )
             }

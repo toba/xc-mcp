@@ -73,7 +73,7 @@ public struct ListGroupsTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(titleMessage),
+                    .text(text: titleMessage, annotations: nil, _meta: nil),
                 ],
             )
         } catch {

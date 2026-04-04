@@ -43,9 +43,9 @@ public struct ListDevicesTool: Sendable {
             if devices.isEmpty {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "No connected devices found. Make sure your device is connected and trusted.",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -60,7 +60,7 @@ public struct ListDevicesTool: Sendable {
                 output += "   Connection: \(device.connectionType)\n\n"
             }
 
-            return CallTool.Result(content: [.text(output)])
+            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
         } catch {
             throw MCPError.internalError("Failed to list devices: \(error.localizedDescription)")
         }

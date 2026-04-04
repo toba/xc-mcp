@@ -67,7 +67,11 @@ public struct RemovePackageProductTool: Sendable {
                 })
             else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")],
+                    content: [.text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -76,9 +80,9 @@ public struct RemovePackageProductTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Product '\(productName)' not found in target '\(targetName)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -118,9 +122,9 @@ public struct RemovePackageProductTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Removed product '\(productName)' from target '\(targetName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch let error as MCPError {

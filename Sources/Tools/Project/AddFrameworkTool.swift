@@ -79,7 +79,11 @@ public struct AddFrameworkTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project"),
+                        .text(
+                            text: "Target '\(targetName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -172,9 +176,9 @@ public struct AddFrameworkTool: Sendable {
             if frameworkExists {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Framework '\(frameworkName)' already exists in target '\(targetName)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -318,9 +322,9 @@ public struct AddFrameworkTool: Sendable {
             let embedText = embed && !isSystemFramework ? " (embedded)" : ""
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully added framework '\(frameworkName)' to target '\(targetName)'\(embedText)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

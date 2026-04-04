@@ -164,7 +164,7 @@ public struct XctraceRecordTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         """
                         Started xctrace recording with template '\(template)'
                         Output: \(outputPath)
@@ -174,7 +174,7 @@ public struct XctraceRecordTool: Sendable {
                             sessionId
                         )' to stop recording.
                         """,
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {
@@ -205,13 +205,13 @@ public struct XctraceRecordTool: Sendable {
 
         return CallTool.Result(
             content: [
-                .text(
+                .text(text:
                     """
                     Stopped xctrace recording.
                     Session ID: \(sessionId)
                     Output: \(session.outputPath)
                     """,
-                ),
+                    annotations: nil, _meta: nil),
             ],
         )
     }
@@ -221,7 +221,11 @@ public struct XctraceRecordTool: Sendable {
 
         if sessions.isEmpty {
             return CallTool.Result(
-                content: [.text("No active xctrace recordings.")],
+                content: [.text(
+                    text: "No active xctrace recordings.",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         }
 
@@ -230,6 +234,6 @@ public struct XctraceRecordTool: Sendable {
             output += "  - \(session.id): \(session.outputPath)\n"
         }
 
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 }

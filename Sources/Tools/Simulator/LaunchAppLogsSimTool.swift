@@ -104,7 +104,7 @@ public struct LaunchAppLogsSimTool: Sendable {
             output += "Captured \(durationSeconds) seconds of logs:\n\n"
             output += logs
 
-            return CallTool.Result(content: [.text(output)])
+            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
         } catch {
             throw error.asMCPError()
         }

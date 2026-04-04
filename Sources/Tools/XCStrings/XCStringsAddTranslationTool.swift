@@ -52,7 +52,11 @@ public struct XCStringsAddTranslationTool: Sendable {
             let parser = XCStringsParser(path: resolvedPath)
             try await parser.addTranslation(key: key, language: language, value: value)
 
-            return CallTool.Result(content: [.text("Translation added successfully")])
+            return CallTool.Result(content: [.text(
+                text: "Translation added successfully",
+                annotations: nil,
+                _meta: nil,
+            )])
         } catch let error as XCStringsError {
             throw error.toMCPError()
         } catch let error as PathError {

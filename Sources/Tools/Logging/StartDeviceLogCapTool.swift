@@ -123,7 +123,7 @@ public struct StartDeviceLogCapTool: Sendable {
                 "\nNote: On iOS 26+, NSLog content is privacy-redacted. Use os.Logger for visible log output."
             message += "\nUse stop_device_log_cap to stop the capture and retrieve logs."
 
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw error.asMCPError()
         }

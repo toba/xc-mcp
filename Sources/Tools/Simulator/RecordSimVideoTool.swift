@@ -118,7 +118,7 @@ public struct RecordSimVideoTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         """
                         Started video recording on simulator '\(simulator)'
                         Output: \(outputPath)
@@ -128,7 +128,7 @@ public struct RecordSimVideoTool: Sendable {
                             sessionId
                         )' to stop recording.
                         """,
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {
@@ -156,7 +156,11 @@ public struct RecordSimVideoTool: Sendable {
 
         return CallTool.Result(
             content: [
-                .text("Stopped video recording. Session ID: \(sessionId)"),
+                .text(
+                    text: "Stopped video recording. Session ID: \(sessionId)",
+                    annotations: nil,
+                    _meta: nil,
+                ),
             ],
         )
     }
@@ -166,7 +170,7 @@ public struct RecordSimVideoTool: Sendable {
 
         if sessionIds.isEmpty {
             return CallTool.Result(
-                content: [.text("No active video recordings.")],
+                content: [.text(text: "No active video recordings.", annotations: nil, _meta: nil)],
             )
         }
 
@@ -175,6 +179,6 @@ public struct RecordSimVideoTool: Sendable {
             output += "  - \(sessionId)\n"
         }
 
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 }

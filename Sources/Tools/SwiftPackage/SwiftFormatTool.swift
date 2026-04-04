@@ -76,20 +76,32 @@ public struct SwiftFormatTool: Sendable {
 
             if dryRun {
                 if formatted.isEmpty {
-                    return CallTool.Result(content: [.text("No formatting changes needed.")])
+                    return CallTool.Result(content: [.text(
+                        text: "No formatting changes needed.",
+                        annotations: nil,
+                        _meta: nil,
+                    )])
                 }
                 var message = "\(formatted.count) file(s) would be changed:\n"
                 message += formatted.joined(separator: "\n")
-                return CallTool.Result(content: [.text(message)])
+                return CallTool.Result(content: [.text(
+                    text: message,
+                    annotations: nil,
+                    _meta: nil,
+                )])
             }
 
             if formatted.isEmpty {
-                return CallTool.Result(content: [.text("All files already formatted correctly.")])
+                return CallTool.Result(content: [.text(
+                    text: "All files already formatted correctly.",
+                    annotations: nil,
+                    _meta: nil,
+                )])
             }
 
             var message = "Formatted \(formatted.count) file(s):\n"
             message += formatted.joined(separator: "\n")
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw error.asMCPError()
         }

@@ -158,7 +158,7 @@ public struct ShowBuildLogTool: Sendable {
             }
         }
 
-        return CallTool.Result(content: [.text(text)])
+        return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
     }
 
     // MARK: - Private

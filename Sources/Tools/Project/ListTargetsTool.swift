@@ -56,7 +56,11 @@ public struct ListTargetsTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Targets in \(projectURL.lastPathComponent):\n\(result)"),
+                    .text(
+                        text: "Targets in \(projectURL.lastPathComponent):\n\(result)",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

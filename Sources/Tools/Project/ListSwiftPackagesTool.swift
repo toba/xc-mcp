@@ -66,7 +66,11 @@ public struct ListSwiftPackagesTool: Sendable {
             if packages.isEmpty {
                 return CallTool.Result(
                     content: [
-                        .text("No Swift Package dependencies found in project"),
+                        .text(
+                            text: "No Swift Package dependencies found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -74,7 +78,11 @@ public struct ListSwiftPackagesTool: Sendable {
             let packageList = packages.joined(separator: "\n")
             return CallTool.Result(
                 content: [
-                    .text("Swift Package dependencies:\n\(packageList)"),
+                    .text(
+                        text: "Swift Package dependencies:\n\(packageList)",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

@@ -107,7 +107,7 @@ public struct ShowBuildSettingsTool: Sendable {
                         filter: filter,
                     )
                 }
-                return CallTool.Result(content: [.text(output)])
+                return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
             } else {
                 throw MCPError.internalError(
                     "Failed to get build settings: \(result.errorOutput)",

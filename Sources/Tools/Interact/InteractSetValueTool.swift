@@ -64,7 +64,11 @@ public struct InteractSetValueTool: Sendable {
         let info = interactRunner.getAttributes(from: cached.element)
         let desc = info.role ?? "element"
         return CallTool.Result(
-            content: [.text("Set value on \(desc) (id=\(elementId)) to \"\(value)\".")],
+            content: [.text(
+                text: "Set value on \(desc) (id=\(elementId)) to \"\(value)\".",
+                annotations: nil,
+                _meta: nil,
+            )],
         )
     }
 }

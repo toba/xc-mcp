@@ -27,7 +27,11 @@ public struct ShowSessionDefaultsTool: Sendable {
         let summary = await sessionManager.summary()
         return CallTool.Result(
             content: [
-                .text("Current session defaults:\n\n\(summary)"),
+                .text(
+                    text: "Current session defaults:\n\n\(summary)",
+                    annotations: nil,
+                    _meta: nil,
+                ),
             ],
         )
     }

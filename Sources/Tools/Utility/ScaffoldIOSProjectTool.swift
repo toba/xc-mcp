@@ -160,7 +160,11 @@ public struct ScaffoldIOSProjectTool: Sendable {
             }
             resultMessage += "\nOpen the workspace with: open \"\(workspacePath)\""
 
-            return CallTool.Result(content: [.text(resultMessage)])
+            return CallTool.Result(content: [.text(
+                text: resultMessage,
+                annotations: nil,
+                _meta: nil,
+            )])
         } catch {
             // Clean up on failure
             try? fileManager.removeItem(atPath: projectDir)

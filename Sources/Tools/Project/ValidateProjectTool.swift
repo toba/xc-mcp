@@ -150,7 +150,11 @@ public struct ValidateProjectTool: Sendable {
             output.append("## Summary: \(parts.joined(separator: ", "))")
         }
 
-        return CallTool.Result(content: [.text(output.joined(separator: "\n"))])
+        return CallTool.Result(content: [.text(
+            text: output.joined(separator: "\n"),
+            annotations: nil,
+            _meta: nil,
+        )])
     }
 
     // MARK: - Embed Phase Checks

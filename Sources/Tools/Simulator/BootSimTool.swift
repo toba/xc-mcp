@@ -42,11 +42,19 @@ public struct BootSimTool: Sendable {
 
             if result.succeeded {
                 return CallTool.Result(
-                    content: [.text("Successfully booted simulator: \(simulator)")],
+                    content: [.text(
+                        text: "Successfully booted simulator: \(simulator)",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             } else if result.stderr.contains("Unable to boot device in current state: Booted") {
                 return CallTool.Result(
-                    content: [.text("Simulator is already booted: \(simulator)")],
+                    content: [.text(
+                        text: "Simulator is already booted: \(simulator)",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             } else {
                 throw MCPError.internalError(

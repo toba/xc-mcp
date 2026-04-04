@@ -109,7 +109,11 @@ public struct ManageDocumentTypeTool: Sendable {
 
             guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")],
+                    content: [.text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -141,9 +145,9 @@ public struct ManageDocumentTypeTool: Sendable {
                     }) {
                         return CallTool.Result(
                             content: [
-                                .text(
+                                .text(text:
                                     "Document type '\(name)' already exists in target '\(targetName)'",
-                                ),
+                                    annotations: nil, _meta: nil),
                             ],
                         )
                     }
@@ -157,9 +161,9 @@ public struct ManageDocumentTypeTool: Sendable {
 
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Successfully added document type '\(name)' to target '\(targetName)'",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
 
@@ -171,9 +175,9 @@ public struct ManageDocumentTypeTool: Sendable {
                     else {
                         return CallTool.Result(
                             content: [
-                                .text(
+                                .text(text:
                                     "Document type '\(name)' not found in target '\(targetName)'",
-                                ),
+                                    annotations: nil, _meta: nil),
                             ],
                         )
                     }
@@ -187,9 +191,9 @@ public struct ManageDocumentTypeTool: Sendable {
 
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Successfully updated document type '\(name)' in target '\(targetName)'",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
 
@@ -201,9 +205,9 @@ public struct ManageDocumentTypeTool: Sendable {
                     else {
                         return CallTool.Result(
                             content: [
-                                .text(
+                                .text(text:
                                     "Document type '\(name)' not found in target '\(targetName)'",
-                                ),
+                                    annotations: nil, _meta: nil),
                             ],
                         )
                     }
@@ -219,9 +223,9 @@ public struct ManageDocumentTypeTool: Sendable {
 
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Successfully removed document type '\(name)' from target '\(targetName)'",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
 

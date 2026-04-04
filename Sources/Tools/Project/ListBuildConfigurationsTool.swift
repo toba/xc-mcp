@@ -57,7 +57,11 @@ public struct ListBuildConfigurationsTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Build configurations in \(projectURL.lastPathComponent):\n\(result)"),
+                    .text(
+                        text: "Build configurations in \(projectURL.lastPathComponent):\n\(result)",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

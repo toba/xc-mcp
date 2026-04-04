@@ -68,7 +68,7 @@ public struct ListSchemesTool: Sendable {
                 } else {
                     output = parseSchemeList(from: result.stdout)
                 }
-                return CallTool.Result(content: [.text(output)])
+                return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
             } else {
                 throw MCPError.internalError(
                     "Failed to list schemes: \(result.errorOutput)",

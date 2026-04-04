@@ -156,9 +156,9 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                     )
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Removed '\(fileName)' from exception set for target '\(targetName)' on '\(folderPath)'. Exception set was empty and has been removed.",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
                 }
@@ -168,9 +168,9 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                 )
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Removed '\(fileName)' from exception set for target '\(targetName)' on '\(folderPath)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {
@@ -188,9 +188,9 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                 )
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Removed exception set for target '\(targetName)' from synchronized folder '\(folderPath)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }

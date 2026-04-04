@@ -104,9 +104,9 @@ public struct GestureTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Performed '\(presetName)' gesture on simulator '\(simulator)' — swiped from (\(Int(coords.startX)), \(Int(coords.startY))) to (\(Int(coords.endX)), \(Int(coords.endY)))",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

@@ -114,9 +114,9 @@ public struct BuildDeviceTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Build succeeded for scheme '\(scheme)' on device '\(device)'\(appPathLine)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

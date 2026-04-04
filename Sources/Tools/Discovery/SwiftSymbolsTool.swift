@@ -144,7 +144,7 @@ public struct SwiftSymbolsTool: Sendable {
             module: module, platform: platform, symbols: symbols, showDoc: showDoc,
         )
 
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 }
 

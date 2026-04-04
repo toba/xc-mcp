@@ -240,7 +240,11 @@ public struct ListFilesTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Files in target '\(targetName)':\n\(result)"),
+                    .text(
+                        text: "Files in target '\(targetName)':\n\(result)",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

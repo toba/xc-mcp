@@ -86,7 +86,11 @@ public struct RemoveFrameworkTool: Sendable {
                 else {
                     return CallTool.Result(
                         content: [
-                            .text("Target '\(targetName)' not found in project"),
+                            .text(
+                                text: "Target '\(targetName)' not found in project",
+                                annotations: nil,
+                                _meta: nil,
+                            ),
                         ],
                     )
                 }
@@ -177,9 +181,9 @@ public struct RemoveFrameworkTool: Sendable {
             if removedFromTargets.isEmpty {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Framework '\(frameworkName)' not found in \(targetName.map { "target '\($0)'" } ?? "any target")",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -189,9 +193,9 @@ public struct RemoveFrameworkTool: Sendable {
             let targetList = removedFromTargets.joined(separator: ", ")
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully removed framework '\(frameworkName)' from target(s): \(targetList)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

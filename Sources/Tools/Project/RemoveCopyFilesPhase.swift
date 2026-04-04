@@ -59,7 +59,11 @@ public struct RemoveCopyFilesPhase: Sendable {
                 let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
             else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")],
+                    content: [.text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -74,9 +78,9 @@ public struct RemoveCopyFilesPhase: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Copy Files phase '\(phaseName)' not found in target '\(targetName)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -85,9 +89,9 @@ public struct RemoveCopyFilesPhase: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Copy Files phase '\(phaseName)' not found in target '\(targetName)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -109,9 +113,9 @@ public struct RemoveCopyFilesPhase: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully removed Copy Files phase '\(phaseName)' from target '\(targetName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch let error as MCPError {

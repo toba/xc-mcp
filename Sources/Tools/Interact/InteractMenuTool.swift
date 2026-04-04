@@ -47,7 +47,11 @@ public struct InteractMenuTool: Sendable {
         try interactRunner.navigateMenu(pid: pid, menuPath: menuPath)
 
         return CallTool.Result(
-            content: [.text("Clicked menu: \(menuPath.joined(separator: " > "))")],
+            content: [.text(
+                text: "Clicked menu: \(menuPath.joined(separator: " > "))",
+                annotations: nil,
+                _meta: nil,
+            )],
         )
     }
 }

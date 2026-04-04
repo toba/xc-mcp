@@ -154,12 +154,16 @@ public struct MoveFileTool: Sendable {
                 }
 
                 return CallTool.Result(
-                    content: [.text(message)],
+                    content: [.text(text: message, annotations: nil, _meta: nil)],
                 )
             } else {
                 return CallTool.Result(
                     content: [
-                        .text("File not found in project: \(oldFileName)"),
+                        .text(
+                            text: "File not found in project: \(oldFileName)",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }

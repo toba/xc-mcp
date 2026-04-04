@@ -71,6 +71,10 @@ public struct InteractGetValueTool: Sendable {
         }
         lines.append("  Children: \(info.childCount)")
 
-        return CallTool.Result(content: [.text(lines.joined(separator: "\n"))])
+        return CallTool.Result(content: [.text(
+            text: lines.joined(separator: "\n"),
+            annotations: nil,
+            _meta: nil,
+        )])
     }
 }

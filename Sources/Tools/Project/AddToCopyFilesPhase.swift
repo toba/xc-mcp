@@ -92,7 +92,11 @@ public struct AddToCopyFilesPhase: Sendable {
                 let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
             else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")],
+                    content: [.text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -105,9 +109,9 @@ public struct AddToCopyFilesPhase: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Copy Files phase '\(phaseName)' not found in target '\(targetName)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -184,7 +188,7 @@ public struct AddToCopyFilesPhase: Sendable {
                 }
             }
 
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch let error as MCPError {
             throw error
         } catch {

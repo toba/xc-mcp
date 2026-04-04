@@ -46,7 +46,11 @@ public struct XCStringsDeleteTranslationTool: Sendable {
             try await parser.deleteTranslation(key: key, language: language)
 
             return CallTool.Result(
-                content: [.text("Translation for '\(language)' deleted successfully")],
+                content: [.text(
+                    text: "Translation for '\(language)' deleted successfully",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         } catch let error as XCStringsError {
             throw error.toMCPError()

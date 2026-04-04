@@ -73,7 +73,11 @@ public struct CreateTestPlanTool: Sendable {
         // Check if file already exists
         if FileManager.default.fileExists(atPath: outputPath) {
             return CallTool.Result(
-                content: [.text("Test plan '\(name).xctestplan' already exists at \(outputPath)")],
+                content: [.text(
+                    text: "Test plan '\(name).xctestplan' already exists at \(outputPath)",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         }
 
@@ -107,7 +111,11 @@ public struct CreateTestPlanTool: Sendable {
                 else {
                     return CallTool.Result(
                         content: [
-                            .text("Test target '\(targetName)' not found in project"),
+                            .text(
+                                text: "Test target '\(targetName)' not found in project",
+                                annotations: nil,
+                                _meta: nil,
+                            ),
                         ],
                     )
                 }
@@ -149,7 +157,7 @@ public struct CreateTestPlanTool: Sendable {
                 summary += "\nTest targets: \(targetNames.joined(separator: ", "))"
             }
 
-            return CallTool.Result(content: [.text(summary)])
+            return CallTool.Result(content: [.text(text: summary, annotations: nil, _meta: nil)])
         } catch {
             throw MCPError.internalError(
                 "Failed to create test plan: \(error.localizedDescription)",

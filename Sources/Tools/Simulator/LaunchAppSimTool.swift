@@ -72,7 +72,7 @@ public struct LaunchAppSimTool: Sendable {
                     message += "\nProcess ID: \(pid)"
                 }
                 return CallTool.Result(content: [
-                    .text(message),
+                    .text(text: message, annotations: nil, _meta: nil),
                 ])
             } else {
                 throw MCPError.internalError(

@@ -61,7 +61,11 @@ public struct RemoveTestPlanFromSchemeTool: Sendable {
         else {
             return CallTool.Result(
                 content: [
-                    .text("Scheme '\(schemeName)' not found in project"),
+                    .text(
+                        text: "Scheme '\(schemeName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         }
@@ -79,9 +83,9 @@ public struct RemoveTestPlanFromSchemeTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Test plan is not referenced in scheme '\(schemeName)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -93,9 +97,9 @@ public struct RemoveTestPlanFromSchemeTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Removed test plan from scheme '\(schemeName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

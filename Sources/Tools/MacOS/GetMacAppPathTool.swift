@@ -67,7 +67,11 @@ public struct GetMacAppPathTool: Sendable {
             if let appPath = findAppByBundleId(bundleId) {
                 return CallTool.Result(
                     content: [
-                        .text("App path for '\(bundleId)':\n\(appPath)"),
+                        .text(
+                            text: "App path for '\(bundleId)':\n\(appPath)",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -143,7 +147,11 @@ public struct GetMacAppPathTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("App path for scheme '\(scheme)':\n\(appPath)"),
+                    .text(
+                        text: "App path for scheme '\(scheme)':\n\(appPath)",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

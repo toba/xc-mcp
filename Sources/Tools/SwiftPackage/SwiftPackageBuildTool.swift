@@ -98,7 +98,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 message += " (\(configuration) configuration)"
 
                 return CallTool.Result(
-                    content: [.text(message)],
+                    content: [.text(text: message, annotations: nil, _meta: nil)],
                 )
             } else {
                 let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)

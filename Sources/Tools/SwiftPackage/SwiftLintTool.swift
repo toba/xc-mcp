@@ -77,11 +77,15 @@ public struct SwiftLintTool: Sendable {
             let violations = Self.parseJSONOutput(result.stdout)
 
             if violations.isEmpty {
-                return CallTool.Result(content: [.text("No violations found. Code is clean!")])
+                return CallTool.Result(content: [.text(
+                    text: "No violations found. Code is clean!",
+                    annotations: nil,
+                    _meta: nil,
+                )])
             }
 
             let message = Self.formatViolations(violations)
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw error.asMCPError()
         }

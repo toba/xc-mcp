@@ -76,7 +76,7 @@ public struct XctraceExportTool: Sendable {
             }
 
             let output = result.stdout.isEmpty ? result.stderr : result.stdout
-            return CallTool.Result(content: [.text(output)])
+            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
         } catch let error as MCPError {
             throw error
         } catch {

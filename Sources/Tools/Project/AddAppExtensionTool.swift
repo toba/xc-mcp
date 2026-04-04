@@ -192,7 +192,11 @@ public struct AddAppExtensionTool: Sendable {
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == extensionName }) {
                 return CallTool.Result(
                     content: [
-                        .text("Extension target '\(extensionName)' already exists in project"),
+                        .text(
+                            text: "Extension target '\(extensionName)' already exists in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -205,7 +209,11 @@ public struct AddAppExtensionTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Host target '\(hostTargetName)' not found in project"),
+                        .text(
+                            text: "Host target '\(hostTargetName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -214,9 +222,9 @@ public struct AddAppExtensionTool: Sendable {
             guard hostTarget.productType == .application else {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Host target '\(hostTargetName)' is not an application. App Extensions can only be embedded in applications.",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -395,9 +403,9 @@ public struct AddAppExtensionTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully created App Extension '\(extensionName)' (\(extensionTypeString)) with bundle identifier '\(bundleIdentifier)' and embedded it in '\(hostTargetName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

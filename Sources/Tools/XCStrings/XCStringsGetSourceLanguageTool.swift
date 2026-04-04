@@ -35,7 +35,11 @@ public struct XCStringsGetSourceLanguageTool: Sendable {
             let parser = XCStringsParser(path: resolvedPath)
             let sourceLanguage = try await parser.getSourceLanguage()
 
-            return CallTool.Result(content: [.text(sourceLanguage)])
+            return CallTool.Result(content: [.text(
+                text: sourceLanguage,
+                annotations: nil,
+                _meta: nil,
+            )])
         } catch let error as XCStringsError {
             throw error.toMCPError()
         } catch let error as PathError {

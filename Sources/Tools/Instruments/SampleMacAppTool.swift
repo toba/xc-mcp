@@ -134,7 +134,11 @@ public struct SampleMacAppTool: Sendable {
 
             // Return raw output if requested
             if arguments.getBool("raw") {
-                return CallTool.Result(content: [.text(rawOutput)])
+                return CallTool.Result(content: [.text(
+                    text: rawOutput,
+                    annotations: nil,
+                    _meta: nil,
+                )])
             }
 
             // Parse and summarize
@@ -149,7 +153,7 @@ public struct SampleMacAppTool: Sendable {
                 thread: thread,
             )
 
-            return CallTool.Result(content: [.text(summary)])
+            return CallTool.Result(content: [.text(text: summary, annotations: nil, _meta: nil)])
         } catch let error as MCPError {
             throw error
         } catch {

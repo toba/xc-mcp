@@ -75,7 +75,11 @@ public struct RemoveGroupTool: Sendable {
                 targetGroup = try mainGroup.resolveGroupPath(groupName)
             } catch {
                 return CallTool.Result(
-                    content: [.text("Group '\(groupName)' not found in project")],
+                    content: [.text(
+                        text: "Group '\(groupName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -92,9 +96,9 @@ public struct RemoveGroupTool: Sendable {
             if !recursive, !targetGroup.children.isEmpty {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Group '\(groupName)' has \(targetGroup.children.count) children. Use recursive=true to remove it and all its contents.",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -115,7 +119,11 @@ public struct RemoveGroupTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Successfully removed group '\(groupName)' from project"),
+                    .text(
+                        text: "Successfully removed group '\(groupName)' from project",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

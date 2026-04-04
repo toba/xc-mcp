@@ -50,7 +50,11 @@ public struct StopAppDeviceTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text("Successfully stopped '\(bundleId)' on device '\(device)'"),
+                        .text(
+                            text: "Successfully stopped '\(bundleId)' on device '\(device)'",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             } else {

@@ -44,7 +44,11 @@ public struct RemoveTargetFromTestPlanTool: Sendable {
             var json = try TestPlanFile.read(from: resolvedTestPlanPath)
             guard var testTargets = json["testTargets"] as? [[String: Any]] else {
                 return CallTool.Result(
-                    content: [.text("Test plan has no test targets")],
+                    content: [.text(
+                        text: "Test plan has no test targets",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -61,9 +65,9 @@ public struct RemoveTargetFromTestPlanTool: Sendable {
             if testTargets.count == originalCount {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Target '\(targetName)' not found in test plan",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -73,9 +77,9 @@ public struct RemoveTargetFromTestPlanTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Removed target '\(targetName)' from test plan at \(resolvedTestPlanPath)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

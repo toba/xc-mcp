@@ -147,9 +147,9 @@ public struct ExportIconTool: Sendable {
 
         return CallTool.Result(
             content: [
-                .text(
+                .text(text:
                     "Exported icon to \(outputPath) (\(width)x\(height)@\(scale)x, \(platform), \(rendition))",
-                ),
+                    annotations: nil, _meta: nil),
             ],
         )
     }

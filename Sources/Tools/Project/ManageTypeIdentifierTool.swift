@@ -128,7 +128,11 @@ public struct ManageTypeIdentifierTool: Sendable {
 
             guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")],
+                    content: [.text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -160,9 +164,9 @@ public struct ManageTypeIdentifierTool: Sendable {
                     }) {
                         return CallTool.Result(
                             content: [
-                                .text(
+                                .text(text:
                                     "\(kindLabel.capitalized) type identifier '\(identifier)' already exists in target '\(targetName)'",
-                                ),
+                                    annotations: nil, _meta: nil),
                             ],
                         )
                     }
@@ -176,9 +180,9 @@ public struct ManageTypeIdentifierTool: Sendable {
 
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Successfully added \(kindLabel) type identifier '\(identifier)' to target '\(targetName)'",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
 
@@ -190,9 +194,9 @@ public struct ManageTypeIdentifierTool: Sendable {
                     else {
                         return CallTool.Result(
                             content: [
-                                .text(
+                                .text(text:
                                     "\(kindLabel.capitalized) type identifier '\(identifier)' not found in target '\(targetName)'",
-                                ),
+                                    annotations: nil, _meta: nil),
                             ],
                         )
                     }
@@ -206,9 +210,9 @@ public struct ManageTypeIdentifierTool: Sendable {
 
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Successfully updated \(kindLabel) type identifier '\(identifier)' in target '\(targetName)'",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
 
@@ -220,9 +224,9 @@ public struct ManageTypeIdentifierTool: Sendable {
                     else {
                         return CallTool.Result(
                             content: [
-                                .text(
+                                .text(text:
                                     "\(kindLabel.capitalized) type identifier '\(identifier)' not found in target '\(targetName)'",
-                                ),
+                                    annotations: nil, _meta: nil),
                             ],
                         )
                     }
@@ -238,9 +242,9 @@ public struct ManageTypeIdentifierTool: Sendable {
 
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Successfully removed \(kindLabel) type identifier '\(identifier)' from target '\(targetName)'",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
 

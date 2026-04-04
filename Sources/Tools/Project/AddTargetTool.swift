@@ -174,7 +174,11 @@ public struct AddTargetTool: Sendable {
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' already exists in project"),
+                        .text(
+                            text: "Target '\(targetName)' already exists in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -297,9 +301,9 @@ public struct AddTargetTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully created target '\(targetName)' with product type '\(productTypeString)' and bundle identifier '\(bundleIdentifier)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

@@ -92,7 +92,11 @@ public struct CleanTool: Sendable {
                 }
 
                 return CallTool.Result(
-                    content: [.text(messages.joined(separator: "\n"))],
+                    content: [.text(
+                        text: messages.joined(separator: "\n"),
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             } else {
                 let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)

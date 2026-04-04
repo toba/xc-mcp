@@ -92,9 +92,9 @@ public struct DeployDeviceTool: Sendable {
             let summary = steps.joined(separator: "\n")
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Deploy succeeded on device '\(device)'\n\n\(summary)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

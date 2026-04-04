@@ -87,9 +87,9 @@ public struct SetSimLocationTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Successfully set location to (\(latitude), \(longitude)) on simulator '\(simulator)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

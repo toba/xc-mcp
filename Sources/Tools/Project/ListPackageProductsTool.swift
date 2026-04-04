@@ -63,7 +63,11 @@ public struct ListPackageProductsTool: Sendable {
                     })
                 else {
                     return CallTool.Result(
-                        content: [.text("Target '\(targetName)' not found in project")],
+                        content: [.text(
+                            text: "Target '\(targetName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        )],
                     )
                 }
                 targets = [target]
@@ -108,12 +112,20 @@ public struct ListPackageProductsTool: Sendable {
             if sections.isEmpty {
                 let scope = targetName.map { "target '\($0)'" } ?? "any target"
                 return CallTool.Result(
-                    content: [.text("No package product dependencies found in \(scope)")],
+                    content: [.text(
+                        text: "No package product dependencies found in \(scope)",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
             return CallTool.Result(
-                content: [.text(sections.joined(separator: "\n\n"))],
+                content: [.text(
+                    text: sections.joined(separator: "\n\n"),
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         } catch {
             throw MCPError.internalError(

@@ -80,7 +80,7 @@ public struct SwiftPackageListTool: Sendable {
                 }
 
                 return CallTool.Result(
-                    content: [.text(message)],
+                    content: [.text(text: message, annotations: nil, _meta: nil)],
                 )
             } else {
                 throw MCPError.internalError("Failed to list dependencies:\n\(result.output)")

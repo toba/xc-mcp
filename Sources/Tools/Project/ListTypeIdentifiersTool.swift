@@ -74,7 +74,11 @@ public struct ListTypeIdentifiersTool: Sendable {
 
             guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")],
+                    content: [.text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -85,9 +89,9 @@ public struct ListTypeIdentifiersTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "No Info.plist found for target '\(targetName)'. The target may use a generated Info.plist with no physical file.",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -127,15 +131,19 @@ public struct ListTypeIdentifiersTool: Sendable {
                 }
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "No \(kindLabel) type identifiers found in target '\(targetName)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
 
             return CallTool.Result(content: [
-                .text(output.trimmingCharacters(in: .whitespacesAndNewlines)),
+                .text(
+                    text: output.trimmingCharacters(in: .whitespacesAndNewlines),
+                    annotations: nil,
+                    _meta: nil,
+                ),
             ])
         } catch let error as MCPError {
             throw error

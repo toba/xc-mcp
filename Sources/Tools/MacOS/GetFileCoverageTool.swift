@@ -57,9 +57,9 @@ public struct GetFileCoverageTool: Sendable {
             )
         else {
             return CallTool.Result(content: [
-                .text(
+                .text(text:
                     "No coverage data found for file: \(filePath). Ensure the file is part of a target that was tested with coverage enabled.",
-                ),
+                    annotations: nil, _meta: nil),
             ])
         }
 
@@ -75,7 +75,7 @@ public struct GetFileCoverageTool: Sendable {
             }
         }
 
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 
     static func formatFileCoverage(_ coverage: FileFunctionCoverage) -> String {

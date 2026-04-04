@@ -222,7 +222,11 @@ public struct AddFileTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Successfully added file '\(fileName)'\(targetInfo)\(groupInfo)"),
+                    .text(
+                        text: "Successfully added file '\(fileName)'\(targetInfo)\(groupInfo)",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

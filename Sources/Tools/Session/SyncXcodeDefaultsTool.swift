@@ -63,9 +63,9 @@ public struct SyncXcodeDefaultsTool: Sendable {
         if let error = state.error, state.scheme == nil, state.simulatorUDID == nil {
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Could not sync Xcode state: \(error)\n\nUse set_session_defaults to configure manually.",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
                 isError: true,
             )
@@ -105,7 +105,7 @@ public struct SyncXcodeDefaultsTool: Sendable {
         }
 
         return CallTool.Result(content: [
-            .text(message),
+            .text(text: message, annotations: nil, _meta: nil),
         ])
     }
 }

@@ -27,7 +27,7 @@ public struct ClearSessionDefaultsTool: Sendable {
         await sessionManager.clear()
         return CallTool.Result(
             content: [
-                .text("Session defaults cleared."),
+                .text(text: "Session defaults cleared.", annotations: nil, _meta: nil),
             ],
         )
     }

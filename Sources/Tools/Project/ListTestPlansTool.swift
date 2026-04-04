@@ -43,7 +43,11 @@ public struct ListTestPlansTool: Sendable {
 
         if testPlans.isEmpty {
             return CallTool.Result(
-                content: [.text("No .xctestplan files found under \(searchRoot)")],
+                content: [.text(
+                    text: "No .xctestplan files found under \(searchRoot)",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         }
 
@@ -70,6 +74,10 @@ public struct ListTestPlansTool: Sendable {
             lines.append("")
         }
 
-        return CallTool.Result(content: [.text(lines.joined(separator: "\n"))])
+        return CallTool.Result(content: [.text(
+            text: lines.joined(separator: "\n"),
+            annotations: nil,
+            _meta: nil,
+        )])
     }
 }

@@ -180,8 +180,8 @@ public struct ScreenshotMacWindowTool: Sendable {
 
         return CallTool.Result(
             content: [
-                .image(data: base64, mimeType: "image/png", metadata: nil),
-                .text(description),
+                .image(data: base64, mimeType: "image/png", annotations: nil, _meta: nil),
+                .text(text: description, annotations: nil, _meta: nil),
             ],
         )
     }

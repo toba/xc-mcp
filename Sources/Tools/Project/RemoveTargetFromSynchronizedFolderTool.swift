@@ -95,9 +95,9 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Target '\(targetName)' does not reference synchronized folder '\(folderPath)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -133,9 +133,9 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully removed target '\(targetName)' from synchronized folder '\(folderPath)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch let error as MCPError {

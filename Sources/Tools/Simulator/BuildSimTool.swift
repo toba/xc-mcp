@@ -110,7 +110,11 @@ public struct BuildSimTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Build succeeded for scheme '\(scheme)' on simulator '\(simulator)'"),
+                    .text(
+                        text: "Build succeeded for scheme '\(scheme)' on simulator '\(simulator)'",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

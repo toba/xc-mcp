@@ -54,7 +54,11 @@ public struct SetTestPlanTargetEnabledTool: Sendable {
             var json = try TestPlanFile.read(from: resolvedTestPlanPath)
             guard var testTargets = json["testTargets"] as? [[String: Any]] else {
                 return CallTool.Result(
-                    content: [.text("Test plan has no test targets")],
+                    content: [.text(
+                        text: "Test plan has no test targets",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -78,7 +82,11 @@ public struct SetTestPlanTargetEnabledTool: Sendable {
             if !found {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in test plan"),
+                        .text(
+                            text: "Target '\(targetName)' not found in test plan",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -89,9 +97,9 @@ public struct SetTestPlanTargetEnabledTool: Sendable {
             let action = enabled ? "Enabled" : "Disabled"
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "\(action) target '\(targetName)' in test plan at \(resolvedTestPlanPath)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

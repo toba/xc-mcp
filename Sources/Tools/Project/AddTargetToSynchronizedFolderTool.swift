@@ -96,9 +96,9 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
             {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Synchronized folder '\(folderPath)' is already in target '\(targetName)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -116,9 +116,9 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully added synchronized folder '\(folderPath)' to target '\(targetName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch let error as MCPError {

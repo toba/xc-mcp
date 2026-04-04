@@ -45,7 +45,11 @@ public struct XCStringsCheckKeyTool: Sendable {
             let parser = XCStringsParser(path: resolvedPath)
             let exists = try await parser.checkKey(key, language: language)
 
-            return CallTool.Result(content: [.text(String(exists))])
+            return CallTool.Result(content: [.text(
+                text: String(exists),
+                annotations: nil,
+                _meta: nil,
+            )])
         } catch let error as XCStringsError {
             throw error.toMCPError()
         } catch let error as PathError {

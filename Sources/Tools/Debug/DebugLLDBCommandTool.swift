@@ -54,7 +54,7 @@ public struct DebugLLDBCommandTool: Sendable {
             var message = "LLDB command result:\n\n"
             message += result.output
 
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw error.asMCPError()
         }

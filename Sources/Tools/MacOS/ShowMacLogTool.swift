@@ -196,7 +196,7 @@ public struct ShowMacLogTool: Sendable {
             message += lines.joined(separator: "\n")
             message += "\n```"
 
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw error.asMCPError()
         }

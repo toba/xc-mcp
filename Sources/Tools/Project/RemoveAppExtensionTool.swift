@@ -58,7 +58,11 @@ public struct RemoveAppExtensionTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Extension target '\(extensionName)' not found in project"),
+                        .text(
+                            text: "Extension target '\(extensionName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -78,9 +82,9 @@ public struct RemoveAppExtensionTool: Sendable {
             guard extensionProductTypes.contains(extensionTarget.productType ?? .none) else {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Target '\(extensionName)' is not an App Extension. Use remove_target for other target types.",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -163,9 +167,9 @@ public struct RemoveAppExtensionTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully removed App Extension '\(extensionName)' from project and all host app embeddings",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

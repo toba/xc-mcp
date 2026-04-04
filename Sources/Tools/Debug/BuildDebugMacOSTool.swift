@@ -268,7 +268,10 @@ public struct BuildDebugMacOSTool: Sendable {
                 message += "\n\n" + launchResult.output
             }
 
-            return CallTool.Result(content: [.text(message)], isError: crashed)
+            return CallTool.Result(
+                content: [.text(text: message, annotations: nil, _meta: nil)],
+                isError: crashed,
+            )
         } catch {
             throw error.asMCPError()
         }

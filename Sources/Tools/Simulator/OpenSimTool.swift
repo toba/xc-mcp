@@ -44,7 +44,11 @@ public struct OpenSimTool: Sendable {
                     simulator != nil
                         ? "Opened Simulator.app with device: \(simulator!)"
                         : "Opened Simulator.app"
-                return CallTool.Result(content: [.text(message)])
+                return CallTool.Result(content: [.text(
+                    text: message,
+                    annotations: nil,
+                    _meta: nil,
+                )])
             } else {
                 throw MCPError.internalError("Failed to open Simulator.app")
             }

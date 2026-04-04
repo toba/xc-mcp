@@ -60,7 +60,11 @@ public struct SwiftPackageCleanTool: Sendable {
 
             if result.succeeded {
                 return CallTool.Result(
-                    content: [.text("Package cleaned successfully at \(packagePath)")],
+                    content: [.text(
+                        text: "Package cleaned successfully at \(packagePath)",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             } else {
                 throw MCPError.internalError("Clean failed:\n\(result.output)")

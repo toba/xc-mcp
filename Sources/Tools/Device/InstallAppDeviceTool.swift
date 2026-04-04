@@ -47,7 +47,11 @@ public struct InstallAppDeviceTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text("Successfully installed app at '\(appPath)' on device '\(device)'"),
+                        .text(
+                            text: "Successfully installed app at '\(appPath)' on device '\(device)'",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             } else {

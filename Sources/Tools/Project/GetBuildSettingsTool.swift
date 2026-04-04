@@ -105,9 +105,9 @@ public struct GetBuildSettingsTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Build settings for target '\(targetName)' (\(configurationName)):\n\(result)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

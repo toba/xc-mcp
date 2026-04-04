@@ -123,11 +123,19 @@ public struct StopMacAppTool: Sendable {
             )
             if result.succeeded {
                 return CallTool.Result(
-                    content: [.text("Successfully stopped '\(identifier)' (forced)")],
+                    content: [.text(
+                        text: "Successfully stopped '\(identifier)' (forced)",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
             // Process may already be gone
-            return CallTool.Result(content: [.text("App '\(identifier)' was not running")])
+            return CallTool.Result(content: [.text(
+                text: "App '\(identifier)' was not running",
+                annotations: nil,
+                _meta: nil,
+            )])
         }
 
         // Fall back to pkill
@@ -146,10 +154,18 @@ public struct StopMacAppTool: Sendable {
         )
         if result.succeeded {
             return CallTool.Result(
-                content: [.text("Successfully stopped '\(identifier)' (forced)")],
+                content: [.text(
+                    text: "Successfully stopped '\(identifier)' (forced)",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         }
-        return CallTool.Result(content: [.text("App '\(identifier)' was not running")])
+        return CallTool.Result(content: [.text(
+            text: "App '\(identifier)' was not running",
+            annotations: nil,
+            _meta: nil,
+        )])
     }
 
     /// Graceful kill when we have a PID: SIGTERM with timeout, then SIGKILL.
@@ -166,13 +182,21 @@ public struct StopMacAppTool: Sendable {
         )
 
         if !termResult.succeeded {
-            return CallTool.Result(content: [.text("App '\(identifier)' was not running")])
+            return CallTool.Result(content: [.text(
+                text: "App '\(identifier)' was not running",
+                annotations: nil,
+                _meta: nil,
+            )])
         }
 
         // Wait up to 5 seconds for the process to exit
         if await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(5)) {
             return CallTool.Result(
-                content: [.text("Successfully stopped '\(identifier)'")],
+                content: [.text(
+                    text: "Successfully stopped '\(identifier)'",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         }
 
@@ -180,7 +204,11 @@ public struct StopMacAppTool: Sendable {
         _ = try await ProcessResult.run("/bin/kill", arguments: ["-9", "\(pid)"])
         return CallTool.Result(
             content: [
-                .text("Successfully stopped '\(identifier)' (escalated to SIGKILL after timeout)"),
+                .text(
+                    text: "Successfully stopped '\(identifier)' (escalated to SIGKILL after timeout)",
+                    annotations: nil,
+                    _meta: nil,
+                ),
             ],
         )
     }
@@ -207,7 +235,11 @@ public struct StopMacAppTool: Sendable {
             "/usr/bin/pgrep", arguments: ["-f", pattern],
         )
         if !pgrepResult.succeeded {
-            return CallTool.Result(content: [.text("App '\(identifier)' was not running")])
+            return CallTool.Result(content: [.text(
+                text: "App '\(identifier)' was not running",
+                annotations: nil,
+                _meta: nil,
+            )])
         }
 
         do {
@@ -218,12 +250,20 @@ public struct StopMacAppTool: Sendable {
             )
             if result.succeeded {
                 return CallTool.Result(
-                    content: [.text("Successfully stopped '\(identifier)'")],
+                    content: [.text(
+                        text: "Successfully stopped '\(identifier)'",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
             // App wasn't running
             if result.stdout.isEmpty || result.exitCode == 1 {
-                return CallTool.Result(content: [.text("App '\(identifier)' was not running")])
+                return CallTool.Result(content: [.text(
+                    text: "App '\(identifier)' was not running",
+                    annotations: nil,
+                    _meta: nil,
+                )])
             }
             throw MCPError.internalError("Failed to stop app: \(result.stdout)")
         } catch is ProcessError {
@@ -240,7 +280,11 @@ public struct StopMacAppTool: Sendable {
                 "/usr/bin/pkill", arguments: ["-TERM", "-f", pattern],
             )
             if !termResult.succeeded {
-                return CallTool.Result(content: [.text("App '\(identifier)' was not running")])
+                return CallTool.Result(content: [.text(
+                    text: "App '\(identifier)' was not running",
+                    annotations: nil,
+                    _meta: nil,
+                )])
             }
 
             // Give it a moment, then SIGKILL if needed
@@ -250,9 +294,9 @@ public struct StopMacAppTool: Sendable {
             )
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully stopped '\(identifier)' (graceful quit timed out, used SIGTERM/SIGKILL)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         }

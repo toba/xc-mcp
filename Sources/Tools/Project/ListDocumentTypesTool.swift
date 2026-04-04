@@ -52,7 +52,11 @@ public struct ListDocumentTypesTool: Sendable {
 
             guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")],
+                    content: [.text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -63,9 +67,9 @@ public struct ListDocumentTypesTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "No Info.plist found for target '\(targetName)'. The target may use a generated Info.plist with no physical file.",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -77,7 +81,11 @@ public struct ListDocumentTypesTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("No document types (CFBundleDocumentTypes) found in '\(targetName)'"),
+                        .text(
+                            text: "No document types (CFBundleDocumentTypes) found in '\(targetName)'",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -122,7 +130,11 @@ public struct ListDocumentTypesTool: Sendable {
             }
 
             return CallTool.Result(content: [
-                .text(output.trimmingCharacters(in: .whitespacesAndNewlines)),
+                .text(
+                    text: output.trimmingCharacters(in: .whitespacesAndNewlines),
+                    annotations: nil,
+                    _meta: nil,
+                ),
             ])
         } catch let error as MCPError {
             throw error

@@ -164,7 +164,11 @@ public enum ErrorExtractor {
 
         if succeeded {
             return CallTool.Result(
-                content: [.text("Tests passed for \(context)\n\n\(testResult)")],
+                content: [.text(
+                    text: "Tests passed for \(context)\n\n\(testResult)",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         } else {
             throw MCPError.internalError("Tests failed:\n\(testResult)")

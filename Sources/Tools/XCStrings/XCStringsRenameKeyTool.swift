@@ -46,7 +46,11 @@ public struct XCStringsRenameKeyTool: Sendable {
             try await parser.renameKey(from: oldKey, to: newKey)
 
             return CallTool.Result(
-                content: [.text("Key renamed from '\(oldKey)' to '\(newKey)' successfully")],
+                content: [.text(
+                    text: "Key renamed from '\(oldKey)' to '\(newKey)' successfully",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         } catch let error as XCStringsError {
             throw error.toMCPError()

@@ -58,9 +58,9 @@ public struct GetSimAppPathTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "App container path for '\(bundleId)' (\(container)):\n\(path)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

@@ -114,7 +114,11 @@ public struct AddTargetToTestPlanTool: Sendable {
                 })
             else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")],
+                    content: [.text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -126,9 +130,9 @@ public struct AddTargetToTestPlanTool: Sendable {
             if existingNames.contains(targetName) {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Target '\(targetName)' is already in the test plan",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -154,9 +158,9 @@ public struct AddTargetToTestPlanTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Added target '\(targetName)' to test plan at \(resolvedTestPlanPath)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

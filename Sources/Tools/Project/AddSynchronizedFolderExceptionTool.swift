@@ -132,9 +132,9 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
                 if newFiles.isEmpty {
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "All specified files are already in the exception set for target '\(targetName)' on '\(folderPath)'",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
                 }
@@ -167,9 +167,9 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
             let fileList = files.joined(separator: ", ")
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully added membership exceptions for [\(fileList)] in synchronized folder '\(folderPath)' for target '\(targetName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch let error as MCPError {

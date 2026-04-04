@@ -101,7 +101,7 @@ public struct DebugAttachSimTool: Sendable {
                 message += result.output
 
                 return CallTool.Result(content: [
-                    .text(message),
+                    .text(text: message, annotations: nil, _meta: nil),
                 ])
             } else {
                 throw MCPError.internalError(

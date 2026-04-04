@@ -53,13 +53,17 @@ public struct SearchCrashReportsTool: Sendable {
         if let reportPath = arguments.getString("report_path") {
             guard let summary = CrashReportParser.parse(at: reportPath) else {
                 return CallTool.Result(
-                    content: [.text("Could not parse crash report at: \(reportPath)")],
+                    content: [.text(
+                        text: "Could not parse crash report at: \(reportPath)",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                     isError: true,
                 )
             }
             var output = "File: \(reportPath)\n"
             output += summary.formatted()
-            return CallTool.Result(content: [.text(output)])
+            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
         }
 
         // Search mode
@@ -82,7 +86,7 @@ public struct SearchCrashReportsTool: Sendable {
                 message += " with bundle ID '\(bundleID)'"
             }
             message += ".\n\nSearched: \(CrashReportParser.diagnosticReportsDir)"
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         }
 
         var output = "Found \(results.count) crash report\(results.count == 1 ? "" : "s"):\n"
@@ -98,6 +102,6 @@ public struct SearchCrashReportsTool: Sendable {
 
         output += "\nUse report_path to read a specific report again without re-searching."
 
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 }

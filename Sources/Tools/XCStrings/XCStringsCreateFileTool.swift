@@ -50,9 +50,9 @@ public struct XCStringsCreateFileTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Created xcstrings file at '\(resolvedPath)' with source language '\(sourceLanguage)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch let error as XCStringsError {

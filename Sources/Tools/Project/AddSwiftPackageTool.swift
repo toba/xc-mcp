@@ -157,7 +157,11 @@ public struct AddSwiftPackageTool: Sendable {
             guard let targetName else {
                 return CallTool.Result(
                     content: [
-                        .text("Swift Package '\(packageURL)' already exists in project"),
+                        .text(
+                            text: "Swift Package '\(packageURL)' already exists in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -173,9 +177,9 @@ public struct AddSwiftPackageTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Swift Package '\(packageURL)' already in project; linked product '\(productName ?? "Unknown")' to target '\(targetName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         }
@@ -211,7 +215,7 @@ public struct AddSwiftPackageTool: Sendable {
             message += " to target '\(targetName)'"
         }
 
-        return CallTool.Result(content: [.text(message)])
+        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
 
     private func addLocalPackage(
@@ -236,7 +240,11 @@ public struct AddSwiftPackageTool: Sendable {
             guard let targetName else {
                 return CallTool.Result(
                     content: [
-                        .text("Local Swift Package '\(packagePath)' already exists in project"),
+                        .text(
+                            text: "Local Swift Package '\(packagePath)' already exists in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -251,9 +259,9 @@ public struct AddSwiftPackageTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Local Swift Package '\(packagePath)' already in project; linked product '\(productName ?? "Unknown")' to target '\(targetName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         }
@@ -285,7 +293,7 @@ public struct AddSwiftPackageTool: Sendable {
             message += " to target '\(targetName)'"
         }
 
-        return CallTool.Result(content: [.text(message)])
+        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
 
     private func addProductToTarget(

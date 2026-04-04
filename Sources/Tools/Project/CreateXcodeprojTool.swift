@@ -218,7 +218,11 @@ public struct CreateXcodeprojTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Successfully created Xcode project at: \(projectPath.string)"),
+                    .text(
+                        text: "Successfully created Xcode project at: \(projectPath.string)",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

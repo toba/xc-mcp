@@ -76,7 +76,11 @@ public struct RenameTargetTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project"),
+                        .text(
+                            text: "Target '\(targetName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -85,7 +89,11 @@ public struct RenameTargetTool: Sendable {
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == newName }) {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(newName)' already exists in project"),
+                        .text(
+                            text: "Target '\(newName)' already exists in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -249,7 +257,7 @@ public struct RenameTargetTool: Sendable {
             }
 
             return CallTool.Result(
-                content: [.text(message)],
+                content: [.text(text: message, annotations: nil, _meta: nil)],
             )
         } catch {
             throw MCPError.internalError(

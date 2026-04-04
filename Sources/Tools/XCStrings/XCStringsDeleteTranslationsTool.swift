@@ -54,7 +54,11 @@ public struct XCStringsDeleteTranslationsTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Translations deleted successfully for \(languages.count) languages"),
+                    .text(
+                        text: "Translations deleted successfully for \(languages.count) languages",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch let error as XCStringsError {

@@ -178,9 +178,9 @@ public struct SetPerformanceBaselineTool: Sendable {
         )
 
         return CallTool.Result(content: [
-            .text(
+            .text(text:
                 "Set \(count) performance baseline(s) for target '\(targetName)'.\nPath: \(baselineDir)",
-            ),
+                annotations: nil, _meta: nil),
         ])
     }
 

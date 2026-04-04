@@ -169,9 +169,9 @@ public struct AddFolderTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully added folder reference '\(folderName)'\(targetInfo)\(groupInfo)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

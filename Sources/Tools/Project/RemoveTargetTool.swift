@@ -55,7 +55,11 @@ public struct RemoveTargetTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project"),
+                        .text(
+                            text: "Target '\(targetName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -136,7 +140,11 @@ public struct RemoveTargetTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text("Successfully removed target '\(targetName)' from project"),
+                    .text(
+                        text: "Successfully removed target '\(targetName)' from project",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         } catch {

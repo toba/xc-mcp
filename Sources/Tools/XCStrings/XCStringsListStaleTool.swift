@@ -38,7 +38,7 @@ public struct XCStringsListStaleTool: Sendable {
             let result = StaleKeysResult(file: filePath, staleKeys: staleKeys)
             let json = try encodePrettyJSON(result)
 
-            return CallTool.Result(content: [.text(json)])
+            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
         } catch let error as XCStringsError {
             throw error.toMCPError()
         } catch let error as PathError {

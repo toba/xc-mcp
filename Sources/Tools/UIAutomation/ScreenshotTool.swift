@@ -94,9 +94,9 @@ public struct ScreenshotTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Screenshot saved to: \(finalPath)",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

@@ -74,9 +74,9 @@ public struct SetTestTargetApplicationTool: Sendable {
         else {
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Target '\(targetApplication)' not found in project",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         }
@@ -89,7 +89,11 @@ public struct SetTestTargetApplicationTool: Sendable {
         else {
             return CallTool.Result(
                 content: [
-                    .text("Scheme '\(schemeName)' not found in project"),
+                    .text(
+                        text: "Scheme '\(schemeName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         }
@@ -129,9 +133,9 @@ public struct SetTestTargetApplicationTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Set target application to '\(targetApplication)' in scheme '\(schemeName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

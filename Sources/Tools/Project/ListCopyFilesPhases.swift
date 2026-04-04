@@ -52,7 +52,11 @@ public struct ListCopyFilesPhases: Sendable {
                 let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
             else {
                 return CallTool.Result(
-                    content: [.text("Target '\(targetName)' not found in project")],
+                    content: [.text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -60,7 +64,11 @@ public struct ListCopyFilesPhases: Sendable {
 
             if copyFilesPhases.isEmpty {
                 return CallTool.Result(
-                    content: [.text("No Copy Files build phases found in target '\(targetName)'")],
+                    content: [.text(
+                        text: "No Copy Files build phases found in target '\(targetName)'",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
 
@@ -98,7 +106,11 @@ public struct ListCopyFilesPhases: Sendable {
             }
 
             return CallTool.Result(content: [
-                .text(output.trimmingCharacters(in: .whitespacesAndNewlines)),
+                .text(
+                    text: output.trimmingCharacters(in: .whitespacesAndNewlines),
+                    annotations: nil,
+                    _meta: nil,
+                ),
             ])
         } catch {
             throw MCPError.internalError(

@@ -145,7 +145,7 @@ public struct StartMacLogCapTool: Sendable {
             }
             message += "\nUse stop_mac_log_cap to stop the capture."
 
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw error.asMCPError()
         }

@@ -79,7 +79,11 @@ public struct CreateGroupTool: Sendable {
             if xcodeproj.pbxproj.groups.contains(where: { $0.name == groupName }) {
                 return CallTool.Result(
                     content: [
-                        .text("Group '\(groupName)' already exists in project"),
+                        .text(
+                            text: "Group '\(groupName)' already exists in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -110,9 +114,9 @@ public struct CreateGroupTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully created group '\(groupName)' in \(parentGroupName ?? "main group")",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

@@ -47,13 +47,21 @@ public struct StopAppSimTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text("Successfully stopped '\(bundleId)' on simulator '\(simulator)'"),
+                        .text(
+                            text: "Successfully stopped '\(bundleId)' on simulator '\(simulator)'",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             } else if result.stderr.contains("No matching processes") {
                 return CallTool.Result(
                     content: [
-                        .text("App '\(bundleId)' was not running on simulator '\(simulator)'"),
+                        .text(
+                            text: "App '\(bundleId)' was not running on simulator '\(simulator)'",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             } else {

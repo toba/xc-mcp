@@ -60,7 +60,11 @@ public struct RenameSchemeTool: Sendable {
             let newPath = "\(dir)/\(newFilename)"
             if fm.fileExists(atPath: newPath) {
                 return CallTool.Result(
-                    content: [.text("Scheme '\(newName)' already exists")],
+                    content: [.text(
+                        text: "Scheme '\(newName)' already exists",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             }
         }
@@ -74,9 +78,9 @@ public struct RenameSchemeTool: Sendable {
                     try fm.moveItem(atPath: oldPath, toPath: newPath)
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Successfully renamed scheme '\(schemeName)' to '\(newName)'",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
                 } catch {
@@ -88,7 +92,11 @@ public struct RenameSchemeTool: Sendable {
         }
 
         return CallTool.Result(
-            content: [.text("Scheme '\(schemeName)' not found in project")],
+            content: [.text(
+                text: "Scheme '\(schemeName)' not found in project",
+                annotations: nil,
+                _meta: nil,
+            )],
         )
     }
 }

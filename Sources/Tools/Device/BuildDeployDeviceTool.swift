@@ -165,9 +165,9 @@ public struct BuildDeployDeviceTool: Sendable {
             let summary = steps.joined(separator: "\n")
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Build and deploy succeeded for scheme '\(scheme)' on device '\(device)'\n\n\(summary)",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

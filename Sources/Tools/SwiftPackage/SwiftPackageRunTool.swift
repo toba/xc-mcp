@@ -104,7 +104,7 @@ public struct SwiftPackageRunTool: Sendable {
                 }
 
                 return CallTool.Result(
-                    content: [.text(message)],
+                    content: [.text(text: message, annotations: nil, _meta: nil)],
                 )
             } else {
                 throw MCPError.internalError(

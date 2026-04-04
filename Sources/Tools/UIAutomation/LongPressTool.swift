@@ -104,9 +104,9 @@ public struct LongPressTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Long pressed at (\(Int(x)), \(Int(y))) for \(duration)s on simulator '\(simulator)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

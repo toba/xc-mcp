@@ -116,7 +116,7 @@ public struct DoctorTool: Sendable {
 
         return CallTool.Result(
             content: [
-                .text(diagnostics.joined(separator: "\n")),
+                .text(text: diagnostics.joined(separator: "\n"), annotations: nil, _meta: nil),
             ],
         )
     }

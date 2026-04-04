@@ -101,9 +101,9 @@ public struct SimStatusBarTool: Sendable {
                 if result.succeeded {
                     return CallTool.Result(
                         content: [
-                            .text(
+                            .text(text:
                                 "Successfully cleared status bar overrides on simulator '\(simulator)'",
-                            ),
+                                annotations: nil, _meta: nil),
                         ],
                     )
                 } else {
@@ -156,9 +156,9 @@ public struct SimStatusBarTool: Sendable {
                 let optionsList = options.keys.sorted().joined(separator: ", ")
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Successfully set status bar overrides (\(optionsList)) on simulator '\(simulator)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

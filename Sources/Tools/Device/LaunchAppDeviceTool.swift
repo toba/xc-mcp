@@ -49,7 +49,11 @@ public struct LaunchAppDeviceTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text("Successfully launched '\(bundleId)' on device '\(device)'"),
+                        .text(
+                            text: "Successfully launched '\(bundleId)' on device '\(device)'",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             } else {

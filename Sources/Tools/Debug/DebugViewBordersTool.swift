@@ -98,7 +98,10 @@ public struct DebugViewBordersTool: Sendable {
         do {
             // Expression evaluation fails on crashed processes
             if let warning = await lldbRunner.crashWarning(pid: targetPID) {
-                return CallTool.Result(content: [.text(warning)], isError: true)
+                return CallTool.Result(
+                    content: [.text(text: warning, annotations: nil, _meta: nil)],
+                    isError: true,
+                )
             }
 
             let result = try await lldbRunner.toggleViewBorders(
@@ -110,7 +113,7 @@ public struct DebugViewBordersTool: Sendable {
 
             let state = enabled ? "enabled" : "disabled"
             let message = "View borders \(state):\n\n\(result.output)"
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw error.asMCPError()
         }

@@ -40,7 +40,11 @@ public struct XCStringsDeleteKeyTool: Sendable {
             let parser = XCStringsParser(path: resolvedPath)
             try await parser.deleteKey(key)
 
-            return CallTool.Result(content: [.text("Key deleted successfully")])
+            return CallTool.Result(content: [.text(
+                text: "Key deleted successfully",
+                annotations: nil,
+                _meta: nil,
+            )])
         } catch let error as XCStringsError {
             throw error.toMCPError()
         } catch let error as PathError {

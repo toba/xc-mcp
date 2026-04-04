@@ -91,15 +91,19 @@ public struct RemoveFolderTool: Sendable {
 
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Successfully removed synchronized folder '\(removedPath ?? folderPath)' from project",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {
                 return CallTool.Result(
                     content: [
-                        .text("Synchronized folder not found in project: \(folderPath)"),
+                        .text(
+                            text: "Synchronized folder not found in project: \(folderPath)",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }

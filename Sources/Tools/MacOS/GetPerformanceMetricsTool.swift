@@ -48,14 +48,14 @@ public struct GetPerformanceMetricsTool: Sendable {
             ), !results.isEmpty
         else {
             return CallTool.Result(content: [
-                .text(
+                .text(text:
                     "No performance metrics found in the result bundle. Ensure tests use measure(metrics:) blocks.",
-                ),
+                    annotations: nil, _meta: nil),
             ])
         }
 
         let output = Self.formatMetrics(results)
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 
     static func formatMetrics(_ results: [XCResultParser.PerformanceMetricResult]) -> String {

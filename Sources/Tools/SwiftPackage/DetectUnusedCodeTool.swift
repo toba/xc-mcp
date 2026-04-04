@@ -203,7 +203,11 @@ public struct DetectUnusedCodeTool: Sendable {
             state = existing
         } else {
             if declarations.isEmpty {
-                return CallTool.Result(content: [.text("No unused code found.")])
+                return CallTool.Result(content: [.text(
+                    text: "No unused code found.",
+                    annotations: nil,
+                    _meta: nil,
+                )])
             }
             state = Self.createChecklist(from: declarations, cachePath: cachePath)
         }
@@ -238,7 +242,11 @@ public struct DetectUnusedCodeTool: Sendable {
         try Self.saveChecklist(state, path: clPath)
 
         if filtered.isEmpty, declarations.isEmpty {
-            return CallTool.Result(content: [.text("No unused code found.")])
+            return CallTool.Result(content: [.text(
+                text: "No unused code found.",
+                annotations: nil,
+                _meta: nil,
+            )])
         }
 
         // Build declaration → checklist index map (1-based)
@@ -269,7 +277,7 @@ public struct DetectUnusedCodeTool: Sendable {
                 "\n\(superfluousCount) superfluous ignore comment warning(s) filtered (Periphery bug)"
         }
 
-        return CallTool.Result(content: [.text(message)])
+        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
 
     /// Resolves the cache file path for the given arguments without running a scan.

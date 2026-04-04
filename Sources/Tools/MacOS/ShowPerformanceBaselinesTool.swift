@@ -76,9 +76,9 @@ public struct ShowPerformanceBaselinesTool: Sendable {
 
         guard fm.fileExists(atPath: baselinesDir) else {
             return CallTool.Result(content: [
-                .text(
+                .text(text:
                     "No performance baselines found. The directory does not exist:\n\(baselinesDir)",
-                ),
+                    annotations: nil, _meta: nil),
             ])
         }
 
@@ -87,9 +87,9 @@ public struct ShowPerformanceBaselinesTool: Sendable {
 
         guard !baselineDirs.isEmpty else {
             return CallTool.Result(content: [
-                .text(
+                .text(text:
                     "No .xcbaseline directories found in:\n\(baselinesDir)",
-                ),
+                    annotations: nil, _meta: nil),
             ])
         }
 
@@ -205,16 +205,16 @@ public struct ShowPerformanceBaselinesTool: Sendable {
 
         if output.isEmpty {
             return CallTool.Result(content: [
-                .text(
+                .text(text:
                     "No baselines match the specified filters.",
-                ),
+                    annotations: nil, _meta: nil),
             ])
         }
 
         return CallTool.Result(content: [
-            .text(
+            .text(text:
                 output.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
-            ),
+                annotations: nil, _meta: nil),
         ])
     }
 

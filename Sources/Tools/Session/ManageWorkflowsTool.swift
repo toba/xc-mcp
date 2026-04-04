@@ -66,7 +66,10 @@ public struct ManageWorkflowsTool: Sendable {
                     message += "\n\nDisabled (\(disabled.count)):\n"
                     message += disabled.map { "  \($0.rawValue)" }.joined(separator: "\n")
                 }
-                return (CallTool.Result(content: [.text(message)]), false)
+                return (
+                    CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]),
+                    false,
+                )
 
             case "enable":
                 guard !workflowNames.isEmpty else {
@@ -86,7 +89,11 @@ public struct ManageWorkflowsTool: Sendable {
                 }
                 return (
                     CallTool.Result(
-                        content: [.text("Enabled workflows: \(enabled.joined(separator: ", "))")],
+                        content: [.text(
+                            text: "Enabled workflows: \(enabled.joined(separator: ", "))",
+                            annotations: nil,
+                            _meta: nil,
+                        )],
                     ),
                     true,
                 )
@@ -109,7 +116,11 @@ public struct ManageWorkflowsTool: Sendable {
                 }
                 return (
                     CallTool.Result(
-                        content: [.text("Disabled workflows: \(disabled.joined(separator: ", "))")],
+                        content: [.text(
+                            text: "Disabled workflows: \(disabled.joined(separator: ", "))",
+                            annotations: nil,
+                            _meta: nil,
+                        )],
                     ),
                     true,
                 )
@@ -117,7 +128,11 @@ public struct ManageWorkflowsTool: Sendable {
             case "reset":
                 await workflowManager.reset()
                 return (
-                    CallTool.Result(content: [.text("All workflows re-enabled.")]),
+                    CallTool.Result(content: [.text(
+                        text: "All workflows re-enabled.",
+                        annotations: nil,
+                        _meta: nil,
+                    )]),
                     true,
                 )
 

@@ -67,7 +67,11 @@ public struct AddTestPlanToSchemeTool: Sendable {
 
         guard FileManager.default.fileExists(atPath: resolvedTestPlanPath) else {
             return CallTool.Result(
-                content: [.text("Test plan file not found at \(resolvedTestPlanPath)")],
+                content: [.text(
+                    text: "Test plan file not found at \(resolvedTestPlanPath)",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         }
 
@@ -78,7 +82,11 @@ public struct AddTestPlanToSchemeTool: Sendable {
         else {
             return CallTool.Result(
                 content: [
-                    .text("Scheme '\(schemeName)' not found in project"),
+                    .text(
+                        text: "Scheme '\(schemeName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         }
@@ -96,9 +104,9 @@ public struct AddTestPlanToSchemeTool: Sendable {
             {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Test plan is already referenced in scheme '\(schemeName)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             }
@@ -131,9 +139,9 @@ public struct AddTestPlanToSchemeTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Added test plan to scheme '\(schemeName)'\(isDefault ? " (set as default)" : "")",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

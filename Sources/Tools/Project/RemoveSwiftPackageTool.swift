@@ -131,7 +131,11 @@ public struct RemoveSwiftPackageTool: Sendable {
         else {
             return CallTool.Result(
                 content: [
-                    .text("Swift Package '\(packageURL)' not found in project"),
+                    .text(
+                        text: "Swift Package '\(packageURL)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         }
@@ -152,7 +156,7 @@ public struct RemoveSwiftPackageTool: Sendable {
             message += " and all targets"
         }
 
-        return CallTool.Result(content: [.text(message)])
+        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
 
     private func removeLocalPackage(
@@ -172,7 +176,11 @@ public struct RemoveSwiftPackageTool: Sendable {
         else {
             return CallTool.Result(
                 content: [
-                    .text("Local Swift Package '\(packagePath)' not found in project"),
+                    .text(
+                        text: "Local Swift Package '\(packagePath)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    ),
                 ],
             )
         }
@@ -210,7 +218,7 @@ public struct RemoveSwiftPackageTool: Sendable {
             message += " and all targets"
         }
 
-        return CallTool.Result(content: [.text(message)])
+        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
 
     private func removeProductDependencies(

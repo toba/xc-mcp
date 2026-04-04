@@ -136,11 +136,19 @@ public struct ListTestPlanTargetsTool: Sendable {
                         let suffix = target.skipped ? " (skipped)" : ""
                         output += "  - \(target.name)\(suffix)\n"
                     }
-                    return CallTool.Result(content: [.text(output)])
+                    return CallTool.Result(content: [.text(
+                        text: output,
+                        annotations: nil,
+                        _meta: nil,
+                    )])
                 }
                 return CallTool.Result(
                     content: [
-                        .text("No test plans found for scheme '\(scheme)'."),
+                        .text(
+                            text: "No test plans found for scheme '\(scheme)'.",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -168,7 +176,7 @@ public struct ListTestPlanTargetsTool: Sendable {
                 }
             }
 
-            return CallTool.Result(content: [.text(output)])
+            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
         } catch {
             throw error.asMCPError()
         }
@@ -202,7 +210,7 @@ public struct ListTestPlanTargetsTool: Sendable {
                 targets: targets.map { TestTargetResult(name: $0.name, enabled: $0.enabled) },
             )
             let json = try encodePrettyJSON(result)
-            return CallTool.Result(content: [.text(json)])
+            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
         }
 
         var output = "Test plan '\(planName)':\n"
@@ -210,7 +218,7 @@ public struct ListTestPlanTargetsTool: Sendable {
             let suffix = target.enabled ? "" : " (disabled)"
             output += "  - \(target.name)\(suffix)\n"
         }
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 
     // MARK: - All Plans Discovery
@@ -222,7 +230,11 @@ public struct ListTestPlanTargetsTool: Sendable {
 
         if allFiles.isEmpty {
             return CallTool.Result(
-                content: [.text("No .xctestplan files found under \(projectRoot)")],
+                content: [.text(
+                    text: "No .xctestplan files found under \(projectRoot)",
+                    annotations: nil,
+                    _meta: nil,
+                )],
             )
         }
 
@@ -253,7 +265,7 @@ public struct ListTestPlanTargetsTool: Sendable {
                 )
             }
             let json = try encodePrettyJSON(Result(testPlans: plans))
-            return CallTool.Result(content: [.text(json)])
+            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
         }
 
         var output = "Found \(allFiles.count) test plan(s):\n"
@@ -271,7 +283,7 @@ public struct ListTestPlanTargetsTool: Sendable {
                 }
             }
         }
-        return CallTool.Result(content: [.text(output)])
+        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 
     private func formatTestPlansJSON(
@@ -300,7 +312,7 @@ public struct ListTestPlanTargetsTool: Sendable {
 
         let result = Result(scheme: scheme, testPlans: plans)
         let json = try encodePrettyJSON(result)
-        return CallTool.Result(content: [.text(json)])
+        return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
     }
 
     /// Runs `xcodebuild -showTestPlans` to get test plan names for a scheme.
@@ -387,7 +399,7 @@ public struct ListTestPlanTargetsTool: Sendable {
             targets: targets.map { TargetEntry(name: $0.name, skipped: $0.skipped) },
         )
         let json = try encodePrettyJSON(result)
-        return CallTool.Result(content: [.text(json)])
+        return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
     }
 
     /// Finds and parses a `.xctestplan` file to extract test target names and enabled status.

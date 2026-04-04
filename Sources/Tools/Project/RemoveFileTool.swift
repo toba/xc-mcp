@@ -164,15 +164,19 @@ public struct RemoveFileTool: Sendable {
 
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Successfully removed \(fileName) from project. Removed from targets: \(removedFromTargets.joined(separator: ", "))",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {
                 return CallTool.Result(
                     content: [
-                        .text("File not found in project: \(fileName)"),
+                        .text(
+                            text: "File not found in project: \(fileName)",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }

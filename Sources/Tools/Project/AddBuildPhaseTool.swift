@@ -86,7 +86,11 @@ public struct AddBuildPhaseTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project"),
+                        .text(
+                            text: "Target '\(targetName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -175,9 +179,9 @@ public struct AddBuildPhaseTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully added \(phaseType) build phase '\(phaseName)' to target '\(targetName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

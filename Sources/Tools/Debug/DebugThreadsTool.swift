@@ -64,7 +64,7 @@ public struct DebugThreadsTool: Sendable {
             )
 
             let message = "Threads for process \(targetPID):\n\n\(result.output)"
-            return CallTool.Result(content: [.text(message)])
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw error.asMCPError()
         }

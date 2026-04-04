@@ -136,9 +136,9 @@ public struct SwipeTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "Swiped from (\(Int(startX)), \(Int(startY))) to (\(Int(endX)), \(Int(endY))) on simulator '\(simulator)'",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

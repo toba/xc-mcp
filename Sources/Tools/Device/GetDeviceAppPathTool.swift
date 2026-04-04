@@ -63,9 +63,9 @@ public struct GetDeviceAppPathTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text(
+                        .text(text:
                             "App info for '\(bundleId)' on device '\(device)':\n\n\(result.stdout)",
-                        ),
+                            annotations: nil, _meta: nil),
                     ],
                 )
             } else {

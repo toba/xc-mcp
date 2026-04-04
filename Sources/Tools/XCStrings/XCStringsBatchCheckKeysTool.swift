@@ -53,7 +53,7 @@ public struct XCStringsBatchCheckKeysTool: Sendable {
             let batchResult = BatchCheckKeysResult(results: results)
             let json = try encodePrettyJSON(batchResult)
 
-            return CallTool.Result(content: [.text(json)])
+            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
         } catch let error as XCStringsError {
             throw error.toMCPError()
         } catch let error as PathError {

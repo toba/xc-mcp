@@ -51,7 +51,11 @@ public struct ResetSimLocationTool: Sendable {
             if result.succeeded {
                 return CallTool.Result(
                     content: [
-                        .text("Successfully reset location on simulator '\(simulator)'"),
+                        .text(
+                            text: "Successfully reset location on simulator '\(simulator)'",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             } else {

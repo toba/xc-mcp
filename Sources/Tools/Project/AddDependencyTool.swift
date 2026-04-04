@@ -66,7 +66,11 @@ public struct AddDependencyTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' not found in project"),
+                        .text(
+                            text: "Target '\(targetName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -79,7 +83,11 @@ public struct AddDependencyTool: Sendable {
             else {
                 return CallTool.Result(
                     content: [
-                        .text("Dependency target '\(dependencyName)' not found in project"),
+                        .text(
+                            text: "Dependency target '\(dependencyName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -92,7 +100,11 @@ public struct AddDependencyTool: Sendable {
             if dependencyExists {
                 return CallTool.Result(
                     content: [
-                        .text("Target '\(targetName)' already depends on '\(dependencyName)'"),
+                        .text(
+                            text: "Target '\(targetName)' already depends on '\(dependencyName)'",
+                            annotations: nil,
+                            _meta: nil,
+                        ),
                     ],
                 )
             }
@@ -122,9 +134,9 @@ public struct AddDependencyTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(
+                    .text(text:
                         "Successfully added dependency '\(dependencyName)' to target '\(targetName)'",
-                    ),
+                        annotations: nil, _meta: nil),
                 ],
             )
         } catch {

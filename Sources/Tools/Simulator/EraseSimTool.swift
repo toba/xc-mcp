@@ -48,7 +48,11 @@ public struct EraseSimTool: Sendable {
 
                 if result.succeeded {
                     return CallTool.Result(
-                        content: [.text("Successfully erased all simulators")],
+                        content: [.text(
+                            text: "Successfully erased all simulators",
+                            annotations: nil,
+                            _meta: nil,
+                        )],
                     )
                 } else {
                     throw MCPError.internalError(
@@ -77,7 +81,11 @@ public struct EraseSimTool: Sendable {
 
             if result.succeeded {
                 return CallTool.Result(
-                    content: [.text("Successfully erased simulator '\(simulator)'")],
+                    content: [.text(
+                        text: "Successfully erased simulator '\(simulator)'",
+                        annotations: nil,
+                        _meta: nil,
+                    )],
                 )
             } else {
                 throw MCPError.internalError(
