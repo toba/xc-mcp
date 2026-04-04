@@ -628,6 +628,128 @@ struct AddFrameworkToolTests {
     }
 
     @Test
+    func `Reuses existing PBXReferenceProxy for cross-project framework`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a PBXReferenceProxy with BUILT_PRODUCTS_DIR (simulating a cross-project reference)
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let proxy = PBXReferenceProxy(
+            fileType: "wrapper.framework",
+            path: "GRDB.framework",
+            remote: nil,
+            sourceTree: .buildProductsDir,
+        )
+        xcodeproj.pbxproj.add(object: proxy)
+        try xcodeproj.write(path: projectPath)
+
+        // Add the framework via add_framework
+        let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "framework_name": Value.string("GRDB.framework"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added framework"))
+
+        // Verify: the build file should reference the PBXReferenceProxy, not a new PBXFileReference
+        let updatedProj = try XcodeProj(path: projectPath)
+        let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
+        let frameworkPhase =
+            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+
+        let linkedProxy = frameworkPhase?.files?.compactMap { $0.file as? PBXReferenceProxy }
+            .first { $0.path == "GRDB.framework" }
+        #expect(linkedProxy != nil)
+        #expect(linkedProxy?.sourceTree == .buildProductsDir)
+
+        // Verify no stale PBXFileReference with sourceTree=group was created
+        let staleRefs = updatedProj.pbxproj.fileReferences.filter {
+            $0.path == "GRDB.framework" && $0.sourceTree == .group
+        }
+        #expect(staleRefs.isEmpty)
+    }
+
+    @Test
+    func `Bare name finds existing PBXReferenceProxy for cross-project framework`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a PBXReferenceProxy for GRDB.framework (cross-project reference)
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let proxy = PBXReferenceProxy(
+            fileType: "wrapper.framework",
+            path: "GRDB.framework",
+            remote: nil,
+            sourceTree: .buildProductsDir,
+        )
+        xcodeproj.pbxproj.add(object: proxy)
+        try xcodeproj.write(path: projectPath)
+
+        // Use bare name "GRDB" — should find the reference proxy, not create a system framework
+        let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "framework_name": Value.string("GRDB"),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added framework 'GRDB'"))
+
+        // Verify it used the reference proxy
+        let updatedProj = try XcodeProj(path: projectPath)
+        let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
+        let frameworkPhase =
+            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+
+        let linkedProxy = frameworkPhase?.files?.compactMap { $0.file as? PBXReferenceProxy }
+            .first { $0.path == "GRDB.framework" }
+        #expect(linkedProxy != nil)
+        #expect(linkedProxy?.sourceTree == .buildProductsDir)
+
+        // Verify no system framework reference was created
+        let systemRefs = updatedProj.pbxproj.fileReferences.filter {
+            $0.path == "System/Library/Frameworks/GRDB.framework"
+        }
+        #expect(systemRefs.isEmpty)
+    }
+
+    @Test
     func `Bare name duplicate detection works with existing BUILT_PRODUCTS_DIR product`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

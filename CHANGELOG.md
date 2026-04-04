@@ -16,6 +16,7 @@
 - Fix `build_macos` suppressing all compiler warnings; add `show_warnings` parameter to list project-local warnings on successful builds ([#238](https://github.com/toba/xc-mcp/issues/238))
 - Fix synchronized folder exception tools corrupting pbxproj; use text-based `PBXProjTextEditor` instead of XcodeProj round-trip serializer ([#256](https://github.com/toba/xc-mcp/issues/256))
 - Fix `add_framework` silently failing to add local product frameworks; detect existing `BUILT_PRODUCTS_DIR` references before classifying bare names as system frameworks
+- Fix `add_framework` creating stale `PBXFileReference` for cross-project framework products; reuse existing `PBXReferenceProxy` entries instead of creating unresolvable group-relative references
 
 ### 🗜️ Tweaks
 

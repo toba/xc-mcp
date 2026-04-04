@@ -107,10 +107,15 @@ public struct AddFrameworkTool: Sendable {
                !frameworkName.hasSuffix(".framework")
             {
                 let candidateName = "\(frameworkName).framework"
-                hasLocalProduct = xcodeproj.pbxproj.fileReferences.contains {
-                    $0.sourceTree == .buildProductsDir
-                        && ($0.path == candidateName || $0.name == candidateName)
-                }
+                hasLocalProduct =
+                    xcodeproj.pbxproj.fileReferences.contains {
+                        $0.sourceTree == .buildProductsDir
+                            && ($0.path == candidateName || $0.name == candidateName)
+                    }
+                    || xcodeproj.pbxproj.referenceProxies.contains {
+                        $0.sourceTree == .buildProductsDir
+                            && ($0.path == candidateName || $0.name == candidateName)
+                    }
             } else {
                 hasLocalProduct = false
             }
@@ -155,15 +160,13 @@ public struct AddFrameworkTool: Sendable {
                         ?? resolvedFrameworkPath
             }
 
-            // Check if framework already exists
+            // Check if framework already exists (could be PBXFileReference or PBXReferenceProxy)
             let frameworkExists =
                 frameworksBuildPhase.files?.contains { buildFile in
-                    if let fileRef = buildFile.file as? PBXFileReference {
-                        return fileRef.name == frameworkFileName
-                            || fileRef.path == frameworkName
-                            || fileRef.path == frameworkFileName
-                    }
-                    return false
+                    guard let fileElement = buildFile.file else { return false }
+                    return fileElement.name == frameworkFileName
+                        || fileElement.path == frameworkName
+                        || fileElement.path == frameworkFileName
                 } ?? false
 
             if frameworkExists {
@@ -177,7 +180,7 @@ public struct AddFrameworkTool: Sendable {
             }
 
             // Find or create file reference for framework
-            let frameworkFileRef: PBXFileReference
+            let frameworkFileElement: PBXFileElement
             if isStaticLibrary {
                 // For static libraries, find the existing product reference
                 if let existingRef = xcodeproj.pbxproj.fileReferences.first(where: {
@@ -185,43 +188,54 @@ public struct AddFrameworkTool: Sendable {
                         && ($0.sourceTree == .buildProductsDir
                             || $0.explicitFileType == "archive.ar")
                 }) {
-                    frameworkFileRef = existingRef
+                    frameworkFileElement = existingRef
                 } else {
                     // Create a reference in BUILT_PRODUCTS_DIR as Xcode would
-                    frameworkFileRef = PBXFileReference(
+                    let ref = PBXFileReference(
                         sourceTree: .buildProductsDir,
                         name: frameworkFileName,
                         explicitFileType: "archive.ar",
                         path: frameworkPath,
                     )
-                    xcodeproj.pbxproj.add(object: frameworkFileRef)
+                    xcodeproj.pbxproj.add(object: ref)
+                    frameworkFileElement = ref
                 }
             } else if isSystemFramework {
-                frameworkFileRef = PBXFileReference(
+                let ref = PBXFileReference(
                     sourceTree: isDeveloperFramework ? .developerDir : .sdkRoot,
                     name: frameworkFileName,
                     lastKnownFileType: "wrapper.framework",
                     path: frameworkPath,
                 )
-                xcodeproj.pbxproj.add(object: frameworkFileRef)
+                xcodeproj.pbxproj.add(object: ref)
+                frameworkFileElement = ref
             } else if let existingRef = xcodeproj.pbxproj.fileReferences.first(where: {
                 $0.sourceTree == .buildProductsDir
                     && ($0.path == frameworkFileName || $0.name == frameworkFileName)
             }) {
                 // Reuse existing BUILT_PRODUCTS_DIR reference (e.g. from a local target's product)
-                frameworkFileRef = existingRef
+                frameworkFileElement = existingRef
+            } else if let existingProxy = xcodeproj.pbxproj.referenceProxies.first(where: {
+                $0.sourceTree == .buildProductsDir
+                    && ($0.path == frameworkFileName || $0.name == frameworkFileName)
+            }) {
+                // Reuse existing PBXReferenceProxy (e.g. from a cross-project reference)
+                frameworkFileElement = existingProxy
             } else {
-                frameworkFileRef = PBXFileReference(
+                let ref = PBXFileReference(
                     sourceTree: .group,
                     name: frameworkFileName,
                     lastKnownFileType: "wrapper.framework",
                     path: frameworkPath,
                 )
-                xcodeproj.pbxproj.add(object: frameworkFileRef)
+                xcodeproj.pbxproj.add(object: ref)
+                frameworkFileElement = ref
             }
 
-            // Add to frameworks group unless reusing an existing product reference
-            if frameworkFileRef.sourceTree != .buildProductsDir {
+            // Add to frameworks group unless reusing an existing product or cross-project reference
+            if frameworkFileElement.sourceTree != .buildProductsDir,
+               !(frameworkFileElement is PBXReferenceProxy)
+            {
                 if let project = xcodeproj.pbxproj.rootObject,
                    let frameworksGroup = project.mainGroup?.children.first(where: { element in
                        if let group = element as? PBXGroup {
@@ -230,7 +244,7 @@ public struct AddFrameworkTool: Sendable {
                        return false
                    }) as? PBXGroup
                 {
-                    frameworksGroup.children.append(frameworkFileRef)
+                    frameworksGroup.children.append(frameworkFileElement)
                 } else {
                     // Create Frameworks group if it doesn't exist
                     if let project = try xcodeproj.pbxproj.rootProject(),
@@ -238,7 +252,7 @@ public struct AddFrameworkTool: Sendable {
                     {
                         let frameworksGroup = PBXGroup(sourceTree: .group, name: "Frameworks")
                         xcodeproj.pbxproj.add(object: frameworksGroup)
-                        frameworksGroup.children.append(frameworkFileRef)
+                        frameworksGroup.children.append(frameworkFileElement)
                         mainGroup.children.append(frameworksGroup)
                     }
                 }
@@ -260,7 +274,7 @@ public struct AddFrameworkTool: Sendable {
             }
 
             // Create build file
-            let buildFile = PBXBuildFile(file: frameworkFileRef)
+            let buildFile = PBXBuildFile(file: frameworkFileElement)
             xcodeproj.pbxproj.add(object: buildFile)
             frameworksBuildPhase.files?.append(buildFile)
 
@@ -291,7 +305,7 @@ public struct AddFrameworkTool: Sendable {
 
                 // Create build file for embedding
                 let embedBuildFile = PBXBuildFile(
-                    file: frameworkFileRef,
+                    file: frameworkFileElement,
                     settings: ["ATTRIBUTES": ["CodeSignOnCopy", "RemoveHeadersOnCopy"]],
                 )
                 xcodeproj.pbxproj.add(object: embedBuildFile)
