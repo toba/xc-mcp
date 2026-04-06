@@ -1,6 +1,6 @@
 # xc-mcp
 
-An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 190 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, localization, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 200 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, memory diagnostics, crash symbolication, notarization, localization, and SwiftUI preview capture.
 
 I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
@@ -22,6 +22,12 @@ This project [iterates rapidly](CHANGELOG.md). Fairly complex issues had to be s
 - **Unused code detection**: `detect_unused_code` wraps [Periphery](https://github.com/peripheryapp/periphery) to find unused declarations, redundant imports, assign-only properties, and unnecessarily public symbols across Swift packages and Xcode projects. Returns a summary by default; drill into cached results with `format: "detail"` or `format: "checklist"` — the checklist format gives agents a persistent, numbered list they can mark off as they clean up, without re-scanning every time.
 - **One-call device deployment**: `build_deploy_device` builds for a connected device, stops any running instance, installs the new build, and launches — all in one tool call. No more four-step `build_device` → `stop_app_device` → `install_app_device` → `launch_app_device` dance. `deploy_device` does the post-build half if you've already got a `.app`.
 - **Performance baselines**: `get_performance_metrics` extracts `XCTest.measure()` timing data from `.xcresult` bundles. `set_performance_baseline` creates the `.xcbaseline` plist files that Xcode uses for automatic regression detection. `show_performance_baselines` reads existing baselines in human-readable form. The whole measure → baseline → regress loop, from the CLI.
+- **Memory diagnostics**: `memory_leaks`, `memory_heap`, `memory_vmmap`, `memory_stringdups`, and `memory_malloc_history` wrap Xcode's hidden diagnostic CLIs — the ones buried inside the Developer directory that most people don't know exist. An LLM is *particularly* good at these because the output is dense, repetitive, and begging for someone (something?) to summarize "you have 847 duplicate copies of this string" or "UIKit is holding 12MB of dirty memory." Point them at a PID or bundle ID and get actionable findings.
+- **Crash symbolication**: `symbolicate_address` wraps `atos` to convert raw memory addresses from crash logs into `ClassName.method + offset`. Batch symbolicates multiple addresses in one call. Complements `search_crash_reports` for the full crash diagnosis workflow.
+- **Version management**: `version_management` wraps `agvtool` for reading and bumping marketing versions and build numbers — the kind of thing you want automated before every archive build and absolutely never want to do by hand.
+- **Notarization pipeline**: `notarize` wraps `notarytool` and `stapler` for the full macOS distribution workflow — submit, wait, check status, retrieve rejection logs, staple the ticket. The whole notarization dance in one tool.
+- **Asset catalog validation**: `validate_asset_catalog` runs `actool` in validation mode to catch missing icon sizes, incorrect formats, and other `.xcassets` problems before they become build errors.
+- **Open in Xcode**: `open_in_xcode` wraps `xed` to open files at specific lines, projects, or workspaces — for when the agent has diagnosed something and wants to say "go look at *this*."
 - **Dynamic tool workflows**: `manage_workflows` lets you enable or disable entire tool categories (project, simulator, debug, etc.) at runtime. When an agent doesn't need 130 tools cluttering its context, disable the irrelevant ones. The server sends `tools/list_changed` notifications so clients update automatically.
 
 ## Built On
@@ -30,7 +36,7 @@ This project [iterates rapidly](CHANGELOG.md). Fairly complex issues had to be s
 - [modelcontextprotocol/swift-sdk](https://github.com/modelcontextprotocol/swift-sdk) — MCP implementation
 - Native `xcodebuild`, `simctl`, `devicectl`, `lldb`, and `xctrace` — the usual suspects
 
-Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server). Build output parsing adapted from [ldomaradzki/xcsift](https://github.com/ldomaradzki/xcsift). Localization from [Ryu0118/xcstrings-crud](https://github.com/Ryu0118/xcstrings-crud).
+Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server). Build output parsing adapted from [ldomaradzki/xcsift](https://github.com/ldomaradzki/xcsift). Localization from [Ryu0118/xcstrings-crud](https://github.com/Ryu0118/xcstrings-crud). Memory diagnostics, symbolication, and other CLI tool integrations inspired by [Terryc21/Xcode-tools](https://github.com/Terryc21/Xcode-tools)' catalog of hidden Xcode CLIs.
 
 ## Table of Contents
 
@@ -42,7 +48,7 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
   - [macOS UI Automation](#macos-ui-automation-8-tools)
   - [macOS Screenshots & Builds](#macos-screenshots--builds-14-tools)
   - [SwiftUI Preview Capture](#swiftui-preview-capture-1-tool)
-  - [Debug](#debug-18-tools)
+  - [Debug](#debug-24-tools)
   - [Simulator](#simulator-17-tools)
   - [Simulator UI Automation](#simulator-ui-automation-8-tools)
   - [Device](#device-9-tools)
@@ -52,7 +58,7 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
   - [Logging](#logging-4-tools)
   - [Swift Package Manager](#swift-package-manager-12-tools)
   - [Localization](#localization-24-tools)
-  - [Session & Utilities](#session--utilities-8-tools)
+  - [Session & Utilities](#session--utilities-12-tools)
 - [Tests](#tests)
 - [Path Security](#path-security)
 - [License](#license)
@@ -63,11 +69,11 @@ xc-mcp provides both a monolithic server and focused servers for token efficienc
 
 | Server | Tools | Token Overhead | Description |
 |--------|-------|----------------|-------------|
-| `xc-mcp` | 168 | ~30K | Full monolithic server |
+| `xc-mcp` | 178 | ~30K | Full monolithic server |
 | `xc-project` | 61 | ~9K | .xcodeproj file manipulation |
 | `xc-simulator` | 29 | ~5K | Simulator, UI automation, simulator logs |
-| `xc-build` | 31 | ~6K | macOS builds, profiling, discovery, logging, diagnostics, utilities |
-| `xc-debug` | 22 | ~4K | LLDB debugging, view borders, screenshots, session defaults |
+| `xc-build` | 35 | ~6K | macOS builds, profiling, discovery, logging, diagnostics, versioning, notarization, utilities |
+| `xc-debug` | 28 | ~4K | LLDB debugging, memory diagnostics, crash symbolication, view borders, screenshots, session defaults |
 | `xc-strings` | 24 | ~3K | Xcode String Catalog (.xcstrings) localization |
 | `xc-swift` | 15 | ~3K | Swift Package Manager, swiftformat, swiftlint, diagnostics, coverage |
 | `xc-device` | 14 | ~3K | Physical iOS devices, deployment pipelines |
@@ -225,7 +231,7 @@ Semantic UI automation for macOS apps via the Accessibility API. These work on *
 |------|-------------|
 | `preview_capture` | Extract a `#Preview` block from a Swift file, build a temporary host app, launch on iOS Simulator or macOS, capture a screenshot, and clean up. Works with mergeable library projects, cross-project dependencies (GRDB, etc.), local Swift packages within the Xcode project, and previews containing nested types. Supports multi-preview files via `preview_index`, configurable `render_delay`, and optional `save_path` |
 
-### Debug (18 tools)
+### Debug (24 tools)
 
 Debug tools use persistent LLDB sessions backed by a pseudo-TTY — a single LLDB process stays alive across tool calls, so breakpoints are preserved and there are no hangs from rapid attach/detach cycles. Attach once with `debug_attach_sim`, then use any combination of debug tools against the live session.
 
@@ -270,6 +276,24 @@ Debug tools use persistent LLDB sessions backed by a pseudo-TTY — a single LLD
 | `debug_symbol_lookup` | Look up symbols by address, name (regex), or type name |
 | `debug_view_hierarchy` | Dump the live UI view hierarchy (iOS or macOS), inspect by address, show Auto Layout constraints |
 | `debug_view_borders` | Toggle colored borders on all views in a running macOS app via LLDB. Configurable color and width. Resume with `debug_continue` and screenshot to see results |
+
+**Memory diagnostics:**
+
+These wrap Xcode's standalone diagnostic CLIs — separate from LLDB, they work on any running process by PID or bundle ID.
+
+| Tool | Description |
+|------|-------------|
+| `memory_leaks` | Detect memory leaks via `/usr/bin/leaks`. Returns leaked object counts, sizes, and backtraces. Groups by allocation backtrace by default |
+| `memory_heap` | Examine heap allocations via `/usr/bin/heap`. Shows all objects by class, sorted by total size or count. Filter by class name, limit to top N |
+| `memory_vmmap` | Display virtual memory mapping via `/usr/bin/vmmap`. Summary mode shows region types with dirty/clean/swapped totals; full mode shows per-region detail |
+| `memory_stringdups` | Find duplicate strings wasting memory via `/usr/bin/stringdups`. Shows repeated string values with copy count and wasted bytes |
+| `memory_malloc_history` | Show allocation backtrace for a specific address via `/usr/bin/malloc_history`. Requires the process was launched with `MallocStackLogging=1` |
+
+**Crash symbolication:**
+
+| Tool | Description |
+|------|-------------|
+| `symbolicate_address` | Convert raw memory addresses to symbol names via `atos`. Supports binary/dSYM file symbolication with load address, or live process attachment by PID. Batch symbolicates multiple addresses per call |
 
 **Passthrough:**
 
@@ -469,7 +493,7 @@ Full CRUD for Apple's `.xcstrings` format — add, update, rename, delete keys a
 | `xcstrings_delete_translation` | Delete a single translation |
 | `xcstrings_delete_translations` | Delete multiple translations (batch) |
 
-### Session & Utilities (8 tools)
+### Session & Utilities (12 tools)
 
 Project, workspace, and package paths are **auto-detected from the working directory** — the server walks up from `cwd` looking for `Package.swift`, `.xcodeproj`, or `.xcworkspace`, so you often don't need to call `set_session_defaults` at all. Explicit arguments and session defaults still take precedence when set.
 
@@ -483,6 +507,10 @@ Project, workspace, and package paths are **auto-detected from the working direc
 | `clean` | Clean build products |
 | `doctor` | Diagnose Xcode environment — checks Xcode, CLT, xcodebuild, simctl, devicectl, Swift, LLDB, SDKs, DerivedData, session state, and active debug sessions |
 | `search_crash_reports` | Search `~/Library/Logs/DiagnosticReports/` for recent `.ips` crash reports by process name or bundle ID. Parses exception type, signal, termination reason, and dyld details — so you don't have to squint at JSON in Console.app |
+| `version_management` | Read and update marketing version and build numbers via `agvtool`. Get both versions, set either, or bump the build number. Requires the project to use `CURRENT_PROJECT_VERSION` and `MARKETING_VERSION` build settings |
+| `notarize` | Full macOS notarization workflow via `notarytool` and `stapler` — submit for notarization (with `--wait`), check submission status, retrieve rejection logs, staple the ticket, or list recent submission history. Uses keychain profiles for authentication |
+| `validate_asset_catalog` | Validate `.xcassets` directories for missing sizes, incorrect formats, and configuration issues via `actool`. Catch problems before they become build errors. Supports platform and deployment target parameters |
+| `open_in_xcode` | Open a file, project, or workspace in Xcode via `xed`. Optionally jump to a specific line number. For when the agent has found something and wants to point you at it |
 
 ## Build Output Parsing
 

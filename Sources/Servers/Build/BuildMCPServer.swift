@@ -48,6 +48,12 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     case sampleMacApp = "sample_mac_app"
     case profileAppLaunch = "profile_app_launch"
 
+    // Distribution tools
+    case versionManagement = "version_management"
+    case notarize
+    case validateAssetCatalog = "validate_asset_catalog"
+    case openInXcode = "open_in_xcode"
+
     // Session tools
     case setSessionDefaults = "set_session_defaults"
     case showSessionDefaults = "show_session_defaults"
@@ -173,6 +179,12 @@ public struct BuildMCPServer: Sendable {
             sessionManager: sessionManager,
         )
 
+        // Create distribution/utility tools
+        let versionManagementTool = VersionManagementTool()
+        let notarizeTool = NotarizeTool()
+        let validateAssetCatalogTool = ValidateAssetCatalogTool()
+        let openInXcodeTool = OpenInXcodeTool()
+
         // Create session tools
         let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
         let showSessionDefaultsTool = ShowSessionDefaultsTool(sessionManager: sessionManager)
@@ -217,6 +229,11 @@ public struct BuildMCPServer: Sendable {
                 // Instruments tools
                 sampleMacAppTool.tool(),
                 profileAppLaunchTool.tool(),
+                // Distribution/utility tools
+                versionManagementTool.tool(),
+                notarizeTool.tool(),
+                validateAssetCatalogTool.tool(),
+                openInXcodeTool.tool(),
                 // Session tools
                 setSessionDefaultsTool.tool(),
                 showSessionDefaultsTool.tool(),
@@ -304,6 +321,15 @@ public struct BuildMCPServer: Sendable {
                     return try await sampleMacAppTool.execute(arguments: arguments)
                 case .profileAppLaunch:
                     return try await profileAppLaunchTool.execute(arguments: arguments)
+                // Distribution/utility tools
+                case .versionManagement:
+                    return try await versionManagementTool.execute(arguments: arguments)
+                case .notarize:
+                    return try await notarizeTool.execute(arguments: arguments)
+                case .validateAssetCatalog:
+                    return try await validateAssetCatalogTool.execute(arguments: arguments)
+                case .openInXcode:
+                    return try await openInXcodeTool.execute(arguments: arguments)
                 // Session tools
                 case .setSessionDefaults:
                     return try await setSessionDefaultsTool.execute(arguments: arguments)

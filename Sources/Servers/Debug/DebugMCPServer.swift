@@ -25,6 +25,16 @@ public enum DebugToolName: String, CaseIterable, Sendable {
     case debugViewBorders = "debug_view_borders"
     case debugProcessStatus = "debug_process_status"
 
+    // Memory diagnostic tools
+    case memoryLeaks = "memory_leaks"
+    case memoryHeap = "memory_heap"
+    case memoryVmmap = "memory_vmmap"
+    case memoryStringdups = "memory_stringdups"
+    case memoryMallocHistory = "memory_malloc_history"
+
+    // Crash symbolication
+    case symbolicateAddress = "symbolicate_address"
+
     /// macOS tools
     case screenshotMacWindow = "screenshot_mac_window"
 
@@ -106,6 +116,16 @@ public struct DebugMCPServer: Sendable {
         let debugViewBordersTool = DebugViewBordersTool(lldbRunner: lldbRunner)
         let debugProcessStatusTool = DebugProcessStatusTool(lldbRunner: lldbRunner)
 
+        // Create memory diagnostic tools
+        let memoryLeaksTool = MemoryLeaksTool()
+        let memoryHeapTool = MemoryHeapTool()
+        let memoryVmmapTool = MemoryVmmapTool()
+        let memoryStringDupsTool = MemoryStringDupsTool()
+        let memoryMallocHistoryTool = MemoryMallocHistoryTool()
+
+        // Create crash symbolication tool
+        let symbolicateAddressTool = SymbolicateAddressTool()
+
         // Create macOS tools
         let screenshotMacWindowTool = ScreenshotMacWindowTool()
 
@@ -135,6 +155,14 @@ public struct DebugMCPServer: Sendable {
                 debugViewHierarchyTool.tool(),
                 debugViewBordersTool.tool(),
                 debugProcessStatusTool.tool(),
+                // Memory diagnostic tools
+                memoryLeaksTool.tool(),
+                memoryHeapTool.tool(),
+                memoryVmmapTool.tool(),
+                memoryStringDupsTool.tool(),
+                memoryMallocHistoryTool.tool(),
+                // Crash symbolication
+                symbolicateAddressTool.tool(),
                 // macOS tools
                 screenshotMacWindowTool.tool(),
                 // Session tools
@@ -193,6 +221,20 @@ public struct DebugMCPServer: Sendable {
                     return try await debugViewBordersTool.execute(arguments: arguments)
                 case .debugProcessStatus:
                     return try await debugProcessStatusTool.execute(arguments: arguments)
+                // Memory diagnostic tools
+                case .memoryLeaks:
+                    return try await memoryLeaksTool.execute(arguments: arguments)
+                case .memoryHeap:
+                    return try await memoryHeapTool.execute(arguments: arguments)
+                case .memoryVmmap:
+                    return try await memoryVmmapTool.execute(arguments: arguments)
+                case .memoryStringdups:
+                    return try await memoryStringDupsTool.execute(arguments: arguments)
+                case .memoryMallocHistory:
+                    return try await memoryMallocHistoryTool.execute(arguments: arguments)
+                // Crash symbolication
+                case .symbolicateAddress:
+                    return try await symbolicateAddressTool.execute(arguments: arguments)
                 // macOS tools
                 case .screenshotMacWindow:
                     return try await screenshotMacWindowTool.execute(arguments: arguments)

@@ -340,6 +340,28 @@ extension [String: Value] {
     }
 
     /// Resolves a target PID from arguments, checking `pid` first, then falling back to
+    /// `bundle_id` lookup via `PIDResolver` (NSRunningApplication).
+    ///
+    /// Use this for standalone diagnostic tools (leaks, heap, vmmap, etc.) that don't
+    /// require an active LLDB session.
+    ///
+    /// - Returns: The resolved process ID.
+    /// - Throws: ``MCPError/invalidParams(_:)`` if neither `pid` nor a matching `bundle_id` is found.
+    public func resolveTargetPID() async throws(MCPError) -> Int32 {
+        if let pid = getInt("pid") {
+            return Int32(pid)
+        }
+        if let bundleId = getString("bundle_id"),
+           let pid = await MainActor.run(body: { PIDResolver.findPID(forBundleID: bundleId) })
+        {
+            return pid
+        }
+        throw .invalidParams(
+            "Either pid or bundle_id (of a running app) is required",
+        )
+    }
+
+    /// Resolves a target PID from arguments, checking `pid` first, then falling back to
     /// `bundle_id` lookup via LLDBSessionManager.
     ///
     /// - Returns: The resolved process ID.

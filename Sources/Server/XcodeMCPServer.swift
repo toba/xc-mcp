@@ -199,6 +199,14 @@ public enum ToolName: String, CaseIterable, Sendable {
     case sampleMacApp = "sample_mac_app"
     case profileAppLaunch = "profile_app_launch"
 
+    // Memory diagnostic tools
+    case memoryLeaks = "memory_leaks"
+    case memoryHeap = "memory_heap"
+    case memoryVmmap = "memory_vmmap"
+    case memoryStringdups = "memory_stringdups"
+    case memoryMallocHistory = "memory_malloc_history"
+    case symbolicateAddress = "symbolicate_address"
+
     // Utility tools
     case clean
     case doctor
@@ -207,6 +215,10 @@ public enum ToolName: String, CaseIterable, Sendable {
     case searchCrashReports = "search_crash_reports"
     case exportIcon = "export_icon"
     case diagnostics
+    case versionManagement = "version_management"
+    case notarize
+    case validateAssetCatalog = "validate_asset_catalog"
+    case openInXcode = "open_in_xcode"
     /// The workflow category this tool belongs to.
     public var workflow: Workflow {
         switch self {
@@ -265,7 +277,9 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
                  .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
                  .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
-                 .debugViewBorders, .debugProcessStatus:
+                 .debugViewBorders, .debugProcessStatus,
+                 .memoryLeaks, .memoryHeap, .memoryVmmap, .memoryStringdups,
+                 .memoryMallocHistory, .symbolicateAddress:
                 return .debug
             // UI Automation
             case .tap, .longPress, .swipe, .gesture, .typeText, .keyPress, .button,
@@ -286,7 +300,8 @@ public enum ToolName: String, CaseIterable, Sendable {
                 return .instruments
             // Utility
             case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS, .searchCrashReports, .exportIcon,
-                 .diagnostics:
+                 .diagnostics, .versionManagement, .notarize, .validateAssetCatalog,
+                 .openInXcode:
                 return .utility
         }
     }
@@ -597,6 +612,14 @@ public struct XcodeMCPServer: Sendable {
         let debugViewBordersTool = DebugViewBordersTool(lldbRunner: lldbRunner)
         let debugProcessStatusTool = DebugProcessStatusTool(lldbRunner: lldbRunner)
 
+        // Create memory diagnostic tools
+        let memoryLeaksTool = MemoryLeaksTool()
+        let memoryHeapTool = MemoryHeapTool()
+        let memoryVmmapTool = MemoryVmmapTool()
+        let memoryStringDupsTool = MemoryStringDupsTool()
+        let memoryMallocHistoryTool = MemoryMallocHistoryTool()
+        let symbolicateAddressTool = SymbolicateAddressTool()
+
         // Create UI automation tools
         let tapTool = TapTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
         let longPressTool = LongPressTool(
@@ -673,6 +696,10 @@ public struct XcodeMCPServer: Sendable {
         let diagnosticsTool = DiagnosticsTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let versionManagementTool = VersionManagementTool()
+        let notarizeTool = NotarizeTool()
+        let validateAssetCatalogTool = ValidateAssetCatalogTool()
+        let openInXcodeTool = OpenInXcodeTool()
 
         // Build the complete tool registry: (ToolName, Tool) pairs
         let allTools: [(ToolName, Tool)] = [
@@ -818,6 +845,13 @@ public struct XcodeMCPServer: Sendable {
             (.debugViewHierarchy, debugViewHierarchyTool.tool()),
             (.debugViewBorders, debugViewBordersTool.tool()),
             (.debugProcessStatus, debugProcessStatusTool.tool()),
+            // Memory diagnostic tools
+            (.memoryLeaks, memoryLeaksTool.tool()),
+            (.memoryHeap, memoryHeapTool.tool()),
+            (.memoryVmmap, memoryVmmapTool.tool()),
+            (.memoryStringdups, memoryStringDupsTool.tool()),
+            (.memoryMallocHistory, memoryMallocHistoryTool.tool()),
+            (.symbolicateAddress, symbolicateAddressTool.tool()),
             // UI Automation tools
             (.tap, tapTool.tool()),
             (.longPress, longPressTool.tool()),
@@ -861,6 +895,10 @@ public struct XcodeMCPServer: Sendable {
             (.searchCrashReports, searchCrashReportsTool.tool()),
             (.exportIcon, exportIconTool.tool()),
             (.diagnostics, diagnosticsTool.tool()),
+            (.versionManagement, versionManagementTool.tool()),
+            (.notarize, notarizeTool.tool()),
+            (.validateAssetCatalog, validateAssetCatalogTool.tool()),
+            (.openInXcode, openInXcodeTool.tool()),
         ]
 
         // Register tools/list handler — filters by enabled workflows
@@ -1182,6 +1220,19 @@ public struct XcodeMCPServer: Sendable {
                     return try await debugViewBordersTool.execute(arguments: arguments)
                 case .debugProcessStatus:
                     return try await debugProcessStatusTool.execute(arguments: arguments)
+                // Memory diagnostic tools
+                case .memoryLeaks:
+                    return try await memoryLeaksTool.execute(arguments: arguments)
+                case .memoryHeap:
+                    return try await memoryHeapTool.execute(arguments: arguments)
+                case .memoryVmmap:
+                    return try await memoryVmmapTool.execute(arguments: arguments)
+                case .memoryStringdups:
+                    return try await memoryStringDupsTool.execute(arguments: arguments)
+                case .memoryMallocHistory:
+                    return try await memoryMallocHistoryTool.execute(arguments: arguments)
+                case .symbolicateAddress:
+                    return try await symbolicateAddressTool.execute(arguments: arguments)
                 // UI Automation tools
                 case .tap:
                     return try await tapTool.execute(arguments: arguments)
@@ -1263,6 +1314,14 @@ public struct XcodeMCPServer: Sendable {
                     return try await exportIconTool.execute(arguments: arguments)
                 case .diagnostics:
                     return try await diagnosticsTool.execute(arguments: arguments)
+                case .versionManagement:
+                    return try await versionManagementTool.execute(arguments: arguments)
+                case .notarize:
+                    return try await notarizeTool.execute(arguments: arguments)
+                case .validateAssetCatalog:
+                    return try await validateAssetCatalogTool.execute(arguments: arguments)
+                case .openInXcode:
+                    return try await openInXcodeTool.execute(arguments: arguments)
             }
         }
 

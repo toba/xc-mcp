@@ -52,6 +52,7 @@ public enum ServerToolDirectory {
         "clean", "doctor", "scaffold_ios_project", "scaffold_macos_project",
         "search_crash_reports", "export_icon", "diagnostics",
         "sample_mac_app", "profile_app_launch",
+        "version_management", "notarize", "validate_asset_catalog", "open_in_xcode",
     ]
 
     private static let simulatorTools: [String] = [
@@ -73,6 +74,9 @@ public enum ServerToolDirectory {
         "debug_symbol_lookup", "debug_view_hierarchy",
         "debug_view_borders", "debug_process_status",
         "screenshot_mac_window",
+        "memory_leaks", "memory_heap", "memory_vmmap",
+        "memory_stringdups", "memory_malloc_history",
+        "symbolicate_address",
     ]
 
     private static let projectTools: [String] = [

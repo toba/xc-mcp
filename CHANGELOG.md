@@ -5,8 +5,14 @@
 ### ✨ Features
 
 - Add ReportCrash throttle detection to `search_crash_reports`; warn when macOS stops generating `.ips` files after ~25 reports per process and list other processes with reports in the time window ([#259](https://github.com/toba/xc-mcp/issues/259))
+- Add memory diagnostic tools (`memory_leaks`, `memory_heap`, `memory_vmmap`, `memory_stringdups`, `memory_malloc_history`); wrap Xcode's hidden CLI tools for process memory analysis ([#265](https://github.com/toba/xc-mcp/issues/265))
+- Add `symbolicate_address` tool; batch crash address symbolication via `atos` ([#266](https://github.com/toba/xc-mcp/issues/266))
+- Add `version_management` tool; read/set marketing version and build numbers via `agvtool` ([#262](https://github.com/toba/xc-mcp/issues/262))
+- Add `notarize` tool; full macOS notarization workflow via `notarytool` and `stapler` ([#263](https://github.com/toba/xc-mcp/issues/263))
+- Add `validate_asset_catalog` tool; pre-build `.xcassets` validation via `actool` ([#264](https://github.com/toba/xc-mcp/issues/264))
+- Add `open_in_xcode` tool; open files at specific lines, projects, or workspaces via `xed` ([#267](https://github.com/toba/xc-mcp/issues/267))
 
-### 🐞 Fixes
+### 🐛 Fixes
 
 - Fix multi-suite test count bug in `BuildOutputParser`; accumulate XCTest bundle counts, Swift Testing run counts, and parallel scheduling totals instead of overwriting ([#261](https://github.com/toba/xc-mcp/issues/261))
 
