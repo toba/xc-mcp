@@ -758,4 +758,69 @@ struct BuildOutputParserTests {
         #expect(result.failedTests[0].message.contains("Comment A"))
         #expect(result.failedTests[1].message.contains("Comment B"))
     }
+
+    // MARK: - Multi-Suite Counting
+
+    @Test
+    func `XCTest multi-bundle accumulates executed and failed counts`() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Suite 'UnitTests.xctest' passed at 2026-04-06 10:00:00.
+        Executed 30 tests, with 2 failures (0 unexpected) in 1.5 (1.6) seconds
+        Test Suite 'UITests.xctest' passed at 2026-04-06 10:01:00.
+        Executed 20 tests, with 1 failure (0 unexpected) in 3.0 (3.1) seconds
+        """
+
+        let result = parser.parse(input: input)
+
+        // Should accumulate: 30 + 20 = 50 executed, 2 + 1 = 3 failed
+        #expect(result.summary.passedTests == 47)
+        #expect(result.summary.failedTests == 3)
+    }
+
+    @Test
+    func `Swift Testing multi-run accumulates counts format 1`() {
+        let parser = BuildOutputParser()
+        let input = """
+        ✔ Test run with 2 tests failed, 18 tests passed after 0.5 seconds.
+        ✔ Test run with 1 test failed, 9 tests passed after 0.3 seconds.
+        """
+
+        let result = parser.parse(input: input)
+
+        // Should accumulate: (18+2) + (9+1) = 30 executed, 2+1 = 3 failed
+        #expect(result.summary.passedTests == 27)
+        #expect(result.summary.failedTests == 3)
+    }
+
+    @Test
+    func `Swift Testing multi-run accumulates counts passed format`() {
+        let parser = BuildOutputParser()
+        let input = """
+        ✔ Test run with 20 tests in 3 suites passed after 1.5 seconds.
+        ✔ Test run with 10 tests in 2 suites passed after 0.8 seconds.
+        """
+
+        let result = parser.parse(input: input)
+
+        // Should accumulate: 20 + 10 = 30 executed, 0 failed
+        #expect(result.summary.passedTests == 30)
+        #expect(result.summary.failedTests == 0)
+    }
+
+    @Test
+    func `Parallel test scheduling accumulates across runs`() {
+        let parser = BuildOutputParser()
+        let input = """
+        [1/50] Testing ModuleA.TestClassA/testMethod1
+        [50/50] Testing ModuleA.TestClassA/testMethod50
+        [1/20] Testing ModuleB.TestClassB/testMethod1
+        [20/20] Testing ModuleB.TestClassB/testMethod20
+        """
+
+        let result = parser.parse(input: input)
+
+        // Should accumulate: 50 + 20 = 70
+        #expect(result.summary.passedTests == 70)
+    }
 }

@@ -88,17 +88,10 @@ public struct AddFrameworkTool: Sendable {
                 )
             }
 
-            // Find or create frameworks build phase
-            let frameworksBuildPhase: PBXFrameworksBuildPhase
-            if let existingPhase = target.buildPhases.first(
+            // Find existing frameworks build phase (may need to create one via text edit)
+            let existingFrameworksPhase = target.buildPhases.first(
                 where: { $0 is PBXFrameworksBuildPhase },
-            ) as? PBXFrameworksBuildPhase {
-                frameworksBuildPhase = existingPhase
-            } else {
-                frameworksBuildPhase = PBXFrameworksBuildPhase()
-                xcodeproj.pbxproj.add(object: frameworksBuildPhase)
-                target.buildPhases.append(frameworksBuildPhase)
-            }
+            ) as? PBXFrameworksBuildPhase
 
             // Check if this is a static library (.a) that already exists as a build product
             let isStaticLibrary = frameworkName.hasSuffix(".a")
@@ -166,7 +159,7 @@ public struct AddFrameworkTool: Sendable {
 
             // Check if framework already exists (could be PBXFileReference or PBXReferenceProxy)
             let frameworkExists =
-                frameworksBuildPhase.files?.contains { buildFile in
+                existingFrameworksPhase?.files?.contains { buildFile in
                     guard let fileElement = buildFile.file else { return false }
                     return fileElement.name == frameworkFileName
                         || fileElement.path == frameworkName
@@ -183,141 +176,198 @@ public struct AddFrameworkTool: Sendable {
                 )
             }
 
-            // Find or create file reference for framework
-            let frameworkFileElement: PBXFileElement
+            let q = PBXProjTextEditor.quotePBX
+
+            // --- Text-based edits ---
+            var text = try PBXProjTextEditor.read(projectPath: resolvedProjectPath)
+
+            // 1. Find or create file reference
+            let fileRefUUID: String
+            var needsGroupEntry = false
+
             if isStaticLibrary {
-                // For static libraries, find the existing product reference
                 if let existingRef = xcodeproj.pbxproj.fileReferences.first(where: {
                     ($0.path == frameworkName || $0.name == frameworkName)
                         && ($0.sourceTree == .buildProductsDir
                             || $0.explicitFileType == "archive.ar")
                 }) {
-                    frameworkFileElement = existingRef
+                    fileRefUUID = existingRef.uuid
                 } else {
-                    // Create a reference in BUILT_PRODUCTS_DIR as Xcode would
-                    let ref = PBXFileReference(
-                        sourceTree: .buildProductsDir,
-                        name: frameworkFileName,
-                        explicitFileType: "archive.ar",
-                        path: frameworkPath,
+                    fileRefUUID = PBXProjTextEditor.generateUUID()
+                    let line =
+                        "\t\t\(fileRefUUID) /* \(frameworkFileName) */ = {isa = PBXFileReference; explicitFileType = archive.ar; name = \(q(frameworkFileName)); path = \(q(frameworkPath)); sourceTree = BUILT_PRODUCTS_DIR; };"
+                    text = try PBXProjTextEditor.insertBlockInSection(
+                        text, section: "PBXFileReference", blockLines: [line],
                     )
-                    xcodeproj.pbxproj.add(object: ref)
-                    frameworkFileElement = ref
                 }
             } else if isSystemFramework {
-                let ref = PBXFileReference(
-                    sourceTree: isDeveloperFramework ? .developerDir : .sdkRoot,
-                    name: frameworkFileName,
-                    lastKnownFileType: "wrapper.framework",
-                    path: frameworkPath,
+                fileRefUUID = PBXProjTextEditor.generateUUID()
+                let sourceTree = isDeveloperFramework ? "DEVELOPER_DIR" : "SDKROOT"
+                let line =
+                    "\t\t\(fileRefUUID) /* \(frameworkFileName) */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = \(q(frameworkFileName)); path = \(q(frameworkPath)); sourceTree = \(sourceTree); };"
+                text = try PBXProjTextEditor.insertBlockInSection(
+                    text, section: "PBXFileReference", blockLines: [line],
                 )
-                xcodeproj.pbxproj.add(object: ref)
-                frameworkFileElement = ref
+                needsGroupEntry = true
             } else if let existingRef = xcodeproj.pbxproj.fileReferences.first(where: {
                 $0.sourceTree == .buildProductsDir
                     && ($0.path == frameworkFileName || $0.name == frameworkFileName)
             }) {
-                // Reuse existing BUILT_PRODUCTS_DIR reference (e.g. from a local target's product)
-                frameworkFileElement = existingRef
+                // Reuse existing BUILT_PRODUCTS_DIR reference
+                fileRefUUID = existingRef.uuid
             } else if let existingProxy = xcodeproj.pbxproj.referenceProxies.first(where: {
                 $0.sourceTree == .buildProductsDir
                     && ($0.path == frameworkFileName || $0.name == frameworkFileName)
             }) {
-                // Reuse existing PBXReferenceProxy (e.g. from a cross-project reference)
-                frameworkFileElement = existingProxy
+                // Reuse existing PBXReferenceProxy (cross-project reference)
+                fileRefUUID = existingProxy.uuid
             } else {
-                let ref = PBXFileReference(
-                    sourceTree: .group,
-                    name: frameworkFileName,
-                    lastKnownFileType: "wrapper.framework",
-                    path: frameworkPath,
+                fileRefUUID = PBXProjTextEditor.generateUUID()
+                let line =
+                    "\t\t\(fileRefUUID) /* \(frameworkFileName) */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = \(q(frameworkFileName)); path = \(q(frameworkPath)); sourceTree = \"<group>\"; };"
+                text = try PBXProjTextEditor.insertBlockInSection(
+                    text, section: "PBXFileReference", blockLines: [line],
                 )
-                xcodeproj.pbxproj.add(object: ref)
-                frameworkFileElement = ref
+                needsGroupEntry = true
             }
 
-            // Add to frameworks group unless reusing an existing product or cross-project reference
-            if frameworkFileElement.sourceTree != .buildProductsDir,
-               !(frameworkFileElement is PBXReferenceProxy)
-            {
-                if let project = xcodeproj.pbxproj.rootObject,
-                   let frameworksGroup = project.mainGroup?.children.first(where: { element in
-                       if let group = element as? PBXGroup {
-                           return group.name == "Frameworks"
-                       }
-                       return false
-                   }) as? PBXGroup
-                {
-                    frameworksGroup.children.append(frameworkFileElement)
+            // 2. Add to Frameworks group (only for new file references that aren't build products)
+            if needsGroupEntry {
+                let frameworksGroup = xcodeproj.pbxproj.rootObject?.mainGroup?.children
+                    .first(where: { ($0 as? PBXGroup)?.name == "Frameworks" }) as? PBXGroup
+
+                if let groupUUID = frameworksGroup?.uuid {
+                    text = try PBXProjTextEditor.addReference(
+                        text, blockUUID: groupUUID, field: "children",
+                        refUUID: fileRefUUID, comment: frameworkFileName,
+                    )
                 } else {
-                    // Create Frameworks group if it doesn't exist
-                    if let project = try xcodeproj.pbxproj.rootProject(),
-                       let mainGroup = project.mainGroup
-                    {
-                        let frameworksGroup = PBXGroup(sourceTree: .group, name: "Frameworks")
-                        xcodeproj.pbxproj.add(object: frameworksGroup)
-                        frameworksGroup.children.append(frameworkFileElement)
-                        mainGroup.children.append(frameworksGroup)
+                    // Create Frameworks group
+                    let groupUUID = PBXProjTextEditor.generateUUID()
+                    let groupBlock = [
+                        "\t\t\(groupUUID) /* Frameworks */ = {",
+                        "\t\t\tisa = PBXGroup;",
+                        "\t\t\tchildren = (",
+                        "\t\t\t\t\(fileRefUUID) /* \(frameworkFileName) */,",
+                        "\t\t\t);",
+                        "\t\t\tname = Frameworks;",
+                        "\t\t\tsourceTree = \"<group>\";",
+                        "\t\t};",
+                    ]
+                    text = try PBXProjTextEditor.insertBlockInSection(
+                        text, section: "PBXGroup", blockLines: groupBlock,
+                    )
+                    // Add group to main group's children
+                    if let mainGroupUUID = xcodeproj.pbxproj.rootObject?.mainGroup?.uuid {
+                        text = try PBXProjTextEditor.addReference(
+                            text, blockUUID: mainGroupUUID, field: "children",
+                            refUUID: groupUUID, comment: "Frameworks",
+                        )
                     }
                 }
             }
 
-            // For developer frameworks, add FRAMEWORK_SEARCH_PATHS to target build settings
+            // 3. Find or create frameworks build phase
+            let phaseUUID: String
+            if let existingPhase = existingFrameworksPhase {
+                phaseUUID = existingPhase.uuid
+            } else {
+                phaseUUID = PBXProjTextEditor.generateUUID()
+                let phaseBlock = [
+                    "\t\t\(phaseUUID) /* Frameworks */ = {",
+                    "\t\t\tisa = PBXFrameworksBuildPhase;",
+                    "\t\t\tbuildActionMask = 2147483647;",
+                    "\t\t\tfiles = (",
+                    "\t\t\t);",
+                    "\t\t\trunOnlyForDeploymentPostprocessing = 0;",
+                    "\t\t};",
+                ]
+                text = try PBXProjTextEditor.insertBlockInSection(
+                    text, section: "PBXFrameworksBuildPhase", blockLines: phaseBlock,
+                )
+                text = try PBXProjTextEditor.addReference(
+                    text, blockUUID: target.uuid, field: "buildPhases",
+                    refUUID: phaseUUID, comment: "Frameworks",
+                )
+            }
+
+            // 4. Create build file and add to frameworks build phase
+            let buildFileUUID = PBXProjTextEditor.generateUUID()
+            let buildFileLine =
+                "\t\t\(buildFileUUID) /* \(frameworkFileName) in Frameworks */ = {isa = PBXBuildFile; fileRef = \(fileRefUUID) /* \(frameworkFileName) */; };"
+            text = try PBXProjTextEditor.insertBlockInSection(
+                text, section: "PBXBuildFile", blockLines: [buildFileLine],
+            )
+            text = try PBXProjTextEditor.addReference(
+                text, blockUUID: phaseUUID, field: "files",
+                refUUID: buildFileUUID, comment: "\(frameworkFileName) in Frameworks",
+            )
+
+            // 5. Handle embed
+            if embed, !isSystemFramework {
+                let embedPhaseUUID: String
+                if let existing = target.buildPhases.first(where: {
+                    if let copyPhase = $0 as? PBXCopyFilesBuildPhase {
+                        return copyPhase.dstSubfolderSpec == .frameworks
+                            || copyPhase.dstSubfolder == .frameworks
+                    }
+                    return false
+                }) {
+                    embedPhaseUUID = existing.uuid
+                } else {
+                    let newUUID = PBXProjTextEditor.generateUUID()
+                    embedPhaseUUID = newUUID
+                    let embedBlock = [
+                        "\t\t\(newUUID) /* Embed Frameworks */ = {",
+                        "\t\t\tisa = PBXCopyFilesBuildPhase;",
+                        "\t\t\tbuildActionMask = 2147483647;",
+                        "\t\t\tdstPath = \"\";",
+                        "\t\t\tdstSubfolderSpec = 10;",
+                        "\t\t\tfiles = (",
+                        "\t\t\t);",
+                        "\t\t\tname = \"Embed Frameworks\";",
+                        "\t\t\trunOnlyForDeploymentPostprocessing = 0;",
+                        "\t\t};",
+                    ]
+                    text = try PBXProjTextEditor.insertBlockInSection(
+                        text, section: "PBXCopyFilesBuildPhase", blockLines: embedBlock,
+                    )
+                    text = try PBXProjTextEditor.addReference(
+                        text, blockUUID: target.uuid, field: "buildPhases",
+                        refUUID: newUUID, comment: "Embed Frameworks",
+                    )
+                }
+
+                let embedBuildFileUUID = PBXProjTextEditor.generateUUID()
+                let embedBuildFileLine =
+                    "\t\t\(embedBuildFileUUID) /* \(frameworkFileName) in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = \(fileRefUUID) /* \(frameworkFileName) */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };"
+                text = try PBXProjTextEditor.insertBlockInSection(
+                    text, section: "PBXBuildFile", blockLines: [embedBuildFileLine],
+                )
+                text = try PBXProjTextEditor.addReference(
+                    text, blockUUID: embedPhaseUUID, field: "files",
+                    refUUID: embedBuildFileUUID,
+                    comment: "\(frameworkFileName) in Embed Frameworks",
+                )
+            }
+
+            // 6. Handle developer framework search paths
             if isDeveloperFramework {
                 if let configList = target.buildConfigurationList {
                     for config in configList.buildConfigurations {
                         let existing = config.buildSettings["FRAMEWORK_SEARCH_PATHS"]
                         if existing == nil {
-                            config.buildSettings["FRAMEWORK_SEARCH_PATHS"] = .array([
-                                "$(inherited)",
-                                "$(DEVELOPER_FRAMEWORKS_DIR)",
-                            ])
+                            text = try PBXProjTextEditor.addBuildSettingArray(
+                                text, configUUID: config.uuid,
+                                key: "FRAMEWORK_SEARCH_PATHS",
+                                values: ["$(inherited)", "$(DEVELOPER_FRAMEWORKS_DIR)"],
+                            )
                         }
                     }
                 }
             }
 
-            // Create build file
-            let buildFile = PBXBuildFile(file: frameworkFileElement)
-            xcodeproj.pbxproj.add(object: buildFile)
-            frameworksBuildPhase.files?.append(buildFile)
-
-            // If embed is requested and it's a custom framework, add to embed frameworks phase
-            if embed, !isSystemFramework {
-                // Find or create embed frameworks build phase
-                var embedPhase: PBXCopyFilesBuildPhase?
-                for phase in target.buildPhases {
-                    if let copyPhase = phase as? PBXCopyFilesBuildPhase,
-                       copyPhase.dstSubfolderSpec == .frameworks
-                       || copyPhase
-                       .dstSubfolder == .frameworks
-                    {
-                        embedPhase = copyPhase
-                        break
-                    }
-                }
-
-                if embedPhase == nil {
-                    embedPhase = PBXCopyFilesBuildPhase(
-                        dstPath: "",
-                        dstSubfolderSpec: .frameworks,
-                        name: "Embed Frameworks",
-                    )
-                    xcodeproj.pbxproj.add(object: embedPhase!)
-                    target.buildPhases.append(embedPhase!)
-                }
-
-                // Create build file for embedding
-                let embedBuildFile = PBXBuildFile(
-                    file: frameworkFileElement,
-                    settings: ["ATTRIBUTES": ["CodeSignOnCopy", "RemoveHeadersOnCopy"]],
-                )
-                xcodeproj.pbxproj.add(object: embedBuildFile)
-                embedPhase?.files?.append(embedBuildFile)
-            }
-
-            // Save project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjTextEditor.write(text, projectPath: resolvedProjectPath)
 
             let embedText = embed && !isSystemFramework ? " (embedded)" : ""
             return CallTool.Result(

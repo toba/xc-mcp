@@ -230,6 +230,115 @@ public enum PBXProjTextEditor {
         return lines.joined(separator: "\n")
     }
 
+    // MARK: - Section block insertion
+
+    /// Insert block lines into a named section (e.g. "PBXBuildFile").
+    /// Creates the section at the correct alphabetical position if it doesn't exist.
+    public static func insertBlockInSection(
+        _ content: String,
+        section: String,
+        blockLines: [String],
+    ) throws(EditError) -> String {
+        var lines = content.splitLines()
+        let sectionEnd = "/* End \(section) section */"
+
+        if let idx = lines.firstIndex(where: { $0.contains(sectionEnd) }) {
+            lines.insert(contentsOf: blockLines, at: idx)
+            return lines.joined(separator: "\n")
+        }
+
+        // Section doesn't exist — create it at the correct alphabetical position
+        var insertionPoint: Int?
+        for (i, line) in lines.enumerated() {
+            if let beginRange = line.range(of: "/* Begin "),
+               let endRange = line.range(of: " section */")
+            {
+                let existing = String(line[beginRange.upperBound ..< endRange.lowerBound])
+                if existing > section {
+                    insertionPoint = i
+                    break
+                }
+            }
+        }
+
+        guard let ip = insertionPoint else {
+            throw EditError.sectionNotFound(section)
+        }
+
+        var newSection = [""]
+        newSection.append("/* Begin \(section) section */")
+        newSection.append(contentsOf: blockLines)
+        newSection.append("/* End \(section) section */")
+        lines.insert(contentsOf: newSection, at: ip)
+        return lines.joined(separator: "\n")
+    }
+
+    // MARK: - Build setting operations
+
+    /// Add an array build setting to a configuration, only if the key doesn't already exist.
+    public static func addBuildSettingArray(
+        _ content: String,
+        configUUID: String,
+        key: String,
+        values: [String],
+    ) throws(EditError) -> String {
+        var lines = content.splitLines()
+        let (bStart, bEnd) = try findBlock(in: lines, uuid: configUUID)
+
+        // Check if key already exists in this block
+        for i in bStart ... bEnd {
+            if lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("\(key) ") {
+                return content // Already set
+            }
+        }
+
+        // Find buildSettings = { … }; within the block
+        guard let settingsStart = (bStart ... bEnd).first(where: {
+            lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix("buildSettings = {")
+        }) else {
+            throw .arrayFieldNotFound(field: "buildSettings", inBlock: configUUID)
+        }
+
+        // Find the closing }; for buildSettings by tracking brace depth
+        var depth = 0
+        var settingsEnd: Int?
+        for i in settingsStart ... bEnd {
+            for c in lines[i] {
+                if c == "{" { depth += 1 }
+                if c == "}" { depth -= 1 }
+            }
+            if depth == 0 {
+                settingsEnd = i
+                break
+            }
+        }
+
+        guard let se = settingsEnd else {
+            throw .arrayFieldNotFound(field: "buildSettings", inBlock: configUUID)
+        }
+
+        // Detect indent from existing settings entries
+        let settingsIndent: String
+        if settingsStart + 1 < se {
+            settingsIndent = String(
+                lines[settingsStart + 1].prefix(while: { $0 == "\t" || $0 == " " }),
+            )
+        } else {
+            settingsIndent = "\t\t\t\t"
+        }
+        let valueIndent = settingsIndent + "\t"
+
+        var insert: [String] = []
+        insert.append("\(settingsIndent)\(key) = (")
+        for v in values {
+            insert.append("\(valueIndent)\(quotePBX(v)),")
+        }
+        insert.append("\(settingsIndent));")
+
+        lines.insert(contentsOf: insert, at: se)
+        return lines.joined(separator: "\n")
+    }
+
     // MARK: - UUID generation
 
     public static func generateUUID() -> String {
@@ -243,9 +352,11 @@ public enum PBXProjTextEditor {
     private static func findBlock(
         in lines: [String], uuid: String,
     ) throws(EditError) -> (start: Int, end: Int) {
+        // Match block definitions (UUID ... = {) not array references (UUID ... ,)
         guard let start = lines.firstIndex(where: {
             let t = $0.trimmingCharacters(in: .whitespaces)
-            return t.hasPrefix("\(uuid) ") || t.hasPrefix("\(uuid)\t")
+            return (t.hasPrefix("\(uuid) ") || t.hasPrefix("\(uuid)\t"))
+                && t.contains("= {")
         }) else {
             throw .blockNotFound(uuid: uuid)
         }
@@ -348,7 +459,7 @@ public enum PBXProjTextEditor {
         return entry.isEmpty ? nil : entry
     }
 
-    static func quotePBX(_ s: String) -> String {
+    public static func quotePBX(_ s: String) -> String {
         let safe = CharacterSet.alphanumerics.union(
             CharacterSet(charactersIn: "._/"),
         )

@@ -97,6 +97,16 @@ public enum CrashReportParser: Sendable {
         }
     }
 
+    /// Diagnostic information returned when no crash reports match the search.
+    public struct SearchDiagnostics: Sendable {
+        /// Process names that had reports in the time window but didn't match the filter.
+        public let processesInWindow: [String]
+        /// Total all-time report count for the filtered process (if specified).
+        public let totalReportsForProcess: Int?
+        /// Whether ReportCrash throttling is likely (>= 25 all-time reports, none recent).
+        public let throttleLikely: Bool
+    }
+
     /// The directory where macOS stores crash reports.
     public static let diagnosticReportsDir: String = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Logs/DiagnosticReports").path
@@ -363,5 +373,59 @@ public enum CrashReportParser: Sendable {
         // Sort most recent first
         results.sort { $0.modified > $1.modified }
         return results.map { ($0.path, $0.summary) }
+    }
+
+    /// Searches for crash reports with diagnostics about why no results were found.
+    public static func searchWithDiagnostics(
+        processName: String? = nil,
+        bundleID: String? = nil,
+        minutes: Int = 5,
+    ) -> (results: [(path: String, summary: CrashSummary)], diagnostics: SearchDiagnostics?) {
+        let results = search(processName: processName, bundleID: bundleID, minutes: minutes)
+
+        guard results.isEmpty, processName != nil || bundleID != nil else {
+            return (results, nil)
+        }
+
+        let fm = FileManager.default
+        let reportsDir = diagnosticReportsDir
+        guard let entries = try? fm.contentsOfDirectory(atPath: reportsDir) else {
+            return (results, nil)
+        }
+
+        let cutoff = Date().addingTimeInterval(-Double(minutes * 60))
+        var totalForProcess = 0
+        var processesInWindow: Set<String> = []
+
+        for entry in entries where entry.hasSuffix(".ips") {
+            let fullPath = "\(reportsDir)/\(entry)"
+            let attrs = try? fm.attributesOfItem(atPath: fullPath)
+            let modified = attrs?[.modificationDate] as? Date
+            let isRecent = modified.map { $0 > cutoff } ?? false
+
+            // Check if this file belongs to the filtered process (by filename)
+            if let processName {
+                if entry.localizedCaseInsensitiveContains(processName) {
+                    totalForProcess += 1
+                }
+            }
+
+            // Collect process names in the time window
+            if isRecent {
+                // Extract process name from filename (format: ProcessName-date.ips)
+                if let dashIndex = entry.firstIndex(of: "-") {
+                    let name = String(entry[..<dashIndex])
+                    processesInWindow.insert(name)
+                }
+            }
+        }
+
+        let diagnostics = SearchDiagnostics(
+            processesInWindow: processesInWindow.sorted(),
+            totalReportsForProcess: processName != nil ? totalForProcess : nil,
+            throttleLikely: totalForProcess >= 25,
+        )
+
+        return (results, diagnostics)
     }
 }

@@ -3,7 +3,7 @@ citations:
       branch: main
       notes: Sources/Tools/Project/ (23 tools), Sources/Utilities/PathUtility.swift
       last_checked_sha: b29c9aae7fa57a9e65e50fa91dc55eebd1820d4b
-      last_checked_date: "2026-04-03T18:06:59Z"
+      last_checked_date: "2026-04-06T16:49:31Z"
       paths:
         high: [Sources/XcodeProjectMCP/*.swift]
         medium: [Package.swift, Tests/**]
@@ -11,8 +11,8 @@ citations:
     - repo: ldomaradzki/xcsift
       branch: master
       notes: Sources/Core/BuildOutputParser.swift, BuildOutputModels.swift, CoverageParser.swift
-      last_checked_sha: 04b4352216a101470e54dd237ede2eb59e48709d
-      last_checked_date: "2026-04-03T18:06:59Z"
+      last_checked_sha: adab8856045f80b3198dd28372f77e0f14308b42
+      last_checked_date: "2026-04-06T16:49:31Z"
       paths:
         high: [Sources/OutputParser.swift, Sources/Models.swift, Sources/CoverageParser.swift]
         medium: [Sources/Configuration.swift, Package.swift, Tests/**]
@@ -21,7 +21,7 @@ citations:
       branch: main
       notes: Sources/Core/XCStrings/ (7 files)
       last_checked_sha: 3acc94fc608ef9a8588e43f6f15738e31690607f
-      last_checked_date: "2026-04-03T18:06:59Z"
+      last_checked_date: "2026-04-06T16:49:31Z"
       paths:
         high: [Sources/XCStringsKit/**]
         medium: [Sources/XCStringsMCP/**, Sources/XCStringsCLI/**, Tests/**]
@@ -30,7 +30,7 @@ citations:
       branch: main
       notes: All project manipulation tools via XcodeProj library
       last_checked_sha: 9a7bc7a13002b99609a35588e30c5f81d663c036
-      last_checked_date: "2026-04-03T18:06:59Z"
+      last_checked_date: "2026-04-06T16:49:31Z"
       paths:
         high: [Sources/XcodeProj/Objects/**, Sources/XcodeProj/Scheme/**, Sources/XcodeProj/Project/**]
         medium: [Sources/XcodeProj/Utils/**, Sources/XcodeProj/Extensions/**, Package.swift, CHANGELOG.md, Tests/**]
@@ -39,7 +39,7 @@ citations:
       branch: main
       notes: Monitor for features worth incorporating into xc-mcp
       last_checked_sha: b6f49dd0636846c474334e2949b947ed0ea41aad
-      last_checked_date: "2026-04-03T18:06:59Z"
+      last_checked_date: "2026-04-06T16:49:31Z"
       paths:
         high: [Sources/**/*Tool*.swift, Sources/**/*Handler*.swift]
         medium: [Sources/**/*.swift, Package.swift, Tests/**]
@@ -47,8 +47,8 @@ citations:
     - repo: peripheryapp/periphery
       branch: master
       notes: A tool to identify unused code in Swift projects.
-      last_checked_sha: dcd5646c1334fd6044629ccfdc00ae620aa5e6b9
-      last_checked_date: "2026-04-03T18:06:59Z"
+      last_checked_sha: 199e224b302e6e7375ca66e2cf7f69dcbf671cc5
+      last_checked_date: "2026-04-06T16:49:31Z"
       paths:
         high: [Sources/**/*.swift]
         medium: [Package.swift]
@@ -56,8 +56,8 @@ citations:
     - repo: skwallace36/Pepper
       branch: main
       notes: In-process iOS simulator inspection via dylib injection; complementary to xc-mcp's out-of-process approach. Watch for accessibility audit, network mocking, and heap analysis ideas.
-      last_checked_sha: 888e18172873d8223685633f259837b1c3b8bc72
-      last_checked_date: "2026-04-03T18:06:59Z"
+      last_checked_sha: f04d7f962c7bafd97c3e1f06eca96f8b021f530f
+      last_checked_date: "2026-04-06T16:49:31Z"
       paths:
         high: [pepper/**/*.py, Sources/**/*.swift]
         medium: [pepper/**/*.json, pyproject.toml]

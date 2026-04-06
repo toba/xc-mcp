@@ -69,8 +69,6 @@ public struct RemoveFileTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             let fileName = URL(fileURLWithPath: resolvedFilePath).lastPathComponent
-            var removedFromTargets: [String] = []
-            var fileRemoved = false
 
             /// Check whether a file reference matches the requested path by
             /// computing its full path relative to the project source root.
@@ -82,94 +80,64 @@ public struct RemoveFileTool: Sendable {
                 return false
             }
 
-            // Find and remove file references from build phases
+            // --- Phase 1: Identify all UUIDs to remove using XcodeProj (read-only) ---
+
+            struct BuildFileRemoval {
+                let buildFileUUID: String
+                let phaseUUID: String
+                let targetName: String
+            }
+
+            var removals: [BuildFileRemoval] = []
+            var fileRefUUID: String?
+
+            // Find build files referencing this file in all targets
             for target in xcodeproj.pbxproj.nativeTargets {
-                // Check sources build phase
-                if let sourcesBuildPhase = target.buildPhases.first(where: {
-                    $0 is PBXSourcesBuildPhase
-                }) as? PBXSourcesBuildPhase {
-                    if let fileIndex = sourcesBuildPhase.files?.firstIndex(where: { buildFile in
-                        if let fileRef = buildFile.file as? PBXFileReference {
-                            return matchesRequestedFile(fileRef)
+                for phase in target.buildPhases {
+                    if let files = phase.files {
+                        for buildFile in files {
+                            if let fileRef = buildFile.file as? PBXFileReference,
+                               matchesRequestedFile(fileRef)
+                            {
+                                removals.append(BuildFileRemoval(
+                                    buildFileUUID: buildFile.uuid,
+                                    phaseUUID: phase.uuid,
+                                    targetName: target.name,
+                                ))
+                                fileRefUUID = fileRef.uuid
+                            }
                         }
-                        return false
-                    }) {
-                        sourcesBuildPhase.files?.remove(at: fileIndex)
-                        removedFromTargets.append(target.name)
-                        fileRemoved = true
-                    }
-                }
-
-                // Check resources build phase
-                if let resourcesBuildPhase = target.buildPhases.first(where: {
-                    $0 is PBXResourcesBuildPhase
-                }) as? PBXResourcesBuildPhase {
-                    if let fileIndex = resourcesBuildPhase.files?.firstIndex(where: { buildFile in
-                        if let fileRef = buildFile.file as? PBXFileReference {
-                            return matchesRequestedFile(fileRef)
-                        }
-                        return false
-                    }) {
-                        resourcesBuildPhase.files?.remove(at: fileIndex)
-                        if !removedFromTargets.contains(target.name) {
-                            removedFromTargets.append(target.name)
-                        }
-                        fileRemoved = true
                     }
                 }
             }
 
-            /// Remove from project groups
-            func removeFromGroup(_ group: PBXGroup) -> Bool {
-                let children = group.children
-                if let index = children.firstIndex(where: { element in
-                    if let fileRef = element as? PBXFileReference {
-                        return matchesRequestedFile(fileRef)
-                    }
-                    return false
-                }) {
-                    group.children.remove(at: index)
-                    return true
-                }
+            // Find parent group containing the file reference
+            var parentGroupUUID: String?
 
-                // Recursively check child groups
-                for child in children {
-                    if let childGroup = child as? PBXGroup {
-                        if removeFromGroup(childGroup) {
-                            return true
-                        }
+            func findParentGroup(_ group: PBXGroup) -> PBXGroup? {
+                for child in group.children {
+                    if let fileRef = child as? PBXFileReference,
+                       matchesRequestedFile(fileRef)
+                    {
+                        fileRefUUID = fileRef.uuid
+                        return group
+                    }
+                    if let childGroup = child as? PBXGroup,
+                       let found = findParentGroup(childGroup)
+                    {
+                        return found
                     }
                 }
-                return false
+                return nil
             }
 
-            if let project = xcodeproj.pbxproj.rootObject,
-               let mainGroup = project.mainGroup
-            {
-                if removeFromGroup(mainGroup) {
-                    fileRemoved = true
+            if let mainGroup = xcodeproj.pbxproj.rootObject?.mainGroup {
+                if let group = findParentGroup(mainGroup) {
+                    parentGroupUUID = group.uuid
                 }
             }
 
-            if fileRemoved {
-                try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
-
-                // Optionally remove from disk
-                if removeFromDisk {
-                    let fileURL = URL(fileURLWithPath: resolvedFilePath)
-                    if FileManager.default.fileExists(atPath: fileURL.path) {
-                        try FileManager.default.removeItem(at: fileURL)
-                    }
-                }
-
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Successfully removed \(fileName) from project. Removed from targets: \(removedFromTargets.joined(separator: ", "))",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
-            } else {
+            guard !removals.isEmpty || parentGroupUUID != nil else {
                 return CallTool.Result(
                     content: [
                         .text(
@@ -180,6 +148,46 @@ public struct RemoveFileTool: Sendable {
                     ],
                 )
             }
+
+            // --- Phase 2: Text-based edits ---
+            var text = try PBXProjTextEditor.read(projectPath: resolvedProjectPath)
+
+            // Remove from build phases and delete build file blocks
+            for removal in removals {
+                text = try PBXProjTextEditor.removeReference(
+                    text, blockUUID: removal.phaseUUID, field: "files",
+                    refUUID: removal.buildFileUUID,
+                )
+                text = try PBXProjTextEditor.removeBlock(text, uuid: removal.buildFileUUID)
+            }
+
+            // Remove from parent group and delete file reference block
+            if let refUUID = fileRefUUID, let groupUUID = parentGroupUUID {
+                text = try PBXProjTextEditor.removeReference(
+                    text, blockUUID: groupUUID, field: "children",
+                    refUUID: refUUID,
+                )
+                text = try PBXProjTextEditor.removeBlock(text, uuid: refUUID)
+            }
+
+            try PBXProjTextEditor.write(text, projectPath: resolvedProjectPath)
+
+            // Optionally remove from disk
+            if removeFromDisk {
+                let fileURL = URL(fileURLWithPath: resolvedFilePath)
+                if FileManager.default.fileExists(atPath: fileURL.path) {
+                    try FileManager.default.removeItem(at: fileURL)
+                }
+            }
+
+            let removedFromTargets = removals.map(\.targetName)
+            return CallTool.Result(
+                content: [
+                    .text(text:
+                        "Successfully removed \(fileName) from project. Removed from targets: \(removedFromTargets.joined(separator: ", "))",
+                        annotations: nil, _meta: nil),
+                ],
+            )
         } catch {
             throw MCPError.internalError(
                 "Failed to remove file from Xcode project: \(error.localizedDescription)",

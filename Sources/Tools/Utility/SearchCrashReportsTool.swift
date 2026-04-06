@@ -71,7 +71,7 @@ public struct SearchCrashReportsTool: Sendable {
         let bundleID = arguments.getString("bundle_id")
         let minutes = arguments.getInt("minutes") ?? 5
 
-        let results = CrashReportParser.search(
+        let (results, diagnostics) = CrashReportParser.searchWithDiagnostics(
             processName: processName,
             bundleID: bundleID,
             minutes: minutes,
@@ -86,6 +86,18 @@ public struct SearchCrashReportsTool: Sendable {
                 message += " with bundle ID '\(bundleID)'"
             }
             message += ".\n\nSearched: \(CrashReportParser.diagnosticReportsDir)"
+
+            if let diagnostics {
+                if diagnostics.throttleLikely, let processName {
+                    message += "\n\n⚠️ ReportCrash throttling likely: found \(diagnostics.totalReportsForProcess ?? 0) total reports for '\(processName)' across all time."
+                    message += "\nmacOS stops generating new .ips files after ~25 reports per process."
+                    message += "\nTo reset, delete old reports: rm ~/Library/Logs/DiagnosticReports/\(processName)-*.ips"
+                }
+                if !diagnostics.processesInWindow.isEmpty {
+                    message += "\n\nProcesses with reports in this time window: \(diagnostics.processesInWindow.joined(separator: ", "))"
+                }
+            }
+
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         }
 

@@ -390,9 +390,12 @@ public final class BuildOutputParser {
             {
                 let numStr = line[line.index(after: bracketStart) ..< slashIndex]
                 let totalStr = line[line.index(after: slashIndex) ..< bracketEnd]
-                if Int(numStr) != nil, let total = Int(totalStr) {
+                if let num = Int(numStr), let total = Int(totalStr) {
                     if parallelTestsTotalCount == nil {
                         parallelTestsTotalCount = total
+                    } else if num == 1 {
+                        // New parallel run started — accumulate
+                        parallelTestsTotalCount = (parallelTestsTotalCount ?? 0) + total
                     }
                 }
             }
@@ -1231,7 +1234,7 @@ public final class BuildOutputParser {
             ]
             let testCountStr = afterExecuted.split(separator: " ").first
             if let testCountStr, let total = Int(testCountStr) {
-                xctestExecutedCount = total
+                xctestExecutedCount = (xctestExecutedCount ?? 0) + total
             }
 
             let afterWith = String(trimmedLine[withRange.upperBound...])
@@ -1239,7 +1242,7 @@ public final class BuildOutputParser {
                 let beforeFailure = afterWith[..<failureRange.lowerBound]
                 let words = beforeFailure.split(separator: " ")
                 if let lastWord = words.last, let failures = Int(lastWord) {
-                    xctestFailedCount = failures
+                    xctestFailedCount = (xctestFailedCount ?? 0) + failures
                 }
             }
 
@@ -1271,15 +1274,14 @@ public final class BuildOutputParser {
                 let beforeFailed = line[testRunRange.upperBound ..< failedRange.lowerBound]
                 let failedCountStr = beforeFailed.split(separator: " ").first
                 if let failedCountStr, let failedCount = Int(failedCountStr) {
-                    swiftTestingFailedCount = failedCount
-                }
+                    swiftTestingFailedCount = (swiftTestingFailedCount ?? 0) + failedCount
 
-                let beforePassed = line[failedRange.upperBound ..< passedRange.lowerBound]
-                let passedCountStr = beforePassed.split(separator: " ").first
-                if let passedCountStr, let passedCount = Int(passedCountStr),
-                   let failedCount = swiftTestingFailedCount
-                {
-                    swiftTestingExecutedCount = passedCount + failedCount
+                    let beforePassed = line[failedRange.upperBound ..< passedRange.lowerBound]
+                    let passedCountStr = beforePassed.split(separator: " ").first
+                    if let passedCountStr, let passedCount = Int(passedCountStr) {
+                        swiftTestingExecutedCount = (swiftTestingExecutedCount ?? 0) + passedCount +
+                            failedCount
+                    }
                 }
 
                 let afterPassed = line[passedRange.upperBound...]
@@ -1300,7 +1302,7 @@ public final class BuildOutputParser {
                 let beforeFailed = line[testRunRange.upperBound ..< failedAfterRange.lowerBound]
                 let testCountStr = beforeFailed.split(separator: " ").first
                 if let testCountStr, let total = Int(testCountStr) {
-                    swiftTestingExecutedCount = total
+                    swiftTestingExecutedCount = (swiftTestingExecutedCount ?? 0) + total
 
                     // Extract issue count from "with Y issue(s)"
                     let afterFailed = line[failedAfterRange.upperBound...]
@@ -1308,12 +1310,12 @@ public final class BuildOutputParser {
                         let afterWith = afterFailed[withRange.upperBound...]
                         let issueCountStr = afterWith.split(separator: " ").first
                         if let issueCountStr, let issueCount = Int(issueCountStr) {
-                            swiftTestingFailedCount = issueCount
+                            swiftTestingFailedCount = (swiftTestingFailedCount ?? 0) + issueCount
                         } else {
-                            swiftTestingFailedCount = total
+                            swiftTestingFailedCount = (swiftTestingFailedCount ?? 0) + total
                         }
                     } else {
-                        swiftTestingFailedCount = total
+                        swiftTestingFailedCount = (swiftTestingFailedCount ?? 0) + total
                     }
 
                     if let secondsRange = afterFailed.range(of: " seconds") {
@@ -1329,8 +1331,7 @@ public final class BuildOutputParser {
                 let afterPrefix = line[testRunRange.upperBound ..< passedAfter.lowerBound]
                 let testCountStr = afterPrefix.split(separator: " ").first
                 if let testCountStr, let total = Int(testCountStr) {
-                    swiftTestingExecutedCount = total
-                    swiftTestingFailedCount = 0
+                    swiftTestingExecutedCount = (swiftTestingExecutedCount ?? 0) + total
 
                     if total > 0 {
                         let afterPassed = line[passedAfter.upperBound...]

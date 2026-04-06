@@ -187,4 +187,26 @@ struct CrashReportParserTests {
         let dir = CrashReportParser.diagnosticReportsDir
         #expect(dir.contains("Library/Logs/DiagnosticReports"))
     }
+
+    // MARK: - SearchDiagnostics
+
+    @Test
+    func `searchWithDiagnostics returns nil diagnostics when results found`() {
+        // Search without filters — if any reports exist, diagnostics should be nil
+        let (_, diagnostics) = CrashReportParser.searchWithDiagnostics(minutes: 0)
+        #expect(diagnostics == nil)
+    }
+
+    @Test
+    func `searchWithDiagnostics returns diagnostics for missing process`() {
+        let (results, diagnostics) = CrashReportParser.searchWithDiagnostics(
+            processName: "NonExistentApp_\(UUID().uuidString)",
+            minutes: 1,
+        )
+        #expect(results.isEmpty)
+        // Diagnostics should be non-nil since we specified a filter
+        #expect(diagnostics != nil)
+        #expect(diagnostics?.totalReportsForProcess == 0)
+        #expect(diagnostics?.throttleLikely == false)
+    }
 }

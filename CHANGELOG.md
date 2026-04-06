@@ -1,5 +1,15 @@
 # Changelog
 
+## Week of Apr 5 – Apr 11, 2026
+
+### ✨ Features
+
+- Add ReportCrash throttle detection to `search_crash_reports`; warn when macOS stops generating `.ips` files after ~25 reports per process and list other processes with reports in the time window ([#259](https://github.com/toba/xc-mcp/issues/259))
+
+### 🐞 Fixes
+
+- Fix multi-suite test count bug in `BuildOutputParser`; accumulate XCTest bundle counts, Swift Testing run counts, and parallel scheduling totals instead of overwriting ([#261](https://github.com/toba/xc-mcp/issues/261))
+
 ## Week of Mar 29 – Apr 4, 2026
 
 ### ✨ Features
