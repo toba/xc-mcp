@@ -39,6 +39,14 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     case exportIcon = "export_icon"
     case diagnostics
 
+    // Build diagnostics tools
+    case checkOutputFileMap = "check_output_file_map"
+    case extractCrashTraces = "extract_crash_traces"
+    case listBuildPhaseStatus = "list_build_phase_status"
+    case readSerializedDiagnostics = "read_serialized_diagnostics"
+    case diffBuildSettings = "diff_build_settings"
+    case showBuildDependencyGraph = "show_build_dependency_graph"
+
     // Performance tools
     case getPerformanceMetrics = "get_performance_metrics"
     case setPerformanceBaseline = "set_performance_baseline"
@@ -163,6 +171,26 @@ public struct BuildMCPServer: Sendable {
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
 
+        // Create build diagnostics tools
+        let checkOutputFileMapTool = CheckOutputFileMapTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let extractCrashTracesTool = ExtractCrashTracesTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let listBuildPhaseStatusTool = ListBuildPhaseStatusTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let readSerializedDiagnosticsTool = ReadSerializedDiagnosticsTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let diffBuildSettingsTool = DiffBuildSettingsTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let showBuildDependencyGraphTool = ShowBuildDependencyGraphTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+
         // Create performance tools
         let getPerformanceMetricsTool = GetPerformanceMetricsTool()
         let setPerformanceBaselineTool = SetPerformanceBaselineTool(
@@ -222,6 +250,13 @@ public struct BuildMCPServer: Sendable {
                 searchCrashReportsTool.tool(),
                 exportIconTool.tool(),
                 diagnosticsTool.tool(),
+                // Build diagnostics tools
+                checkOutputFileMapTool.tool(),
+                extractCrashTracesTool.tool(),
+                listBuildPhaseStatusTool.tool(),
+                readSerializedDiagnosticsTool.tool(),
+                diffBuildSettingsTool.tool(),
+                showBuildDependencyGraphTool.tool(),
                 // Performance tools
                 getPerformanceMetricsTool.tool(),
                 setPerformanceBaselineTool.tool(),
@@ -309,6 +344,19 @@ public struct BuildMCPServer: Sendable {
                     return try await exportIconTool.execute(arguments: arguments)
                 case .diagnostics:
                     return try await diagnosticsTool.execute(arguments: arguments)
+                // Build diagnostics tools
+                case .checkOutputFileMap:
+                    return try await checkOutputFileMapTool.execute(arguments: arguments)
+                case .extractCrashTraces:
+                    return try await extractCrashTracesTool.execute(arguments: arguments)
+                case .listBuildPhaseStatus:
+                    return try await listBuildPhaseStatusTool.execute(arguments: arguments)
+                case .readSerializedDiagnostics:
+                    return try await readSerializedDiagnosticsTool.execute(arguments: arguments)
+                case .diffBuildSettings:
+                    return try await diffBuildSettingsTool.execute(arguments: arguments)
+                case .showBuildDependencyGraph:
+                    return try await showBuildDependencyGraphTool.execute(arguments: arguments)
                 // Performance tools
                 case .getPerformanceMetrics:
                     return try await getPerformanceMetricsTool.execute(arguments: arguments)

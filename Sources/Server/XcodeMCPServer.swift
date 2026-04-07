@@ -215,6 +215,15 @@ public enum ToolName: String, CaseIterable, Sendable {
     case searchCrashReports = "search_crash_reports"
     case exportIcon = "export_icon"
     case diagnostics
+
+    // Build diagnostics tools
+    case checkOutputFileMap = "check_output_file_map"
+    case extractCrashTraces = "extract_crash_traces"
+    case listBuildPhaseStatus = "list_build_phase_status"
+    case readSerializedDiagnostics = "read_serialized_diagnostics"
+    case diffBuildSettings = "diff_build_settings"
+    case showBuildDependencyGraph = "show_build_dependency_graph"
+
     case versionManagement = "version_management"
     case notarize
     case validateAssetCatalog = "validate_asset_catalog"
@@ -300,7 +309,10 @@ public enum ToolName: String, CaseIterable, Sendable {
                 return .instruments
             // Utility
             case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS, .searchCrashReports, .exportIcon,
-                 .diagnostics, .versionManagement, .notarize, .validateAssetCatalog,
+                 .diagnostics, .checkOutputFileMap, .extractCrashTraces,
+                 .listBuildPhaseStatus, .readSerializedDiagnostics,
+                 .diffBuildSettings, .showBuildDependencyGraph,
+                 .versionManagement, .notarize, .validateAssetCatalog,
                  .openInXcode:
                 return .utility
         }
@@ -696,6 +708,24 @@ public struct XcodeMCPServer: Sendable {
         let diagnosticsTool = DiagnosticsTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let checkOutputFileMapTool = CheckOutputFileMapTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let extractCrashTracesTool = ExtractCrashTracesTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let listBuildPhaseStatusTool = ListBuildPhaseStatusTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let readSerializedDiagnosticsTool = ReadSerializedDiagnosticsTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let diffBuildSettingsTool = DiffBuildSettingsTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let showBuildDependencyGraphTool = ShowBuildDependencyGraphTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
         let versionManagementTool = VersionManagementTool()
         let notarizeTool = NotarizeTool()
         let validateAssetCatalogTool = ValidateAssetCatalogTool()
@@ -895,6 +925,12 @@ public struct XcodeMCPServer: Sendable {
             (.searchCrashReports, searchCrashReportsTool.tool()),
             (.exportIcon, exportIconTool.tool()),
             (.diagnostics, diagnosticsTool.tool()),
+            (.checkOutputFileMap, checkOutputFileMapTool.tool()),
+            (.extractCrashTraces, extractCrashTracesTool.tool()),
+            (.listBuildPhaseStatus, listBuildPhaseStatusTool.tool()),
+            (.readSerializedDiagnostics, readSerializedDiagnosticsTool.tool()),
+            (.diffBuildSettings, diffBuildSettingsTool.tool()),
+            (.showBuildDependencyGraph, showBuildDependencyGraphTool.tool()),
             (.versionManagement, versionManagementTool.tool()),
             (.notarize, notarizeTool.tool()),
             (.validateAssetCatalog, validateAssetCatalogTool.tool()),
@@ -1314,6 +1350,18 @@ public struct XcodeMCPServer: Sendable {
                     return try await exportIconTool.execute(arguments: arguments)
                 case .diagnostics:
                     return try await diagnosticsTool.execute(arguments: arguments)
+                case .checkOutputFileMap:
+                    return try await checkOutputFileMapTool.execute(arguments: arguments)
+                case .extractCrashTraces:
+                    return try await extractCrashTracesTool.execute(arguments: arguments)
+                case .listBuildPhaseStatus:
+                    return try await listBuildPhaseStatusTool.execute(arguments: arguments)
+                case .readSerializedDiagnostics:
+                    return try await readSerializedDiagnosticsTool.execute(arguments: arguments)
+                case .diffBuildSettings:
+                    return try await diffBuildSettingsTool.execute(arguments: arguments)
+                case .showBuildDependencyGraph:
+                    return try await showBuildDependencyGraphTool.execute(arguments: arguments)
                 case .versionManagement:
                     return try await versionManagementTool.execute(arguments: arguments)
                 case .notarize:

@@ -11,6 +11,7 @@
 - Add `notarize` tool; full macOS notarization workflow via `notarytool` and `stapler` ([#263](https://github.com/toba/xc-mcp/issues/263))
 - Add `validate_asset_catalog` tool; pre-build `.xcassets` validation via `actool` ([#264](https://github.com/toba/xc-mcp/issues/264))
 - Add `open_in_xcode` tool; open files at specific lines, projects, or workspaces via `xed` ([#267](https://github.com/toba/xc-mcp/issues/267))
+- Add 6 build diagnostics tools (`check_output_file_map`, `extract_crash_traces`, `list_build_phase_status`, `read_serialized_diagnostics`, `diff_build_settings`, `show_build_dependency_graph`); debug silent compilation failures by inspecting OutputFileMap entries, compiler crash traces, build phase status, `.dia` files, build setting diffs, and dependency graphs ([#268](https://github.com/toba/xc-mcp/issues/268))
 
 ### 🐛 Fixes
 
