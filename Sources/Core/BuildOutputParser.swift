@@ -610,7 +610,8 @@ public final class BuildOutputParser {
     /// Extracts a Swift Testing test name from a line containing `Test "name"` or `Test funcName()`.
     ///
     /// Returns the test name and the substring index after the name (past the closing quote or
-    /// parentheses), or nil if no match.
+    /// parentheses and any trailing modifiers like `(aka '...')` or `with N test case(s)`),
+    /// or nil if no match.
     private func extractSwiftTestingName(from line: String, after startIndex: String.Index)
         -> (name: String, endIndex: String.Index)?
     {
@@ -625,7 +626,29 @@ public final class BuildOutputParser {
                 return nil
             }
             let name = String(line[afterQuote ..< closingQuote])
-            return (name, line.index(after: closingQuote))
+            var endIndex = line.index(after: closingQuote)
+
+            // Skip optional (aka '...') verbose suffix
+            let afterName = line[endIndex...]
+            if afterName.hasPrefix(" (aka '"),
+               let closeRange = afterName.range(of: "')")
+            {
+                endIndex = closeRange.upperBound
+            }
+
+            // Skip optional "with N test case(s)" parameterized suffix
+            let afterModifiers = line[endIndex...]
+            if afterModifiers.hasPrefix(" with "),
+               let caseRange = afterModifiers.range(of: " test case")
+            {
+                var idx = caseRange.upperBound
+                if idx < line.endIndex, line[idx] == "s" {
+                    idx = line.index(after: idx)
+                }
+                endIndex = idx
+            }
+
+            return (name, endIndex)
         }
 
         // Unquoted format: Test funcName() ...
@@ -1110,6 +1133,8 @@ public final class BuildOutputParser {
 
         // Swift Testing: <symbol> Test "name" recorded an issue at file:line:column: message
         // Also supports unquoted: <symbol> Test funcName() recorded an issue at ...
+        // Also handles parameterized: Test "name" recorded an issue with N argument value(s) → ... at file:line:col: message
+        // Also handles no-location: Test "name" recorded an issue: message
         if let testRange = line.range(of: "Test ") {
             let afterTest = line[testRange.upperBound...]
             // Skip "Test run with" (summary line) and "Test Case" (XCTest format)
@@ -1122,24 +1147,32 @@ public final class BuildOutputParser {
             }
             let remaining = line[extracted.endIndex...]
 
-            let issueMarker = " recorded an issue at "
-            if remaining.hasPrefix(issueMarker) {
-                let afterIssue = String(
-                    remaining[
-                        remaining.index(
-                            remaining.startIndex,
-                            offsetBy: issueMarker.count,
-                        )...,
-                    ],
-                )
-                let parts = afterIssue.split(
-                    separator: ":", maxSplits: 3, omittingEmptySubsequences: false,
-                )
-                if parts.count >= 4, let lineNum = Int(parts[1]) {
-                    let file = String(parts[0])
-                    let message = String(parts[3]).trimmingCharacters(in: .whitespaces)
+            let issuePrefix = " recorded an issue"
+            if remaining.hasPrefix(issuePrefix) {
+                let afterIssueMarker = remaining[
+                    remaining.index(remaining.startIndex, offsetBy: issuePrefix.count)...,
+                ]
+
+                // " at " follows directly or after "with N argument value(s) → ..."
+                if let atRange = afterIssueMarker.range(of: " at ") {
+                    let afterAt = String(afterIssueMarker[atRange.upperBound...])
+                    let parts = afterAt.split(
+                        separator: ":", maxSplits: 3, omittingEmptySubsequences: false,
+                    )
+                    if parts.count >= 4, let lineNum = Int(parts[1]) {
+                        let file = String(parts[0])
+                        let message = String(parts[3]).trimmingCharacters(in: .whitespaces)
+                        return FailedTest(
+                            test: extracted.name, message: message, file: file, line: lineNum,
+                        )
+                    }
+                }
+
+                // No-location variant: " recorded an issue: message"
+                if afterIssueMarker.hasPrefix(": ") {
+                    let message = String(afterIssueMarker.dropFirst(2))
                     return FailedTest(
-                        test: extracted.name, message: message, file: file, line: lineNum,
+                        test: extracted.name, message: message, file: nil, line: nil,
                     )
                 }
             }

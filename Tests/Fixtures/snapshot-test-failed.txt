@@ -1,0 +1,5 @@
+Tests failed (40 passed, 2 failed, 3.2s)
+
+Failures:
+  MyTests.testLogin — Expected true, got false (MyTests.swift:55)
+  MyTests.testLogout — Timeout after 5.0s

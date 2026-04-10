@@ -1,0 +1,8 @@
+Build failed (2 errors, 1 warning, 5.1s)
+
+Errors:
+  Foo.swift:42:10 — cannot convert 'Int' to 'String'
+  Bar.swift:15:5 — missing return
+
+Warnings:
+  Baz.swift:88:3 — unused variable 'x'

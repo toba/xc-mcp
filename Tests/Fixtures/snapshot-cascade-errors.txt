@@ -1,0 +1,6 @@
+Build failed (4 errors, 5.0s)
+
+Errors:
+  Error: Unknown option --srcdir Command PhaseScriptExecution failed with a nonzero exit code
+
+(+3 cascade errors from downstream targets hidden)

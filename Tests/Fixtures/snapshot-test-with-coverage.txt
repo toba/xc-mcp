@@ -1,0 +1,3 @@
+Tests passed (10 passed, 0 failed)
+
+Coverage: 75.5%

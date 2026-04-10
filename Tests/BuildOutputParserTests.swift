@@ -823,4 +823,127 @@ struct BuildOutputParserTests {
         // Should accumulate: 50 + 20 = 70
         #expect(result.summary.passedTests == 70)
     }
+
+    // MARK: - Swift Testing verbose (aka) suffix
+
+    @Test func `Swift Testing verbose aka suffix on passed`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ✔ Test "Display Name" (aka 'funcName()') passed after 0.001 seconds.
+        Test run with 1 test in 1 suite passed after 0.001 seconds.
+        """)
+
+        #expect(result.status == "success")
+        #expect(result.summary.passedTests == 1)
+    }
+
+    @Test func `Swift Testing verbose aka suffix on failed`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ✘ Test "Validates input" (aka 'validateInput()') recorded an issue at File.swift:42:10: expected true
+        ✘ Test "Validates input" (aka 'validateInput()') failed after 0.050 seconds with 1 issue.
+        Test run with 1 test in 1 suite failed after 0.050 seconds with 1 issue.
+        """)
+
+        #expect(result.status == "failed")
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "Validates input")
+        #expect(result.failedTests[0].file == "File.swift")
+        #expect(result.failedTests[0].line == 42)
+        #expect(result.failedTests[0].message == "expected true")
+    }
+
+    @Test func `Swift Testing verbose aka suffix on started`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ◇ Test "My Test" (aka 'myTest()') started.
+        Exited with unexpected signal code 11
+        Restarting after myTest
+        ** TEST FAILED **
+        """)
+
+        #expect(result.status == "failed")
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "My Test")
+        #expect(result.failedTests[0].message.contains("signal 11"))
+    }
+
+    // MARK: - Swift Testing parameterized test cases
+
+    @Test func `Swift Testing parameterized with N test cases passed`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ✔ Test "Validates all inputs" with 3 test cases passed after 0.010 seconds.
+        Test run with 3 tests in 1 suite passed after 0.010 seconds.
+        """)
+
+        #expect(result.status == "success")
+        #expect(result.summary.passedTests == 3)
+    }
+
+    @Test func `Swift Testing parameterized with N test cases failed`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ✘ Test "Edge cases" with 5 test cases failed after 0.100 seconds with 2 issues.
+        Test run with 5 tests in 1 suite failed after 0.100 seconds with 2 issues.
+        """)
+
+        #expect(result.status == "failed")
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "Edge cases")
+        #expect(result.failedTests[0].duration == 0.100)
+    }
+
+    @Test func `Swift Testing aka and parameterized combined`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ✔ Test "Roundtrip" (aka 'testRoundtrip()') with 4 test cases passed after 0.020 seconds.
+        Test run with 4 tests in 1 suite passed after 0.020 seconds.
+        """)
+
+        #expect(result.status == "success")
+        #expect(result.summary.passedTests == 4)
+    }
+
+    // MARK: - Swift Testing parameterized issue with argument values
+
+    @Test func `Swift Testing issue with argument values`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ✘ Test "Validates range" recorded an issue with 1 argument value → 0 at RangeTests.swift:10:5: expected value > 0
+        ✘ Test "Validates range" failed after 0.001 seconds with 1 issue.
+        """)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "Validates range")
+        #expect(result.failedTests[0].file == "RangeTests.swift")
+        #expect(result.failedTests[0].line == 10)
+        #expect(result.failedTests[0].message == "expected value > 0")
+    }
+
+    @Test func `Swift Testing issue with multiple argument values`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ✘ Test "Addition" recorded an issue with 2 argument values → 3, → 5 at MathTests.swift:20:9: 3 + 5 != 7
+        """)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].file == "MathTests.swift")
+        #expect(result.failedTests[0].line == 20)
+    }
+
+    // MARK: - Swift Testing issue without location
+
+    @Test func `Swift Testing issue without location`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ✘ Test "Network request" recorded an issue: Connection timed out
+        ✘ Test "Network request" failed after 30.0 seconds with 1 issue.
+        """)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "Network request")
+        #expect(result.failedTests[0].message == "Connection timed out")
+        #expect(result.failedTests[0].file == nil)
+    }
 }

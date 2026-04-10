@@ -1,0 +1,4 @@
+Build failed (1 linker error)
+
+Linker errors:
+  Undefined symbol '_MissingFunc' (arm64) referenced from main.o

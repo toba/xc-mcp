@@ -17,6 +17,10 @@
 
 - Fix multi-suite test count bug in `BuildOutputParser`; accumulate XCTest bundle counts, Swift Testing run counts, and parallel scheduling totals instead of overwriting ([#261](https://github.com/toba/xc-mcp/issues/261))
 
+### 🗜️ Tweaks
+
+- Fix `BuildOutputParser` Swift Testing edge cases; handle `(aka '...')` verbose suffix, `with N test cases` parameterized results, and `recorded an issue with N argument values` parameterized issues; add 7 golden-file snapshot tests for `BuildResultFormatter` ([#269](https://github.com/toba/xc-mcp/issues/269))
+
 ## Week of Mar 29 – Apr 4, 2026
 
 ### ✨ Features
