@@ -153,9 +153,12 @@ public struct AddToCopyFilesPhase: Sendable {
                         addedFiles.append("\(fileName) (already present)")
                     } else {
                         // Determine attributes: explicit > auto-default for Embed Frameworks > none
+                        let isEmbedFrameworksPhase =
+                            phaseName.contains("Embed Frameworks")
+                                || copyFilesPhase.dstSubfolderSpec == .frameworks
                         let attrs =
                             explicitAttributes
-                                ?? (phaseName.contains("Embed Frameworks")
+                                ?? (isEmbedFrameworksPhase
                                     ? ["CodeSignOnCopy", "RemoveHeadersOnCopy"]
                                     : nil)
                         let settings: [String: BuildFileSetting]? =

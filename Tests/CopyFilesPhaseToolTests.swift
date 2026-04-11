@@ -534,6 +534,54 @@ struct AddToCopyFilesPhaseTests {
     }
 
     @Test
+    func `Auto-defaults attributes for frameworks destination regardless of phase name`() throws {
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let fwPath = Path(tempDir) + "Custom.framework"
+        try FileManager.default.createDirectory(
+            atPath: fwPath.string, withIntermediateDirectories: true,
+        )
+
+        let addFileTool = AddFileTool(pathUtility: pathUtility)
+        _ = try addFileTool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "file_path": .string(fwPath.string),
+        ])
+
+        // Create a copy phase with dstSubfolderSpec=frameworks but a non-standard name
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let copyPhase = PBXCopyFilesBuildPhase(
+            dstPath: "",
+            dstSubfolderSpec: .frameworks,
+            name: "Copy Frameworks",
+        )
+        xcodeproj.pbxproj.add(object: copyPhase)
+        target.buildPhases.append(copyPhase)
+        try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
+
+        // Add file WITHOUT explicit attributes — should auto-default based on dstSubfolderSpec
+        let tool = AddToCopyFilesPhase(pathUtility: pathUtility)
+        _ = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "phase_name": .string("Copy Frameworks"),
+            "files": .array([.string(fwPath.string)]),
+        ])
+
+        let updated = try XcodeProj(path: projectPath)
+        let updatedTarget = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
+        let updatedPhase = updatedTarget.buildPhases
+            .compactMap { $0 as? PBXCopyFilesBuildPhase }
+            .first { $0.name == "Copy Frameworks" }
+        let buildFile = try #require(updatedPhase?.files?.first)
+        #expect(buildFile.attributes == ["CodeSignOnCopy", "RemoveHeadersOnCopy"])
+    }
+
+    @Test
     func `Reports files not found in project`() throws {
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(

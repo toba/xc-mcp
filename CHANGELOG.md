@@ -16,6 +16,7 @@
 ### 🐛 Fixes
 
 - Fix multi-suite test count bug in `BuildOutputParser`; accumulate XCTest bundle counts, Swift Testing run counts, and parallel scheduling totals instead of overwriting ([#261](https://github.com/toba/xc-mcp/issues/261))
+- Fix `add_framework` silently ignoring `embed: true` for developer frameworks (XcodeKit, XCTest); fix `add_to_copy_files_phase` not auto-defaulting `CodeSignOnCopy`/`RemoveHeadersOnCopy` for phases with `dstSubfolderSpec == .frameworks` ([#270](https://github.com/toba/xc-mcp/issues/270))
 
 ### 🗜️ Tweaks
 

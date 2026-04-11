@@ -799,4 +799,51 @@ struct AddFrameworkToolTests {
         }
         #expect(message.contains("already exists"))
     }
+
+    @Test
+    func `Embed developer framework creates embed phase with CodeSignOnCopy`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let args: [String: Value] = [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "framework_name": Value.string("XcodeKit"),
+            "embed": Value.bool(true),
+        ]
+
+        let result = try tool.execute(arguments: args)
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("(embedded)"))
+
+        // Verify embed phase was created with CodeSignOnCopy attribute
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
+
+        let embedPhase = target?.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
+            .first { $0.dstSubfolderSpec == .frameworks }
+        #expect(embedPhase != nil)
+
+        let embedFile = embedPhase?.files?.first {
+            ($0.file as? PBXFileReference)?.name == "XcodeKit.framework"
+        }
+        #expect(embedFile != nil)
+        #expect(embedFile?.attributes == ["CodeSignOnCopy", "RemoveHeadersOnCopy"])
+    }
 }

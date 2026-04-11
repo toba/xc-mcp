@@ -303,8 +303,8 @@ public struct AddFrameworkTool: Sendable {
                 refUUID: buildFileUUID, comment: "\(frameworkFileName) in Frameworks",
             )
 
-            // 5. Handle embed
-            if embed, !isSystemFramework {
+            // 5. Handle embed (developer frameworks like XcodeKit need embedding too)
+            if embed, !isSystemFramework || isDeveloperFramework {
                 let embedPhaseUUID: String
                 if let existing = target.buildPhases.first(where: {
                     if let copyPhase = $0 as? PBXCopyFilesBuildPhase {
@@ -369,7 +369,8 @@ public struct AddFrameworkTool: Sendable {
 
             try PBXProjTextEditor.write(text, projectPath: resolvedProjectPath)
 
-            let embedText = embed && !isSystemFramework ? " (embedded)" : ""
+            let embedText =
+                embed && (!isSystemFramework || isDeveloperFramework) ? " (embedded)" : ""
             return CallTool.Result(
                 content: [
                     .text(text:
