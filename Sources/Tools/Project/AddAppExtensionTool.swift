@@ -17,6 +17,7 @@ public enum ExtensionType: String, CaseIterable, Sendable {
     case keyboard
     case photoEditing = "photo_editing"
     case documentProvider = "document_provider"
+    case sourceEditor = "source_editor"
     case custom
 
     public init?(from string: String) {
@@ -38,6 +39,9 @@ public enum ExtensionType: String, CaseIterable, Sendable {
                     self = .photoEditing
                 case "documentprovider":
                     self = .documentProvider
+                case "sourceeditor", "xcode_source_editor", "xcodesourceeditor",
+                     "xcode_extension", "xcodeextension":
+                    self = .sourceEditor
                 default:
                     return nil
             }
@@ -48,6 +52,8 @@ public enum ExtensionType: String, CaseIterable, Sendable {
         switch self {
             case .intents:
                 return .intentsServiceExtension
+            case .sourceEditor:
+                return .xcodeExtension
             default:
                 return .appExtension
         }
@@ -79,6 +85,8 @@ public enum ExtensionType: String, CaseIterable, Sendable {
                 return "com.apple.photo-editing"
             case .documentProvider:
                 return "com.apple.fileprovider-ui"
+            case .sourceEditor:
+                return "com.apple.dt.Xcode.extension.source-editor"
             case .custom:
                 return ""
         }
@@ -96,7 +104,7 @@ public struct AddAppExtensionTool: Sendable {
         Tool(
             name: "add_app_extension",
             description:
-            "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, and other extension types.",
+            "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, Xcode Source Editor, and other extension types.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -113,7 +121,7 @@ public struct AddAppExtensionTool: Sendable {
                     "extension_type": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Type of extension (widget, notification_service, notification_content, share, today, action, file_provider, intents, intents_ui, custom)",
+                            "Type of extension (widget, notification_service, notification_content, share, today, action, file_provider, intents, intents_ui, source_editor, custom)",
                         ),
                     ]),
                     "host_target_name": .object([

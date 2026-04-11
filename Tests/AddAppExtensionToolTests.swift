@@ -44,7 +44,7 @@ struct AddAppExtensionToolTests {
         #expect(
             toolDefinition.description
                 ==
-                "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, and other extension types.",
+                "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, Xcode Source Editor, and other extension types.",
         )
     }
 
@@ -112,6 +112,7 @@ struct AddAppExtensionToolTests {
         ExtensionTypeTestCase("NotificationService", "notification_service", .appExtension),
         ExtensionTypeTestCase("ShareExtension", "share", .appExtension),
         ExtensionTypeTestCase("IntentsExtension", "intents", .intentsServiceExtension),
+        ExtensionTypeTestCase("SourceEditorExtension", "source_editor", .xcodeExtension),
     ]
 
     @Test(arguments: extensionTypeCases)

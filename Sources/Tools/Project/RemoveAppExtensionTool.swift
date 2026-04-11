@@ -77,6 +77,7 @@ public struct RemoveAppExtensionTool: Sendable {
                 .messagesExtension,
                 .stickerPack,
                 .intentsServiceExtension,
+                .xcodeExtension,
             ]
 
             guard extensionProductTypes.contains(extensionTarget.productType ?? .none) else {
