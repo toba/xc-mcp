@@ -6,7 +6,7 @@
 
 - Fix `screenshot_mac_window` hanging for 20+ seconds; replace ScreenCaptureKit with `CGWindowListCopyWindowInfo` + `screencapture -l` ([#275](https://github.com/toba/xc-mcp/issues/275))
 - Fix `PreviewCaptureTool` `captureMacOSWindow` same ScreenCaptureKit hang; extract shared `WindowCapture` helper to Core ([#274](https://github.com/toba/xc-mcp/issues/274))
-- Fix `add_file` missing `lastKnownFileType` for `.xcassets`; fix scaffold tools not generating `Assets.xcassets` with proper AppIcon `Contents.json` ([#276](https://github.com/toba/xc-mcp/issues/276))
+- Fix `add_file` missing `lastKnownFileType` for `.xcassets`; fix scaffold tools not wiring source files or asset catalog into Xcode project build phases; fix AppIcon `Contents.json` missing `scale` field ([#276](https://github.com/toba/xc-mcp/issues/276))
 
 ## Week of Apr 5 – Apr 11, 2026
 
