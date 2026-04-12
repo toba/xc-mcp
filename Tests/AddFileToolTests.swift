@@ -569,6 +569,58 @@ struct AddFileToolTests {
     }
 
     @Test
+    func `Add xcassets to target wires to resources build phase`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        // Create an .xcassets directory on disk
+        let assetsPath = tempDir.appendingPathComponent("Assets.xcassets")
+        try FileManager.default.createDirectory(at: assetsPath, withIntermediateDirectories: true)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(assetsPath.path),
+            "target_name": Value.string("TestApp"),
+        ])
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
+
+        // Asset catalog should be in resources build phase, NOT sources
+        let resourcesBuildPhase =
+            target.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
+        #expect(resourcesBuildPhase != nil, "Resources build phase should exist")
+
+        let resourceFiles = resourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
+        #expect(
+            resourceFiles.contains("Assets.xcassets"),
+            "Assets.xcassets should be in resources build phase, got: \(resourceFiles)",
+        )
+
+        // Verify it's NOT in sources build phase
+        let sourcesBuildPhase =
+            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        let sourceFiles = sourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
+        #expect(
+            !sourceFiles.contains("Assets.xcassets"),
+            "Assets.xcassets should NOT be in sources build phase",
+        )
+
+        // Verify lastKnownFileType is correct
+        let fileRef = xcodeproj.pbxproj.fileReferences.first { $0.name == "Assets.xcassets" }
+        #expect(fileRef?.lastKnownFileType == "folder.assetcatalog")
+    }
+
+    @Test
     func `Add file with nonexistent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(

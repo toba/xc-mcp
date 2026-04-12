@@ -1,15 +1,15 @@
 ---
 # z23-eyg
 title: 'scaffold/add_file: missing lastKnownFileType for .xcassets and missing scale in AppIcon Contents.json'
-status: completed
+status: review
 type: bug
 priority: normal
 created_at: 2026-04-12T17:17:40Z
-updated_at: 2026-04-12T17:53:47Z
+updated_at: 2026-04-12T18:37:07Z
 sync:
     github:
         issue_number: "276"
-        synced_at: "2026-04-12T17:55:07Z"
+        synced_at: "2026-04-12T18:37:51Z"
 ---
 
 When scaffolding a macOS project, the generated AppIcon.appiconset/Contents.json is missing the `"scale": "2x"` field. The correct format for a macOS single-size icon is:
@@ -33,7 +33,7 @@ Without `scale`, the asset catalog compiler silently skips the icon — no Asset
 See: https://developer.apple.com/documentation/xcode/configuring-your-app-icon/
 
 
-## Summary of Changes
+## Previous Attempt (incomplete)\n\nThe previous fix addressed lastKnownFileType and Contents.json format but **was never end-to-end tested**. The scaffold tools still don't wire the asset catalog into the Xcode project's build phases.\n\n## Summary of Changes
 
 ### 1. `add_file`: set `lastKnownFileType` on PBXFileReference (AddFileTool.swift)
 - Uses XcodeProj's built-in `Xcode.filetype(extension:)` to derive the correct type
@@ -51,7 +51,11 @@ See: https://developer.apple.com/documentation/xcode/configuring-your-app-icon/
 ### Tests
 - [x] Added `Add xcassets sets lastKnownFileType to folder assetcatalog`
 - [x] Added `Add swift file sets lastKnownFileType to sourcecode swift`
-- [x] All 13 AddFileToolTests pass
+- [x] Added `Add xcassets to target wires to resources build phase`
+- [x] All 14 AddFileToolTests pass
+- [x] 8 ScaffoldMacOSProjectToolTests (sources build phase, resources build phase, lastKnownFileType, group structure, AppIcon Contents.json scale, entitlements not in build phase)
+- [x] 6 ScaffoldIOSProjectToolTests (sources build phase, resources build phase, lastKnownFileType, group structure, AppIcon Contents.json)
+- [x] E2E: scaffolded project builds with xcodebuild, produces Assets.car, AppIcon.icns, CFBundleIconName in Info.plist
 
 ### Definitive sources consulted
 - Xcode 26 project templates on disk (`SwiftUI App Base.xctemplate`, `macOS App Base.xctemplate`)
@@ -68,3 +72,24 @@ The fix needs to happen in two places:
 
 1. **scaffold**: set `"scale": "2x"` in the generated `AppIcon.appiconset/Contents.json`
 2. **add_file**: set `lastKnownFileType = folder.assetcatalog` on `PBXFileReference` entries for `.xcassets` directories
+
+
+## Additional: add_file doesn't create PBXBuildFile for Resources
+
+After the `lastKnownFileType` fix, `add_file` now sets `folder.assetcatalog` correctly on the `PBXFileReference`. However, it still doesn't create a `PBXBuildFile` entry in the target's `PBXResourcesBuildPhase`. The file reference and group entry are created, but the Resources build phase `files` array remains empty.
+
+This means the asset catalog is visible in the project navigator but Xcode never compiles it — no `CompileAssetCatalog` step runs, no `Assets.car` is produced, and no `Resources/` directory exists in the built app bundle.
+
+Three bugs total:
+1. **scaffold**: missing `"scale": "2x"` in `AppIcon.appiconset/Contents.json` (**fixed**)
+2. **add_file**: missing `lastKnownFileType = folder.assetcatalog` (**fixed**)
+3. **scaffold**: not wiring PBXFileReference/PBXBuildFile into project build phases (**fixed**)
+
+## Second Fix (2026-04-12)
+
+The previous fix addressed Contents.json and lastKnownFileType but never created PBXFileReference or PBXBuildFile entries in the scaffold tools — the project had empty build phases and no group structure. Files existed on disk only.
+
+### Changes
+- `ScaffoldMacOSProjectTool.createAppTarget`: creates PBXFileReference for each source file, entitlements, and Assets.xcassets; creates PBXBuildFile entries; wires Swift files to PBXSourcesBuildPhase and Assets.xcassets to PBXResourcesBuildPhase; creates app PBXGroup in mainGroup
+- `ScaffoldIOSProjectTool.createAppTarget`: same (minus entitlements)
+- Added 28 new tests across 3 test files

@@ -170,7 +170,7 @@ Xcode build system knowledge for injected targets (via XcodeProj). Reference fil
 - Runner utilities in `Sources/Core/` wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift, xctrace, accessibility)
 - **Testing**: swift-testing framework (506 tests)
 - **Swift 6.2**: Strict concurrency enabled (`swift-tools-version: 6.2`)
-- **Formatting**: `swiftformat .` then `swiftlint` before committing
+- **Formatting**: `sm` (swiftiomatic from `../swiftiomatic`) before committing
 
 ## Swift Code Quality Standards
 

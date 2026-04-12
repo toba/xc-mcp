@@ -240,18 +240,75 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         projectName: String,
         bundleIdPrefix: String,
         deploymentTarget: String,
-        mainGroup _: PBXGroup,
+        mainGroup: PBXGroup,
     ) -> PBXNativeTarget {
-        // Create source build phase
-        let sourcesBuildPhase = PBXSourcesBuildPhase(files: [])
+        // Create file references for source files
+        let appSwiftRef = PBXFileReference(
+            sourceTree: .group,
+            name: "\(projectName)App.swift",
+            lastKnownFileType: Xcode.filetype(extension: "swift"),
+            path: "\(projectName)App.swift",
+        )
+        pbxproj.add(object: appSwiftRef)
+
+        let contentViewRef = PBXFileReference(
+            sourceTree: .group,
+            name: "ContentView.swift",
+            lastKnownFileType: Xcode.filetype(extension: "swift"),
+            path: "ContentView.swift",
+        )
+        pbxproj.add(object: contentViewRef)
+
+        // Entitlements: in group for visibility but not in any build phase
+        let entitlementsRef = PBXFileReference(
+            sourceTree: .group,
+            name: "\(projectName).entitlements",
+            lastKnownFileType: Xcode.filetype(extension: "entitlements"),
+            path: "\(projectName).entitlements",
+        )
+        pbxproj.add(object: entitlementsRef)
+
+        // Asset catalog
+        let assetsRef = PBXFileReference(
+            sourceTree: .group,
+            name: "Assets.xcassets",
+            lastKnownFileType: Xcode.filetype(extension: "xcassets"),
+            path: "Assets.xcassets",
+        )
+        pbxproj.add(object: assetsRef)
+
+        // Create app group with all file references
+        let appGroup = PBXGroup(
+            children: [appSwiftRef, contentViewRef, entitlementsRef, assetsRef],
+            sourceTree: .group,
+            name: projectName,
+            path: projectName,
+        )
+        pbxproj.add(object: appGroup)
+        mainGroup.children.append(appGroup)
+
+        // Create build files for source and resource phases
+        let appSwiftBuildFile = PBXBuildFile(file: appSwiftRef)
+        pbxproj.add(object: appSwiftBuildFile)
+
+        let contentViewBuildFile = PBXBuildFile(file: contentViewRef)
+        pbxproj.add(object: contentViewBuildFile)
+
+        let assetsBuildFile = PBXBuildFile(file: assetsRef)
+        pbxproj.add(object: assetsBuildFile)
+
+        // Create source build phase with Swift files
+        let sourcesBuildPhase = PBXSourcesBuildPhase(
+            files: [appSwiftBuildFile, contentViewBuildFile],
+        )
         pbxproj.add(object: sourcesBuildPhase)
 
         // Create frameworks build phase
         let frameworksBuildPhase = PBXFrameworksBuildPhase(files: [])
         pbxproj.add(object: frameworksBuildPhase)
 
-        // Create resources build phase
-        let resourcesBuildPhase = PBXResourcesBuildPhase(files: [])
+        // Create resources build phase with asset catalog
+        let resourcesBuildPhase = PBXResourcesBuildPhase(files: [assetsBuildFile])
         pbxproj.add(object: resourcesBuildPhase)
 
         // Create build configurations for target
