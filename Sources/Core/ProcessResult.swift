@@ -103,8 +103,8 @@ extension ProcessResult {
     ///   - arguments: Command-line arguments.
     ///   - workingDirectory: Optional working directory for the command.
     ///   - mergeStderr: When true, stderr is merged into stdout (like `2>&1`).
-    ///   - outputLimit: Maximum bytes to capture from stdout. Defaults to 10MB.
-    ///   - errorLimit: Maximum bytes to capture from stderr. Defaults to 10MB.
+    ///   - outputLimit: Maximum bytes to capture from stdout. Defaults to 2MB.
+    ///   - errorLimit: Maximum bytes to capture from stderr. Defaults to 2MB.
     ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
     /// - Returns: A ``ProcessResult`` with exit code and captured output.
     public static func runSubprocess(
@@ -112,8 +112,8 @@ extension ProcessResult {
         arguments: Subprocess.Arguments = [],
         workingDirectory: FilePath? = nil,
         mergeStderr: Bool = false,
-        outputLimit: Int = 10_485_760,
-        errorLimit: Int = 10_485_760,
+        outputLimit: Int = 2_097_152,
+        errorLimit: Int = 2_097_152,
         environment: Environment = .inherit,
         timeout: Duration? = nil,
     ) async throws -> ProcessResult {
@@ -128,61 +128,69 @@ extension ProcessResult {
             return opts
         }()
 
-        if mergeStderr {
-            let run:
-                @Sendable () async throws -> ExecutionRecord<
-                    StringOutput<Unicode.UTF8>,
-                    CombinedErrorOutput,
-                > = {
-                    try await Subprocess.run(
-                        executable,
-                        arguments: arguments,
-                        environment: environment,
-                        workingDirectory: workingDirectory,
-                        platformOptions: platformOptions,
-                        output: .string(limit: outputLimit),
-                        error: .combinedWithOutput,
-                    )
-                }
-            let result = try await raceTimeout(timeout, run: run)
+        // Use streaming collection that keeps the tail on overflow instead of
+        // throwing SubprocessError.outputLimitExceeded. Build errors appear at
+        // the end of output, so discarding the head preserves what matters.
+        let run: @Sendable () async throws -> ProcessResult = {
+            let outcome = try await Subprocess.run(
+                executable,
+                arguments: arguments,
+                environment: environment,
+                workingDirectory: workingDirectory,
+                platformOptions: platformOptions,
+            ) { _, inputWriter, outputSequence, errorSequence in
+                try await inputWriter.finish()
+                // Always drain both sequences to prevent the child from blocking
+                // on a full pipe buffer.
+                async let stdout = collectTail(from: outputSequence, limit: outputLimit)
+                async let stderr = collectTail(
+                    from: errorSequence,
+                    limit: mergeStderr ? outputLimit : errorLimit,
+                )
+                return try await (stdout, stderr)
+            }
             let exitCode: Int32 =
-                switch result.terminationStatus {
+                switch outcome.terminationStatus {
                     case let .exited(code): code
                     case let .signaled(code): code
                 }
+            let (stdoutResult, stderrResult) = outcome.value
+            var stdoutText = stdoutResult.0
+            let wasTruncated = stdoutResult.1 || (mergeStderr && stderrResult.1)
+            if mergeStderr, !stderrResult.0.isEmpty {
+                stdoutText += "\n" + stderrResult.0
+            }
+            if wasTruncated {
+                stdoutText = "[output truncated — showing last \(outputLimit / 1_048_576)MB]\n" + stdoutText
+            }
             return ProcessResult(
                 exitCode: exitCode,
-                stdout: result.standardOutput ?? "",
-                stderr: "",
-            )
-        } else {
-            let run:
-                @Sendable () async throws -> ExecutionRecord<
-                    StringOutput<Unicode.UTF8>,
-                    StringOutput<Unicode.UTF8>,
-                > = {
-                    try await Subprocess.run(
-                        executable,
-                        arguments: arguments,
-                        environment: environment,
-                        workingDirectory: workingDirectory,
-                        platformOptions: platformOptions,
-                        output: .string(limit: outputLimit),
-                        error: .string(limit: errorLimit),
-                    )
-                }
-            let result = try await raceTimeout(timeout, run: run)
-            let exitCode: Int32 =
-                switch result.terminationStatus {
-                    case let .exited(code): code
-                    case let .signaled(code): code
-                }
-            return ProcessResult(
-                exitCode: exitCode,
-                stdout: result.standardOutput ?? "",
-                stderr: result.standardError ?? "",
+                stdout: stdoutText,
+                stderr: mergeStderr ? "" : stderrResult.0,
             )
         }
+        return try await raceTimeout(timeout, run: run)
+    }
+
+    /// Collects output from an async buffer sequence, keeping only the last
+    /// `limit` bytes when the total exceeds the limit. Returns the collected
+    /// string and whether truncation occurred.
+    private static func collectTail(
+        from sequence: AsyncBufferSequence,
+        limit: Int,
+    ) async throws -> (String, Bool) {
+        var data = Data()
+        var truncated = false
+        for try await chunk in sequence {
+            chunk.withUnsafeBytes { bytes in
+                data.append(contentsOf: bytes)
+            }
+            if data.count > limit {
+                data = Data(data.suffix(limit))
+                truncated = true
+            }
+        }
+        return (String(decoding: data, as: UTF8.self), truncated)
     }
 
     /// Races a subprocess closure against an optional timeout.

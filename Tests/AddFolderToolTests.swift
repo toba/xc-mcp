@@ -1,9 +1,10 @@
+import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-import Foundation
+
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
@@ -24,8 +25,8 @@ struct AddFolderToolTests {
     init() {
         tempDir =
             FileManager.default.temporaryDirectory
-                .appendingPathComponent("AddFolderToolTests-\(UUID().uuidString)")
-                .path
+            .appendingPathComponent("AddFolderToolTests-\(UUID().uuidString)")
+            .path
         pathUtility = PathUtility(basePath: tempDir)
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
     }
@@ -40,15 +41,15 @@ struct AddFolderToolTests {
         )
 
         let schema = tool.tool().inputSchema
-        if case let .object(schemaDict) = schema {
-            if case let .object(props) = schemaDict["properties"] {
+        if case .object(let schemaDict) = schema {
+            if case .object(let props) = schemaDict["properties"] {
                 #expect(props["project_path"] != nil)
                 #expect(props["folder_path"] != nil)
                 #expect(props["group_name"] != nil)
                 #expect(props["target_name"] != nil)
             }
 
-            if case let .array(required) = schemaDict["required"] {
+            if case .array(let required) = schemaDict["required"] {
                 #expect(required.count == 2)
                 #expect(required.contains(.string("project_path")))
                 #expect(required.contains(.string("folder_path")))
@@ -109,7 +110,7 @@ struct AddFolderToolTests {
         ])
 
         // Verify the result
-        if case let .text(message, _, _) = result.content.first {
+        if case .text(let message, _, _) = result.content.first {
             #expect(message.contains("Successfully added folder reference 'TestFolder'"))
         } else {
             Issue.record("Expected text result")
@@ -134,6 +135,7 @@ struct AddFolderToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let customGroup = PBXGroup(children: [], sourceTree: .group, name: "CustomGroup")
         xcodeproj.pbxproj.add(object: customGroup)
+
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(customGroup)
         }
@@ -153,7 +155,7 @@ struct AddFolderToolTests {
         ])
 
         // Verify the result
-        if case let .text(message, _, _) = result.content.first {
+        if case .text(let message, _, _) = result.content.first {
             #expect(message.contains("Successfully added folder reference 'TestFolder'"))
             #expect(message.contains("in group 'CustomGroup'"))
         } else {
@@ -190,7 +192,7 @@ struct AddFolderToolTests {
         ])
 
         // Verify the result
-        if case let .text(message, _, _) = result.content.first {
+        if case .text(let message, _, _) = result.content.first {
             #expect(message.contains("Successfully added folder reference 'TestFolder'"))
             #expect(message.contains("to target 'TestTarget'"))
         } else {
@@ -283,7 +285,7 @@ struct AddFolderToolTests {
         ])
 
         // Verify the result
-        if case let .text(message, _, _) = result.content.first {
+        if case .text(let message, _, _) = result.content.first {
             #expect(message.contains("Successfully added folder reference 'Sources'"))
             #expect(message.contains("in group 'DOM'"))
         } else {
@@ -306,3 +308,4 @@ struct AddFolderToolTests {
         )
     }
 }
+

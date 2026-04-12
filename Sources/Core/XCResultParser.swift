@@ -120,7 +120,7 @@ public enum XCResultParser {
             let result = try? await ProcessResult.runSubprocess(
                 .name("xcrun"),
                 arguments: Arguments(arguments),
-                outputLimit: 31_457_280,
+                outputLimit: 8_388_608,
             )
         else { return nil }
 
@@ -166,7 +166,7 @@ public enum XCResultParser {
                 arguments: Arguments([
                     "xcresulttool", "get", "test-results", "tests", "--path", path, "--compact",
                 ]),
-                outputLimit: 31_457_280,
+                outputLimit: 8_388_608,
             )
         else { return nil }
 
