@@ -162,8 +162,12 @@ struct PathUtilityAncestorSearchTests {
 
     @Test
     func `findPackageRoot returns path for xc-mcp repo`() {
-        // We're running inside the xc-mcp package, so this should find it
-        let result = PathUtility.findPackageRoot()
+        // Use this source file's location instead of cwd, since the test
+        // runner's working directory may not be inside the repo.
+        let result = PathUtility.findAncestorDirectory(
+            matching: { $0 == "Package.swift" },
+            startingFrom: URL(fileURLWithPath: #filePath).deletingLastPathComponent().path,
+        )
         #expect(result != nil)
         #expect(
             result?.hasSuffix("xc-mcp") == true
