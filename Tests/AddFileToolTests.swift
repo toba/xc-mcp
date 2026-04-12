@@ -504,6 +504,71 @@ struct AddFileToolTests {
     }
 
     @Test
+    func `Add xcassets sets lastKnownFileType to folder assetcatalog`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        // Create an .xcassets directory on disk
+        let assetsPath = tempDir.appendingPathComponent("Assets.xcassets")
+        try FileManager.default.createDirectory(at: assetsPath, withIntermediateDirectories: true)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(assetsPath.path),
+        ])
+
+        let reloadedProj = try XcodeProj(path: projectPath)
+        let fileRef = reloadedProj.pbxproj.fileReferences.first { $0.name == "Assets.xcassets" }
+        #expect(fileRef != nil)
+        #expect(
+            fileRef?.lastKnownFileType == "folder.assetcatalog",
+            "lastKnownFileType should be folder.assetcatalog, got: \(fileRef?.lastKnownFileType ?? "nil")",
+        )
+    }
+
+    @Test
+    func `Add swift file sets lastKnownFileType to sourcecode swift`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let filePath = tempDir.appendingPathComponent("Model.swift")
+        try "// test".write(to: filePath, atomically: true, encoding: .utf8)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(filePath.path),
+        ])
+
+        let reloadedProj = try XcodeProj(path: projectPath)
+        let fileRef = reloadedProj.pbxproj.fileReferences.first { $0.name == "Model.swift" }
+        #expect(fileRef != nil)
+        #expect(
+            fileRef?.lastKnownFileType == "sourcecode.swift",
+            "lastKnownFileType should be sourcecode.swift, got: \(fileRef?.lastKnownFileType ?? "nil")",
+        )
+    }
+
+    @Test
     func `Add file with nonexistent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(

@@ -119,6 +119,9 @@ public struct ScaffoldMacOSProjectTool: Sendable {
                 appDir: appDir, projectName: projectName, bundleIdPrefix: bundleIdPrefix,
             )
 
+            // Create asset catalog
+            try createAssetCatalog(appDir: appDir)
+
             // Create Swift package for shared code
             let packageDir = URL(fileURLWithPath: projectDir).appendingPathComponent(
                 "\(projectName)Kit",
@@ -152,7 +155,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
             resultMessage += "Created:\n"
             resultMessage += "  - \(projectName).xcworkspace (workspace)\n"
             resultMessage += "  - \(projectName).xcodeproj (Xcode project)\n"
-            resultMessage += "  - \(projectName)/ (app sources)\n"
+            resultMessage += "  - \(projectName)/ (app sources + asset catalog)\n"
             resultMessage += "  - \(projectName)Kit/ (Swift package for shared code)\n"
             if includeTests {
                 resultMessage += "  - \(projectName)Tests/ (unit tests)\n"
@@ -451,6 +454,116 @@ public struct ScaffoldMacOSProjectTool: Sendable {
             toFile: URL(fileURLWithPath: appDir).appendingPathComponent(
                 "\(projectName).entitlements",
             ).path,
+            atomically: true, encoding: .utf8,
+        )
+    }
+
+    private func createAssetCatalog(appDir: String) throws {
+        let fileManager = FileManager.default
+        let assetsDir = URL(fileURLWithPath: appDir).appendingPathComponent("Assets.xcassets").path
+
+        // Root Contents.json
+        try fileManager.createDirectory(atPath: assetsDir, withIntermediateDirectories: true)
+        try """
+        {
+          "info" : {
+            "author" : "xcode",
+            "version" : 1
+          }
+        }
+        """.write(
+            toFile: URL(fileURLWithPath: assetsDir).appendingPathComponent("Contents.json").path,
+            atomically: true, encoding: .utf8,
+        )
+
+        // AccentColor.colorset
+        let accentDir = URL(fileURLWithPath: assetsDir).appendingPathComponent(
+            "AccentColor.colorset",
+        ).path
+        try fileManager.createDirectory(atPath: accentDir, withIntermediateDirectories: true)
+        try """
+        {
+          "colors" : [
+            {
+              "idiom" : "universal"
+            }
+          ],
+          "info" : {
+            "author" : "xcode",
+            "version" : 1
+          }
+        }
+        """.write(
+            toFile: URL(fileURLWithPath: accentDir).appendingPathComponent("Contents.json").path,
+            atomically: true, encoding: .utf8,
+        )
+
+        // AppIcon.appiconset — standard Xcode 26 macOS format (5 sizes × 2 scales)
+        let iconDir = URL(fileURLWithPath: assetsDir).appendingPathComponent(
+            "AppIcon.appiconset",
+        ).path
+        try fileManager.createDirectory(atPath: iconDir, withIntermediateDirectories: true)
+        try """
+        {
+          "images" : [
+            {
+              "idiom" : "mac",
+              "scale" : "1x",
+              "size" : "16x16"
+            },
+            {
+              "idiom" : "mac",
+              "scale" : "2x",
+              "size" : "16x16"
+            },
+            {
+              "idiom" : "mac",
+              "scale" : "1x",
+              "size" : "32x32"
+            },
+            {
+              "idiom" : "mac",
+              "scale" : "2x",
+              "size" : "32x32"
+            },
+            {
+              "idiom" : "mac",
+              "scale" : "1x",
+              "size" : "128x128"
+            },
+            {
+              "idiom" : "mac",
+              "scale" : "2x",
+              "size" : "128x128"
+            },
+            {
+              "idiom" : "mac",
+              "scale" : "1x",
+              "size" : "256x256"
+            },
+            {
+              "idiom" : "mac",
+              "scale" : "2x",
+              "size" : "256x256"
+            },
+            {
+              "idiom" : "mac",
+              "scale" : "1x",
+              "size" : "512x512"
+            },
+            {
+              "idiom" : "mac",
+              "scale" : "2x",
+              "size" : "512x512"
+            }
+          ],
+          "info" : {
+            "author" : "xcode",
+            "version" : 1
+          }
+        }
+        """.write(
+            toFile: URL(fileURLWithPath: iconDir).appendingPathComponent("Contents.json").path,
             atomically: true, encoding: .utf8,
         )
     }

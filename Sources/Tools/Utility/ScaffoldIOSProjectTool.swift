@@ -119,6 +119,9 @@ public struct ScaffoldIOSProjectTool: Sendable {
                 appDir: appDir, projectName: projectName, bundleIdPrefix: bundleIdPrefix,
             )
 
+            // Create asset catalog
+            try createAssetCatalog(appDir: appDir)
+
             // Create Swift package for shared code
             let packageDir = URL(fileURLWithPath: projectDir).appendingPathComponent(
                 "\(projectName)Kit",
@@ -152,7 +155,7 @@ public struct ScaffoldIOSProjectTool: Sendable {
             resultMessage += "Created:\n"
             resultMessage += "  - \(projectName).xcworkspace (workspace)\n"
             resultMessage += "  - \(projectName).xcodeproj (Xcode project)\n"
-            resultMessage += "  - \(projectName)/ (app sources)\n"
+            resultMessage += "  - \(projectName)/ (app sources + asset catalog)\n"
             resultMessage += "  - \(projectName)Kit/ (Swift package for shared code)\n"
             if includeTests {
                 resultMessage += "  - \(projectName)Tests/ (unit tests)\n"
@@ -439,6 +442,71 @@ public struct ScaffoldIOSProjectTool: Sendable {
         """
         try contentViewContent.write(
             toFile: URL(fileURLWithPath: appDir).appendingPathComponent("ContentView.swift").path,
+            atomically: true, encoding: .utf8,
+        )
+    }
+
+    private func createAssetCatalog(appDir: String) throws {
+        let fileManager = FileManager.default
+        let assetsDir = URL(fileURLWithPath: appDir).appendingPathComponent("Assets.xcassets").path
+
+        // Root Contents.json
+        try fileManager.createDirectory(atPath: assetsDir, withIntermediateDirectories: true)
+        try """
+        {
+          "info" : {
+            "author" : "xcode",
+            "version" : 1
+          }
+        }
+        """.write(
+            toFile: URL(fileURLWithPath: assetsDir).appendingPathComponent("Contents.json").path,
+            atomically: true, encoding: .utf8,
+        )
+
+        // AccentColor.colorset
+        let accentDir = URL(fileURLWithPath: assetsDir).appendingPathComponent(
+            "AccentColor.colorset",
+        ).path
+        try fileManager.createDirectory(atPath: accentDir, withIntermediateDirectories: true)
+        try """
+        {
+          "colors" : [
+            {
+              "idiom" : "universal"
+            }
+          ],
+          "info" : {
+            "author" : "xcode",
+            "version" : 1
+          }
+        }
+        """.write(
+            toFile: URL(fileURLWithPath: accentDir).appendingPathComponent("Contents.json").path,
+            atomically: true, encoding: .utf8,
+        )
+
+        // AppIcon.appiconset — standard Xcode 26 iOS format (single 1024×1024)
+        let iconDir = URL(fileURLWithPath: assetsDir).appendingPathComponent(
+            "AppIcon.appiconset",
+        ).path
+        try fileManager.createDirectory(atPath: iconDir, withIntermediateDirectories: true)
+        try """
+        {
+          "images" : [
+            {
+              "idiom" : "universal",
+              "platform" : "ios",
+              "size" : "1024x1024"
+            }
+          ],
+          "info" : {
+            "author" : "xcode",
+            "version" : 1
+          }
+        }
+        """.write(
+            toFile: URL(fileURLWithPath: iconDir).appendingPathComponent("Contents.json").path,
             atomically: true, encoding: .utf8,
         )
     }

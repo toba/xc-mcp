@@ -143,9 +143,11 @@ public struct AddFileTool: Sendable {
                     relativePath = resolvedFilePath
                 }
 
+                let fileExtension = URL(fileURLWithPath: resolvedFilePath).pathExtension
                 let newRef = PBXFileReference(
                     sourceTree: sourceTree,
                     name: fileName,
+                    lastKnownFileType: Xcode.filetype(extension: fileExtension),
                     path: relativePath,
                 )
                 xcodeproj.pbxproj.add(object: newRef)
