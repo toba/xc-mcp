@@ -129,6 +129,7 @@ public struct AddFileTool: Sendable {
                 // Compute path and sourceTree based on whether the file is under the group
                 let sourceTree: PBXSourceTree
                 let relativePath: String
+                let basePath = pathUtility.basePath
                 if resolvedFilePath.hasPrefix(groupFullPath + "/") {
                     // File is inside the group's directory — use path relative to group
                     sourceTree = .group
@@ -137,6 +138,13 @@ public struct AddFileTool: Sendable {
                     // File is outside the group but inside the project — use sourceRoot
                     sourceTree = .sourceRoot
                     relativePath = String(resolvedFilePath.dropFirst(projectRoot.count + 1))
+                } else if resolvedFilePath.hasPrefix(basePath + "/") {
+                    // File is outside the xcodeproj but inside the repo root — use sourceRoot
+                    // with a path relative to the project directory (may include ../ components)
+                    sourceTree = .sourceRoot
+                    relativePath = Self.relativePath(
+                        from: projectRoot, to: resolvedFilePath,
+                    )
                 } else {
                     // File is outside the project — use absolute path
                     sourceTree = .absolute
@@ -144,10 +152,11 @@ public struct AddFileTool: Sendable {
                 }
 
                 let fileExtension = URL(fileURLWithPath: resolvedFilePath).pathExtension
+                let fileType = Self.fileType(forExtension: fileExtension)
                 let newRef = PBXFileReference(
                     sourceTree: sourceTree,
                     name: fileName,
-                    lastKnownFileType: Xcode.filetype(extension: fileExtension),
+                    lastKnownFileType: fileType,
                     path: relativePath,
                 )
                 xcodeproj.pbxproj.add(object: newRef)
@@ -234,5 +243,34 @@ public struct AddFileTool: Sendable {
                 "Failed to add file to Xcode project: \(error.localizedDescription)",
             )
         }
+    }
+
+    /// File type overrides for extensions not in XcodeProj's `Xcode.filetype(extension:)`.
+    private static let fileTypeOverrides: [String: String] = [
+        "icon": "folder.iconcomposer.icon",
+    ]
+
+    /// Returns the Xcode file type for a given extension, consulting local overrides first.
+    static func fileType(forExtension ext: String) -> String? {
+        fileTypeOverrides[ext] ?? Xcode.filetype(extension: ext)
+    }
+
+    /// Computes a relative path from `base` to `target` using `../` components.
+    static func relativePath(from base: String, to target: String) -> String {
+        let baseComponents = base.split(separator: "/", omittingEmptySubsequences: true)
+        let targetComponents = target.split(separator: "/", omittingEmptySubsequences: true)
+
+        // Find common prefix length
+        var common = 0
+        while common < baseComponents.count, common < targetComponents.count,
+              baseComponents[common] == targetComponents[common]
+        {
+            common += 1
+        }
+
+        // Go up from base to common ancestor, then down to target
+        let ups = Array(repeating: "..", count: baseComponents.count - common)
+        let downs = targetComponents[common...]
+        return (ups + downs.map(String.init)).joined(separator: "/")
     }
 }

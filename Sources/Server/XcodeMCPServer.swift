@@ -214,6 +214,14 @@ public enum ToolName: String, CaseIterable, Sendable {
     case scaffoldMacOS = "scaffold_macos_project"
     case searchCrashReports = "search_crash_reports"
     case exportIcon = "export_icon"
+    case createIcon = "create_icon"
+    case readIcon = "read_icon"
+    case addIconLayer = "add_icon_layer"
+    case removeIconLayer = "remove_icon_layer"
+    case setIconFill = "set_icon_fill"
+    case setIconEffects = "set_icon_effects"
+    case setIconLayerPosition = "set_icon_layer_position"
+    case setIconAppearances = "set_icon_appearances"
     case diagnostics
 
     // Build diagnostics tools
@@ -309,6 +317,8 @@ public enum ToolName: String, CaseIterable, Sendable {
                 return .instruments
             // Utility
             case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS, .searchCrashReports, .exportIcon,
+                 .createIcon, .readIcon, .addIconLayer, .removeIconLayer,
+                 .setIconFill, .setIconEffects, .setIconLayerPosition, .setIconAppearances,
                  .diagnostics, .checkOutputFileMap, .extractCrashTraces,
                  .listBuildPhaseStatus, .readSerializedDiagnostics,
                  .diffBuildSettings, .showBuildDependencyGraph,
@@ -705,6 +715,14 @@ public struct XcodeMCPServer: Sendable {
         let scaffoldMacOSTool = ScaffoldMacOSProjectTool(pathUtility: pathUtility)
         let searchCrashReportsTool = SearchCrashReportsTool()
         let exportIconTool = ExportIconTool()
+        let createIconTool = CreateIconTool(pathUtility: pathUtility)
+        let readIconTool = ReadIconTool()
+        let addIconLayerTool = AddIconLayerTool()
+        let removeIconLayerTool = RemoveIconLayerTool()
+        let setIconFillTool = SetIconFillTool()
+        let setIconEffectsTool = SetIconEffectsTool()
+        let setIconLayerPositionTool = SetIconLayerPositionTool()
+        let setIconAppearancesTool = SetIconAppearancesTool()
         let diagnosticsTool = DiagnosticsTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
@@ -924,6 +942,14 @@ public struct XcodeMCPServer: Sendable {
             (.scaffoldMacOS, scaffoldMacOSTool.tool()),
             (.searchCrashReports, searchCrashReportsTool.tool()),
             (.exportIcon, exportIconTool.tool()),
+            (.createIcon, createIconTool.tool()),
+            (.readIcon, readIconTool.tool()),
+            (.addIconLayer, addIconLayerTool.tool()),
+            (.removeIconLayer, removeIconLayerTool.tool()),
+            (.setIconFill, setIconFillTool.tool()),
+            (.setIconEffects, setIconEffectsTool.tool()),
+            (.setIconLayerPosition, setIconLayerPositionTool.tool()),
+            (.setIconAppearances, setIconAppearancesTool.tool()),
             (.diagnostics, diagnosticsTool.tool()),
             (.checkOutputFileMap, checkOutputFileMapTool.tool()),
             (.extractCrashTraces, extractCrashTracesTool.tool()),
@@ -1348,6 +1374,22 @@ public struct XcodeMCPServer: Sendable {
                     return searchCrashReportsTool.execute(arguments: arguments)
                 case .exportIcon:
                     return try await exportIconTool.execute(arguments: arguments)
+                case .createIcon:
+                    return try createIconTool.execute(arguments: arguments)
+                case .readIcon:
+                    return try readIconTool.execute(arguments: arguments)
+                case .addIconLayer:
+                    return try addIconLayerTool.execute(arguments: arguments)
+                case .removeIconLayer:
+                    return try removeIconLayerTool.execute(arguments: arguments)
+                case .setIconFill:
+                    return try setIconFillTool.execute(arguments: arguments)
+                case .setIconEffects:
+                    return try setIconEffectsTool.execute(arguments: arguments)
+                case .setIconLayerPosition:
+                    return try setIconLayerPositionTool.execute(arguments: arguments)
+                case .setIconAppearances:
+                    return try setIconAppearancesTool.execute(arguments: arguments)
                 case .diagnostics:
                     return try await diagnosticsTool.execute(arguments: arguments)
                 case .checkOutputFileMap:

@@ -741,4 +741,144 @@ struct AddFileToolTests {
             try tool.execute(arguments: arguments)
         }
     }
+
+    @Test
+    func `Add icon file sets lastKnownFileType to folder iconcomposer icon`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        // Create an .icon bundle on disk
+        let iconPath = tempDir.appendingPathComponent("AppIcon.icon")
+        try FileManager.default.createDirectory(at: iconPath, withIntermediateDirectories: true)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(iconPath.path),
+        ])
+
+        let reloadedProj = try XcodeProj(path: projectPath)
+        let fileRef = reloadedProj.pbxproj.fileReferences.first { $0.name == "AppIcon.icon" }
+        #expect(fileRef != nil)
+        #expect(
+            fileRef?.lastKnownFileType == "folder.iconcomposer.icon",
+            "lastKnownFileType should be folder.iconcomposer.icon, got: \(fileRef?.lastKnownFileType ?? "nil")",
+        )
+    }
+
+    @Test
+    func `Add icon file to target wires to resources build phase`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        let iconPath = tempDir.appendingPathComponent("AppIcon.icon")
+        try FileManager.default.createDirectory(at: iconPath, withIntermediateDirectories: true)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(iconPath.path),
+            "target_name": Value.string("TestApp"),
+        ])
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
+
+        // Icon should be in resources, not sources
+        let resourcesBuildPhase =
+            target.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
+        let resourceFiles = resourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
+        #expect(
+            resourceFiles.contains("AppIcon.icon"),
+            "AppIcon.icon should be in resources build phase",
+        )
+
+        let sourcesBuildPhase =
+            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        let sourceFiles = sourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
+        #expect(
+            !sourceFiles.contains("AppIcon.icon"),
+            "AppIcon.icon should NOT be in sources build phase",
+        )
+    }
+
+    @Test
+    func `Add file above xcodeproj but within repo uses sourceRoot with relative path`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // Repo structure: tempDir/AppIcon.icon and tempDir/Xcode/Project.xcodeproj
+        let xcodeDir = tempDir.appendingPathComponent("Xcode")
+        try FileManager.default.createDirectory(at: xcodeDir, withIntermediateDirectories: true)
+
+        let projectPath = Path(xcodeDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        // Create .icon at repo root (above xcodeproj)
+        let iconPath = tempDir.appendingPathComponent("AppIcon.icon")
+        try FileManager.default.createDirectory(at: iconPath, withIntermediateDirectories: true)
+
+        // basePath is the repo root (tempDir), not the xcodeproj parent
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(iconPath.path),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added file 'AppIcon.icon'"))
+
+        // Verify: should use sourceRoot with ../AppIcon.icon (relative to xcodeproj parent)
+        let reloadedProj = try XcodeProj(path: projectPath)
+        let fileRef = reloadedProj.pbxproj.fileReferences.first { $0.name == "AppIcon.icon" }
+        #expect(fileRef != nil)
+        #expect(
+            fileRef?.sourceTree == .sourceRoot,
+            "sourceTree should be sourceRoot, got: \(String(describing: fileRef?.sourceTree))",
+        )
+        #expect(
+            fileRef?.path == "../AppIcon.icon",
+            "path should be ../AppIcon.icon relative to project dir, got: \(fileRef?.path ?? "nil")",
+        )
+        #expect(
+            fileRef?.lastKnownFileType == "folder.iconcomposer.icon",
+            "lastKnownFileType should be folder.iconcomposer.icon",
+        )
+    }
+
+    @Test
+    func `relativePath helper computes correct path with parent traversal`() {
+        #expect(
+            AddFileTool.relativePath(from: "/repo/Xcode", to: "/repo/AppIcon.icon")
+                == "../AppIcon.icon",
+        )
+        #expect(
+            AddFileTool.relativePath(from: "/a/b/c", to: "/a/x/y")
+                == "../../x/y",
+        )
+        #expect(
+            AddFileTool.relativePath(from: "/a/b", to: "/a/b/c/d")
+                == "c/d",
+        )
+    }
 }

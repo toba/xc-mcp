@@ -37,6 +37,14 @@ public enum BuildToolName: String, CaseIterable, Sendable {
 
     case searchCrashReports = "search_crash_reports"
     case exportIcon = "export_icon"
+    case createIcon = "create_icon"
+    case readIcon = "read_icon"
+    case addIconLayer = "add_icon_layer"
+    case removeIconLayer = "remove_icon_layer"
+    case setIconFill = "set_icon_fill"
+    case setIconEffects = "set_icon_effects"
+    case setIconLayerPosition = "set_icon_layer_position"
+    case setIconAppearances = "set_icon_appearances"
     case diagnostics
 
     // Build diagnostics tools
@@ -167,6 +175,14 @@ public struct BuildMCPServer: Sendable {
         let scaffoldMacOSTool = ScaffoldMacOSProjectTool(pathUtility: pathUtility)
         let searchCrashReportsTool = SearchCrashReportsTool()
         let exportIconTool = ExportIconTool()
+        let createIconTool = CreateIconTool(pathUtility: pathUtility)
+        let readIconTool = ReadIconTool()
+        let addIconLayerTool = AddIconLayerTool()
+        let removeIconLayerTool = RemoveIconLayerTool()
+        let setIconFillTool = SetIconFillTool()
+        let setIconEffectsTool = SetIconEffectsTool()
+        let setIconLayerPositionTool = SetIconLayerPositionTool()
+        let setIconAppearancesTool = SetIconAppearancesTool()
         let diagnosticsTool = DiagnosticsTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
@@ -249,6 +265,14 @@ public struct BuildMCPServer: Sendable {
                 scaffoldMacOSTool.tool(),
                 searchCrashReportsTool.tool(),
                 exportIconTool.tool(),
+                createIconTool.tool(),
+                readIconTool.tool(),
+                addIconLayerTool.tool(),
+                removeIconLayerTool.tool(),
+                setIconFillTool.tool(),
+                setIconEffectsTool.tool(),
+                setIconLayerPositionTool.tool(),
+                setIconAppearancesTool.tool(),
                 diagnosticsTool.tool(),
                 // Build diagnostics tools
                 checkOutputFileMapTool.tool(),
@@ -342,6 +366,22 @@ public struct BuildMCPServer: Sendable {
                     return searchCrashReportsTool.execute(arguments: arguments)
                 case .exportIcon:
                     return try await exportIconTool.execute(arguments: arguments)
+                case .createIcon:
+                    return try createIconTool.execute(arguments: arguments)
+                case .readIcon:
+                    return try readIconTool.execute(arguments: arguments)
+                case .addIconLayer:
+                    return try addIconLayerTool.execute(arguments: arguments)
+                case .removeIconLayer:
+                    return try removeIconLayerTool.execute(arguments: arguments)
+                case .setIconFill:
+                    return try setIconFillTool.execute(arguments: arguments)
+                case .setIconEffects:
+                    return try setIconEffectsTool.execute(arguments: arguments)
+                case .setIconLayerPosition:
+                    return try setIconLayerPositionTool.execute(arguments: arguments)
+                case .setIconAppearances:
+                    return try setIconAppearancesTool.execute(arguments: arguments)
                 case .diagnostics:
                     return try await diagnosticsTool.execute(arguments: arguments)
                 // Build diagnostics tools

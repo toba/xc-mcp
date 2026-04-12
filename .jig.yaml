@@ -62,6 +62,13 @@ citations:
         high: [pepper/**/*.py, Sources/**/*.swift]
         medium: [pepper/**/*.json, pyproject.toml]
         low: [.github/**, README.md, LICENSE, '*.md']
+    - repo: ethbak/icon-composer-mcp
+      branch: main
+      notes: 'Apple Icon Composer CLI & MCP server: create and manipulate .icon bundles and images with Liquid Glass rendering'
+      paths:
+        high: [src/**/*.ts, src/**/*.tsx]
+        medium: [package.json]
+        low: [.github/**, README.md, LICENSE]
 nope:
     rules:
         - name: git-checkout-switch

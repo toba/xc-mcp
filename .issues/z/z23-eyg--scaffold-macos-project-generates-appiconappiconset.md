@@ -1,15 +1,15 @@
 ---
 # z23-eyg
 title: 'scaffold/add_file: missing lastKnownFileType for .xcassets and missing scale in AppIcon Contents.json'
-status: review
+status: completed
 type: bug
 priority: normal
 created_at: 2026-04-12T17:17:40Z
-updated_at: 2026-04-12T18:37:07Z
+updated_at: 2026-04-12T19:23:15Z
 sync:
     github:
         issue_number: "276"
-        synced_at: "2026-04-12T18:37:51Z"
+        synced_at: "2026-04-12T20:39:10Z"
 ---
 
 When scaffolding a macOS project, the generated AppIcon.appiconset/Contents.json is missing the `"scale": "2x"` field. The correct format for a macOS single-size icon is:
@@ -93,3 +93,11 @@ The previous fix addressed Contents.json and lastKnownFileType but never created
 - `ScaffoldMacOSProjectTool.createAppTarget`: creates PBXFileReference for each source file, entitlements, and Assets.xcassets; creates PBXBuildFile entries; wires Swift files to PBXSourcesBuildPhase and Assets.xcassets to PBXResourcesBuildPhase; creates app PBXGroup in mainGroup
 - `ScaffoldIOSProjectTool.createAppTarget`: same (minus entitlements)
 - Added 28 new tests across 3 test files
+
+
+## Summary of Changes
+
+All three bugs identified and fixed:
+1. Missing `"scale": "2x"` in scaffolded AppIcon.appiconset/Contents.json
+2. Missing `lastKnownFileType = folder.assetcatalog` on PBXFileReference for .xcassets
+3. Missing PBXBuildFile in PBXResourcesBuildPhase (see lo7-k5l)

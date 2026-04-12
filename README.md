@@ -1,6 +1,6 @@
 # xc-mcp
 
-An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 200 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, memory diagnostics, crash symbolication, notarization, localization, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 200 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, memory diagnostics, crash symbolication, notarization, localization, icon composition, and SwiftUI preview capture.
 
 I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
@@ -8,115 +8,35 @@ I began working on this because every other, similar MCP I tried crashed or, wor
 
 This project [iterates rapidly](CHANGELOG.md). Fairly complex issues had to be solved to get to this point which is both reassuring and disconcerting. There is good linting and strong tests, including fixtures that are actual, open source Swift projects, but no genuine QA process. As with any agent work, ensure your files are committed or otherwise backed up before releasing the kraken.
 
-## Notable Powers
-
-- **Token Efficiency**: run a single server with all tools or use some combination of smaller MCPs with just the subset of tools relevant to your work.
-- **Screenshot any macOS app window**: `screenshot_mac_window` uses ScreenCaptureKit to capture any window, including your debug build, without needing a simulator.
-- **UI automation for macOS apps via Accessibility**: The `interact_` tools use the macOS Accessibility API (AXUIElement) to click buttons, read values, navigate menus, type text, and dump the full UI element tree. It is *semantic*, able to click "Save" rather than a pixel coordinate. Eight tools: `interact_ui_tree`, `interact_click`, `interact_set_value`, `interact_get_value`, `interact_menu`, `interact_focus`, `interact_key`, `interact_find`.
-- **Capture SwiftUI previews as screenshots**: `preview_capture` extracts `#Preview` blocks from your Swift source, generates a temporary host app, builds it, launches it (iOS Simulator or macOS), takes a screenshot, and cleans up. Handles complex project configurations: mergeable library architectures, SPM transitive dependencies, cross-project framework embedding, local Swift packages (files inside `Packages/` directories referenced by the Xcode project), and nested struct previews that crash the compiler when naively inlined. Programmatic preview screenshots without opening Xcode.
-- **Paint view borders on a running app**: `debug_view_borders` injects colored `CALayer` borders onto every view in a running macOS app via LLDB. Pair with `screenshot_mac_window` to see the result. No code changes, no restarts.
-- **Full LLDB debugging over MCP**: Persistent LLDB sessions backed by a pseudo-TTY, so breakpoints survive across tool calls. Breakpoints, watchpoints, stepping, expression evaluation, memory inspection, view hierarchy dumps, symbol lookup — the full debugger experience, minus the GUI.
-- **Gesture presets**: `gesture` provides named presets — `scroll_up`, `pull_to_refresh`, `swipe_from_left_edge`, etc. — so agents don't have to do coordinate math every time they want to scroll a list. Eight presets, all computed as fractions of the screen dimensions you give it.
-- **Xcode state sync**: `sync_xcode_defaults` reads your active scheme and run destination straight from Xcode's `UserInterfaceState.xcuserstate`. Open a project in Xcode, pick your scheme, then let the agent inherit that context without manual configuration.
-- **Persistent environment variables**: `set_session_defaults(env: {"DYLD_PRINT_LIBRARIES": "1"})` sets custom env vars that automatically apply to *every* build, test, and run command for the session. Per-invocation env overrides session defaults (same key wins). Useful for `DYLD_` debugging vars, custom build flags, CI env passthrough. `clear_session_defaults` resets everything.
-- **Unused code detection**: `detect_unused_code` wraps [Periphery](https://github.com/peripheryapp/periphery) to find unused declarations, redundant imports, assign-only properties, and unnecessarily public symbols across Swift packages and Xcode projects. Returns a summary by default; drill into cached results with `format: "detail"` or `format: "checklist"` — the checklist format gives agents a persistent, numbered list they can mark off as they clean up, without re-scanning every time.
-- **One-call device deployment**: `build_deploy_device` builds for a connected device, stops any running instance, installs the new build, and launches — all in one tool call. No more four-step `build_device` → `stop_app_device` → `install_app_device` → `launch_app_device` dance. `deploy_device` does the post-build half if you've already got a `.app`.
-- **Performance baselines**: `get_performance_metrics` extracts `XCTest.measure()` timing data from `.xcresult` bundles. `set_performance_baseline` creates the `.xcbaseline` plist files that Xcode uses for automatic regression detection. `show_performance_baselines` reads existing baselines in human-readable form. The whole measure → baseline → regress loop, from the CLI.
-- **Memory diagnostics**: `memory_leaks`, `memory_heap`, `memory_vmmap`, `memory_stringdups`, and `memory_malloc_history` wrap Xcode's hidden diagnostic CLIs — the ones buried inside the Developer directory that most people don't know exist. An LLM is *particularly* good at these because the output is dense, repetitive, and begging for someone (something?) to summarize "you have 847 duplicate copies of this string" or "UIKit is holding 12MB of dirty memory." Point them at a PID or bundle ID and get actionable findings.
-- **Crash symbolication**: `symbolicate_address` wraps `atos` to convert raw memory addresses from crash logs into `ClassName.method + offset`. Batch symbolicates multiple addresses in one call. Complements `search_crash_reports` for the full crash diagnosis workflow.
-- **Version management**: `version_management` wraps `agvtool` for reading and bumping marketing versions and build numbers — the kind of thing you want automated before every archive build and absolutely never want to do by hand.
-- **Notarization pipeline**: `notarize` wraps `notarytool` and `stapler` for the full macOS distribution workflow — submit, wait, check status, retrieve rejection logs, staple the ticket. The whole notarization dance in one tool.
-- **Asset catalog validation**: `validate_asset_catalog` runs `actool` in validation mode to catch missing icon sizes, incorrect formats, and other `.xcassets` problems before they become build errors.
-- **Open in Xcode**: `open_in_xcode` wraps `xed` to open files at specific lines, projects, or workspaces — for when the agent has diagnosed something and wants to say "go look at *this*."
-- **Dynamic tool workflows**: `manage_workflows` lets you enable or disable entire tool categories (project, simulator, debug, etc.) at runtime. When an agent doesn't need 130 tools cluttering its context, disable the irrelevant ones. The server sends `tools/list_changed` notifications so clients update automatically.
-
 ## Built On
 
 - [tuist/xcodeproj](https://github.com/tuist/xcodeproj) — project file manipulation
 - [modelcontextprotocol/swift-sdk](https://github.com/modelcontextprotocol/swift-sdk) — MCP implementation
 - Native `xcodebuild`, `simctl`, `devicectl`, `lldb`, and `xctrace` — the usual suspects
 
-Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server). Build output parsing adapted from [ldomaradzki/xcsift](https://github.com/ldomaradzki/xcsift). Localization from [Ryu0118/xcstrings-crud](https://github.com/Ryu0118/xcstrings-crud). Memory diagnostics, symbolication, and other CLI tool integrations inspired by [Terryc21/Xcode-tools](https://github.com/Terryc21/Xcode-tools)' catalog of hidden Xcode CLIs.
+Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xcodeproj-mcp-server). Build output parsing adapted from [ldomaradzki/xcsift](https://github.com/ldomaradzki/xcsift). Localization from [Ryu0118/xcstrings-crud](https://github.com/Ryu0118/xcstrings-crud). Memory diagnostics, symbolication, and other CLI tool integrations inspired by [Terryc21/Xcode-tools](https://github.com/Terryc21/Xcode-tools)' catalog of hidden Xcode CLIs. Icon composition informed by [ethbak/icon-composer-mcp](https://github.com/ethbak/icon-composer-mcp).
 
-## Table of Contents
+---
 
-- [Multi-Server Architecture](#multi-server-architecture)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Requirements](#requirements)
-- [Tools](#tools)
-  - [macOS UI Automation](#macos-ui-automation-8-tools)
-  - [macOS Screenshots & Builds](#macos-screenshots--builds-14-tools)
-  - [SwiftUI Preview Capture](#swiftui-preview-capture-1-tool)
-  - [Debug](#debug-24-tools)
-  - [Simulator](#simulator-17-tools)
-  - [Simulator UI Automation](#simulator-ui-automation-8-tools)
-  - [Device](#device-9-tools)
-  - [Project Management](#project-management-58-tools)
-  - [Discovery](#discovery-6-tools)
-  - [Instruments](#instruments-3-tools)
-  - [Logging](#logging-4-tools)
-  - [Swift Package Manager](#swift-package-manager-12-tools)
-  - [Localization](#localization-24-tools)
-  - [Session & Utilities](#session--utilities-12-tools)
-- [Tests](#tests)
-- [Path Security](#path-security)
-- [License](#license)
+## What's Inside
 
-## Multi-Server Architecture
+Nine tool categories. Use the monolithic server for everything, or mix focused servers to keep token overhead low.
 
-xc-mcp provides both a monolithic server and focused servers for token efficiency:
+| | Category | Tools | What it does |
+|---|---|:---:|---|
+| [1](#debugging) | [Debugging](#debugging) | 24 | LLDB sessions, memory diagnostics, crash symbolication, view borders |
+| [2](#macos-builds--screenshots) | [macOS Builds](#macos-builds--screenshots) | 14 | Build, test, run, screenshot, coverage, profiling |
+| [3](#simulators) | [Simulators](#simulators) | 25 | Build, run, screenshot, touch/gesture automation, logs |
+| [4](#devices) | [Devices](#devices) | 9 | Build, deploy, test on physical iOS devices |
+| [5](#project-management) | [Project Management](#project-management) | 58 | Full .xcodeproj manipulation — targets, groups, packages, schemes, test plans |
+| [6](#icon-composition) | [Icon Composition](#icon-composition) | 9 | Create and edit Icon Composer `.icon` bundles, render via `ictool` |
+| [7](#swift-packages) | [Swift Packages](#swift-packages) | 12 | SPM build/test/run, swiftformat, swiftlint, unused code detection |
+| [8](#localization) | [Localization](#localization) | 24 | Full CRUD for `.xcstrings` files — keys, translations, coverage |
+| [9](#session--utilities) | [Session & Utilities](#session--utilities) | 12 | Auto-detection, environment, Xcode sync, notarization, version management |
 
-| Server | Tools | Token Overhead | Description |
-|--------|-------|----------------|-------------|
-| `xc-mcp` | 178 | ~30K | Full monolithic server |
-| `xc-project` | 61 | ~9K | .xcodeproj file manipulation |
-| `xc-simulator` | 29 | ~5K | Simulator, UI automation, simulator logs |
-| `xc-build` | 35 | ~6K | macOS builds, profiling, discovery, logging, diagnostics, versioning, notarization, utilities |
-| `xc-debug` | 28 | ~4K | LLDB debugging, memory diagnostics, crash symbolication, view borders, screenshots, session defaults |
-| `xc-strings` | 24 | ~3K | Xcode String Catalog (.xcstrings) localization |
-| `xc-swift` | 15 | ~3K | Swift Package Manager, swiftformat, swiftlint, diagnostics, coverage |
-| `xc-device` | 14 | ~3K | Physical iOS devices, deployment pipelines |
+Plus a handful of cross-cutting capabilities described in [Notable Powers](#notable-powers).
 
-**When to use focused servers:**
-- Use `xc-project` for project file editing (no CLI alternative exists)
-- Use `xc-simulator` for build+run workflows on simulators
-- Use `xc-device` for physical device deployment
-- Use `xc-debug` for debugging sessions
-- Use `xc-swift` for Swift package operations
-- Use `xc-strings` for localization management with .xcstrings files
-
-**Configuration presets:**
-
-```json
-// Minimal (~9K tokens) - project editing only
-{
-  "mcpServers": {
-    "xc-project": { "command": "/opt/homebrew/bin/xc-project" }
-  }
-}
-
-// Standard (~19K tokens) - project + simulator + build
-{
-  "mcpServers": {
-    "xc-project": { "command": "/opt/homebrew/bin/xc-project" },
-    "xc-simulator": { "command": "/opt/homebrew/bin/xc-simulator" },
-    "xc-build": { "command": "/opt/homebrew/bin/xc-build" }
-  }
-}
-
-// Full (~27K tokens) - all capabilities
-{
-  "mcpServers": {
-    "xc-project": { "command": "/opt/homebrew/bin/xc-project" },
-    "xc-simulator": { "command": "/opt/homebrew/bin/xc-simulator" },
-    "xc-device": { "command": "/opt/homebrew/bin/xc-device" },
-    "xc-debug": { "command": "/opt/homebrew/bin/xc-debug" },
-    "xc-swift": { "command": "/opt/homebrew/bin/xc-swift" },
-    "xc-build": { "command": "/opt/homebrew/bin/xc-build" }
-  }
-}
-```
+---
 
 ## Installation
 
@@ -135,9 +55,9 @@ cd xc-mcp
 swift build -c release
 ```
 
-## Configuration
+### Configuration
 
-### Claude Code
+**Claude Code:**
 
 ```bash
 # With Homebrew
@@ -147,9 +67,7 @@ claude mcp add xc-mcp -- $(brew --prefix)/bin/xc-mcp
 claude mcp add xc-mcp -- /path/to/xc-mcp/.build/release/xc-mcp
 ```
 
-### Claude Desktop
-
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+**Claude Desktop** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -163,404 +81,592 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 
-## Requirements
+### Requirements
 
 - macOS 15+
 - Xcode (for `xcodebuild`, `simctl`, `devicectl`)
+- Some tools require macOS privacy permissions — see [Permissions](#macos-permissions)
 
-### macOS Permissions
+---
 
-Some tools require macOS privacy permissions granted via **System Settings > Privacy & Security**:
+## Multi-Server Architecture
 
-| Permission | Tools | Notes |
-|-----------|-------|-------|
-| **Accessibility** | `interact_*` tools | Required for AXUIElement API access |
-| **Screen Recording** | `screenshot_mac_window` | Required for ScreenCaptureKit window capture |
+Run a single server with all tools, or use focused servers to reduce token overhead. Every tool is in `xc-mcp`; the focused servers are strict subsets.
 
-macOS grants these permissions to the **responsible process** — the GUI app at the top of the process tree, not the `xc-mcp` binary itself. This means:
+| Server | Tools | Tokens | What's in it |
+|--------|:-----:|:------:|---|
+| `xc-mcp` | 187 | ~30K | Everything |
+| `xc-project` | 61 | ~9K | .xcodeproj manipulation |
+| `xc-build` | 44 | ~7K | macOS builds, profiling, discovery, diagnostics, icons, versioning, notarization |
+| `xc-simulator` | 29 | ~5K | Simulator + UI automation + simulator logs |
+| `xc-debug` | 28 | ~4K | LLDB, memory diagnostics, crash symbolication, screenshots |
+| `xc-strings` | 24 | ~3K | .xcstrings localization |
+| `xc-swift` | 15 | ~3K | SPM, swiftformat, swiftlint, diagnostics, coverage |
+| `xc-device` | 14 | ~3K | Physical iOS devices |
 
-- **Claude Desktop** needs the relevant permission when using xc-mcp as an MCP server
-- **VS Code / Cursor** needs it when running xc-mcp through an MCP extension
-- **Terminal / iTerm** needs it when running xc-mcp via Claude Code
+<details>
+<summary><strong>Configuration presets</strong></summary>
 
-The `xc-mcp` binary won't appear in System Settings because it's a CLI tool — TCC (Transparency, Consent, and Control) always resolves up to the parent GUI application.
+```json
+// Minimal (~9K tokens) — project editing only
+{
+  "mcpServers": {
+    "xc-project": { "command": "/opt/homebrew/bin/xc-project" }
+  }
+}
 
-## Tools
+// Standard (~19K tokens) — project + simulator + build
+{
+  "mcpServers": {
+    "xc-project": { "command": "/opt/homebrew/bin/xc-project" },
+    "xc-simulator": { "command": "/opt/homebrew/bin/xc-simulator" },
+    "xc-build": { "command": "/opt/homebrew/bin/xc-build" }
+  }
+}
 
-### macOS UI Automation (8 tools)
+// Full (~27K tokens) — all capabilities
+{
+  "mcpServers": {
+    "xc-project": { "command": "/opt/homebrew/bin/xc-project" },
+    "xc-simulator": { "command": "/opt/homebrew/bin/xc-simulator" },
+    "xc-device": { "command": "/opt/homebrew/bin/xc-device" },
+    "xc-debug": { "command": "/opt/homebrew/bin/xc-debug" },
+    "xc-swift": { "command": "/opt/homebrew/bin/xc-swift" },
+    "xc-build": { "command": "/opt/homebrew/bin/xc-build" }
+  }
+}
+```
 
-Semantic UI automation for macOS apps via the Accessibility API. These work on *any* running macOS app — your own debug builds, system apps, whatever has accessibility enabled. You interact with elements by role, title, and ID rather than screen coordinates.
+</details>
+
+---
+
+## Notable Powers
+
+A few things worth calling out because they're unusual, non-obvious, or the reason this project exists.
+
+**Screenshot any macOS app window** — `screenshot_mac_window` uses ScreenCaptureKit to capture any window by app name, bundle ID, or title. No simulator required. Pair with `debug_view_borders` to see layout issues.
+
+**Semantic macOS UI automation** — The `interact_*` tools use the Accessibility API to click "Save" rather than a pixel coordinate. Dump the UI tree, click buttons, read values, navigate menus, type text. Works on any running macOS app.
+
+**SwiftUI preview capture** — `preview_capture` extracts `#Preview` blocks, generates a temporary host app, builds and launches it, screenshots, and cleans up. Handles mergeable libraries, SPM transitive dependencies, local packages in `Packages/`, and nested struct previews that crash the compiler.
+
+**Full LLDB over MCP** — Persistent sessions backed by a pseudo-TTY. Breakpoints survive across tool calls. The full debugger minus the GUI.
+
+**Paint view borders on a running app** — `debug_view_borders` injects colored `CALayer` borders onto every view via LLDB. No code changes, no restarts.
+
+**Memory diagnostics** — Wraps `leaks`, `heap`, `vmmap`, `stringdups`, and `malloc_history` — the ones buried inside the Developer directory that most people don't know exist. An LLM is *particularly* good at these because the output is dense, repetitive, and begging for someone (something?) to summarize.
+
+**One-call device deployment** — `build_deploy_device` does build → stop → install → launch in a single tool call. No four-step dance.
+
+**Xcode state sync** — `sync_xcode_defaults` reads your active scheme and run destination from Xcode's user state. Open a project, pick your scheme, let the agent inherit it.
+
+**Icon Composer bundles** — Full `.icon` bundle creation and editing — layers, fills, glass effects, dark mode — without opening Icon Composer. Render via `ictool`.
+
+**Unused code detection** — Wraps [Periphery](https://github.com/peripheryapp/periphery). Returns a persistent checklist agents can mark off as they clean up.
+
+**Dynamic tool workflows** — `manage_workflows` enables or disables tool categories at runtime so 187 tools don't all sit in context when you only need six.
+
+---
+
+## Category Details
+
+Each section below describes a tool category with highlights, then expands to the full tool reference.
+
+---
+
+### Debugging
+
+24 tools. LLDB sessions backed by a pseudo-TTY — breakpoints survive across tool calls, no hangs from rapid attach/detach. Plus standalone memory diagnostics and crash symbolication that work on any running process.
+
+<details>
+<summary><strong>Build & attach</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `interact_ui_tree` | Dump the full UI element tree with assigned IDs for targeting |
-| `interact_click` | Click a UI element by ID or role+title search |
-| `interact_set_value` | Set value on a UI element (text fields, sliders, etc.) |
-| `interact_get_value` | Read the current value of a UI element |
-| `interact_menu` | Navigate and select menu bar items |
-| `interact_focus` | Focus or activate a UI element |
-| `interact_key` | Send keyboard input to the focused element |
-| `interact_find` | Search for UI elements by properties |
-
-### macOS Screenshots & Builds (14 tools)
-
-| Tool | Description |
-|------|-------------|
-| `screenshot_mac_window` | Capture a macOS app window via ScreenCaptureKit. Match by app name, bundle ID, or window title. Returns inline base64 PNG. Works with `debug_view_borders` to capture visual debugging output |
-| `build_macos` | Build a macOS app |
-| `build_run_macos` | Build and run macOS app |
-| `launch_mac_app` | Launch a macOS app |
-| `stop_mac_app` | Stop a macOS app |
-| `get_mac_app_path` | Get path to built macOS app |
-| `test_macos` | Run tests for macOS app |
-| `start_mac_log_cap` | Start capturing macOS app logs via unified logging |
-| `stop_mac_log_cap` | Stop capturing and return macOS log results |
-| `get_test_attachments` | Extract test attachments (screenshots, data files) from an `.xcresult` bundle. Exports files and returns structured metadata from the manifest. Filter by test ID or failures only |
-| `sample_mac_app` | Sample a running macOS app's call stacks via `/usr/bin/sample`. Parses raw output into agent-friendly summaries: heaviest functions, call paths, idle thread filtering |
-| `profile_app_launch` | Profile app launch performance — build, launch, sample call stacks during startup, and report which functions dominate launch time |
-| `get_coverage_report` | Extract per-target code coverage from `.xcresult` bundles — file count, line coverage percentage, and covered/executable line counts |
-| `get_file_coverage` | Drill into per-function coverage for a specific file within an `.xcresult` bundle |
-| `get_performance_metrics` | Extract `measure(metrics:)` timing data from `.xcresult` bundles — average, std dev, units, iteration count, and existing baselines |
-| `set_performance_baseline` | Create or update `.xcbaseline` plist files that Xcode uses for automatic regression detection |
-| `show_performance_baselines` | Read and display existing `.xcbaseline` plists with human-readable metric names. Filter by target, test class, or metric type |
-| `diagnostics` | Clean-build an Xcode project and collect all compiler warnings, errors, and lint violations. Same idea as `swift_diagnostics` but for `.xcodeproj`/`.xcworkspace` projects. Filters out dependency warnings so you only see your own code's problems |
-
-### SwiftUI Preview Capture (1 tool)
-
-| Tool | Description |
-|------|-------------|
-| `preview_capture` | Extract a `#Preview` block from a Swift file, build a temporary host app, launch on iOS Simulator or macOS, capture a screenshot, and clean up. Works with mergeable library projects, cross-project dependencies (GRDB, etc.), local Swift packages within the Xcode project, and previews containing nested types. Supports multi-preview files via `preview_index`, configurable `render_delay`, and optional `save_path` |
-
-### Debug (24 tools)
-
-Debug tools use persistent LLDB sessions backed by a pseudo-TTY — a single LLDB process stays alive across tool calls, so breakpoints are preserved and there are no hangs from rapid attach/detach cycles. Attach once with `debug_attach_sim`, then use any combination of debug tools against the live session.
-
-**Build & debug launch:**
-
-| Tool | Description |
-|------|-------------|
-| `build_debug_macos` | Build and launch a macOS app under LLDB — the equivalent of Xcode's Run button. Builds incrementally, launches via Launch Services and attaches LLDB with `--waitfor`. Handles sandboxed and hardened-runtime apps: symlinks non-embedded frameworks into the app bundle and rewrites install names to `@rpath/`. Supports custom args, env vars, and stop-at-entry |
-
-**Session management:**
-
-| Tool | Description |
-|------|-------------|
+| `build_debug_macos` | Build and launch a macOS app under LLDB. Handles sandboxed and hardened-runtime apps: symlinks frameworks and rewrites install names |
 | `debug_attach_sim` | Attach LLDB to app on simulator |
 | `debug_detach` | Detach debugger and end session |
-| `debug_process_status` | Get current process state (running, stopped, signal info) |
+| `debug_process_status` | Get current process state |
 
-**Breakpoints and watchpoints:**
+</details>
+
+<details>
+<summary><strong>Breakpoints, watchpoints & execution</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `debug_breakpoint_add` | Add a breakpoint (by symbol name or file:line) |
+| `debug_breakpoint_add` | Add a breakpoint (by symbol or file:line) |
 | `debug_breakpoint_remove` | Remove a breakpoint by ID |
-| `debug_watchpoint` | Manage watchpoints — add (by variable or address with optional condition), remove, or list |
-
-**Execution control:**
-
-| Tool | Description |
-|------|-------------|
+| `debug_watchpoint` | Add, remove, or list watchpoints |
 | `debug_continue` | Continue execution |
-| `debug_step` | Step through code — `in`, `over`, `out`, or `instruction`. Returns new source location |
+| `debug_step` | Step in, over, out, or by instruction |
 
-**Inspection:**
+</details>
 
-| Tool | Description |
-|------|-------------|
-| `debug_stack` | Print stack trace (single thread or all threads) |
-| `debug_variables` | Print local variables in a stack frame |
-| `debug_threads` | List all threads, optionally select one to switch context |
-| `debug_evaluate` | Evaluate expressions — `po` (object description), `p` (value), Swift or ObjC |
-| `debug_memory` | Read memory at an address in hex, bytes, ASCII, or disassembly format |
-| `debug_symbol_lookup` | Look up symbols by address, name (regex), or type name |
-| `debug_view_hierarchy` | Dump the live UI view hierarchy (iOS or macOS), inspect by address, show Auto Layout constraints |
-| `debug_view_borders` | Toggle colored borders on all views in a running macOS app via LLDB. Configurable color and width. Resume with `debug_continue` and screenshot to see results |
-
-**Memory diagnostics:**
-
-These wrap Xcode's standalone diagnostic CLIs — separate from LLDB, they work on any running process by PID or bundle ID.
+<details>
+<summary><strong>Inspection</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `memory_leaks` | Detect memory leaks via `/usr/bin/leaks`. Returns leaked object counts, sizes, and backtraces. Groups by allocation backtrace by default |
-| `memory_heap` | Examine heap allocations via `/usr/bin/heap`. Shows all objects by class, sorted by total size or count. Filter by class name, limit to top N |
-| `memory_vmmap` | Display virtual memory mapping via `/usr/bin/vmmap`. Summary mode shows region types with dirty/clean/swapped totals; full mode shows per-region detail |
-| `memory_stringdups` | Find duplicate strings wasting memory via `/usr/bin/stringdups`. Shows repeated string values with copy count and wasted bytes |
-| `memory_malloc_history` | Show allocation backtrace for a specific address via `/usr/bin/malloc_history`. Requires the process was launched with `MallocStackLogging=1` |
+| `debug_stack` | Print stack trace |
+| `debug_variables` | Print local variables |
+| `debug_threads` | List threads, optionally switch |
+| `debug_evaluate` | Evaluate expressions — `po`, `p`, Swift or ObjC |
+| `debug_memory` | Read memory in hex, bytes, ASCII, or disassembly |
+| `debug_symbol_lookup` | Look up symbols by address, name, or type |
+| `debug_view_hierarchy` | Dump live UI view hierarchy, inspect Auto Layout constraints |
+| `debug_view_borders` | Toggle colored borders on all views via LLDB |
+| `debug_lldb_command` | Execute arbitrary LLDB command |
 
-**Crash symbolication:**
+</details>
+
+<details>
+<summary><strong>Memory diagnostics</strong></summary>
+
+Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 | Tool | Description |
 |------|-------------|
-| `symbolicate_address` | Convert raw memory addresses to symbol names via `atos`. Supports binary/dSYM file symbolication with load address, or live process attachment by PID. Batch symbolicates multiple addresses per call |
+| `memory_leaks` | Detect leaks via `leaks` — counts, sizes, backtraces |
+| `memory_heap` | Examine heap via `heap` — objects by class, sorted by size or count |
+| `memory_vmmap` | Virtual memory mapping via `vmmap` — dirty/clean/swapped per region |
+| `memory_stringdups` | Duplicate strings via `stringdups` — wasted bytes |
+| `memory_malloc_history` | Allocation backtrace for an address (requires `MallocStackLogging=1`) |
+| `symbolicate_address` | Convert addresses to symbols via `atos` — batch support |
 
-**Passthrough:**
+</details>
+
+---
+
+### macOS Builds & Screenshots
+
+14 tools. Build, test, run, screenshot macOS apps. Coverage reports, performance baselines, launch profiling, and build diagnostics.
+
+<details>
+<summary><strong>All tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `debug_lldb_command` | Execute arbitrary LLDB command for anything not covered above |
+| `screenshot_mac_window` | Capture any macOS window via ScreenCaptureKit — match by app name, bundle ID, or title |
+| `build_macos` | Build a macOS app |
+| `build_run_macos` | Build and run |
+| `launch_mac_app` | Launch a macOS app |
+| `stop_mac_app` | Stop a macOS app |
+| `get_mac_app_path` | Get path to built app |
+| `test_macos` | Run tests |
+| `start_mac_log_cap` | Start capturing logs via unified logging |
+| `stop_mac_log_cap` | Stop and return log results |
+| `get_test_attachments` | Extract test attachments from `.xcresult` bundles |
+| `sample_mac_app` | Sample call stacks via `/usr/bin/sample` |
+| `profile_app_launch` | Build, launch, sample startup call stacks |
+| `get_coverage_report` | Per-target code coverage from `.xcresult` bundles |
+| `get_file_coverage` | Per-function coverage drill-down |
+| `get_performance_metrics` | Extract `measure(metrics:)` timing data |
+| `set_performance_baseline` | Create `.xcbaseline` plists for regression detection |
+| `show_performance_baselines` | Read existing baselines in human-readable form |
+| `diagnostics` | Clean-build and collect all warnings, errors, and lint violations |
 
-### Simulator (17 tools)
+</details>
+
+**SwiftUI Preview Capture** (1 tool):
+
+| Tool | Description |
+|------|-------------|
+| `preview_capture` | Extract `#Preview`, build temp host app, launch, screenshot, clean up. Handles mergeable libraries, cross-project deps, local Swift packages, nested struct previews |
+
+---
+
+### Simulators
+
+25 tools. Simulator management, build-and-run, and coordinate-based touch automation via `simctl io`.
+
+<details>
+<summary><strong>Simulator management</strong></summary>
 
 | Tool | Description |
 |------|-------------|
 | `list_sims` | List available simulators |
 | `boot_sim` | Boot a simulator |
-| `open_sim` | Open Simulator.app with a specific simulator |
-| `build_sim` | Build an app for simulator |
-| `build_run_sim` | Build and run on simulator |
-| `install_app_sim` | Install an app on simulator |
-| `launch_app_sim` | Launch an app on simulator |
-| `stop_app_sim` | Stop a running app |
-| `get_sim_app_path` | Get path to installed app |
-| `test_sim` | Run tests on simulator |
-| `record_sim_video` | Record video of simulator |
-| `launch_app_logs_sim` | Launch app and capture logs |
+| `open_sim` | Open Simulator.app |
+| `build_sim` | Build for simulator |
+| `build_run_sim` | Build and run |
+| `install_app_sim` | Install an app |
+| `launch_app_sim` | Launch an app |
+| `stop_app_sim` | Stop an app |
+| `get_sim_app_path` | Get installed app path |
+| `test_sim` | Run tests |
+| `record_sim_video` | Record video |
+| `launch_app_logs_sim` | Launch and capture logs |
 | `erase_sims` | Reset a simulator |
 | `set_sim_location` | Set simulated location |
-| `reset_sim_location` | Reset simulated location |
-| `set_sim_appearance` | Set appearance (light/dark mode) |
-| `sim_statusbar` | Override status bar settings |
+| `reset_sim_location` | Reset location |
+| `set_sim_appearance` | Light/dark mode |
+| `sim_statusbar` | Override status bar |
 
-### Simulator UI Automation (8 tools)
+</details>
 
-Coordinate-based touch and gesture automation for iOS Simulators via `simctl io`.
+<details>
+<summary><strong>Touch & gesture automation</strong></summary>
 
 | Tool | Description |
 |------|-------------|
 | `tap` | Tap at coordinate |
 | `long_press` | Long press at coordinate |
 | `swipe` | Swipe between points |
-| `gesture` | Named gesture presets — `scroll_up`, `scroll_down`, `scroll_left`, `scroll_right`, `swipe_from_left_edge`, `swipe_from_right_edge`, `pull_to_refresh`, `swipe_down_to_dismiss`. Coordinates computed from screen dimensions (default iPhone 15 Pro) |
+| `gesture` | Named presets — `scroll_up`, `pull_to_refresh`, `swipe_from_left_edge`, etc. Coordinates computed from screen dimensions |
 | `type_text` | Type text |
 | `key_press` | Press hardware key |
 | `button` | Press hardware button |
 | `screenshot` | Take simulator screenshot |
 
-### Device (9 tools)
+</details>
+
+---
+
+### Devices
+
+9 tools. Physical iOS device management, including one-call deployment pipelines.
+
+<details>
+<summary><strong>All tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `list_devices` | List connected physical devices |
-| `build_device` | Build for physical device |
-| `install_app_device` | Install on physical device |
-| `launch_app_device` | Launch on physical device |
-| `stop_app_device` | Stop app on physical device — resolves bundle ID to PID via `devicectl device info processes` |
-| `get_device_app_path` | Get path to installed app |
-| `test_device` | Run tests on physical device |
-| `deploy_device` | Stop → install → launch in one call. For when you've already built the `.app` and just want it on the device |
-| `build_deploy_device` | Full pipeline: build → stop → install → launch. Extracts the `.app` path and bundle ID from build settings automatically — no need to know either up front |
+| `list_devices` | List connected devices |
+| `build_device` | Build for device |
+| `install_app_device` | Install on device |
+| `launch_app_device` | Launch on device |
+| `stop_app_device` | Stop app — resolves bundle ID to PID via `devicectl` |
+| `get_device_app_path` | Get installed app path |
+| `test_device` | Run tests on device |
+| `deploy_device` | Stop → install → launch (post-build) |
+| `build_deploy_device` | Build → stop → install → launch (full pipeline) |
 
-### Project Management (58 tools)
+</details>
+
+---
+
+### Project Management
+
+58 tools. Full `.xcodeproj` manipulation — targets, groups, files, schemes, test plans, Swift packages, synchronized folders, build phases, document types, URL types. All through the XcodeProj library, no `xcodebuild` needed.
+
+<details>
+<summary><strong>Files & groups</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `create_xcodeproj` | Create a new Xcode project |
-| `scaffold_ios_project` | Create iOS project with workspace + SPM architecture |
-| `scaffold_macos_project` | Create macOS project with workspace + SPM architecture |
-| `list_targets` | List all targets in a project |
-| `list_build_configurations` | List all build configurations |
-| `list_files` | List all files in a target — enumerates disk files in synchronized folders (subtracting membership exceptions), handles both target-linked and exception-set-linked sync groups |
-| `list_groups` | List all groups in the project |
-| `add_file` | Add a file to the project |
-| `remove_file` | Remove a file from the project |
-| `move_file` | Move or rename a file |
-| `create_group` | Create a new group |
-| `remove_group` | Remove a group from the project navigator |
-| `add_target` | Create a new target |
+| `add_file` | Add a file — handles `.icon`, `.xcassets`, and files above the xcodeproj directory |
+| `remove_file` | Remove a file |
+| `move_file` | Move or rename |
+| `list_files` | List files in a target — enumerates synchronized folders, respects membership exceptions |
+| `create_group` | Create a group |
+| `remove_group` | Remove a group |
+| `rename_group` | Rename by slash-separated path |
+| `list_groups` | List all groups |
+
+</details>
+
+<details>
+<summary><strong>Targets</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `create_xcodeproj` | Create a new project |
+| `scaffold_ios_project` | iOS project with workspace + SPM architecture |
+| `scaffold_macos_project` | macOS project with workspace + SPM architecture |
+| `list_targets` | List all targets |
+| `add_target` | Create a target |
 | `remove_target` | Remove a target |
-| `rename_target` | Rename a target in-place — updates product name, build settings, dependencies, copy-files phases, product references, and group names. Optionally sets a new bundle identifier. Cross-target scan updates `TEST_TARGET_NAME`, `TEST_HOST`, `LD_RUNPATH_SEARCH_PATHS`, and `FRAMEWORK_SEARCH_PATHS` in other targets. Also patches `BuildableName` and `BlueprintName` in `.xcscheme` files |
-| `rename_scheme` | Rename an `.xcscheme` file on disk (shared or user schemes) |
-| `create_scheme` | Create a new `.xcscheme` file with build, test, and launch actions. Supports test targets, test plan references, build configurations, and pre-build shell script actions |
-| `validate_scheme` | Validate a scheme's integrity — checks that build target references, testable target references, test plan files, and build configurations all exist in the project |
-| `create_test_plan` | Generate a `.xctestplan` JSON file from project targets. Resolves target UUIDs from the `.xcodeproj`, supports code coverage toggle |
-| `add_target_to_test_plan` | Add a test target entry to an existing `.xctestplan` file (resolves UUID from project) |
-| `remove_target_from_test_plan` | Remove a test target from a `.xctestplan` file by name |
-| `add_test_plan_to_scheme` | Add a test plan reference to an existing scheme's TestAction. Optionally set as default, which clears the default flag on other plans |
-| `remove_test_plan_from_scheme` | Remove a test plan reference from a scheme's TestAction |
-| `set_test_plan_target_enabled` | Enable or disable a test target in a `.xctestplan` file without removing it |
-| `set_test_target_application` | Set the target application (macro expansion) for a UI test target in a scheme's Test action |
-| `list_test_plans` | Find all `.xctestplan` files under the project directory and list their targets and configurations |
-| `rename_group` | Rename a group in the project navigator by slash-separated path (e.g. `Sources/OldName`) |
+| `rename_target` | Rename in-place — updates product name, settings, deps, schemes |
 | `duplicate_target` | Duplicate a target |
-| `add_dependency` | Add dependency between targets |
+| `add_dependency` | Add inter-target dependency |
+| `add_app_extension` | Add App Extension target |
+| `remove_app_extension` | Remove App Extension target |
+| `scaffold_module` | Create framework module in one call — target + test target + sync folder + dep + embed + test plan |
+
+</details>
+
+<details>
+<summary><strong>Build settings & phases</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `list_build_configurations` | List configurations |
 | `get_build_settings` | Get build settings for a target |
 | `set_build_setting` | Modify build settings |
-| `add_framework` | Add framework dependencies |
-| `remove_framework` | Remove a framework dependency from one or all targets — cleans up link phases, embed phases, and orphaned file references |
-| `add_build_phase` | Add custom build phases |
-| `add_app_extension` | Add an App Extension target |
-| `remove_app_extension` | Remove an App Extension target |
-| `add_swift_package` | Add a Swift Package dependency — remote (by URL with version requirement) or local (by relative path). Mutually exclusive; local packages don't need a version |
-| `list_swift_packages` | List Swift Package dependencies (both remote and local) |
-| `remove_swift_package` | Remove a Swift Package dependency — remote (by URL) or local (by relative path). Optionally removes associated product dependencies from all targets |
-| `add_synchronized_folder` | Add a synchronized folder reference |
-| `remove_synchronized_folder` | Remove a synchronized folder reference (does not delete from disk) |
-| `add_target_to_synchronized_folder` | Share an existing synchronized folder with another target |
-| `remove_target_from_synchronized_folder` | Unlink a synchronized folder from a target |
-| `add_synchronized_folder_exception` | Exclude specific files from a target in a synchronized folder |
-| `remove_synchronized_folder_exception` | Remove a file or entire exception set from a synchronized folder |
-| `list_synchronized_folder_exceptions` | List all exception sets on a synchronized folder with target names and excluded files |
-| `add_copy_files_phase` | Create a new Copy Files build phase with a destination |
-| `add_to_copy_files_phase` | Add files to an existing Copy Files build phase |
-| `list_copy_files_phases` | List all Copy Files build phases for a target |
-| `remove_copy_files_phase` | Remove a Copy Files build phase from a target |
-| `list_document_types` | List document types (`CFBundleDocumentTypes`) in a target's Info.plist |
-| `manage_document_type` | Add, update, or remove a document type in a target's Info.plist |
-| `list_type_identifiers` | List exported/imported type identifiers (`UTExportedTypeDeclarations` / `UTImportedTypeDeclarations`) |
-| `manage_type_identifier` | Add, update, or remove an exported or imported type identifier |
-| `list_url_types` | List URL types (`CFBundleURLTypes`) — custom URL schemes the app handles |
-| `manage_url_type` | Add, update, or remove a URL type (custom URL scheme) |
-| `validate_project` | Validate an Xcode project for common configuration issues — checks embed phase settings (`dstSubfolderSpec`), detects frameworks that are linked but not embedded (or vice versa), flags duplicate embeds across copy-files phases, empty copy-files phases, and missing or unused target dependencies |
-| `scaffold_module` | Create a framework module in one call — target, test target, synchronized folders, inter-target dependency, embed phase, and test plan entry. The composite version of calling `add_target` + `add_synchronized_folder` + `add_dependency` + `add_to_copy_files_phase` + `add_target_to_test_plan` individually |
+| `add_framework` | Add framework dependency |
+| `remove_framework` | Remove framework — cleans link + embed phases |
+| `add_build_phase` | Add custom build phase |
+| `add_copy_files_phase` | Create Copy Files build phase |
+| `add_to_copy_files_phase` | Add files to Copy Files phase |
+| `list_copy_files_phases` | List Copy Files phases |
+| `remove_copy_files_phase` | Remove Copy Files phase |
+| `validate_project` | Check embed settings, duplicate embeds, missing deps |
 
-### Discovery (6 tools)
+</details>
+
+<details>
+<summary><strong>Schemes & test plans</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `discover_projs` | Discover Xcode projects and workspaces |
-| `list_schemes` | List all schemes |
-| `show_build_settings` | Show build settings for a scheme |
-| `get_app_bundle_id` | Get bundle identifier for iOS/watchOS/tvOS app |
-| `get_mac_bundle_id` | Get bundle identifier for macOS app |
-| `list_test_plan_targets` | List test targets referenced by a scheme's test plans (via `xcodebuild`) |
+| `create_scheme` | Create `.xcscheme` with build, test, and launch actions |
+| `rename_scheme` | Rename `.xcscheme` file |
+| `validate_scheme` | Check target refs, test plans, configs |
+| `create_test_plan` | Generate `.xctestplan` from targets |
+| `add_target_to_test_plan` | Add test target to plan |
+| `remove_target_from_test_plan` | Remove from plan |
+| `set_test_plan_target_enabled` | Enable/disable without removing |
+| `set_test_plan_skipped_tags` | Set skipped test tags |
+| `add_test_plan_to_scheme` | Add plan to scheme's TestAction |
+| `remove_test_plan_from_scheme` | Remove plan from scheme |
+| `list_test_plans` | Find all `.xctestplan` files |
+| `set_test_target_application` | Set target app for UI tests |
 
-### Instruments (3 tools)
+</details>
 
-Profiling via `xctrace` — record traces, list available templates and instruments, and export trace data as XML for analysis.
+<details>
+<summary><strong>Swift packages</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `xctrace_list` | List available Instruments templates, instruments, or devices |
-| `xctrace_record` | Start or stop an Instruments trace recording (Time Profiler, Allocations, etc.) |
-| `xctrace_export` | Export data from a `.trace` file as XML — use `toc=true` to see available tables, then query with xpath |
+| `add_swift_package` | Add remote (URL + version) or local package |
+| `list_swift_packages` | List package dependencies |
+| `remove_swift_package` | Remove package + optionally its product deps |
+| `add_package_product` | Add package product to target |
+| `remove_package_product` | Remove package product |
+| `list_package_products` | List products |
 
-### Logging (4 tools)
+</details>
+
+<details>
+<summary><strong>Synchronized folders</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `start_sim_log_cap` | Start capturing simulator logs |
-| `stop_sim_log_cap` | Stop capturing and return results |
-| `start_device_log_cap` | Start capturing device logs |
-| `stop_device_log_cap` | Stop capturing device logs |
+| `add_synchronized_folder` | Add folder reference |
+| `remove_synchronized_folder` | Remove folder reference |
+| `add_target_to_synchronized_folder` | Share folder with another target |
+| `remove_target_from_synchronized_folder` | Unlink folder from target |
+| `add_synchronized_folder_exception` | Exclude files from a target |
+| `remove_synchronized_folder_exception` | Remove exclusion |
+| `list_synchronized_folder_exceptions` | List all exclusions |
 
-### Swift Package Manager (12 tools)
+</details>
+
+<details>
+<summary><strong>Document types & URL schemes</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `list_document_types` | List `CFBundleDocumentTypes` |
+| `manage_document_type` | Add, update, or remove document type |
+| `list_type_identifiers` | List UTI declarations |
+| `manage_type_identifier` | Add, update, or remove UTI |
+| `list_url_types` | List URL schemes |
+| `manage_url_type` | Add, update, or remove URL scheme |
+
+</details>
+
+---
+
+### Icon Composition
+
+9 tools. Create and edit Apple's Icon Composer `.icon` bundles — multi-layer icons with fills, glass effects, shadows, translucency, and dark mode variants. Render to PNG via `ictool`. Add to Xcode projects with the correct `lastKnownFileType`.
+
+<details>
+<summary><strong>All tools</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `create_icon` | Create `.icon` bundle from a PNG — fill, effects, dark mode, optional Xcode project wiring |
+| `export_icon` | Render `.icon` to PNG via `ictool` — platform, rendition, size, scale, tint |
+| `read_icon` | Inspect bundle — manifest summary, asset list, raw JSON |
+| `add_icon_layer` | Add image layer to existing bundle — new group or append to existing |
+| `remove_icon_layer` | Remove layer or group — auto-purges unreferenced assets |
+| `set_icon_fill` | Set background — solid, automatic gradient, linear gradient, or clear |
+| `set_icon_effects` | Configure group effects — specular, shadow, translucency, blur, lighting |
+| `set_icon_layer_position` | Adjust scale and offset of a layer or group |
+| `set_icon_appearances` | Dark/tinted mode fill specializations |
+
+</details>
+
+---
+
+### Swift Packages
+
+12 tools. SPM operations, formatting, linting, and unused code detection.
+
+<details>
+<summary><strong>All tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
 | `swift_package_build` | Build a Swift package |
-| `swift_package_test` | Run package tests |
-| `swift_package_run` | Run package executable |
+| `swift_package_test` | Run tests |
+| `swift_package_run` | Run executable |
 | `swift_package_clean` | Clean build artifacts |
 | `swift_package_list` | List dependencies |
 | `swift_package_stop` | Stop running executable |
-| `swift_format` | Run `swiftformat` on a package or specific paths. Supports `dry_run` to preview changes. Auto-detects `.swiftformat` config |
-| `swift_lint` | Run `swiftlint` on a package or specific paths. Parses JSON output into structured violations grouped by file. Supports `fix` mode for auto-correction. Auto-detects `.swiftlint.yml` config |
-| `swift_diagnostics` | Clean-build a package and collect *all* compiler warnings, errors, and lint violations in one shot. Cached builds swallow warnings on success — this forces recompilation so nothing hides. Optionally includes swiftlint. Returns diagnostics even when the build succeeds |
-| `detect_unused_code` | Find unused code via [Periphery](https://github.com/peripheryapp/periphery). Scans Swift packages or Xcode projects for unused declarations, redundant imports, assign-only properties, and redundant public accessibility. Three output formats: `summary` (counts by kind + top files), `detail` (per-declaration, grouped by file), `checklist` (persistent numbered list with mark/status tracking). Results are cached to disk — pass `result_file` to filter and drill down without re-scanning. Supports `kind_filter`, `file_filter`, `retain_public`, `skip_build`, `exclude_targets`, and `report_exclude` |
-| `get_coverage_report` | Extract per-target code coverage from `.xcresult` bundles — file count, line coverage percentage, and covered/executable line counts |
-| `get_file_coverage` | Drill into per-function coverage for a specific file within an `.xcresult` bundle — which functions are covered, which aren't, and how many executable lines each has |
+| `swift_format` | Run swiftformat — supports dry_run |
+| `swift_lint` | Run swiftlint — supports fix mode |
+| `swift_diagnostics` | Clean-build and collect all compiler warnings and lint violations |
+| `detect_unused_code` | Find unused code via [Periphery](https://github.com/peripheryapp/periphery) — summary, detail, or checklist format |
+| `get_coverage_report` | Per-target coverage from `.xcresult` |
+| `get_file_coverage` | Per-function coverage drill-down |
+| `swift_symbols` | Search Swift symbols |
 
-### Localization (24 tools)
+</details>
 
-Full CRUD for Apple's `.xcstrings` format — add, update, rename, delete keys and translations, plus coverage stats and stale key detection. Batch operations are atomic.
+---
+
+### Localization
+
+24 tools. Full CRUD for Apple's `.xcstrings` format — keys, translations, coverage stats, stale key detection. Batch operations are atomic.
+
+<details>
+<summary><strong>Read operations</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `xcstrings_list_keys` | List all localization keys |
-| `xcstrings_list_languages` | List all languages in file |
-| `xcstrings_list_untranslated` | List untranslated keys for language |
-| `xcstrings_list_stale` | List keys with "stale" extraction state (potentially unused) |
-| `xcstrings_get_source_language` | Get the source language |
+| `xcstrings_list_keys` | List all keys |
+| `xcstrings_list_languages` | List all languages |
+| `xcstrings_list_untranslated` | Untranslated keys for a language |
+| `xcstrings_list_stale` | Keys with "stale" extraction state |
+| `xcstrings_get_source_language` | Get source language |
 | `xcstrings_get_key` | Get translations for a key |
-| `xcstrings_check_key` | Check if a key exists |
-| `xcstrings_check_coverage` | Check translation coverage for a specific key |
-| `xcstrings_batch_check_keys` | Check if multiple keys exist in one call |
-| `xcstrings_stats_coverage` | Get overall coverage statistics |
-| `xcstrings_stats_progress` | Get progress for a language |
-| `xcstrings_batch_stats_coverage` | Get coverage for multiple files |
-| `xcstrings_batch_list_stale` | List stale keys across multiple files |
-| `xcstrings_create_file` | Create a new xcstrings file |
-| `xcstrings_add_translation` | Add a single translation |
+| `xcstrings_check_key` | Check if key exists |
+| `xcstrings_check_coverage` | Coverage for a specific key |
+| `xcstrings_batch_check_keys` | Check multiple keys |
+| `xcstrings_stats_coverage` | Overall coverage statistics |
+| `xcstrings_stats_progress` | Progress for a language |
+| `xcstrings_batch_stats_coverage` | Coverage for multiple files |
+| `xcstrings_batch_list_stale` | Stale keys across multiple files |
+
+</details>
+
+<details>
+<summary><strong>Write operations</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `xcstrings_create_file` | Create new `.xcstrings` file |
+| `xcstrings_add_translation` | Add single translation |
 | `xcstrings_add_translations` | Add multiple translations for one key |
 | `xcstrings_batch_add_translations` | Add translations for multiple keys atomically |
-| `xcstrings_update_translation` | Update a single translation |
-| `xcstrings_update_translations` | Update multiple translations for one key |
-| `xcstrings_batch_update_translations` | Update translations for multiple keys atomically |
-| `xcstrings_rename_key` | Rename a localization key |
-| `xcstrings_delete_key` | Delete a key and all translations |
-| `xcstrings_delete_translation` | Delete a single translation |
-| `xcstrings_delete_translations` | Delete multiple translations (batch) |
+| `xcstrings_update_translation` | Update single translation |
+| `xcstrings_update_translations` | Update multiple for one key |
+| `xcstrings_batch_update_translations` | Update multiple keys atomically |
+| `xcstrings_rename_key` | Rename a key |
+| `xcstrings_delete_key` | Delete key and all translations |
+| `xcstrings_delete_translation` | Delete single translation |
+| `xcstrings_delete_translations` | Delete multiple translations |
 
-### Session & Utilities (12 tools)
+</details>
 
-Project, workspace, and package paths are **auto-detected from the working directory** — the server walks up from `cwd` looking for `Package.swift`, `.xcodeproj`, or `.xcworkspace`, so you often don't need to call `set_session_defaults` at all. Explicit arguments and session defaults still take precedence when set.
+---
+
+### Session & Utilities
+
+12 tools. Project paths are auto-detected from the working directory — the server walks up from `cwd` looking for `Package.swift`, `.xcodeproj`, or `.xcworkspace`.
+
+<details>
+<summary><strong>Session management</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `set_session_defaults` | Set default project, scheme, simulator, device, configuration, and custom environment variables. Env vars are deep-merged (new keys add, existing keys update) and automatically applied to all build/test/run commands. Per-invocation env overrides session defaults |
-| `show_session_defaults` | Show current session defaults |
-| `clear_session_defaults` | Clear all session defaults |
-| `sync_xcode_defaults` | Read active scheme and run destination from Xcode's IDE state (`UserInterfaceState.xcuserstate`) and apply as session defaults |
-| `manage_workflows` | Enable or disable tool workflow categories (project, simulator, debug, etc.) to reduce tool surface area. Server sends `tools/list_changed` so clients update automatically |
+| `set_session_defaults` | Set default project, scheme, simulator, device, config, env vars. Env vars deep-merge and apply to all commands |
+| `show_session_defaults` | Show current defaults |
+| `clear_session_defaults` | Clear all defaults |
+| `sync_xcode_defaults` | Read active scheme and run destination from Xcode's IDE state |
+| `manage_workflows` | Enable/disable tool categories at runtime |
+
+</details>
+
+<details>
+<summary><strong>Discovery</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `discover_projs` | Discover projects and workspaces |
+| `list_schemes` | List all schemes |
+| `show_build_settings` | Show build settings for a scheme |
+| `get_app_bundle_id` | Bundle ID for iOS/watchOS/tvOS app |
+| `get_mac_bundle_id` | Bundle ID for macOS app |
+| `list_test_plan_targets` | Test targets from a scheme's test plans |
+
+</details>
+
+<details>
+<summary><strong>Distribution & diagnostics</strong></summary>
+
+| Tool | Description |
+|------|-------------|
 | `clean` | Clean build products |
-| `doctor` | Diagnose Xcode environment — checks Xcode, CLT, xcodebuild, simctl, devicectl, Swift, LLDB, SDKs, DerivedData, session state, and active debug sessions |
-| `search_crash_reports` | Search `~/Library/Logs/DiagnosticReports/` for recent `.ips` crash reports by process name or bundle ID. Parses exception type, signal, termination reason, and dyld details — so you don't have to squint at JSON in Console.app |
-| `version_management` | Read and update marketing version and build numbers via `agvtool`. Get both versions, set either, or bump the build number. Requires the project to use `CURRENT_PROJECT_VERSION` and `MARKETING_VERSION` build settings |
-| `notarize` | Full macOS notarization workflow via `notarytool` and `stapler` — submit for notarization (with `--wait`), check submission status, retrieve rejection logs, staple the ticket, or list recent submission history. Uses keychain profiles for authentication |
-| `validate_asset_catalog` | Validate `.xcassets` directories for missing sizes, incorrect formats, and configuration issues via `actool`. Catch problems before they become build errors. Supports platform and deployment target parameters |
-| `open_in_xcode` | Open a file, project, or workspace in Xcode via `xed`. Optionally jump to a specific line number. For when the agent has found something and wants to point you at it |
+| `doctor` | Diagnose Xcode environment — Xcode, CLT, SDKs, DerivedData, sessions |
+| `search_crash_reports` | Search `~/Library/Logs/DiagnosticReports/` for recent crashes |
+| `version_management` | Read/set/bump marketing version and build numbers via `agvtool` |
+| `notarize` | Full notarization pipeline — submit, wait, check, log, staple |
+| `validate_asset_catalog` | Validate `.xcassets` via `actool` |
+| `open_in_xcode` | Open file or project in Xcode, optionally at a line number |
+
+</details>
+
+<details>
+<summary><strong>Instruments</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `xctrace_list` | List Instruments templates, instruments, or devices |
+| `xctrace_record` | Start/stop Instruments trace recording |
+| `xctrace_export` | Export `.trace` data as XML |
+
+</details>
+
+<details>
+<summary><strong>Logging</strong></summary>
+
+| Tool | Description |
+|------|-------------|
+| `start_sim_log_cap` | Start capturing simulator logs |
+| `stop_sim_log_cap` | Stop and return results |
+| `start_device_log_cap` | Start capturing device logs |
+| `stop_device_log_cap` | Stop and return results |
+
+</details>
+
+---
+
+## macOS Permissions
+
+Some tools require macOS privacy permissions granted via **System Settings > Privacy & Security**:
+
+| Permission | Tools | Notes |
+|-----------|-------|-------|
+| **Accessibility** | `interact_*` tools | Required for AXUIElement API |
+| **Screen Recording** | `screenshot_mac_window` | Required for ScreenCaptureKit |
+
+macOS grants these to the **responsible process** — the GUI app at the top of the process tree, not `xc-mcp` itself. So **Claude Desktop**, **VS Code/Cursor**, or your **terminal emulator** needs the permission. The `xc-mcp` binary won't appear in System Settings — TCC always resolves up to the parent GUI app.
 
 ## Build Output Parsing
 
-Test tools parse both **XCTest** and **Swift Testing** output formats, extracting structured pass/fail results with test names, durations, and failure details. Supported formats include:
-
-- XCTest sequential and parallel test output
-- Swift Testing quoted and unquoted function names (e.g., `"testExample()"` or `testExample()`)
-- Swift Testing symbol-prefixed output (e.g., `✘`, `✓`, or SF Symbol codepoints)
-- Failure summaries with suite and issue counts
+Test tools parse both **XCTest** and **Swift Testing** output formats, extracting structured pass/fail results with test names, durations, and failure details. Handles parallel output, backtick-escaped function names, SF Symbol prefixes, and failure summaries.
 
 ## Tests
 
-826 tests — unit tests that run in seconds, and integration tests that build, run, screenshot, and preview-capture real open-source projects. The unit tests use in-memory fixtures and mock runners. The integration tests use *actual Xcode builds* against actual repos, which is both thorough and time-consuming.
-
-### Unit Tests
+826 tests — fast unit tests with in-memory fixtures and mock runners, plus integration tests that build and screenshot real open-source projects.
 
 ```bash
+# Unit tests (fast, no Xcode projects needed)
 swift test
-```
 
-Every tool has unit tests covering argument validation, success paths, and error cases. These don't require Xcode projects on disk — they use bundled `.xcodeproj` fixtures and mock runners that return canned output. Fast, deterministic, no simulator needed.
-
-### Integration Tests
-
-Integration tests exercise tools end-to-end against three open-source repos: [Alamofire](https://github.com/Alamofire/Alamofire), [SwiftFormat](https://github.com/nicklockwood/SwiftFormat), and [IceCubesApp](https://github.com/Dimillian/IceCubesApp). Each repo is pinned to a specific commit so tests don't break when upstream changes.
-
-```bash
-# Fetch fixture repos (idempotent, ~1 minute)
-./scripts/fetch-fixtures.sh
-
-# Run all integration tests
+# Integration tests (requires fixture repos)
+./scripts/fetch-fixtures.sh   # ~1 minute, idempotent
 swift test --filter Integration
-
-# Just the build/run/screenshot tests
-swift test --filter BuildRunScreenshot
 ```
 
-Without the fixture repos, integration tests auto-skip — `swift test` won't fail, it just won't run them. Simulator-dependent tests additionally gate on a resolvable iPhone simulator UDID.
-
-**What's tested:**
-
-| Project | Build | Run | Screenshot | Preview Capture |
-|---------|-------|-----|------------|-----------------|
-| Alamofire | `build_sim` (iOS), `build_macos` | — | — | — |
-| SwiftFormat | `build_macos` | — | — | — |
-| IceCubesApp | — | `build_run_sim` | `screenshot` (sim) | `preview_capture` |
-
-Plus read-only introspection tests (`list_targets`, `list_files`, `list_groups`, `list_build_configurations`, `get_build_settings`, `list_swift_packages`, `discover_projects`) across all three repos.
-
-Build tests carry a 10-minute timeout because — well — *Xcode*. The IceCubesApp preview capture test exercises local Swift package detection — `PlaceholderView.swift` lives in `Packages/DesignSystem/`, not a native target, so the tool must infer the module name and link the local package product into the preview host.
+Integration tests run against [Alamofire](https://github.com/Alamofire/Alamofire), [SwiftFormat](https://github.com/nicklockwood/SwiftFormat), and [IceCubesApp](https://github.com/Dimillian/IceCubesApp), each pinned to a specific commit. Without fixture repos, they auto-skip.
 
 ## Path Security
 

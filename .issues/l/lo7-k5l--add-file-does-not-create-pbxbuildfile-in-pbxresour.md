@@ -5,11 +5,11 @@ status: completed
 type: bug
 priority: high
 created_at: 2026-04-12T18:50:12Z
-updated_at: 2026-04-12T19:03:22Z
+updated_at: 2026-04-12T19:23:15Z
 sync:
     github:
         issue_number: "277"
-        synced_at: "2026-04-12T19:04:28Z"
+        synced_at: "2026-04-12T20:39:09Z"
 ---
 
 When \`add_file\` adds an \`.xcassets\` folder to a target, it creates the \`PBXFileReference\` (now correctly with \`lastKnownFileType = folder.assetcatalog\` after the z23-eyg fix) and adds it to the group, but it does **not**:
@@ -67,3 +67,8 @@ Without the \`PBXBuildFile\`, Xcode never runs \`CompileAssetCatalog\`. No \`Ass
 `files?.append(buildFile)` is a no-op when `PBXBuildPhase.files` is `nil` (real Xcode projects omit the `files` key when a phase has no files, so XcodeProj reads it as nil). Changed all three build-phase branches in `AddFileTool` to `phase.files = (phase.files ?? []) + [buildFile]`.
 
 Added `TestProjectHelper.createTestProjectWithNilPhaseFiles` and 2 new tests that verify resources and sources phases work correctly when starting from nil files.
+
+
+## Summary of Changes
+
+Fixed: add_file now creates PBXBuildFile entries in the target's PBXResourcesBuildPhase for resource files like .xcassets.
