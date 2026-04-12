@@ -19,6 +19,7 @@
 - Fix multi-suite test count bug in `BuildOutputParser`; accumulate XCTest bundle counts, Swift Testing run counts, and parallel scheduling totals instead of overwriting ([#261](https://github.com/toba/xc-mcp/issues/261))
 - Fix `add_framework` silently ignoring `embed: true` for developer frameworks (XcodeKit, XCTest); fix `add_to_copy_files_phase` not auto-defaulting `CodeSignOnCopy`/`RemoveHeadersOnCopy` for phases with `dstSubfolderSpec == .frameworks` ([#270](https://github.com/toba/xc-mcp/issues/270))
 - Fix `add_app_extension` using wrong product type for Xcode extensions; add `source_editor` extension type mapping to `com.apple.product-type.xcode-extension`; add `.xcodeExtension` to `remove_app_extension` valid types ([#271](https://github.com/toba/xc-mcp/issues/271))
+- Fix `swift_package_test` truncating failure messages; capture all `↳` continuation lines instead of only the first; preserve parameterized test argument values (`→ value`) in test name ([#273](https://github.com/toba/xc-mcp/issues/273))
 
 ### 🗜️ Tweaks
 

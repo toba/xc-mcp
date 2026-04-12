@@ -73,24 +73,32 @@ public final class BuildOutputParser {
         for (index, line) in lines.enumerated() {
             parseLine(line)
 
-            // Swift Testing: append custom #expect comment from the next line
+            // Swift Testing: append custom #expect comments / multi-line messages
             // macOS detail symbol: 􀄵 (U+100135), Linux fallback: ↳ (U+21B3)
             if line.contains("recorded an issue"), index + 1 < lines.count {
-                let nextLine = lines[index + 1].trimmingCharacters(in: .whitespaces)
-                if nextLine.hasPrefix("􀄵") || nextLine.hasPrefix("↳") {
+                var continuationParts: [String] = []
+                var nextIdx = index + 1
+                while nextIdx < lines.count {
+                    let nextLine = lines[nextIdx].trimmingCharacters(in: .whitespaces)
+                    guard nextLine.hasPrefix("􀄵") || nextLine.hasPrefix("↳") else { break }
                     let comment = String(
                         nextLine.drop(while: { $0 != " " }).drop(while: { $0 == " " }),
                     )
-                    if !comment.isEmpty, let lastIdx = failedTests.indices.last {
-                        let existing = failedTests[lastIdx]
-                        failedTests[lastIdx] = FailedTest(
-                            test: existing.test,
-                            message: existing.message + ": " + comment,
-                            file: existing.file,
-                            line: existing.line,
-                            duration: existing.duration,
-                        )
+                    if !comment.isEmpty {
+                        continuationParts.append(comment)
                     }
+                    nextIdx += 1
+                }
+                if !continuationParts.isEmpty, let lastIdx = failedTests.indices.last {
+                    let existing = failedTests[lastIdx]
+                    failedTests[lastIdx] = FailedTest(
+                        test: existing.test,
+                        message: existing.message + ": "
+                            + continuationParts.joined(separator: "\n"),
+                        file: existing.file,
+                        line: existing.line,
+                        duration: existing.duration,
+                    )
                 }
             }
 
@@ -601,10 +609,15 @@ public final class BuildOutputParser {
     }
 
     private func normalizeTestName(_ testName: String) -> String {
-        if testName.hasPrefix("-["), testName.hasSuffix("]") {
-            return String(testName.dropFirst(2).dropLast(1))
+        var name = testName
+        if name.hasPrefix("-["), name.hasSuffix("]") {
+            name = String(name.dropFirst(2).dropLast(1))
         }
-        return testName
+        // Strip parameterized argument suffix (→ ...) for deduplication
+        if let parenRange = name.range(of: " (→ ", options: .backwards) {
+            name = String(name[..<parenRange.lowerBound])
+        }
+        return name
     }
 
     /// Extracts a Swift Testing test name from a line containing `Test "name"` or `Test funcName()`.
@@ -1162,8 +1175,20 @@ public final class BuildOutputParser {
                     if parts.count >= 4, let lineNum = Int(parts[1]) {
                         let file = String(parts[0])
                         let message = String(parts[3]).trimmingCharacters(in: .whitespaces)
+
+                        // Preserve argument values from parameterized tests (→ value)
+                        var testName = extracted.name
+                        let beforeAt = afterIssueMarker[..<atRange.lowerBound]
+                        if let arrowRange = beforeAt.range(of: " → ") {
+                            let argDesc = String(beforeAt[arrowRange.upperBound...])
+                                .trimmingCharacters(in: .whitespaces)
+                            if !argDesc.isEmpty {
+                                testName = "\(extracted.name) (→ \(argDesc))"
+                            }
+                        }
+
                         return FailedTest(
-                            test: extracted.name, message: message, file: file, line: lineNum,
+                            test: testName, message: message, file: file, line: lineNum,
                         )
                     }
                 }

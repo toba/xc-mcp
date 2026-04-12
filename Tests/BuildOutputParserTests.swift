@@ -915,7 +915,7 @@ struct BuildOutputParserTests {
         """)
 
         #expect(result.failedTests.count == 1)
-        #expect(result.failedTests[0].test == "Validates range")
+        #expect(result.failedTests[0].test == "Validates range (→ 0)")
         #expect(result.failedTests[0].file == "RangeTests.swift")
         #expect(result.failedTests[0].line == 10)
         #expect(result.failedTests[0].message == "expected value > 0")
@@ -928,8 +928,45 @@ struct BuildOutputParserTests {
         """)
 
         #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "Addition (→ 3, → 5)")
         #expect(result.failedTests[0].file == "MathTests.swift")
         #expect(result.failedTests[0].line == 20)
+        #expect(result.failedTests[0].message == "3 + 5 != 7")
+    }
+
+    // MARK: - Swift Testing multi-line continuation messages
+
+    @Test func `Swift Testing multi-line continuation captures all lines`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ✘ Test "Rule examples validate" recorded an issue at LintTestHelpers.swift:649:10: triggeringExample did not violate:
+        ↳ ```
+        ↳ let x = 1
+        ↳ ```
+        ✘ Test "Rule examples validate" failed after 1.200 seconds with 1 issue.
+        """)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "Rule examples validate")
+        #expect(result.failedTests[0].message.contains("triggeringExample did not violate:"))
+        #expect(result.failedTests[0].message.contains("let x = 1"))
+        #expect(result.failedTests[0].message.contains("```"))
+    }
+
+    @Test func `Swift Testing multi-line continuation with argument values`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: """
+        ✘ Test "Rule examples validate" recorded an issue with 1 argument value → foundation_modernization at LintTestHelpers.swift:649:10: triggeringExample did not violate:
+        ↳ ```
+        ↳ import Foundation
+        ↳ ```
+        ✘ Test "Rule examples validate" failed after 1.200 seconds with 1 issue.
+        """)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "Rule examples validate (→ foundation_modernization)")
+        #expect(result.failedTests[0].message.contains("triggeringExample did not violate:"))
+        #expect(result.failedTests[0].message.contains("import Foundation"))
     }
 
     // MARK: - Swift Testing issue without location
