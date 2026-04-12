@@ -621,6 +621,99 @@ struct AddFileToolTests {
     }
 
     @Test
+    func `Add xcassets to target with nil-files resources phase`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithNilPhaseFiles(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        // Verify files is actually nil before we run the tool
+        let before = try XcodeProj(path: projectPath)
+        let beforeTarget = before.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
+        let beforeResources =
+            beforeTarget.buildPhases.first { $0 is PBXResourcesBuildPhase }
+                as? PBXResourcesBuildPhase
+        #expect(beforeResources != nil, "Resources phase should exist")
+        #expect(beforeResources?.files == nil, "files should be nil before fix")
+
+        // Create an .xcassets directory on disk
+        let assetsPath = tempDir.appendingPathComponent("Assets.xcassets")
+        try FileManager.default.createDirectory(at: assetsPath, withIntermediateDirectories: true)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(assetsPath.path),
+            "target_name": Value.string("TestApp"),
+        ])
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
+
+        let resourcesBuildPhase =
+            target.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
+        #expect(resourcesBuildPhase != nil, "Resources build phase should exist")
+
+        let resourceFiles = resourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
+        #expect(
+            resourceFiles.contains("Assets.xcassets"),
+            "Assets.xcassets should be in resources build phase even when files was nil, got: \(resourceFiles)",
+        )
+    }
+
+    @Test
+    func `Add swift file to target with nil-files sources phase`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithNilPhaseFiles(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        // Verify files is actually nil before we run the tool
+        let before = try XcodeProj(path: projectPath)
+        let beforeTarget = before.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
+        let beforeSources =
+            beforeTarget.buildPhases.first { $0 is PBXSourcesBuildPhase }
+                as? PBXSourcesBuildPhase
+        #expect(beforeSources != nil, "Sources phase should exist")
+        #expect(beforeSources?.files == nil, "files should be nil before fix")
+
+        let filePath = tempDir.appendingPathComponent("ViewModel.swift")
+        try "// test".write(to: filePath, atomically: true, encoding: .utf8)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(filePath.path),
+            "target_name": Value.string("TestApp"),
+        ])
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
+
+        let sourcesBuildPhase =
+            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        #expect(sourcesBuildPhase != nil, "Sources build phase should exist")
+
+        let sourceFiles = sourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
+        #expect(
+            sourceFiles.contains("ViewModel.swift"),
+            "ViewModel.swift should be in sources build phase even when files was nil, got: \(sourceFiles)",
+        )
+    }
+
+    @Test
     func `Add file with nonexistent target`() throws {
         // Create a temporary directory
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(

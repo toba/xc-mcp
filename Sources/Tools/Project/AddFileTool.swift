@@ -182,9 +182,8 @@ public struct AddFileTool: Sendable {
                     if let sourcesBuildPhase = target.buildPhases.first(where: {
                         $0 is PBXSourcesBuildPhase
                     }) as? PBXSourcesBuildPhase {
-                        sourcesBuildPhase.files?.append(buildFile)
+                        sourcesBuildPhase.files = (sourcesBuildPhase.files ?? []) + [buildFile]
                     } else {
-                        // Create sources build phase if it doesn't exist
                         let sourcesBuildPhase = PBXSourcesBuildPhase(files: [buildFile])
                         xcodeproj.pbxproj.add(object: sourcesBuildPhase)
                         target.buildPhases.append(sourcesBuildPhase)
@@ -194,9 +193,8 @@ public struct AddFileTool: Sendable {
                     if let headersBuildPhase = target.buildPhases.first(where: {
                         $0 is PBXHeadersBuildPhase
                     }) as? PBXHeadersBuildPhase {
-                        headersBuildPhase.files?.append(buildFile)
+                        headersBuildPhase.files = (headersBuildPhase.files ?? []) + [buildFile]
                     } else {
-                        // Create headers build phase if it doesn't exist
                         let headersBuildPhase = PBXHeadersBuildPhase(files: [buildFile])
                         xcodeproj.pbxproj.add(object: headersBuildPhase)
                         target.buildPhases.append(headersBuildPhase)
@@ -206,9 +204,9 @@ public struct AddFileTool: Sendable {
                     if let resourcesBuildPhase = target.buildPhases.first(where: {
                         $0 is PBXResourcesBuildPhase
                     }) as? PBXResourcesBuildPhase {
-                        resourcesBuildPhase.files?.append(buildFile)
+                        resourcesBuildPhase.files =
+                            (resourcesBuildPhase.files ?? []) + [buildFile]
                     } else {
-                        // Create resources build phase if it doesn't exist
                         let resourcesBuildPhase = PBXResourcesBuildPhase(files: [buildFile])
                         xcodeproj.pbxproj.add(object: resourcesBuildPhase)
                         target.buildPhases.append(resourcesBuildPhase)

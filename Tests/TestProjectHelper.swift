@@ -239,6 +239,31 @@ enum TestProjectHelper {
         try xcodeproj.write(path: path)
     }
 
+    /// Creates a test project with a target whose build phases have `files = nil`.
+    ///
+    /// This simulates real-world Xcode projects where a build phase exists but has
+    /// never had files added (Xcode omits the `files` key, so XcodeProj reads it as nil).
+    static func createTestProjectWithNilPhaseFiles(
+        name: String,
+        targetName: String,
+        at path: Path,
+    ) throws {
+        try createTestProjectWithTarget(name: name, targetName: targetName, at: path)
+
+        let xcodeproj = try XcodeProj(path: path)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == targetName }!
+        for phase in target.buildPhases {
+            if let sources = phase as? PBXSourcesBuildPhase {
+                sources.files = nil
+            } else if let resources = phase as? PBXResourcesBuildPhase {
+                resources.files = nil
+            } else if let headers = phase as? PBXHeadersBuildPhase {
+                headers.files = nil
+            }
+        }
+        try xcodeproj.write(path: path)
+    }
+
     /// Creates a test project with a target and a synchronized folder, optionally with an exception set.
     static func createTestProjectWithSyncFolder(
         name: String,
