@@ -1,7 +1,8 @@
-import MCP
-import AppKit
+import CoreGraphics
 import Foundation
-import ScreenCaptureKit
+import ImageIO
+import MCP
+import XCMCPCore
 
 public struct ScreenshotMacWindowTool: Sendable {
     public init() {}
@@ -10,7 +11,7 @@ public struct ScreenshotMacWindowTool: Sendable {
         Tool(
             name: "screenshot_mac_window",
             description:
-            "Take a screenshot of a macOS application window using ScreenCaptureKit. "
+            "Take a screenshot of a macOS application window. "
                 +
                 "Returns the image inline as base64 PNG. Requires Screen Recording permission in System Settings.",
             inputSchema: .object([
@@ -47,16 +48,7 @@ public struct ScreenshotMacWindowTool: Sendable {
         )
     }
 
-    /// Ensures the process has a WindowServer connection for ScreenCaptureKit.
-    private static func ensureGUIConnection() async {
-        _ = await MainActor.run {
-            NSApplication.shared.setActivationPolicy(.accessory)
-        }
-    }
-
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        await Self.ensureGUIConnection()
-
         let appName = arguments.getString("app_name")
         let bundleId = arguments.getString("bundle_id")
         let windowTitle = arguments.getString("window_title")
@@ -68,112 +60,32 @@ public struct ScreenshotMacWindowTool: Sendable {
             )
         }
 
-        // Get available windows
-        let availableContent: SCShareableContent
-        do {
-            availableContent = try await SCShareableContent.excludingDesktopWindows(
-                false, onScreenWindowsOnly: true,
-            )
-        } catch {
-            throw MCPError.internalError(
-                "Failed to get screen content. Ensure Screen Recording permission is granted in "
-                    +
-                    "System Settings > Privacy & Security > Screen Recording. Error: \(error.localizedDescription)",
-            )
+        let window = try WindowCapture.findWindow(
+            appName: appName, bundleId: bundleId, windowTitle: windowTitle,
+        )
+        let pngData = try await WindowCapture.capture(
+            windowID: window.windowID, savePath: savePath,
+        )
+
+        // Get image dimensions for the description
+        let width: Int
+        let height: Int
+        if let imageSource = CGImageSourceCreateWithData(pngData as CFData, nil),
+           let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [String: Any]
+        {
+            width = properties[kCGImagePropertyPixelWidth as String] as? Int ?? 0
+            height = properties[kCGImagePropertyPixelHeight as String] as? Int ?? 0
+        } else {
+            width = 0
+            height = 0
         }
 
-        // Filter windows
-        let matchingWindows = availableContent.windows.filter { window in
-            if let appName {
-                guard
-                    let name = window.owningApplication?.applicationName,
-                    name.localizedCaseInsensitiveContains(appName)
-                else { return false }
-            }
-            if let bundleId {
-                guard
-                    let id = window.owningApplication?.bundleIdentifier,
-                    id.localizedCaseInsensitiveContains(bundleId)
-                else { return false }
-            }
-            if let windowTitle {
-                guard
-                    let title = window.title,
-                    title.localizedCaseInsensitiveContains(windowTitle)
-                else { return false }
-            }
-            return true
-        }
-
-        guard let targetWindow = matchingWindows.first else {
-            var criteria: [String] = []
-            if let appName { criteria.append("app_name='\(appName)'") }
-            if let bundleId { criteria.append("bundle_id='\(bundleId)'") }
-            if let windowTitle { criteria.append("window_title='\(windowTitle)'") }
-            throw MCPError.invalidParams(
-                "No window found matching \(criteria.joined(separator: ", ")). "
-                    + "Make sure the app is running and has a visible window.",
-            )
-        }
-
-        // Capture the window
-        let filter = SCContentFilter(desktopIndependentWindow: targetWindow)
-        let config = SCStreamConfiguration()
-        config.width = Int(filter.contentRect.width * CGFloat(filter.pointPixelScale))
-        config.height = Int(filter.contentRect.height * CGFloat(filter.pointPixelScale))
-
-        let cgImage: CGImage
-        do {
-            cgImage = try await withCheckedThrowingContinuation { continuation in
-                SCScreenshotManager.captureImage(
-                    contentFilter: filter, configuration: config,
-                ) { image, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else if let image {
-                        continuation.resume(returning: image)
-                    } else {
-                        continuation.resume(
-                            throwing: MCPError.internalError(
-                                "Screenshot capture returned nil image.",
-                            ),
-                        )
-                    }
-                }
-            }
-        } catch {
-            throw MCPError.internalError(
-                "Failed to capture window screenshot: \(error.localizedDescription)",
-            )
-        }
-
-        // Convert to PNG data
-        let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
-        guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
-            throw MCPError.internalError("Failed to encode screenshot as PNG.")
-        }
-
-        // Save to disk if requested
-        if let savePath {
-            let url = URL(fileURLWithPath: savePath)
-            do {
-                try pngData.write(to: url)
-            } catch {
-                throw MCPError.internalError(
-                    "Failed to save screenshot to '\(savePath)': \(error.localizedDescription)",
-                )
-            }
-        }
-
-        // Build result
         let base64 = pngData.base64EncodedString()
-        let windowInfo = targetWindow.title ?? "untitled"
-        let appInfo =
-            targetWindow.owningApplication?.applicationName
-                ?? targetWindow.owningApplication?.bundleIdentifier ?? "unknown"
+        let windowName = window.windowName ?? "untitled"
+        let appInfo = window.ownerName ?? "unknown"
 
         var description =
-            "Screenshot of '\(appInfo)' window '\(windowInfo)' (\(cgImage.width)x\(cgImage.height) px)"
+            "Screenshot of '\(appInfo)' window '\(windowName)' (\(width)x\(height) px)"
         if let savePath {
             description += "\nSaved to: \(savePath)"
         }

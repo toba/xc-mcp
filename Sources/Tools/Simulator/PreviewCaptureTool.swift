@@ -5,8 +5,6 @@ import XCMCPCore
 import XcodeProj
 import Foundation
 import Subprocess
-import CoreGraphics
-import ScreenCaptureKit
 
 /// Captures a screenshot of a SwiftUI `#Preview` block by building and running
 /// a temporary host app on the iOS Simulator.
@@ -1308,73 +1306,10 @@ public struct PreviewCaptureTool: Sendable {
         }
     }
 
-    /// Ensures the process has a WindowServer connection for ScreenCaptureKit.
-    private static func ensureGUIConnection() async {
-        _ = await MainActor.run {
-            NSApplication.shared.setActivationPolicy(.accessory)
-        }
-    }
-
-    /// Captures a screenshot of a macOS window using ScreenCaptureKit.
-    /// Matches the window by bundle identifier.
+    /// Captures a screenshot of a macOS window matching the given bundle identifier.
     private func captureMacOSWindow(bundleId: String) async throws -> Data {
-        await Self.ensureGUIConnection()
-
-        let availableContent: SCShareableContent
-        do {
-            availableContent = try await SCShareableContent.excludingDesktopWindows(
-                false, onScreenWindowsOnly: true,
-            )
-        } catch {
-            throw MCPError.internalError(
-                "Failed to get screen content. Ensure Screen Recording permission is granted in "
-                    +
-                    "System Settings > Privacy & Security > Screen Recording. Error: \(error.localizedDescription)",
-            )
-        }
-
-        // Find the window by bundle ID
-        let matchingWindows = availableContent.windows.filter { window in
-            guard let id = window.owningApplication?.bundleIdentifier else { return false }
-            return id.localizedCaseInsensitiveContains(bundleId)
-        }
-
-        guard let targetWindow = matchingWindows.first else {
-            throw MCPError.internalError(
-                "No window found for preview app (bundle ID: \(bundleId)). "
-                    + "The app may have failed to launch or display a window.",
-            )
-        }
-
-        let filter = SCContentFilter(desktopIndependentWindow: targetWindow)
-        let config = SCStreamConfiguration()
-        config.width = Int(filter.contentRect.width * CGFloat(filter.pointPixelScale))
-        config.height = Int(filter.contentRect.height * CGFloat(filter.pointPixelScale))
-
-        let cgImage: CGImage = try await withCheckedThrowingContinuation { continuation in
-            SCScreenshotManager.captureImage(
-                contentFilter: filter, configuration: config,
-            ) { image, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else if let image {
-                    continuation.resume(returning: image)
-                } else {
-                    continuation.resume(
-                        throwing: MCPError.internalError(
-                            "Screenshot capture returned nil image.",
-                        ),
-                    )
-                }
-            }
-        }
-
-        let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
-        guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else {
-            throw MCPError.internalError("Failed to encode screenshot as PNG.")
-        }
-
-        return pngData
+        let window = try WindowCapture.findWindow(bundleId: bundleId)
+        return try await WindowCapture.capture(windowID: window.windowID)
     }
 
     /// Creates a temporary .xcscheme file for the preview host target.

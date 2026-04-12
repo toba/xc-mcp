@@ -1,5 +1,12 @@
 # Changelog
 
+## Week of Apr 12 – Apr 18, 2026
+
+### 🐞 Fixes
+
+- Fix `screenshot_mac_window` hanging for 20+ seconds; replace ScreenCaptureKit with `CGWindowListCopyWindowInfo` + `screencapture -l` ([#275](https://github.com/toba/xc-mcp/issues/275))
+- Fix `PreviewCaptureTool` `captureMacOSWindow` same ScreenCaptureKit hang; extract shared `WindowCapture` helper to Core ([#274](https://github.com/toba/xc-mcp/issues/274))
+
 ## Week of Apr 5 – Apr 11, 2026
 
 ### ✨ Features

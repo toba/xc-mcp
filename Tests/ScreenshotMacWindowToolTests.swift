@@ -10,7 +10,7 @@ struct ScreenshotMacWindowToolTests {
 
         #expect(schema.name == "screenshot_mac_window")
         #expect(schema.description?.contains("screenshot") == true)
-        #expect(schema.description?.contains("ScreenCaptureKit") == true)
+        #expect(schema.description?.contains("Screen Recording") == true)
     }
 
     @Test
