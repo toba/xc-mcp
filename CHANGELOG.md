@@ -5,6 +5,7 @@
 ### ✨ Features
 
 - Add 9 Icon Composer tools (`create_icon`, `export_icon`, `read_icon`, `add_icon_layer`, `remove_icon_layer`, `set_icon_fill`, `set_icon_effects`, `set_icon_layer_position`, `set_icon_appearances`); full `.icon` bundle creation and editing with `IconManifest` Codable model ([#278](https://github.com/toba/xc-mcp/issues/278))
+- Handle Xcode 26 objectVersion 100 project format; update default from 56 to 77 with configurable `object_version` parameter; add post-migration validation checks to `validate_project`; add `repair_project` tool for fixing null build files and orphaned entries ([#282](https://github.com/toba/xc-mcp/issues/282))
 
 ### 🐛 Fixes
 

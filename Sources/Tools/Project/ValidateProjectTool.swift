@@ -96,6 +96,9 @@ public struct ValidateProjectTool: Sendable {
                 targetProductNames: targetProductNames, diagnostics: &diagnostics,
             )
 
+            // --- Null file references in build phases (common after Xcode 26 migration) ---
+            checkNullBuildFileReferences(target: target, diagnostics: &diagnostics)
+
             // --- Summary info for this target ---
             let matchedCount = linkedNames.intersection(embeddedNames).count
             if matchedCount > 0 {
@@ -126,6 +129,12 @@ public struct ValidateProjectTool: Sendable {
             diagnostics: &projectDiagnostics,
         )
         checkInconsistentEmbedding(targets: targets, diagnostics: &projectDiagnostics)
+        checkOrphanedSynchronizedFolders(
+            xcodeproj: xcodeproj, targets: targets, diagnostics: &projectDiagnostics,
+        )
+        checkPackageProductIntegrity(
+            xcodeproj: xcodeproj, targets: targets, diagnostics: &projectDiagnostics,
+        )
 
         if !projectDiagnostics.isEmpty {
             output.append("## Project-level\n")
@@ -369,6 +378,89 @@ public struct ValidateProjectTool: Sendable {
                         "\(name) embedded in \(havingNames) but not all app targets",
                     ),
                 )
+            }
+        }
+    }
+
+    // MARK: - Null Build File References (Post-Migration)
+
+    private func checkNullBuildFileReferences(
+        target: PBXNativeTarget,
+        diagnostics: inout [Diagnostic],
+    ) {
+        var nullCount = 0
+        for phase in target.buildPhases {
+            for buildFile in phase.files ?? [] where buildFile.file == nil {
+                // Skip product references (e.g. SPM products) which use productRef instead
+                if buildFile.product != nil { continue }
+                nullCount += 1
+            }
+        }
+        if nullCount > 0 {
+            diagnostics.append(
+                Diagnostic(
+                    .warning,
+                    "\(nullCount) build file\(nullCount == 1 ? "" : "s") with null file reference (possible Xcode migration artifact)",
+                ),
+            )
+        }
+    }
+
+    // MARK: - Orphaned Synchronized Folders
+
+    private func checkOrphanedSynchronizedFolders(
+        xcodeproj: XcodeProj,
+        targets: [PBXNativeTarget],
+        diagnostics: inout [Diagnostic],
+    ) {
+        let allSyncGroups = xcodeproj.pbxproj.fileSystemSynchronizedRootGroups
+        guard !allSyncGroups.isEmpty else { return }
+
+        let linkedSyncGroupIDs = Set(
+            targets.flatMap { $0.fileSystemSynchronizedGroups ?? [] }
+                .map(ObjectIdentifier.init),
+        )
+
+        for group in allSyncGroups {
+            if !linkedSyncGroupIDs.contains(ObjectIdentifier(group)) {
+                let name = group.path ?? group.name ?? "(unknown)"
+                diagnostics.append(
+                    Diagnostic(
+                        .warning,
+                        "Synchronized folder \"\(name)\" not linked to any target",
+                    ),
+                )
+            }
+        }
+    }
+
+    // MARK: - Package Product Integrity
+
+    private func checkPackageProductIntegrity(
+        xcodeproj: XcodeProj,
+        targets: [PBXNativeTarget],
+        diagnostics: inout [Diagnostic],
+    ) {
+        // Collect all package product references from frameworks phases
+        for target in targets {
+            let frameworksPhase = target.buildPhases
+                .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+            guard let files = frameworksPhase?.files else { continue }
+
+            for buildFile in files {
+                // Build files that reference SPM products use productRef
+                if let productRef = buildFile.product {
+                    let productName = productRef.productName
+                    // Check if the package reference still exists
+                    if productRef.package == nil {
+                        diagnostics.append(
+                            Diagnostic(
+                                .error,
+                                "Package product \"\(productName)\" in target \"\(target.name)\" has no package reference (missing or broken link)",
+                            ),
+                        )
+                    }
+                }
             }
         }
     }

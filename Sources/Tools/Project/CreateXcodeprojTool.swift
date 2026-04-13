@@ -50,6 +50,12 @@ public struct CreateXcodeprojTool: Sendable {
                             "Skip creating the default application target (useful when you plan to add targets separately via add_target)",
                         ),
                     ]),
+                    "object_version": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Project object version (default 77 for Xcode 15+; use 56 for Xcode 14 compat, 100 for Xcode 26 synchronized-folder format)",
+                        ),
+                    ]),
                 ]),
                 "required": .array([.string("project_name"), .string("path")]),
             ]),
@@ -89,6 +95,15 @@ public struct CreateXcodeprojTool: Sendable {
         } else {
             skipDefaultTarget = false
         }
+
+        let objectVersion: Int
+        if case let .int(ver) = arguments["object_version"] {
+            objectVersion = ver
+        } else {
+            objectVersion = 77
+        }
+
+        let compatibilityVersion = objectVersion >= 77 ? "Xcode 15.0" : "Xcode 14.0"
 
         do {
             // Resolve and validate the path
@@ -194,8 +209,8 @@ public struct CreateXcodeprojTool: Sendable {
             let project = PBXProject(
                 name: projectName,
                 buildConfigurationList: configurationList,
-                compatibilityVersion: "Xcode 14.0",
-                preferredProjectObjectVersion: 56,
+                compatibilityVersion: compatibilityVersion,
+                preferredProjectObjectVersion: objectVersion,
                 minimizedProjectReferenceProxies: 0,
                 mainGroup: mainGroup,
                 developmentRegion: "en",

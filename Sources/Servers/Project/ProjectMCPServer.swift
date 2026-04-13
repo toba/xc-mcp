@@ -65,6 +65,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case listURLTypes = "list_url_types"
     case manageURLType = "manage_url_type"
     case validateProject = "validate_project"
+    case repairProject = "repair_project"
     case scaffoldModule = "scaffold_module"
 }
 
@@ -192,6 +193,7 @@ public struct ProjectMCPServer: Sendable {
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
         let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
+        let repairProjectTool = RepairProjectTool(pathUtility: pathUtility)
         let scaffoldModuleTool = ScaffoldModuleTool(pathUtility: pathUtility)
 
         // Register tools/list handler
@@ -256,6 +258,7 @@ public struct ProjectMCPServer: Sendable {
                 addToCopyFilesPhase.tool(),
                 removeCopyFilesPhase.tool(),
                 validateProjectTool.tool(),
+                repairProjectTool.tool(),
                 scaffoldModuleTool.tool(),
             ])
         }
@@ -391,6 +394,8 @@ public struct ProjectMCPServer: Sendable {
                     return try removeCopyFilesPhase.execute(arguments: arguments)
                 case .validateProject:
                     return try validateProjectTool.execute(arguments: arguments)
+                case .repairProject:
+                    return try repairProjectTool.execute(arguments: arguments)
                 case .scaffoldModule:
                     return try scaffoldModuleTool.execute(arguments: arguments)
             }

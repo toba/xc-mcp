@@ -213,8 +213,8 @@ public struct ScaffoldIOSProjectTool: Sendable {
         let project = PBXProject(
             name: projectName,
             buildConfigurationList: configList,
-            compatibilityVersion: "Xcode 14.0",
-            preferredProjectObjectVersion: 56,
+            compatibilityVersion: "Xcode 15.0",
+            preferredProjectObjectVersion: 77,
             minimizedProjectReferenceProxies: 0,
             mainGroup: mainGroup,
             developmentRegion: "en",

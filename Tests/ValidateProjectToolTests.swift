@@ -588,4 +588,111 @@ struct ValidateProjectToolTests {
         }
         #expect(content.contains("Links Core.framework from Core but has no target dependency"))
     }
+
+    // MARK: - Post-Migration Checks
+
+    @Test
+    func `Detects null file references in build phases`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let sourcesPhase = try #require(
+            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase,
+        )
+
+        // Add null build files (simulates Xcode 26 migration artifacts)
+        let nullBF1 = PBXBuildFile(file: nil)
+        let nullBF2 = PBXBuildFile(file: nil)
+        xcodeproj.pbxproj.add(object: nullBF1)
+        xcodeproj.pbxproj.add(object: nullBF2)
+        sourcesPhase.files = (sourcesPhase.files ?? []) + [nullBF1, nullBF2]
+        try xcodeproj.write(path: projectPath)
+
+        let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+        ])
+
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("[warn]"))
+        #expect(content.contains("null file reference"))
+        #expect(content.contains("migration artifact"))
+    }
+
+    @Test
+    func `Detects orphaned synchronized folder`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a synchronized folder not linked to any target
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(
+            sourceTree: .group, path: "OrphanedSources", name: "OrphanedSources",
+        )
+        xcodeproj.pbxproj.add(object: syncGroup)
+        if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
+            mainGroup.children.append(syncGroup)
+        }
+        try xcodeproj.write(path: projectPath)
+
+        let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+        ])
+
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("OrphanedSources"))
+        #expect(content.contains("not linked to any target"))
+    }
+
+    @Test
+    func `Synchronized folder linked to target passes`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithSyncFolder(
+            name: "TestProject", targetName: "App", folderPath: "Sources",
+            at: projectPath,
+        )
+
+        let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+        ])
+
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        // Should not report the synchronized folder as orphaned
+        #expect(!content.contains("not linked to any target"))
+    }
 }
