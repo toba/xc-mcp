@@ -145,11 +145,17 @@ public struct ExportIconTool: Sendable {
             )
         }
 
+        let description =
+            "Exported icon to \(outputPath) (\(width)x\(height)@\(scale)x, \(platform), \(rendition))"
+
+        // Return inline base64 image so the LLM client can see the rendered icon
+        let pngData = try Data(contentsOf: URL(fileURLWithPath: outputPath))
+        let base64 = pngData.base64EncodedString()
+
         return CallTool.Result(
             content: [
-                .text(text:
-                    "Exported icon to \(outputPath) (\(width)x\(height)@\(scale)x, \(platform), \(rendition))",
-                    annotations: nil, _meta: nil),
+                .image(data: base64, mimeType: "image/png", annotations: nil, _meta: nil),
+                .text(text: description, annotations: nil, _meta: nil),
             ],
         )
     }

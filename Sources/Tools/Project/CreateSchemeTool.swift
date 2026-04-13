@@ -72,6 +72,12 @@ public struct CreateSchemeTool: Sendable {
                             "Pre-build shell script actions (each with title and script_text)",
                         ),
                     ]),
+                    "debug_as_which_user": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "User to debug as (e.g. 'root'). Sets debugAsWhichUser on the LaunchAction",
+                        ),
+                    ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("scheme_name"),
@@ -268,11 +274,19 @@ public struct CreateSchemeTool: Sendable {
             )
 
             // LaunchAction
+            let debugAsWhichUser: String?
+            if case let .string(user) = arguments["debug_as_which_user"] {
+                debugAsWhichUser = user
+            } else {
+                debugAsWhichUser = nil
+            }
+
             let launchAction = XCScheme.LaunchAction(
                 runnable: XCScheme.BuildableProductRunnable(
                     buildableReference: primaryBuildRef,
                 ),
                 buildConfiguration: buildConfiguration,
+                debugAsWhichUser: debugAsWhichUser,
             )
 
             // AnalyzeAction and ArchiveAction

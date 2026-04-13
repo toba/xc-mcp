@@ -76,8 +76,24 @@ struct ExportIconToolTests {
             "scale": .int(1),
         ])
 
+        // First content item should be inline base64 image
+        #expect(result.content.count == 2)
+        let imageContent = try #require(result.content.first)
+        if case let .image(data: base64, mimeType: mimeType, annotations: _, _meta: _) = imageContent {
+            #expect(mimeType == "image/png")
+            let decoded = try #require(Data(base64Encoded: base64))
+            #expect(decoded.count > 8)
+            #expect(decoded[0] == 0x89)
+            #expect(decoded[1] == 0x50) // P
+            #expect(decoded[2] == 0x4E) // N
+            #expect(decoded[3] == 0x47) // G
+        } else {
+            Issue.record("Expected .image content, got \(imageContent)")
+        }
+
+        // Second content item should be text description
         let text = try #require(
-            result.content.first.flatMap {
+            result.content.last.flatMap {
                 if case let .text(t, _, _) = $0 { return t }
                 return nil
             },
@@ -85,14 +101,6 @@ struct ExportIconToolTests {
         #expect(text.contains("Exported icon to"))
         #expect(text.contains("256x256"))
         #expect(FileManager.default.fileExists(atPath: outputPath))
-
-        // Verify it's a valid PNG (starts with PNG signature)
-        let data = try Data(contentsOf: URL(fileURLWithPath: outputPath))
-        #expect(data.count > 8)
-        #expect(data[0] == 0x89)
-        #expect(data[1] == 0x50) // P
-        #expect(data[2] == 0x4E) // N
-        #expect(data[3] == 0x47) // G
     }
 
     @Test(

@@ -15,6 +15,11 @@
 - Fix `add_file` missing `lastKnownFileType` for `.icon` files; fix path resolution for files above `.xcodeproj` but within repo root ([#278](https://github.com/toba/xc-mcp/issues/278))
 - Fix scaffold `AppIcon.appiconset/Contents.json` using invalid `"platform": "macos"` value; `actool` silently skips the icon ([#279](https://github.com/toba/xc-mcp/issues/279))
 
+### 🗜️ Tweaks
+
+- Bump XcodeProj to 9.11.0; add `debug_as_which_user` parameter to `create_scheme` for `debugAsWhichUser` on `LaunchAction`
+- `export_icon` now returns inline base64 PNG image so the LLM client can see the rendered icon
+
 ## Week of Apr 5 – Apr 11, 2026
 
 ### ✨ Features
