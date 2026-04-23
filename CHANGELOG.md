@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Apr 19 – Apr 25, 2026
+
+### ✨ Features
+
+- Surface verbose compiler output on signal crashes; `swift_package_build` and `swift_diagnostics` auto-retry with `-v` to identify the crashing file and compiler backtrace ([#283](https://github.com/toba/xc-mcp/issues/283))
+
 ## Week of Apr 12 – Apr 18, 2026
 
 ### ✨ Features

@@ -79,19 +79,34 @@ public struct SwiftDiagnosticsTool: Sendable {
                 timeout: timeout,
             )
 
-            // Step 3: Parse build output for diagnostics
+            // Step 3: On compiler signal crash, retry with -v for verbose output
+            var crashDetails: String?
+            if let signal = ErrorExtractor.detectCompilerCrash(in: buildResult.output) {
+                let verboseResult = try await swiftRunner.build(
+                    packagePath: packagePath,
+                    buildTests: buildTests,
+                    verbose: true,
+                    timeout: timeout,
+                )
+                crashDetails = ErrorExtractor.extractCrashDetails(
+                    from: verboseResult.output, signal: signal,
+                )
+            }
+
+            // Step 4: Parse build output for diagnostics
             let parsed = ErrorExtractor.parseBuildOutput(buildResult.output)
             let buildFailed = !buildResult.succeeded && parsed.status != "success"
 
-            // Step 4: Optionally run swiftlint
+            // Step 5: Optionally run swiftlint
             var lintSection: String?
             if includeLint {
                 lintSection = await runSwiftLint(packagePath: packagePath)
             }
 
-            // Step 5: Format combined output
+            // Step 6: Format combined output
             let output = formatDiagnostics(
-                parsed: parsed, buildFailed: buildFailed, lintSection: lintSection,
+                parsed: parsed, buildFailed: buildFailed,
+                crashDetails: crashDetails, lintSection: lintSection,
             )
 
             if buildFailed {
@@ -105,7 +120,8 @@ public struct SwiftDiagnosticsTool: Sendable {
     }
 
     private func formatDiagnostics(
-        parsed: BuildResult, buildFailed: Bool, lintSection: String?,
+        parsed: BuildResult, buildFailed: Bool,
+        crashDetails: String? = nil, lintSection: String?,
     ) -> String {
         var sections: [String] = []
 
@@ -116,6 +132,11 @@ public struct SwiftDiagnosticsTool: Sendable {
         if hasWarnings || hasErrors || buildFailed {
             let header = BuildResultFormatter.formatBuildResult(parsed)
             sections.append("## Build Diagnostics\n\n\(header)")
+        }
+
+        // Compiler crash details from verbose retry
+        if let crashDetails {
+            sections.append("## Compiler Crash\n\n\(crashDetails)")
         }
 
         // Lint section

@@ -80,10 +80,14 @@ public struct SwiftRunner: Sendable {
         configuration: String = "debug",
         product: String? = nil,
         buildTests: Bool = false,
+        verbose: Bool = false,
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
     ) async throws -> SwiftResult {
         var args = ["build", "-c", configuration]
+        if verbose {
+            args.append("-v")
+        }
         if let product {
             args.append(contentsOf: ["--product", product])
         }

@@ -100,10 +100,28 @@ public struct SwiftPackageBuildTool: Sendable {
                 return CallTool.Result(
                     content: [.text(text: message, annotations: nil, _meta: nil)],
                 )
-            } else {
-                let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
-                throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
+
+            // On compiler signal crash, retry with -v to surface the crashing file
+            if let signal = ErrorExtractor.detectCompilerCrash(in: result.output) {
+                let verboseResult = try await swiftRunner.build(
+                    packagePath: packagePath,
+                    configuration: configuration,
+                    product: product,
+                    buildTests: buildTests,
+                    verbose: true,
+                    environment: environment,
+                    timeout: timeout,
+                )
+                let crashDetails = ErrorExtractor.extractCrashDetails(
+                    from: verboseResult.output, signal: signal,
+                )
+                let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
+                throw MCPError.internalError("Build failed:\n\(errorOutput)\n\n\(crashDetails)")
+            }
+
+            let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
+            throw MCPError.internalError("Build failed:\n\(errorOutput)")
         } catch {
             throw error.asMCPError()
         }

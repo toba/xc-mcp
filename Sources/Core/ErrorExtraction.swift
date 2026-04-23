@@ -694,6 +694,103 @@ public enum ErrorExtractor {
         return targets
     }
 
+    // MARK: - Compiler Crash Detection
+
+    /// Signal crash patterns in compiler output.
+    ///
+    /// When `swift build` encounters a compiler crash (SIGABRT, SIGSEGV, etc.),
+    /// the output contains messages like:
+    /// ```
+    /// <unknown>:0: error: compile command failed due to signal 6 (use -v to see invocation)
+    /// ```
+    nonisolated(unsafe) private static let compilerCrashPattern =
+        /compile command failed due to signal (\d+)/
+
+    /// Returns the signal number if the build output contains a compiler signal crash,
+    /// or `nil` if no crash was detected.
+    public static func detectCompilerCrash(in output: String) -> Int? {
+        guard let match = output.firstMatch(of: compilerCrashPattern) else {
+            return nil
+        }
+        return Int(match.1)
+    }
+
+    /// Extracts the crashing compilation unit and compiler backtrace from verbose
+    /// build output after a signal crash retry.
+    ///
+    /// With `-v`, the compiler emits the full `swiftc` invocation that crashed,
+    /// making it possible to identify which file triggered the crash.
+    public static func extractCrashDetails(from verboseOutput: String, signal: Int) -> String {
+        var sections: [String] = []
+        sections.append("Compiler crashed (signal \(signal))")
+
+        // Extract the crashing file from the swiftc invocation preceding the crash.
+        // The verbose output shows the full command, then the crash message.
+        let lines = verboseOutput.split(separator: "\n", omittingEmptySubsequences: false)
+        var crashingInvocation: String?
+        var crashingFiles: [String] = []
+
+        for (index, line) in lines.enumerated() {
+            if line.contains("compile command failed due to signal") {
+                // Walk backwards to find the swiftc invocation
+                var i = index - 1
+                while i >= 0 {
+                    let prev = String(lines[i])
+                    if prev.contains("swiftc") || prev.contains("swift-frontend") {
+                        crashingInvocation = prev
+                        break
+                    }
+                    i -= 1
+                }
+                // Extract .swift files from the invocation
+                if let invocation = crashingInvocation {
+                    let tokens = invocation.split(separator: " ")
+                    for token in tokens {
+                        let t = String(token)
+                        if t.hasSuffix(".swift"), !t.hasPrefix("-") {
+                            crashingFiles.append(t)
+                        }
+                    }
+                }
+                break
+            }
+        }
+
+        if !crashingFiles.isEmpty {
+            if crashingFiles.count == 1 {
+                sections.append("Crashing file: \(crashingFiles[0])")
+            } else {
+                sections.append(
+                    "Crashing compilation unit (\(crashingFiles.count) files):\n"
+                        + crashingFiles.map { "  \($0)" }.joined(separator: "\n"),
+                )
+            }
+        }
+
+        // Include the swiftc invocation for context
+        if let invocation = crashingInvocation {
+            // Truncate very long invocations (they can span thousands of characters)
+            let maxLen = 2000
+            let truncated =
+                invocation.count > maxLen
+                    ? String(invocation.prefix(maxLen)) + "…"
+                    : invocation
+            sections.append("Compiler invocation:\n\(truncated)")
+        }
+
+        // Extract stack trace if present (compiler sometimes dumps this)
+        let stackLines = lines.filter {
+            $0.contains("Stack dump:") || $0.hasPrefix("0 ") || $0.hasPrefix("1 ")
+                || $0.contains("#0") || $0.contains("swift::") || $0.contains("llvm::")
+        }
+        if !stackLines.isEmpty {
+            let trace = stackLines.prefix(20).map(String.init).joined(separator: "\n")
+            sections.append("Compiler backtrace:\n\(trace)")
+        }
+
+        return sections.joined(separator: "\n\n")
+    }
+
     // MARK: - Infrastructure Warning Detection
 
     /// Detects testmanagerd crashes and other test infrastructure issues from stderr.
