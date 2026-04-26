@@ -92,7 +92,7 @@ struct AddPackageProductToolTests {
         ])
 
         if case let .text(content, _, _) = result.content[0] {
-            #expect(content.contains("Linked product 'HTTPTypes' to target 'Tests'"))
+            #expect(content.contains("Linked library product 'HTTPTypes' to target 'Tests'"))
         } else {
             Issue.record("Expected text content")
         }
@@ -141,6 +141,124 @@ struct AddPackageProductToolTests {
                 "product_name": Value.string("Alamofire"),
             ])
         }
+    }
+
+    @Test
+    func `plugin kind skips frameworks build phase`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("MyBuildToolPlugin"),
+            "kind": Value.string("plugin"),
+        ])
+
+        if case let .text(content, _, _) = result.content[0] {
+            #expect(content.contains("Linked plugin product"))
+            #expect(content.contains("skipped Frameworks build phase"))
+        } else {
+            Issue.record("Expected text content")
+        }
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let appTarget = try #require(reloaded.pbxproj.nativeTargets.first)
+        #expect(appTarget.packageProductDependencies?.count == 1)
+        #expect(
+            appTarget.packageProductDependencies?.first?.productName == "MyBuildToolPlugin",
+        )
+
+        // No PBXBuildFile referencing the plugin should exist in any frameworks phase.
+        let frameworksFiles =
+            (
+                appTarget.buildPhases.first(where: { $0 is PBXFrameworksBuildPhase })
+                    as? PBXFrameworksBuildPhase
+            )?.files ?? []
+        let hasPluginInFrameworks = frameworksFiles.contains { file in
+            file.product?.productName == "MyBuildToolPlugin"
+        }
+        #expect(!hasPluginInFrameworks)
+    }
+
+    @Test
+    func `auto-detects plugin from local Package.swift`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // Create a sibling local package with a .plugin product
+        let pkgDir = tempDir.appendingPathComponent("LocalPkg")
+        try FileManager.default.createDirectory(at: pkgDir, withIntermediateDirectories: true)
+        let packageSwift = """
+        // swift-tools-version: 5.9
+        import PackageDescription
+        let package = Package(
+            name: "LocalPkg",
+            products: [
+                .plugin(name: "MyPlugin", targets: ["MyPlugin"]),
+            ],
+            targets: [
+                .plugin(name: "MyPlugin", capability: .buildTool()),
+            ]
+        )
+        """
+        try packageSwift.write(
+            to: pkgDir.appendingPathComponent("Package.swift"),
+            atomically: true,
+            encoding: .utf8,
+        )
+
+        let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Register the local package on the project
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let project = try #require(try xcodeproj.pbxproj.rootProject())
+        let localRef = XCLocalSwiftPackageReference(relativePath: "LocalPkg")
+        xcodeproj.pbxproj.add(object: localRef)
+        project.localPackages.append(localRef)
+        try xcodeproj.write(path: projectPath)
+
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("MyPlugin"),
+        ])
+
+        if case let .text(content, _, _) = result.content[0] {
+            #expect(content.contains("Linked plugin product"))
+            #expect(content.contains("detected"))
+        } else {
+            Issue.record("Expected text content")
+        }
+
+        // Plugin must not appear in the Frameworks build phase
+        let reloaded = try XcodeProj(path: projectPath)
+        let appTarget = try #require(reloaded.pbxproj.nativeTargets.first)
+        let frameworksFiles =
+            (
+                appTarget.buildPhases.first(where: { $0 is PBXFrameworksBuildPhase })
+                    as? PBXFrameworksBuildPhase
+            )?.files ?? []
+        let hasPluginInFrameworks = frameworksFiles.contains { file in
+            file.product?.productName == "MyPlugin"
+        }
+        #expect(!hasPluginInFrameworks)
     }
 
     @Test

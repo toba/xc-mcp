@@ -7,6 +7,10 @@
 - Surface verbose compiler output on signal crashes; `swift_package_build` and `swift_diagnostics` auto-retry with `-v` to identify the crashing file and compiler backtrace ([#283](https://github.com/toba/xc-mcp/issues/283))
 - Add `remove_run_script_phase` tool; remove `PBXShellScriptBuildPhase` build phases from a target by name; refuses to remove ambiguous matches; cleans up orphaned build files ([#284](https://github.com/toba/xc-mcp/issues/284))
 
+### 🐞 Fixes
+
+- `add_package_product`: detect SPM plugin products from local `Package.swift` and skip the Frameworks build phase; add `kind` parameter (`auto` | `library` | `plugin`) for explicit override ([#287](https://github.com/toba/xc-mcp/issues/287))
+
 ### 🗜️ Tweaks
 
 - Add `swiftiomatic-plugins` build-tool plugin for self-hosted lint-on-build; apply to `XCMCPCore`, `XCMCPTools`, and the `xc-mcp` executable ([#285](https://github.com/toba/xc-mcp/issues/285))
