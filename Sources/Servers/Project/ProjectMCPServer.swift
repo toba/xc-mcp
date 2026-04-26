@@ -58,6 +58,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case addCopyFilesPhase = "add_copy_files_phase"
     case addToCopyFilesPhase = "add_to_copy_files_phase"
     case removeCopyFilesPhase = "remove_copy_files_phase"
+    case removeRunScriptPhase = "remove_run_script_phase"
     case listDocumentTypes = "list_document_types"
     case manageDocumentType = "manage_document_type"
     case listTypeIdentifiers = "list_type_identifiers"
@@ -89,7 +90,8 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
 ///   `add_target_to_synchronized_folder`, `add_synchronized_folder_exception`,
 ///   `remove_synchronized_folder_exception`, `list_synchronized_folder_exceptions`
 /// - Build settings: `get_build_settings`, `set_build_setting`, `list_build_configurations`
-/// - Dependencies: `add_dependency`, `add_framework`, `add_build_phase`
+/// - Dependencies: `add_dependency`, `add_framework`, `add_build_phase`,
+///   `remove_run_script_phase`
 /// - Copy files phases: `list_copy_files_phases`, `add_copy_files_phase`,
 ///   `add_to_copy_files_phase`, `remove_copy_files_phase`
 /// - Swift packages: `add_swift_package`, `list_swift_packages`, `remove_swift_package`
@@ -192,6 +194,7 @@ public struct ProjectMCPServer: Sendable {
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
+        let removeRunScriptPhase = RemoveRunScriptPhase(pathUtility: pathUtility)
         let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
         let repairProjectTool = RepairProjectTool(pathUtility: pathUtility)
         let scaffoldModuleTool = ScaffoldModuleTool(pathUtility: pathUtility)
@@ -257,6 +260,7 @@ public struct ProjectMCPServer: Sendable {
                 addCopyFilesPhase.tool(),
                 addToCopyFilesPhase.tool(),
                 removeCopyFilesPhase.tool(),
+                removeRunScriptPhase.tool(),
                 validateProjectTool.tool(),
                 repairProjectTool.tool(),
                 scaffoldModuleTool.tool(),
@@ -392,6 +396,8 @@ public struct ProjectMCPServer: Sendable {
                     return try addToCopyFilesPhase.execute(arguments: arguments)
                 case .removeCopyFilesPhase:
                     return try removeCopyFilesPhase.execute(arguments: arguments)
+                case .removeRunScriptPhase:
+                    return try removeRunScriptPhase.execute(arguments: arguments)
                 case .validateProject:
                     return try validateProjectTool.execute(arguments: arguments)
                 case .repairProject:

@@ -25,6 +25,7 @@ let package = Package(
     .package(url: "https://github.com/tuist/xcodeproj", from: "9.10.1"),
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.7.1"),
     .package(url: "https://github.com/swiftlang/swift-subprocess", from: "0.4.0"),
+    .package(url: "https://github.com/toba/swiftiomatic-plugins", from: "0.32.2"),
   ],
   targets: [
     // MARK: - Shared Core Library
@@ -37,6 +38,9 @@ let package = Package(
       ],
       path: "Sources/Core",
       swiftSettings: sharedSwiftSettings,
+      plugins: [
+        .plugin(name: "SwiftiomaticBuildToolPlugin", package: "swiftiomatic-plugins"),
+      ],
     ),
 
     // MARK: - Shared Tools Library
@@ -51,6 +55,9 @@ let package = Package(
       ],
       path: "Sources/Tools",
       swiftSettings: sharedSwiftSettings,
+      plugins: [
+        .plugin(name: "SwiftiomaticBuildToolPlugin", package: "swiftiomatic-plugins"),
+      ],
     ),
 
     // MARK: - Monolithic Server (all tools)
@@ -86,6 +93,9 @@ let package = Package(
         "Servers/Swift/SwiftMCPServer.swift",
       ],
       swiftSettings: sharedSwiftSettings,
+      plugins: [
+        .plugin(name: "SwiftiomaticBuildToolPlugin", package: "swiftiomatic-plugins"),
+      ],
     ),
 
     // MARK: - Tests

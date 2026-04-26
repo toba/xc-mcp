@@ -19,6 +19,10 @@ public struct CoverageParser: Sendable {
 
         if !path.isEmpty, fileManager.fileExists(atPath: path) {
             coveragePath = path
+        } else if !path.isEmpty {
+            // An explicit path was provided but does not exist — do not fall
+            // back to ambient defaults; the caller wanted that exact location.
+            return nil
         } else {
             if let latestXCResult =
                 await findLatestXCResultInDerivedData(projectHint: targetFilter)

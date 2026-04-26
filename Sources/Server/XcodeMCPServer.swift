@@ -57,6 +57,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addCopyFilesPhase = "add_copy_files_phase"
     case addToCopyFilesPhase = "add_to_copy_files_phase"
     case removeCopyFilesPhase = "remove_copy_files_phase"
+    case removeRunScriptPhase = "remove_run_script_phase"
     case validateProject = "validate_project"
     case repairProject = "repair_project"
     case scaffoldModule = "scaffold_module"
@@ -258,6 +259,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
                  .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
                  .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
+                 .removeRunScriptPhase,
                  .validateProject, .repairProject, .scaffoldModule,
                  .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
                  .manageTypeIdentifier, .listURLTypes, .manageURLType:
@@ -448,6 +450,7 @@ public struct XcodeMCPServer: Sendable {
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
+        let removeRunScriptPhase = RemoveRunScriptPhase(pathUtility: pathUtility)
         let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
         let repairProjectTool = RepairProjectTool(pathUtility: pathUtility)
         let scaffoldModuleTool = ScaffoldModuleTool(pathUtility: pathUtility)
@@ -801,6 +804,7 @@ public struct XcodeMCPServer: Sendable {
             (.addCopyFilesPhase, addCopyFilesPhase.tool()),
             (.addToCopyFilesPhase, addToCopyFilesPhase.tool()),
             (.removeCopyFilesPhase, removeCopyFilesPhase.tool()),
+            (.removeRunScriptPhase, removeRunScriptPhase.tool()),
             (.validateProject, validateProjectTool.tool()),
             (.repairProject, repairProjectTool.tool()),
             (.scaffoldModule, scaffoldModuleTool.tool()),
@@ -1094,6 +1098,8 @@ public struct XcodeMCPServer: Sendable {
                     return try addToCopyFilesPhase.execute(arguments: arguments)
                 case .removeCopyFilesPhase:
                     return try removeCopyFilesPhase.execute(arguments: arguments)
+                case .removeRunScriptPhase:
+                    return try removeRunScriptPhase.execute(arguments: arguments)
                 case .validateProject:
                     return try validateProjectTool.execute(arguments: arguments)
                 case .repairProject:

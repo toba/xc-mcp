@@ -15,7 +15,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         Tool(
             name: "scaffold_macos_project",
             description:
-            "Create a new macOS project with a modern workspace + Swift Package Manager architecture. Creates a workspace containing the main app project and a local Swift package for shared code.",
+            "Create a new macOS project with a modern workspace + Swift Package Manager architecture. The app source folder is a synchronized root group (Xcode 16+), so files dropped on disk are picked up automatically — no add_file needed.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -242,76 +242,24 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         deploymentTarget: String,
         mainGroup: PBXGroup,
     ) -> PBXNativeTarget {
-        // Create file references for source files
-        let appSwiftRef = PBXFileReference(
+        // Synchronized root group: Xcode auto-discovers all files in the folder.
+        let appFolder = PBXFileSystemSynchronizedRootGroup(
             sourceTree: .group,
-            name: "\(projectName)App.swift",
-            lastKnownFileType: Xcode.filetype(extension: "swift"),
-            path: "\(projectName)App.swift",
-        )
-        pbxproj.add(object: appSwiftRef)
-
-        let contentViewRef = PBXFileReference(
-            sourceTree: .group,
-            name: "ContentView.swift",
-            lastKnownFileType: Xcode.filetype(extension: "swift"),
-            path: "ContentView.swift",
-        )
-        pbxproj.add(object: contentViewRef)
-
-        // Entitlements: in group for visibility but not in any build phase
-        let entitlementsRef = PBXFileReference(
-            sourceTree: .group,
-            name: "\(projectName).entitlements",
-            lastKnownFileType: Xcode.filetype(extension: "entitlements"),
-            path: "\(projectName).entitlements",
-        )
-        pbxproj.add(object: entitlementsRef)
-
-        // Asset catalog
-        let assetsRef = PBXFileReference(
-            sourceTree: .group,
-            name: "Assets.xcassets",
-            lastKnownFileType: Xcode.filetype(extension: "xcassets"),
-            path: "Assets.xcassets",
-        )
-        pbxproj.add(object: assetsRef)
-
-        // Create app group with all file references
-        let appGroup = PBXGroup(
-            children: [appSwiftRef, contentViewRef, entitlementsRef, assetsRef],
-            sourceTree: .group,
-            name: projectName,
             path: projectName,
+            name: projectName,
         )
-        pbxproj.add(object: appGroup)
-        mainGroup.children.append(appGroup)
+        pbxproj.add(object: appFolder)
+        mainGroup.children.append(appFolder)
 
-        // Create build files for source and resource phases
-        let appSwiftBuildFile = PBXBuildFile(file: appSwiftRef)
-        pbxproj.add(object: appSwiftBuildFile)
-
-        let contentViewBuildFile = PBXBuildFile(file: contentViewRef)
-        pbxproj.add(object: contentViewBuildFile)
-
-        let assetsBuildFile = PBXBuildFile(file: assetsRef)
-        pbxproj.add(object: assetsBuildFile)
-
-        // Create source build phase with Swift files
-        let sourcesBuildPhase = PBXSourcesBuildPhase(
-            files: [appSwiftBuildFile, contentViewBuildFile],
-        )
+        let sourcesBuildPhase = PBXSourcesBuildPhase(files: [])
         pbxproj.add(object: sourcesBuildPhase)
 
-        // Create frameworks build phase
         let frameworksBuildPhase = PBXFrameworksBuildPhase(files: [])
         pbxproj.add(object: frameworksBuildPhase)
 
-        // Create resources build phase with asset catalog
-        let resourcesBuildPhase = PBXResourcesBuildPhase(files: [assetsBuildFile])
+        let resourcesBuildPhase = PBXResourcesBuildPhase(files: [])
         pbxproj.add(object: resourcesBuildPhase)
 
-        // Create build configurations for target
         let bundleId = "\(bundleIdPrefix).\(projectName)"
         let debugConfig = XCBuildConfiguration(
             name: "Debug",
@@ -340,7 +288,6 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         )
         pbxproj.add(object: configList)
 
-        // Create target
         let target = PBXNativeTarget(
             name: projectName,
             buildConfigurationList: configList,
@@ -348,6 +295,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
             productType: .application,
         )
         pbxproj.add(object: target)
+        target.fileSystemSynchronizedGroups = [appFolder]
 
         return target
     }

@@ -57,7 +57,7 @@ struct ScaffoldMacOSProjectToolTests {
     }
 
     @Test
-    func `Scaffold wires source files to sources build phase`() throws {
+    func `Scaffold uses synchronized root group for app source folder`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -75,120 +75,60 @@ struct ScaffoldMacOSProjectToolTests {
             Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
         let xcodeproj = try XcodeProj(path: projectPath)
 
-        // Find the app target
-        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
-        #expect(target != nil, "App target should exist")
-
-        // Verify sources build phase has the Swift files
-        let sourcesBuildPhase =
-            target?.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
-        #expect(sourcesBuildPhase != nil, "Sources build phase should exist")
-
-        let sourceFileNames = sourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
-        #expect(
-            sourceFileNames.contains("TestAppApp.swift"),
-            "Sources should contain TestAppApp.swift, got: \(sourceFileNames)",
-        )
-        #expect(
-            sourceFileNames.contains("ContentView.swift"),
-            "Sources should contain ContentView.swift, got: \(sourceFileNames)",
-        )
-    }
-
-    @Test
-    func `Scaffold wires asset catalog to resources build phase`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        _ = try tool.execute(arguments: [
-            "project_name": Value.string("TestApp"),
-            "path": Value.string(tempDir.path),
-            "include_tests": Value.bool(false),
-        ])
-
-        let projectPath =
-            Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
-        let xcodeproj = try XcodeProj(path: projectPath)
-
-        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
-        #expect(target != nil)
-
-        // Verify resources build phase has the asset catalog
-        let resourcesBuildPhase =
-            target?.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
-        #expect(resourcesBuildPhase != nil, "Resources build phase should exist")
-
-        let resourceFileNames = resourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
-        #expect(
-            resourceFileNames.contains("Assets.xcassets"),
-            "Resources should contain Assets.xcassets, got: \(resourceFileNames)",
-        )
-    }
-
-    @Test
-    func `Scaffold sets lastKnownFileType on asset catalog`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        _ = try tool.execute(arguments: [
-            "project_name": Value.string("TestApp"),
-            "path": Value.string(tempDir.path),
-            "include_tests": Value.bool(false),
-        ])
-
-        let projectPath =
-            Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
-        let xcodeproj = try XcodeProj(path: projectPath)
-
-        let assetsRef = xcodeproj.pbxproj.fileReferences.first { $0.name == "Assets.xcassets" }
-        #expect(assetsRef != nil, "Assets.xcassets file reference should exist")
-        #expect(
-            assetsRef?.lastKnownFileType == "folder.assetcatalog",
-            "lastKnownFileType should be folder.assetcatalog, got: \(assetsRef?.lastKnownFileType ?? "nil")",
-        )
-    }
-
-    @Test
-    func `Scaffold creates app group in main group`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        _ = try tool.execute(arguments: [
-            "project_name": Value.string("TestApp"),
-            "path": Value.string(tempDir.path),
-            "include_tests": Value.bool(false),
-        ])
-
-        let projectPath =
-            Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
-        let xcodeproj = try XcodeProj(path: projectPath)
         let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup
+        let syncGroup = mainGroup?.children.compactMap {
+            $0 as? PBXFileSystemSynchronizedRootGroup
+        }.first { $0.path == "TestApp" }
+        #expect(syncGroup != nil, "Main group should contain a synchronized root group for TestApp")
 
-        // Main group should contain the app group
+        // No traditional PBXGroup for the app folder
         let appGroup = mainGroup?.children.compactMap { $0 as? PBXGroup }.first {
             $0.name == "TestApp"
         }
-        #expect(appGroup != nil, "Main group should contain TestApp group")
-        #expect(appGroup?.path == "TestApp", "App group path should be TestApp")
+        #expect(appGroup == nil, "Should not emit a traditional PBXGroup alongside the sync folder")
 
-        // App group should contain all file references
-        let childNames = appGroup?.children.compactMap { ($0 as? PBXFileReference)?.name } ?? []
-        #expect(childNames.contains("TestAppApp.swift"))
-        #expect(childNames.contains("ContentView.swift"))
-        #expect(childNames.contains("TestApp.entitlements"))
-        #expect(childNames.contains("Assets.xcassets"))
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
+        #expect(target?.fileSystemSynchronizedGroups?.contains { $0 === syncGroup } == true)
+    }
+
+    @Test
+    func `Scaffold leaves build phases empty under synchronized folder`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_name": Value.string("TestApp"),
+            "path": Value.string(tempDir.path),
+            "include_tests": Value.bool(false),
+        ])
+
+        let projectPath =
+            Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
+
+        // Sources/Resources phases exist but contribute no explicit files —
+        // the synchronized folder feeds them at build time.
+        let sourcesBuildPhase =
+            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        #expect(sourcesBuildPhase != nil)
+        #expect(sourcesBuildPhase?.files?.isEmpty ?? true)
+
+        let resourcesBuildPhase =
+            target.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
+        #expect(resourcesBuildPhase != nil)
+        #expect(resourcesBuildPhase?.files?.isEmpty ?? true)
+
+        // No stray PBXFileReference for sources/assets/entitlements.
+        let refNames = xcodeproj.pbxproj.fileReferences.compactMap { $0.name }
+        #expect(!refNames.contains("TestAppApp.swift"))
+        #expect(!refNames.contains("ContentView.swift"))
+        #expect(!refNames.contains("Assets.xcassets"))
+        #expect(!refNames.contains("TestApp.entitlements"))
     }
 
     @Test
@@ -231,7 +171,7 @@ struct ScaffoldMacOSProjectToolTests {
     }
 
     @Test
-    func `Scaffold entitlements not in any build phase`() throws {
+    func `Scaffold writes entitlements file alongside source folder`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
         )
@@ -245,25 +185,11 @@ struct ScaffoldMacOSProjectToolTests {
             "include_tests": Value.bool(false),
         ])
 
-        let projectPath =
-            Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
-        let xcodeproj = try XcodeProj(path: projectPath)
-
-        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
-
-        // Entitlements should NOT appear in any build phase
-        let allBuildFileNames = target.buildPhases.flatMap { phase in
-            phase.files?.compactMap { $0.file?.name } ?? []
-        }
-        #expect(
-            !allBuildFileNames.contains("TestApp.entitlements"),
-            "Entitlements should not be in any build phase",
+        // Entitlements live on disk inside the synchronized folder; Xcode
+        // resolves them via CODE_SIGN_ENTITLEMENTS without needing a build-phase entry.
+        let entitlementsPath = tempDir.appendingPathComponent(
+            "TestApp/TestApp/TestApp.entitlements",
         )
-
-        // But should exist as a file reference in the project
-        let entitlementsRef = xcodeproj.pbxproj.fileReferences.first {
-            $0.name == "TestApp.entitlements"
-        }
-        #expect(entitlementsRef != nil, "Entitlements file reference should exist in project")
+        #expect(FileManager.default.fileExists(atPath: entitlementsPath.path))
     }
 }
