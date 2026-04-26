@@ -10,6 +10,7 @@
 ### 🐞 Fixes
 
 - `add_package_product`: detect SPM plugin products from local `Package.swift` and skip the Frameworks build phase; add `kind` parameter (`auto` | `library` | `plugin`) for explicit override ([#287](https://github.com/toba/xc-mcp/issues/287))
+- `add_package_product`: wire the `package` field on `XCSwiftPackageProductDependency` for products not yet linked to any target; add `package_url` / `package_path` parameters; discover owning package via local `Package.swift` checkouts ([#288](https://github.com/toba/xc-mcp/issues/288))
 
 ### 🗜️ Tweaks
 

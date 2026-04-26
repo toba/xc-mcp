@@ -262,6 +262,144 @@ struct AddPackageProductToolTests {
     }
 
     @Test
+    func `package_url wires remote reference for unlinked product`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a remote package reference but don't link it to any target.
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let packageRef = XCRemoteSwiftPackageReference(
+            repositoryURL: "https://github.com/toba/swiftiomatic-plugins",
+            versionRequirement: .branch("main"),
+        )
+        xcodeproj.pbxproj.add(object: packageRef)
+        let project = try #require(try xcodeproj.pbxproj.rootProject())
+        project.remotePackages.append(packageRef)
+        try xcodeproj.write(path: projectPath)
+
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("SwiftiomaticBuildToolPlugin"),
+            "kind": Value.string("plugin"),
+            "package_url": Value.string("https://github.com/toba/swiftiomatic-plugins"),
+        ])
+
+        if case let .text(content, _, _) = result.content[0] {
+            #expect(content.contains("Linked plugin product"))
+            #expect(content.contains("linked package by package_url"))
+        } else {
+            Issue.record("Expected text content")
+        }
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let appTarget = try #require(reloaded.pbxproj.nativeTargets.first)
+        let dep = try #require(appTarget.packageProductDependencies?.first)
+        #expect(dep.productName == "SwiftiomaticBuildToolPlugin")
+        #expect(dep.package?.repositoryURL == "https://github.com/toba/swiftiomatic-plugins")
+    }
+
+    @Test
+    func `package_url with no matching remote reference fails`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": Value.string(projectPath.string),
+                "target_name": Value.string("App"),
+                "product_name": Value.string("Foo"),
+                "package_url": Value.string("https://github.com/example/missing"),
+            ])
+        }
+    }
+
+    @Test
+    func `discovers remote package via checkout directory`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Stage a checkout under SourcePackages/checkouts/<name> so the
+        // discovery path can match by directory basename.
+        let checkoutsRoot = tempDir.appendingPathComponent("SourcePackages/checkouts")
+        let pkgDir = checkoutsRoot.appendingPathComponent("swiftiomatic-plugins")
+        try FileManager.default.createDirectory(at: pkgDir, withIntermediateDirectories: true)
+        let packageSwift = """
+        // swift-tools-version: 5.9
+        import PackageDescription
+        let package = Package(
+            name: "swiftiomatic-plugins",
+            products: [
+                .plugin(name: "SwiftiomaticBuildToolPlugin", targets: ["SwiftiomaticBuildToolPlugin"]),
+            ],
+            targets: [
+                .plugin(name: "SwiftiomaticBuildToolPlugin", capability: .buildTool()),
+            ]
+        )
+        """
+        try packageSwift.write(
+            to: pkgDir.appendingPathComponent("Package.swift"),
+            atomically: true, encoding: .utf8,
+        )
+
+        // Register the matching remote reference (URL last component matches dir name).
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let packageRef = XCRemoteSwiftPackageReference(
+            repositoryURL: "https://github.com/toba/swiftiomatic-plugins.git",
+            versionRequirement: .branch("main"),
+        )
+        xcodeproj.pbxproj.add(object: packageRef)
+        let project = try #require(try xcodeproj.pbxproj.rootProject())
+        project.remotePackages.append(packageRef)
+        try xcodeproj.write(path: projectPath)
+
+        let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("SwiftiomaticBuildToolPlugin"),
+        ])
+
+        if case let .text(content, _, _) = result.content[0] {
+            #expect(content.contains("Linked plugin product"))
+            #expect(content.contains("matched package reference from local Package.swift"))
+        } else {
+            Issue.record("Expected text content")
+        }
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let appTarget = try #require(reloaded.pbxproj.nativeTargets.first)
+        let dep = try #require(appTarget.packageProductDependencies?.first)
+        #expect(dep.package?.repositoryURL == "https://github.com/toba/swiftiomatic-plugins.git")
+    }
+
+    @Test
     func `target not found`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

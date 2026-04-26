@@ -15,7 +15,7 @@ public struct AddPackageProductTool: Sendable {
         Tool(
             name: "add_package_product",
             description:
-            "Link an existing Swift Package product to a target. Use when a package is already in the project but its product needs to be added to a different target. Plugin products (build tool / command plugins) are auto-detected from local Package.swift sources and skip the Frameworks build phase; pass kind='plugin' explicitly for remote packages whose source is not on disk.",
+            "Link an existing Swift Package product to a target. Use when a package is already in the project but its product needs to be added to a different target. Plugin products (build tool / command plugins) are auto-detected from local Package.swift sources and skip the Frameworks build phase; pass kind='plugin' explicitly for remote packages whose source is not on disk. Pass package_url or package_path to disambiguate when the product has not yet been linked to any target.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -35,6 +35,18 @@ public struct AddPackageProductTool: Sendable {
                         "type": .string("string"),
                         "description": .string(
                             "Name of the Swift Package product to link (e.g., 'HTTPTypes', 'Alamofire')",
+                        ),
+                    ]),
+                    "package_url": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Optional repository URL of the remote package that provides the product. Use when the product has not yet been linked to any target so the package reference cannot be inferred.",
+                        ),
+                    ]),
+                    "package_path": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Optional relative path of a local package that provides the product (matches XCLocalSwiftPackageReference.relativePath).",
                         ),
                     ]),
                     "kind": .object([
@@ -77,6 +89,26 @@ public struct AddPackageProductTool: Sendable {
             kindArg = nil
         }
 
+        let packageURLArg: String?
+        if case let .string(u) = arguments["package_url"] {
+            packageURLArg = u
+        } else {
+            packageURLArg = nil
+        }
+
+        let packagePathArg: String?
+        if case let .string(p) = arguments["package_path"] {
+            packagePathArg = p
+        } else {
+            packagePathArg = nil
+        }
+
+        if packageURLArg != nil, packagePathArg != nil {
+            throw MCPError.invalidParams(
+                "Specify either package_url or package_path, not both",
+            )
+        }
+
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(filePath: resolvedProjectPath)
@@ -100,14 +132,59 @@ public struct AddPackageProductTool: Sendable {
                 )
             }
 
-            // Find the package reference that provides this product by checking existing
-            // product dependencies across all targets
-            let packageRef: XCRemoteSwiftPackageReference? = xcodeproj.pbxproj.nativeTargets
-                .lazy
+            let projectDir = (projectURL.path as NSString).deletingLastPathComponent
+
+            // Resolve owning package reference, in priority order:
+            //   1. Explicit package_url / package_path argument
+            //   2. Existing linked dependency on another target (legacy behavior)
+            //   3. Discovery via local Package.swift sources, matched back to
+            //      the project's remotePackages / localPackages by name
+            let packageRef: XCRemoteSwiftPackageReference?
+            let packageRefSource: String
+
+            if let packageURLArg {
+                guard let project = try xcodeproj.pbxproj.rootProject(),
+                      let match = project.remotePackages.first(where: {
+                          $0.repositoryURL == packageURLArg
+                      })
+                else {
+                    throw MCPError.invalidParams(
+                        "No XCRemoteSwiftPackageReference with repositoryURL '\(packageURLArg)' found in project",
+                    )
+                }
+                packageRef = match
+                packageRefSource = "package_url"
+            } else if let packagePathArg {
+                guard let project = try xcodeproj.pbxproj.rootProject(),
+                      project.localPackages.contains(where: {
+                          $0.relativePath == packagePathArg
+                      })
+                else {
+                    throw MCPError.invalidParams(
+                        "No XCLocalSwiftPackageReference with relativePath '\(packagePathArg)' found in project",
+                    )
+                }
+                // XCSwiftPackageProductDependency.package only accepts an
+                // XCRemoteSwiftPackageReference; local packages historically
+                // omit the field. Mirror that here.
+                packageRef = nil
+                packageRefSource = "package_path"
+            } else if let linked = xcodeproj.pbxproj.nativeTargets.lazy
                 .compactMap(\.packageProductDependencies)
                 .joined()
-                .first(where: { $0.productName == productName })
-                .flatMap(\.package)
+                .first(where: { $0.productName == productName })?.package
+            {
+                packageRef = linked
+                packageRefSource = "linked-dependency"
+            } else if let discovered = Self.discoverPackageReference(
+                productName: productName, in: xcodeproj, projectDir: projectDir,
+            ) {
+                packageRef = discovered.remote
+                packageRefSource = discovered.source
+            } else {
+                packageRef = nil
+                packageRefSource = "none"
+            }
 
             // Resolve the product kind
             let resolvedKind: ProductKind
@@ -120,7 +197,6 @@ public struct AddPackageProductTool: Sendable {
                 resolvedKind = .plugin
                 kindSource = "explicit"
             case nil, "auto":
-                let projectDir = (projectURL.path as NSString).deletingLastPathComponent
                 if let detected = Self.detectProductKind(
                     productName: productName, in: xcodeproj, projectDir: projectDir,
                 ) {
@@ -180,8 +256,22 @@ public struct AddPackageProductTool: Sendable {
             } else if kindSource == "detected" {
                 message += " (kind detected from Package.swift)"
             }
-            if packageRef == nil {
-                message += " (no existing package reference found — product will resolve at build time)"
+            switch packageRefSource {
+            case "package_url":
+                message += " (linked package by package_url)"
+            case "package_path":
+                message += " (matched local package by package_path; package field omitted per pbxproj convention)"
+            case "linked-dependency":
+                break
+            case "discovered":
+                message += " (matched package reference from local Package.swift)"
+            case "none":
+                if packagePathArg == nil {
+                    message +=
+                        " (no existing package reference found — pass package_url or package_path to link explicitly)"
+                }
+            default:
+                break
             }
 
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
@@ -200,9 +290,63 @@ public struct AddPackageProductTool: Sendable {
     private static func detectProductKind(
         productName: String, in xcodeproj: XcodeProj, projectDir: String,
     ) -> ProductKind? {
+        for candidate in candidatePackageDirs(in: xcodeproj, projectDir: projectDir) {
+            let pkgSwift = candidate.path + "/Package.swift"
+            guard let contents = try? String(contentsOfFile: pkgSwift, encoding: .utf8)
+            else { continue }
+            if let kind = parseProductKind(productName: productName, packageSwift: contents) {
+                return kind
+            }
+        }
+        return nil
+    }
+
+    /// Locates the owning package reference for `productName` by scanning
+    /// candidate `Package.swift` files on disk and matching the package back
+    /// to the project's `remotePackages` / `localPackages` collections.
+    private static func discoverPackageReference(
+        productName: String, in xcodeproj: XcodeProj, projectDir: String,
+    ) -> (remote: XCRemoteSwiftPackageReference?, source: String)? {
+        guard let project = xcodeproj.pbxproj.rootObject else { return nil }
+
+        for candidate in candidatePackageDirs(in: xcodeproj, projectDir: projectDir) {
+            let pkgSwift = candidate.path + "/Package.swift"
+            guard let contents = try? String(contentsOfFile: pkgSwift, encoding: .utf8),
+                  parseProductKind(productName: productName, packageSwift: contents) != nil
+            else { continue }
+
+            // Local package match: candidate originates from project.localPackages
+            if candidate.origin == .local {
+                // Local packages don't carry an XCRemoteSwiftPackageReference, but
+                // discovery still succeeded — caller should leave package nil.
+                return (nil, "discovered")
+            }
+
+            // Remote package match: directory basename typically equals the
+            // package name (also the URL's last path component without `.git`).
+            let dirName = (candidate.path as NSString).lastPathComponent
+            if let remote = project.remotePackages.first(where: { ref in
+                guard let url = ref.repositoryURL else { return false }
+                return Self.repoLastComponent(url) == dirName
+            }) {
+                return (remote, "discovered")
+            }
+        }
+        return nil
+    }
+
+    private struct PackageDirCandidate {
+        enum Origin { case local, checkout }
+        var path: String
+        var origin: Origin
+    }
+
+    private static func candidatePackageDirs(
+        in xcodeproj: XcodeProj, projectDir: String,
+    ) -> [PackageDirCandidate] {
         let fm = FileManager.default
         let projectDirURL = URL(fileURLWithPath: projectDir)
-        var packageDirs: [String] = []
+        var dirs: [PackageDirCandidate] = []
 
         if let project = xcodeproj.pbxproj.rootObject {
             for localPkg in project.localPackages {
@@ -212,14 +356,15 @@ public struct AddPackageProductTool: Sendable {
                         ? URL(fileURLWithPath: rel).standardizedFileURL.path
                         : projectDirURL.appendingPathComponent(rel).standardizedFileURL.path
                 if fm.fileExists(atPath: resolved) {
-                    packageDirs.append(resolved)
+                    dirs.append(.init(path: resolved, origin: .local))
                 }
             }
         }
 
-        // Also look in conventional checkout locations adjacent to the project.
-        // Resolved Xcode SourcePackages typically live in DerivedData, but some
-        // setups vendor them under `.build/checkouts` or `.swiftpm/checkouts`.
+        // Conventional checkout locations adjacent to the project. Resolved
+        // Xcode SourcePackages typically live under DerivedData (keyed by an
+        // unstable hash so we don't scan it), but vendored setups stash
+        // checkouts under one of the directories below.
         let candidateRoots = [
             projectDir + "/.build/checkouts",
             projectDir + "/.swiftpm/checkouts",
@@ -232,19 +377,23 @@ public struct AddPackageProductTool: Sendable {
                 var isDir: ObjCBool = false
                 guard fm.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue
                 else { continue }
-                packageDirs.append(path)
+                dirs.append(.init(path: path, origin: .checkout))
             }
         }
+        return dirs
+    }
 
-        for pkgDir in packageDirs {
-            let pkgSwift = pkgDir + "/Package.swift"
-            guard let contents = try? String(contentsOfFile: pkgSwift, encoding: .utf8)
-            else { continue }
-            if let kind = parseProductKind(productName: productName, packageSwift: contents) {
-                return kind
-            }
+    /// Returns the last path component of a git repository URL with a trailing
+    /// `.git` suffix removed. Handles HTTPS, SSH, and `scp`-style URLs.
+    private static func repoLastComponent(_ url: String) -> String {
+        var trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasSuffix("/") { trimmed.removeLast() }
+        let lastSlash = trimmed.lastIndex(where: { $0 == "/" || $0 == ":" })
+        let tail = lastSlash.map { String(trimmed[trimmed.index(after: $0)...]) } ?? trimmed
+        if tail.hasSuffix(".git") {
+            return String(tail.dropLast(4))
         }
-        return nil
+        return tail
     }
 
     /// Parses a `Package.swift` source for a product declaration matching `productName`.
