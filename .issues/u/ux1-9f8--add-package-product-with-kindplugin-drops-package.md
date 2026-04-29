@@ -11,7 +11,7 @@ updated_at: 2026-04-26T22:32:13Z
 sync:
     github:
         issue_number: "288"
-        synced_at: "2026-04-26T21:40:50Z"
+        synced_at: "2026-04-29T05:14:18Z"
 ---
 
 ## Problem

@@ -167,21 +167,21 @@ public actor SessionManager {
         env: [String: String]? = nil,
     ) {
         if let projectPath {
-            self.projectPath = projectPath
+            self.projectPath = PathUtility.expandTilde(projectPath)
             // Clear workspace if project is set (mutually exclusive)
             if workspacePath == nil {
                 self.workspacePath = nil
             }
         }
         if let workspacePath {
-            self.workspacePath = workspacePath
+            self.workspacePath = PathUtility.expandTilde(workspacePath)
             // Clear project if workspace is set (mutually exclusive)
             if projectPath == nil {
                 self.projectPath = nil
             }
         }
         if let packagePath {
-            self.packagePath = packagePath
+            self.packagePath = PathUtility.expandTilde(packagePath)
         }
         if let scheme {
             self.scheme = scheme
@@ -361,8 +361,8 @@ public actor SessionManager {
         project: String?, workspace: String?,
     ) {
         reloadIfNeeded()
-        let project = arguments.getString("project_path") ?? projectPath
-        let workspace = arguments.getString("workspace_path") ?? workspacePath
+        let project = arguments.getString("project_path").map(PathUtility.expandTilde) ?? projectPath
+        let workspace = arguments.getString("workspace_path").map(PathUtility.expandTilde) ?? workspacePath
         if project == nil, workspace == nil {
             // Auto-detect by walking up from cwd; prefer workspace over project
             if let detectedWorkspace = PathUtility.findWorkspacePath() {
@@ -415,7 +415,7 @@ public actor SessionManager {
     public func resolvePackagePath(from arguments: [String: Value]) throws(MCPError) -> String {
         reloadIfNeeded()
         if let value = arguments.getString("package_path") {
-            return value
+            return PathUtility.expandTilde(value)
         }
         if let session = packagePath {
             return session

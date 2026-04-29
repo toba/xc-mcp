@@ -141,6 +141,8 @@ public enum ToolName: String, CaseIterable, Sendable {
     case resetSimLocation = "reset_sim_location"
     case setSimAppearance = "set_sim_appearance"
     case simStatusbar = "sim_statusbar"
+    case toggleSoftwareKeyboard = "toggle_software_keyboard"
+    case toggleHardwareKeyboard = "toggle_hardware_keyboard"
 
     // Debug tools
     case buildDebugMacOS = "build_debug_macos"
@@ -272,7 +274,8 @@ public enum ToolName: String, CaseIterable, Sendable {
             case .listSims, .bootSim, .openSim, .buildSim, .buildRunSim, .installAppSim,
                  .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
                  .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
-                 .resetSimLocation, .setSimAppearance, .simStatusbar:
+                 .resetSimLocation, .setSimAppearance, .simStatusbar,
+                 .toggleSoftwareKeyboard, .toggleHardwareKeyboard:
                 return .simulator
             // Device
             case .listDevices, .buildDevice, .installAppDevice, .launchAppDevice,
@@ -612,6 +615,12 @@ public struct XcodeMCPServer: Sendable {
         let simStatusBarTool = SimStatusBarTool(
             simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
+        let toggleSoftwareKeyboardTool = ToggleSoftwareKeyboardTool(
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
+        )
+        let toggleHardwareKeyboardTool = ToggleHardwareKeyboardTool(
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
+        )
 
         // Create debug tools
         let lldbRunner = LLDBRunner()
@@ -881,6 +890,8 @@ public struct XcodeMCPServer: Sendable {
             (.resetSimLocation, resetSimLocationTool.tool()),
             (.setSimAppearance, setSimAppearanceTool.tool()),
             (.simStatusbar, simStatusBarTool.tool()),
+            (.toggleSoftwareKeyboard, toggleSoftwareKeyboardTool.tool()),
+            (.toggleHardwareKeyboard, toggleHardwareKeyboardTool.tool()),
             // Debug tools
             (.buildDebugMacOS, buildDebugMacOSTool.tool()),
             (.debugAttachSim, debugAttachSimTool.tool()),
@@ -1256,6 +1267,10 @@ public struct XcodeMCPServer: Sendable {
                     return try await setSimAppearanceTool.execute(arguments: arguments)
                 case .simStatusbar:
                     return try await simStatusBarTool.execute(arguments: arguments)
+                case .toggleSoftwareKeyboard:
+                    return try await toggleSoftwareKeyboardTool.execute(arguments: arguments)
+                case .toggleHardwareKeyboard:
+                    return try await toggleHardwareKeyboardTool.execute(arguments: arguments)
                 // Debug tools
                 case .buildDebugMacOS:
                     return try await buildDebugMacOSTool.execute(arguments: arguments)

@@ -1,5 +1,17 @@
 # Changelog
 
+## Week of Apr 26 – May 2, 2026
+
+### ✨ Features
+
+- Auto-scope `xcodebuild` `-derivedDataPath` to `~/Library/Caches/xc-mcp/DerivedData/<Project>-<hash>`; prevents concurrent build collisions when multiple xc-mcp sessions target the same clone; opt-out via `XC_MCP_DISABLE_DERIVED_DATA_SCOPING` ([#289](https://github.com/toba/xc-mcp/issues/289))
+- Add `toggle_software_keyboard` / `toggle_hardware_keyboard` simulator tools; toggle the simulator's on-screen keyboard via Cmd+K / Cmd+Shift+K through AppleScript ([#293](https://github.com/toba/xc-mcp/issues/293))
+- Surface slowest passing tests in test output via `XC_MCP_SHOW_TEST_TIMING`; previously hidden when total > 50 with failures ([#291](https://github.com/toba/xc-mcp/issues/291))
+
+### 🐞 Fixes
+
+- Expand leading `~` in user-supplied paths; `set_session_defaults` and per-call `project_path` / `workspace_path` / `package_path` arguments now resolve `~/Developer/foo.xcodeproj` correctly ([#292](https://github.com/toba/xc-mcp/issues/292))
+
 ## Week of Apr 19 – Apr 25, 2026
 
 ### ✨ Features

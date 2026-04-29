@@ -252,6 +252,14 @@ public struct XcodebuildRunner: Sendable {
             args += ["-project", projectPath]
         }
 
+        if let derivedData = DerivedDataScoper.effectivePath(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+            additionalArguments: additionalArguments,
+        ) {
+            args += ["-derivedDataPath", derivedData]
+        }
+
         args += [
             "-scheme", scheme,
             "-destination", destination,
@@ -308,6 +316,14 @@ public struct XcodebuildRunner: Sendable {
             args += ["-project", projectPath]
         }
 
+        if let derivedData = DerivedDataScoper.effectivePath(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+            additionalArguments: additionalArguments,
+        ) {
+            args += ["-derivedDataPath", derivedData]
+        }
+
         args += [
             "-target", target,
             "-destination", destination,
@@ -360,6 +376,14 @@ public struct XcodebuildRunner: Sendable {
             args += ["-workspace", workspacePath]
         } else if let projectPath {
             args += ["-project", projectPath]
+        }
+
+        if let derivedData = DerivedDataScoper.effectivePath(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+            additionalArguments: additionalArguments,
+        ) {
+            args += ["-derivedDataPath", derivedData]
         }
 
         args += [
@@ -428,6 +452,13 @@ public struct XcodebuildRunner: Sendable {
             args += ["-project", projectPath]
         }
 
+        if let derivedData = DerivedDataScoper.effectivePath(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+        ) {
+            args += ["-derivedDataPath", derivedData]
+        }
+
         args += ["-scheme", scheme, "-configuration", configuration, "clean"]
 
         return try await run(arguments: args)
@@ -477,6 +508,13 @@ public struct XcodebuildRunner: Sendable {
             args += ["-workspace", workspacePath]
         } else if let projectPath {
             args += ["-project", projectPath]
+        }
+
+        if let derivedData = DerivedDataScoper.effectivePath(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+        ) {
+            args += ["-derivedDataPath", derivedData]
         }
 
         args += [

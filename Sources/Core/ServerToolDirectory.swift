@@ -60,6 +60,7 @@ public enum ServerToolDirectory {
         "install_app_sim", "launch_app_sim", "stop_app_sim", "get_sim_app_path",
         "test_sim", "record_sim_video", "launch_app_logs_sim", "erase_sims",
         "set_sim_location", "reset_sim_location", "set_sim_appearance", "sim_statusbar",
+        "toggle_software_keyboard", "toggle_hardware_keyboard",
         "tap", "long_press", "swipe", "type_text", "key_press",
         "button", "screenshot",
         "start_sim_log_cap", "stop_sim_log_cap",

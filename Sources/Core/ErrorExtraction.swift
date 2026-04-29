@@ -296,6 +296,14 @@ public enum ErrorExtractor {
                     parts.append(lines.joined(separator: "\n"))
                 }
             }
+
+            // Opt-in timing block: surface slow passing tests that are otherwise
+            // hidden when total > 50 and there are failures.
+            if showTestTimingEnabled() {
+                if let block = formatTestTimings(data.tests) {
+                    parts.append(block)
+                }
+            }
         } else if !data.failures.isEmpty {
             // Fall back to failure-only listing when per-test details unavailable
             var lines = ["Failed:"]
@@ -337,6 +345,46 @@ public enum ErrorExtractor {
                 let dur = test.duration.map { String(format: " (%.1fs)", $0) } ?? ""
                 return "  ✓ \(test.name)\(dur) (expected failure)"
         }
+    }
+
+    /// Whether to render the optional per-test timing block in xcresult-formatted output.
+    ///
+    /// Toggled via `XC_MCP_SHOW_TEST_TIMING` (any non-empty, non-`0`/`false` value enables it).
+    private static func showTestTimingEnabled() -> Bool {
+        guard let value = ProcessInfo.processInfo.environment["XC_MCP_SHOW_TEST_TIMING"],
+              !value.isEmpty
+        else { return false }
+        let lowered = value.lowercased()
+        return lowered != "0" && lowered != "false" && lowered != "no"
+    }
+
+    /// Renders the top-N tests by duration, sorted descending. Returns `nil` if no tests
+    /// have a recorded duration.
+    private static func formatTestTimings(
+        _ tests: [XCResultParser.TestDetail],
+        limit: Int = 10,
+    ) -> String? {
+        let sorted = tests
+            .compactMap { test -> (XCResultParser.TestDetail, Double)? in
+                guard let duration = test.duration else { return nil }
+                return (test, duration)
+            }
+            .sorted { $0.1 > $1.1 }
+            .prefix(limit)
+
+        guard !sorted.isEmpty else { return nil }
+
+        var lines = ["Test timings (slowest \(sorted.count)):"]
+        for (test, duration) in sorted {
+            let icon: String =
+                switch test.status {
+                    case .passed, .expectedFailure: "✓"
+                    case .failed: "✗"
+                    case .skipped: "⊘"
+                }
+            lines.append(String(format: "  %@ %@ (%.3fs)", icon, test.name, duration))
+        }
+        return lines.joined(separator: "\n")
     }
 
     private static func formatMetricValue(_ value: Double, unit: String) -> String {

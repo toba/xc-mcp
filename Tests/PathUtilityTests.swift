@@ -160,6 +160,33 @@ struct PathUtilityAncestorSearchTests {
         #expect(result == tempDir.path)
     }
 
+    @Test func `expandTilde expands bare ~`() {
+        #expect(PathUtility.expandTilde("~") == NSHomeDirectory())
+    }
+
+    @Test func `expandTilde expands ~ slash prefix`() {
+        #expect(PathUtility.expandTilde("~/foo") == "\(NSHomeDirectory())/foo")
+        #expect(PathUtility.expandTilde("~/Developer/MyApp.xcodeproj") == "\(NSHomeDirectory())/Developer/MyApp.xcodeproj")
+    }
+
+    @Test func `expandTilde leaves absolute paths unchanged`() {
+        #expect(PathUtility.expandTilde("/Users/foo") == "/Users/foo")
+    }
+
+    @Test func `expandTilde leaves relative paths unchanged`() {
+        #expect(PathUtility.expandTilde("foo/bar") == "foo/bar")
+    }
+
+    @Test func `expandTilde does not expand ~user form`() {
+        #expect(PathUtility.expandTilde("~user/foo") == "~user/foo")
+    }
+
+    @Test func `resolvePath expands ~ before resolution`() throws {
+        let pathUtility = PathUtility(basePath: NSHomeDirectory())
+        let resolved = try pathUtility.resolvePath(from: "~/Developer/MyApp.xcodeproj")
+        #expect(resolved == "\(NSHomeDirectory())/Developer/MyApp.xcodeproj")
+    }
+
     @Test
     func `findPackageRoot returns path for xc-mcp repo`() {
         // Use this source file's location instead of cwd, since the test

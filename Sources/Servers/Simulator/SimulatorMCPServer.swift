@@ -24,6 +24,8 @@ public enum SimulatorToolName: String, CaseIterable, Sendable {
     case resetSimLocation = "reset_sim_location"
     case setSimAppearance = "set_sim_appearance"
     case simStatusbar = "sim_statusbar"
+    case toggleSoftwareKeyboard = "toggle_software_keyboard"
+    case toggleHardwareKeyboard = "toggle_hardware_keyboard"
 
     // UI Automation tools
     case tap
@@ -129,6 +131,12 @@ public struct SimulatorMCPServer: Sendable {
         let simStatusBarTool = SimStatusBarTool(
             simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
+        let toggleSoftwareKeyboardTool = ToggleSoftwareKeyboardTool(
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
+        )
+        let toggleHardwareKeyboardTool = ToggleHardwareKeyboardTool(
+            simctlRunner: simctlRunner, sessionManager: sessionManager,
+        )
 
         // Create UI automation tools
         let tapTool = TapTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
@@ -175,6 +183,8 @@ public struct SimulatorMCPServer: Sendable {
                 resetSimLocationTool.tool(),
                 setSimAppearanceTool.tool(),
                 simStatusBarTool.tool(),
+                toggleSoftwareKeyboardTool.tool(),
+                toggleHardwareKeyboardTool.tool(),
                 // UI Automation tools
                 tapTool.tool(),
                 longPressTool.tool(),
@@ -241,6 +251,10 @@ public struct SimulatorMCPServer: Sendable {
                     return try await setSimAppearanceTool.execute(arguments: arguments)
                 case .simStatusbar:
                     return try await simStatusBarTool.execute(arguments: arguments)
+                case .toggleSoftwareKeyboard:
+                    return try await toggleSoftwareKeyboardTool.execute(arguments: arguments)
+                case .toggleHardwareKeyboard:
+                    return try await toggleHardwareKeyboardTool.execute(arguments: arguments)
                 // UI Automation tools
                 case .tap:
                     return try await tapTool.execute(arguments: arguments)

@@ -94,14 +94,15 @@ public struct PathUtility: Sendable {
     ///   and the path is outside the base directory.
     public func resolvePathURL(from path: String) throws(PathError) -> URL {
         let baseURL = URL(fileURLWithPath: basePath).standardized
+        let expanded = Self.expandTilde(path)
 
         let resolvedURL: URL
-        if path.hasPrefix("/") {
+        if expanded.hasPrefix("/") {
             // Absolute path - must validate it's within base path (if sandboxing is enabled)
-            resolvedURL = URL(fileURLWithPath: path).standardized
+            resolvedURL = URL(fileURLWithPath: expanded).standardized
         } else {
             // Relative path - resolve relative to base path
-            resolvedURL = baseURL.appendingPathComponent(path).standardized
+            resolvedURL = baseURL.appendingPathComponent(expanded).standardized
         }
 
         // Only validate when sandboxing is enabled
@@ -249,14 +250,28 @@ public struct PathUtility: Sendable {
     /// - Note: This method does not validate paths against a base directory.
     ///   Prefer the instance method ``resolvePathURL(from:)`` for secure path handling.
     static func resolvePathURL(from path: String) -> URL {
-        let url = URL(fileURLWithPath: path)
+        let expanded = expandTilde(path)
+        let url = URL(fileURLWithPath: expanded)
 
         if url.path.hasPrefix("/") {
             return url
         } else {
             let currentDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-            return currentDirectory.appendingPathComponent(path).standardized
+            return currentDirectory.appendingPathComponent(expanded).standardized
         }
+    }
+
+    /// Expands a leading `~` in a path to the user's home directory.
+    ///
+    /// - `~` → `$HOME`
+    /// - `~/foo` → `$HOME/foo`
+    /// - `~user/foo` and other forms are returned unchanged.
+    public static func expandTilde(_ path: String) -> String {
+        guard path.hasPrefix("~") else { return path }
+        let home = NSHomeDirectory()
+        if path == "~" { return home }
+        if path.hasPrefix("~/") { return home + String(path.dropFirst(1)) }
+        return path
     }
 
     /// Resolves a path without base path validation (legacy compatibility).
