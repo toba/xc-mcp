@@ -2,6 +2,8 @@ import MCP
 import System
 import Foundation
 import Subprocess
+import Synchronization
+import Darwin
 
 /// Errors that can occur during process execution.
 public enum ProcessError: Error, Sendable, LocalizedError, MCPErrorConvertible {
@@ -117,16 +119,23 @@ extension ProcessResult {
         environment: Environment = .inherit,
         timeout: Duration? = nil,
     ) async throws -> ProcessResult {
-        // Configure teardown so child processes are killed on task cancellation
-        // (e.g. MCP abort, timeout). Without this, orphan processes hold the
-        // SPM build lock and block subsequent builds/tests.
+        // Spawn the child in its own process group so we can kill the entire
+        // tree on cancellation. Without this, killing the immediate child can
+        // leave grandchildren (e.g. SPM build plugins) holding the stdout/stderr
+        // pipes open, which blocks output collection forever and makes the
+        // MCP server appear hung after an ESC cancel.
         let platformOptions: PlatformOptions = {
             var opts = PlatformOptions()
+            opts.processGroupID = 0
             opts.teardownSequence = [
-                .gracefulShutDown(allowedDurationToNextStep: .seconds(5)),
+                .gracefulShutDown(allowedDurationToNextStep: .seconds(2)),
             ]
             return opts
         }()
+
+        // Tracks the spawned process group leader pid so the cancellation
+        // handler can SIGKILL the whole group.
+        let pgidBox = Mutex<pid_t>(0)
 
         // Use streaming collection that keeps the tail on overflow instead of
         // throwing SubprocessError.outputLimitExceeded. Build errors appear at
@@ -138,7 +147,8 @@ extension ProcessResult {
                 environment: environment,
                 workingDirectory: workingDirectory,
                 platformOptions: platformOptions,
-            ) { _, inputWriter, outputSequence, errorSequence in
+            ) { execution, inputWriter, outputSequence, errorSequence in
+                pgidBox.withLock { $0 = execution.processIdentifier.value }
                 try await inputWriter.finish()
                 // Always drain both sequences to prevent the child from blocking
                 // on a full pipe buffer.
@@ -169,7 +179,14 @@ extension ProcessResult {
                 stderr: mergeStderr ? "" : stderrResult.0,
             )
         }
-        return try await raceTimeout(timeout, run: run)
+        return try await withTaskCancellationHandler {
+            try await raceTimeout(timeout, run: run)
+        } onCancel: {
+            let pid = pgidBox.withLock { $0 }
+            if pid > 0 {
+                _ = kill(-pid, SIGKILL)
+            }
+        }
     }
 
     /// Collects output from an async buffer sequence, keeping only the last

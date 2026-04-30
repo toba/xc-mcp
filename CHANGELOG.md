@@ -11,6 +11,11 @@
 ### 🐞 Fixes
 
 - Expand leading `~` in user-supplied paths; `set_session_defaults` and per-call `project_path` / `workspace_path` / `package_path` arguments now resolve `~/Developer/foo.xcodeproj` correctly ([#292](https://github.com/toba/xc-mcp/issues/292))
+- Prevent MCP server disconnect when cancelling a long-running build/test; spawn child processes in their own process group and `SIGKILL` the whole group on cancel so SPM build plugins and grandchildren release the stdout/stderr pipes ([#294](https://github.com/toba/xc-mcp/issues/294))
+
+### 🗜️ Tweaks
+
+- Review XcodeBuildMCP commits for features to incorporate ([#290](https://github.com/toba/xc-mcp/issues/290))
 
 ## Week of Apr 19 – Apr 25, 2026
 
