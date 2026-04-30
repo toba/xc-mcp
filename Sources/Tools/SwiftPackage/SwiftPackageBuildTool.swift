@@ -58,7 +58,10 @@ public struct SwiftPackageBuildTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+    public func execute(
+        arguments: [String: Value],
+        onProgress: (@Sendable (String) -> Void)? = nil,
+    ) async throws -> CallTool.Result {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let configuration = arguments.getString("configuration") ?? "debug"
         let product = arguments.getString("product")
@@ -89,6 +92,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 buildTests: buildTests,
                 environment: environment,
                 timeout: timeout,
+                onProgress: onProgress,
             )
 
             let buildResult = ErrorExtractor.parseBuildOutput(result.output)

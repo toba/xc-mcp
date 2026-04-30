@@ -1,15 +1,15 @@
 ---
 # ocn-tko
 title: Add swiftiomatic-plugin for self-hosted lint-on-build
-status: review
+status: completed
 type: task
 priority: normal
 created_at: 2026-04-26T00:51:53Z
-updated_at: 2026-04-26T00:57:39Z
+updated_at: 2026-04-30T16:30:59Z
 sync:
     github:
         issue_number: "285"
-        synced_at: "2026-04-26T01:38:47Z"
+        synced_at: "2026-04-30T17:20:52Z"
 ---
 
 Wire up the swiftiomatic-plugins package (binary build-tool plugin) so xc-mcp lints with our own swiftiomatic config during build.

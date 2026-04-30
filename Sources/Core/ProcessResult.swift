@@ -108,6 +108,9 @@ extension ProcessResult {
     ///   - outputLimit: Maximum bytes to capture from stdout. Defaults to 2MB.
     ///   - errorLimit: Maximum bytes to capture from stderr. Defaults to 2MB.
     ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
+    ///   - onProgress: Optional callback invoked with each chunk of stdout/stderr as
+    ///                 it arrives (decoded as UTF-8). Useful for streaming progress
+    ///                 updates back to MCP clients during long-running commands.
     /// - Returns: A ``ProcessResult`` with exit code and captured output.
     public static func runSubprocess(
         _ executable: Subprocess.Executable,
@@ -118,6 +121,7 @@ extension ProcessResult {
         errorLimit: Int = 2_097_152,
         environment: Environment = .inherit,
         timeout: Duration? = nil,
+        onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> ProcessResult {
         // Spawn the child in its own process group so we can kill the entire
         // tree on cancellation. Without this, killing the immediate child can
@@ -152,10 +156,13 @@ extension ProcessResult {
                 try await inputWriter.finish()
                 // Always drain both sequences to prevent the child from blocking
                 // on a full pipe buffer.
-                async let stdout = collectTail(from: outputSequence, limit: outputLimit)
+                async let stdout = collectTail(
+                    from: outputSequence, limit: outputLimit, onProgress: onProgress,
+                )
                 async let stderr = collectTail(
                     from: errorSequence,
                     limit: mergeStderr ? outputLimit : errorLimit,
+                    onProgress: onProgress,
                 )
                 return try await (stdout, stderr)
             }
@@ -195,16 +202,21 @@ extension ProcessResult {
     private static func collectTail(
         from sequence: AsyncBufferSequence,
         limit: Int,
+        onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> (String, Bool) {
         var data = Data()
         var truncated = false
         for try await chunk in sequence {
-            chunk.withUnsafeBytes { bytes in
-                data.append(contentsOf: bytes)
+            let chunkData: Data = chunk.withUnsafeBytes { bytes in
+                Data(bytes)
             }
+            data.append(chunkData)
             if data.count > limit {
                 data = Data(data.suffix(limit))
                 truncated = true
+            }
+            if let onProgress, !chunkData.isEmpty {
+                onProgress(String(decoding: chunkData, as: UTF8.self))
             }
         }
         return (String(decoding: data, as: UTF8.self), truncated)

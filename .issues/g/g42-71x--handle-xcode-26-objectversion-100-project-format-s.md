@@ -1,15 +1,15 @@
 ---
 # g42-71x
 title: Handle Xcode 26 objectVersion 100 project format (synchronized folders)
-status: review
+status: completed
 type: feature
 priority: normal
 created_at: 2026-04-13T17:07:41Z
-updated_at: 2026-04-13T17:21:27Z
+updated_at: 2026-04-30T16:30:54Z
 sync:
     github:
         issue_number: "282"
-        synced_at: "2026-04-13T17:25:02Z"
+        synced_at: "2026-04-30T17:20:52Z"
 ---
 
 ## Context

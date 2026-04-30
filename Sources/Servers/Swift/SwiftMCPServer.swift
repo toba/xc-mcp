@@ -145,8 +145,28 @@ public struct SwiftMCPServer: Sendable {
 
             switch toolName {
                 case .swiftPackageBuild:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await swiftPackageBuildTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await swiftPackageBuildTool.execute(arguments: arguments)
                 case .swiftPackageTest:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await swiftPackageTestTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await swiftPackageTestTool.execute(arguments: arguments)
                 case .swiftPackageRun:
                     return try await swiftPackageRunTool.execute(arguments: arguments)

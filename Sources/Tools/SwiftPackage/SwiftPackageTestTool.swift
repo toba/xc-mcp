@@ -64,7 +64,10 @@ public struct SwiftPackageTestTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+    public func execute(
+        arguments: [String: Value],
+        onProgress: (@Sendable (String) -> Void)? = nil,
+    ) async throws -> CallTool.Result {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let filter = arguments.getString("filter")
         let skip = arguments.getString("skip")
@@ -100,6 +103,7 @@ public struct SwiftPackageTestTool: Sendable {
                 parallel: parallel,
                 environment: environment,
                 timeout: timeout,
+                onProgress: onProgress,
             )
 
             var context = "swift package"

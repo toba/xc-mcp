@@ -1,15 +1,15 @@
 ---
 # dac-5qi
 title: 'add_file: support Icon Composer .icon files and relative paths for files outside xcodeproj directory'
-status: review
+status: completed
 type: bug
 priority: normal
 created_at: 2026-04-12T19:50:45Z
-updated_at: 2026-04-12T20:31:25Z
+updated_at: 2026-04-30T16:30:52Z
 sync:
     github:
         issue_number: "278"
-        synced_at: "2026-04-12T20:39:09Z"
+        synced_at: "2026-04-30T17:20:52Z"
 ---
 
 ## Problem

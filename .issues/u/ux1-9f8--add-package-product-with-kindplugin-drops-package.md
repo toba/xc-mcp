@@ -1,17 +1,17 @@
 ---
 # ux1-9f8
 title: add_package_product with kind=plugin drops package reference
-status: review
+status: completed
 type: bug
 priority: high
 tags:
     - xc-project
 created_at: 2026-04-26T21:30:21Z
-updated_at: 2026-04-26T22:32:13Z
+updated_at: 2026-04-30T16:30:50Z
 sync:
     github:
         issue_number: "288"
-        synced_at: "2026-04-29T05:14:18Z"
+        synced_at: "2026-04-30T17:20:52Z"
 ---
 
 ## Problem

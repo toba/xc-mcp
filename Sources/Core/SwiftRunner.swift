@@ -30,6 +30,25 @@ public struct SwiftRunner: Sendable {
     /// like swift-syntax can easily exceed `defaultTimeout` on a first build.
     public static let coldCacheTimeout: Duration = .seconds(900)
 
+    /// Reads `XC_MCP_SWIFT_EXTRA_ARGS` from the environment and shell-tokenizes
+    /// it into additional swift build/test arguments.
+    ///
+    /// Useful for opting into experimental SwiftPM/Swift compiler flags without
+    /// changing tool call sites. Example:
+    ///
+    /// ```sh
+    /// export XC_MCP_SWIFT_EXTRA_ARGS="-Xswiftc -experimental-skip-non-inlinable-function-bodies"
+    /// ```
+    ///
+    /// Tokenization is whitespace-separated and does **not** support quoting —
+    /// individual arguments must not contain spaces.
+    public static func extraArgsFromEnvironment() -> [String] {
+        guard let raw = ProcessInfo.processInfo.environment["XC_MCP_SWIFT_EXTRA_ARGS"],
+              !raw.isEmpty
+        else { return [] }
+        return raw.split(whereSeparator: \.isWhitespace).map(String.init)
+    }
+
     /// Returns true when the package's SwiftPM build cache is empty or missing.
     ///
     /// A "cold" cache means dependencies haven't been resolved/built yet, so the
@@ -65,6 +84,7 @@ public struct SwiftRunner: Sendable {
         workingDirectory: String? = nil,
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
+        onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> SwiftResult {
         var guardFD: Int32?
         if let workingDirectory {
@@ -80,6 +100,7 @@ public struct SwiftRunner: Sendable {
                 workingDirectory: workingDirectory.map { FilePath($0) },
                 environment: environment,
                 timeout: timeout,
+                onProgress: onProgress,
             )
             if let guardFD { BuildGuard.release(fd: guardFD) }
             return result
@@ -106,6 +127,7 @@ public struct SwiftRunner: Sendable {
         verbose: Bool = false,
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
+        onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> SwiftResult {
         var args = ["build", "-c", configuration]
         if verbose {
@@ -117,9 +139,11 @@ public struct SwiftRunner: Sendable {
         if buildTests {
             args.append("--build-tests")
         }
+        args.append(contentsOf: Self.extraArgsFromEnvironment())
         return try await run(
             arguments: args, workingDirectory: packagePath,
             environment: environment, timeout: timeout,
+            onProgress: onProgress,
         )
     }
 
@@ -140,6 +164,7 @@ public struct SwiftRunner: Sendable {
         parallel: Bool? = nil,
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
+        onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> SwiftResult {
         var args = ["test"]
         if let filter {
@@ -151,11 +176,13 @@ public struct SwiftRunner: Sendable {
         if let parallel {
             args.append(parallel ? "--parallel" : "--no-parallel")
         }
+        args.append(contentsOf: Self.extraArgsFromEnvironment())
         return try await run(
             arguments: args,
             workingDirectory: packagePath,
             environment: environment,
             timeout: timeout,
+            onProgress: onProgress,
         )
     }
 

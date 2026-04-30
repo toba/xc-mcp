@@ -8,6 +8,7 @@
 - Add `toggle_software_keyboard` / `toggle_hardware_keyboard` simulator tools; toggle the simulator's on-screen keyboard via Cmd+K / Cmd+Shift+K through AppleScript ([#293](https://github.com/toba/xc-mcp/issues/293))
 - Surface slowest passing tests in test output via `XC_MCP_SHOW_TEST_TIMING`; previously hidden when total > 50 with failures ([#291](https://github.com/toba/xc-mcp/issues/291))
 - Pre-warm SwiftPM cache on `set_session_defaults`; spawn a background `swift build --build-tests` when the cache is cold; auto-cancel when the user runs `swift_package_*`; opt-out via `XC_MCP_DISABLE_WARMUP`; status visible in `show_session_defaults` ([#296](https://github.com/toba/xc-mcp/issues/296))
+- Stream `swift_package_build` and `swift_package_test` progress to MCP clients via `notifications/progress`; throttled last-line snapshots so long swift-syntax compiles no longer look like hangs; activated when the client passes a `progressToken` ([#298](https://github.com/toba/xc-mcp/issues/298))
 
 ### 🐞 Fixes
 
@@ -18,6 +19,7 @@
 ### 🗜️ Tweaks
 
 - Review XcodeBuildMCP commits for features to incorporate ([#290](https://github.com/toba/xc-mcp/issues/290))
+- Investigate `-experimental-skip-non-inlinable-function-bodies` for swift-syntax compile speedups; benchmarked at 2% on swiftiomatic; not adopted by default; added `XC_MCP_SWIFT_EXTRA_ARGS` env var for opt-in experimentation ([#299](https://github.com/toba/xc-mcp/issues/299))
 
 ## Week of Apr 19 – Apr 25, 2026
 
