@@ -48,7 +48,7 @@ public struct SwiftPackageBuildTool: Sendable {
                     "timeout": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Maximum time in seconds for the build. Defaults to 300 (5 minutes).",
+                            "Maximum time in seconds for the build. Defaults to 300 (5 minutes), or 900 (15 minutes) on a cold build cache.",
                         ),
                     ]),
                 ]),
@@ -64,9 +64,10 @@ public struct SwiftPackageBuildTool: Sendable {
         let product = arguments.getString("product")
         let buildTests = arguments.getBool("build_tests")
         let environment = await sessionManager.resolveEnvironment(from: arguments)
-        let timeout =
-            arguments.getInt("timeout").map { Duration.seconds($0) }
-                ?? SwiftRunner.defaultTimeout
+        let explicitTimeout = arguments.getInt("timeout").map { Duration.seconds($0) }
+        let isCold = SwiftRunner.isColdCache(packagePath: packagePath)
+        let timeout = explicitTimeout
+            ?? (isCold ? SwiftRunner.coldCacheTimeout : SwiftRunner.defaultTimeout)
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
@@ -77,6 +78,8 @@ public struct SwiftPackageBuildTool: Sendable {
                 "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
             )
         }
+
+        await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
         do {
             let result = try await swiftRunner.build(
@@ -122,6 +125,16 @@ public struct SwiftPackageBuildTool: Sendable {
 
             let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
             throw MCPError.internalError("Build failed:\n\(errorOutput)")
+        } catch let ProcessError.timeout(duration) {
+            var message =
+                "swift build timed out after \(duration) (package: \(packagePath))."
+            if explicitTimeout == nil, isCold {
+                message +=
+                    " Detected a cold SwiftPM cache; the cold-cache timeout (\(SwiftRunner.coldCacheTimeout)) was used."
+            }
+            message +=
+                " Heavy dependency graphs (e.g. swift-syntax) can take longer than the default on a first build. Pass an explicit `timeout` (seconds) and retry."
+            throw MCPError.internalError(message)
         } catch {
             throw error.asMCPError()
         }

@@ -3,7 +3,7 @@ citations:
       branch: main
       notes: Sources/Tools/Project/ (23 tools), Sources/Utilities/PathUtility.swift
       last_checked_sha: 6f38429682b18372062c1b599663af8834005cad
-      last_checked_date: "2026-04-30T00:37:32Z"
+      last_checked_date: "2026-04-30T15:27:59Z"
       paths:
         high: [Sources/XcodeProjectMCP/*.swift]
         medium: [Package.swift, Tests/**]
@@ -12,7 +12,7 @@ citations:
       branch: master
       notes: Sources/Core/BuildOutputParser.swift, BuildOutputModels.swift, CoverageParser.swift
       last_checked_sha: adab8856045f80b3198dd28372f77e0f14308b42
-      last_checked_date: "2026-04-30T00:37:32Z"
+      last_checked_date: "2026-04-30T15:27:59Z"
       paths:
         high: [Sources/OutputParser.swift, Sources/Models.swift, Sources/CoverageParser.swift]
         medium: [Sources/Configuration.swift, Package.swift, Tests/**]
@@ -21,7 +21,7 @@ citations:
       branch: main
       notes: Sources/Core/XCStrings/ (7 files)
       last_checked_sha: 3acc94fc608ef9a8588e43f6f15738e31690607f
-      last_checked_date: "2026-04-30T00:37:32Z"
+      last_checked_date: "2026-04-30T15:27:59Z"
       paths:
         high: [Sources/XCStringsKit/**]
         medium: [Sources/XCStringsMCP/**, Sources/XCStringsCLI/**, Tests/**]
@@ -29,8 +29,8 @@ citations:
     - repo: tuist/xcodeproj
       branch: main
       notes: All project manipulation tools via XcodeProj library
-      last_checked_sha: aff591e3a8367582851e489fbc45c8662c6b983e
-      last_checked_date: "2026-04-30T00:37:32Z"
+      last_checked_sha: 0beb110d1c0127f492a4b176c0bc3acf23bb6d70
+      last_checked_date: "2026-04-30T15:27:59Z"
       paths:
         high: [Sources/XcodeProj/Objects/**, Sources/XcodeProj/Scheme/**, Sources/XcodeProj/Project/**]
         medium: [Sources/XcodeProj/Utils/**, Sources/XcodeProj/Extensions/**, Package.swift, CHANGELOG.md, Tests/**]
@@ -39,7 +39,7 @@ citations:
       branch: main
       notes: Monitor for features worth incorporating into xc-mcp
       last_checked_sha: ccaa40aa94ae1e427719ed48a2cae4388cace65e
-      last_checked_date: "2026-04-30T00:37:32Z"
+      last_checked_date: "2026-04-30T15:27:59Z"
       paths:
         high: [src/mcp/tools/**/*.ts]
         medium: [src/**/*.ts, package.json]
@@ -48,7 +48,7 @@ citations:
       branch: master
       notes: A tool to identify unused code in Swift projects.
       last_checked_sha: 9cb8fb504a7ea0293c7bf978d7b0ea5629bc95fd
-      last_checked_date: "2026-04-30T00:37:32Z"
+      last_checked_date: "2026-04-30T15:27:59Z"
       paths:
         high: [Sources/**/*.swift]
         medium: [Package.swift]
@@ -57,7 +57,7 @@ citations:
       branch: main
       notes: 'Apple Icon Composer CLI & MCP server: create and manipulate .icon bundles and images with Liquid Glass rendering'
       last_checked_sha: e7d2b3207f3dcadd21167195827a0bc873f330ce
-      last_checked_date: "2026-04-30T00:37:32Z"
+      last_checked_date: "2026-04-30T15:27:59Z"
       paths:
         high: [src/**/*.ts, src/**/*.tsx]
         medium: [package.json]

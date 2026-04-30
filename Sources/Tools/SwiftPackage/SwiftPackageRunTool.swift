@@ -83,6 +83,8 @@ public struct SwiftPackageRunTool: Sendable {
             )
         }
 
+        await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
+
         do {
             let result = try await swiftRunner.runExecutable(
                 packagePath: packagePath,

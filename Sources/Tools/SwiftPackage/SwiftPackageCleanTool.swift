@@ -55,6 +55,8 @@ public struct SwiftPackageCleanTool: Sendable {
             )
         }
 
+        await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
+
         do {
             let result = try await swiftRunner.clean(packagePath: packagePath)
 

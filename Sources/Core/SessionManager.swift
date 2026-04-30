@@ -24,8 +24,19 @@ public struct SessionDefaults: Sendable, Codable {
     public let env: [String: String]?
 }
 
+/// State of an in-process SwiftPM warmup task for a package.
+public enum WarmupState: Sendable, Equatable {
+    case running(startedAt: ContinuousClock.Instant)
+    case completed(duration: Duration)
+    case failed(message: String)
+    case cancelled
+}
+
 /// Manages session state for the MCP server, including default project, scheme, and device settings
 public actor SessionManager {
+    /// Closure that performs the actual warmup build for a package path.
+    /// Injected so tests can substitute a fake without spawning `swift build`.
+    public typealias WarmupRunner = @Sendable (String) async throws -> Void
     /// Path to the current Xcode project (.xcodeproj)
     public private(set) var projectPath: String?
 
@@ -73,14 +84,55 @@ public actor SessionManager {
     /// Used to detect external changes from other server processes.
     private var lastKnownModDate: Date?
 
+    /// In-flight warmup tasks keyed by package path. Used to dedupe and cancel.
+    private var warmupTasks: [String: Task<Void, Never>] = [:]
+
+    /// Latest warmup state for each package path (running, completed, failed, cancelled).
+    private var warmupStatus: [String: WarmupState] = [:]
+
+    /// Package paths that have already been warmed (or detected warm) this process.
+    private var warmedPackages: Set<String> = []
+
+    /// Closure used to perform warmup builds. Default invokes `swift build --build-tests`.
+    private let warmupRunner: WarmupRunner
+
+    /// Whether warmup is enabled. Disabled when `XC_MCP_DISABLE_WARMUP` is set,
+    /// or when explicitly disabled at init time (e.g. tests).
+    private let warmupEnabled: Bool
+
+    /// Default warmup implementation: cold-cache `swift build --build-tests`.
+    @Sendable
+    private static func defaultWarmupRunner(packagePath: String) async throws {
+        let runner = SwiftRunner()
+        _ = try await runner.build(
+            packagePath: packagePath,
+            buildTests: true,
+            timeout: SwiftRunner.coldCacheTimeout,
+        )
+    }
+
     /// Creates a session manager.
     ///
-    /// - Parameter filePath: Explicit file path for persistence. When `nil`,
-    ///   uses ``resolveFilePath()`` (PPID-scoped or `XC_MCP_SESSION` env var).
-    ///   Pass an explicit path in tests for isolation.
-    public init(filePath: URL? = nil) {
+    /// - Parameters:
+    ///   - filePath: Explicit file path for persistence. When `nil`,
+    ///     uses ``resolveFilePath()`` (PPID-scoped or `XC_MCP_SESSION` env var).
+    ///     Pass an explicit path in tests for isolation.
+    ///   - warmupRunner: Override for the SwiftPM warmup builder. When `nil`,
+    ///     uses ``defaultWarmupRunner(packagePath:)``. Tests pass a fake to
+    ///     avoid spawning real `swift build` subprocesses.
+    ///   - enableWarmup: Force-disable warmup independent of env var. Tests
+    ///     that want to exercise the warmup machinery pass `true` with a fake
+    ///     `warmupRunner`; tests that only test other behavior pass `false`.
+    public init(
+        filePath: URL? = nil,
+        warmupRunner: WarmupRunner? = nil,
+        enableWarmup: Bool = true,
+    ) {
         let resolved = filePath ?? Self.resolveFilePath()
         self.filePath = resolved
+        self.warmupRunner = warmupRunner ?? Self.defaultWarmupRunner
+        let envDisabled = ProcessInfo.processInfo.environment["XC_MCP_DISABLE_WARMUP"] != nil
+        self.warmupEnabled = enableWarmup && !envDisabled
         let defaults = Self.loadDefaults(from: resolved)
         projectPath = defaults?.projectPath
         workspacePath = defaults?.workspacePath
@@ -202,10 +254,19 @@ public actor SessionManager {
             self.env = merged
         }
         saveToDisk()
+        if let active = self.packagePath {
+            triggerWarmupIfNeeded(packagePath: active)
+        }
     }
 
     /// Clear all session defaults
     public func clear() {
+        for (_, task) in warmupTasks {
+            task.cancel()
+        }
+        warmupTasks.removeAll()
+        warmupStatus.removeAll()
+        warmedPackages.removeAll()
         projectPath = nil
         workspacePath = nil
         packagePath = nil
@@ -215,6 +276,100 @@ public actor SessionManager {
         configuration = nil
         env = nil
         deleteFromDisk()
+    }
+
+    // MARK: - SwiftPM Warmup
+
+    /// Schedules a background `swift build --build-tests` for `packagePath` so
+    /// the user's first `swift_package_test`/`swift_package_build` hits a warm
+    /// `.build/` cache.
+    ///
+    /// No-ops when warmup is disabled, the path has already been warmed in
+    /// this process, a warmup is already in flight, the cache is already
+    /// warm, or `Package.swift` doesn't exist at the path.
+    private func triggerWarmupIfNeeded(packagePath: String) {
+        guard warmupEnabled else { return }
+        guard warmupTasks[packagePath] == nil else { return }
+        guard !warmedPackages.contains(packagePath) else { return }
+        let pkgFile = URL(fileURLWithPath: packagePath)
+            .appendingPathComponent("Package.swift").path
+        guard FileManager.default.fileExists(atPath: pkgFile) else { return }
+        guard SwiftRunner.isColdCache(packagePath: packagePath) else {
+            warmedPackages.insert(packagePath)
+            return
+        }
+
+        let runner = self.warmupRunner
+        let started = ContinuousClock.now
+        warmupStatus[packagePath] = .running(startedAt: started)
+        warmupTasks[packagePath] = Task.detached(priority: .background) { [weak self] in
+            do {
+                try await runner(packagePath)
+                await self?.completeWarmup(packagePath: packagePath, started: started)
+            } catch is CancellationError {
+                await self?.markWarmupCancelled(packagePath: packagePath)
+            } catch {
+                await self?.markWarmupFailed(
+                    packagePath: packagePath,
+                    message: String(describing: error),
+                )
+            }
+        }
+    }
+
+    /// Cancels an in-flight warmup for `packagePath` and waits for the
+    /// background task to terminate (which releases the `BuildGuard` flock
+    /// before the caller invokes its own `swift` command).
+    public func cancelWarmupIfRunning(packagePath: String) async {
+        guard let task = warmupTasks.removeValue(forKey: packagePath) else { return }
+        task.cancel()
+        _ = await task.value
+    }
+
+    /// Reports the current warmup state for a package, if any.
+    public func warmupState(for packagePath: String) -> WarmupState? {
+        warmupStatus[packagePath]
+    }
+
+    private func completeWarmup(packagePath: String, started: ContinuousClock.Instant) {
+        warmupTasks[packagePath] = nil
+        warmedPackages.insert(packagePath)
+        warmupStatus[packagePath] = .completed(duration: ContinuousClock.now - started)
+    }
+
+    private func markWarmupCancelled(packagePath: String) {
+        warmupTasks[packagePath] = nil
+        warmupStatus[packagePath] = .cancelled
+    }
+
+    private func markWarmupFailed(packagePath: String, message: String) {
+        warmupTasks[packagePath] = nil
+        warmupStatus[packagePath] = .failed(message: message)
+    }
+
+    private func formatWarmupState(_ state: WarmupState) -> String {
+        switch state {
+            case let .running(startedAt):
+                let elapsed = ContinuousClock.now - startedAt
+                return "running (\(formatDuration(elapsed)))"
+            case let .completed(duration):
+                return "warmed (built in \(formatDuration(duration)))"
+            case let .failed(message):
+                return "failed (\(message.prefix(120)))"
+            case .cancelled:
+                return "cancelled"
+        }
+    }
+
+    private func formatDuration(_ duration: Duration) -> String {
+        let seconds = Double(duration.components.seconds)
+            + Double(duration.components.attoseconds) / 1e18
+        if seconds < 60 {
+            return String(format: "%.0fs", seconds)
+        }
+        let mins = Int(seconds) / 60
+        let secs = Int(seconds) % 60
+        return "\(mins)m\(secs)s"
     }
 
     /// Get the effective project or workspace path
@@ -243,6 +398,9 @@ public actor SessionManager {
         }
 
         lines.append("Package: \(packagePath ?? "(not set)")")
+        if let packagePath, let state = warmupStatus[packagePath] {
+            lines.append("  Warmup: \(formatWarmupState(state))")
+        }
         lines.append("Scheme: \(scheme ?? "(not set)")")
         lines.append("Configuration: \(configuration ?? "(not set)")")
         lines.append("Simulator: \(simulatorUDID ?? "(not set)")")

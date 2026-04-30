@@ -25,6 +25,29 @@ public struct SwiftRunner: Sendable {
     /// Default timeout for Swift commands (5 minutes).
     public static let defaultTimeout: Duration = .seconds(300)
 
+    /// Extended timeout for cold-cache builds where SwiftPM must resolve and
+    /// compile dependencies from scratch (15 minutes). Heavy dependency graphs
+    /// like swift-syntax can easily exceed `defaultTimeout` on a first build.
+    public static let coldCacheTimeout: Duration = .seconds(900)
+
+    /// Returns true when the package's SwiftPM build cache is empty or missing.
+    ///
+    /// A "cold" cache means dependencies haven't been resolved/built yet, so the
+    /// next `swift build` or `swift test` will need to fetch and compile the
+    /// full dependency graph — which can take well beyond `defaultTimeout`.
+    public static func isColdCache(packagePath: String) -> Bool {
+        let fm = FileManager.default
+        let buildDir = packagePath + "/.build"
+        guard fm.fileExists(atPath: buildDir) else { return true }
+        // A populated checkouts directory is the strongest signal that
+        // dependency resolution has run at least once.
+        let checkouts = buildDir + "/checkouts"
+        if let entries = try? fm.contentsOfDirectory(atPath: checkouts), !entries.isEmpty {
+            return false
+        }
+        return true
+    }
+
     /// Creates a new Swift runner.
     public init() {}
 
