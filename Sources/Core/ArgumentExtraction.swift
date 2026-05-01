@@ -38,9 +38,7 @@ extension [String: Value] {
     /// - Parameter key: The argument key to look up.
     /// - Returns: The string value if present and valid, nil otherwise.
     public func getString(_ key: String) -> String? {
-        if case let .string(value) = self[key] {
-            return value
-        }
+        if case let .string(value) = self[key] { return value }
         return nil
     }
 
@@ -61,11 +59,9 @@ extension [String: Value] {
     /// - Parameters:
     ///   - key: The argument key to look up.
     ///   - defaultValue: The value to return if the key is missing. Defaults to false.
-    /// - Returns: The boolean value if present, or the default value.
+    ///   - Returns: The boolean value if present, or the default value.
     public func getBool(_ key: String, default defaultValue: Bool = false) -> Bool {
-        if case let .bool(value) = self[key] {
-            return value
-        }
+        if case let .bool(value) = self[key] { return value }
         return defaultValue
     }
 
@@ -75,12 +71,9 @@ extension [String: Value] {
     /// - Returns: The integer value if present and valid, nil otherwise.
     public func getInt(_ key: String) -> Int? {
         switch self[key] {
-            case let .int(value):
-                return value
-            case let .double(value) where value == value.rounded():
-                return Int(value)
-            default:
-                return nil
+            case let .int(value): value
+            case let .double(value) where value == value.rounded(): Int(value)
+            default: nil
         }
     }
 
@@ -89,32 +82,25 @@ extension [String: Value] {
     /// - Parameter key: The argument key to look up.
     /// - Returns: The double value if present and valid, nil otherwise.
     public func getDouble(_ key: String) -> Double? {
-        if case let .double(value) = self[key] {
-            return value
-        }
+        if case let .double(value) = self[key] { return value }
         return nil
     }
 
     /// Extracts a string-to-string dictionary for the given key.
     ///
     /// - Parameter key: The argument key to look up.
-    /// - Returns: A dictionary of string key-value pairs. Returns empty dictionary if key is missing or not an object.
+    /// - Returns: A dictionary of string key-value pairs. Returns empty dictionary if key is
+    ///   missing or not an object.
     public func getStringDictionary(_ key: String) -> [String: String] {
-        guard case let .object(obj) = self[key] else {
-            return [:]
-        }
+        guard case let .object(obj) = self[key] else { return [:] }
         var result: [String: String] = [:]
-        for (k, v) in obj {
-            if case let .string(s) = v {
-                result[k] = s
-            }
-        }
+        for (k, v) in obj { if case let .string(s) = v { result[k] = s } }
         return result
     }
 
-    /// Extracts xcodebuild build setting overrides and returns them as `["KEY=VALUE", ...]`.
+    /// Extracts xcodebuild build setting overrides and returns them as `["KEY=VALUE", ...]` .
     ///
-    /// - Parameter key: The argument key to look up. Defaults to `"build_settings"`.
+    /// - Parameter key: The argument key to look up. Defaults to `"build_settings"` .
     /// - Returns: An array of `KEY=VALUE` strings suitable for xcodebuild positional arguments.
     public func buildSettingOverrides(_ key: String = "build_settings") -> [String] {
         getStringDictionary(key).map { "\($0.key)=\($0.value)" }.sorted()
@@ -125,26 +111,22 @@ extension [String: Value] {
     /// - Parameter key: The argument key to look up.
     /// - Returns: An array of strings. Returns empty array if key is missing or not an array.
     public func getStringArray(_ key: String) -> [String] {
-        guard case let .array(array) = self[key] else {
-            return []
-        }
+        guard case let .array(array) = self[key] else { return [] }
         return array.compactMap { value in
-            if case let .string(s) = value {
-                return s
-            }
+            if case let .string(s) = value { return s }
             return nil
         }
     }
 
     /// Extracts test selection and coverage parameters from arguments.
     ///
-    /// Normalizes test identifiers that use Swift Testing backtick-escaped names.
-    /// If a method component contains spaces but is missing backticks and trailing `()`,
-    /// they are added automatically so xcodebuild can match them.
+    /// Normalizes test identifiers that use Swift Testing backtick-escaped names. If a method
+    /// component contains spaces but is missing backticks and trailing `()` , they are added
+    /// automatically so xcodebuild can match them.
     public func testParameters() -> TestParameters {
         let onlyTestingArray = getStringArray("only_testing").map(Self.normalizeTestIdentifier)
         let skipTestingArray = getStringArray("skip_testing").map(Self.normalizeTestIdentifier)
-        return TestParameters(
+        return .init(
             onlyTesting: onlyTestingArray.isEmpty ? nil : onlyTestingArray,
             skipTesting: skipTestingArray.isEmpty ? nil : skipTestingArray,
             enableCodeCoverage: getBool("enable_code_coverage"),
@@ -163,7 +145,7 @@ extension [String: Value] {
     /// LLMs often pass the display name without backticks or parentheses:
     /// `"TargetName/TestClass/function name with spaces"`
     ///
-    /// This also handles single-word Swift keywords used as test names (e.g. `class`, `import`)
+    /// This also handles single-word Swift keywords used as test names (e.g. `class` , `import` )
     /// which need backtick wrapping even though they contain no spaces.
     private static func normalizeTestIdentifier(_ identifier: String) -> String {
         // Split into components: Target/Class/Method
@@ -174,8 +156,7 @@ extension [String: Value] {
 
         // Already backtick-wrapped — ensure () suffix
         if method.hasPrefix("`") {
-            if method.hasSuffix("()") { return identifier }
-            return "\(parts[0])/\(parts[1])/\(method)()"
+            return method.hasSuffix("()") ? identifier : "\(parts[0])/\(parts[1])/\(method)()"
         }
 
         let needsBackticks = method.contains(" ") || swiftKeywords.contains(String(method))
@@ -184,9 +165,7 @@ extension [String: Value] {
 
         // Wrap in backticks and add () if missing
         var normalized = "`\(method)`"
-        if !method.hasSuffix("()") {
-            normalized += "()"
-        }
+        if !method.hasSuffix("()") { normalized += "()" }
         return "\(parts[0])/\(parts[1])/\(normalized)"
     }
 
@@ -209,8 +188,8 @@ extension [String: Value] {
 
     /// Returns the `-IDEBuildingContinueBuildingAfterErrors=YES` flag if requested.
     ///
-    /// xcodebuild stops on the first build error by default. When this parameter is true,
-    /// the IDE flag is appended so all targets continue building and all errors are reported.
+    /// xcodebuild stops on the first build error by default. When this parameter is true, the IDE
+    /// flag is appended so all targets continue building and all errors are reported.
     public func continueBuildingArgs() -> [String] {
         getBool("continue_building_after_errors")
             ? ["-IDEBuildingContinueBuildingAfterErrors=YES"]
@@ -219,8 +198,8 @@ extension [String: Value] {
 
     /// Schema property for the continue-building-after-errors option.
     ///
-    /// Maps to Xcode's "Continue building after errors" preference
-    /// (`-IDEBuildingContinueBuildingAfterErrors`).
+    /// Maps to Xcode's "Continue building after errors" preference (
+    /// `-IDEBuildingContinueBuildingAfterErrors` ).
     public static var continueBuildingSchemaProperty: [String: Value] {
         [
             "continue_building_after_errors": .object([
@@ -231,14 +210,14 @@ extension [String: Value] {
                         + "'Continue building after errors' setting. "
                         + "Defaults to false (stop on first error).",
                 ),
-            ]),
+            ])
         ]
     }
 
     /// Returns build setting overrides to disable all sanitizers unless explicitly enabled.
     ///
-    /// Disables Thread Sanitizer, Address Sanitizer, and Undefined Behavior Sanitizer
-    /// by default. Sanitizers significantly slow compilation, so they are opt-in.
+    /// Disables Thread Sanitizer, Address Sanitizer, and Undefined Behavior Sanitizer by default.
+    /// Sanitizers significantly slow compilation, so they are opt-in.
     public func enableSanitizersArgs() -> [String] {
         getBool("enable_sanitizers")
             ? []
@@ -259,7 +238,7 @@ extension [String: Value] {
                         + "Sanitizers significantly slow compilation, so they are disabled "
                         + "by default. Enable when diagnosing memory or concurrency issues.",
                 ),
-            ]),
+            ])
         ]
     }
 
@@ -277,14 +256,14 @@ extension [String: Value] {
                         + "taking highest precedence in setting resolution. "
                         + "Example: {\"SWIFT_ENABLE_EXPLICIT_MODULES\": \"NO\"}",
                 ),
-            ]),
+            ])
         ]
     }
 
     /// Schema properties for test selection and coverage parameters.
     ///
-    /// Returns the common `only_testing`, `skip_testing`, `enable_code_coverage`,
-    /// and `result_bundle_path` properties used across test tools.
+    /// Returns the common `only_testing` , `skip_testing` , `enable_code_coverage` , and
+    /// `result_bundle_path` properties used across test tools.
     public static var testSchemaProperties: [String: Value] {
         [
             "only_testing": .object([
@@ -295,8 +274,7 @@ extension [String: Value] {
                         + "For Swift Testing functions with backtick-escaped names containing spaces, "
                         + "use the format 'TargetName/TestClass/`method name with spaces`()'. "
                         + "If backticks are omitted from names with spaces, they are added automatically. "
-                        +
-                        "Single-word Swift keywords (e.g. 'class', 'import') are also auto-wrapped.",
+                        + "Single-word Swift keywords (e.g. 'class', 'import') are also auto-wrapped.",
                 ),
             ]),
             "skip_testing": .object([
@@ -339,21 +317,19 @@ extension [String: Value] {
         ]
     }
 
-    /// Resolves a target PID from arguments, checking `pid` first, then falling back to
-    /// `bundle_id` lookup via `PIDResolver` (NSRunningApplication).
+    /// Resolves a target PID from arguments, checking `pid` first, then falling back to `bundle_id`
+    /// lookup via `PIDResolver` (NSRunningApplication).
     ///
-    /// Use this for standalone diagnostic tools (leaks, heap, vmmap, etc.) that don't
-    /// require an active LLDB session.
+    /// Use this for standalone diagnostic tools (leaks, heap, vmmap, etc.) that don't require an
+    /// active LLDB session.
     ///
     /// - Returns: The resolved process ID.
-    /// - Throws: ``MCPError/invalidParams(_:)`` if neither `pid` nor a matching `bundle_id` is found.
+    /// - Throws: ``MCPError/invalidParams(_:)`` if neither `pid` nor a matching `bundle_id` is
+    ///   found.
     public func resolveTargetPID() async throws(MCPError) -> Int32 {
-        if let pid = getInt("pid") {
-            return Int32(pid)
-        }
+        if let pid = getInt("pid") { return Int32(pid) }
         if let bundleId = getString("bundle_id"),
-           let pid = await MainActor.run(body: { PIDResolver.findPID(forBundleID: bundleId) })
-        {
+           let pid = await MainActor.run(body: { PIDResolver.findPID(forBundleID: bundleId) }) {
             return pid
         }
         throw .invalidParams(
@@ -361,11 +337,12 @@ extension [String: Value] {
         )
     }
 
-    /// Resolves a target PID from arguments, checking `pid` first, then falling back to
-    /// `bundle_id` lookup via LLDBSessionManager.
+    /// Resolves a target PID from arguments, checking `pid` first, then falling back to `bundle_id`
+    /// lookup via LLDBSessionManager.
     ///
     /// - Returns: The resolved process ID.
-    /// - Throws: ``MCPError/invalidParams(_:)`` if neither `pid` nor a valid `bundle_id` session is available.
+    /// - Throws: ``MCPError/invalidParams(_:)`` if neither `pid` nor a valid `bundle_id` session is
+    ///   available.
     public func resolveDebugPID() async throws(MCPError) -> Int32 {
         var pid = getInt("pid").map(Int32.init)
 
@@ -383,8 +360,8 @@ extension [String: Value] {
 
     /// Parses batch translation entries from an "entries" array argument.
     ///
-    /// Each entry must be an object with a "key" string and a "translations" object
-    /// mapping language codes to translated strings.
+    /// Each entry must be an object with a "key" string and a "translations" object mapping
+    /// language codes to translated strings.
     ///
     /// - Returns: An array of ``BatchTranslationEntry`` values.
     /// - Throws: MCPError.invalidParams if the structure is invalid.
@@ -396,8 +373,7 @@ extension [String: Value] {
         return try entriesArray.compactMap { entryValue -> BatchTranslationEntry? in
             guard case let .object(entry) = entryValue,
                   case let .string(key) = entry["key"],
-                  case let .object(translationsObj) = entry["translations"]
-            else {
+                  case let .object(translationsObj) = entry["translations"] else {
                 throw MCPError.invalidParams(
                     "Each entry must have a 'key' string and 'translations' object",
                 )
@@ -405,9 +381,7 @@ extension [String: Value] {
 
             var translations: [String: String] = [:]
             for (lang, val) in translationsObj {
-                if case let .string(str) = val {
-                    translations[lang] = str
-                }
+                if case let .string(str) = val { translations[lang] = str }
             }
 
             guard !translations.isEmpty else {

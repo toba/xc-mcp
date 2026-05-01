@@ -7,17 +7,18 @@ public struct StartDeviceLogCapTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
+        deviceCtlRunner: DeviceCtlRunner = .init(),
+        sessionManager: SessionManager,
     ) {
         self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "start_device_log_cap",
             description:
-            "Start capturing logs from a physical device in real-time using idevicesyslog (libimobiledevice). Streams device unified logs over USB. Filter by process name or string match. Requires `brew install libimobiledevice`. Use stop_device_log_cap to stop and retrieve the captured logs.\n\n**iOS 26+ note**: NSLog output is privacy-redacted (shows as `<private>`). Use `os.Logger` / `os_log` with Swift string interpolation for visible log content. `print()` output does not appear in unified logs. Filter by process name (`process` parameter) for reliable matching since message content may be redacted.",
+                "Start capturing logs from a physical device in real-time using idevicesyslog (libimobiledevice). Streams device unified logs over USB. Filter by process name or string match. Requires `brew install libimobiledevice`. Use stop_device_log_cap to stop and retrieve the captured logs.\n\n**iOS 26+ note**: NSLog output is privacy-redacted (shows as `<private>`). Use `os.Logger` / `os_log` with Swift string interpolation for visible log content. `print()` output does not appear in unified logs. Filter by process name (`process` parameter) for reliable matching since message content may be redacted.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -60,35 +61,23 @@ public struct StartDeviceLogCapTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let device = try await sessionManager.resolveDevice(from: arguments)
-        let outputFile =
-            arguments.getString("output_file")
-                ?? "/tmp/device_log_\(device).log"
+        let outputFile = arguments.getString("output_file")
+            ?? "/tmp/device_log_\(device).log"
         let match = arguments.getString("match")
         let process = arguments.getString("process")
         let quiet: Bool
-        if case let .bool(q) = arguments["quiet"] {
-            quiet = q
-        } else {
-            quiet = true
-        }
+        if case let .bool(q) = arguments["quiet"] { quiet = q } else { quiet = true }
 
         do {
             let idevicesyslog = try await findIdevicesyslog()
 
-            // Resolve hardware UDID — idevicesyslog uses Apple hardware UDIDs,
-            // not CoreDevice UUIDs
+            // Resolve hardware UDID — idevicesyslog uses Apple hardware UDIDs, not CoreDevice UUIDs
             let hwUDID = try await resolveHardwareUDID(coreDeviceUDID: device)
 
             var args = ["-u", hwUDID, "-x", "--no-colors"]
-            if quiet {
-                args.append("-q")
-            }
-            if let match {
-                args.append(contentsOf: ["-m", match])
-            }
-            if let process {
-                args.append(contentsOf: ["-p", process])
-            }
+            if quiet { args.append("-q") }
+            if let match { args.append(contentsOf: ["-m", match]) }
+            if let process { args.append(contentsOf: ["-p", process]) }
 
             let pid = try LogCapture.launchStreamProcess(
                 executable: idevicesyslog, arguments: args, outputFile: outputFile,
@@ -113,12 +102,8 @@ public struct StartDeviceLogCapTool: Sendable {
             message += "Output file: \(outputFile)\n"
             message += "Process ID: \(pid)\n"
             message += "Backend: idevicesyslog (hardware UDID: \(hwUDID))\n"
-            if let match {
-                message += "Match filter: \(match)\n"
-            }
-            if let process {
-                message += "Process filter: \(process)\n"
-            }
+            if let match { message += "Match filter: \(match)\n" }
+            if let process { message += "Process filter: \(process)\n" }
             message +=
                 "\nNote: On iOS 26+, NSLog content is privacy-redacted. Use os.Logger for visible log output."
             message += "\nUse stop_device_log_cap to stop the capture and retrieve logs."
@@ -129,17 +114,14 @@ public struct StartDeviceLogCapTool: Sendable {
         }
     }
 
-    /// Resolves a CoreDevice UUID to the Apple hardware UDID that idevicesyslog expects.
-    /// If the input is already a hardware UDID (not UUID format), returns it as-is.
+    /// Resolves a CoreDevice UUID to the Apple hardware UDID that idevicesyslog expects. If the
+    /// input is already a hardware UDID (not UUID format), returns it as-is.
     private func resolveHardwareUDID(coreDeviceUDID: String) async throws -> String {
-        // Hardware UDIDs are hex strings like "00008110-00116D221AA1801E"
-        // CoreDevice UUIDs are standard UUIDs like "A5CC2917-0B66-5306-8C9F-A60BFEB112C1"
-        // Heuristic: CoreDevice UUIDs have 5 groups (8-4-4-4-12), hardware UDIDs have 2 groups (8-16)
+        // Hardware UDIDs are hex strings like "00008110-00116D221AA1801E" CoreDevice UUIDs are
+        // standard UUIDs like "A5CC2917-0B66-5306-8C9F-A60BFEB112C1" Heuristic: CoreDevice UUIDs
+        // have 5 groups (8-4-4-4-12), hardware UDIDs have 2 groups (8-16)
         let parts = coreDeviceUDID.split(separator: "-")
-        if parts.count == 2 {
-            // Already looks like a hardware UDID
-            return coreDeviceUDID
-        }
+        if parts.count == 2 { return coreDeviceUDID }
 
         // Look up via devicectl
         let device = try await deviceCtlRunner.lookupDevice(udid: coreDeviceUDID)
@@ -154,10 +136,7 @@ public struct StartDeviceLogCapTool: Sendable {
 
     private func findIdevicesyslog() async throws(MCPError) -> String {
         for path in ["/opt/homebrew/bin/idevicesyslog", "/usr/local/bin/idevicesyslog"]
-            where FileManager.default.isExecutableFile(atPath: path)
-        {
-            return path
-        }
+        where FileManager.default.isExecutableFile(atPath: path) { return path }
 
         do {
             return try await BinaryLocator.find("idevicesyslog")
@@ -175,7 +154,5 @@ struct DeviceLogCapMetadata: Codable {
     let pid: Int32
     let outputFile: String
 
-    static func path(for device: String) -> String {
-        "/tmp/device_log_cap_\(device).json"
-    }
+    static func path(for device: String) -> String { "/tmp/device_log_cap_\(device).json" }
 }

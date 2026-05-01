@@ -5,15 +5,13 @@ import Foundation
 public struct StopSimLogCapTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "stop_sim_log_cap",
             description:
-            "Stop capturing logs from a simulator. Can stop by process ID or kill all log stream processes for a simulator.",
+                "Stop capturing logs from a simulator. Can stop by process ID or kill all log stream processes for a simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -51,14 +49,14 @@ public struct StopSimLogCapTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let pid = arguments.getInt("pid")
         let simulator: String?
+
         if let explicit = arguments.getString("simulator") {
             simulator = explicit
         } else {
             simulator = await sessionManager.simulatorUDID
         }
-        let outputFile =
-            arguments.getString("output_file")
-                ?? simulator.map { "/tmp/sim_log_\($0).log" }
+        let outputFile = arguments.getString("output_file")
+            ?? simulator.map { "/tmp/sim_log_\($0).log" }
         let tailLines = arguments.getInt("tail_lines") ?? 50
 
         // Must have either pid or simulator
@@ -76,9 +74,11 @@ public struct StopSimLogCapTool: Sendable {
         )
 
         var message = "Stopped log capture"
+
         if let pid {
             message += " (PID: \(pid))"
-        } else if let simulator {
+        } else if let simulator
+        {
             message += " for simulator '\(simulator)'"
         }
 

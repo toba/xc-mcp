@@ -5,15 +5,13 @@ import Foundation
 public struct DebugWatchpointTool: Sendable {
     private let lldbRunner: LLDBRunner
 
-    public init(lldbRunner: LLDBRunner = LLDBRunner()) {
-        self.lldbRunner = lldbRunner
-    }
+    public init(lldbRunner: LLDBRunner = .init()) { self.lldbRunner = lldbRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_watchpoint",
             description:
-            "Manage watchpoints (data breakpoints) on a debugged process. Add, remove, or list watchpoints.",
+                "Manage watchpoints (data breakpoints) on a debugged process. Add, remove, or list watchpoints.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -96,15 +94,12 @@ public struct DebugWatchpointTool: Sendable {
             )
 
             var message: String
+
             switch action {
-                case "add":
-                    message = "Watchpoint added:\n\n\(result.output)"
-                case "remove":
-                    message = "Watchpoint removed:\n\n\(result.output)"
-                case "list":
-                    message = "Watchpoints:\n\n\(result.output)"
-                default:
-                    message = result.output
+                case "add": message = "Watchpoint added:\n\n\(result.output)"
+                case "remove": message = "Watchpoint removed:\n\n\(result.output)"
+                case "list": message = "Watchpoints:\n\n\(result.output)"
+                default: message = result.output
             }
 
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])

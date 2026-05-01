@@ -5,33 +5,28 @@ import Foundation
 public struct InteractMenuTool: Sendable {
     private let interactRunner: InteractRunner
 
-    public init(interactRunner: InteractRunner) {
-        self.interactRunner = interactRunner
-    }
+    public init(interactRunner: InteractRunner) { self.interactRunner = interactRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "interact_menu",
             description:
-            "Navigate and click a menu bar item in a macOS application by path. "
-                +
-                "Provide a menu path array like [\"File\", \"Export\", \"PDF\"] to open submenus and click the final item.",
-            inputSchema: .object(
-                [
-                    "type": .string("object"),
-                    "properties": .object(
-                        InteractRunner.appResolutionSchemaProperties.merging([
-                            "menu_path": .object([
-                                "type": .string("array"),
-                                "items": .object(["type": .string("string")]),
-                                "description": .string(
-                                    "Array of menu item titles to navigate, e.g. [\"File\", \"Save As...\"].",
-                                ),
-                            ]),
-                        ]) { _, new in new },
-                    ),
-                    "required": .array([.string("menu_path")]),
-                ],
+                "Navigate and click a menu bar item in a macOS application by path. "
+                + "Provide a menu path array like [\"File\", \"Export\", \"PDF\"] to open submenus and click the final item.",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object(InteractRunner.appResolutionSchemaProperties.merging([
+                    "menu_path": .object([
+                        "type": .string("array"),
+                        "items": .object(["type": .string("string")]),
+                        "description": .string(
+                            "Array of menu item titles to navigate, e.g. [\"File\", \"Save As...\"].",
+                        ),
+                    ])
+                ]) { _, new in new },
+                ),
+                "required": .array([.string("menu_path")]),
+            ],
             ),
             annotations: .mutation,
         )
@@ -47,11 +42,13 @@ public struct InteractMenuTool: Sendable {
         try interactRunner.navigateMenu(pid: pid, menuPath: menuPath)
 
         return CallTool.Result(
-            content: [.text(
-                text: "Clicked menu: \(menuPath.joined(separator: " > "))",
-                annotations: nil,
-                _meta: nil,
-            )],
+            content: [
+                .text(
+                    text: "Clicked menu: \(menuPath.joined(separator: " > "))",
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ],
         )
     }
 }

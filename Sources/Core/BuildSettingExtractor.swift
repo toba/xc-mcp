@@ -3,11 +3,11 @@ import Foundation
 
 /// Extracts build settings from xcodebuild output (JSON or text format).
 public enum BuildSettingExtractor {
-    /// Checks whether a scheme supports macOS by inspecting `SUPPORTED_PLATFORMS`.
+    /// Checks whether a scheme supports macOS by inspecting `SUPPORTED_PLATFORMS` .
     ///
-    /// Queries build settings for the scheme and checks if `macosx` is among
-    /// the supported platforms. Throws an `MCPError` with actionable guidance
-    /// if the project only targets iOS or other non-macOS platforms.
+    /// Queries build settings for the scheme and checks if `macosx` is among the supported
+    /// platforms. Throws an `MCPError` with actionable guidance if the project only targets iOS or
+    /// other non-macOS platforms.
     ///
     /// - Parameters:
     ///   - runner: The xcodebuild runner to query build settings.
@@ -30,10 +30,11 @@ public enum BuildSettingExtractor {
         )
 
         guard let platforms = extractSetting("SUPPORTED_PLATFORMS", from: settings.stdout) else {
-            return // Can't determine platforms — proceed optimistically
+            return
         }
 
         let platformList = platforms.split(separator: " ").map(String.init)
+
         if !platformList.contains("macosx") {
             let platformDesc = platformList.joined(separator: ", ")
             throw MCPError.invalidRequest(
@@ -46,13 +47,13 @@ public enum BuildSettingExtractor {
 
     /// Extracts a raw build setting value by key from xcodebuild output.
     ///
-    /// Tries JSON format first (`-showBuildSettings -json`), then falls back
-    /// to text format (`KEY = value`).
+    /// Tries JSON format first ( `-showBuildSettings -json` ), then falls back to text format (
+    /// `KEY = value` ).
     ///
     /// - Parameters:
     ///   - key: The build setting key (e.g. "PRODUCT_BUNDLE_IDENTIFIER").
-    ///   - buildSettings: The raw output from `xcodebuild -showBuildSettings`.
-    /// - Returns: The setting value, or nil if not found.
+    ///   - buildSettings: The raw output from `xcodebuild -showBuildSettings` .
+    ///   - Returns: The setting value, or nil if not found.
     public static func extractSetting(_ key: String, from buildSettings: String) -> String? {
         // Try JSON format first
         if let data = buildSettings.data(using: .utf8),
@@ -60,15 +61,13 @@ public enum BuildSettingExtractor {
         {
             for entry in json {
                 if let settings = entry["buildSettings"] as? [String: Any],
-                   let value = settings[key] as? String
-                {
-                    return value
-                }
+                   let value = settings[key] as? String { return value }
             }
         }
 
         // Fallback: parse text format (key = value)
         let lines = buildSettings.components(separatedBy: .newlines)
+
         for line in lines where line.contains(key) {
             if let equalsRange = line.range(of: " = ") {
                 return String(line[equalsRange.upperBound...])
@@ -80,7 +79,7 @@ public enum BuildSettingExtractor {
 
     /// Extracts the product bundle identifier, skipping unresolved variables.
     ///
-    /// - Parameter buildSettings: The raw output from `xcodebuild -showBuildSettings`.
+    /// - Parameter buildSettings: The raw output from `xcodebuild -showBuildSettings` .
     /// - Returns: The resolved bundle ID, or nil if not found or still contains variables.
     public static func extractBundleId(from buildSettings: String) -> String? {
         // Try JSON format first (most reliable)
@@ -89,17 +88,15 @@ public enum BuildSettingExtractor {
         {
             for targetSettings in parsed {
                 if let settings = targetSettings["buildSettings"] as? [String: Any],
-                   let bundleId = settings["PRODUCT_BUNDLE_IDENTIFIER"] as? String
-                {
-                    if !bundleId.contains("$(") {
-                        return bundleId
-                    }
+                   let bundleId = settings["PRODUCT_BUNDLE_IDENTIFIER"] as? String {
+                    if !bundleId.contains("$(") { return bundleId }
                 }
             }
         }
 
         // Fallback: parse text or JSON-ish line format
         let lines = buildSettings.components(separatedBy: .newlines)
+
         for line in lines where line.contains("PRODUCT_BUNDLE_IDENTIFIER") {
             if let range = line.range(of: "PRODUCT_BUNDLE_IDENTIFIER") {
                 let afterKey = String(line[range.upperBound...])
@@ -109,9 +106,7 @@ public enum BuildSettingExtractor {
                     .replacingOccurrences(of: ",", with: "")
                     .replacingOccurrences(of: " = ", with: "")
                     .trimmingCharacters(in: .whitespaces)
-                if !cleaned.isEmpty, !cleaned.hasPrefix("$") {
-                    return cleaned
-                }
+                if !cleaned.isEmpty, !cleaned.hasPrefix("$") { return cleaned }
             }
         }
 
@@ -120,23 +115,20 @@ public enum BuildSettingExtractor {
 
     /// Extracts the product name, skipping unresolved variables.
     ///
-    /// - Parameter buildSettings: The raw output from `xcodebuild -showBuildSettings`.
+    /// - Parameter buildSettings: The raw output from `xcodebuild -showBuildSettings` .
     /// - Returns: The product name, or nil if not found.
     public static func extractProductName(from buildSettings: String) -> String? {
         if let value = extractSetting("PRODUCT_NAME", from: buildSettings),
-           !value.contains("$(")
-        {
-            return value
-        }
+           !value.contains("$(") { return value }
         return nil
     }
 
     /// Extracts the built app path from build settings.
     ///
-    /// Tries `CODESIGNING_FOLDER_PATH` first, then falls back to
-    /// `TARGET_BUILD_DIR` + `FULL_PRODUCT_NAME`.
+    /// Tries `CODESIGNING_FOLDER_PATH` first, then falls back to `TARGET_BUILD_DIR` +
+    /// `FULL_PRODUCT_NAME` .
     ///
-    /// - Parameter buildSettings: The raw output from `xcodebuild -showBuildSettings`.
+    /// - Parameter buildSettings: The raw output from `xcodebuild -showBuildSettings` .
     /// - Returns: The app path, or nil if not found.
     public static func extractAppPath(from buildSettings: String) -> String? {
         let lines = buildSettings.components(separatedBy: .newlines)
@@ -148,9 +140,7 @@ public enum BuildSettingExtractor {
                     .trimmingCharacters(in: .whitespaces)
                     .replacingOccurrences(of: "\"", with: "")
                     .replacingOccurrences(of: ",", with: "")
-                if path.hasSuffix(".app") {
-                    return path
-                }
+                if path.hasSuffix(".app") { return path }
             }
         }
 
@@ -173,9 +163,7 @@ public enum BuildSettingExtractor {
             }
         }
 
-        if let dir = targetBuildDir, let name = fullProductName {
-            return "\(dir)/\(name)"
-        }
+        if let dir = targetBuildDir, let name = fullProductName { return "\(dir)/\(name)" }
 
         return nil
     }

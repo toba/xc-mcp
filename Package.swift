@@ -25,7 +25,7 @@ let package = Package(
     .package(url: "https://github.com/tuist/xcodeproj", from: "9.10.1"),
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.7.1"),
     .package(url: "https://github.com/swiftlang/swift-subprocess", from: "0.4.0"),
-    .package(url: "https://github.com/toba/swiftiomatic-plugins", from: "0.32.2"),
+    .package(url: "https://github.com/toba/swiftiomatic-plugins", from: "3.0.0"),
   ],
   targets: [
     // MARK: - Shared Core Library

@@ -4,22 +4,21 @@ import Subprocess
 
 /// Prepares a debug-built macOS app bundle for launch outside Xcode.
 ///
-/// When Xcode builds a project, framework dependencies may exist only in
-/// DerivedData's `BUILT_PRODUCTS_DIR` and not be embedded in the app bundle.
-/// Xcode sets `DYLD_FRAMEWORK_PATH` at launch time so the dynamic linker
-/// finds them, but that variable is stripped by SIP for hardened-runtime apps
-/// launched through Launch Services (`/usr/bin/open`).
+/// When Xcode builds a project, framework dependencies may exist only in DerivedData's
+/// `BUILT_PRODUCTS_DIR` and not be embedded in the app bundle. Xcode sets `DYLD_FRAMEWORK_PATH` at
+/// launch time so the dynamic linker finds them, but that variable is stripped by SIP for
+/// hardened-runtime apps launched through Launch Services ( `/usr/bin/open` ).
 ///
 /// This utility works around the problem by:
-/// 1. Symlinking non-embedded frameworks/dylibs from the build products
-///    directory into the app bundle's `Contents/Frameworks/`
+/// 1. Symlinking non-embedded frameworks/dylibs from the build products directory into the app
+///    bundle's `Contents/Frameworks/`
 /// 2. Rewriting absolute `/Library/Frameworks/` install names to `@rpath/`
 /// 3. Re-signing the modified bundle
 public enum AppBundlePreparer {
     private static let logger = Logger(label: "AppBundlePreparer")
 
-    /// Prepares the app bundle at `appPath` so non-embedded frameworks from
-    /// `builtProductsDir` can be found at runtime.
+    /// Prepares the app bundle at `appPath` so non-embedded frameworks from `builtProductsDir` can
+    /// be found at runtime.
     ///
     /// Does nothing if `builtProductsDir` is nil.
     public static func prepare(appPath: String, builtProductsDir: String?) async throws {
@@ -36,6 +35,7 @@ public enum AppBundlePreparer {
         )
 
         var modified = false
+
         for item in contents where item.pathExtension == "framework" {
             let destPath = "\(frameworksDir)/\(item.lastPathComponent)"
             if fm.fileExists(atPath: destPath) { continue }
@@ -51,6 +51,7 @@ public enum AppBundlePreparer {
 
         // Step 2: Rewrite absolute /Library/Frameworks/ install names to @rpath/
         let macOSDir = "\(appPath)/Contents/MacOS"
+
         if let macOSContents = try? fm.contentsOfDirectory(atPath: macOSDir) {
             for file in macOSContents {
                 let filePath = "\(macOSDir)/\(file)"
@@ -66,21 +67,19 @@ public enum AppBundlePreparer {
 
     /// Infers the build products directory from an app path inside DerivedData.
     ///
-    /// If the app is at `.../Build/Products/Debug/MyApp.app`, returns
-    /// `.../Build/Products/Debug`. Returns nil if the path doesn't appear
-    /// to be inside DerivedData.
+    /// If the app is at `.../Build/Products/Debug/MyApp.app` , returns `.../Build/Products/Debug` .
+    /// Returns nil if the path doesn't appear to be inside DerivedData.
     public static func inferBuiltProductsDir(fromAppPath appPath: String) -> String? {
         let parent = URL(fileURLWithPath: appPath).deletingLastPathComponent().path
         // Heuristic: the app is in DerivedData if the path contains /Build/Products/
-        if parent.contains("/Build/Products/") {
-            return parent
-        }
-        return nil
+        return parent.contains("/Build/Products/")
+            ? parent
+            : nil
     }
 
     // MARK: - Private
 
-    /// Rewrites absolute `/Library/Frameworks/` references to `@rpath/`.
+    /// Rewrites absolute `/Library/Frameworks/` references to `@rpath/` .
     private static func rewriteAbsoluteInstallNames(at binaryPath: String) async throws -> Bool {
         let otoolResult = try await ProcessResult.runSubprocess(
             .path("/usr/bin/otool"),
@@ -93,6 +92,7 @@ public enum AppBundlePreparer {
 
         for line in otoolResult.stdout.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+
             if trimmed.hasPrefix(prefix) {
                 if let parenRange = trimmed.range(of: " (compatibility") {
                     let oldPath = String(trimmed[..<parenRange.lowerBound])
@@ -105,9 +105,7 @@ public enum AppBundlePreparer {
         guard !changes.isEmpty else { return false }
 
         var args: [String] = []
-        for change in changes {
-            args += ["-change", change.old, change.new]
-        }
+        for change in changes { args += ["-change", change.old, change.new] }
         args.append(binaryPath)
 
         let installResult = try await ProcessResult.runSubprocess(
@@ -133,9 +131,9 @@ public enum AppBundlePreparer {
         )
 
         var signingIdentity = "-"
+
         for line in identityResult.stdout.components(separatedBy: .newlines)
-            where line.hasPrefix("Authority=")
-        {
+        where line.hasPrefix("Authority=") {
             signingIdentity = String(line.dropFirst("Authority=".count))
             break
         }
@@ -155,16 +153,12 @@ public enum AppBundlePreparer {
         }
 
         defer {
-            if let url = tempEntitlementsURL {
-                try? FileManager.default.removeItem(at: url)
-            }
+            if let url = tempEntitlementsURL { try? FileManager.default.removeItem(at: url) }
         }
 
         // Re-sign
         var signArgs = ["--force", "--sign", signingIdentity, "--deep"]
-        if let url = tempEntitlementsURL {
-            signArgs += ["--entitlements", url.path]
-        }
+        if let url = tempEntitlementsURL { signArgs += ["--entitlements", url.path] }
         signArgs.append(appPath)
 
         let signResult = try await ProcessResult.runSubprocess(
@@ -172,8 +166,6 @@ public enum AppBundlePreparer {
             arguments: Arguments(signArgs),
         )
 
-        if !signResult.succeeded {
-            logger.warning("Re-signing failed: \(signResult.stderr)")
-        }
+        if !signResult.succeeded { logger.warning("Re-signing failed: \(signResult.stderr)") }
     }
 }

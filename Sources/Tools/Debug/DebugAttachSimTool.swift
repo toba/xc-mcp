@@ -8,8 +8,8 @@ public struct DebugAttachSimTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        lldbRunner: LLDBRunner = LLDBRunner(),
-        simctlRunner: SimctlRunner = SimctlRunner(),
+        lldbRunner: LLDBRunner = .init(),
+        simctlRunner: SimctlRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.lldbRunner = lldbRunner
@@ -18,13 +18,12 @@ public struct DebugAttachSimTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_attach_sim",
             description:
-            "Attach LLDB debugger to a running app on a simulator or macOS. "
+                "Attach LLDB debugger to a running app on a simulator or macOS. "
                 + "For simulator apps, provide bundle_id with a simulator UDID. "
-                +
-                "For macOS apps, provide bundle_id without a simulator — the PID is resolved automatically.",
+                + "For macOS apps, provide bundle_id without a simulator — the PID is resolved automatically.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -65,6 +64,7 @@ public struct DebugAttachSimTool: Sendable {
 
             // Try to resolve simulator; if none available, treat as macOS app
             let simulator: String?
+
             if let value = arguments.getString("simulator") {
                 simulator = value
             } else if let sessionSimulator = await sessionManager.simulatorUDID {
@@ -101,7 +101,7 @@ public struct DebugAttachSimTool: Sendable {
                 message += result.output
 
                 return CallTool.Result(content: [
-                    .text(text: message, annotations: nil, _meta: nil),
+                    .text(text: message, annotations: nil, _meta: nil)
                 ])
             } else {
                 throw MCPError.internalError(
@@ -129,11 +129,9 @@ public struct DebugAttachSimTool: Sendable {
         let result = try await ProcessResult.run("/usr/bin/pgrep", arguments: ["-f", bundleId])
         let output = result.stdout
 
-        guard
-            let pidString = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let pidString = output.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: .newlines).first,
-            let pid = Int32(pidString)
-        else {
+              let pid = Int32(pidString) else {
             throw MCPError.internalError(
                 "App '\(bundleId)' is not running on simulator '\(simulator)'. Launch it first with launch_app_sim.",
             )
@@ -147,11 +145,9 @@ public struct DebugAttachSimTool: Sendable {
         let result = try await ProcessResult.run("/usr/bin/pgrep", arguments: ["-f", bundleId])
         let output = result.stdout
 
-        guard
-            let pidString = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let pidString = output.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: .newlines).first,
-            let pid = Int32(pidString)
-        else {
+              let pid = Int32(pidString) else {
             throw MCPError.internalError(
                 "macOS app '\(bundleId)' is not running. Launch it first with build_run_macos or launch_mac_app.",
             )

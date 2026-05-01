@@ -5,15 +5,13 @@ import Foundation
 public struct DebugViewBordersTool: Sendable {
     private let lldbRunner: LLDBRunner
 
-    public init(lldbRunner: LLDBRunner = LLDBRunner()) {
-        self.lldbRunner = lldbRunner
-    }
+    public init(lldbRunner: LLDBRunner = .init()) { self.lldbRunner = lldbRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_view_borders",
             description:
-            "Toggle colored borders on all views in a running macOS app's window via LLDB. Process must be stopped (at a breakpoint or via process interrupt). After enabling, resume with debug_continue and use screenshot_mac_window to see the result.",
+                "Toggle colored borders on all views in a running macOS app's window via LLDB. Process must be stopped (at a breakpoint or via process interrupt). After enabling, resume with debug_continue and use screenshot_mac_window to see the result.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -71,10 +69,9 @@ public struct DebugViewBordersTool: Sendable {
             throw MCPError.invalidParams("'enabled' parameter is required")
         }
 
-        let borderWidth =
-            arguments.getDouble("border_width")
-                ?? arguments.getInt("border_width").map(Double.init)
-                ?? 2.0
+        let borderWidth = arguments.getDouble("border_width")
+            ?? arguments.getInt("border_width").map(Double.init)
+            ?? 2.0
 
         let colorName = arguments.getString("color") ?? "red"
 

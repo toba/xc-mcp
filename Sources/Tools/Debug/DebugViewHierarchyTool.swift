@@ -5,15 +5,13 @@ import Foundation
 public struct DebugViewHierarchyTool: Sendable {
     private let lldbRunner: LLDBRunner
 
-    public init(lldbRunner: LLDBRunner = LLDBRunner()) {
-        self.lldbRunner = lldbRunner
-    }
+    public init(lldbRunner: LLDBRunner = .init()) { self.lldbRunner = lldbRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_view_hierarchy",
             description:
-            "Dump the UI view hierarchy of a running app.",
+                "Dump the UI view hierarchy of a running app.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([

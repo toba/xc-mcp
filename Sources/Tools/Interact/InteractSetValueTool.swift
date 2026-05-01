@@ -6,37 +6,33 @@ import ApplicationServices
 public struct InteractSetValueTool: Sendable {
     private let interactRunner: InteractRunner
 
-    public init(interactRunner: InteractRunner) {
-        self.interactRunner = interactRunner
-    }
+    public init(interactRunner: InteractRunner) { self.interactRunner = interactRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "interact_set_value",
             description:
-            "Set the value of a UI element (text field, checkbox, etc.) in a macOS application. "
+                "Set the value of a UI element (text field, checkbox, etc.) in a macOS application. "
                 + "Use element_id from interact_ui_tree.",
-            inputSchema: .object(
-                [
-                    "type": .string("object"),
-                    "properties": .object(
-                        InteractRunner.appResolutionSchemaProperties.merging([
-                            "element_id": .object([
-                                "type": .string("integer"),
-                                "description": .string(
-                                    "Element ID from interact_ui_tree.",
-                                ),
-                            ]),
-                            "value": .object([
-                                "type": .string("string"),
-                                "description": .string(
-                                    "The value to set on the element.",
-                                ),
-                            ]),
-                        ]) { _, new in new },
-                    ),
-                    "required": .array([.string("element_id"), .string("value")]),
-                ],
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object(InteractRunner.appResolutionSchemaProperties.merging([
+                    "element_id": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Element ID from interact_ui_tree.",
+                        ),
+                    ]),
+                    "value": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "The value to set on the element.",
+                        ),
+                    ]),
+                ]) { _, new in new },
+                ),
+                "required": .array([.string("element_id"), .string("value")]),
+            ],
             ),
             annotations: .mutation,
         )
@@ -51,24 +47,22 @@ public struct InteractSetValueTool: Sendable {
         }
         let value = try arguments.getRequiredString("value")
 
-        guard
-            let cached = await InteractSessionManager.shared.getElement(
-                pid: pid, elementId: elementId,
-            )
-        else {
-            throw InteractError.elementNotFound(elementId)
-        }
+        guard let cached = await InteractSessionManager.shared.getElement(
+            pid: pid, elementId: elementId,
+        ) else { throw InteractError.elementNotFound(elementId) }
 
         try interactRunner.setValue(value, on: cached.element)
 
         let info = interactRunner.getAttributes(from: cached.element)
         let desc = info.role ?? "element"
         return CallTool.Result(
-            content: [.text(
-                text: "Set value on \(desc) (id=\(elementId)) to \"\(value)\".",
-                annotations: nil,
-                _meta: nil,
-            )],
+            content: [
+                .text(
+                    text: "Set value on \(desc) (id=\(elementId)) to \"\(value)\".",
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ],
         )
     }
 }

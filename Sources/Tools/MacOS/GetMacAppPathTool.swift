@@ -7,7 +7,7 @@ public struct GetMacAppPathTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -15,10 +15,10 @@ public struct GetMacAppPathTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "get_mac_app_path",
             description:
-            "Get the path to a built macOS app. Can find the app by bundle ID in Applications, or by build settings for the current project.",
+                "Get the path to a built macOS app. Can find the app by bundle ID in Applications, or by build settings for the current project.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -71,7 +71,7 @@ public struct GetMacAppPathTool: Sendable {
                             text: "App path for '\(bundleId)':\n\(appPath)",
                             annotations: nil,
                             _meta: nil,
-                        ),
+                        )
                     ],
                 )
             }
@@ -82,6 +82,7 @@ public struct GetMacAppPathTool: Sendable {
 
         // Otherwise, use build settings to find the app
         let projectPath: String?
+
         if case let .string(value) = arguments["project_path"] {
             projectPath = value
         } else {
@@ -89,6 +90,7 @@ public struct GetMacAppPathTool: Sendable {
         }
 
         let workspacePath: String?
+
         if case let .string(value) = arguments["workspace_path"] {
             workspacePath = value
         } else {
@@ -97,6 +99,7 @@ public struct GetMacAppPathTool: Sendable {
 
         // Get scheme
         let scheme: String
+
         if case let .string(value) = arguments["scheme"] {
             scheme = value
         } else if let sessionScheme = await sessionManager.scheme {
@@ -109,6 +112,7 @@ public struct GetMacAppPathTool: Sendable {
 
         // Get configuration
         let configuration: String
+
         if case let .string(value) = arguments["configuration"] {
             configuration = value
         } else if let sessionConfig = await sessionManager.configuration {
@@ -151,7 +155,7 @@ public struct GetMacAppPathTool: Sendable {
                         text: "App path for scheme '\(scheme)':\n\(appPath)",
                         annotations: nil,
                         _meta: nil,
-                    ),
+                    )
                 ],
             )
         } catch {
@@ -166,9 +170,7 @@ public struct GetMacAppPathTool: Sendable {
         ]
 
         for searchPath in searchPaths {
-            if let appPath = searchForApp(in: searchPath, bundleId: bundleId) {
-                return appPath
-            }
+            if let appPath = searchForApp(in: searchPath, bundleId: bundleId) { return appPath }
         }
 
         return nil
@@ -182,12 +184,10 @@ public struct GetMacAppPathTool: Sendable {
 
         for item in contents {
             let fullPath = "\(directory)/\(item)"
+
             if item.hasSuffix(".app") {
                 if let appBundleId = getBundleIdentifier(forApp: fullPath),
-                   appBundleId == bundleId
-                {
-                    return fullPath
-                }
+                   appBundleId == bundleId { return fullPath }
             }
         }
 
@@ -200,10 +200,7 @@ public struct GetMacAppPathTool: Sendable {
               let plist = try? PropertyListSerialization.propertyList(
                   from: plistData, options: [], format: nil,
               ) as? [String: Any],
-              let bundleId = plist["CFBundleIdentifier"] as? String
-        else {
-            return nil
-        }
+              let bundleId = plist["CFBundleIdentifier"] as? String else { return nil }
         return bundleId
     }
 

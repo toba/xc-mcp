@@ -6,31 +6,27 @@ import ApplicationServices
 public struct InteractGetValueTool: Sendable {
     private let interactRunner: InteractRunner
 
-    public init(interactRunner: InteractRunner) {
-        self.interactRunner = interactRunner
-    }
+    public init(interactRunner: InteractRunner) { self.interactRunner = interactRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "interact_get_value",
             description:
-            "Read all attributes of a UI element by ID. Returns role, title, value, identifier, "
+                "Read all attributes of a UI element by ID. Returns role, title, value, identifier, "
                 + "position, size, enabled state, focused state, and available actions.",
-            inputSchema: .object(
-                [
-                    "type": .string("object"),
-                    "properties": .object(
-                        InteractRunner.appResolutionSchemaProperties.merging([
-                            "element_id": .object([
-                                "type": .string("integer"),
-                                "description": .string(
-                                    "Element ID from interact_ui_tree.",
-                                ),
-                            ]),
-                        ]) { _, new in new },
-                    ),
-                    "required": .array([.string("element_id")]),
-                ],
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object(InteractRunner.appResolutionSchemaProperties.merging([
+                    "element_id": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Element ID from interact_ui_tree.",
+                        ),
+                    ])
+                ]) { _, new in new },
+                ),
+                "required": .array([.string("element_id")]),
+            ],
             ),
             annotations: .readOnly,
         )
@@ -44,13 +40,9 @@ public struct InteractGetValueTool: Sendable {
             throw MCPError.invalidParams("element_id is required")
         }
 
-        guard
-            let cached = await InteractSessionManager.shared.getElement(
-                pid: pid, elementId: elementId,
-            )
-        else {
-            throw InteractError.elementNotFound(elementId)
-        }
+        guard let cached = await InteractSessionManager.shared.getElement(
+            pid: pid, elementId: elementId,
+        ) else { throw InteractError.elementNotFound(elementId) }
 
         let info = interactRunner.getAttributes(from: cached.element, id: elementId)
 
@@ -71,10 +63,12 @@ public struct InteractGetValueTool: Sendable {
         }
         lines.append("  Children: \(info.childCount)")
 
-        return CallTool.Result(content: [.text(
-            text: lines.joined(separator: "\n"),
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result(content: [
+            .text(
+                text: lines.joined(separator: "\n"),
+                annotations: nil,
+                _meta: nil,
+            )
+        ])
     }
 }

@@ -1,25 +1,19 @@
 import Foundation
 
-/// Facade for xcstrings file operations
-/// Delegates to specialized components following Single Responsibility Principle
+/// Facade for xcstrings file operations Delegates to specialized components following Single
+/// Responsibility Principle
 public actor XCStringsParser {
     private let fileHandler: XCStringsFileHandler
 
-    public init(path: String) {
-        fileHandler = XCStringsFileHandler(path: path)
-    }
+    public init(path: String) { fileHandler = XCStringsFileHandler(path: path) }
 
     // MARK: - File Operations
 
     /// Load file from disk
-    func load() throws(XCStringsError) -> XCStringsFile {
-        try fileHandler.load()
-    }
+    func load() throws(XCStringsError) -> XCStringsFile { try fileHandler.load() }
 
     /// Save file to disk
-    func save(_ file: XCStringsFile) throws(XCStringsError) {
-        try fileHandler.save(file)
-    }
+    func save(_ file: XCStringsFile) throws(XCStringsError) { try fileHandler.save(file) }
 
     /// Create a new xcstrings file
     public func createFile(sourceLanguage: String, overwrite: Bool = false) throws(XCStringsError) {
@@ -27,7 +21,11 @@ public actor XCStringsParser {
     }
 
     /// Create a new xcstrings file (static version for convenience)
-    public static func createFile(at path: String, sourceLanguage: String, overwrite: Bool = false)
+    public static func createFile(
+        at path: String,
+        sourceLanguage: String,
+        overwrite: Bool = false
+    )
         throws(XCStringsError)
     {
         let handler = XCStringsFileHandler(path: path)
@@ -36,7 +34,9 @@ public actor XCStringsParser {
 
     // MARK: - Read Operations
 
-    private func withReader<T>(_ operation: (XCStringsReader) throws(XCStringsError) -> T)
+    private func withReader<T>(
+        _ operation: (XCStringsReader) throws(XCStringsError) -> T
+    )
         throws(XCStringsError) -> T
     {
         let file = try load()
@@ -44,9 +44,7 @@ public actor XCStringsParser {
     }
 
     /// Get all keys sorted alphabetically
-    public func listKeys() throws(XCStringsError) -> [String] {
-        try withReader { $0.listKeys() }
-    }
+    public func listKeys() throws(XCStringsError) -> [String] { try withReader { $0.listKeys() } }
 
     /// Get all languages used in the file
     public func listLanguages() throws(XCStringsError) -> [String] {
@@ -70,7 +68,10 @@ public actor XCStringsParser {
     }
 
     /// Get translation for a key
-    public func getTranslation(key: String, language: String?) throws(XCStringsError) -> [String:
+    public func getTranslation(
+        key: String,
+        language: String?
+    ) throws(XCStringsError) -> [String:
         TranslationInfo]
     {
         let file = try load()
@@ -94,25 +95,27 @@ public actor XCStringsParser {
     }
 
     /// Check if multiple keys exist
-    public func checkKeys(_ keys: [String], language: String?) throws(XCStringsError) -> [String:
+    public func checkKeys(
+        _ keys: [String],
+        language: String?
+    ) throws(XCStringsError) -> [String:
         Bool]
-    {
-        try withReader { $0.checkKeys(keys, language: language) }
-    }
+    { try withReader { $0.checkKeys(keys, language: language) } }
 
     /// List stale keys across multiple files
-    public static func batchListStaleKeys(paths: [String]) throws(XCStringsError)
-        -> BatchStaleKeysSummary
-    {
+    public static func batchListStaleKeys(
+        paths: [String]
+    ) throws(XCStringsError) -> BatchStaleKeysSummary {
         var results: [StaleKeysResult] = []
         results.reserveCapacity(paths.count)
+
         for path in paths {
             let handler = XCStringsFileHandler(path: path)
             let file = try handler.load()
             let staleKeys = XCStringsReader(file: file).listStaleKeys()
             results.append(StaleKeysResult(file: path, staleKeys: staleKeys))
         }
-        return BatchStaleKeysSummary(files: results)
+        return .init(files: results)
     }
 
     // MARK: - Stats Operations
@@ -130,11 +133,12 @@ public actor XCStringsParser {
     }
 
     /// Get batch coverage for multiple files (token-efficient)
-    public static func getBatchCoverage(paths: [String]) throws(XCStringsError)
-        -> BatchCoverageSummary
-    {
+    public static func getBatchCoverage(
+        paths: [String]
+    ) throws(XCStringsError) -> BatchCoverageSummary {
         var files: [(path: String, file: XCStringsFile)] = []
         files.reserveCapacity(paths.count)
+
         for path in paths {
             let handler = XCStringsFileHandler(path: path)
             let file = try handler.load()
@@ -152,11 +156,12 @@ public actor XCStringsParser {
     }
 
     /// Get compact batch coverage for multiple files
-    public static func getCompactBatchCoverage(paths: [String]) throws(XCStringsError)
-        -> CompactBatchCoverageSummary
-    {
+    public static func getCompactBatchCoverage(
+        paths: [String]
+    ) throws(XCStringsError) -> CompactBatchCoverageSummary {
         var files: [(path: String, file: XCStringsFile)] = []
         files.reserveCapacity(paths.count)
+
         for path in paths {
             let handler = XCStringsFileHandler(path: path)
             let file = try handler.load()
@@ -169,7 +174,10 @@ public actor XCStringsParser {
 
     /// Add a translation
     public func addTranslation(
-        key: String, language: String, value: String, allowOverwrite: Bool = false,
+        key: String,
+        language: String,
+        value: String,
+        allowOverwrite: Bool = false,
     ) throws {
         let file = try load()
         let updated = try XCStringsWriter.addTranslation(
@@ -180,7 +188,9 @@ public actor XCStringsParser {
 
     /// Add translations for multiple languages
     public func addTranslations(
-        key: String, translations: [String: String], allowOverwrite: Bool = false,
+        key: String,
+        translations: [String: String],
+        allowOverwrite: Bool = false,
     ) throws {
         let file = try load()
         let updated = try XCStringsWriter.addTranslations(
@@ -190,7 +200,11 @@ public actor XCStringsParser {
     }
 
     /// Update an existing translation
-    public func updateTranslation(key: String, language: String, value: String)
+    public func updateTranslation(
+        key: String,
+        language: String,
+        value: String
+    )
         throws(XCStringsError)
     {
         let file = try load()
@@ -201,7 +215,10 @@ public actor XCStringsParser {
     }
 
     /// Update translations for multiple languages
-    public func updateTranslations(key: String, translations: [String: String])
+    public func updateTranslations(
+        key: String,
+        translations: [String: String]
+    )
         throws(XCStringsError)
     {
         let file = try load()
@@ -222,29 +239,26 @@ public actor XCStringsParser {
 
     /// Add translations for multiple keys
     public func addTranslationsBatch(
-        entries: [BatchTranslationEntry], allowOverwrite: Bool = false,
+        entries: [BatchTranslationEntry],
+        allowOverwrite: Bool = false,
     ) throws(XCStringsError) -> BatchWriteResult {
         let file = try load()
         let (updated, result) = XCStringsWriter.addTranslationsBatch(
             to: file, entries: entries, allowOverwrite: allowOverwrite,
         )
-        if result.succeeded > 0 {
-            try save(updated)
-        }
+        if result.succeeded > 0 { try save(updated) }
         return result
     }
 
     /// Update translations for multiple keys
-    public func updateTranslationsBatch(entries: [BatchTranslationEntry]) throws(XCStringsError)
-        -> BatchWriteResult
-    {
+    public func updateTranslationsBatch(
+        entries: [BatchTranslationEntry]
+    ) throws(XCStringsError) -> BatchWriteResult {
         let file = try load()
         let (updated, result) = XCStringsWriter.updateTranslationsBatch(
             in: file, entries: entries,
         )
-        if result.succeeded > 0 {
-            try save(updated)
-        }
+        if result.succeeded > 0 { try save(updated) }
         return result
     }
 

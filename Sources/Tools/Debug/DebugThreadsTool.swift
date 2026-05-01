@@ -5,15 +5,13 @@ import Foundation
 public struct DebugThreadsTool: Sendable {
     private let lldbRunner: LLDBRunner
 
-    public init(lldbRunner: LLDBRunner = LLDBRunner()) {
-        self.lldbRunner = lldbRunner
-    }
+    public init(lldbRunner: LLDBRunner = .init()) { self.lldbRunner = lldbRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_threads",
             description:
-            "List threads in a debugged process. Optionally select a thread to switch to.",
+                "List threads in a debugged process. Optionally select a thread to switch to.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([

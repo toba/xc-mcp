@@ -21,15 +21,10 @@ public struct XCStringsStatsCalculator: Sendable {
             var untranslated = 0
 
             for entry in file.strings.values {
-                let isTranslated =
-                    entry.localizations?[language]?.stringUnit?.value != nil
-                        || entry.localizations?[language]?.variations != nil
+                let isTranslated = entry.localizations?[language]?.stringUnit?.value != nil
+                    || entry.localizations?[language]?.variations != nil
 
-                if isTranslated {
-                    translated += 1
-                } else {
-                    untranslated += 1
-                }
+                if isTranslated { translated += 1 } else { untranslated += 1 }
             }
 
             let total = translated + untranslated
@@ -43,7 +38,7 @@ public struct XCStringsStatsCalculator: Sendable {
             )
         }
 
-        return StatsInfo(
+        return .init(
             totalKeys: file.strings.count,
             sourceLanguage: file.sourceLanguage,
             languages: allLanguages,
@@ -66,7 +61,7 @@ public struct XCStringsStatsCalculator: Sendable {
     public func getCoverageSummary(fileName: String) -> FileCoverageSummary {
         let stats = getStats()
         let languages = stats.coverageByLanguage.mapValues { $0.coveragePercent }
-        return FileCoverageSummary(
+        return .init(
             file: fileName,
             totalKeys: stats.totalKeys,
             languages: languages,
@@ -74,9 +69,9 @@ public struct XCStringsStatsCalculator: Sendable {
     }
 
     /// Get batch coverage for multiple files
-    public static func getBatchCoverage(files: [(path: String, file: XCStringsFile)])
-        -> BatchCoverageSummary
-    {
+    public static func getBatchCoverage(
+        files: [(path: String, file: XCStringsFile)]
+    ) -> BatchCoverageSummary {
         let summaries = files.map { path, file in
             XCStringsStatsCalculator(file: file).getCoverageSummary(fileName: path)
         }
@@ -87,6 +82,7 @@ public struct XCStringsStatsCalculator: Sendable {
 
         // Calculate weighted average coverage by language
         var languageTotals: [String: (sum: Double, count: Int)] = [:]
+
         for summary in summaries {
             for (lang, coverage) in summary.languages {
                 let current = languageTotals[lang] ?? (sum: 0, count: 0)
@@ -95,7 +91,7 @@ public struct XCStringsStatsCalculator: Sendable {
         }
         let averageCoverage = languageTotals.mapValues { $0.sum / Double($0.count) }
 
-        return BatchCoverageSummary(
+        return .init(
             files: summaries,
             aggregated: AggregatedCoverage(
                 totalFiles: totalFiles,
@@ -108,14 +104,10 @@ public struct XCStringsStatsCalculator: Sendable {
     // MARK: - Compact Output (100% languages omitted)
 
     /// Get compact stats (only shows incomplete languages)
-    public func getCompactStats() -> CompactStatsInfo {
-        CompactStatsInfo(from: getStats())
-    }
+    public func getCompactStats() -> CompactStatsInfo { .init(from: getStats()) }
 
     /// Get compact batch coverage for multiple files
-    public static func getCompactBatchCoverage(files: [(path: String, file: XCStringsFile)])
-        -> CompactBatchCoverageSummary
-    {
-        CompactBatchCoverageSummary(from: getBatchCoverage(files: files))
-    }
+    public static func getCompactBatchCoverage(
+        files: [(path: String, file: XCStringsFile)]
+    ) -> CompactBatchCoverageSummary { .init(from: getBatchCoverage(files: files)) }
 }

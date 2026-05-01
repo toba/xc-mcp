@@ -1,9 +1,9 @@
 import Foundation
 
-/// Parses macOS `.ips` crash report files from `~/Library/Logs/DiagnosticReports/`.
+/// Parses macOS `.ips` crash report files from `~/Library/Logs/DiagnosticReports/` .
 ///
-/// The `.ips` format consists of a JSON header line followed by a JSON body containing
-/// exception info, termination reasons, thread backtraces, and loaded images.
+/// The `.ips` format consists of a JSON header line followed by a JSON body containing exception
+/// info, termination reasons, thread backtraces, and loaded images.
 public enum CrashReportParser: Sendable {
     /// A single frame in a crashing thread's stack trace.
     public struct StackFrame: Sendable {
@@ -16,6 +16,7 @@ public enum CrashReportParser: Sendable {
 
         public func formatted() -> String {
             var line = "  \(index)  \(imageName)"
+
             if let symbol {
                 line += "  \(symbol)"
                 if let symbolOffset { line += " +\(symbolOffset)" }
@@ -47,49 +48,35 @@ public enum CrashReportParser: Sendable {
         public func formatted() -> String {
             var parts: [String] = []
 
-            if let processName {
-                parts.append("Process: \(processName)")
-            }
-            if let bundleID {
-                parts.append("Bundle ID: \(bundleID)")
-            }
-            if let captureTime {
-                parts.append("Time: \(captureTime)")
-            }
+            if let processName { parts.append("Process: \(processName)") }
+            if let bundleID { parts.append("Bundle ID: \(bundleID)") }
+            if let captureTime { parts.append("Time: \(captureTime)") }
 
             // Exception
             var exParts: [String] = []
             if let exceptionType { exParts.append(exceptionType) }
             if let signal { exParts.append("(\(signal))") }
-            if !exParts.isEmpty {
-                parts.append("Exception: \(exParts.joined(separator: " "))")
-            }
+            if !exParts.isEmpty { parts.append("Exception: \(exParts.joined(separator: " "))") }
 
             // Termination — the most actionable part
             if let terminationIndicator {
                 let ns = terminationNamespace ?? ""
                 parts.append("Termination: \(ns) — \(terminationIndicator)")
             }
-            for reason in terminationReasons {
-                parts.append("  \(reason)")
-            }
-            for detail in terminationDetails {
-                parts.append("  \(detail)")
-            }
+            for reason in terminationReasons { parts.append("  \(reason)") }
+            for detail in terminationDetails { parts.append("  \(detail)") }
 
             if isFatalDyldError,
-               !parts.contains(where: { $0.contains("DYLD") || $0.contains("Symbol") })
-            {
+               !parts.contains(where: { $0.contains("DYLD") || $0.contains("Symbol") }) {
                 parts.append("Fatal dyld error (missing symbol or library)")
             }
 
             // Crashing thread stack trace
             if !crashingThreadFrames.isEmpty {
-                let threadLabel = crashingThread.map { "Crashing Thread \($0)" } ?? "Crashing Thread"
+                let threadLabel = crashingThread.map { "Crashing Thread \($0)" }
+                    ?? "Crashing Thread"
                 var lines = ["\(threadLabel):"]
-                for frame in crashingThreadFrames {
-                    lines.append(frame.formatted())
-                }
+                for frame in crashingThreadFrames { lines.append(frame.formatted()) }
                 parts.append(lines.joined(separator: "\n"))
             }
 
@@ -164,20 +151,14 @@ public enum CrashReportParser: Sendable {
     /// - Returns: A ``CrashSummary`` if parsing succeeds, `nil` otherwise.
     public static func parse(at path: String) -> CrashSummary? {
         guard let data = FileManager.default.contents(atPath: path),
-              let content = String(data: data, encoding: .utf8)
-        else {
-            return nil
-        }
+              let content = String(data: data, encoding: .utf8) else { return nil }
 
         // .ips files: JSON header on line 1, then the crash body as JSON
-        guard let firstNewline = content.firstIndex(of: "\n") else {
-            return nil
-        }
+        guard let firstNewline = content.firstIndex(of: "\n") else { return nil }
 
         let bodyString = String(content[content.index(after: firstNewline)...])
         guard let bodyData = bodyString.data(using: .utf8),
-              let body = try? JSONDecoder().decode(CrashBody.self, from: bodyData)
-        else {
+              let body = try? JSONDecoder().decode(CrashBody.self, from: bodyData) else {
             return nil
         }
 
@@ -189,8 +170,7 @@ public enum CrashReportParser: Sendable {
     /// Exposed for testing without needing a file on disk.
     public static func parseJSON(_ json: [String: Any]) -> CrashSummary {
         guard let data = try? JSONSerialization.data(withJSONObject: json),
-              let body = try? JSONDecoder().decode(CrashBody.self, from: data)
-        else {
+              let body = try? JSONDecoder().decode(CrashBody.self, from: data) else {
             return CrashSummary(
                 processName: nil, bundleID: nil, captureTime: nil,
                 exceptionType: nil, signal: nil, terminationNamespace: nil,
@@ -204,7 +184,7 @@ public enum CrashReportParser: Sendable {
     private static func makeSummary(from body: CrashBody) -> CrashSummary {
         let (crashingThread, crashingThreadFrames) = parseCrashingThread(from: body)
 
-        return CrashSummary(
+        return .init(
             processName: body.procName,
             bundleID: body.bundleInfo?.CFBundleIdentifier,
             captureTime: body.captureTime,
@@ -226,15 +206,10 @@ public enum CrashReportParser: Sendable {
     ) -> (threadIndex: Int?, frames: [StackFrame]) {
         guard let faultingThread = body.faultingThread,
               let threads = body.threads,
-              faultingThread < threads.count
-        else {
-            return (nil, [])
-        }
+              faultingThread < threads.count else { return (nil, []) }
 
         let thread = threads[faultingThread]
-        guard let rawFrames = thread.frames else {
-            return (faultingThread, [])
-        }
+        guard let rawFrames = thread.frames else { return (faultingThread, []) }
 
         // Resolve image names from usedImages array
         let usedImages = body.usedImages ?? []
@@ -243,28 +218,23 @@ public enum CrashReportParser: Sendable {
         var frames: [StackFrame] = []
         frames.reserveCapacity(maxFrames)
 
-        for i in 0 ..< maxFrames {
+        for i in 0..<maxFrames {
             let raw = rawFrames[i]
 
             // Resolve image name from imageIndex → usedImages
             var imageName = "???"
             if let imageIndex = raw.imageIndex,
                imageIndex < usedImages.count,
-               let name = usedImages[imageIndex].name
-            {
-                imageName = name
-            }
+               let name = usedImages[imageIndex].name { imageName = name }
 
-            frames.append(
-                StackFrame(
-                    index: i,
-                    imageName: imageName,
-                    symbol: raw.symbol,
-                    symbolOffset: raw.symbolLocation,
-                    sourceFile: raw.sourceFile,
-                    sourceLine: raw.sourceLine,
-                ),
-            )
+            frames.append(StackFrame(
+                index: i,
+                imageName: imageName,
+                symbol: raw.symbol,
+                symbolOffset: raw.symbolLocation,
+                sourceFile: raw.sourceFile,
+                sourceLine: raw.sourceLine,
+            ))
         }
 
         return (faultingThread, frames)
@@ -290,10 +260,9 @@ public enum CrashReportParser: Sendable {
         message += "\n\n" + String(repeating: "═", count: 60)
         message += "\nCrash Report\(crashes.count == 1 ? "" : "s") Found"
         message += "\n" + String(repeating: "═", count: 60)
+
         for (i, crash) in crashes.enumerated() {
-            if i > 0 {
-                message += "\n" + String(repeating: "─", count: 60)
-            }
+            if i > 0 { message += "\n" + String(repeating: "─", count: 60) }
             message += "\nFile: \(crash.path)\n"
             message += crash.summary.formatted()
         }
@@ -302,11 +271,11 @@ public enum CrashReportParser: Sendable {
     /// Searches `~/Library/Logs/DiagnosticReports/` for recent `.ips` crash reports.
     ///
     /// - Parameters:
-    ///   - processName: Optional process name to filter by (matched against filename and
-    ///     `procName` in the JSON header).
+    ///   - processName: Optional process name to filter by (matched against filename and `procName`
+    ///     in the JSON header).
     ///   - bundleID: Optional bundle ID to filter by (matched against the JSON header line).
     ///   - minutes: Only include reports from the last N minutes. Defaults to 5.
-    /// - Returns: An array of `(path, summary)` tuples, most recent first.
+    ///   - Returns: An array of `(path, summary)` tuples, most recent first.
     public static func search(
         processName: String? = nil,
         bundleID: String? = nil,
@@ -315,9 +284,7 @@ public enum CrashReportParser: Sendable {
         let fm = FileManager.default
         let reportsDir = diagnosticReportsDir
 
-        guard let entries = try? fm.contentsOfDirectory(atPath: reportsDir) else {
-            return []
-        }
+        guard let entries = try? fm.contentsOfDirectory(atPath: reportsDir) else { return [] }
 
         let cutoff = Date().addingTimeInterval(-Double(minutes * 60))
         var results: [(path: String, summary: CrashSummary, modified: Date)] = []
@@ -328,44 +295,27 @@ public enum CrashReportParser: Sendable {
             // Filter by recency
             guard let attrs = try? fm.attributesOfItem(atPath: fullPath),
                   let modified = attrs[.modificationDate] as? Date,
-                  modified > cutoff
-            else {
-                continue
-            }
+                  modified > cutoff else { continue }
 
             // Quick filename pre-filter before parsing the full file
             if let processName,
-               !entry.localizedCaseInsensitiveContains(processName)
-            {
-                // Filename doesn't match — still parse to check procName field,
-                // but only if no bundle ID filter either
-                if bundleID == nil {
-                    continue
-                }
+               !entry.localizedCaseInsensitiveContains(processName) {
+                if bundleID == nil { continue }
             }
 
-            guard let summary = parse(at: fullPath) else {
-                continue
-            }
+            guard let summary = parse(at: fullPath) else { continue }
 
             // Filter by process name (from parsed JSON)
             if let processName,
                let proc = summary.processName,
-               !proc.localizedCaseInsensitiveContains(processName)
-            {
-                // Filename didn't match and procName didn't match
-                if !entry.localizedCaseInsensitiveContains(processName) {
-                    continue
-                }
+               !proc.localizedCaseInsensitiveContains(processName) {
+                if !entry.localizedCaseInsensitiveContains(processName) { continue }
             }
 
             // Filter by bundle ID
             if let bundleID,
                let bid = summary.bundleID,
-               bid != bundleID
-            {
-                continue
-            }
+               bid != bundleID { continue }
 
             results.append((fullPath, summary, modified))
         }
@@ -383,9 +333,7 @@ public enum CrashReportParser: Sendable {
     ) -> (results: [(path: String, summary: CrashSummary)], diagnostics: SearchDiagnostics?) {
         let results = search(processName: processName, bundleID: bundleID, minutes: minutes)
 
-        guard results.isEmpty, processName != nil || bundleID != nil else {
-            return (results, nil)
-        }
+        guard results.isEmpty, processName != nil || bundleID != nil else { return (results, nil) }
 
         let fm = FileManager.default
         let reportsDir = diagnosticReportsDir
@@ -405,9 +353,7 @@ public enum CrashReportParser: Sendable {
 
             // Check if this file belongs to the filtered process (by filename)
             if let processName {
-                if entry.localizedCaseInsensitiveContains(processName) {
-                    totalForProcess += 1
-                }
+                if entry.localizedCaseInsensitiveContains(processName) { totalForProcess += 1 }
             }
 
             // Collect process names in the time window

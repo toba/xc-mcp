@@ -6,10 +6,10 @@ public struct GetFileCoverageTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "get_file_coverage",
             description:
-            "Get function-level code coverage for a specific file from an .xcresult bundle. Shows each function's coverage and execution count. Optionally includes uncovered line ranges.",
+                "Get function-level code coverage for a specific file from an .xcresult bundle. Shows each function's coverage and execution count. Optionally includes uncovered line ranges.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -50,16 +50,15 @@ public struct GetFileCoverageTool: Sendable {
         }
 
         let parser = CoverageParser()
-        guard
-            let fileCoverage = await parser.parseFunctionCoverage(
-                xcresultPath: resultBundlePath,
-                filePath: filePath,
-            )
-        else {
+        guard let fileCoverage = await parser.parseFunctionCoverage(
+            xcresultPath: resultBundlePath,
+            filePath: filePath,
+        ) else {
             return CallTool.Result(content: [
-                .text(text:
-                    "No coverage data found for file: \(filePath). Ensure the file is part of a target that was tested with coverage enabled.",
-                    annotations: nil, _meta: nil),
+                .text(
+                    text:
+                        "No coverage data found for file: \(filePath). Ensure the file is part of a target that was tested with coverage enabled.",
+                    annotations: nil, _meta: nil)
             ])
         }
 
@@ -69,7 +68,9 @@ public struct GetFileCoverageTool: Sendable {
             if let uncoveredRanges = await parser.parseUncoveredLines(
                 xcresultPath: resultBundlePath,
                 filePath: filePath,
-            ), !uncoveredRanges.isEmpty {
+            ),
+               !uncoveredRanges.isEmpty
+            {
                 output += "\n\n"
                 output += Self.formatUncoveredRanges(uncoveredRanges)
             }
@@ -81,14 +82,12 @@ public struct GetFileCoverageTool: Sendable {
     static func formatFileCoverage(_ coverage: FileFunctionCoverage) -> String {
         var lines: [String] = []
         lines.append("File Coverage: \(coverage.path)")
-        lines.append(
-            String(
-                format: "Coverage: %.1f%% (%d/%d lines)",
-                coverage.lineCoverage,
-                coverage.coveredLines,
-                coverage.executableLines,
-            ),
-        )
+        lines.append(String(
+            format: "Coverage: %.1f%% (%d/%d lines)",
+            coverage.lineCoverage,
+            coverage.coveredLines,
+            coverage.executableLines,
+        ))
         lines.append("")
 
         // Sort: uncovered first, then by line number
@@ -99,20 +98,19 @@ public struct GetFileCoverageTool: Sendable {
         }
 
         lines.append("Functions:")
+
         for fn in sorted {
             let prefix = fn.executionCount == 0 ? "[NOT COVERED] " : ""
-            lines.append(
-                String(
-                    format: "  %@L%d %@: %.1f%% (%d/%d, called %dx)",
-                    prefix,
-                    fn.lineNumber,
-                    fn.name,
-                    fn.lineCoverage,
-                    fn.coveredLines,
-                    fn.executableLines,
-                    fn.executionCount,
-                ),
-            )
+            lines.append(String(
+                format: "  %@L%d %@: %.1f%% (%d/%d, called %dx)",
+                prefix,
+                fn.lineNumber,
+                fn.name,
+                fn.lineCoverage,
+                fn.coveredLines,
+                fn.executableLines,
+                fn.executionCount,
+            ))
         }
 
         return lines.joined(separator: "\n")
@@ -121,6 +119,7 @@ public struct GetFileCoverageTool: Sendable {
     static func formatUncoveredRanges(_ ranges: [UncoveredRange]) -> String {
         var lines: [String] = []
         lines.append("Uncovered Lines:")
+
         for range in ranges {
             if range.start == range.end {
                 lines.append("  L\(range.start)")

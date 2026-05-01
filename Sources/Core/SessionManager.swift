@@ -34,8 +34,8 @@ public enum WarmupState: Sendable, Equatable {
 
 /// Manages session state for the MCP server, including default project, scheme, and device settings
 public actor SessionManager {
-    /// Closure that performs the actual warmup build for a package path.
-    /// Injected so tests can substitute a fake without spawning `swift build`.
+    /// Closure that performs the actual warmup build for a package path. Injected so tests can
+    /// substitute a fake without spawning `swift build` .
     public typealias WarmupRunner = @Sendable (String) async throws -> Void
     /// Path to the current Xcode project (.xcodeproj)
     public private(set) var projectPath: String?
@@ -67,21 +67,21 @@ public actor SessionManager {
     /// 1. `XC_MCP_SESSION` env var (for wrapper scripts where PPID doesn't group correctly)
     /// 2. PPID-scoped path: `/tmp/xc-mcp-session-{PPID}.json`
     ///
-    /// Scoping by PPID ensures focused servers spawned by the same parent (e.g., Claude Code)
-    /// share session state, while different agents get isolated files.
+    /// Scoping by PPID ensures focused servers spawned by the same parent (e.g., Claude Code) share
+    /// session state, while different agents get isolated files.
     static func resolveFilePath() -> URL {
         if let envPath = ProcessInfo.processInfo.environment["XC_MCP_SESSION"] {
             return URL(fileURLWithPath: envPath)
         }
         let ppid = getppid()
-        return URL(fileURLWithPath: "/tmp/xc-mcp-session-\(ppid).json")
+        return .init(fileURLWithPath: "/tmp/xc-mcp-session-\(ppid).json")
     }
 
     /// The session file path used by this instance.
     let filePath: URL
 
-    /// Modification date of the shared file when we last loaded/saved it.
-    /// Used to detect external changes from other server processes.
+    /// Modification date of the shared file when we last loaded/saved it. Used to detect external
+    /// changes from other server processes.
     private var lastKnownModDate: Date?
 
     /// In-flight warmup tasks keyed by package path. Used to dedupe and cancel.
@@ -93,14 +93,14 @@ public actor SessionManager {
     /// Package paths that have already been warmed (or detected warm) this process.
     private var warmedPackages: Set<String> = []
 
-    /// Closure used to perform warmup builds. Default invokes `swift build --build-tests`.
+    /// Closure used to perform warmup builds. Default invokes `swift build --build-tests` .
     private let warmupRunner: WarmupRunner
 
-    /// Whether warmup is enabled. Disabled when `XC_MCP_DISABLE_WARMUP` is set,
-    /// or when explicitly disabled at init time (e.g. tests).
+    /// Whether warmup is enabled. Disabled when `XC_MCP_DISABLE_WARMUP` is set, or when explicitly
+    /// disabled at init time (e.g. tests).
     private let warmupEnabled: Bool
 
-    /// Default warmup implementation: cold-cache `swift build --build-tests`.
+    /// Default warmup implementation: cold-cache `swift build --build-tests` .
     @Sendable
     private static func defaultWarmupRunner(packagePath: String) async throws {
         let runner = SwiftRunner()
@@ -114,15 +114,14 @@ public actor SessionManager {
     /// Creates a session manager.
     ///
     /// - Parameters:
-    ///   - filePath: Explicit file path for persistence. When `nil`,
-    ///     uses ``resolveFilePath()`` (PPID-scoped or `XC_MCP_SESSION` env var).
-    ///     Pass an explicit path in tests for isolation.
-    ///   - warmupRunner: Override for the SwiftPM warmup builder. When `nil`,
-    ///     uses ``defaultWarmupRunner(packagePath:)``. Tests pass a fake to
-    ///     avoid spawning real `swift build` subprocesses.
-    ///   - enableWarmup: Force-disable warmup independent of env var. Tests
-    ///     that want to exercise the warmup machinery pass `true` with a fake
-    ///     `warmupRunner`; tests that only test other behavior pass `false`.
+    ///   - filePath: Explicit file path for persistence. When `nil` , uses ``resolveFilePath()``
+    ///     (PPID-scoped or `XC_MCP_SESSION` env var). Pass an explicit path in tests for isolation.
+    ///   - warmupRunner: Override for the SwiftPM warmup builder. When `nil` , uses
+    ///     ``defaultWarmupRunner(packagePath:)`` . Tests pass a fake to avoid spawning real
+    ///     `swift build` subprocesses.
+    ///   - enableWarmup: Force-disable warmup independent of env var. Tests that want to exercise
+    ///     the warmup machinery pass `true` with a fake `warmupRunner` ; tests that only test other
+    ///     behavior pass `false` .
     public init(
         filePath: URL? = nil,
         warmupRunner: WarmupRunner? = nil,
@@ -132,7 +131,7 @@ public actor SessionManager {
         self.filePath = resolved
         self.warmupRunner = warmupRunner ?? Self.defaultWarmupRunner
         let envDisabled = ProcessInfo.processInfo.environment["XC_MCP_DISABLE_WARMUP"] != nil
-        self.warmupEnabled = enableWarmup && !envDisabled
+        warmupEnabled = enableWarmup && !envDisabled
         let defaults = Self.loadDefaults(from: resolved)
         projectPath = defaults?.projectPath
         workspacePath = defaults?.workspacePath
@@ -148,6 +147,7 @@ public actor SessionManager {
     /// Loads session defaults from a file path. Static to be callable from nonisolated init.
     private static func loadDefaults(from path: URL) -> SessionDefaults? {
         guard FileManager.default.fileExists(atPath: path.path) else { return nil }
+
         do {
             let data = try Data(contentsOf: path)
             return try JSONDecoder().decode(SessionDefaults.self, from: data)
@@ -168,15 +168,14 @@ public actor SessionManager {
     }
 
     /// Returns the modification date of the session file, or nil if it doesn't exist.
-    private nonisolated func fileModDate() -> Date? {
-        Self.modDate(of: filePath)
-    }
+    private nonisolated func fileModDate() -> Date? { Self.modDate(of: filePath) }
 
-    /// Reloads session defaults from disk if the shared file has been modified
-    /// by another server process since we last loaded or saved.
+    /// Reloads session defaults from disk if the shared file has been modified by another server
+    /// process since we last loaded or saved.
     private func reloadIfNeeded() {
         let currentModDate = fileModDate()
         guard currentModDate != lastKnownModDate else { return }
+
         if let defaults = loadFromDisk() {
             projectPath = defaults.projectPath
             workspacePath = defaults.workspacePath
@@ -193,6 +192,7 @@ public actor SessionManager {
     /// Persists current session defaults to the shared file.
     private func saveToDisk() {
         let defaults = getDefaults()
+
         do {
             let data = try JSONEncoder().encode(defaults)
             try data.write(to: filePath, options: .atomic)
@@ -203,9 +203,7 @@ public actor SessionManager {
     }
 
     /// Deletes the shared session file.
-    private func deleteFromDisk() {
-        try? FileManager.default.removeItem(at: filePath)
-    }
+    private func deleteFromDisk() { try? FileManager.default.removeItem(at: filePath) }
 
     /// Set session defaults
     public func setDefaults(
@@ -221,32 +219,19 @@ public actor SessionManager {
         if let projectPath {
             self.projectPath = PathUtility.expandTilde(projectPath)
             // Clear workspace if project is set (mutually exclusive)
-            if workspacePath == nil {
-                self.workspacePath = nil
-            }
+            if workspacePath == nil { self.workspacePath = nil }
         }
         if let workspacePath {
             self.workspacePath = PathUtility.expandTilde(workspacePath)
             // Clear project if workspace is set (mutually exclusive)
-            if projectPath == nil {
-                self.projectPath = nil
-            }
+            if projectPath == nil { self.projectPath = nil }
         }
-        if let packagePath {
-            self.packagePath = PathUtility.expandTilde(packagePath)
-        }
-        if let scheme {
-            self.scheme = scheme
-        }
-        if let simulatorUDID {
-            self.simulatorUDID = simulatorUDID
-        }
-        if let deviceUDID {
-            self.deviceUDID = deviceUDID
-        }
-        if let configuration {
-            self.configuration = configuration
-        }
+        if let packagePath { self.packagePath = PathUtility.expandTilde(packagePath) }
+        if let scheme { self.scheme = scheme }
+        if let simulatorUDID { self.simulatorUDID = simulatorUDID }
+        if let deviceUDID { self.deviceUDID = deviceUDID }
+        if let configuration { self.configuration = configuration }
+
         if let env {
             // Deep-merge: new keys add, existing keys update
             var merged = self.env ?? [:]
@@ -254,16 +239,12 @@ public actor SessionManager {
             self.env = merged
         }
         saveToDisk()
-        if let active = self.packagePath {
-            triggerWarmupIfNeeded(packagePath: active)
-        }
+        if let active = self.packagePath { triggerWarmupIfNeeded(packagePath: active) }
     }
 
     /// Clear all session defaults
     public func clear() {
-        for (_, task) in warmupTasks {
-            task.cancel()
-        }
+        for (_, task) in warmupTasks { task.cancel() }
         warmupTasks.removeAll()
         warmupStatus.removeAll()
         warmedPackages.removeAll()
@@ -280,13 +261,12 @@ public actor SessionManager {
 
     // MARK: - SwiftPM Warmup
 
-    /// Schedules a background `swift build --build-tests` for `packagePath` so
-    /// the user's first `swift_package_test`/`swift_package_build` hits a warm
-    /// `.build/` cache.
+    /// Schedules a background `swift build --build-tests` for `packagePath` so the user's first
+    /// `swift_package_test` / `swift_package_build` hits a warm `.build/` cache.
     ///
-    /// No-ops when warmup is disabled, the path has already been warmed in
-    /// this process, a warmup is already in flight, the cache is already
-    /// warm, or `Package.swift` doesn't exist at the path.
+    /// No-ops when warmup is disabled, the path has already been warmed in this process, a warmup
+    /// is already in flight, the cache is already warm, or `Package.swift` doesn't exist at the
+    /// path.
     private func triggerWarmupIfNeeded(packagePath: String) {
         guard warmupEnabled else { return }
         guard warmupTasks[packagePath] == nil else { return }
@@ -299,27 +279,27 @@ public actor SessionManager {
             return
         }
 
-        let runner = self.warmupRunner
+        let runner = warmupRunner
         let started = ContinuousClock.now
         warmupStatus[packagePath] = .running(startedAt: started)
-        warmupTasks[packagePath] = Task.detached(priority: .background) { [weak self] in
-            do {
-                try await runner(packagePath)
-                await self?.completeWarmup(packagePath: packagePath, started: started)
-            } catch is CancellationError {
-                await self?.markWarmupCancelled(packagePath: packagePath)
-            } catch {
-                await self?.markWarmupFailed(
-                    packagePath: packagePath,
-                    message: String(describing: error),
-                )
+        warmupTasks[
+            packagePath] = Task.detached(priority: .background) { [weak self] in
+                do {
+                    try await runner(packagePath)
+                    await self?.completeWarmup(packagePath: packagePath, started: started)
+                } catch is CancellationError {
+                    await self?.markWarmupCancelled(packagePath: packagePath)
+                } catch {
+                    await self?.markWarmupFailed(
+                        packagePath: packagePath,
+                        message: String(describing: error),
+                    )
+                }
             }
-        }
     }
 
-    /// Cancels an in-flight warmup for `packagePath` and waits for the
-    /// background task to terminate (which releases the `BuildGuard` flock
-    /// before the caller invokes its own `swift` command).
+    /// Cancels an in-flight warmup for `packagePath` and waits for the background task to terminate
+    /// (which releases the `BuildGuard` flock before the caller invokes its own `swift` command).
     public func cancelWarmupIfRunning(packagePath: String) async {
         guard let task = warmupTasks.removeValue(forKey: packagePath) else { return }
         task.cancel()
@@ -327,9 +307,7 @@ public actor SessionManager {
     }
 
     /// Reports the current warmup state for a package, if any.
-    public func warmupState(for packagePath: String) -> WarmupState? {
-        warmupStatus[packagePath]
-    }
+    public func warmupState(for packagePath: String) -> WarmupState? { warmupStatus[packagePath] }
 
     private func completeWarmup(packagePath: String, started: ContinuousClock.Instant) {
         warmupTasks[packagePath] = nil
@@ -352,21 +330,16 @@ public actor SessionManager {
             case let .running(startedAt):
                 let elapsed = ContinuousClock.now - startedAt
                 return "running (\(formatDuration(elapsed)))"
-            case let .completed(duration):
-                return "warmed (built in \(formatDuration(duration)))"
-            case let .failed(message):
-                return "failed (\(message.prefix(120)))"
-            case .cancelled:
-                return "cancelled"
+            case let .completed(duration): return "warmed (built in \(formatDuration(duration)))"
+            case let .failed(message): return "failed (\(message.prefix(120)))"
+            case .cancelled: return "cancelled"
         }
     }
 
     private func formatDuration(_ duration: Duration) -> String {
         let seconds = Double(duration.components.seconds)
             + Double(duration.components.attoseconds) / 1e18
-        if seconds < 60 {
-            return String(format: "%.0fs", seconds)
-        }
+        if seconds < 60 { return String(format: "%.0fs", seconds) }
         let mins = Int(seconds) / 60
         let secs = Int(seconds) % 60
         return "\(mins)m\(secs)s"
@@ -408,9 +381,7 @@ public actor SessionManager {
 
         if let env, !env.isEmpty {
             lines.append("Environment:")
-            for key in env.keys.sorted() {
-                lines.append("  \(key)=\(env[key]!)")
-            }
+            for key in env.keys.sorted() { lines.append("  \(key)=\(env[key]!)") }
         } else {
             lines.append("Environment: (not set)")
         }
@@ -422,13 +393,13 @@ public actor SessionManager {
 
     /// Gets all session defaults in a single actor hop.
     ///
-    /// Use this method when you need multiple session values to avoid
-    /// multiple actor context switches.
+    /// Use this method when you need multiple session values to avoid multiple actor context
+    /// switches.
     ///
     /// - Returns: A ``SessionDefaults`` containing all current session values.
     public func getDefaults() -> SessionDefaults {
         reloadIfNeeded()
-        return SessionDefaults(
+        return .init(
             projectPath: projectPath,
             workspacePath: workspacePath,
             packagePath: packagePath,
@@ -449,12 +420,8 @@ public actor SessionManager {
     /// - Throws: MCPError.invalidParams if no simulator is available.
     public func resolveSimulator(from arguments: [String: Value]) throws(MCPError) -> String {
         reloadIfNeeded()
-        if let value = arguments.getString("simulator") {
-            return value
-        }
-        if let session = simulatorUDID {
-            return session
-        }
+        if let value = arguments.getString("simulator") { return value }
+        if let session = simulatorUDID { return session }
         throw MCPError.invalidParams(
             "simulator is required. Set it with set_session_defaults or pass it directly.",
         )
@@ -467,12 +434,8 @@ public actor SessionManager {
     /// - Throws: MCPError.invalidParams if no device is available.
     public func resolveDevice(from arguments: [String: Value]) throws(MCPError) -> String {
         reloadIfNeeded()
-        if let value = arguments.getString("device") {
-            return value
-        }
-        if let session = deviceUDID {
-            return session
-        }
+        if let value = arguments.getString("device") { return value }
+        if let session = deviceUDID { return session }
         throw MCPError.invalidParams(
             "device is required. Set it with set_session_defaults or pass it directly.",
         )
@@ -485,12 +448,8 @@ public actor SessionManager {
     /// - Throws: MCPError.invalidParams if no scheme is available.
     public func resolveScheme(from arguments: [String: Value]) throws(MCPError) -> String {
         reloadIfNeeded()
-        if let value = arguments.getString("scheme") {
-            return value
-        }
-        if let session = scheme {
-            return session
-        }
+        if let value = arguments.getString("scheme") { return value }
+        if let session = scheme { return session }
         throw MCPError.invalidParams(
             "scheme is required. Set it with set_session_defaults or pass it directly.",
         )
@@ -501,7 +460,7 @@ public actor SessionManager {
     /// - Parameters:
     ///   - arguments: The tool arguments dictionary.
     ///   - defaultValue: The fallback configuration if none is set. Defaults to "Debug".
-    /// - Returns: The resolved configuration.
+    ///   - Returns: The resolved configuration.
     public func resolveConfiguration(
         from arguments: [String: Value],
         default defaultValue: String = "Debug",
@@ -515,20 +474,23 @@ public actor SessionManager {
     /// - Parameter arguments: The tool arguments dictionary.
     /// - Returns: A tuple containing the resolved project and workspace paths.
     /// - Throws: MCPError.invalidParams if neither project nor workspace is available.
-    public func resolveBuildPaths(from arguments: [String: Value]) throws(MCPError) -> (
+    public func resolveBuildPaths(
+        from arguments: [String: Value]
+    ) throws(MCPError) -> (
         project: String?, workspace: String?,
     ) {
         reloadIfNeeded()
-        let project = arguments.getString("project_path").map(PathUtility.expandTilde) ?? projectPath
-        let workspace = arguments.getString("workspace_path").map(PathUtility.expandTilde) ?? workspacePath
+        let project = arguments.getString("project_path").map(PathUtility.expandTilde)
+            ?? projectPath
+        let workspace = arguments.getString("workspace_path").map(PathUtility.expandTilde)
+            ?? workspacePath
+
         if project == nil, workspace == nil {
             // Auto-detect by walking up from cwd; prefer workspace over project
             if let detectedWorkspace = PathUtility.findWorkspacePath() {
                 return (nil, detectedWorkspace)
             }
-            if let detectedProject = PathUtility.findProjectPath() {
-                return (detectedProject, nil)
-            }
+            if let detectedProject = PathUtility.findProjectPath() { return (detectedProject, nil) }
             throw MCPError.invalidParams(
                 "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly.",
             )
@@ -541,27 +503,21 @@ public actor SessionManager {
     /// Session env provides the baseline; per-invocation env keys override session values.
     ///
     /// - Parameter arguments: The tool arguments dictionary (may contain an "env" object).
-    /// - Returns: An `Environment` value to pass to subprocess runners. Returns `.inherit`
-    ///   when no env vars are configured.
+    /// - Returns: An `Environment` value to pass to subprocess runners. Returns `.inherit` when no
+    ///   env vars are configured.
     public func resolveEnvironment(from arguments: [String: Value]) -> Environment {
         reloadIfNeeded()
         var merged: [String: String] = env ?? [:]
 
         // Per-invocation env overrides session defaults
         if case let .object(envDict) = arguments["env"] {
-            for (key, value) in envDict {
-                if case let .string(str) = value {
-                    merged[key] = str
-                }
-            }
+            for (key, value) in envDict { if case let .string(str) = value { merged[key] = str } }
         }
 
         guard !merged.isEmpty else { return .inherit }
 
         var overrides: [Environment.Key: String?] = [:]
-        for (key, value) in merged {
-            overrides[Environment.Key(stringLiteral: key)] = value
-        }
+        for (key, value) in merged { overrides[Environment.Key(stringLiteral: key)] = value }
         return Environment.inherit.updating(overrides)
     }
 
@@ -572,16 +528,10 @@ public actor SessionManager {
     /// - Throws: MCPError.invalidParams if no package path is available.
     public func resolvePackagePath(from arguments: [String: Value]) throws(MCPError) -> String {
         reloadIfNeeded()
-        if let value = arguments.getString("package_path") {
-            return PathUtility.expandTilde(value)
-        }
-        if let session = packagePath {
-            return session
-        }
+        if let value = arguments.getString("package_path") { return PathUtility.expandTilde(value) }
+        if let session = packagePath { return session }
         // Auto-detect by walking up from cwd looking for Package.swift
-        if let detected = PathUtility.findPackageRoot() {
-            return detected
-        }
+        if let detected = PathUtility.findPackageRoot() { return detected }
         throw MCPError.invalidParams(
             "package_path is required. Set it with set_session_defaults or pass it directly.",
         )

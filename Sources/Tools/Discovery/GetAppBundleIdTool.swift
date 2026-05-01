@@ -7,7 +7,7 @@ public struct GetAppBundleIdTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -15,10 +15,10 @@ public struct GetAppBundleIdTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "get_app_bundle_id",
             description:
-            "Get the bundle identifier for an iOS/tvOS/watchOS app target from build settings.",
+                "Get the bundle identifier for an iOS/tvOS/watchOS app target from build settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -56,6 +56,7 @@ public struct GetAppBundleIdTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Get project/workspace path
         let projectPath: String?
+
         if case let .string(value) = arguments["project_path"] {
             projectPath = value
         } else {
@@ -63,6 +64,7 @@ public struct GetAppBundleIdTool: Sendable {
         }
 
         let workspacePath: String?
+
         if case let .string(value) = arguments["workspace_path"] {
             workspacePath = value
         } else {
@@ -71,6 +73,7 @@ public struct GetAppBundleIdTool: Sendable {
 
         // Get scheme
         let scheme: String
+
         if case let .string(value) = arguments["scheme"] {
             scheme = value
         } else if let sessionScheme = await sessionManager.scheme {
@@ -83,6 +86,7 @@ public struct GetAppBundleIdTool: Sendable {
 
         // Get configuration
         let configuration: String
+
         if case let .string(value) = arguments["configuration"] {
             configuration = value
         } else if let sessionConfig = await sessionManager.configuration {

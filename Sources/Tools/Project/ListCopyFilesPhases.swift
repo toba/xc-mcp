@@ -7,12 +7,10 @@ import Foundation
 public struct ListCopyFilesPhases: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_copy_files_phases",
             description: "List all Copy Files build phases for a target",
             inputSchema: .object([
@@ -37,8 +35,7 @@ public struct ListCopyFilesPhases: Sendable {
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"]
-        else {
+              case let .string(targetName) = arguments["target_name"] else {
             throw MCPError.invalidParams("project_path and target_name are required")
         }
 
@@ -48,15 +45,17 @@ public struct ListCopyFilesPhases: Sendable {
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
-            else {
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
                 return CallTool.Result(
-                    content: [.text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
+                    content: [
+                        .text(
+                            text: "Target '\(targetName)' not found in project",
+                            annotations: nil,
+                            _meta: nil,
+                        )
+                    ],
                 )
             }
 
@@ -64,11 +63,13 @@ public struct ListCopyFilesPhases: Sendable {
 
             if copyFilesPhases.isEmpty {
                 return CallTool.Result(
-                    content: [.text(
-                        text: "No Copy Files build phases found in target '\(targetName)'",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
+                    content: [
+                        .text(
+                            text: "No Copy Files build phases found in target '\(targetName)'",
+                            annotations: nil,
+                            _meta: nil,
+                        )
+                    ],
                 )
             }
 
@@ -77,6 +78,7 @@ public struct ListCopyFilesPhases: Sendable {
             for phase in copyFilesPhases {
                 let phaseName = phase.name ?? "(unnamed)"
                 let destination: String
+
                 if let subfolder = phase.dstSubfolderSpec {
                     destination = destinationString(subfolder)
                 } else if let subfolder = phase.dstSubfolder {
@@ -89,9 +91,7 @@ public struct ListCopyFilesPhases: Sendable {
 
                 output += "- \(phaseName)\n"
                 output += "  Destination: \(destination)\n"
-                if !dstPath.isEmpty {
-                    output += "  Subpath: \(dstPath)\n"
-                }
+                if !dstPath.isEmpty { output += "  Subpath: \(dstPath)\n" }
                 output += "  Files: \(fileCount)\n"
 
                 if let files = phase.files, !files.isEmpty {
@@ -110,7 +110,7 @@ public struct ListCopyFilesPhases: Sendable {
                     text: output.trimmingCharacters(in: .whitespacesAndNewlines),
                     annotations: nil,
                     _meta: nil,
-                ),
+                )
             ])
         } catch {
             throw MCPError.internalError(
@@ -121,30 +121,18 @@ public struct ListCopyFilesPhases: Sendable {
 
     private func destinationString(_ subfolder: PBXCopyFilesBuildPhase.SubFolder) -> String {
         switch subfolder {
-            case .absolutePath:
-                return "Absolute Path"
-            case .productsDirectory:
-                return "Products Directory"
-            case .wrapper:
-                return "Wrapper"
-            case .executables:
-                return "Executables"
-            case .resources:
-                return "Resources"
-            case .javaResources:
-                return "Java Resources"
-            case .frameworks:
-                return "Frameworks"
-            case .sharedFrameworks:
-                return "Shared Frameworks"
-            case .sharedSupport:
-                return "Shared Support"
-            case .plugins:
-                return "Plugins"
-            case .other:
-                return "Other"
-            @unknown default:
-                return "Unknown"
+            case .absolutePath: "Absolute Path"
+            case .productsDirectory: "Products Directory"
+            case .wrapper: "Wrapper"
+            case .executables: "Executables"
+            case .resources: "Resources"
+            case .javaResources: "Java Resources"
+            case .frameworks: "Frameworks"
+            case .sharedFrameworks: "Shared Frameworks"
+            case .sharedSupport: "Shared Support"
+            case .plugins: "Plugins"
+            case .other: "Other"
+            @unknown default: "Unknown"
         }
     }
 }

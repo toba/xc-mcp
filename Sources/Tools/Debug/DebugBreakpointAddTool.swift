@@ -5,15 +5,13 @@ import Foundation
 public struct DebugBreakpointAddTool: Sendable {
     private let lldbRunner: LLDBRunner
 
-    public init(lldbRunner: LLDBRunner = LLDBRunner()) {
-        self.lldbRunner = lldbRunner
-    }
+    public init(lldbRunner: LLDBRunner = .init()) { self.lldbRunner = lldbRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_breakpoint_add",
             description:
-            "Add a breakpoint to a debugging session.",
+                "Add a breakpoint to a debugging session.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -71,6 +69,7 @@ public struct DebugBreakpointAddTool: Sendable {
 
         do {
             let result: LLDBResult
+
             if let symbol {
                 result = try await lldbRunner.setBreakpoint(pid: targetPID, symbol: symbol)
             } else if let file, let line {
@@ -80,9 +79,11 @@ public struct DebugBreakpointAddTool: Sendable {
             }
 
             var message = "Breakpoint added"
+
             if let symbol {
                 message += " at symbol '\(symbol)'"
-            } else if let file, let line {
+            } else if let file, let line
+            {
                 message += " at \(file):\(line)"
             }
             message += "\n\n\(result.output)"

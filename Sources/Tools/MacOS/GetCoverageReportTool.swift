@@ -6,10 +6,10 @@ public struct GetCoverageReportTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "get_coverage_report",
             description:
-            "Get a code coverage report from an .xcresult bundle. Shows per-target coverage breakdown sorted by coverage ascending (weakest first). Use after running tests with code coverage enabled.",
+                "Get a code coverage report from an .xcresult bundle. Shows per-target coverage breakdown sorted by coverage ascending (weakest first). Use after running tests with code coverage enabled.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -50,16 +50,15 @@ public struct GetCoverageReportTool: Sendable {
         }
 
         let parser = CoverageParser()
-        guard
-            let report = await parser.parseCoverageReport(
-                xcresultPath: resultBundlePath,
-                targetFilter: targetFilter,
-            )
-        else {
+        guard let report = await parser.parseCoverageReport(
+            xcresultPath: resultBundlePath,
+            targetFilter: targetFilter,
+        ) else {
             return CallTool.Result(content: [
-                .text(text:
-                    "No coverage data found in the result bundle. Ensure tests were run with code coverage enabled.",
-                    annotations: nil, _meta: nil),
+                .text(
+                    text:
+                        "No coverage data found in the result bundle. Ensure tests were run with code coverage enabled.",
+                    annotations: nil, _meta: nil)
             ])
         }
 
@@ -71,43 +70,39 @@ public struct GetCoverageReportTool: Sendable {
         var lines: [String] = []
         lines.append("Code Coverage Report")
         lines.append("====================")
-        lines.append(
-            String(
-                format: "Overall: %.1f%% (%d/%d lines)",
-                report.lineCoverage,
-                report.coveredLines,
-                report.executableLines,
-            ),
-        )
+        lines.append(String(
+            format: "Overall: %.1f%% (%d/%d lines)",
+            report.lineCoverage,
+            report.coveredLines,
+            report.executableLines,
+        ))
         lines.append("")
 
         // Sort targets by coverage ascending (weakest first)
         let sorted = report.targets.sorted { $0.lineCoverage < $1.lineCoverage }
 
         lines.append("Targets:")
+
         for target in sorted {
-            lines.append(
-                String(
-                    format: "  %@: %.1f%% (%d/%d lines)",
-                    target.name,
-                    target.lineCoverage,
-                    target.coveredLines,
-                    target.executableLines,
-                ),
-            )
+            lines.append(String(
+                format: "  %@: %.1f%% (%d/%d lines)",
+                target.name,
+                target.lineCoverage,
+                target.coveredLines,
+                target.executableLines,
+            ))
 
             if showFiles {
                 let sortedFiles = target.files.sorted { $0.lineCoverage < $1.lineCoverage }
+
                 for file in sortedFiles {
-                    lines.append(
-                        String(
-                            format: "    %@: %.1f%% (%d/%d)",
-                            file.name,
-                            file.lineCoverage,
-                            file.coveredLines,
-                            file.executableLines,
-                        ),
-                    )
+                    lines.append(String(
+                        format: "    %@: %.1f%% (%d/%d)",
+                        file.name,
+                        file.lineCoverage,
+                        file.coveredLines,
+                        file.executableLines,
+                    ))
                 }
             }
         }

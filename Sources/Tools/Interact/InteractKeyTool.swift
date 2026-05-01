@@ -5,15 +5,13 @@ import Foundation
 public struct InteractKeyTool: Sendable {
     private let interactRunner: InteractRunner
 
-    public init(interactRunner: InteractRunner) {
-        self.interactRunner = interactRunner
-    }
+    public init(interactRunner: InteractRunner) { self.interactRunner = interactRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "interact_key",
             description:
-            "Send a keyboard event via CGEvent. Supports key names like 'return', 'tab', 'escape', "
+                "Send a keyboard event via CGEvent. Supports key names like 'return', 'tab', 'escape', "
                 + "'space', 'a'-'z', '0'-'9', 'f1'-'f12', 'up', 'down', 'left', 'right', 'delete', etc. "
                 + "Optional modifier keys: 'command', 'shift', 'option', 'control'.",
             inputSchema: .object([
@@ -46,9 +44,7 @@ public struct InteractKeyTool: Sendable {
         try interactRunner.sendKeyEvent(keyName: key, modifiers: modifiers)
 
         var desc = "Sent key: \(key)"
-        if !modifiers.isEmpty {
-            desc += " with modifiers: \(modifiers.joined(separator: "+"))"
-        }
+        if !modifiers.isEmpty { desc += " with modifiers: \(modifiers.joined(separator: "+"))" }
         return CallTool.Result(content: [.text(text: desc, annotations: nil, _meta: nil)])
     }
 }

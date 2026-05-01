@@ -6,16 +6,16 @@ public struct StartSimLogCapTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "start_sim_log_cap",
             description:
-            "Start capturing logs from a simulator. Logs are written to a file and can be stopped with stop_sim_log_cap.",
+                "Start capturing logs from a simulator. Logs are written to a file and can be stopped with stop_sim_log_cap.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -53,6 +53,7 @@ public struct StartSimLogCapTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Get simulator
         let simulator: String
+
         if case let .string(value) = arguments["simulator"] {
             simulator = value
         } else if let sessionSimulator = await sessionManager.simulatorUDID {
@@ -65,6 +66,7 @@ public struct StartSimLogCapTool: Sendable {
 
         // Get output file
         let outputFile: String
+
         if case let .string(value) = arguments["output_file"] {
             outputFile = value
         } else {
@@ -84,7 +86,8 @@ public struct StartSimLogCapTool: Sendable {
                 args.append(contentsOf: [
                     "--predicate", "processImagePath CONTAINS \"\(bundleId)\"",
                 ])
-            } else if let predicate {
+            } else if let predicate
+            {
                 args.append(contentsOf: ["--predicate", predicate])
             }
 
@@ -95,9 +98,7 @@ public struct StartSimLogCapTool: Sendable {
             var message = "Started log capture for simulator '\(simulator)'\n"
             message += "Output file: \(outputFile)\n"
             message += "Process ID: \(pid)\n"
-            if let bundleId {
-                message += "Filtering for bundle: \(bundleId)\n"
-            }
+            if let bundleId { message += "Filtering for bundle: \(bundleId)\n" }
             message += "\nUse stop_sim_log_cap to stop the capture."
 
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])

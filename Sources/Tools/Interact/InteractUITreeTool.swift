@@ -5,33 +5,28 @@ import Foundation
 public struct InteractUITreeTool: Sendable {
     private let interactRunner: InteractRunner
 
-    public init(interactRunner: InteractRunner) {
-        self.interactRunner = interactRunner
-    }
+    public init(interactRunner: InteractRunner) { self.interactRunner = interactRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "interact_ui_tree",
             description:
-            "Get the UI element tree of a macOS application using the Accessibility API. "
+                "Get the UI element tree of a macOS application using the Accessibility API. "
                 + "Returns a hierarchical tree of UI elements with assigned IDs for use with other interact_ tools. "
-                +
-                "Requires Accessibility permission in System Settings > Privacy & Security > Accessibility.",
-            inputSchema: .object(
-                [
-                    "type": .string("object"),
-                    "properties": .object(
-                        InteractRunner.appResolutionSchemaProperties.merging([
-                            "max_depth": .object([
-                                "type": .string("integer"),
-                                "description": .string(
-                                    "Maximum depth to traverse the element tree. Default 3.",
-                                ),
-                            ]),
-                        ]) { _, new in new },
-                    ),
-                    "required": .array([]),
-                ],
+                + "Requires Accessibility permission in System Settings > Privacy & Security > Accessibility.",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object(InteractRunner.appResolutionSchemaProperties.merging([
+                    "max_depth": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Maximum depth to traverse the element tree. Default 3.",
+                        ),
+                    ])
+                ]) { _, new in new },
+                ),
+                "required": .array([]),
+            ],
             ),
             annotations: .readOnly,
         )
@@ -51,14 +46,14 @@ public struct InteractUITreeTool: Sendable {
         var lines: [String] = []
         lines.append("UI Tree for PID \(pid) (depth=\(maxDepth), \(tree.count) elements):")
         lines.append("")
-        for (element, _) in tree {
-            lines.append(element.summary())
-        }
+        for (element, _) in tree { lines.append(element.summary()) }
 
-        return CallTool.Result(content: [.text(
-            text: lines.joined(separator: "\n"),
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result(content: [
+            .text(
+                text: lines.joined(separator: "\n"),
+                annotations: nil,
+                _meta: nil,
+            )
+        ])
     }
 }

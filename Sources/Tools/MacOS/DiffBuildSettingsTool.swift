@@ -4,14 +4,14 @@ import Foundation
 
 /// Diffs the resolved build settings between two targets or configurations.
 ///
-/// Runs `xcodebuild -showBuildSettings` for each and outputs only the settings
-/// that differ, replacing the manual workflow of diffing two dumps by hand.
+/// Runs `xcodebuild -showBuildSettings` for each and outputs only the settings that differ,
+/// replacing the manual workflow of diffing two dumps by hand.
 public struct DiffBuildSettingsTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -19,10 +19,10 @@ public struct DiffBuildSettingsTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "diff_build_settings",
             description:
-            "Compare resolved build settings between two targets or two configurations "
+                "Compare resolved build settings between two targets or two configurations "
                 + "of the same target. Shows only the differences. Replaces the manual "
                 + "workflow of running show_build_settings twice and diffing.",
             inputSchema: .object([
@@ -115,38 +115,30 @@ public struct DiffBuildSettingsTool: Sendable {
             let valueB = settingsB[key]
 
             if valueA != valueB {
-                if let filter, !key.localizedCaseInsensitiveContains(filter) {
-                    continue
-                }
+                if let filter, !key.localizedCaseInsensitiveContains(filter) { continue }
                 diffs.append((key: key, valueA: valueA, valueB: valueB))
             }
         }
 
         // Format output
-        let labelA =
-            configA == configB
-                ? targetA
-                : "\(targetA) (\(configA))"
-        let labelB =
-            configA == configB
-                ? targetB
-                : "\(targetB) (\(configB))"
+        let labelA = configA == configB
+            ? targetA
+            : "\(targetA) (\(configA))"
+        let labelB = configA == configB
+            ? targetB
+            : "\(targetB) (\(configB))"
 
         var text = "## Build Settings Diff\n\n"
         text += "**A:** \(labelA)\n"
         text += "**B:** \(labelB)\n"
 
-        if let filter {
-            text += "**Filter:** \(filter)\n"
-        }
+        if let filter { text += "**Filter:** \(filter)\n" }
 
         text += "\n"
 
         if diffs.isEmpty {
             text += "No differences found"
-            if filter != nil {
-                text += " (with current filter)"
-            }
+            if filter != nil { text += " (with current filter)" }
             text += "."
         } else {
             text += "\(diffs.count) setting(s) differ:\n\n"
@@ -181,26 +173,24 @@ public struct DiffBuildSettingsTool: Sendable {
            let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         {
             var settings: [String: String] = [:]
+
             for entry in json {
                 if let buildSettings = entry["buildSettings"] as? [String: Any] {
-                    for (key, value) in buildSettings {
-                        settings[key] = "\(value)"
-                    }
+                    for (key, value) in buildSettings { settings[key] = "\(value)" }
                 }
             }
             if !settings.isEmpty { return settings }
         }
 
-        // Fallback: parse text format "    KEY = VALUE"
+        // Fallback: parse text format " KEY = VALUE"
         var settings: [String: String] = [:]
+
         for line in output.split(separator: "\n") {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard let equalsRange = trimmed.range(of: " = ") else { continue }
-            let key = String(trimmed[trimmed.startIndex ..< equalsRange.lowerBound])
+            let key = String(trimmed[trimmed.startIndex..<equalsRange.lowerBound])
             let value = String(trimmed[equalsRange.upperBound...])
-            if !key.isEmpty {
-                settings[key] = value
-            }
+            if !key.isEmpty { settings[key] = value }
         }
         return settings
     }

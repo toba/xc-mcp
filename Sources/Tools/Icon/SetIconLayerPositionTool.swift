@@ -7,10 +7,10 @@ public struct SetIconLayerPositionTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_icon_layer_position",
             description:
-            "Adjust the scale and offset of a layer or group in a .icon bundle.",
+                "Adjust the scale and offset of a layer or group in a .icon bundle.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -75,39 +75,43 @@ public struct SetIconLayerPositionTool: Sendable {
         let desc: String
 
         switch target {
-        case "group":
-            let existing = manifest.groups[groupIndex].position
-            let newScale = scale ?? existing?.scale ?? 1.0
-            let newOffsetX = offsetX ?? existing?.translationInPoints.first ?? 0
-            let newOffsetY = offsetY ?? (existing?.translationInPoints.count ?? 0 > 1
-                ? existing!.translationInPoints[1] : 0)
-            manifest.groups[groupIndex].position = IconManifest.Position(
-                scale: newScale, translationInPoints: [newOffsetX, newOffsetY],
-            )
-            desc = "group \(groupIndex) → scale=\(newScale), offset=[\(newOffsetX), \(newOffsetY)]"
-
-        case "layer":
-            guard let layerIndex else {
-                throw MCPError.invalidParams("layer_index is required when target is 'layer'")
-            }
-            let layers = manifest.groups[groupIndex].layers
-            guard layerIndex >= 0, layerIndex < layers.count else {
-                throw MCPError.invalidParams(
-                    "layer_index \(layerIndex) out of range (0..<\(layers.count))"
+            case "group":
+                let existing = manifest.groups[groupIndex].position
+                let newScale = scale ?? existing?.scale ?? 1.0
+                let newOffsetX = offsetX ?? existing?.translationInPoints.first ?? 0
+                let newOffsetY = offsetY
+                    ?? (existing?.translationInPoints.count ?? 0 > 1
+                        ? existing!.translationInPoints[1]
+                        : 0)
+                manifest.groups[groupIndex].position = IconManifest.Position(
+                    scale: newScale, translationInPoints: [newOffsetX, newOffsetY],
                 )
-            }
-            let existing = manifest.groups[groupIndex].layers[layerIndex].position
-            let newScale = scale ?? existing?.scale ?? 1.0
-            let newOffsetX = offsetX ?? existing?.translationInPoints.first ?? 0
-            let newOffsetY = offsetY ?? (existing?.translationInPoints.count ?? 0 > 1
-                ? existing!.translationInPoints[1] : 0)
-            manifest.groups[groupIndex].layers[layerIndex].position = IconManifest.Position(
-                scale: newScale, translationInPoints: [newOffsetX, newOffsetY],
-            )
-            desc = "layer \(layerIndex) in group \(groupIndex) → scale=\(newScale), offset=[\(newOffsetX), \(newOffsetY)]"
+                desc =
+                    "group \(groupIndex) → scale=\(newScale), offset=[\(newOffsetX), \(newOffsetY)]"
 
-        default:
-            throw MCPError.invalidParams("target must be 'layer' or 'group'")
+            case "layer":
+                guard let layerIndex else {
+                    throw MCPError.invalidParams("layer_index is required when target is 'layer'")
+                }
+                let layers = manifest.groups[groupIndex].layers
+                guard layerIndex >= 0, layerIndex < layers.count else {
+                    throw MCPError.invalidParams(
+                        "layer_index \(layerIndex) out of range (0..<\(layers.count))"
+                    )
+                }
+                let existing = manifest.groups[groupIndex].layers[layerIndex].position
+                let newScale = scale ?? existing?.scale ?? 1.0
+                let newOffsetX = offsetX ?? existing?.translationInPoints.first ?? 0
+                let newOffsetY = offsetY
+                    ?? (existing?.translationInPoints.count ?? 0 > 1
+                        ? existing!.translationInPoints[1]
+                        : 0)
+                manifest.groups[groupIndex].layers[layerIndex].position = IconManifest.Position(
+                    scale: newScale, translationInPoints: [newOffsetX, newOffsetY],
+                )
+                desc = "layer \(layerIndex) in group \(groupIndex) → scale=\(newScale), offset=[\(newOffsetX), \(newOffsetY)]"
+
+            default: throw MCPError.invalidParams("target must be 'layer' or 'group'")
         }
 
         try manifest.write(to: bundlePath)

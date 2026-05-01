@@ -3,17 +3,15 @@ import Foundation
 import Subprocess
 import Synchronization
 
-/// Thread-safe one-shot wrapper around a `CheckedContinuation`.
+/// Thread-safe one-shot wrapper around a `CheckedContinuation` .
 ///
-/// Ensures the continuation is resumed exactly once, even when multiple
-/// threads race to complete it (e.g., a reader thread and a timeout handler).
+/// Ensures the continuation is resumed exactly once, even when multiple threads race to complete it
+/// (e.g., a reader thread and a timeout handler).
 private final class OneShotContinuation<T: Sendable>: Sendable {
     private let continuation: CheckedContinuation<T, any Error>
     private let resumed = Mutex(false)
 
-    init(_ continuation: CheckedContinuation<T, any Error>) {
-        self.continuation = continuation
-    }
+    init(_ continuation: CheckedContinuation<T, any Error>) { self.continuation = continuation }
 
     /// Resumes with a value. Returns true if this call won the race.
     @discardableResult
@@ -42,9 +40,8 @@ private final class OneShotContinuation<T: Sendable>: Sendable {
 
 /// Opens a pseudo-TTY pair and returns (primary, replica) file descriptors.
 ///
-/// LLDB suppresses the interactive `(lldb) ` prompt when stdin is a pipe.
-/// Using a PTY makes LLDB believe it's connected to a terminal, so it emits
-/// prompts that `readUntilPrompt()` can detect.
+/// LLDB suppresses the interactive `(lldb) ` prompt when stdin is a pipe. Using a PTY makes LLDB
+/// believe it's connected to a terminal, so it emits prompts that `readUntilPrompt()` can detect.
 private func openPTY() throws(LLDBError) -> (primary: Int32, replica: Int32) {
     let primary = posix_openpt(O_RDWR | O_NOCTTY)
     guard primary >= 0 else {
@@ -70,8 +67,8 @@ private func openPTY() throws(LLDBError) -> (primary: Int32, replica: Int32) {
         )
     }
 
-    // Disable echo and canonical mode on the replica so we don't get
-    // our own commands echoed back through the PTY driver.
+    // Disable echo and canonical mode on the replica so we don't get our own commands echoed back
+    // through the PTY driver.
     var attrs = termios()
     tcgetattr(replica, &attrs)
     attrs.c_lflag &= ~UInt(ECHO | ICANON)
@@ -82,12 +79,12 @@ private func openPTY() throws(LLDBError) -> (primary: Int32, replica: Int32) {
 
 /// A persistent LLDB process that stays alive across tool calls.
 ///
-/// Instead of spawning a new `lldb --batch` process for each command,
-/// `LLDBSession` keeps a single LLDB process running and sends commands
-/// via stdin, reading responses until the `(lldb) ` prompt reappears.
+/// Instead of spawning a new `lldb --batch` process for each command, `LLDBSession` keeps a single
+/// LLDB process running and sends commands via stdin, reading responses until the `(lldb) ` prompt
+/// reappears.
 ///
-/// Uses a pseudo-TTY so LLDB emits interactive prompts.
-/// The state of the debugged process as tracked by the LLDB session.
+/// Uses a pseudo-TTY so LLDB emits interactive prompts. The state of the debugged process as
+/// tracked by the LLDB session.
 public enum ProcessState: Sendable, Equatable {
     /// State is not yet known.
     case unknown
@@ -130,19 +127,13 @@ public actor LLDBSession {
     public private(set) var processState: ProcessState = .unknown
 
     /// Whether the LLDB process is still running and the session is usable.
-    public var isAlive: Bool {
-        process.isRunning && !isPoisoned
-    }
+    public var isAlive: Bool { process.isRunning && !isPoisoned }
 
     /// Updates the target PID (e.g. after a `--waitfor` attach resolves).
-    public func setTargetPID(_ pid: Int32) {
-        targetPID = pid
-    }
+    public func setTargetPID(_ pid: Int32) { targetPID = pid }
 
     /// Updates the tracked process state.
-    public func setProcessState(_ state: ProcessState) {
-        processState = state
-    }
+    public func setProcessState(_ state: ProcessState) { processState = state }
 
     /// Creates a new persistent LLDB session attached to a process.
     ///
@@ -151,7 +142,7 @@ public actor LLDBSession {
     /// - Parameters:
     ///   - pid: The process ID to debug.
     ///   - commandTimeout: Maximum time to wait for a command response (default 30s).
-    /// - Throws: If LLDB fails to start or attach.
+    ///   - Throws: If LLDB fails to start or attach.
     public init(pid: Int32, commandTimeout: TimeInterval = 30) throws(LLDBError) {
         targetPID = pid
         self.commandTimeout = commandTimeout
@@ -198,14 +189,15 @@ public actor LLDBSession {
 
     /// Launches a new process under the debugger.
     ///
-    /// Must be called exactly once after `init` (instead of `attach`) before sending other commands.
+    /// Must be called exactly once after `init` (instead of `attach` ) before sending other
+    /// commands.
     ///
     /// - Parameters:
     ///   - executablePath: Path to the executable to launch.
     ///   - environment: Environment variables to set before launch.
     ///   - arguments: Command-line arguments to pass to the process.
     ///   - stopAtEntry: If true, stops at the entry point before running.
-    /// - Returns: The launch command output.
+    ///   - Returns: The launch command output.
     @discardableResult
     public func launch(
         executablePath: String,
@@ -228,9 +220,8 @@ public actor LLDBSession {
 
         // Build launch command
         var launchCommand = "process launch"
-        if stopAtEntry {
-            launchCommand += " --stop-at-entry"
-        }
+        if stopAtEntry { launchCommand += " --stop-at-entry" }
+
         if !arguments.isEmpty {
             let escapedArgs = arguments.map { "\"\($0)\"" }.joined(separator: " ")
             launchCommand += " -- \(escapedArgs)"
@@ -244,9 +235,7 @@ public actor LLDBSession {
         ) {
             let match = launchOutput[range]
             let digits = match.split(separator: " ")[1]
-            if let pid = Int32(digits) {
-                targetPID = pid
-            }
+            if let pid = Int32(digits) { targetPID = pid }
         }
 
         return fileOutput + "\n" + launchOutput
@@ -254,16 +243,16 @@ public actor LLDBSession {
 
     /// Drains any pending LLDB output that accumulated asynchronously.
     ///
-    /// After `sendCommandNoWait` (used for `continue`), LLDB may emit output
-    /// when the process stops (breakpoint hit, crash, signal). This output
-    /// sits in the PTY buffer. If not drained, `readUntilPrompt` would return
-    /// the stale output instead of the response to the next command.
+    /// After `sendCommandNoWait` (used for `continue` ), LLDB may emit output when the process
+    /// stops (breakpoint hit, crash, signal). This output sits in the PTY buffer. If not drained,
+    /// `readUntilPrompt` would return the stale output instead of the response to the next command.
     ///
-    /// Uses `poll()` to check for pending data without blocking, then reads
-    /// complete prompt-delimited chunks via `readUntilPrompt()`.
+    /// Uses `poll()` to check for pending data without blocking, then reads complete
+    /// prompt-delimited chunks via `readUntilPrompt()` .
     func drainPendingOutput() async {
         let fd = stdout.fileDescriptor
-        for _ in 0 ..< 10 {
+
+        for _ in 0..<10 {
             var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
             let result = poll(&pollFD, 1, 0)
             guard result > 0, pollFD.revents & Int16(POLLIN) != 0 else { return }
@@ -292,6 +281,7 @@ public actor LLDBSession {
         await drainPendingOutput()
 
         let commandData = Data((command + "\n").utf8)
+
         do {
             try stdin.write(contentsOf: commandData)
         } catch {
@@ -308,8 +298,8 @@ public actor LLDBSession {
 
     /// Sends a command without waiting for the prompt to return.
     ///
-    /// Used for commands like `continue` where LLDB won't show a prompt
-    /// until the process stops again. Returns immediately with a confirmation message.
+    /// Used for commands like `continue` where LLDB won't show a prompt until the process stops
+    /// again. Returns immediately with a confirmation message.
     ///
     /// - Parameter command: The LLDB command to execute.
     /// - Throws: ``LLDBError/commandFailed(_:)`` if the process has exited.
@@ -324,6 +314,7 @@ public actor LLDBSession {
         }
 
         let commandData = Data((command + "\n").utf8)
+
         do {
             try stdin.write(contentsOf: commandData)
         } catch {
@@ -342,26 +333,23 @@ public actor LLDBSession {
 
             let pid = process.processIdentifier
             let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(2))
+
             if !exited, process.isRunning {
-                process.terminate() // SIGTERM
+                process.terminate()  // SIGTERM
                 let exitedAfterTerm = await ProcessResult.waitForProcessExit(
                     pid: pid,
                     timeout: .seconds(3),
                 )
-                if !exitedAfterTerm, process.isRunning {
-                    kill(pid, SIGKILL)
-                }
+                if !exitedAfterTerm, process.isRunning { kill(pid, SIGKILL) }
             }
         }
-        for fd in ptyFDs {
-            close(fd)
-        }
+        for fd in ptyFDs { close(fd) }
     }
 
     /// Reads output from LLDB until the `(lldb) ` prompt appears.
     ///
-    /// Uses a lock-guarded flag to ensure the continuation is resumed exactly once.
-    /// On timeout, marks the session as poisoned so it will be recreated on next use.
+    /// Uses a lock-guarded flag to ensure the continuation is resumed exactly once. On timeout,
+    /// marks the session as poisoned so it will be recreated on next use.
     func readUntilPrompt() async throws(LLDBError) -> String {
         let promptMarker = "(lldb) "
 
@@ -378,29 +366,31 @@ public actor LLDBSession {
                     var buffer = Data()
                     while true {
                         let chunk = stdout.availableData
+
                         if chunk.isEmpty {
                             // EOF — process exited
                             gate.resume(returning: accumulated)
                             return
                         }
                         buffer.append(chunk)
+
                         if let str = String(data: buffer, encoding: .utf8) {
                             buffer = Data()
                             accumulated += str
                             partialOutput.withLock { $0 = accumulated }
+
                             if accumulated.hasSuffix(promptMarker) {
                                 // Strip the trailing prompt from the output
                                 let endIndex = accumulated.index(
                                     accumulated.endIndex, offsetBy: -promptMarker.count,
                                 )
                                 gate
-                                    .resume(
-                                        returning: String(
-                                            accumulated[
-                                                accumulated
-                                                    .startIndex ..< endIndex,
-                                            ],
-                                        ),
+                                    .resume(returning: String(
+                                        accumulated[
+                                            accumulated
+                                                .startIndex..<endIndex,
+                                        ],
+                                    ),
                                     )
                                 return
                             }
@@ -418,17 +408,14 @@ public actor LLDBSession {
                         detail = "Timed out waiting for LLDB response (no output received)"
                     } else {
                         let maxChars = 2000
-                        let truncated =
-                            partial.count > maxChars
-                                ? "...\(partial.suffix(maxChars))" : partial
-                        detail = "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
+                        let truncated = partial.count > maxChars
+                            ? "...\(partial.suffix(maxChars))"
+                            : partial
+                        detail =
+                            "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
                     }
                     if gate.resume(throwing: LLDBError.commandFailed(detail)) {
-                        // Mark session as poisoned. The reader thread may still be alive
-                        // consuming stdout, but we won't reuse this session.
-                        if let self {
-                            await markPoisoned()
-                        }
+                        if let self { await markPoisoned() }
                     }
                 }
             }
@@ -440,9 +427,7 @@ public actor LLDBSession {
     }
 
     /// Marks this session as poisoned so it will be discarded and recreated.
-    private func markPoisoned() {
-        isPoisoned = true
-    }
+    private func markPoisoned() { isPoisoned = true }
 
     /// Parses LLDB output and updates the tracked process state.
     private func updateProcessState(from output: String) {
@@ -456,17 +441,17 @@ public actor LLDBSession {
             processState = .stopped(reason: reason)
         } else if output.contains("Process"), output.contains("stopped") {
             processState = .stopped(reason: nil)
-        } else if output.contains("Process"), output.contains("resuming") {
+        } else if output.contains("Process"), output.contains("resuming")
+        {
             processState = .running
         }
     }
 
     /// Interrupts a running process and waits for the stop notification.
     ///
-    /// `process interrupt` is asynchronous — LLDB may return its prompt before the
-    /// target actually stops. This method sends the command, then polls for the
-    /// async stop notification (up to `timeout`) and updates `processState` once
-    /// the stop is confirmed.
+    /// `process interrupt` is asynchronous — LLDB may return its prompt before the target actually
+    /// stops. This method sends the command, then polls for the async stop notification (up to
+    /// `timeout` ) and updates `processState` once the stop is confirmed.
     ///
     /// - Parameter timeout: Maximum time to wait for the stop. Defaults to 5 seconds.
     /// - Returns: The combined output from the interrupt and stop notification.
@@ -485,6 +470,7 @@ public actor LLDBSession {
         // Poll for the async stop notification
         let deadline = ContinuousClock.now + timeout
         let fd = stdout.fileDescriptor
+
         while ContinuousClock.now < deadline {
             var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
             let remaining = deadline - .now
@@ -513,20 +499,17 @@ public actor LLDBSession {
     /// Extracts the stop reason string from LLDB output, if present.
     private func extractStopReason(from output: String) -> String? {
         guard let range = output.range(of: #"stop reason = (.+)"#, options: .regularExpression)
-        else {
-            return nil
-        }
+        else { return nil }
         return String(output[range]).replacingOccurrences(of: "stop reason = ", with: "")
     }
 
     /// Checks if the debugged process crashed shortly after a `continue` command.
     ///
-    /// After launching and continuing, some processes crash immediately (e.g. dyld
-    /// symbol resolution failures, missing frameworks). This method sleeps for `delay`
-    /// to give the process time to crash, then uses `poll()` to check if LLDB has
-    /// emitted any output (crash info + prompt). If data is available, reads it via
-    /// `readUntilPrompt()` and returns the crash output. If no data is pending, the
-    /// process is running normally and returns `nil`.
+    /// After launching and continuing, some processes crash immediately (e.g. dyld symbol
+    /// resolution failures, missing frameworks). This method sleeps for `delay` to give the process
+    /// time to crash, then uses `poll()` to check if LLDB has emitted any output (crash info +
+    /// prompt). If data is available, reads it via `readUntilPrompt()` and returns the crash
+    /// output. If no data is pending, the process is running normally and returns `nil` .
     ///
     /// Does **not** poison the session — on timeout the session remains usable.
     ///
@@ -539,7 +522,7 @@ public actor LLDBSession {
         "EXC_BAD_ACCESS",
         "EXC_BAD_INSTRUCTION",
         "EXC_CRASH",
-        "Process ", // prefix for "Process NNN exited"
+        "Process ",  // prefix for "Process NNN exited"
     ]
 
     /// Checks whether LLDB output contains indicators of a real crash or process exit.
@@ -550,8 +533,7 @@ public actor LLDBSession {
         }
         // Check for crash-related stop reasons
         for indicator in crashIndicators
-            where indicator.starts(with: "stop reason") || indicator.starts(with: "EXC_")
-        {
+        where indicator.starts(with: "stop reason") || indicator.starts(with: "EXC_") {
             if output.contains(indicator) { return true }
         }
         return false
@@ -562,23 +544,21 @@ public actor LLDBSession {
     ) async -> String? {
         try? await Task.sleep(for: delay)
 
-        // Use poll() to check if LLDB has pending output without blocking.
-        // If the process crashed, LLDB will have emitted stop info + a new prompt.
+        // Use poll() to check if LLDB has pending output without blocking. If the process crashed,
+        // LLDB will have emitted stop info + a new prompt.
         let fd = stdout.fileDescriptor
         var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
         let pollResult = poll(&pollFD, 1, 0)
 
-        guard pollResult > 0, pollFD.revents & Int16(POLLIN) != 0 else {
-            return nil // No data available — process is running normally
-        }
+        guard pollResult > 0, pollFD.revents & Int16(POLLIN) != 0 else { return nil }
 
-        // Data is available — read it and check for actual crash indicators.
-        // readUntilPrompt should return quickly since data is already buffered.
+        // Data is available — read it and check for actual crash indicators. readUntilPrompt should
+        // return quickly since data is already buffered.
         guard let output = try? await readUntilPrompt() else { return nil }
         updateProcessState(from: output)
 
-        // Only report a crash if the output contains semantic crash indicators.
-        // Benign output (library loads, startup logs, attach noise) is ignored.
+        // Only report a crash if the output contains semantic crash indicators. Benign output
+        // (library loads, startup logs, attach noise) is ignored.
         guard Self.outputIndicatesCrash(output) else { return nil }
         return output
     }
@@ -604,14 +584,10 @@ public actor LLDBSessionManager {
     /// - Parameter pid: The process ID to debug.
     /// - Returns: The LLDB session.
     public func createSession(pid: Int32) async throws(LLDBError) -> LLDBSession {
-        if let existing = sessions[pid], await existing.isAlive {
-            return existing
-        }
+        if let existing = sessions[pid], await existing.isAlive { return existing }
 
         // Clean up any dead or poisoned session for this PID
-        if let old = sessions[pid] {
-            await old.terminate()
-        }
+        if let old = sessions[pid] { await old.terminate() }
         sessions.removeValue(forKey: pid)
 
         let session = try LLDBSession(pid: pid)
@@ -622,15 +598,15 @@ public actor LLDBSessionManager {
 
     /// Creates a new persistent LLDB session that launches a process.
     ///
-    /// Unlike `createSession(pid:)` which attaches to an existing process,
-    /// this launches a new process under the debugger.
+    /// Unlike `createSession(pid:)` which attaches to an existing process, this launches a new
+    /// process under the debugger.
     ///
     /// - Parameters:
     ///   - executablePath: Path to the executable to launch.
     ///   - environment: Environment variables to set before launch.
     ///   - arguments: Command-line arguments to pass to the process.
     ///   - stopAtEntry: If true, stops at the entry point before running.
-    /// - Returns: The LLDB session with the launched process.
+    ///   - Returns: The LLDB session with the launched process.
     public func createLaunchSession(
         executablePath: String,
         environment: [String: String] = [:],
@@ -646,26 +622,25 @@ public actor LLDBSessionManager {
             stopAtEntry: stopAtEntry,
         )
         let pid = await session.targetPID
-        if pid > 0 {
-            sessions[pid] = session
-        }
+        if pid > 0 { sessions[pid] = session }
         return session
     }
 
-    /// Creates an LLDB session that launches an app via `/usr/bin/open` and attaches with `--waitfor`.
+    /// Creates an LLDB session that launches an app via `/usr/bin/open` and attaches with
+    /// `--waitfor` .
     ///
-    /// This mimics Xcode's debugger behavior: launch the app through Launch Services
-    /// (which handles `@rpath`, sandbox setup, and code signing correctly), then attach LLDB.
-    /// This avoids the SIGABRT in dyld that occurs when launching signed/sandboxed macOS apps
-    /// directly via LLDB's `process launch`.
+    /// This mimics Xcode's debugger behavior: launch the app through Launch Services (which handles
+    /// `@rpath` , sandbox setup, and code signing correctly), then attach LLDB. This avoids the
+    /// SIGABRT in dyld that occurs when launching signed/sandboxed macOS apps directly via LLDB's
+    /// `process launch` .
     ///
     /// - Parameters:
     ///   - appPath: Path to the .app bundle.
-    ///   - executableName: Name of the executable inside the bundle (used for `--waitfor`).
-    ///   - arguments: Command-line arguments to pass to the app via `--args`.
+    ///   - executableName: Name of the executable inside the bundle (used for `--waitfor` ).
+    ///   - arguments: Command-line arguments to pass to the app via `--args` .
     ///   - environment: Environment variables to set on the launched process.
     ///   - stopAtEntry: If true, leaves the process stopped after attach.
-    /// - Returns: The LLDB session with the attached process.
+    ///   - Returns: The LLDB session with the attached process.
     public func createOpenAndAttachSession(
         appPath: String,
         executableName: String,
@@ -698,17 +673,13 @@ public actor LLDBSessionManager {
         let openProcess = Process()
         openProcess.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         var openArgs = [appPath]
-        if !arguments.isEmpty {
-            openArgs += ["--args"] + arguments
-        }
+        if !arguments.isEmpty { openArgs += ["--args"] + arguments }
         openProcess.arguments = openArgs
 
         // Pass user environment variables through the open process
         if !environment.isEmpty {
             var env = ProcessInfo.processInfo.environment
-            for (key, value) in environment {
-                env[key] = value
-            }
+            for (key, value) in environment { env[key] = value }
             openProcess.environment = env
         }
 
@@ -736,18 +707,14 @@ public actor LLDBSessionManager {
         ) {
             let match = attachOutput[range]
             let digits = match.split(separator: " ")[1]
-            if let pid = Int32(digits) {
-                await session.setTargetPID(pid)
-            }
+            if let pid = Int32(digits) { await session.setTargetPID(pid) }
         }
 
         // Process is stopped after attach
         await session.setProcessState(.stopped(reason: nil))
 
         let pid = await session.targetPID
-        if pid > 0 {
-            sessions[pid] = session
-        }
+        if pid > 0 { sessions[pid] = session }
 
         // If not stopping at entry, continue execution
         if !stopAtEntry {
@@ -764,9 +731,7 @@ public actor LLDBSessionManager {
     /// - Returns: The session if one exists and is alive (not poisoned), nil otherwise.
     public func getSession(pid: Int32) async -> LLDBSession? {
         guard let session = sessions[pid] else { return nil }
-        if await session.isAlive {
-            return session
-        }
+        if await session.isAlive { return session }
         // Clean up dead or poisoned session
         await session.terminate()
         sessions.removeValue(forKey: pid)
@@ -809,9 +774,7 @@ public actor LLDBSessionManager {
     ///
     /// - Parameter pid: The process ID.
     public func removeSession(pid: Int32) async {
-        if let session = sessions.removeValue(forKey: pid) {
-            await session.terminate()
-        }
+        if let session = sessions.removeValue(forKey: pid) { await session.terminate() }
         // Clean up any bundle ID mappings that pointed to this PID
         bundleIdToPID = bundleIdToPID.filter { $0.value != pid }
     }
@@ -827,27 +790,23 @@ public actor LLDBSessionManager {
     /// Gets all active sessions as a bundle ID to PID mapping.
     ///
     /// - Returns: Dictionary mapping bundle IDs to process IDs.
-    public func getAllSessions() -> [String: Int32] {
-        bundleIdToPID
-    }
+    public func getAllSessions() -> [String: Int32] { bundleIdToPID }
 
     /// Gets or creates a session for a PID.
     ///
     /// - Parameter pid: The process ID.
     /// - Returns: An existing or new LLDB session.
     public func getOrCreateSession(pid: Int32) async throws(LLDBError) -> LLDBSession {
-        if let session = await getSession(pid: pid) {
-            return session
-        }
+        if let session = await getSession(pid: pid) { return session }
         return try await createSession(pid: pid)
     }
 }
 
 /// Wrapper for executing LLDB commands.
 ///
-/// `LLDBRunner` provides a Swift interface for invoking the LLDB debugger.
-/// It uses persistent LLDB sessions that stay alive across tool calls,
-/// so breakpoints persist and repeated attach/detach cycles are avoided.
+/// `LLDBRunner` provides a Swift interface for invoking the LLDB debugger. It uses persistent LLDB
+/// sessions that stay alive across tool calls, so breakpoints persist and repeated attach/detach
+/// cycles are avoided.
 ///
 /// ## Example
 ///
@@ -877,10 +836,11 @@ public struct LLDBRunner: Sendable {
 
     /// Checks that the process is stopped and throws a descriptive error if not.
     ///
-    /// Use this before sending commands that require a stopped process (e.g. `thread backtrace`,
-    /// `frame variable`, `thread step-*`, expression evaluation).
+    /// Use this before sending commands that require a stopped process (e.g. `thread backtrace` ,
+    /// `frame variable` , `thread step-*` , expression evaluation).
     public func requireStopped(pid: Int32) async throws(LLDBError) {
         let state = await getProcessState(pid: pid)
+
         if case .running = state {
             throw .commandFailed(
                 "Process \(pid) is running. Interrupt it first (debug_lldb_command with 'process interrupt'), then retry.",
@@ -890,11 +850,12 @@ public struct LLDBRunner: Sendable {
 
     /// Checks process state and returns a warning if the process is crashed.
     ///
-    /// Expression evaluation often fails on crashed processes because the runtime
-    /// (ObjC/Swift) may not be fully loaded. Returns a warning string if crashed,
-    /// `nil` if the process is in a usable state.
+    /// Expression evaluation often fails on crashed processes because the runtime (ObjC/Swift) may
+    /// not be fully loaded. Returns a warning string if crashed, `nil` if the process is in a
+    /// usable state.
     public func crashWarning(pid: Int32) async -> String? {
         let state = await getProcessState(pid: pid)
+
         if state.isCrashed {
             if case let .stopped(reason) = state {
                 return
@@ -913,21 +874,22 @@ public struct LLDBRunner: Sendable {
     public func attachToPID(_ pid: Int32) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.createSession(pid: pid)
         let statusOutput = try await session.sendCommand("process status")
-        return LLDBResult(exitCode: 0, stdout: statusOutput, stderr: "")
+        return .init(exitCode: 0, stdout: statusOutput, stderr: "")
     }
 
     /// Launches a process under the debugger.
     ///
-    /// Creates a persistent LLDB session that launches the executable and keeps it
-    /// under debugger control. The returned PID can be used with all other debug commands.
+    /// Creates a persistent LLDB session that launches the executable and keeps it under debugger
+    /// control. The returned PID can be used with all other debug commands.
     ///
     /// - Parameters:
     ///   - executablePath: Path to the executable to launch.
     ///   - environment: Environment variables to set before launch.
     ///   - arguments: Command-line arguments to pass to the process.
     ///   - stopAtEntry: If true, stops at the entry point before running.
-    /// - Returns: The result containing launch output and the PID.
-    /// Timeout for launch sessions — loading executables and symbols takes longer than normal commands.
+    ///   - Returns: The result containing launch output and the PID.
+    /// Timeout for launch sessions — loading executables and symbols takes longer than normal
+    /// commands.
     private static let launchCommandTimeout: TimeInterval = 120
 
     public func launchProcess(
@@ -948,11 +910,11 @@ public struct LLDBRunner: Sendable {
         return (LLDBResult(exitCode: 0, stdout: statusOutput, stderr: ""), pid)
     }
 
-    /// Launches a macOS app via `/usr/bin/open` and attaches LLDB using `--waitfor`.
+    /// Launches a macOS app via `/usr/bin/open` and attaches LLDB using `--waitfor` .
     ///
-    /// This is the correct way to debug signed/sandboxed macOS apps. Launch Services
-    /// handles `@rpath` resolution, sandbox setup, and code signing validation that
-    /// LLDB's `process launch` bypasses (causing SIGABRT in dyld).
+    /// This is the correct way to debug signed/sandboxed macOS apps. Launch Services handles
+    /// `@rpath` resolution, sandbox setup, and code signing validation that LLDB's `process launch`
+    /// bypasses (causing SIGABRT in dyld).
     ///
     /// - Parameters:
     ///   - appPath: Path to the .app bundle.
@@ -960,7 +922,7 @@ public struct LLDBRunner: Sendable {
     ///   - arguments: Command-line arguments to pass to the app.
     ///   - environment: Environment variables to set.
     ///   - stopAtEntry: If true, stops at the entry point before running.
-    /// - Returns: The result containing attach output and the PID.
+    ///   - Returns: The result containing attach output and the PID.
     public func launchViaOpenAndAttach(
         appPath: String,
         executableName: String,
@@ -977,6 +939,7 @@ public struct LLDBRunner: Sendable {
         )
         let pid = await session.targetPID
         let statusOutput: String
+
         if stopAtEntry {
             // Process is stopped — get status directly
             statusOutput = try await session.sendCommand("process status")
@@ -985,9 +948,8 @@ public struct LLDBRunner: Sendable {
             if let crashOutput = await session.checkForEarlyCrash() {
                 // Process stopped shortly after launch — get the backtrace
                 let backtrace = await (try? session.sendCommand("thread backtrace")) ?? ""
-                statusOutput =
-                    "Process crashed immediately after launch\n\n" + crashOutput
-                        + (backtrace.isEmpty ? "" : "\n\nBacktrace:\n" + backtrace)
+                statusOutput = "Process crashed immediately after launch\n\n" + crashOutput
+                    + (backtrace.isEmpty ? "" : "\n\nBacktrace:\n" + backtrace)
             } else {
                 statusOutput = "Process \(pid) launched and running under debugger"
             }
@@ -1000,8 +962,8 @@ public struct LLDBRunner: Sendable {
     /// - Parameter processName: The name of the process to attach to.
     /// - Returns: The result containing attach output.
     public func attachToProcess(_ processName: String) async throws(LLDBError) -> LLDBResult {
-        // For name-based attach, we need a temporary batch approach since
-        // we don't know the PID upfront. Use the old batch method.
+        // For name-based attach, we need a temporary batch approach since we don't know the PID
+        // upfront. Use the old batch method.
         try await runBatch(commands: [
             "process attach --name \"\(processName)\"",
             "process status",
@@ -1014,13 +976,14 @@ public struct LLDBRunner: Sendable {
     /// - Returns: The result containing the detach output.
     public func detach(pid: Int32) async throws(LLDBError) -> LLDBResult {
         let session = await LLDBSessionManager.shared.getSession(pid: pid)
+
         if let session {
             let output = try await session.sendCommand("detach")
             await LLDBSessionManager.shared.removeSession(pid: pid)
             return LLDBResult(exitCode: 0, stdout: output, stderr: "")
         }
         // No existing session — nothing to detach from
-        return LLDBResult(exitCode: 0, stdout: "No active session for PID \(pid)", stderr: "")
+        return .init(exitCode: 0, stdout: "No active session for PID \(pid)", stderr: "")
     }
 
     /// Sets a breakpoint at a symbol (function name).
@@ -1028,12 +991,12 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - symbol: The symbol name to break on (e.g., function name).
-    /// - Returns: The result containing breakpoint information.
+    ///   - Returns: The result containing breakpoint information.
     public func setBreakpoint(pid: Int32, symbol: String) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let setOutput = try await session.sendCommand("breakpoint set --name \"\(symbol)\"")
         let listOutput = try await session.sendCommand("breakpoint list")
-        return LLDBResult(
+        return .init(
             exitCode: 0,
             stdout: setOutput + "\n" + listOutput,
             stderr: "",
@@ -1046,7 +1009,7 @@ public struct LLDBRunner: Sendable {
     ///   - pid: The process ID of the target process.
     ///   - file: The source file path.
     ///   - line: The line number in the source file.
-    /// - Returns: The result containing breakpoint information.
+    ///   - Returns: The result containing breakpoint information.
     public func setBreakpoint(
         pid: Int32,
         file: String,
@@ -1057,7 +1020,7 @@ public struct LLDBRunner: Sendable {
             "breakpoint set --file \"\(file)\" --line \(line)",
         )
         let listOutput = try await session.sendCommand("breakpoint list")
-        return LLDBResult(
+        return .init(
             exitCode: 0,
             stdout: setOutput + "\n" + listOutput,
             stderr: "",
@@ -1071,7 +1034,7 @@ public struct LLDBRunner: Sendable {
     public func listBreakpoints(pid: Int32) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let output = try await session.sendCommand("breakpoint list")
-        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+        return .init(exitCode: 0, stdout: output, stderr: "")
     }
 
     /// Deletes a breakpoint by its ID.
@@ -1079,7 +1042,7 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - breakpointId: The breakpoint ID to delete.
-    /// - Returns: The result containing updated breakpoint list.
+    ///   - Returns: The result containing updated breakpoint list.
     public func deleteBreakpoint(
         pid: Int32,
         breakpointId: Int,
@@ -1087,7 +1050,7 @@ public struct LLDBRunner: Sendable {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let deleteOutput = try await session.sendCommand("breakpoint delete \(breakpointId)")
         let listOutput = try await session.sendCommand("breakpoint list")
-        return LLDBResult(
+        return .init(
             exitCode: 0,
             stdout: deleteOutput + "\n" + listOutput,
             stderr: "",
@@ -1096,10 +1059,9 @@ public struct LLDBRunner: Sendable {
 
     /// Continues execution of a stopped process.
     ///
-    /// This sends the `continue` command without waiting for LLDB's prompt,
-    /// because LLDB won't show a prompt until the process stops again (e.g.,
-    /// at a breakpoint or signal). Waiting would cause a timeout and poison
-    /// the session.
+    /// This sends the `continue` command without waiting for LLDB's prompt, because LLDB won't show
+    /// a prompt until the process stops again (e.g., at a breakpoint or signal). Waiting would
+    /// cause a timeout and poison the session.
     ///
     /// - Parameter pid: The process ID of the target process.
     /// - Returns: The result confirming the process was resumed.
@@ -1107,10 +1069,10 @@ public struct LLDBRunner: Sendable {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         try await session.sendCommandNoWait("continue")
         await session.setProcessState(.running)
-        return LLDBResult(
+        return .init(
             exitCode: 0,
             stdout:
-            "Process \(pid) resumed. Use debug_stack or debug_variables when the process stops at a breakpoint.",
+                "Process \(pid) resumed. Use debug_stack or debug_variables when the process stops at a breakpoint.",
             stderr: "",
         )
     }
@@ -1120,12 +1082,13 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - threadIndex: Optional thread index to get backtrace for (all threads if nil).
-    /// - Returns: The result containing stack trace information.
+    ///   - Returns: The result containing stack trace information.
     public func getStack(
         pid: Int32,
         threadIndex: Int? = nil,
     ) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+
         if let threadIndex {
             _ = try await session.sendCommand("thread select \(threadIndex)")
             let output = try await session.sendCommand("thread backtrace")
@@ -1141,7 +1104,7 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - frameIndex: The stack frame index to inspect (0 is current frame).
-    /// - Returns: The result containing variable information.
+    ///   - Returns: The result containing variable information.
     public func getVariables(
         pid: Int32,
         frameIndex: Int = 0,
@@ -1149,7 +1112,7 @@ public struct LLDBRunner: Sendable {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let selectOutput = try await session.sendCommand("frame select \(frameIndex)")
         let varsOutput = try await session.sendCommand("frame variable")
-        return LLDBResult(
+        return .init(
             exitCode: 0,
             stdout: selectOutput + "\n" + varsOutput,
             stderr: "",
@@ -1161,20 +1124,18 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - command: The LLDB command to execute.
-    /// - Returns: The result containing command output.
+    ///   - Returns: The result containing command output.
     public func executeCommand(pid: Int32, command: String) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let trimmed = command.trimmingCharacters(in: .whitespaces)
 
-        // Route `process interrupt` through the dedicated handler that waits
-        // for the async stop notification — plain sendCommand races with it.
+        // Route `process interrupt` through the dedicated handler that waits for the async stop
+        // notification — plain sendCommand races with it.
         let output: String
-        if trimmed == "process interrupt" || trimmed.hasPrefix("process interrupt ") {
-            output = try await session.interruptProcess()
-        } else {
-            output = try await session.sendCommand(command)
-        }
-        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+        output = trimmed == "process interrupt" || trimmed.hasPrefix("process interrupt ")
+            ? try await session.interruptProcess()
+            : try await session.sendCommand(command)
+        return .init(exitCode: 0, stdout: output, stderr: "")
     }
 
     /// Evaluates an expression in the debugger context.
@@ -1182,9 +1143,9 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - expression: The expression to evaluate.
-    ///   - language: Optional language (`"swift"` or `"objc"`).
+    ///   - language: Optional language ( `"swift"` or `"objc"` ).
     ///   - objectDescription: Whether to use `po` (default true).
-    /// - Returns: The result containing expression output.
+    ///   - Returns: The result containing expression output.
     public func evaluate(
         pid: Int32,
         expression: String,
@@ -1193,6 +1154,7 @@ public struct LLDBRunner: Sendable {
     ) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let command: String
+
         if let language {
             command = "expr -l \(language) -- \(expression)"
         } else if objectDescription {
@@ -1201,7 +1163,7 @@ public struct LLDBRunner: Sendable {
             command = "expr \(expression)"
         }
         let output = try await session.sendCommand(command)
-        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+        return .init(exitCode: 0, stdout: output, stderr: "")
     }
 
     /// Lists threads and optionally selects one.
@@ -1209,10 +1171,11 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - selectIndex: Optional thread index to switch to.
-    /// - Returns: The result containing thread information.
+    ///   - Returns: The result containing thread information.
     public func listThreads(pid: Int32, selectIndex: Int?) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let listOutput = try await session.sendCommand("thread list")
+
         if let selectIndex {
             let selectOutput = try await session.sendCommand("thread select \(selectIndex)")
             let infoOutput = try await session.sendCommand("thread info")
@@ -1222,19 +1185,19 @@ public struct LLDBRunner: Sendable {
                 stderr: "",
             )
         }
-        return LLDBResult(exitCode: 0, stdout: listOutput, stderr: "")
+        return .init(exitCode: 0, stdout: listOutput, stderr: "")
     }
 
     /// Manages watchpoints (add, remove, list).
     ///
     /// - Parameters:
     ///   - pid: The process ID of the target process.
-    ///   - action: The action to perform (`"add"`, `"remove"`, or `"list"`).
+    ///   - action: The action to perform ( `"add"` , `"remove"` , or `"list"` ).
     ///   - variable: Variable name for add action.
     ///   - address: Memory address for add action (alternative to variable).
     ///   - watchpointId: Watchpoint ID for remove action.
     ///   - condition: Optional condition expression for add action.
-    /// - Returns: The result containing watchpoint information.
+    ///   - Returns: The result containing watchpoint information.
     public func manageWatchpoint(
         pid: Int32,
         action: String,
@@ -1244,21 +1207,23 @@ public struct LLDBRunner: Sendable {
         condition: String?,
     ) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+
         switch action {
             case "add":
                 let setOutput: String
+
                 if let variable {
                     setOutput = try await session.sendCommand("watchpoint set variable \(variable)")
                 } else if let address {
                     setOutput =
                         try await session
-                            .sendCommand("watchpoint set expression -- \(address)")
+                        .sendCommand("watchpoint set expression -- \(address)")
                 } else {
-                    throw
-                        LLDBError
+                    throw LLDBError
                         .commandFailed("Either 'variable' or 'address' is required for add")
                 }
                 var output = setOutput
+
                 if let condition {
                     // Extract watchpoint ID from output to apply condition
                     let modOutput = try await session.sendCommand(
@@ -1275,7 +1240,7 @@ public struct LLDBRunner: Sendable {
                 }
                 let deleteOutput =
                     try await session
-                        .sendCommand("watchpoint delete \(watchpointId)")
+                    .sendCommand("watchpoint delete \(watchpointId)")
                 let listOutput = try await session.sendCommand("watchpoint list")
                 return LLDBResult(
                     exitCode: 0,
@@ -1287,8 +1252,7 @@ public struct LLDBRunner: Sendable {
                 let output = try await session.sendCommand("watchpoint list")
                 return LLDBResult(exitCode: 0, stdout: output, stderr: "")
 
-            default:
-                throw LLDBError.commandFailed("Unknown watchpoint action: \(action)")
+            default: throw LLDBError.commandFailed("Unknown watchpoint action: \(action)")
         }
     }
 
@@ -1296,22 +1260,22 @@ public struct LLDBRunner: Sendable {
     ///
     /// - Parameters:
     ///   - pid: The process ID of the target process.
-    ///   - mode: Step mode (`"in"`, `"over"`, `"out"`, or `"instruction"`).
-    /// - Returns: The result containing the new location after stepping.
+    ///   - mode: Step mode ( `"in"` , `"over"` , `"out"` , or `"instruction"` ).
+    ///   - Returns: The result containing the new location after stepping.
     public func step(pid: Int32, mode: String) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let command: String
+
         switch mode {
             case "in": command = "thread step-in"
             case "over": command = "thread step-over"
             case "out": command = "thread step-out"
             case "instruction": command = "thread step-inst"
-            default:
-                throw LLDBError.commandFailed("Unknown step mode: \(mode)")
+            default: throw LLDBError.commandFailed("Unknown step mode: \(mode)")
         }
         let stepOutput = try await session.sendCommand(command)
         let frameOutput = try await session.sendCommand("frame info")
-        return LLDBResult(
+        return .init(
             exitCode: 0,
             stdout: stepOutput + "\n" + frameOutput,
             stderr: "",
@@ -1324,9 +1288,9 @@ public struct LLDBRunner: Sendable {
     ///   - pid: The process ID of the target process.
     ///   - address: The memory address to read (hex string).
     ///   - count: Number of items to read.
-    ///   - format: Output format (`"hex"`, `"bytes"`, `"ascii"`, or `"instruction"`).
+    ///   - format: Output format ( `"hex"` , `"bytes"` , `"ascii"` , or `"instruction"` ).
     ///   - size: Item size in bytes (1, 2, 4, or 8).
-    /// - Returns: The result containing memory contents.
+    ///   - Returns: The result containing memory contents.
     public func readMemory(
         pid: Int32,
         address: String,
@@ -1336,6 +1300,7 @@ public struct LLDBRunner: Sendable {
     ) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let fmt: String
+
         switch format {
             case "hex": fmt = "x"
             case "bytes": fmt = "Y"
@@ -1346,7 +1311,7 @@ public struct LLDBRunner: Sendable {
         let output = try await session.sendCommand(
             "memory read --size \(size) --format \(fmt) --count \(count) \(address)",
         )
-        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+        return .init(exitCode: 0, stdout: output, stderr: "")
     }
 
     /// Looks up symbols, addresses, and types.
@@ -1357,7 +1322,7 @@ public struct LLDBRunner: Sendable {
     ///   - name: Symbol or function name regex.
     ///   - type: Type name to look up.
     ///   - verbose: Whether to use verbose output.
-    /// - Returns: The result containing symbol information.
+    ///   - Returns: The result containing symbol information.
     public func symbolLookup(
         pid: Int32,
         address: String?,
@@ -1386,17 +1351,17 @@ public struct LLDBRunner: Sendable {
             outputs.append(output)
         }
 
-        return LLDBResult(exitCode: 0, stdout: outputs.joined(separator: "\n"), stderr: "")
+        return .init(exitCode: 0, stdout: outputs.joined(separator: "\n"), stderr: "")
     }
 
     /// Dumps the UI view hierarchy.
     ///
     /// - Parameters:
     ///   - pid: The process ID of the target process.
-    ///   - platform: `"ios"` or `"macos"`.
+    ///   - platform: `"ios"` or `"macos"` .
     ///   - address: Optional specific view address to inspect.
     ///   - constraints: Whether to show Auto Layout constraints.
-    /// - Returns: The result containing the view hierarchy.
+    ///   - Returns: The result containing the view hierarchy.
     public func viewHierarchy(
         pid: Int32,
         platform: String,
@@ -1411,6 +1376,7 @@ public struct LLDBRunner: Sendable {
                 "expr -l objc -O -- [(id)\(address) recursiveDescription]",
             )
             outputs.append(output)
+
             if constraints {
                 let hOutput = try await session.sendCommand(
                     "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:0]",
@@ -1433,20 +1399,20 @@ public struct LLDBRunner: Sendable {
             outputs.append(output)
         }
 
-        return LLDBResult(exitCode: 0, stdout: outputs.joined(separator: "\n\n"), stderr: "")
+        return .init(exitCode: 0, stdout: outputs.joined(separator: "\n\n"), stderr: "")
     }
 
     /// Toggles colored borders on all views in the key window of a running macOS app.
     ///
-    /// Uses a stack-based NSView traversal to set or clear CALayer borders on every subview.
-    /// The process must be stopped (at a breakpoint or interrupted) for expression evaluation.
+    /// Uses a stack-based NSView traversal to set or clear CALayer borders on every subview. The
+    /// process must be stopped (at a breakpoint or interrupted) for expression evaluation.
     ///
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - enabled: Whether to enable or disable borders.
     ///   - borderWidth: The border width in points.
     ///   - nsColorSelector: The NSColor selector name (e.g. "redColor").
-    /// - Returns: The result containing the count of affected views.
+    ///   - Returns: The result containing the count of affected views.
     public func toggleViewBorders(
         pid: Int32,
         enabled: Bool,
@@ -1456,16 +1422,12 @@ public struct LLDBRunner: Sendable {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
 
         let expression: String
-        if enabled {
-            expression =
-                "expr -l objc -O -- @import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [v setWantsLayer:YES]; [[v layer] setBorderWidth:\(borderWidth)]; [[v layer] setBorderColor:[[NSColor \(nsColorSelector)] CGColor]]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders enabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]"
-        } else {
-            expression =
-                "expr -l objc -O -- @import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [[v layer] setBorderWidth:0]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders disabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]"
-        }
+        expression = enabled
+            ? "expr -l objc -O -- @import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [v setWantsLayer:YES]; [[v layer] setBorderWidth:\(borderWidth)]; [[v layer] setBorderColor:[[NSColor \(nsColorSelector)] CGColor]]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders enabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]"
+            : "expr -l objc -O -- @import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [[v layer] setBorderWidth:0]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders disabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]"
 
         let output = try await session.sendCommand(expression)
-        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+        return .init(exitCode: 0, stdout: output, stderr: "")
     }
 
     /// Gets the current process status.
@@ -1475,15 +1437,17 @@ public struct LLDBRunner: Sendable {
     public func processStatus(pid: Int32) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let output = try await session.sendCommand("process status")
-        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+        return .init(exitCode: 0, stdout: output, stderr: "")
     }
 
-    /// Executes LLDB in batch mode with a script (used for cases where persistent sessions aren't applicable).
+    /// Executes LLDB in batch mode with a script (used for cases where persistent sessions aren't
+    /// applicable).
     private func runBatch(commands: [String]) async throws(LLDBError) -> LLDBResult {
         let tempDir = FileManager.default.temporaryDirectory
         let scriptPath = tempDir.appendingPathComponent(
             "lldb_script_\(UUID().uuidString).lldb",
         )
+
         do {
             let script = commands.joined(separator: "\n")
             try script.write(to: scriptPath, atomically: true, encoding: .utf8)
@@ -1521,21 +1485,18 @@ public enum LLDBError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-            case let .commandFailed(message):
-                return "LLDB command failed: \(message)"
-            case let .attachFailed(message):
-                return "Failed to attach to process: \(message)"
-            case .noActiveSession:
-                return "No active debug session"
+            case let .commandFailed(message): "LLDB command failed: \(message)"
+            case let .attachFailed(message): "Failed to attach to process: \(message)"
+            case .noActiveSession: "No active debug session"
         }
     }
 
     public func toMCPError() -> MCPError {
         switch self {
             case .noActiveSession:
-                return .invalidParams(errorDescription ?? "No active debug session")
+                .invalidParams(errorDescription ?? "No active debug session")
             case .commandFailed, .attachFailed:
-                return .internalError(errorDescription ?? "Debug operation failed")
+                .internalError(errorDescription ?? "Debug operation failed")
         }
     }
 }
