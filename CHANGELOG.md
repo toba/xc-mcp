@@ -15,6 +15,7 @@
 - Expand leading `~` in user-supplied paths; `set_session_defaults` and per-call `project_path` / `workspace_path` / `package_path` arguments now resolve `~/Developer/foo.xcodeproj` correctly ([#292](https://github.com/toba/xc-mcp/issues/292))
 - Prevent MCP server disconnect when cancelling a long-running build/test; spawn child processes in their own process group and `SIGKILL` the whole group on cancel so SPM build plugins and grandchildren release the stdout/stderr pipes ([#294](https://github.com/toba/xc-mcp/issues/294))
 - `swift_package_test` / `swift_package_build` no longer abort after 5min on a cold cache; auto-extend timeout to 15min when `.build/checkouts` is empty; timeout errors now include the package path and a cold-cache hint ([#295](https://github.com/toba/xc-mcp/issues/295))
+- Stop MCP stdio transport from dying on user-cancel during long builds; `ProgressReporter` now retires synchronously via `withTaskCancellationHandler` so the unstructured poller can no longer emit a stale `notifications/progress` after the request is cancelled ([#300](https://github.com/toba/xc-mcp/issues/300))
 
 ### 🗜️ Tweaks
 

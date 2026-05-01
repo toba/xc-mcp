@@ -94,6 +94,49 @@ struct ProgressReporterTests {
     }
 
     @Test
+    func `Retired reporter drops pending emission`() async {
+        let recorder = Recorder()
+        let reporter = ProgressReporter(token: .string("tok"), notify: recorder.record)
+
+        reporter.ingest("Compiling Foo.swift\n")
+        reporter.retire()
+        let emitted = await reporter.emitIfPending()
+
+        #expect(emitted == nil)
+        #expect(recorder.captured.isEmpty)
+    }
+
+    @Test
+    func `Stream retires reporter when surrounding task is cancelled`() async {
+        let recorder = Recorder()
+        let reporter = ProgressReporter(
+            token: .string("tok"),
+            interval: .milliseconds(20),
+            notify: recorder.record,
+        )
+
+        let task = Task {
+            try? await reporter.stream {
+                // Simulate a long-running process emitting a chunk every 10ms.
+                for _ in 0..<200 {
+                    reporter.ingest("Compiling line \(UUID().uuidString)\n")
+                    try await Task.sleep(for: .milliseconds(10))
+                }
+            }
+        }
+
+        // Let a few progress notifications flow, then cancel.
+        try? await Task.sleep(for: .milliseconds(60))
+        task.cancel()
+        await task.value
+
+        let countAfterCancel = recorder.captured.count
+        // Give the poller more than one interval to attempt another emission.
+        try? await Task.sleep(for: .milliseconds(80))
+        #expect(recorder.captured.count == countAfterCancel)
+    }
+
+    @Test
     func `Stream invokes body and supports nested ingest`() async throws {
         let recorder = Recorder()
         let reporter = ProgressReporter(
