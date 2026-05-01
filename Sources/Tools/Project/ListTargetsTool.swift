@@ -7,12 +7,10 @@ import Foundation
 public struct ListTargetsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_targets",
             description: "List all targets in an Xcode project",
             inputSchema: .object([
@@ -23,7 +21,7 @@ public struct ListTargetsTool: Sendable {
                         "description": .string(
                             "Path to the .xcodeproj file (relative to current directory)",
                         ),
-                    ]),
+                    ])
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
@@ -45,14 +43,15 @@ public struct ListTargetsTool: Sendable {
             let targets = xcodeproj.pbxproj.nativeTargets
 
             var targetList: [String] = []
+
             for target in targets {
                 let targetInfo = "- \(target.name) (\(target.productType?.rawValue ?? "unknown"))"
                 targetList.append(targetInfo)
             }
 
-            let result =
-                targetList.isEmpty
-                    ? "No targets found in the project." : targetList.joined(separator: "\n")
+            let result = targetList.isEmpty
+                ? "No targets found in the project."
+                : targetList.joined(separator: "\n")
 
             return CallTool.Result(
                 content: [
@@ -60,7 +59,7 @@ public struct ListTargetsTool: Sendable {
                         text: "Targets in \(projectURL.lastPathComponent):\n\(result)",
                         annotations: nil,
                         _meta: nil,
-                    ),
+                    )
                 ],
             )
         } catch {

@@ -96,8 +96,8 @@ struct RepairProjectToolTests {
         let repairedSources = try #require(
             repairedTarget.buildPhases.first { $0 is PBXSourcesBuildPhase },
         )
-        let nullCount = (repairedSources.files ?? []).filter { $0.file == nil && $0.product == nil }
-            .count
+        let nullCount = (repairedSources.files ?? [])
+            .count(where: { $0.file == nil && $0.product == nil })
         #expect(nullCount == 0)
     }
 
@@ -146,8 +146,8 @@ struct RepairProjectToolTests {
         let unchangedSources = try #require(
             unchangedTarget.buildPhases.first { $0 is PBXSourcesBuildPhase },
         )
-        let nullCount =
-            (unchangedSources.files ?? []).filter { $0.file == nil && $0.product == nil }.count
+        let nullCount = (unchangedSources.files ?? [])
+            .count(where: { $0.file == nil && $0.product == nil })
         #expect(nullCount == 1)
     }
 

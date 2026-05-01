@@ -124,10 +124,8 @@ public enum XCResultParser {
             )
         else { return nil }
 
-        guard result.succeeded,
-              let data = result.stdout.data(using: .utf8),
-              !data.isEmpty
-        else { return nil }
+        let data = Data(result.stdout.utf8)
+        guard result.succeeded, !data.isEmpty else { return nil }
 
         let decoder = JSONDecoder()
         // Try decoding as array first, then as single object
@@ -170,10 +168,8 @@ public enum XCResultParser {
             )
         else { return nil }
 
-        guard result.succeeded,
-              let data = result.stdout.data(using: .utf8),
-              !data.isEmpty
-        else { return nil }
+        let data = Data(result.stdout.utf8)
+        guard result.succeeded, !data.isEmpty else { return nil }
 
         return try? JSONDecoder().decode(TestResultsJSON.self, from: data)
     }

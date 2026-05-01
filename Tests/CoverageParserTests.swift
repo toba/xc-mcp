@@ -387,7 +387,7 @@ struct CoverageParserTests {
         ]
         """
 
-        let data = try #require(json.data(using: .utf8))
+        let data = Data(json.utf8)
         let result = CoverageParser.parseFunctionCoverageJSON(
             jsonData: data, filePath: "/path/to/File.swift",
         )

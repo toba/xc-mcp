@@ -225,20 +225,20 @@ public final class BuildOutputParser {
             executables: executables.isEmpty ? nil : executables.count,
         )
 
-        let buildInfo: BuildInfo? =
-            parseBuildInfo
-                ? {
-                    let targets = targetOrder.map { targetName in
-                        TargetBuildInfo(
-                            name: targetName,
-                            duration: targetDurations[targetName],
-                            phases: targetPhases[targetName] ?? [],
-                            dependsOn: targetDependencies[targetName] ?? [],
-                        )
-                    }
-                    let slowestTargets = computeSlowestTargets(targets: targets, limit: 5)
-                    return BuildInfo(targets: targets, slowestTargets: slowestTargets)
-                }() : nil
+        let buildInfo: BuildInfo? = parseBuildInfo
+            ? {
+                let targets = targetOrder.map { targetName in
+                    TargetBuildInfo(
+                        name: targetName,
+                        duration: targetDurations[targetName],
+                        phases: targetPhases[targetName] ?? [],
+                        dependsOn: targetDependencies[targetName] ?? [],
+                    )
+                }
+                let slowestTargets = computeSlowestTargets(targets: targets, limit: 5)
+                return BuildInfo(targets: targets, slowestTargets: slowestTargets)
+            }()
+            : nil
 
         return BuildResult(
             status: status,
@@ -523,7 +523,7 @@ public final class BuildOutputParser {
             return true
         }
 
-        if trimmed.hasPrefix("\"") && trimmed.contains("\", referenced from:") {
+        if trimmed.hasPrefix("\""), trimmed.contains("\", referenced from:") {
             if let endQuote = trimmed.range(of: "\", referenced from:") {
                 let symbol = String(
                     trimmed[trimmed.index(after: trimmed.startIndex) ..< endQuote.lowerBound],
@@ -534,7 +534,7 @@ public final class BuildOutputParser {
         }
 
         if let symbol = pendingLinkerSymbol, let arch = currentLinkerArchitecture,
-           trimmed.contains(" in ") && (trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a"))
+           trimmed.contains(" in "), trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a")
         {
             if let inRange = trimmed.range(of: " in ") {
                 let referencedFrom = String(trimmed[inRange.upperBound...])
@@ -701,11 +701,11 @@ public final class BuildOutputParser {
             return true
         }
 
-        if trimmed.hasPrefix("\"") && trimmed.contains("\" :") {
+        if trimmed.hasPrefix("\""), trimmed.contains("\" :") {
             return true
         }
 
-        if line.contains("\\\"") && line.contains("\"") && line.contains(":") {
+        if line.contains("\\\""), line.contains("\""), line.contains(":") {
             return true
         }
 

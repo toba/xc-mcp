@@ -462,9 +462,9 @@ public struct PreviewCaptureTool: Sendable {
             // Save to user-specified path if requested
             if let savePath {
                 // Allow absolute paths without base-path restriction
-                let resolvedSavePath =
-                    savePath.hasPrefix("/")
-                        ? savePath : try pathUtility.resolvePath(from: savePath)
+                let resolvedSavePath = savePath.hasPrefix("/")
+                    ? savePath
+                    : try pathUtility.resolvePath(from: savePath)
                 try screenshotData.write(to: URL(fileURLWithPath: resolvedSavePath))
             }
 
@@ -677,7 +677,7 @@ public struct PreviewCaptureTool: Sendable {
                 }
                 if !sourceFiles.contains(path) {
                     sourceFiles.append(path)
-                }
+                } // sm:ignore useOrderedSetForUniqueAppend
             }
         }
 

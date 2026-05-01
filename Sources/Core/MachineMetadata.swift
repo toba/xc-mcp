@@ -29,7 +29,7 @@ public enum MachineMetadata {
         // Truncate at null terminator before decoding
         let length = buffer.firstIndex(of: 0) ?? size
         return String(decoding: buffer[..<length],
-                      as: UTF8.self) // swiftlint:disable:this optional_data_string_conversion
+                      as: UTF8.self) // sm:ignore useFailableStringInit
     }
 
     private static func sysctlInt(_ name: String) -> Int? {

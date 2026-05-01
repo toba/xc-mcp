@@ -519,8 +519,8 @@ public struct DetectUnusedCodeTool: Sendable {
     // MARK: - Parsing
 
     static func parseJSONOutput(_ output: String) -> [UnusedDeclaration] {
-        guard let data = output.data(using: .utf8),
-              let entries = try? JSONDecoder().decode([PeripheryEntry].self, from: data)
+        let data = Data(output.utf8)
+        guard let entries = try? JSONDecoder().decode([PeripheryEntry].self, from: data)
         else {
             return []
         }

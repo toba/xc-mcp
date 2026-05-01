@@ -7,12 +7,10 @@ import Foundation
 public struct DuplicateTargetTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "duplicate_target",
             description: "Duplicate an existing target",
             inputSchema: .object([
@@ -48,14 +46,14 @@ public struct DuplicateTargetTool: Sendable {
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
               case let .string(sourceTargetName) = arguments["source_target"],
-              case let .string(newTargetName) = arguments["new_target_name"]
-        else {
+              case let .string(newTargetName) = arguments["new_target_name"] else {
             throw MCPError.invalidParams(
                 "project_path, source_target, and new_target_name are required",
             )
         }
 
         let newBundleIdentifier: String?
+
         if case let .string(bundleId) = arguments["new_bundle_identifier"] {
             newBundleIdentifier = bundleId
         } else {
@@ -70,18 +68,16 @@ public struct DuplicateTargetTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the source target
-            guard
-                let sourceTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
-                    $0.name == sourceTargetName
-                })
-            else {
+            guard let sourceTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == sourceTargetName
+            }) else {
                 return CallTool.Result(
                     content: [
                         .text(
                             text: "Source target '\(sourceTargetName)' not found in project",
                             annotations: nil,
                             _meta: nil,
-                        ),
+                        )
                     ],
                 )
             }
@@ -94,14 +90,14 @@ public struct DuplicateTargetTool: Sendable {
                             text: "Target '\(newTargetName)' already exists in project",
                             annotations: nil,
                             _meta: nil,
-                        ),
+                        )
                     ],
                 )
             }
 
             // Duplicate build configuration list
-            let newBuildConfigurations: [XCBuildConfiguration] =
-                sourceTarget.buildConfigurationList?.buildConfigurations.map { sourceConfig in
+            let newBuildConfigurations: [XCBuildConfiguration] = sourceTarget
+                .buildConfigurationList?.buildConfigurations.map { sourceConfig in
                     var newBuildSettings = sourceConfig.buildSettings
 
                     // Update product name and bundle identifier
@@ -208,9 +204,7 @@ public struct DuplicateTargetTool: Sendable {
             xcodeproj.pbxproj.add(object: newTarget)
 
             // Add target to project
-            if let project = xcodeproj.pbxproj.rootObject {
-                project.targets.append(newTarget)
-            }
+            if let project = xcodeproj.pbxproj.rootObject { project.targets.append(newTarget) }
 
             // Create target folder in main group
             if let project = try xcodeproj.pbxproj.rootProject(),
@@ -224,14 +218,15 @@ public struct DuplicateTargetTool: Sendable {
             // Save project
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            let bundleIdText =
-                newBundleIdentifier != nil
-                    ? " with bundle identifier '\(newBundleIdentifier!)'" : ""
+            let bundleIdText = newBundleIdentifier != nil
+                ? " with bundle identifier '\(newBundleIdentifier!)'"
+                : ""
             return CallTool.Result(
                 content: [
-                    .text(text:
-                        "Successfully duplicated target '\(sourceTargetName)' as '\(newTargetName)'\(bundleIdText)",
-                        annotations: nil, _meta: nil),
+                    .text(
+                        text:
+                            "Successfully duplicated target '\(sourceTargetName)' as '\(newTargetName)'\(bundleIdText)",
+                        annotations: nil, _meta: nil)
                 ],
             )
         } catch {

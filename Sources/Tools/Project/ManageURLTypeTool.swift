@@ -241,8 +241,7 @@ public struct ManageURLTypeTool: Sendable {
             entry["CFBundleURLIconFile"] = iconFile
         }
         if case let .string(jsonString) = arguments["additional_properties"],
-           let jsonData = jsonString.data(using: .utf8),
-           let additionalProps = try? JSONSerialization.jsonObject(with: jsonData)
+           let additionalProps = try? JSONSerialization.jsonObject(with: Data(jsonString.utf8))
            as? [String: Any]
         {
             for (key, value) in additionalProps {

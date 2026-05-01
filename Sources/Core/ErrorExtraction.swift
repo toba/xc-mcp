@@ -376,7 +376,7 @@ public enum ErrorExtractor {
 
         var lines = ["Test timings (slowest \(sorted.count)):"]
         for (test, duration) in sorted {
-            let icon: String =
+            let icon =
                 switch test.status {
                     case .passed, .expectedFailure: "✓"
                     case .failed: "✗"
@@ -536,7 +536,7 @@ public enum ErrorExtractor {
             for entry in entries where entry.enabled {
                 if !allTargets.contains(entry.name) {
                     allTargets.append(entry.name)
-                }
+                } // sm:ignore useOrderedSetForUniqueAppend
             }
         }
 
@@ -751,7 +751,7 @@ public enum ErrorExtractor {
     /// ```
     /// <unknown>:0: error: compile command failed due to signal 6 (use -v to see invocation)
     /// ```
-    nonisolated(unsafe) private static let compilerCrashPattern =
+    private static nonisolated(unsafe) let compilerCrashPattern =
         /compile command failed due to signal (\d+)/
 
     /// Returns the signal number if the build output contains a compiler signal crash,

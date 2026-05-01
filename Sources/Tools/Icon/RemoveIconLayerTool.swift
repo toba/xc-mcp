@@ -51,7 +51,9 @@ public struct RemoveIconLayerTool: Sendable {
         let target = try arguments.getRequiredString("target")
         let groupIndex = arguments.getInt("group_index") ?? 0
         let layerIndex = arguments.getInt("layer_index")
-        let purgeAssets = arguments["purge_assets"] != nil ? arguments.getBool("purge_assets") : true
+        let purgeAssets = arguments["purge_assets"] != nil
+            ? arguments.getBool("purge_assets")
+            : true
 
         guard FileManager.default.fileExists(atPath: bundlePath) else {
             throw MCPError.invalidParams("Icon bundle not found: \(bundlePath)")

@@ -80,8 +80,8 @@ public struct ListSchemesTool: Sendable {
     }
 
     private func formatSchemesJSON(from json: String) -> String {
-        guard let data = json.data(using: .utf8),
-              let parsed = try? JSONSerialization.jsonObject(with: data),
+        let data = Data(json.utf8)
+        guard let parsed = try? JSONSerialization.jsonObject(with: data),
               let outputData = try? JSONSerialization.data(
                   withJSONObject: parsed, options: [.prettyPrinted, .sortedKeys],
               ),
@@ -93,8 +93,8 @@ public struct ListSchemesTool: Sendable {
     }
 
     private func parseSchemeList(from json: String) -> String {
-        guard let data = json.data(using: .utf8),
-              let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let data = Data(json.utf8)
+        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
             // If not JSON, return raw output
             return json

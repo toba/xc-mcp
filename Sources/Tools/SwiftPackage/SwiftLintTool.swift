@@ -103,8 +103,8 @@ public struct SwiftLintTool: Sendable {
 
     /// Parses swiftlint JSON reporter output into structured violations.
     static func parseJSONOutput(_ output: String) -> [Violation] {
-        guard let data = output.data(using: .utf8),
-              let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        let data = Data(output.utf8)
+        guard let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else {
             return []
         }

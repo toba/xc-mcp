@@ -452,7 +452,8 @@ public enum PBXProjTextEditor {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty, trimmed != ");" else { return nil }
         var entry = trimmed.hasSuffix(",")
-            ? String(trimmed.dropLast()) : trimmed
+            ? String(trimmed.dropLast())
+            : trimmed
         if entry.hasPrefix("\""), entry.hasSuffix("\"") {
             entry = String(entry.dropFirst().dropLast())
         }

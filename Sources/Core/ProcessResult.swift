@@ -216,10 +216,10 @@ extension ProcessResult {
                 truncated = true
             }
             if let onProgress, !chunkData.isEmpty {
-                onProgress(String(decoding: chunkData, as: UTF8.self))
+                onProgress(String(decoding: chunkData, as: UTF8.self)) // sm:ignore useFailableStringInit
             }
         }
-        return (String(decoding: data, as: UTF8.self), truncated)
+        return (String(decoding: data, as: UTF8.self), truncated) // sm:ignore useFailableStringInit
     }
 
     /// Races a subprocess closure against an optional timeout.

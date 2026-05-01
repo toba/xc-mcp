@@ -119,9 +119,7 @@ public struct SimctlRunner: Sendable {
             throw .commandFailed(result.stderr)
         }
 
-        guard let data = result.stdout.data(using: .utf8) else {
-            throw .invalidOutput
-        }
+        let data = Data(result.stdout.utf8)
 
         let response: SimctlDevicesResponse
         do {

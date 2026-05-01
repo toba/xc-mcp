@@ -123,8 +123,8 @@ public struct ShowBuildSettingsTool: Sendable {
         fields: Set<String>,
         filter: String?,
     ) -> String {
-        guard let data = json.data(using: .utf8),
-              let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        let data = Data(json.utf8)
+        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else {
             // If not JSON, return raw output (possibly filtered)
             if let filter {
@@ -189,8 +189,8 @@ public struct ShowBuildSettingsTool: Sendable {
         fields: Set<String>,
         filter: String?,
     ) -> String {
-        guard let data = json.data(using: .utf8),
-              let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        let data = Data(json.utf8)
+        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else {
             return json
         }

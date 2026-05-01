@@ -127,8 +127,8 @@ public struct ShowBuildDependencyGraphTool: Sendable {
 
         let result = try await xcodebuildRunner.run(arguments: args)
 
-        guard let data = result.stdout.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        let data = Data(result.stdout.utf8)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         else {
             // Fallback: parse text format
             return parseTargetsFromText(result.stdout)

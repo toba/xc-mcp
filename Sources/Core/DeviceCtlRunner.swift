@@ -228,9 +228,7 @@ public struct DeviceCtlRunner: Sendable {
     private func parseProcessList(from jsonString: String) throws(DeviceCtlError)
         -> [DeviceProcess]
     {
-        guard let data = jsonString.data(using: .utf8) else {
-            throw DeviceCtlError.invalidOutput
-        }
+        let data = Data(jsonString.utf8)
         do {
             let response = try Self.decoder.decode(
                 DeviceCtlResponse<ProcessListResult>.self,
@@ -252,9 +250,7 @@ public struct DeviceCtlRunner: Sendable {
     private func parseDeviceList(from jsonString: String) throws(DeviceCtlError)
         -> [ConnectedDevice]
     {
-        guard let data = jsonString.data(using: .utf8) else {
-            throw DeviceCtlError.invalidOutput
-        }
+        let data = Data(jsonString.utf8)
         do {
             let response = try Self.decoder.decode(
                 DeviceCtlResponse<DeviceListResult>.self,

@@ -56,9 +56,8 @@ public enum BuildSettingExtractor {
     ///   - Returns: The setting value, or nil if not found.
     public static func extractSetting(_ key: String, from buildSettings: String) -> String? {
         // Try JSON format first
-        if let data = buildSettings.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        {
+        let data = Data(buildSettings.utf8)
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
             for entry in json {
                 if let settings = entry["buildSettings"] as? [String: Any],
                    let value = settings[key] as? String { return value }
@@ -83,9 +82,8 @@ public enum BuildSettingExtractor {
     /// - Returns: The resolved bundle ID, or nil if not found or still contains variables.
     public static func extractBundleId(from buildSettings: String) -> String? {
         // Try JSON format first (most reliable)
-        if let data = buildSettings.data(using: .utf8),
-           let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        {
+        let data = Data(buildSettings.utf8)
+        if let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
             for targetSettings in parsed {
                 if let settings = targetSettings["buildSettings"] as? [String: Any],
                    let bundleId = settings["PRODUCT_BUNDLE_IDENTIFIER"] as? String {

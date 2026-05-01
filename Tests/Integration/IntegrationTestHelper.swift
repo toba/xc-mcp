@@ -55,8 +55,8 @@ enum IntegrationFixtures {
                 "/usr/bin/xcrun",
                 arguments: ["simctl", "list", "devices", "available", "-j"],
             ),
-            let data = output.data(using: .utf8),
-            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let json = try? JSONSerialization.jsonObject(with: Data(output.utf8))
+                as? [String: Any],
             let devices = json["devices"] as? [String: [[String: Any]]]
         else { return nil }
 

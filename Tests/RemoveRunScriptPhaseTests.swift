@@ -190,7 +190,7 @@ struct RemoveRunScriptPhaseTests {
 
         // Both phases remain.
         let updated = try XcodeProj(path: projectPath)
-        let count = updated.pbxproj.shellScriptBuildPhases.filter { $0.name == "Dup" }.count
+        let count = updated.pbxproj.shellScriptBuildPhases.count(where: { $0.name == "Dup" })
         #expect(count == 2)
     }
 }

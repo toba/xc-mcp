@@ -173,7 +173,7 @@ public struct CheckOutputFileMapTool: Sendable {
             }
         }
 
-        guard let newest = candidates.sorted(by: { $0.date > $1.date }).first else {
+        guard let newest = candidates.max(by: { $0.date < $1.date }) else {
             throw MCPError.internalError(
                 "No OutputFileMap.json found for target '\(target)' in \(intermediatesDir). "
                     + "Has the project been built at least once?",

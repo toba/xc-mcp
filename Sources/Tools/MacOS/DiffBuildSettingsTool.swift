@@ -169,8 +169,8 @@ public struct DiffBuildSettingsTool: Sendable {
     /// Parses xcodebuild -showBuildSettings text output into a key-value dictionary.
     private func parseBuildSettings(from output: String) -> [String: String] {
         // Try JSON format first
-        if let data = output.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+        let data = Data(output.utf8)
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
         {
             var settings: [String: String] = [:]
 

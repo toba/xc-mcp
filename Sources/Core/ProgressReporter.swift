@@ -104,7 +104,7 @@ public final class ProgressReporter: Sendable {
                 while !Task.isCancelled {
                     try? await Task.sleep(for: interval)
                     if Task.isCancelled { break }
-                    _ = await self.emitIfPending()
+                    _ = await emitIfPending()
                 }
             }
             defer {
@@ -119,6 +119,6 @@ public final class ProgressReporter: Sendable {
 
     /// Convenience adapter for runners that take a `(String) -> Void` callback.
     public var onProgress: @Sendable (String) -> Void {
-        { [self] chunk in self.ingest(chunk) }
+        { [self] chunk in ingest(chunk) }
     }
 }

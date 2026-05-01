@@ -627,7 +627,7 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
                     let target = String(parts[parts.startIndex ..< spaceIdx])
                     if !inProgressTargets.contains(target) {
                         inProgressTargets.append(target)
-                    }
+                    } // sm:ignore useOrderedSetForUniqueAppend
                 }
             }
 

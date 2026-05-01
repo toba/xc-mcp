@@ -124,7 +124,7 @@
     "metrics": {
         "tupleSize": { "enabled": false, "error": 8, "warning": 3 },
         "fileLength": { "enabled": false, "error": 2000, "warning": 1000, "ignoreCommentOnlyLines": true },
-        "nestingDepth": { "lint": "warn", "typeLevel": 2, "functionLevel": 3 },
+        "nestingDepth": { "lint": "warn", "typeLevel": 3, "functionLevel": 4 },
         "parameterCount": { "enabled": false, "error": 8, "warning": 5, "ignoresDefaultParameters": true },
         "typeBodyLength": { "enabled": false, "error": 2000, "warning": 500 },
         "lineLengthLimit": { "enabled": false, "error": 200, "warning": 120 },
@@ -323,7 +323,7 @@
     },
     "redundancies": {
         "dropSemicolons": { "lint": "no", "rewrite": true },
-        "useImplicitInit": { "lint": "warn", "rewrite": true },
+        "useImplicitInit": { "lint": "no", "rewrite": true },
         "dropRedundantLet": { "lint": "warn", "rewrite": true },
         "dropRedundantSelf": { "lint": "warn", "rewrite": true },
         "dropBacktickedSelf": { "lint": "warn", "rewrite": true },

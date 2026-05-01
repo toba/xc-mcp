@@ -338,8 +338,8 @@ public struct ListTestPlanTargetsTool: Sendable {
         }
 
         // Parse JSON output to extract test plan names
-        guard let data = result.stdout.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+        let data = Data(result.stdout.utf8)
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let testPlans = json["testPlans"] as? [[String: Any]]
         else {
             return []

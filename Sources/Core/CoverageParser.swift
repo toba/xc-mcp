@@ -141,6 +141,7 @@ public struct CoverageParser: Sendable {
 
         let searchPaths: [String]
         if let hint = projectHint {
+            // sm:ignore useLazyForLongChainOps
             let projectDirs =
                 (try? FileManager.default.contentsOfDirectory(atPath: derivedDataPath))?
                     .filter { $0.hasPrefix("\(hint)-") || $0.hasPrefix("\(hint)Tests-") }
@@ -247,10 +248,7 @@ public struct CoverageParser: Sendable {
             return nil
         }
 
-        guard let jsonData = jsonOutput.data(using: .utf8) else {
-            try? FileManager.default.removeItem(atPath: profdataPath)
-            return nil
-        }
+        let jsonData = Data(jsonOutput.utf8)
 
         do {
             try jsonData.write(to: URL(fileURLWithPath: jsonPath))
@@ -280,8 +278,8 @@ public struct CoverageParser: Sendable {
             return nil
         }
 
-        guard let jsonData = jsonOutput.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+        let jsonData = Data(jsonOutput.utf8)
+        guard let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
         else {
             return nil
         }
@@ -551,10 +549,7 @@ public struct CoverageParser: Sendable {
             return nil
         }
 
-        guard let jsonData = jsonOutput.data(using: .utf8) else {
-            return nil
-        }
-
+        let jsonData = Data(jsonOutput.utf8)
         return Self.parseFunctionCoverageJSON(jsonData: jsonData, filePath: filePath)
     }
 

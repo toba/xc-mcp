@@ -145,7 +145,8 @@ public enum AppBundlePreparer {
         )
         var tempEntitlementsURL: URL?
 
-        if let data = extractResult.stdout.data(using: .utf8), !data.isEmpty {
+        let data = Data(extractResult.stdout.utf8)
+        if !data.isEmpty {
             let url = FileManager.default.temporaryDirectory
                 .appendingPathComponent("debug_entitlements_\(UUID().uuidString).plist")
             try data.write(to: url)

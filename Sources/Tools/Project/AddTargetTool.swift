@@ -7,12 +7,10 @@ import Foundation
 public struct AddTargetTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "add_target",
             description: "Create a new target",
             inputSchema: .object([
@@ -68,14 +66,14 @@ public struct AddTargetTool: Sendable {
         guard case let .string(projectPath) = arguments["project_path"],
               case let .string(targetName) = arguments["target_name"],
               case let .string(productTypeString) = arguments["product_type"],
-              case let .string(bundleIdentifier) = arguments["bundle_identifier"]
-        else {
+              case let .string(bundleIdentifier) = arguments["bundle_identifier"] else {
             throw MCPError.invalidParams(
                 "project_path, target_name, product_type, and bundle_identifier are required",
             )
         }
 
         let platform: String
+
         if case let .string(plat) = arguments["platform"] {
             platform = plat
         } else {
@@ -83,6 +81,7 @@ public struct AddTargetTool: Sendable {
         }
 
         let deploymentTarget: String?
+
         if case let .string(target) = arguments["deployment_target"] {
             deploymentTarget = target
         } else {
@@ -90,6 +89,7 @@ public struct AddTargetTool: Sendable {
         }
 
         let parentGroupPath: String?
+
         if case let .string(pg) = arguments["parent_group"] {
             parentGroupPath = pg
         } else {
@@ -98,69 +98,44 @@ public struct AddTargetTool: Sendable {
 
         // Map product type string to PBXProductType
         let productType: PBXProductType
+
         switch productTypeString.lowercased() {
-            case "application", "app":
-                productType = .application
-            case "framework":
-                productType = .framework
-            case "staticframework", "static_framework":
-                productType = .staticFramework
-            case "xcframework", "xc_framework":
-                productType = .xcFramework
-            case "dynamiclibrary", "dynamic_library":
-                productType = .dynamicLibrary
-            case "staticlibrary", "static_library":
-                productType = .staticLibrary
-            case "bundle":
-                productType = .bundle
-            case "unittestbundle", "unit_test_bundle":
-                productType = .unitTestBundle
-            case "uitestbundle", "ui_test_bundle":
-                productType = .uiTestBundle
-            case "appextension", "app_extension":
-                productType = .appExtension
+            case "application", "app": productType = .application
+            case "framework": productType = .framework
+            case "staticframework", "static_framework": productType = .staticFramework
+            case "xcframework", "xc_framework": productType = .xcFramework
+            case "dynamiclibrary", "dynamic_library": productType = .dynamicLibrary
+            case "staticlibrary", "static_library": productType = .staticLibrary
+            case "bundle": productType = .bundle
+            case "unittestbundle", "unit_test_bundle": productType = .unitTestBundle
+            case "uitestbundle", "ui_test_bundle": productType = .uiTestBundle
+            case "appextension", "app_extension": productType = .appExtension
             case "extensionkitextension", "extensionkit_extension":
                 productType = .extensionKitExtension
-            case "commandlinetool", "command_line_tool":
-                productType = .commandLineTool
-            case "watchapp", "watch_app":
-                productType = .watchApp
-            case "watch2app", "watch2_app", "watch_2_app":
-                productType = .watch2App
+            case "commandlinetool", "command_line_tool": productType = .commandLineTool
+            case "watchapp", "watch_app": productType = .watchApp
+            case "watch2app", "watch2_app", "watch_2_app": productType = .watch2App
             case "watch2appcontainer", "watch2_app_container", "watch_2_app_container":
                 productType = .watch2AppContainer
-            case "watchextension", "watch_extension":
-                productType = .watchExtension
+            case "watchextension", "watch_extension": productType = .watchExtension
             case "watch2extension", "watch2_extension", "watch_2_extension":
                 productType = .watch2Extension
-            case "tvextension", "tv_extension":
-                productType = .tvExtension
-            case "messagesapplication", "messages_application":
-                productType = .messagesApplication
-            case "messagesextension", "messages_extension":
-                productType = .messagesExtension
-            case "stickerpack", "sticker_pack":
-                productType = .stickerPack
-            case "xpcservice", "xpc_service":
-                productType = .xpcService
-            case "ocunittestbundle", "oc_unit_test_bundle":
-                productType = .ocUnitTestBundle
-            case "xcodeextension", "xcode_extension":
-                productType = .xcodeExtension
-            case "instrumentspackage", "instruments_package":
-                productType = .instrumentsPackage
+            case "tvextension", "tv_extension": productType = .tvExtension
+            case "messagesapplication", "messages_application": productType = .messagesApplication
+            case "messagesextension", "messages_extension": productType = .messagesExtension
+            case "stickerpack", "sticker_pack": productType = .stickerPack
+            case "xpcservice", "xpc_service": productType = .xpcService
+            case "ocunittestbundle", "oc_unit_test_bundle": productType = .ocUnitTestBundle
+            case "xcodeextension", "xcode_extension": productType = .xcodeExtension
+            case "instrumentspackage", "instruments_package": productType = .instrumentsPackage
             case "intentsserviceextension", "intents_service_extension":
                 productType = .intentsServiceExtension
             case "ondemandinstallcapableapplication", "on_demand_install_capable_application":
                 productType = .onDemandInstallCapableApplication
-            case "metallibrary", "metal_library":
-                productType = .metalLibrary
-            case "driverextension", "driver_extension":
-                productType = .driverExtension
-            case "systemextension", "system_extension":
-                productType = .systemExtension
-            default:
-                throw MCPError.invalidParams("Invalid product type: \(productTypeString)")
+            case "metallibrary", "metal_library": productType = .metalLibrary
+            case "driverextension", "driver_extension": productType = .driverExtension
+            case "systemextension", "system_extension": productType = .systemExtension
+            default: throw MCPError.invalidParams("Invalid product type: \(productTypeString)")
         }
 
         do {
@@ -178,13 +153,14 @@ public struct AddTargetTool: Sendable {
                             text: "Target '\(targetName)' already exists in project",
                             annotations: nil,
                             _meta: nil,
-                        ),
+                        )
                     ],
                 )
             }
 
             // Introspect project-level build configurations to match all config names
             let projectConfigs: [XCBuildConfiguration]
+
             if let projectConfigList = xcodeproj.pbxproj.rootObject?.buildConfigurationList {
                 projectConfigs = projectConfigList.buildConfigurations
             } else {
@@ -193,11 +169,9 @@ public struct AddTargetTool: Sendable {
 
             // If project has configs, use those names; otherwise fall back to Debug/Release
             let configNames: [String]
-            if projectConfigs.isEmpty {
-                configNames = ["Debug", "Release"]
-            } else {
-                configNames = projectConfigs.map(\.name)
-            }
+            configNames = projectConfigs.isEmpty
+                ? ["Debug", "Release"]
+                : projectConfigs.map(\.name)
 
             // Minimal target-specific settings
             let baseSettings: [String: BuildSetting] = [
@@ -212,14 +186,16 @@ public struct AddTargetTool: Sendable {
                     platform == "iOS"
                         ? "IPHONEOS_DEPLOYMENT_TARGET"
                         : platform == "macOS"
-                        ? "MACOSX_DEPLOYMENT_TARGET"
-                        : platform == "tvOS"
-                        ? "TVOS_DEPLOYMENT_TARGET" : "WATCHOS_DEPLOYMENT_TARGET"
+                            ? "MACOSX_DEPLOYMENT_TARGET"
+                            : platform == "tvOS"
+                                ? "TVOS_DEPLOYMENT_TARGET"
+                                : "WATCHOS_DEPLOYMENT_TARGET"
                 } else {
                     nil
                 }
 
             var targetBuildConfigs: [XCBuildConfiguration] = []
+
             for configName in configNames {
                 var settings = baseSettings
                 if let deploymentKey, let deploymentTarget {
@@ -249,6 +225,7 @@ public struct AddTargetTool: Sendable {
 
             // Create product reference
             let productName: String
+
             if let ext = productType.fileExtension {
                 productName = "\(targetName).\(ext)"
             } else {
@@ -288,6 +265,7 @@ public struct AddTargetTool: Sendable {
                 xcodeproj.pbxproj.add(object: targetGroup)
 
                 let containerGroup: PBXGroup
+
                 if let parentGroupPath {
                     containerGroup = try mainGroup.resolveGroupPath(parentGroupPath)
                 } else {
@@ -301,9 +279,10 @@ public struct AddTargetTool: Sendable {
 
             return CallTool.Result(
                 content: [
-                    .text(text:
-                        "Successfully created target '\(targetName)' with product type '\(productTypeString)' and bundle identifier '\(bundleIdentifier)'",
-                        annotations: nil, _meta: nil),
+                    .text(
+                        text:
+                            "Successfully created target '\(targetName)' with product type '\(productTypeString)' and bundle identifier '\(bundleIdentifier)'",
+                        annotations: nil, _meta: nil)
                 ],
             )
         } catch {
@@ -317,74 +296,69 @@ public struct AddTargetTool: Sendable {
 extension PBXProductType {
     var explicitFileType: String? {
         switch self {
-            case .application, .watchApp, .watch2App, .watch2AppContainer,
-                 .onDemandInstallCapableApplication:
-                return "wrapper.application"
-            case .messagesApplication:
-                return "wrapper.application"
-            case .framework:
-                return "wrapper.framework"
-            case .staticFramework:
-                return "wrapper.framework.static"
-            case .xcFramework:
-                return "wrapper.xcframework"
-            case .staticLibrary:
-                return "archive.ar"
-            case .dynamicLibrary:
-                return "compiled.mach-o.dylib"
-            case .bundle:
-                return "wrapper.cfbundle"
-            case .unitTestBundle, .uiTestBundle, .ocUnitTestBundle:
-                return "wrapper.cfbundle"
-            case .appExtension, .extensionKitExtension, .watchExtension, .watch2Extension,
-                 .tvExtension, .messagesExtension, .stickerPack, .xcodeExtension,
-                 .intentsServiceExtension, .driverExtension, .systemExtension:
-                return "wrapper.app-extension"
-            case .commandLineTool:
-                return "compiled.mach-o.executable"
-            case .xpcService:
-                return "wrapper.xpc-service"
-            case .instrumentsPackage:
-                return "com.apple.instruments.instrdst"
-            case .metalLibrary:
-                return "file.metallib"
-            case .none:
-                return nil
+            case .application,
+                 .watchApp,
+                 .watch2App,
+                 .watch2AppContainer,
+                 .onDemandInstallCapableApplication: "wrapper.application"
+            case .messagesApplication: "wrapper.application"
+            case .framework: "wrapper.framework"
+            case .staticFramework: "wrapper.framework.static"
+            case .xcFramework: "wrapper.xcframework"
+            case .staticLibrary: "archive.ar"
+            case .dynamicLibrary: "compiled.mach-o.dylib"
+            case .bundle: "wrapper.cfbundle"
+            case .unitTestBundle, .uiTestBundle, .ocUnitTestBundle: "wrapper.cfbundle"
+            case .appExtension,
+                 .extensionKitExtension,
+                 .watchExtension,
+                 .watch2Extension,
+                 .tvExtension,
+                 .messagesExtension,
+                 .stickerPack,
+                 .xcodeExtension,
+                 .intentsServiceExtension,
+                 .driverExtension,
+                 .systemExtension:
+                "wrapper.app-extension"
+            case .commandLineTool: "compiled.mach-o.executable"
+            case .xpcService: "wrapper.xpc-service"
+            case .instrumentsPackage: "com.apple.instruments.instrdst"
+            case .metalLibrary: "file.metallib"
+            case .none: nil
         }
     }
 
     var fileExtension: String? {
         switch self {
-            case .application, .watchApp, .watch2App, .watch2AppContainer, .messagesApplication,
-                 .onDemandInstallCapableApplication:
-                return "app"
-            case .framework, .staticFramework:
-                return "framework"
-            case .xcFramework:
-                return "xcframework"
-            case .staticLibrary:
-                return "a"
-            case .dynamicLibrary:
-                return "dylib"
-            case .bundle:
-                return "bundle"
-            case .unitTestBundle, .uiTestBundle, .ocUnitTestBundle:
-                return "xctest"
-            case .appExtension, .extensionKitExtension, .watchExtension, .watch2Extension,
+            case .application,
+                 .watchApp,
+                 .watch2App,
+                 .watch2AppContainer,
+                 .messagesApplication,
+                 .onDemandInstallCapableApplication: "app"
+            case .framework, .staticFramework: "framework"
+            case .xcFramework: "xcframework"
+            case .staticLibrary: "a"
+            case .dynamicLibrary: "dylib"
+            case .bundle: "bundle"
+            case .unitTestBundle, .uiTestBundle, .ocUnitTestBundle: "xctest"
+            case .appExtension,
+                 .extensionKitExtension,
+                 .watchExtension,
+                 .watch2Extension,
                  .tvExtension,
-                 .messagesExtension, .stickerPack, .xcodeExtension, .intentsServiceExtension,
-                 .driverExtension, .systemExtension:
-                return "appex"
-            case .commandLineTool:
-                return nil
-            case .xpcService:
-                return "xpc"
-            case .instrumentsPackage:
-                return "instrdst"
-            case .metalLibrary:
-                return "metallib"
-            case .none:
-                return nil
+                 .messagesExtension,
+                 .stickerPack,
+                 .xcodeExtension,
+                 .intentsServiceExtension,
+                 .driverExtension,
+                 .systemExtension: "appex"
+            case .commandLineTool: nil
+            case .xpcService: "xpc"
+            case .instrumentsPackage: "instrdst"
+            case .metalLibrary: "metallib"
+            case .none: nil
         }
     }
 }

@@ -99,9 +99,9 @@ public struct GetBuildSettingsTool: Sendable {
                 settingsList.append("  \(key) = \(valueString)")
             }
 
-            let result =
-                settingsList.isEmpty
-                    ? "No build settings found." : settingsList.joined(separator: "\n")
+            let result = settingsList.isEmpty
+                ? "No build settings found."
+                : settingsList.joined(separator: "\n")
 
             return CallTool.Result(
                 content: [

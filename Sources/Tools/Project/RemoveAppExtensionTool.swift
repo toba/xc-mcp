@@ -100,6 +100,7 @@ public struct RemoveAppExtensionTool: Sendable {
                 }
 
                 // Remove from embed phases
+                var emptyEmbedPhases: [PBXCopyFilesBuildPhase] = []
                 for buildPhase in target.buildPhases {
                     if let copyPhase = buildPhase as? PBXCopyFilesBuildPhase {
                         // Remove build files referencing the extension product
@@ -111,14 +112,17 @@ public struct RemoveAppExtensionTool: Sendable {
                             return false
                         }
 
-                        // Remove empty embed phases if desired (optional cleanup)
+                        // Mark empty embed phases for cleanup after iteration
                         if copyPhase.files?.isEmpty == true,
                            copyPhase.name == "Embed App Extensions"
                         {
-                            target.buildPhases.removeAll { $0 == copyPhase }
-                            xcodeproj.pbxproj.delete(object: copyPhase)
+                            emptyEmbedPhases.append(copyPhase)
                         }
                     }
+                }
+                for copyPhase in emptyEmbedPhases {
+                    target.buildPhases.removeAll { $0 == copyPhase }
+                    xcodeproj.pbxproj.delete(object: copyPhase)
                 }
             }
 

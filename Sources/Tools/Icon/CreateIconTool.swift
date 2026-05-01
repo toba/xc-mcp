@@ -141,7 +141,8 @@ public struct CreateIconTool: Sendable {
         let shadowKind = arguments.getString("shadow_kind") ?? "neutral"
         let shadowOpacity = arguments.getDouble("shadow_opacity") ?? 0.5
         let translucencyEnabled = arguments["translucency_enabled"] != nil
-            ? arguments.getBool("translucency_enabled") : true
+            ? arguments.getBool("translucency_enabled")
+            : true
         let translucencyValue = arguments.getDouble("translucency_value") ?? 0.5
         let projectPath = arguments.getString("project_path")
         let targetName = arguments.getString("target_name")

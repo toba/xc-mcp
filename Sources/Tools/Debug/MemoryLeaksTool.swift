@@ -65,7 +65,7 @@ public struct MemoryLeaksTool: Sendable {
         )
 
         // leaks returns exit code 1 when leaks are found — that's not an error
-        if result.exitCode != 0 && result.exitCode != 1 {
+        if result.exitCode != 0, result.exitCode != 1 {
             throw MCPError.internalError(
                 "leaks failed (exit \(result.exitCode)): \(result.errorOutput)",
             )

@@ -126,7 +126,11 @@ public enum CrashReportParser: Sendable {
     }
 
     private struct BundleInfo: Decodable {
-        let CFBundleIdentifier: String?
+        let bundleIdentifier: String?
+
+        enum CodingKeys: String, CodingKey {
+            case bundleIdentifier = "CFBundleIdentifier"
+        }
     }
 
     private struct ThreadInfo: Decodable {
@@ -157,8 +161,8 @@ public enum CrashReportParser: Sendable {
         guard let firstNewline = content.firstIndex(of: "\n") else { return nil }
 
         let bodyString = String(content[content.index(after: firstNewline)...])
-        guard let bodyData = bodyString.data(using: .utf8),
-              let body = try? JSONDecoder().decode(CrashBody.self, from: bodyData) else {
+        let bodyData = Data(bodyString.utf8)
+        guard let body = try? JSONDecoder().decode(CrashBody.self, from: bodyData) else {
             return nil
         }
 
@@ -186,7 +190,7 @@ public enum CrashReportParser: Sendable {
 
         return .init(
             processName: body.procName,
-            bundleID: body.bundleInfo?.CFBundleIdentifier,
+            bundleID: body.bundleInfo?.bundleIdentifier,
             captureTime: body.captureTime,
             exceptionType: body.exception?.type,
             signal: body.exception?.signal,
