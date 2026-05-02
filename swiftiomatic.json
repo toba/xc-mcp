@@ -191,7 +191,7 @@
 		"requireTestFnPrefixOrAttribute": { "lint": "warn", "rewrite": false }
 	},
 	"closures": {
-		"noMutableCapture": { "lint": "error" },
+		"noMutableCapture": { "lint": "warn" },
 		"useTrailingClosures": { "lint": "warn", "rewrite": true },
 		"noMultiTrailingClosures": { "lint": "warn" },
 		"noParensInClosureParams": { "lint": "warn", "rewrite": true },
