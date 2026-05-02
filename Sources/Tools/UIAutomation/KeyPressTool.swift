@@ -110,7 +110,7 @@ public struct KeyPressTool: Sendable {
                 )
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

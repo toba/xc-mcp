@@ -56,7 +56,7 @@ public struct InstallAppSimTool: Sendable {
                 )
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

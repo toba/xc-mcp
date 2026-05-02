@@ -158,7 +158,7 @@ public enum TestToolHelper {
             if isTemporaryBundle {
                 try? FileManager.default.removeItem(atPath: resultBundlePath)
             }
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

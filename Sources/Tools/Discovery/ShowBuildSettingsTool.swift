@@ -114,7 +114,7 @@ public struct ShowBuildSettingsTool: Sendable {
                 )
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

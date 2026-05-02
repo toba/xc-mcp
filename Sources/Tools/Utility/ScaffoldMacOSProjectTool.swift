@@ -171,7 +171,7 @@ public struct ScaffoldMacOSProjectTool: Sendable {
         } catch {
             // Clean up on failure
             try? fileManager.removeItem(atPath: projectDir)
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

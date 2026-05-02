@@ -87,7 +87,7 @@ public struct SwiftLintTool: Sendable {
             let message = Self.formatViolations(violations)
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

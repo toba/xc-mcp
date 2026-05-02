@@ -1,15 +1,15 @@
 ---
 # ghv-uep
 title: swift_package_test truncates Swift Testing failure messages; assertion diffs are lost
-status: review
+status: completed
 type: bug
 priority: normal
 created_at: 2026-05-01T23:50:13Z
-updated_at: 2026-05-01T23:55:51Z
+updated_at: 2026-05-02T00:02:57Z
 sync:
     github:
         issue_number: "304"
-        synced_at: "2026-05-02T00:01:23Z"
+        synced_at: "2026-05-02T03:17:27Z"
 ---
 
 When a Swift Testing `@Test` function fails via `Issue.record(Comment(rawValue: longDiffText), …)` (the path Swift Testing uses for `#expect`-style mismatches and any custom `assertStringsEqualWithDiff`-style helper), the `swift_package_test` MCP tool returns only the issue title — the full diff body is dropped. Example output the agent sees:

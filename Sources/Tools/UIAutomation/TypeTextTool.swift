@@ -77,7 +77,7 @@ public struct TypeTextTool: Sendable {
                 )
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

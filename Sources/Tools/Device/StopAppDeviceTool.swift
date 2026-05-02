@@ -63,7 +63,7 @@ public struct StopAppDeviceTool: Sendable {
                 )
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

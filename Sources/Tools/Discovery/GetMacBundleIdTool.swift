@@ -139,7 +139,7 @@ public struct GetMacBundleIdTool: Sendable {
                 )
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

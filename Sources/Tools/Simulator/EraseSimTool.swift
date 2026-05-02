@@ -60,7 +60,7 @@ public struct EraseSimTool: Sendable {
                     )
                 }
             } catch {
-                throw error.asMCPError()
+                throw try error.asMCPError()
             }
         }
 
@@ -93,7 +93,7 @@ public struct EraseSimTool: Sendable {
                 )
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

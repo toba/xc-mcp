@@ -51,7 +51,7 @@ public struct DebugContinueTool: Sendable {
                 .text(text: message, annotations: nil, _meta: nil),
             ])
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

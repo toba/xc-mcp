@@ -426,7 +426,7 @@ public struct ScaffoldModuleTool: Sendable {
             for dir in createdDirs.reversed() {
                 try? FileManager.default.removeItem(atPath: dir)
             }
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

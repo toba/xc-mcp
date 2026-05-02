@@ -494,7 +494,7 @@ public struct PreviewCaptureTool: Sendable {
                 projectPath: resolvedProjectPath, targetName: injectedTargetName,
                 tempDir: tempDir, schemePath: schemePath, xcconfigPath: xcconfigPath,
             )
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

@@ -159,7 +159,7 @@ public struct LaunchMacAppTool: Sendable {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

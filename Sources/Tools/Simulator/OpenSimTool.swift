@@ -53,7 +53,7 @@ public struct OpenSimTool: Sendable {
                 throw MCPError.internalError("Failed to open Simulator.app")
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

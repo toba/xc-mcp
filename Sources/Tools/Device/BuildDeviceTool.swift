@@ -120,7 +120,7 @@ public struct BuildDeviceTool: Sendable {
                 ],
             )
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

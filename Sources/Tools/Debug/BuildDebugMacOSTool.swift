@@ -273,7 +273,7 @@ public struct BuildDebugMacOSTool: Sendable {
                 isError: crashed,
             )
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

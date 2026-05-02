@@ -118,7 +118,7 @@ public struct BuildSimTool: Sendable {
                 ],
             )
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

@@ -1,15 +1,15 @@
 ---
 # 0xp-xz6
 title: xc-swift MCP server disconnects on user-cancel and never reconnects
-status: review
+status: completed
 type: bug
 priority: high
 created_at: 2026-05-01T23:49:50Z
-updated_at: 2026-05-01T23:59:55Z
+updated_at: 2026-05-02T00:02:57Z
 sync:
     github:
         issue_number: "303"
-        synced_at: "2026-05-02T00:01:23Z"
+        synced_at: "2026-05-02T03:17:27Z"
 ---
 
 ## Symptom

@@ -140,7 +140,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 " Heavy dependency graphs (e.g. swift-syntax) can take longer than the default on a first build. Pass an explicit `timeout` (seconds) and retry."
             throw MCPError.internalError(message)
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

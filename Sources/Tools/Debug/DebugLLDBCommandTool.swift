@@ -56,7 +56,7 @@ public struct DebugLLDBCommandTool: Sendable {
 
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

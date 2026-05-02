@@ -414,7 +414,7 @@ public struct DetectUnusedCodeTool: Sendable {
             throw error
         } catch {
             if let guardFD { BuildGuard.release(fd: guardFD) }
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

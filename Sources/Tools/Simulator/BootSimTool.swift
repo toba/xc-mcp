@@ -62,7 +62,7 @@ public struct BootSimTool: Sendable {
                 )
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

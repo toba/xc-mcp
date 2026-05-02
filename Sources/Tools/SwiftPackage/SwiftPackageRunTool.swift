@@ -114,7 +114,7 @@ public struct SwiftPackageRunTool: Sendable {
                 )
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

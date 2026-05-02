@@ -18,6 +18,7 @@
 - Stop MCP stdio transport from dying on user-cancel during long builds; `ProgressReporter` now retires synchronously via `withTaskCancellationHandler` so the unstructured poller can no longer emit a stale `notifications/progress` after the request is cancelled ([#300](https://github.com/toba/xc-mcp/issues/300))
 - Keep the xc-swift (and every focused) MCP server alive when the client half-closes the stdio pipe after a user-cancel; install `signal(SIGPIPE, SIG_IGN)` in the multicall entry point so a stale write returns EPIPE instead of terminating the process; also cancel `ProgressReporter`'s poll task synchronously from `onCancel` ([#303](https://github.com/toba/xc-mcp/issues/303))
 - Preserve full multi-line `Comment(rawValue:)` bodies in `swift_package_test` failures; the parser now keeps consuming bare indented continuation lines after the first `􀄵` / `↳` detail marker so `assertStringsEqualWithDiff`-style diffs reach the agent intact ([#304](https://github.com/toba/xc-mcp/issues/304))
+- Stop xc-swift MCP server from disconnecting after a user-cancelled `swift_package_build` / `swift_package_test`; `Swift.Error.asMCPError()` now `throws` and rethrows `CancellationError` unchanged so the SDK skips the response per the MCP cancellation spec, instead of emitting an `MCPError.internalError` that Claude Code treated as a protocol violation and tore the stdio pipe down for ([#305](https://github.com/toba/xc-mcp/issues/305))
 
 ### 🗜️ Tweaks
 

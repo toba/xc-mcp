@@ -96,7 +96,7 @@ public struct SwiftPackageStopTool: Sendable {
                 throw MCPError.internalError("Failed to stop process: \(result.stderr)")
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

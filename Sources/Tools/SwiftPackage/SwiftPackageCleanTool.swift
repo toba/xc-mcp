@@ -72,7 +72,7 @@ public struct SwiftPackageCleanTool: Sendable {
                 throw MCPError.internalError("Clean failed:\n\(result.output)")
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

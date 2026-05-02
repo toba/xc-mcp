@@ -86,7 +86,7 @@ public struct SwiftPackageListTool: Sendable {
                 throw MCPError.internalError("Failed to list dependencies:\n\(result.output)")
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

@@ -165,7 +165,7 @@ public struct BuildMacOSTool: Sendable {
                 projectRoot: projectRoot, errorsOnly: errorsOnly, showWarnings: showWarnings,
             )
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

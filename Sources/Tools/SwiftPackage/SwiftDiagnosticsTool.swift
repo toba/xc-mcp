@@ -115,7 +115,7 @@ public struct SwiftDiagnosticsTool: Sendable {
 
             return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

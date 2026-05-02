@@ -173,7 +173,7 @@ public struct ProfileAppLaunchTool: Sendable {
         } catch let error as MCPError {
             throw error
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 }

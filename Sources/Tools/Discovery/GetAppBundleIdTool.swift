@@ -132,7 +132,7 @@ public struct GetAppBundleIdTool: Sendable {
                 )
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

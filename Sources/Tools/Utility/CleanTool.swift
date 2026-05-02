@@ -103,7 +103,7 @@ public struct CleanTool: Sendable {
                 throw MCPError.internalError("Clean failed:\n\(errorOutput)")
             }
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

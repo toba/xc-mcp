@@ -197,7 +197,7 @@ public struct BuildRunMacOSTool: Sendable {
         } catch let error as XcodebuildError {
             return error.formatPartialDiagnostics(projectRoot: projectRoot)
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 

@@ -159,7 +159,7 @@ public struct GetMacAppPathTool: Sendable {
                 ],
             )
         } catch {
-            throw error.asMCPError()
+            throw try error.asMCPError()
         }
     }
 
