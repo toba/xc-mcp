@@ -74,26 +74,58 @@ public final class BuildOutputParser {
             parseLine(line)
 
             // Swift Testing: append custom #expect comments / multi-line messages
-            // macOS detail symbol: 􀄵 (U+100135), Linux fallback: ↳ (U+21B3)
+            // macOS detail symbol: 􀄵 (U+100135), Linux fallback: ↳ (U+21B3).
+            //
+            // Format (real swift-testing output):
+            //   􀢄  Test foo() recorded an issue at File.swift:1:1: Issue recorded
+            //   􀄵  First line of Comment body
+            //      second line of the same Comment (plain indented continuation)
+            //      third line
+            //   􀢄  Test foo() failed after 0.001 seconds with 1 issue.
+            //
+            // Only the first comment line carries the detail marker; subsequent lines
+            // of a multi-line `Comment(rawValue:)` body are bare indented text. Stop
+            // when we hit a blank line or another event line (non-indented, or starts
+            // with an SF Symbol private-use marker).
             if line.contains("recorded an issue"), index + 1 < lines.count {
                 var continuationParts: [String] = []
                 var nextIdx = index + 1
+                var sawDetailMarker = false
                 while nextIdx < lines.count {
-                    let nextLine = lines[nextIdx].trimmingCharacters(in: .whitespaces)
-                    guard nextLine.hasPrefix("􀄵") || nextLine.hasPrefix("↳") else { break }
-                    let comment = String(
-                        nextLine.drop(while: { $0 != " " }).drop(while: { $0 == " " }),
-                    )
-                    if !comment.isEmpty {
-                        continuationParts.append(comment)
+                    let raw = lines[nextIdx]
+                    let trimmed = raw.trimmingCharacters(in: .whitespaces)
+                    if trimmed.isEmpty { break }
+
+                    if trimmed.hasPrefix("􀄵") || trimmed.hasPrefix("↳") {
+                        let comment = String(
+                            trimmed.drop(while: { $0 != " " }).drop(while: { $0 == " " }),
+                        )
+                        if !comment.isEmpty {
+                            continuationParts.append(comment)
+                        }
+                        sawDetailMarker = true
+                        nextIdx += 1
+                        continue
                     }
-                    nextIdx += 1
+
+                    // Plain indented continuation of a multi-line Comment body.
+                    // Only collect once we've seen at least one detail-marker line, and
+                    // only when the line is indented (event lines start in column 0).
+                    let firstChar = raw.first
+                    let isIndented = firstChar == " " || firstChar == "\t"
+                    if sawDetailMarker, isIndented, !isSwiftTestingEventLine(trimmed) {
+                        continuationParts.append(trimmed)
+                        nextIdx += 1
+                        continue
+                    }
+
+                    break
                 }
                 if !continuationParts.isEmpty, let lastIdx = failedTests.indices.last {
                     let existing = failedTests[lastIdx]
                     failedTests[lastIdx] = FailedTest(
                         test: existing.test,
-                        message: existing.message + ": "
+                        message: existing.message + "\n"
                             + continuationParts.joined(separator: "\n"),
                         file: existing.file,
                         line: existing.line,
@@ -606,6 +638,24 @@ public final class BuildOutputParser {
         }
 
         return false
+    }
+
+    /// Returns true if a trimmed line looks like a swift-testing event line
+    /// (starts with one of the SF Symbol private-use markers swift-testing emits
+    /// for run/test/issue events: 􀟈, 􀟉, 􀢄, 􀢇, 􀦗, 􁁛, 􁁒, etc.) or with the
+    /// ASCII fallback `✘`/`✓`/`◇`/`↳`. We can't enumerate every glyph, so we
+    /// check whether the first scalar lives in the SF Symbols private-use ranges.
+    private func isSwiftTestingEventLine(_ trimmed: String) -> Bool {
+        guard let first = trimmed.unicodeScalars.first else { return false }
+        // SF Symbols private-use range used by swift-testing markers
+        if (0xE000 ... 0xF8FF).contains(first.value)
+            || (0xF0000 ... 0xFFFFD).contains(first.value)
+            || (0x100000 ... 0x10FFFD).contains(first.value)
+        {
+            return true
+        }
+        // ASCII fallbacks used by swift-testing event lines
+        return first == "✘" || first == "✓" || first == "◇"
     }
 
     private func normalizeTestName(_ testName: String) -> String {

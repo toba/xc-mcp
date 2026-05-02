@@ -743,6 +743,37 @@ struct BuildOutputParserTests {
     }
 
     @Test
+    func `swift testing preserves multi-line Comment body`() {
+        // Real swift-testing output: only the first comment line carries the 􀄵
+        // marker; subsequent lines of a multi-line `Comment(rawValue:)` body are
+        // bare indented continuation. Regression for ghv-uep.
+        let parser = BuildOutputParser()
+        let result = parser.parse(
+            input: """
+            􀢄  Test showsDiff() recorded an issue at Repro.swift:14:15: Issue recorded
+            􀄵  Actual differed from expected:
+               line A
+               line B
+               line C
+               vs
+               line A
+               line X
+               line C
+            􀢄  Test showsDiff() failed after 0.001 seconds with 1 issue.
+            """,
+        )
+
+        #expect(result.failedTests.count == 1)
+        let message = result.failedTests[0].message
+        #expect(message.contains("Actual differed from expected:"))
+        #expect(message.contains("line A"))
+        #expect(message.contains("line X"))
+        #expect(message.contains("vs"))
+        #expect(result.failedTests[0].file == "Repro.swift")
+        #expect(result.failedTests[0].line == 14)
+    }
+
+    @Test
     func `swift testing multiple issues with comments`() {
         let parser = BuildOutputParser()
         let result = parser.parse(

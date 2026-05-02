@@ -16,6 +16,8 @@
 - Prevent MCP server disconnect when cancelling a long-running build/test; spawn child processes in their own process group and `SIGKILL` the whole group on cancel so SPM build plugins and grandchildren release the stdout/stderr pipes ([#294](https://github.com/toba/xc-mcp/issues/294))
 - `swift_package_test` / `swift_package_build` no longer abort after 5min on a cold cache; auto-extend timeout to 15min when `.build/checkouts` is empty; timeout errors now include the package path and a cold-cache hint ([#295](https://github.com/toba/xc-mcp/issues/295))
 - Stop MCP stdio transport from dying on user-cancel during long builds; `ProgressReporter` now retires synchronously via `withTaskCancellationHandler` so the unstructured poller can no longer emit a stale `notifications/progress` after the request is cancelled ([#300](https://github.com/toba/xc-mcp/issues/300))
+- Keep the xc-swift (and every focused) MCP server alive when the client half-closes the stdio pipe after a user-cancel; install `signal(SIGPIPE, SIG_IGN)` in the multicall entry point so a stale write returns EPIPE instead of terminating the process; also cancel `ProgressReporter`'s poll task synchronously from `onCancel` ([#303](https://github.com/toba/xc-mcp/issues/303))
+- Preserve full multi-line `Comment(rawValue:)` bodies in `swift_package_test` failures; the parser now keeps consuming bare indented continuation lines after the first `􀄵` / `↳` detail marker so `assertStringsEqualWithDiff`-style diffs reach the agent intact ([#304](https://github.com/toba/xc-mcp/issues/304))
 
 ### 🗜️ Tweaks
 

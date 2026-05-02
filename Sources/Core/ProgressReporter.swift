@@ -92,14 +92,17 @@ public final class ProgressReporter: Sendable {
     /// The reporter is retired synchronously when the surrounding task is
     /// cancelled (e.g. the client sent `notifications/cancelled`), so the
     /// poller stops emitting before the cancellation has finished propagating
-    /// through the subprocess teardown. Without this guard, the unstructured
-    /// poll task can fire one final progress notification for a request the
-    /// client has already abandoned, which the SDK treats as a fatal stdio
-    /// transport error.
+    /// through the subprocess teardown. The poll task is also cancelled
+    /// synchronously from `onCancel` so it never enters a fresh
+    /// `emitIfPending` iteration after the request was abandoned. Without
+    /// these guards the poller can fire one final `notifications/progress`
+    /// for a token the client no longer recognizes, which the SDK treats as
+    /// a fatal stdio transport error and tears down the entire server.
     public func stream<T: Sendable>(
         _ body: @Sendable () async throws -> T,
     ) async rethrows -> T {
-        try await withTaskCancellationHandler {
+        let pollTaskBox = Mutex<Task<Void, Never>?>(nil)
+        return try await withTaskCancellationHandler {
             let pollTask = Task { [interval, self] in
                 while !Task.isCancelled {
                     try? await Task.sleep(for: interval)
@@ -107,6 +110,7 @@ public final class ProgressReporter: Sendable {
                     _ = await emitIfPending()
                 }
             }
+            pollTaskBox.withLock { $0 = pollTask }
             defer {
                 self.retire()
                 pollTask.cancel()
@@ -114,6 +118,8 @@ public final class ProgressReporter: Sendable {
             return try await body()
         } onCancel: {
             self.retire()
+            let task = pollTaskBox.withLock { $0 }
+            task?.cancel()
         }
     }
 

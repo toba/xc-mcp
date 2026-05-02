@@ -306,7 +306,14 @@ public enum BuildResultFormatter {
     private static func formatFailedTests(_ tests: [FailedTest]) -> String {
         var lines = ["Failures:"]
         for test in tests {
-            var detail = "  \(test.test) — \(test.message)"
+            // Split multi-line messages so the file:line tag stays on the header
+            // and the body (e.g. a multi-line diff from `Issue.record(Comment(...))`)
+            // is preserved beneath, indented for readability.
+            let messageLines = test.message
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .map(String.init)
+            let firstLine = messageLines.first ?? ""
+            var detail = "  \(test.test) — \(firstLine)"
             if let file = test.file {
                 detail += " (\(file)"
                 if let line = test.line {
@@ -315,6 +322,9 @@ public enum BuildResultFormatter {
                 detail += ")"
             }
             lines.append(detail)
+            for body in messageLines.dropFirst() {
+                lines.append("    \(body)")
+            }
         }
         return lines.joined(separator: "\n")
     }
