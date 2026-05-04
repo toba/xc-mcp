@@ -10,9 +10,12 @@ public struct XCStringsStatsCalculator: Sendable {
         reader = XCStringsReader(file: file)
     }
 
-    /// Get overall statistics
+    /// Get overall statistics. Entries marked `shouldTranslate: false` are
+    /// excluded from per-language counts so their absence does not skew
+    /// coverage downward.
     public func getStats() -> StatsInfo {
         let allLanguages = reader.listLanguages()
+        let translatableEntries = file.strings.values.filter(\.requiresTranslation)
 
         var coverageByLanguage: [String: LanguageStats] = [:]
 
@@ -20,7 +23,7 @@ public struct XCStringsStatsCalculator: Sendable {
             var translated = 0
             var untranslated = 0
 
-            for entry in file.strings.values {
+            for entry in translatableEntries {
                 let isTranslated = entry.localizations?[language]?.stringUnit?.value != nil
                     || entry.localizations?[language]?.variations != nil
 

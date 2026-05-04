@@ -30,16 +30,14 @@ public struct XCStringsFileHandler: Sendable {
         }
     }
 
-    /// Save xcstrings file to disk
+    /// Save xcstrings file to disk in Xcode's on-disk format (keys sorted by
+    /// `localizedStandardCompare`, `"key" : value` with space before colon).
     public func save(_ file: XCStringsFile) throws(XCStringsError) {
         let url = URL(fileURLWithPath: path)
 
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
         let data: Data
         do {
-            data = try encoder.encode(file)
+            data = try XCStringsFileEncoder.encode(file)
         } catch {
             throw XCStringsError.writeError(path: path, reason: error.localizedDescription)
         }
@@ -64,12 +62,9 @@ public struct XCStringsFileHandler: Sendable {
         try? FileManager.default.createDirectory(at: parentDir, withIntermediateDirectories: true)
 
         let file = XCStringsFile(sourceLanguage: sourceLanguage)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-
         let data: Data
         do {
-            data = try encoder.encode(file)
+            data = try XCStringsFileEncoder.encode(file)
         } catch {
             throw XCStringsError.writeError(path: path, reason: error.localizedDescription)
         }

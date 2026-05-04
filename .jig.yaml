@@ -1,140 +1,102 @@
 citations:
-  - repo: giginet/xcodeproj-mcp-server
-    branch: main
-    notes: Sources/Tools/Project/ (23 tools), Sources/Utilities/PathUtility.swift
-    last_checked_sha: 6f38429682b18372062c1b599663af8834005cad
-    last_checked_date: "2026-05-01T15:31:53Z"
-    paths:
-      high: [Sources/XcodeProjectMCP/*.swift]
-      medium: [Package.swift, Tests/**]
-      low: [.github/**, Dockerfile, README.md, Documentation/**]
-  - repo: ldomaradzki/xcsift
-    branch: master
-    notes: Sources/Core/BuildOutputParser.swift, BuildOutputModels.swift,
-      CoverageParser.swift
-    last_checked_sha: adab8856045f80b3198dd28372f77e0f14308b42
-    last_checked_date: "2026-05-01T15:31:53Z"
-    paths:
-      high:
-        [
-          Sources/OutputParser.swift,
-          Sources/Models.swift,
-          Sources/CoverageParser.swift,
-        ]
-      medium: [Sources/Configuration.swift, Package.swift, Tests/**]
-      low:
-        [
-          Sources/Install/**,
-          Sources/main.swift,
-          .github/**,
-          plugins/**,
-          README.md,
-          docs/**,
-        ]
-  - repo: Ryu0118/xcstrings-crud
-    branch: main
-    notes: Sources/Core/XCStrings/ (7 files)
-    last_checked_sha: 3acc94fc608ef9a8588e43f6f15738e31690607f
-    last_checked_date: "2026-05-01T15:31:53Z"
-    paths:
-      high: [Sources/XCStringsKit/**]
-      medium: [Sources/XCStringsMCP/**, Sources/XCStringsCLI/**, Tests/**]
-      low: [.github/**, README.md]
-  - repo: tuist/xcodeproj
-    branch: main
-    notes: All project manipulation tools via XcodeProj library
-    last_checked_sha: 1ff2fa56e1d8fa3732e876ce683b1914867e342c
-    last_checked_date: "2026-05-01T15:31:53Z"
-    paths:
-      high:
-        [
-          Sources/XcodeProj/Objects/**,
-          Sources/XcodeProj/Scheme/**,
-          Sources/XcodeProj/Project/**,
-        ]
-      medium:
-        [
-          Sources/XcodeProj/Utils/**,
-          Sources/XcodeProj/Extensions/**,
-          Package.swift,
-          CHANGELOG.md,
-          Tests/**,
-        ]
-      low: [.github/**, README.md, Documentation/**, fixtures/**, Makefile]
-  - repo: getsentry/XcodeBuildMCP
-    branch: main
-    notes: Monitor for features worth incorporating into xc-mcp
-    last_checked_sha: bc80d43c4abadfa66f1114e4e648e29bdf72d377
-    last_checked_date: "2026-05-01T15:31:53Z"
-    paths:
-      high: [src/mcp/tools/**/*.ts]
-      medium: [src/**/*.ts, package.json]
-      low:
-        [
-          .github/**,
-          manifests/**,
-          schemas/**,
-          README.md,
-          AGENTS.md,
-          CHANGELOG.md,
-          '*.md',
-          LICENSE,
-        ]
-  - repo: peripheryapp/periphery
-    branch: master
-    notes: A tool to identify unused code in Swift projects.
-    last_checked_sha: 9cb8fb504a7ea0293c7bf978d7b0ea5629bc95fd
-    last_checked_date: "2026-05-01T15:31:53Z"
-    paths:
-      high: [Sources/**/*.swift]
-      medium: [Package.swift]
-      low: [.github/**, README.md, LICENSE]
-  - repo: ethbak/icon-composer-mcp
-    branch: main
-    notes: 'Apple Icon Composer CLI & MCP server: create and manipulate .icon
-      bundles and images with Liquid Glass rendering'
-    last_checked_sha: e7d2b3207f3dcadd21167195827a0bc873f330ce
-    last_checked_date: "2026-05-01T15:31:53Z"
-    paths:
-      high: [src/**/*.ts, src/**/*.tsx]
-      medium: [package.json]
-      low: [.github/**, README.md, LICENSE]
+    - repo: giginet/xcodeproj-mcp-server
+      branch: main
+      notes: Sources/Tools/Project/ (23 tools), Sources/Utilities/PathUtility.swift
+      last_checked_sha: 6f38429682b18372062c1b599663af8834005cad
+      last_checked_date: "2026-05-04T15:26:01Z"
+      paths:
+        high: [Sources/XcodeProjectMCP/*.swift]
+        medium: [Package.swift, Tests/**]
+        low: [.github/**, Dockerfile, README.md, Documentation/**]
+    - repo: ldomaradzki/xcsift
+      branch: master
+      notes: Sources/Core/BuildOutputParser.swift, BuildOutputModels.swift, CoverageParser.swift
+      last_checked_sha: adab8856045f80b3198dd28372f77e0f14308b42
+      last_checked_date: "2026-05-04T15:26:01Z"
+      paths:
+        high: [Sources/OutputParser.swift, Sources/Models.swift, Sources/CoverageParser.swift]
+        medium: [Sources/Configuration.swift, Package.swift, Tests/**]
+        low: [Sources/Install/**, Sources/main.swift, .github/**, plugins/**, README.md, docs/**]
+    - repo: Ryu0118/xcstrings-crud
+      branch: main
+      notes: Sources/Core/XCStrings/ (7 files)
+      last_checked_sha: f2c4a79b9fb5bf15a264ea69ee0ff46feff9e8a4
+      last_checked_date: "2026-05-04T15:26:01Z"
+      paths:
+        high: [Sources/XCStringsKit/**]
+        medium: [Sources/XCStringsMCP/**, Sources/XCStringsCLI/**, Tests/**]
+        low: [.github/**, README.md]
+    - repo: tuist/xcodeproj
+      branch: main
+      notes: All project manipulation tools via XcodeProj library
+      last_checked_sha: b1896bda9cec13c83ecaf95d4faad9a8c1427c84
+      last_checked_date: "2026-05-04T15:26:01Z"
+      paths:
+        high: [Sources/XcodeProj/Objects/**, Sources/XcodeProj/Scheme/**, Sources/XcodeProj/Project/**]
+        medium: [Sources/XcodeProj/Utils/**, Sources/XcodeProj/Extensions/**, Package.swift, CHANGELOG.md, Tests/**]
+        low: [.github/**, README.md, Documentation/**, fixtures/**, Makefile]
+    - repo: getsentry/XcodeBuildMCP
+      branch: main
+      notes: Monitor for features worth incorporating into xc-mcp
+      last_checked_sha: b3908672a4dcb3fdb1d6cea03670436b9c44b8c9
+      last_checked_date: "2026-05-04T15:26:01Z"
+      paths:
+        high: [src/mcp/tools/**/*.ts]
+        medium: [src/**/*.ts, package.json]
+        low: [.github/**, manifests/**, schemas/**, README.md, AGENTS.md, CHANGELOG.md, '*.md', LICENSE]
+    - repo: peripheryapp/periphery
+      branch: master
+      notes: A tool to identify unused code in Swift projects.
+      last_checked_sha: 9cb8fb504a7ea0293c7bf978d7b0ea5629bc95fd
+      last_checked_date: "2026-05-04T15:26:01Z"
+      paths:
+        high: [Sources/**/*.swift]
+        medium: [Package.swift]
+        low: [.github/**, README.md, LICENSE]
+    - repo: ethbak/icon-composer-mcp
+      branch: main
+      notes: 'Apple Icon Composer CLI & MCP server: create and manipulate .icon bundles and images with Liquid Glass rendering'
+      last_checked_sha: e7d2b3207f3dcadd21167195827a0bc873f330ce
+      last_checked_date: "2026-05-04T15:26:01Z"
+      paths:
+        high: [src/**/*.ts, src/**/*.tsx]
+        medium: [package.json]
+        low: [.github/**, README.md, LICENSE]
 nope:
-  rules:
-    - name: git-checkout-switch
-      pattern: 'git\s+(checkout|switch)\s+'
-      message: "git checkout/switch not allowed — branch changes require user approval"
-    - name: git-no-verify
-      pattern: '--no-verify'
-      message: "skipping hooks with --no-verify not allowed"
-    - name: destructive-rm
-      pattern: 'rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+|--force\s+).*(/|~|\$HOME)'
-      message: "destructive rm on broad paths not allowed"
-    - name: curl-bearer
-      pattern: 'curl.*Authorization.*Bearer'
-      message: "direct API calls with bearer tokens not allowed"
-    - name: todo-archive
-      pattern: 'todo\s+archive'
-      message: "todo archive not allowed — only user should archive issues"
-    # Non-Bash tool rules
-    - name: no-write-env
-      pattern: '"file_path"\s*:\s*"[^"]*\.env"'
-      tools: ["Write", "Edit"]
-      message: "writing to .env files not allowed"
-    - name: no-write-credentials
-      pattern: '"file_path"\s*:\s*"[^"]*(\.pem|\.key|\.p12|credentials\.json)"'
-      tools: ["Write", "Edit"]
-      message: "writing to credential files not allowed"
-    - name: altering-config
-      pattern: 'swiftiomatic.json'
-      tools: ["Write", "Edit"]
-      message: "agent may not refer to the swiftiomatic.json file — just say
-        'configuration'"
+    rules:
+        - name: git-checkout-switch
+          pattern: 'git\s+(checkout|switch)\s+'
+          message: "git checkout/switch not allowed — branch changes require user approval"
+        - name: git-no-verify
+          pattern: '--no-verify'
+          message: "skipping hooks with --no-verify not allowed"
+        - name: destructive-rm
+          pattern: 'rm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+|--force\s+).*(/|~|\$HOME)'
+          message: "destructive rm on broad paths not allowed"
+        - name: curl-bearer
+          pattern: 'curl.*Authorization.*Bearer'
+          message: "direct API calls with bearer tokens not allowed"
+        - name: todo-archive
+          pattern: 'todo\s+archive'
+          message: "todo archive not allowed — only user should archive issues"
+        # Non-Bash tool rules
+        - name: no-write-env
+          pattern: '"file_path"\s*:\s*"[^"]*\.env"'
+          tools: ["Write", "Edit"]
+          message: "writing to .env files not allowed"
+        - name: no-write-credentials
+          pattern: '"file_path"\s*:\s*"[^"]*(\.pem|\.key|\.p12|credentials\.json)"'
+          tools: ["Write", "Edit"]
+          message: "writing to credential files not allowed"
+        - name: altering-config
+          pattern: 'swiftiomatic.json'
+          tools: ["Write", "Edit"]
+          message: "agent may not refer to the swiftiomatic.json file — just say 'configuration'"
 todo:
-  path: .issues
-  default_status: ready
-  default_type: task
-  sync:
-    github:
-      repo: toba/xc-mcp
+    path: .issues
+    default_status: ready
+    default_type: task
+    sync:
+        github:
+            repo: toba/xc-mcp
 changelog: weekly
