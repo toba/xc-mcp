@@ -1,6 +1,6 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 
 @Suite(.serialized)
 struct SessionManagerWarmupTests {
@@ -9,16 +9,33 @@ struct SessionManagerWarmupTests {
             .appendingPathComponent("xc-mcp-warmup-test-\(UUID().uuidString).json")
     }
 
+    /// Polls `manager.warmupState(for:)` until the warmup reports `.completed` or `timeout`
+    /// elapses. Returns `true` if completion was observed, `false` on timeout.
+    @discardableResult
+    private func waitUntilCompleted(
+        manager: SessionManager,
+        packagePath: String,
+        timeout: Duration = .seconds(2),
+    ) async throws -> Bool {
+        let started = ContinuousClock.now
+
+        while ContinuousClock.now - started < timeout {
+            if case .completed = await manager.warmupState(for: packagePath) { return true }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        return false
+    }
+
     /// Creates a temporary cold-cache package directory with a minimal Package.swift.
     private func makeTempPackage() throws -> URL {
         let dir = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("xc-mcp-pkg-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let manifest = """
-        // swift-tools-version: 6.0
-        import PackageDescription
-        let package = Package(name: "Tmp", targets: [.target(name: "Tmp")])
-        """
+            // swift-tools-version: 6.0
+            import PackageDescription
+            let package = Package(name: "Tmp", targets: [.target(name: "Tmp")])
+            """
         try Data(manifest.utf8).write(to: dir.appendingPathComponent("Package.swift"))
         return dir
     }
@@ -30,7 +47,6 @@ struct SessionManagerWarmupTests {
         let pkgDir = try makeTempPackage()
         defer { try? FileManager.default.removeItem(at: pkgDir) }
 
-        let started = ContinuousClock.now
         let manager = SessionManager(
             filePath: sessionPath,
             warmupRunner: { _ in
@@ -39,14 +55,11 @@ struct SessionManagerWarmupTests {
         )
         await manager.setDefaults(packagePath: pkgDir.path)
 
-        // Wait for the background warmup to finish.
-        while ContinuousClock.now - started < .seconds(2) {
-            if case .completed = await manager.warmupState(for: pkgDir.path) {
-                return
-            }
-            try await Task.sleep(for: .milliseconds(20))
+        if try await !waitUntilCompleted(manager: manager, packagePath: pkgDir.path) {
+            Issue.record(
+                "Warmup did not complete within 2s; state=\(await String(describing: manager.warmupState(for: pkgDir.path)))"
+            )
         }
-        Issue.record("Warmup did not complete within 2s; state=\(String(describing: await manager.warmupState(for: pkgDir.path)))")
     }
 
     @Test
@@ -88,8 +101,15 @@ struct SessionManagerWarmupTests {
         await manager.setDefaults(packagePath: pkgDir.path)
         await manager.setDefaults(packagePath: pkgDir.path)
 
-        // Wait for any warmups to finish.
-        try await Task.sleep(for: .milliseconds(500))
+        // Poll for the (single) warmup to complete. A fixed sleep here was flaky on CI: the warmup
+        // task runs at .background priority, so under runner starvation it could be deferred long
+        // enough that runCount was still 0 when the assertion fired.
+        try await waitUntilCompleted(
+            manager: manager, packagePath: pkgDir.path, timeout: .seconds(5),
+        )
+        // Brief grace period to surface any spurious duplicate warmups that would also increment
+        // runCount.
+        try await Task.sleep(for: .milliseconds(100))
 
         #expect(await runCount.value == 1)
     }
@@ -111,14 +131,18 @@ struct SessionManagerWarmupTests {
         await manager.setDefaults(packagePath: pkgDir.path)
         try await Task.sleep(for: .milliseconds(20))
         // Sanity: warmup is running.
-        if case .running = await manager.warmupState(for: pkgDir.path) {} else {
+        if case .running = await manager.warmupState(for: pkgDir.path) {
+        } else {
             Issue.record("Expected running state before cancel")
         }
 
         await manager.cancelWarmupIfRunning(packagePath: pkgDir.path)
 
-        if case .cancelled = await manager.warmupState(for: pkgDir.path) {} else {
-            Issue.record("Expected cancelled state after cancel; got \(String(describing: await manager.warmupState(for: pkgDir.path)))")
+        if case .cancelled = await manager.warmupState(for: pkgDir.path) {
+        } else {
+            Issue.record(
+                "Expected cancelled state after cancel; got \(await String(describing: manager.warmupState(for: pkgDir.path)))"
+            )
         }
     }
 
@@ -146,7 +170,8 @@ struct SessionManagerWarmupTests {
             filePath: sessionPath,
             warmupRunner: { _ in await runCount.increment() },
         )
-        await manager.setDefaults(packagePath: "/tmp/definitely-not-a-swift-package-\(UUID().uuidString)")
+        await manager.setDefaults(
+            packagePath: "/tmp/definitely-not-a-swift-package-\(UUID().uuidString)")
         try await Task.sleep(for: .milliseconds(50))
 
         #expect(await runCount.value == 0)
@@ -167,11 +192,7 @@ struct SessionManagerWarmupTests {
         )
         await manager.setDefaults(packagePath: pkgDir.path)
 
-        // Wait for completion.
-        for _ in 0 ..< 50 {
-            if case .completed = await manager.warmupState(for: pkgDir.path) { break }
-            try await Task.sleep(for: .milliseconds(20))
-        }
+        try await waitUntilCompleted(manager: manager, packagePath: pkgDir.path)
 
         let summary = await manager.summary()
         #expect(summary.contains("Warmup: warmed"))
@@ -183,4 +204,3 @@ private actor AsyncCounter {
     private(set) var value = 0
     func increment() { value += 1 }
 }
-
