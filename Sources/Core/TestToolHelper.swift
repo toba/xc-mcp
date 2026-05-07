@@ -91,8 +91,11 @@ public enum TestToolHelper {
         context: String,
         errorsOnly: Bool = false,
     ) async throws -> CallTool.Result {
-        let resultBundlePath = testParams.resultBundlePath ?? createTempResultBundlePath()
-        let isTemporaryBundle = testParams.resultBundlePath == nil
+        let resultBundlePath = testParams.resultBundlePath
+            ?? TestResultBundleScoper.managedPath(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+            )
 
         do {
             let outputTimeout = resolveOutputTimeout(testParams)
@@ -113,12 +116,6 @@ public enum TestToolHelper {
                 timeout: TimeInterval(testParams.timeout ?? 300),
                 outputTimeout: outputTimeout,
             )
-
-            defer {
-                if isTemporaryBundle {
-                    try? FileManager.default.removeItem(atPath: resultBundlePath)
-                }
-            }
 
             let projectRoot = (workspacePath ?? projectPath)
                 .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
@@ -146,24 +143,13 @@ public enum TestToolHelper {
 
             return toolResult
         } catch let error as XcodebuildError {
-            if isTemporaryBundle {
-                try? FileManager.default.removeItem(atPath: resultBundlePath)
-            }
             let projectRoot = (workspacePath ?? projectPath)
                 .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
             return error.formatPartialDiagnostics(
                 projectRoot: projectRoot, errorsOnly: errorsOnly,
             )
         } catch {
-            if isTemporaryBundle {
-                try? FileManager.default.removeItem(atPath: resultBundlePath)
-            }
             throw try error.asMCPError()
         }
-    }
-
-    private static func createTempResultBundlePath() -> String {
-        let tempDir = FileManager.default.temporaryDirectory.path
-        return "\(tempDir)/xc-mcp-test-\(UUID().uuidString).xcresult"
     }
 }

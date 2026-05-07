@@ -2,6 +2,11 @@
 
 ## Week of May 3 – May 9, 2026
 
+### ✨ Features
+
+- Auto-create workspace-scoped `.xcresult` bundles for test tools; auto bundles now live under `~/Library/Caches/xc-mcp/TestResults/<Project>-<hash>/<UUID>.xcresult` and persist across runs (opportunistic 7-day prune); replaces the previous `$TMPDIR` + immediate-defer-delete behavior so callers can open the bundle in Xcode or feed it to coverage / attachment tools; opt-out via `XC_MCP_DISABLE_TEST_RESULTS_SCOPING`; ported from `XcodeBuildMCP` PR #401 ([#312](https://github.com/toba/xc-mcp/issues/312))
+- Surface the `.xcresult` bundle path in test tool output; `formatTestToolResult` now appends `Result bundle: <path>` to both the success text and the failure error message when the bundle exists on disk; ported from `XcodeBuildMCP` PR #397 ([#313](https://github.com/toba/xc-mcp/issues/313))
+
 ### 🐞 Fixes
 
 - `SwiftSymbolsTool`: cache decoded `SymbolGraph` in a private actor keyed by `(module, platform, sdkPath, triple)`; three parallel `SwiftSymbolsToolTests` were racing three concurrent `swift-symbolgraph-extract` invocations on the GitHub Actions runner and all blew past the tool's 60s subprocess timeout; with cache + inflight `Task` dedup, only one extraction runs per key and concurrent callers await the same `Task`; also benefits production sessions that query the same module twice ([#310](https://github.com/toba/xc-mcp/issues/310))

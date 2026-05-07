@@ -162,17 +162,26 @@ public enum ErrorExtractor {
             )
         }
 
+        let bundleSuffix = formatResultBundleSuffix(xcresultPath)
+
         if succeeded {
             return CallTool.Result(
                 content: [.text(
-                    text: "Tests passed for \(context)\n\n\(testResult)",
+                    text: "Tests passed for \(context)\n\n\(testResult)\(bundleSuffix)",
                     annotations: nil,
                     _meta: nil,
                 )],
             )
         } else {
-            throw MCPError.internalError("Tests failed:\n\(testResult)")
+            throw MCPError.internalError("Tests failed:\n\(testResult)\(bundleSuffix)")
         }
+    }
+
+    /// Returns a `\n\nResult bundle: <path>` suffix when `path` is non-nil and the bundle
+    /// exists on disk, otherwise an empty string.
+    private static func formatResultBundleSuffix(_ path: String?) -> String {
+        guard let path, FileManager.default.fileExists(atPath: path) else { return "" }
+        return "\n\nResult bundle: \(path)"
     }
 
     /// Parses build output and returns the structured `BuildResult`.
