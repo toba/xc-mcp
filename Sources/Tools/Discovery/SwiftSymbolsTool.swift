@@ -288,7 +288,7 @@ private actor SymbolGraphCache {
         let extractResult = try await ProcessResult.runSubprocess(
             .name("xcrun"),
             arguments: .init(extractArgs),
-            timeout: .seconds(60),
+            timeout: .seconds(180),
         )
         guard extractResult.succeeded else {
             throw MCPError.internalError(
