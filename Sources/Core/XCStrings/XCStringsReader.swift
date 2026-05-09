@@ -9,6 +9,33 @@ public struct XCStringsReader: Sendable {
     /// Get all keys sorted in Xcode's natural order.
     public func listKeys() -> [String] { XCStringsKeySorter.sort(file.strings.keys) }
 
+    /// Find existing keys whose normalized form matches the queried key's
+    /// normalized form. Surfaces visually-identical-but-Unicode-distinct
+    /// substitutions like APOSTROPHE U+0027 vs RIGHT SINGLE QUOTATION MARK
+    /// U+2019 (Xcode emits the latter in xcstrings keys like
+    /// "Record today's progress"). Normalization is NFKC plus folding of
+    /// curly quotes to their ASCII counterparts — pure NFKC does not unify
+    /// the two apostrophe codepoints.
+    public func suggestions(for key: String) -> [String] {
+        let target = Self.normalizeForSuggestions(key)
+        let matches = file.strings.keys.filter { existing in
+            existing != key && Self.normalizeForSuggestions(existing) == target
+        }
+        return XCStringsKeySorter.sort(matches)
+    }
+
+    private static func normalizeForSuggestions(_ string: String) -> String {
+        var folded = string.precomposedStringWithCompatibilityMapping
+        let curlyToAscii: [Character: Character] = [
+            "\u{2019}": "'",  // RIGHT SINGLE QUOTATION MARK
+            "\u{2018}": "'",  // LEFT SINGLE QUOTATION MARK
+            "\u{201C}": "\"", // LEFT DOUBLE QUOTATION MARK
+            "\u{201D}": "\"", // RIGHT DOUBLE QUOTATION MARK
+        ]
+        folded = String(folded.map { curlyToAscii[$0] ?? $0 })
+        return folded
+    }
+
     /// Get all languages used in the file
     public func listLanguages() -> [String] {
         var languages = Set<String>()
@@ -43,7 +70,9 @@ public struct XCStringsReader: Sendable {
 
     /// Get key information
     public func getKey(_ key: String) throws(XCStringsError) -> KeyInfo {
-        guard let entry = file.strings[key] else { throw XCStringsError.keyNotFound(key: key) }
+        guard let entry = file.strings[key] else {
+            throw XCStringsError.keyNotFound(key: key, suggestions: suggestions(for: key))
+        }
 
         let languages = entry.localizations?.keys.sorted() ?? []
 
@@ -64,7 +93,9 @@ public struct XCStringsReader: Sendable {
     ) throws(XCStringsError) -> [String:
         TranslationInfo]
     {
-        guard let entry = file.strings[key] else { throw XCStringsError.keyNotFound(key: key) }
+        guard let entry = file.strings[key] else {
+            throw XCStringsError.keyNotFound(key: key, suggestions: suggestions(for: key))
+        }
 
         var result: [String: TranslationInfo] = [:]
 
@@ -127,7 +158,9 @@ public struct XCStringsReader: Sendable {
     public func checkCoverage(_ key: String) throws(XCStringsError) -> CoverageInfo {
         let allLanguages = listLanguages()
 
-        guard let entry = file.strings[key] else { throw XCStringsError.keyNotFound(key: key) }
+        guard let entry = file.strings[key] else {
+            throw XCStringsError.keyNotFound(key: key, suggestions: suggestions(for: key))
+        }
 
         guard entry.requiresTranslation else {
             return .init(

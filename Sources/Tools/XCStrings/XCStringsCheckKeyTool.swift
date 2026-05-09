@@ -45,8 +45,21 @@ public struct XCStringsCheckKeyTool: Sendable {
             let parser = XCStringsParser(path: resolvedPath)
             let exists = try await parser.checkKey(key, language: language)
 
+            let text: String
+            if exists {
+                text = "true"
+            } else {
+                let suggestions = try await parser.suggestions(for: key)
+                if suggestions.isEmpty {
+                    text = "false"
+                } else {
+                    let formatted = suggestions.map { "'\($0)'" }.joined(separator: ", ")
+                    text = "false (key not found; did you mean: \(formatted)?)"
+                }
+            }
+
             return CallTool.Result(content: [.text(
-                text: String(exists),
+                text: text,
                 annotations: nil,
                 _meta: nil,
             )])

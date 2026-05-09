@@ -83,6 +83,14 @@ public actor XCStringsParser {
         try withReader { $0.checkKey(key, language: language) }
     }
 
+    /// Find existing keys whose NFKC-normalized form matches the queried
+    /// key's NFKC form. Useful for surfacing "did you mean" hints when a
+    /// caller passes an APOSTROPHE U+0027 instead of the RIGHT SINGLE
+    /// QUOTATION MARK U+2019 that Xcode actually wrote.
+    public func suggestions(for key: String) throws(XCStringsError) -> [String] {
+        try withReader { $0.suggestions(for: key) }
+    }
+
     /// Check coverage for a key
     public func checkCoverage(_ key: String) throws(XCStringsError) -> CoverageInfo {
         let file = try load()

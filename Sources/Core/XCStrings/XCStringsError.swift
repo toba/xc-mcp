@@ -6,7 +6,7 @@ public enum XCStringsError: Swift.Error, LocalizedError, Sendable, MCPErrorConve
     case fileNotFound(path: String)
     case fileAlreadyExists(path: String)
     case invalidFileFormat(path: String, reason: String)
-    case keyNotFound(key: String)
+    case keyNotFound(key: String, suggestions: [String] = [])
     case keyAlreadyExists(key: String)
     case languageNotFound(language: String, key: String)
     case writeError(path: String, reason: String)
@@ -20,8 +20,11 @@ public enum XCStringsError: Swift.Error, LocalizedError, Sendable, MCPErrorConve
                 return "File already exists: \(path)"
             case let .invalidFileFormat(path, reason):
                 return "Invalid file format at '\(path)': \(reason)"
-            case let .keyNotFound(key):
-                return "Key not found: '\(key)'"
+            case let .keyNotFound(key, suggestions):
+                let base = "Key not found: '\(key)'"
+                guard !suggestions.isEmpty else { return base }
+                let formatted = suggestions.map { "'\($0)'" }.joined(separator: ", ")
+                return "\(base). Did you mean: \(formatted)?"
             case let .keyAlreadyExists(key):
                 return "Key already exists: '\(key)'"
             case let .languageNotFound(language, key):

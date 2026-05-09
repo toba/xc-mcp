@@ -117,7 +117,13 @@ extension String {
     }
 
     fileprivate func jsonEscaped() -> String {
-        let data = try? JSONEncoder().encode(self)
+        // `.withoutEscapingSlashes` mirrors Xcode's on-disk format — `/` is
+        // valid JSON and never needs escaping; the default `\/` produces
+        // noisy diffs against catalogs containing strings like
+        // "Domestic / Foreign".
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.withoutEscapingSlashes]
+        let data = try? encoder.encode(self)
         // sm:ignore useFailableStringInit — JSONEncoder always emits valid UTF-8.
         return data.map { String(decoding: $0, as: UTF8.self) } ?? "\"\""
     }

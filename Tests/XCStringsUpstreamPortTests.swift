@@ -10,6 +10,10 @@ import Testing
 ///   (commit 716078a, jig azt-qxr)
 /// - String keys are sorted with `localizedStandardCompare` and serialized
 ///   in Xcode's on-disk format (commit 84ae167, jig 21p-lqj)
+/// - Forward slashes are not escaped in encoder output to match Xcode
+///   (commit 2380a6e, jig yzv-us5)
+/// - NFKC-equivalent key suggestions surface on lookup failure
+///   (commit 1384fa7, jig zyj-8ys)
 struct XCStringsUpstreamPortTests {
     // MARK: - shouldTranslate
 
@@ -183,6 +187,75 @@ struct XCStringsUpstreamPortTests {
         )
 
         #expect(XCStringsReader(file: file).listKeys() == ["item_1", "item_2", "item_10"])
+    }
+
+    // MARK: - Encoder format
+
+    @Test func `encoder does not escape forward slashes`() throws {
+        let file = XCStringsFile(
+            sourceLanguage: "en",
+            strings: [
+                "category": StringEntry(
+                    localizations: [
+                        "en": Localization(
+                            stringUnit: StringUnit(
+                                state: "translated",
+                                value: "Domestic / Foreign"
+                            )
+                        ),
+                    ]
+                ),
+            ]
+        )
+
+        let data = try XCStringsFileEncoder.encode(file)
+        // sm:ignore useFailableStringInit — encoder output is always valid UTF-8.
+        let json = String(decoding: data, as: UTF8.self)
+
+        #expect(json.contains("Domestic / Foreign"))
+        #expect(!json.contains("\\/"))
+    }
+
+    // MARK: - NFKC suggestions
+
+    @Test func `suggestions returns NFKC-equivalent existing keys`() {
+        // Xcode-emitted key uses RIGHT SINGLE QUOTATION MARK (U+2019).
+        let xcodeKey = "Record today\u{2019}s progress"
+        let file = XCStringsFile(
+            sourceLanguage: "en",
+            strings: [xcodeKey: StringEntry()]
+        )
+        let reader = XCStringsReader(file: file)
+
+        // Caller passed the visually-identical APOSTROPHE (U+0027).
+        let queried = "Record today\u{0027}s progress"
+        #expect(reader.suggestions(for: queried) == [xcodeKey])
+    }
+
+    @Test func `keyNotFound includes NFKC suggestions in its description`() {
+        let xcodeKey = "Record today\u{2019}s progress"
+        let queried = "Record today\u{0027}s progress"
+        let file = XCStringsFile(
+            sourceLanguage: "en",
+            strings: [xcodeKey: StringEntry()]
+        )
+
+        do {
+            _ = try XCStringsReader(file: file).getKey(queried)
+            Issue.record("Expected keyNotFound to throw")
+        } catch {
+            let description = error.errorDescription ?? ""
+            #expect(description.contains("Did you mean"))
+            #expect(description.contains(xcodeKey))
+        }
+    }
+
+    @Test func `suggestions are empty when no NFKC equivalent exists`() {
+        let file = XCStringsFile(
+            sourceLanguage: "en",
+            strings: ["hello": StringEntry()]
+        )
+        #expect(XCStringsReader(file: file).suggestions(for: "goodbye") == [])
     }
 
     // MARK: - Encoder format
