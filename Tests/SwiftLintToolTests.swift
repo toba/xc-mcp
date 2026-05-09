@@ -12,7 +12,7 @@ struct SwiftLintToolTests {
         let schema = tool.tool()
 
         #expect(schema.name == "swift_lint")
-        #expect(schema.description?.contains("swiftlint") == true)
+        #expect(schema.description?.contains("sm") == true)
     }
 
     @Test
@@ -29,38 +29,37 @@ struct SwiftLintToolTests {
 
         #expect(properties["paths"] != nil)
         #expect(properties["package_path"] != nil)
-        #expect(properties["fix"] != nil)
     }
 
     @Test
-    func `Parses JSON output with violations`() {
+    func `Parses sm JSON output with violations`() {
         let json = """
-        [
-          {
-            "file": "/path/to/Foo.swift",
-            "line": 10,
-            "character": 5,
-            "severity": "warning",
-            "rule_id": "trailing_whitespace",
-            "reason": "Lines should not have trailing whitespace"
-          },
-          {
-            "file": "/path/to/Bar.swift",
-            "line": 20,
-            "character": 1,
-            "severity": "error",
-            "rule_id": "force_cast",
-            "reason": "Force casts should be avoided"
-          }
-        ]
-        """
+            [
+              {
+                "file": "/path/to/Foo.swift",
+                "line": 10,
+                "column": 5,
+                "severity": "warning",
+                "rule": "trailingWhitespace",
+                "message": "Lines should not have trailing whitespace"
+              },
+              {
+                "file": "/path/to/Bar.swift",
+                "line": 20,
+                "column": 1,
+                "severity": "error",
+                "rule": "forceCast",
+                "message": "Force casts should be avoided"
+              }
+            ]
+            """
         let violations = SwiftLintTool.parseJSONOutput(json)
         #expect(violations.count == 2)
         #expect(violations[0].file == "/path/to/Foo.swift")
         #expect(violations[0].line == 10)
         #expect(violations[0].column == 5)
         #expect(violations[0].severity == "warning")
-        #expect(violations[0].ruleID == "trailing_whitespace")
+        #expect(violations[0].rule == "trailingWhitespace")
         #expect(violations[1].file == "/path/to/Bar.swift")
         #expect(violations[1].severity == "error")
     }
@@ -82,25 +81,25 @@ struct SwiftLintToolTests {
         let violations = [
             SwiftLintTool.Violation(
                 file: "/path/to/Foo.swift", line: 10, column: 5,
-                severity: "warning", ruleID: "trailing_whitespace",
-                reason: "Lines should not have trailing whitespace",
+                severity: "warning", rule: "trailingWhitespace",
+                message: "Lines should not have trailing whitespace",
             ),
             SwiftLintTool.Violation(
                 file: "/path/to/Foo.swift", line: 20, column: 1,
-                severity: "error", ruleID: "force_cast",
-                reason: "Force casts should be avoided",
+                severity: "error", rule: "forceCast",
+                message: "Force casts should be avoided",
             ),
             SwiftLintTool.Violation(
                 file: "/path/to/Bar.swift", line: 5, column: 3,
-                severity: "warning", ruleID: "line_length",
-                reason: "Line should be 120 characters or less",
+                severity: "warning", rule: "lineLength",
+                message: "Line should be 120 characters or less",
             ),
         ]
         let output = SwiftLintTool.formatViolations(violations)
         #expect(output.contains("3 violation(s) found:"))
         #expect(output.contains("/path/to/Bar.swift"))
         #expect(output.contains("/path/to/Foo.swift"))
-        #expect(output.contains("trailing_whitespace"))
-        #expect(output.contains("force_cast"))
+        #expect(output.contains("trailingWhitespace"))
+        #expect(output.contains("forceCast"))
     }
 }

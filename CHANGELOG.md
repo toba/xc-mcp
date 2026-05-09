@@ -20,6 +20,7 @@
 
 ### 🗜️ Tweaks
 
+- Migrate `swift_lint` / `swift_format` MCP tools and the `swift_diagnostics` / `diagnostics` lint step from `swiftlint` / `swiftformat` (Lockwood) to `sm` (swiftiomatic); consume the new `sm lint --reporter json` and `sm format --reporter json` envelopes so xc-mcp parses structured `{file, line, column, severity, rule, message}` violations and `{changed, unchanged, skipped}` format summaries instead of regex-matching plain stdout; tool names `swift_lint` / `swift_format` kept stable, diagnostics param renamed `include_lint` → `run_lint`; drops Lockwood-vs-Apple discrimination from `BinaryLocator` and removes legacy `.swiftlint.yml` / `.swiftformat` discovery (`sm` finds its own configuration) ([#318](https://github.com/toba/xc-mcp/issues/318))
 - Bump `tuist/xcodeproj` `9.10.1` → `9.12.0`; pulls in additive `XCBuildConfiguration` support for xcconfigs inside `PBXFileSystemSynchronizedRootGroup` (Xcode 16+); audited `XcodeBuildMCP` PR #390 shell-injection sites and confirmed xc-mcp reads Info.plist via in-process `PropertyListSerialization` so the analogous surface doesn't exist here ([#309](https://github.com/toba/xc-mcp/issues/309))
 - Audit launch-arg vs `xcodebuild` extra-args separation against `XcodeBuildMCP` PR #403; confirmed our `args` parameter is consistently routed to launch-time use across all 7 build/run/launch tools and `xcodebuild` additional arguments come from narrowly-scoped session helpers; no conflation, no breaking change needed ([#317](https://github.com/toba/xc-mcp/issues/317))
 

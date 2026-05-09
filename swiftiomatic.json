@@ -1,6 +1,6 @@
 {
 	"$schema": "https://raw.githubusercontent.com/toba/swiftiomatic/refs/heads/main/schema.json",
-	"version": 7,
+	"version": 8,
 	"sort": {
 		"sortImports": {
 			"lint": "no",
@@ -13,11 +13,7 @@
 		"sortSwitchCases": { "lint": "no", "rewrite": false },
 		"sortTypeAliases": { "lint": "no", "rewrite": false },
 		"sortDeclarations": { "lint": "no", "rewrite": false },
-		"sortGetSetAccessors": {
-			"lint": "warn",
-			"order": "get_set",
-			"rewrite": false
-		}
+		"sortGetSetAccessors": { "lint": "warn", "order": "get_set" }
 	},
 	"wrap": {
 		"nestedCallLayout": { "lint": "no", "mode": "inline", "rewrite": true },
@@ -88,6 +84,7 @@
 		"useCompoundAssignment": { "lint": "warn", "rewrite": true },
 		"useStaticNotClassFunc": { "lint": "warn", "rewrite": false },
 		"useLazyForLongChainOps": { "lint": "warn" },
+		"noFirstIndexOfInForLoop": { "lint": "warn" },
 		"useTypedThrowsNotResult": { "lint": "warn" },
 		"requireFatalErrorMessage": { "lint": "warn", "rewrite": false },
 		"useExplicitFalseInGuards": { "lint": "no", "rewrite": false },
@@ -176,7 +173,10 @@
 		}
 	},
 	"swiftui": {
+		"noAnyViewInForEach": { "lint": "warn" },
+		"flagSupersededSwiftUI": { "lint": "warn" },
 		"noFormatterInViewBody": { "lint": "warn" },
+		"flagForEachOverIndices": { "lint": "warn" },
 		"flagForEachIDSelfInView": { "lint": "warn" },
 		"useAtEntryNotEnvironmentKey": { "lint": "no", "rewrite": false },
 		"dropRedundantMainActorOnView": { "lint": "warn", "rewrite": true },
@@ -191,8 +191,8 @@
 		"requireTestFnPrefixOrAttribute": { "lint": "warn", "rewrite": false }
 	},
 	"closures": {
-		"noMutableCapture": { "lint": "warn" },
 		"useTrailingClosures": { "lint": "warn", "rewrite": true },
+		"noMutableInCaptureList": { "lint": "warn" },
 		"noMultiTrailingClosures": { "lint": "warn" },
 		"noParensInClosureParams": { "lint": "warn", "rewrite": true },
 		"noTrailingClosureParens": { "lint": "warn", "rewrite": true },
@@ -219,6 +219,7 @@
 		"noOrphanedDocComment": { "lint": "warn" },
 		"formatSpecialComments": { "lint": "no", "rewrite": true },
 		"requireDocsOnPublicDecls": { "lint": "no" },
+		"flagUnusedIgnoreDirective": { "lint": "warn" },
 		"useTripleSlashOverDocBlock": { "lint": "no", "rewrite": true },
 		"requireDocSummaryStructure": { "lint": "no" },
 		"requireParameterAndReturnDocs": { "lint": "no" },
@@ -250,12 +251,17 @@
 		"noForceTry": { "lint": "warn", "rewrite": false },
 		"noForceCast": { "lint": "warn", "rewrite": false },
 		"noForceUnwrap": { "lint": "warn", "rewrite": false },
+		"flagTaskDetached": { "lint": "warn" },
 		"noNestedWithLock": { "lint": "warn" },
 		"useTypedCatchError": { "lint": "warn" },
+		"flagTaskInMainActor": { "lint": "warn" },
+		"flagMutableStaticVar": { "lint": "warn" },
+		"flagUncheckedSendable": { "lint": "warn" },
 		"noAwaitInsideWithLock": { "lint": "warn" },
 		"requireAsyncStreamFinish": { "lint": "warn" },
 		"flagMutationDuringIteration": { "lint": "warn" },
-		"flagRecursiveObservationTracking": { "lint": "warn" }
+		"flagRecursiveObservationTracking": { "lint": "warn" },
+		"requireSubprocessTeardownSequence": { "lint": "warn" }
 	},
 	"blankLines": {
 		"maximumBlankLines": 1,
@@ -326,7 +332,6 @@
 	"declarations": {
 		"requireSuperCall": {
 			"lint": "no",
-			"rewrite": false,
 			"methodNames": [
 				"setUp()",
 				"tearDown()",
@@ -381,7 +386,6 @@
 		"dropRedundantLetError": { "lint": "warn", "rewrite": true },
 		"dropRedundantOverride": { "lint": "warn", "rewrite": false },
 		"dropRedundantProperty": { "lint": "warn", "rewrite": true },
-		"dropRedundantSendable": { "lint": "no", "rewrite": false },
 		"dropRedundantBackticks": { "lint": "warn", "rewrite": true },
 		"dropRedundantEquatable": { "lint": "no", "rewrite": false },
 		"dropRedundantRawValues": { "lint": "warn", "rewrite": true },

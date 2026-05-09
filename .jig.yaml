@@ -96,6 +96,11 @@ todo:
     path: .issues
     default_status: ready
     default_type: task
+    extra_statuses:
+        in-progress: true
+        deferred: true
+        draft: true
+        scrapped: true
     sync:
         github:
             repo: toba/xc-mcp

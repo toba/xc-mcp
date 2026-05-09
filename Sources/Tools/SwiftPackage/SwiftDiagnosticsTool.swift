@@ -6,16 +6,16 @@ public struct SwiftDiagnosticsTool: Sendable {
     private let swiftRunner: SwiftRunner
     private let sessionManager: SessionManager
 
-    public init(swiftRunner: SwiftRunner = SwiftRunner(), sessionManager: SessionManager) {
+    public init(swiftRunner: SwiftRunner = .init(), sessionManager: SessionManager) {
         self.swiftRunner = swiftRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "swift_diagnostics",
             description:
-            "Collect all compiler warnings, errors, and lint violations for a Swift package. Performs a clean build so all diagnostics are emitted.",
+                "Collect all compiler warnings, errors, and lint violations for a Swift package. Performs a clean build so all diagnostics are emitted.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -31,10 +31,10 @@ public struct SwiftDiagnosticsTool: Sendable {
                             "Also build test targets to collect their diagnostics. Defaults to true.",
                         ),
                     ]),
-                    "include_lint": .object([
+                    "run_lint": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Run swiftlint after building to include style violations. Defaults to true.",
+                            "Run sm (swiftiomatic) lint after building to include style violations. Defaults to true.",
                         ),
                     ]),
                     "timeout": .object([
@@ -53,10 +53,9 @@ public struct SwiftDiagnosticsTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let buildTests = arguments.getBool("build_tests", default: true)
-        let includeLint = arguments.getBool("include_lint", default: true)
-        let timeout =
-            arguments.getInt("timeout").map { Duration.seconds($0) }
-                ?? SwiftRunner.defaultTimeout
+        let runLint = arguments.getBool("run_lint", default: true)
+        let timeout = arguments.getInt("timeout").map { Duration.seconds($0) }
+            ?? SwiftRunner.defaultTimeout
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
@@ -81,6 +80,7 @@ public struct SwiftDiagnosticsTool: Sendable {
 
             // Step 3: On compiler signal crash, retry with -v for verbose output
             var crashDetails: String?
+
             if let signal = ErrorExtractor.detectCompilerCrash(in: buildResult.output) {
                 let verboseResult = try await swiftRunner.build(
                     packagePath: packagePath,
@@ -97,11 +97,9 @@ public struct SwiftDiagnosticsTool: Sendable {
             let parsed = ErrorExtractor.parseBuildOutput(buildResult.output)
             let buildFailed = !buildResult.succeeded && parsed.status != "success"
 
-            // Step 5: Optionally run swiftlint
+            // Step 5: Optionally run sm lint
             var lintSection: String?
-            if includeLint {
-                lintSection = await runSwiftLint(packagePath: packagePath)
-            }
+            if runLint { lintSection = await runSm(packagePath: packagePath) }
 
             // Step 6: Format combined output
             let output = formatDiagnostics(
@@ -109,9 +107,7 @@ public struct SwiftDiagnosticsTool: Sendable {
                 crashDetails: crashDetails, lintSection: lintSection,
             )
 
-            if buildFailed {
-                throw MCPError.internalError(output)
-            }
+            if buildFailed { throw MCPError.internalError(output) }
 
             return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
         } catch {
@@ -120,8 +116,10 @@ public struct SwiftDiagnosticsTool: Sendable {
     }
 
     private func formatDiagnostics(
-        parsed: BuildResult, buildFailed: Bool,
-        crashDetails: String? = nil, lintSection: String?,
+        parsed: BuildResult,
+        buildFailed: Bool,
+        crashDetails: String? = nil,
+        lintSection: String?,
     ) -> String {
         var sections: [String] = []
 
@@ -135,51 +133,28 @@ public struct SwiftDiagnosticsTool: Sendable {
         }
 
         // Compiler crash details from verbose retry
-        if let crashDetails {
-            sections.append("## Compiler Crash\n\n\(crashDetails)")
-        }
+        if let crashDetails { sections.append("## Compiler Crash\n\n\(crashDetails)") }
 
         // Lint section
-        if let lintSection {
-            sections.append("## Lint Violations\n\n\(lintSection)")
-        }
+        if let lintSection { sections.append("## Lint Violations\n\n\(lintSection)") }
 
-        if sections.isEmpty {
-            return "No build warnings or lint violations found. Code is clean!"
-        }
-
-        return sections.joined(separator: "\n\n")
+        return sections.isEmpty
+            ? "No build warnings or lint violations found. Code is clean!"
+            : sections.joined(separator: "\n\n")
     }
 
-    private func runSwiftLint(packagePath: String) async -> String? {
-        guard let executablePath = try? await BinaryLocator.find("swiftlint") else {
-            return nil
-        }
+    private func runSm(packagePath: String) async -> String? {
+        guard let executablePath = try? await BinaryLocator.find("sm") else { return nil }
 
-        var args: [String] = ["lint", "--reporter", "json"]
+        let args: [String] = [
+            "lint", "--reporter", "json", "--parallel", "--recursive", packagePath,
+        ]
 
-        let configPath = URL(fileURLWithPath: packagePath)
-            .appendingPathComponent(".swiftlint.yml").path
-        if FileManager.default.fileExists(atPath: configPath) {
-            args.append("--config")
-            args.append(configPath)
-        }
-
-        args.append(packagePath)
-
-        guard
-            let result = try? await ProcessResult.run(
-                executablePath, arguments: args, mergeStderr: false,
-            )
-        else {
-            return nil
-        }
+        guard let result = try? await ProcessResult.run(
+            executablePath, arguments: args, mergeStderr: false,
+        ) else { return nil }
 
         let violations = SwiftLintTool.parseJSONOutput(result.stdout)
-        if violations.isEmpty {
-            return nil
-        }
-
-        return SwiftLintTool.formatViolations(violations)
+        return violations.isEmpty ? nil : SwiftLintTool.formatViolations(violations)
     }
 }

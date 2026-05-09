@@ -5,15 +5,13 @@ import Foundation
 public struct SwiftLintTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "swift_lint",
             description:
-            "Run swiftlint on a Swift package or specific paths. Returns violations grouped by file.",
+                "Run sm (swiftiomatic) lint on a Swift package or specific paths. Returns violations grouped by file.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -30,12 +28,6 @@ public struct SwiftLintTool: Sendable {
                             "Path to the Swift package directory. Uses session default if not specified.",
                         ),
                     ]),
-                    "fix": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Automatically fix violations where possible. Defaults to false.",
-                        ),
-                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -46,28 +38,12 @@ public struct SwiftLintTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let paths = arguments.getStringArray("paths")
-        let fix = arguments.getBool("fix")
 
-        let executablePath = try await BinaryLocator.find("swiftlint")
+        let executablePath = try await BinaryLocator.find("sm")
 
-        var args: [String] = ["lint", "--reporter", "json"]
-        if fix {
-            args.append("--fix")
-        }
+        var args: [String] = ["lint", "--reporter", "json", "--parallel", "--recursive"]
 
-        // Add config if present
-        let configPath = URL(fileURLWithPath: packagePath)
-            .appendingPathComponent(".swiftlint.yml").path
-        if FileManager.default.fileExists(atPath: configPath) {
-            args.append("--config")
-            args.append(configPath)
-        }
-
-        if paths.isEmpty {
-            args.append(packagePath)
-        } else {
-            args.append(contentsOf: paths)
-        }
+        if paths.isEmpty { args.append(packagePath) } else { args.append(contentsOf: paths) }
 
         do {
             let result = try await ProcessResult.run(
@@ -77,11 +53,13 @@ public struct SwiftLintTool: Sendable {
             let violations = Self.parseJSONOutput(result.stdout)
 
             if violations.isEmpty {
-                return CallTool.Result(content: [.text(
-                    text: "No violations found. Code is clean!",
-                    annotations: nil,
-                    _meta: nil,
-                )])
+                return CallTool.Result(content: [
+                    .text(
+                        text: "No violations found. Code is clean!",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ])
             }
 
             let message = Self.formatViolations(violations)
@@ -91,21 +69,20 @@ public struct SwiftLintTool: Sendable {
         }
     }
 
-    /// A single swiftlint violation parsed from JSON output.
+    /// A single sm lint violation parsed from JSON output.
     struct Violation {
         let file: String
         let line: Int
         let column: Int
         let severity: String
-        let ruleID: String
-        let reason: String
+        let rule: String
+        let message: String
     }
 
-    /// Parses swiftlint JSON reporter output into structured violations.
+    /// Parses sm lint JSON reporter output into structured violations.
     static func parseJSONOutput(_ output: String) -> [Violation] {
         let data = Data(output.utf8)
-        guard let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        else {
+        guard let array = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
             return []
         }
 
@@ -113,15 +90,13 @@ public struct SwiftLintTool: Sendable {
             guard let file = dict["file"] as? String,
                   let line = dict["line"] as? Int,
                   let severity = dict["severity"] as? String,
-                  let ruleID = dict["rule_id"] as? String,
-                  let reason = dict["reason"] as? String
-            else {
-                return nil
-            }
-            let column = dict["character"] as? Int ?? 0
+                  let rule = dict["rule"] as? String,
+                  let message = dict["message"] as? String
+            else { return nil }
+            let column = dict["column"] as? Int ?? 0
             return Violation(
                 file: file, line: line, column: column,
-                severity: severity, ruleID: ruleID, reason: reason,
+                severity: severity, rule: rule, message: message,
             )
         }
     }
@@ -137,7 +112,7 @@ public struct SwiftLintTool: Sendable {
             guard let fileViolations = grouped[file] else { continue }
             lines.append(file)
             for v in fileViolations {
-                lines.append("  \(v.line):\(v.column) \(v.severity): \(v.reason) (\(v.ruleID))")
+                lines.append("  \(v.line):\(v.column) \(v.severity): \(v.message) (\(v.rule))")
             }
         }
 

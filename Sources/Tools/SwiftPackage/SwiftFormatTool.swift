@@ -5,15 +5,13 @@ import Foundation
 public struct SwiftFormatTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "swift_format",
             description:
-            "Run swiftformat on a Swift package or specific paths. Returns the list of files that were formatted.",
+                "Run sm (swiftiomatic) format on a Swift package or specific paths. Returns the list of files that were changed.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -30,12 +28,6 @@ public struct SwiftFormatTool: Sendable {
                             "Path to the Swift package directory. Uses session default if not specified.",
                         ),
                     ]),
-                    "dry_run": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Preview changes without modifying files. Defaults to false.",
-                        ),
-                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -46,78 +38,86 @@ public struct SwiftFormatTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let paths = arguments.getStringArray("paths")
-        let dryRun = arguments.getBool("dry_run")
 
-        let executablePath = try await BinaryLocator.find("swiftformat")
+        let executablePath = try await BinaryLocator.find("sm")
 
-        var args: [String] = []
-        if paths.isEmpty {
-            args.append(packagePath)
-        } else {
-            args.append(contentsOf: paths)
-        }
-        args.append("--verbose")
-
-        if dryRun {
-            args.append("--dryrun")
-        }
-
-        // Add config if present
-        let configPath = URL(fileURLWithPath: packagePath)
-            .appendingPathComponent(".swiftformat").path
-        if FileManager.default.fileExists(atPath: configPath) {
-            args.append("--config")
-            args.append(configPath)
-        }
+        var args: [String] = [
+            "format", "--in-place", "--recursive", "--parallel",
+            "--reporter", "json",
+        ]
+        if paths.isEmpty { args.append(packagePath) } else { args.append(contentsOf: paths) }
 
         do {
-            let result = try await ProcessResult.run(executablePath, arguments: args)
-            let formatted = Self.parseVerboseOutput(result.output)
+            let result = try await ProcessResult.run(
+                executablePath, arguments: args, mergeStderr: false,
+            )
+            let summary = Self.parseJSONOutput(result.stdout)
 
-            if dryRun {
-                if formatted.isEmpty {
-                    return CallTool.Result(content: [.text(
-                        text: "No formatting changes needed.",
+            if summary.changed.isEmpty {
+                return CallTool.Result(content: [
+                    .text(
+                        text: "All files already formatted correctly.",
                         annotations: nil,
                         _meta: nil,
-                    )])
-                }
-                var message = "\(formatted.count) file(s) would be changed:\n"
-                message += formatted.joined(separator: "\n")
-                return CallTool.Result(content: [.text(
-                    text: message,
-                    annotations: nil,
-                    _meta: nil,
-                )])
+                    )
+                ])
             }
 
-            if formatted.isEmpty {
-                return CallTool.Result(content: [.text(
-                    text: "All files already formatted correctly.",
-                    annotations: nil,
-                    _meta: nil,
-                )])
-            }
+            var message = "Formatted \(summary.changed.count) file(s):\n"
+            message += summary.changed.map(\.file).joined(separator: "\n")
 
-            var message = "Formatted \(formatted.count) file(s):\n"
-            message += formatted.joined(separator: "\n")
+            if !summary.skipped.isEmpty {
+                message += "\n\nSkipped \(summary.skipped.count) file(s):\n"
+                message += summary.skipped.map { "\($0.file) (\($0.reason))" }.joined(
+                    separator: "\n")
+            }
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw try error.asMCPError()
         }
     }
 
-    /// Parses swiftformat verbose output to extract files that were changed.
-    ///
-    /// Verbose output lines for changed files look like:
-    /// `*./Sources/Foo.swift`
-    /// Lines for unchanged files look like:
-    /// `./Sources/Bar.swift`
-    static func parseVerboseOutput(_ output: String) -> [String] {
-        output.split(separator: "\n", omittingEmptySubsequences: true)
-            .compactMap { line -> String? in
-                guard line.hasPrefix("*") else { return nil }
-                return String(line.dropFirst())
-            }
+    /// A single changed file from the sm format JSON reporter.
+    struct ChangedFile {
+        let file: String
+        let bytesBefore: Int
+        let bytesAfter: Int
+    }
+
+    /// A skipped file from the sm format JSON reporter.
+    struct SkippedFile {
+        let file: String
+        let reason: String
+    }
+
+    /// Aggregate summary parsed from the sm format JSON reporter.
+    struct Summary {
+        let changed: [ChangedFile]
+        let unchanged: [String]
+        let skipped: [SkippedFile]
+    }
+
+    /// Parses the sm format JSON reporter envelope.
+    static func parseJSONOutput(_ output: String) -> Summary {
+        let data = Data(output.utf8)
+        guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return Summary(changed: [], unchanged: [], skipped: [])
+        }
+
+        let changed = (dict["changed"] as? [[String: Any]] ?? []).compactMap { e -> ChangedFile? in
+            guard let file = e["file"] as? String else { return nil }
+            return ChangedFile(
+                file: file,
+                bytesBefore: e["bytes_before"] as? Int ?? 0,
+                bytesAfter: e["bytes_after"] as? Int ?? 0,
+            )
+        }
+        let unchanged = (dict["unchanged"] as? [String]) ?? []
+        let skipped = (dict["skipped"] as? [[String: Any]] ?? []).compactMap { e -> SkippedFile? in
+            guard let file = e["file"] as? String else { return nil }
+            return SkippedFile(file: file, reason: e["reason"] as? String ?? "")
+        }
+
+        return .init(changed: changed, unchanged: unchanged, skipped: skipped)
     }
 }

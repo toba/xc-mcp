@@ -12,7 +12,7 @@ struct SwiftFormatToolTests {
         let schema = tool.tool()
 
         #expect(schema.name == "swift_format")
-        #expect(schema.description?.contains("swiftformat") == true)
+        #expect(schema.description?.contains("sm") == true)
     }
 
     @Test
@@ -29,35 +29,58 @@ struct SwiftFormatToolTests {
 
         #expect(properties["paths"] != nil)
         #expect(properties["package_path"] != nil)
-        #expect(properties["dry_run"] != nil)
     }
 
     @Test
-    func `Parses verbose output with changed files`() {
-        let output = """
-        Running swiftformat...
-        *./Sources/Foo.swift
-        ./Sources/Bar.swift
-        *./Sources/Baz.swift
-        """
-        let result = SwiftFormatTool.parseVerboseOutput(output)
-        #expect(result == ["./Sources/Foo.swift", "./Sources/Baz.swift"])
+    func `Parses sm JSON output with changed files`() {
+        let json = """
+            {
+              "changed": [
+                { "file": "/Sources/Foo.swift", "bytes_before": 100, "bytes_after": 110 },
+                { "file": "/Sources/Baz.swift", "bytes_before": 200, "bytes_after": 198 }
+              ],
+              "unchanged": ["/Sources/Bar.swift"],
+              "skipped": []
+            }
+            """
+        let summary = SwiftFormatTool.parseJSONOutput(json)
+        #expect(summary.changed.count == 2)
+        #expect(summary.changed[0].file == "/Sources/Foo.swift")
+        #expect(summary.changed[0].bytesBefore == 100)
+        #expect(summary.changed[0].bytesAfter == 110)
+        #expect(summary.unchanged == ["/Sources/Bar.swift"])
+        #expect(summary.skipped.isEmpty)
     }
 
     @Test
-    func `Parses verbose output with no changes`() {
-        let output = """
-        Running swiftformat...
-        ./Sources/Foo.swift
-        ./Sources/Bar.swift
-        """
-        let result = SwiftFormatTool.parseVerboseOutput(output)
-        #expect(result.isEmpty)
+    func `Parses sm JSON output with skipped files`() {
+        let json = """
+            {
+              "changed": [],
+              "unchanged": [],
+              "skipped": [
+                { "file": "/Sources/Bad.swift", "reason": "unparsable" }
+              ]
+            }
+            """
+        let summary = SwiftFormatTool.parseJSONOutput(json)
+        #expect(summary.changed.isEmpty)
+        #expect(summary.skipped.count == 1)
+        #expect(summary.skipped[0].file == "/Sources/Bad.swift")
+        #expect(summary.skipped[0].reason == "unparsable")
     }
 
     @Test
     func `Parses empty output`() {
-        let result = SwiftFormatTool.parseVerboseOutput("")
-        #expect(result.isEmpty)
+        let summary = SwiftFormatTool.parseJSONOutput("")
+        #expect(summary.changed.isEmpty)
+        #expect(summary.unchanged.isEmpty)
+        #expect(summary.skipped.isEmpty)
+    }
+
+    @Test
+    func `Handles invalid JSON gracefully`() {
+        let summary = SwiftFormatTool.parseJSONOutput("not json")
+        #expect(summary.changed.isEmpty)
     }
 }
