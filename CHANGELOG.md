@@ -17,6 +17,7 @@
 - `xcstrings`: sort keys with `localizedStandardCompare` and write in Xcode's on-disk format (`"key" : value`, sorted nested keys, top-level `sourceLanguage` / `strings` / `version` order) so round-trip diffs against Xcode-saved catalogs are clean ([#306](https://github.com/toba/xc-mcp/issues/306))
 - `SwiftSymbolsTool`: bump `swift-symbolgraph-extract` subprocess timeout `60s` → `180s` and raise the three `SwiftSymbolsToolTests` integration tests' `.timeLimit` `2min` → `5min`; the `SymbolGraphCache` dedup landed in #310 was working (single shared inflight task) but cold-cache extraction of the `Testing` module on the GitHub Actions runner still exceeded 60s ([#314](https://github.com/toba/xc-mcp/issues/314))
 - `xcstrings`: stop escaping forward slashes in encoder output; `XCStringsFileEncoder` now configures `JSONEncoder` with `.withoutEscapingSlashes` so catalogs containing strings like `"Domestic / Foreign"` round-trip without `\/` noise; ported from `Ryu0118/xcstrings-crud` PR #30 ([#316](https://github.com/toba/xc-mcp/issues/316))
+- `clean(derived_data: true)` now wipes xc-mcp's scoped DerivedData (the path actually passed to `-derivedDataPath`) in addition to matching entries in Xcode's standard DerivedData; previously it cleared only `~/Library/Developer/Xcode/DerivedData/` while builds kept reading stale macro-expansion artifacts from `~/Library/Caches/xc-mcp/DerivedData/<Project>-<hash>/` ([#320](https://github.com/toba/xc-mcp/issues/320))
 
 ### 🗜️ Tweaks
 
