@@ -80,6 +80,10 @@ public struct StartSimLogCapTool: Sendable {
         let predicate = arguments.getString("predicate")
 
         do {
+            if let bundleId {
+                try PredicateFilterValidator.validate(bundleId, field: "bundle_id")
+            }
+
             var args = ["simctl", "spawn", simulator, "log", "stream", "--style", "compact"]
 
             if let bundleId {

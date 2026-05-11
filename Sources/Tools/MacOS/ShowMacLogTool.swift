@@ -88,6 +88,7 @@ public struct ShowMacLogTool: Sendable {
         let processName = arguments.getString("process_name")
         let subsystem = arguments.getString("subsystem")
         let customPredicate = arguments.getString("predicate")
+
         let level = arguments.getString("level")
         let last = arguments.getString("last")
         let start = arguments.getString("start")
@@ -95,6 +96,16 @@ public struct ShowMacLogTool: Sendable {
         let tailLines = arguments.getInt("tail_lines") ?? 200
 
         do {
+            if let bundleId {
+                try PredicateFilterValidator.validate(bundleId, field: "bundle_id")
+            }
+            if let processName {
+                try PredicateFilterValidator.validate(processName, field: "process_name")
+            }
+            if let subsystem {
+                try PredicateFilterValidator.validate(subsystem, field: "subsystem")
+            }
+
             var args = ["show", "--style", "compact"]
 
             // Add log level flags

@@ -1,5 +1,12 @@
 # Changelog
 
+## Week of May 10 – May 16, 2026
+
+### 🐞 Fixes
+
+- Validate `bundle_id`, `subsystem`, and `process_name` against a strict allowlist (`A-Z`, `a-z`, `0-9`, `.`, `-`, `_`) before interpolating into `NSPredicate` strings passed to `log stream` / `log show`; covers `start_sim_log_cap`, `start_mac_log_cap`, `show_mac_log`, and `launch_app_logs_sim`; prevents predicate injection (CWE-78) where a `bundle_id` containing `"` could leak logs from unrelated subsystems or break the predicate parser; the explicit `predicate` parameter remains as the escape hatch for callers that need raw NSPredicate syntax; ported from `XcodeBuildMCP` PR #407 ([#322](https://github.com/toba/xc-mcp/issues/322))
+- Audit `debug_attach_sim` for `bundle_id` vs `pid` mutual-exclusion bug from session defaults; ported from `XcodeBuildMCP` PR #411; confirmed not applicable to xc-mcp (`SessionManager` doesn't store `bundle_id` as a default and `DebugAttachSimTool` has no mutual-exclusion validation that could falsely reject); added `DebugAttachSimToolTests` with a `Mirror`-based contract test that will fail if a future change adds a `bundleId`-like session field ([#321](https://github.com/toba/xc-mcp/issues/321))
+
 ## Week of May 3 – May 9, 2026
 
 ### ✨ Features

@@ -53,6 +53,11 @@ public struct LaunchAppLogsSimTool: Sendable {
         guard case let .string(bundleId) = arguments["bundle_id"] else {
             throw MCPError.invalidParams("bundle_id is required")
         }
+        do {
+            try PredicateFilterValidator.validate(bundleId, field: "bundle_id")
+        } catch {
+            throw try error.asMCPError()
+        }
 
         // Get simulator
         let simulator: String

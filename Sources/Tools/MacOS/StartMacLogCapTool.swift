@@ -70,12 +70,23 @@ public struct StartMacLogCapTool: Sendable {
         let processName = arguments.getString("process_name")
         let subsystem = arguments.getString("subsystem")
         let customPredicate = arguments.getString("predicate")
+
         let level = arguments.getString("level")
         let outputFile =
             arguments.getString("output_file")
                 ?? "/tmp/mac_log_\(bundleId ?? processName ?? "system").log"
 
         do {
+            if let bundleId {
+                try PredicateFilterValidator.validate(bundleId, field: "bundle_id")
+            }
+            if let processName {
+                try PredicateFilterValidator.validate(processName, field: "process_name")
+            }
+            if let subsystem {
+                try PredicateFilterValidator.validate(subsystem, field: "subsystem")
+            }
+
             var args = ["stream", "--style", "compact"]
 
             // Add log level flags
