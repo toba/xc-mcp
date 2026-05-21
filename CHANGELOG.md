@@ -1,5 +1,16 @@
 # Changelog
 
+## Week of May 17 – May 23, 2026
+
+### ✨ Features
+
+- `xcstrings`: add `xcstrings_check_untranslated` tool with state-aware detection; existing `xcstrings_list_untranslated` only checked presence and silently missed empty values, `needs_review` state, and partial plural/device variation coverage; new tool returns structured `UntranslatedIssue` rows with a `reason` enum (`missing_localization`, `empty_value`, `state_not_translated`, `missing_variation_string_unit`, `empty_variation_value`, etc.) across one file × N languages; ported from `Ryu0118/xcstrings-crud` PR #33 ([#323](https://github.com/toba/xc-mcp/issues/323))
+- Add a shared `NextStepHints` helper in `Sources/Core/NextStepHints.swift` that renders a sorted `Next steps:` block of suggested follow-up tool calls in MCP's `tool({ key: "value", ... })` syntax; wired into `debug_attach_sim` (suggests `debug_breakpoint_add` / `debug_continue` / `debug_stack` keyed by the resolved `pid`), `get_coverage_report` (suggests `get_file_coverage` targeting the weakest-covered file), and `get_file_coverage` (suggests `get_coverage_report`); uses `JSONEncoder` with `.withoutEscapingSlashes` so file paths render cleanly; ported from `XcodeBuildMCP` PR #420 ([#325](https://github.com/toba/xc-mcp/issues/325))
+
+### 🗜️ Tweaks
+
+- `detect_unused_code`: add passthrough `retain_equatable_properties` / `retain_hashable_properties` boolean params for periphery's new `EquatableHashablePropertyRetainer` mutator; suppresses false positives on stored properties of value types (struct/enum) where compiler-synthesized `==` / `hash(into:)` don't emit index references; defaults to `false` (matching periphery defaults); requires periphery with PR #1126 (post-`3.7.4`) ([#324](https://github.com/toba/xc-mcp/issues/324))
+
 ## Week of May 10 – May 16, 2026
 
 ### 🐞 Fixes

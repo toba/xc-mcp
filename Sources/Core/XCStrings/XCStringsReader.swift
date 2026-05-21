@@ -65,6 +65,106 @@ public struct XCStringsReader: Sendable {
         return XCStringsKeySorter.sort(untranslated)
     }
 
+    /// Detect untranslated entries with structured reasons across one or more
+    /// languages. Inspects state, empty values, and variation completeness —
+    /// unlike `listUntranslated(for:)` which only checks for presence.
+    /// Skips entries marked `shouldTranslate: false`.
+    public func checkUntranslated(languages: [String]) -> [UntranslatedIssue] {
+        var issues: [UntranslatedIssue] = []
+        let sortedKeys = XCStringsKeySorter.sort(file.strings.keys)
+
+        for key in sortedKeys {
+            guard let entry = file.strings[key], entry.requiresTranslation else { continue }
+            for language in languages {
+                issues.append(contentsOf: detectIssues(key: key, entry: entry, language: language))
+            }
+        }
+        return issues
+    }
+
+    private func detectIssues(
+        key: String,
+        entry: StringEntry,
+        language: String,
+    ) -> [UntranslatedIssue] {
+        guard let localization = entry.localizations?[language] else {
+            return [UntranslatedIssue(
+                key: key, language: language,
+                reason: .missingLocalization, state: nil,
+            )]
+        }
+
+        if let stringUnit = localization.stringUnit {
+            if stringUnit.value.isEmpty {
+                return [UntranslatedIssue(
+                    key: key, language: language,
+                    reason: .emptyValue, state: stringUnit.state,
+                )]
+            }
+            if stringUnit.state != "translated" {
+                return [UntranslatedIssue(
+                    key: key, language: language,
+                    reason: .stateNotTranslated, state: stringUnit.state,
+                )]
+            }
+            return []
+        }
+
+        if let variations = localization.variations {
+            let variationUnits = Self.collectVariationUnits(variations)
+            if variationUnits.isEmpty {
+                return [UntranslatedIssue(
+                    key: key, language: language,
+                    reason: .missingVariationValues, state: nil,
+                )]
+            }
+            var variationIssues: [UntranslatedIssue] = []
+            for unit in variationUnits {
+                guard let stringUnit = unit else {
+                    variationIssues.append(UntranslatedIssue(
+                        key: key, language: language,
+                        reason: .missingVariationStringUnit, state: nil,
+                    ))
+                    continue
+                }
+                if stringUnit.value.isEmpty {
+                    variationIssues.append(UntranslatedIssue(
+                        key: key, language: language,
+                        reason: .emptyVariationValue, state: stringUnit.state,
+                    ))
+                } else if stringUnit.state != "translated" {
+                    variationIssues.append(UntranslatedIssue(
+                        key: key, language: language,
+                        reason: .variationStateNotTranslated, state: stringUnit.state,
+                    ))
+                }
+            }
+            return variationIssues
+        }
+
+        return [UntranslatedIssue(
+            key: key, language: language,
+            reason: .missingStringUnit, state: nil,
+        )]
+    }
+
+    private static func collectVariationUnits(_ variations: Variations) -> [StringUnit?] {
+        var units: [StringUnit?] = []
+        if let plural = variations.plural {
+            for value in [plural.zero, plural.one, plural.two, plural.few, plural.many, plural.other] {
+                guard let value else { continue }
+                units.append(value.stringUnit)
+            }
+        }
+        if let device = variations.device {
+            for value in [device.iphone, device.ipad, device.mac, device.applewatch, device.appletv] {
+                guard let value else { continue }
+                units.append(value.stringUnit)
+            }
+        }
+        return units
+    }
+
     /// Get source language
     public func getSourceLanguage() -> String { file.sourceLanguage }
 

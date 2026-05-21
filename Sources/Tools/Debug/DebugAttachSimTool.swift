@@ -100,6 +100,28 @@ public struct DebugAttachSimTool: Sendable {
                 var message = "Successfully attached to process \(targetPID)\n\n"
                 message += result.output
 
+                let hints: [NextStepHint] = [
+                    NextStepHint(
+                        label: "Add a breakpoint",
+                        tool: "debug_breakpoint_add",
+                        params: [("pid", .int(Int(targetPID))), ("file", .string("")), ("line", .int(0))],
+                        priority: 1,
+                    ),
+                    NextStepHint(
+                        label: "Continue execution",
+                        tool: "debug_continue",
+                        params: [("pid", .int(Int(targetPID)))],
+                        priority: 2,
+                    ),
+                    NextStepHint(
+                        label: "Show call stack",
+                        tool: "debug_stack",
+                        params: [("pid", .int(Int(targetPID)))],
+                        priority: 3,
+                    ),
+                ]
+                message = NextStepHints.appended(to: message, hints: hints)
+
                 return CallTool.Result(content: [
                     .text(text: message, annotations: nil, _meta: nil)
                 ])

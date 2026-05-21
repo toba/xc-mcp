@@ -30,6 +30,7 @@ public enum StringsToolName: String, CaseIterable, Sendable {
     case batchAddTranslations = "xcstrings_batch_add_translations"
     case batchUpdateTranslations = "xcstrings_batch_update_translations"
     case checkCoverage = "xcstrings_check_coverage"
+    case checkUntranslated = "xcstrings_check_untranslated"
 }
 
 /// MCP server for Xcode String Catalog (.xcstrings) file manipulation.
@@ -107,6 +108,7 @@ public struct StringsMCPServer: Sendable {
             pathUtility: pathUtility,
         )
         let checkCoverageTool = XCStringsCheckCoverageTool(pathUtility: pathUtility)
+        let checkUntranslatedTool = XCStringsCheckUntranslatedTool(pathUtility: pathUtility)
 
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
@@ -135,6 +137,7 @@ public struct StringsMCPServer: Sendable {
                 batchAddTranslationsTool.tool(),
                 batchUpdateTranslationsTool.tool(),
                 checkCoverageTool.tool(),
+                checkUntranslatedTool.tool(),
             ])
         }
 
@@ -199,6 +202,8 @@ public struct StringsMCPServer: Sendable {
                     return try await batchUpdateTranslationsTool.execute(arguments: arguments)
                 case .checkCoverage:
                     return try await checkCoverageTool.execute(arguments: arguments)
+                case .checkUntranslated:
+                    return try await checkUntranslatedTool.execute(arguments: arguments)
             }
         }
 

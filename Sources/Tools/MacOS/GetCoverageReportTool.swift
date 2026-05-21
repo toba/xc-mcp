@@ -62,7 +62,28 @@ public struct GetCoverageReportTool: Sendable {
             ])
         }
 
-        let output = Self.formatReport(report, showFiles: showFiles)
+        var output = Self.formatReport(report, showFiles: showFiles)
+
+        // Find the file with lowest coverage to suggest as the file_coverage target.
+        let weakestFile = report.targets
+            .flatMap(\.files)
+            .min(by: { $0.lineCoverage < $1.lineCoverage })
+        var params: [(key: String, value: HintValue)] = [
+            ("result_bundle_path", .string(resultBundlePath)),
+        ]
+        if let weakestFile {
+            params.append(("file", .string(weakestFile.name)))
+        }
+        let hints: [NextStepHint] = [
+            NextStepHint(
+                label: "View function-level coverage for the weakest-covered file",
+                tool: "get_file_coverage",
+                params: params,
+                priority: 1,
+            ),
+        ]
+        output = NextStepHints.appended(to: output, hints: hints)
+
         return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 

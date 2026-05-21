@@ -43,6 +43,18 @@ public struct DetectUnusedCodeTool: Sendable {
                             "Retain all public declarations. Recommended for library/framework projects. Defaults to false.",
                         ),
                     ]),
+                    "retain_equatable_properties": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "Retain stored properties of value types (struct/enum) that conform to Equatable or Hashable. Suppresses false positives from compiler-synthesized == / hash(into:) which don't emit index references. Requires periphery with PR #1126 (post-3.7.4). Defaults to false.",
+                        ),
+                    ]),
+                    "retain_hashable_properties": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "Retain stored properties of value types (struct/enum) that conform to Hashable. Narrower than retain_equatable_properties. Requires periphery with PR #1126 (post-3.7.4). Defaults to false.",
+                        ),
+                    ]),
                     "skip_build": .object([
                         "type": .string("boolean"),
                         "description": .string(
@@ -335,6 +347,8 @@ public struct DetectUnusedCodeTool: Sendable {
         }
         let schemes = arguments.getStringArray("schemes")
         let retainPublic = arguments.getBool("retain_public")
+        let retainEquatableProperties = arguments.getBool("retain_equatable_properties")
+        let retainHashableProperties = arguments.getBool("retain_hashable_properties")
         let skipBuild = arguments.getBool("skip_build")
         let excludeTargets = arguments.getStringArray("exclude_targets")
         let reportExclude = arguments.getStringArray("report_exclude")
@@ -361,6 +375,14 @@ public struct DetectUnusedCodeTool: Sendable {
 
         if retainPublic {
             args.append("--retain-public")
+        }
+
+        if retainEquatableProperties {
+            args.append("--retain-equatable-properties")
+        }
+
+        if retainHashableProperties {
+            args.append("--retain-hashable-properties")
         }
 
         if skipBuild {

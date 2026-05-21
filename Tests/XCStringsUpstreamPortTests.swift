@@ -286,4 +286,85 @@ struct XCStringsUpstreamPortTests {
         #expect(idxSrc.lowerBound < idxStrings.lowerBound)
         #expect(idxStrings.lowerBound < idxVersion.lowerBound)
     }
+
+    // MARK: - checkUntranslated (Ryu0118/xcstrings-crud PR #33)
+
+    @Test func `checkUntranslated flags missing localization`() {
+        let file = XCStringsFile(
+            sourceLanguage: "en",
+            strings: [
+                "key": StringEntry(localizations: [
+                    "en": Localization(stringUnit: StringUnit(state: "translated", value: "Hi")),
+                ]),
+            ]
+        )
+        let issues = XCStringsReader(file: file).checkUntranslated(languages: ["ja"])
+        #expect(issues.count == 1)
+        #expect(issues[0].reason == .missingLocalization)
+        #expect(issues[0].language == "ja")
+        #expect(issues[0].key == "key")
+    }
+
+    @Test func `checkUntranslated flags empty value where listUntranslated misses`() {
+        let file = XCStringsFile(
+            sourceLanguage: "en",
+            strings: [
+                "key": StringEntry(localizations: [
+                    "en": Localization(stringUnit: StringUnit(state: "translated", value: "Hi")),
+                    "ja": Localization(stringUnit: StringUnit(state: "translated", value: "")),
+                ]),
+            ]
+        )
+        let reader = XCStringsReader(file: file)
+        // Legacy tool silently accepts empty values as translated...
+        #expect(reader.listUntranslated(for: "ja") == [])
+        // ...but checkUntranslated catches them.
+        let issues = reader.checkUntranslated(languages: ["ja"])
+        #expect(issues.count == 1)
+        #expect(issues[0].reason == .emptyValue)
+    }
+
+    @Test func `checkUntranslated flags non-translated state`() {
+        let file = XCStringsFile(
+            sourceLanguage: "en",
+            strings: [
+                "key": StringEntry(localizations: [
+                    "ja": Localization(stringUnit: StringUnit(state: "needs_review", value: "やあ")),
+                ]),
+            ]
+        )
+        let issues = XCStringsReader(file: file).checkUntranslated(languages: ["ja"])
+        #expect(issues.count == 1)
+        #expect(issues[0].reason == .stateNotTranslated)
+        #expect(issues[0].state == "needs_review")
+    }
+
+    @Test func `checkUntranslated flags empty plural variation value`() {
+        let plural = PluralVariation(
+            one: VariationValue(stringUnit: StringUnit(state: "translated", value: "1 item")),
+            other: VariationValue(stringUnit: StringUnit(state: "translated", value: "")),
+        )
+        let file = XCStringsFile(
+            sourceLanguage: "en",
+            strings: [
+                "count": StringEntry(localizations: [
+                    "ja": Localization(variations: Variations(plural: plural)),
+                ]),
+            ]
+        )
+        let issues = XCStringsReader(file: file).checkUntranslated(languages: ["ja"])
+        #expect(issues.count == 1)
+        #expect(issues[0].reason == .emptyVariationValue)
+    }
+
+    @Test func `checkUntranslated skips shouldTranslate=false entries`() {
+        let file = XCStringsFile(
+            sourceLanguage: "en",
+            strings: [
+                "API_KEY": StringEntry(shouldTranslate: false, localizations: [:]),
+            ]
+        )
+        let issues = XCStringsReader(file: file).checkUntranslated(languages: ["en", "ja"])
+        #expect(issues.isEmpty)
+    }
 }

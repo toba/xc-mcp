@@ -76,6 +76,16 @@ public struct GetFileCoverageTool: Sendable {
             }
         }
 
+        let hints: [NextStepHint] = [
+            NextStepHint(
+                label: "View overall coverage report",
+                tool: "get_coverage_report",
+                params: [("result_bundle_path", .string(resultBundlePath))],
+                priority: 1,
+            ),
+        ]
+        output = NextStepHints.appended(to: output, hints: hints)
+
         return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
     }
 

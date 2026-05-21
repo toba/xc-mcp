@@ -56,6 +56,14 @@ public actor XCStringsParser {
         try withReader { $0.listUntranslated(for: language) }
     }
 
+    /// Detect untranslated entries with structured reasons across one or more
+    /// languages. Inspects state, empty values, and variation completeness.
+    public func checkUntranslated(
+        languages: [String]
+    ) throws(XCStringsError) -> [UntranslatedIssue] {
+        try withReader { $0.checkUntranslated(languages: languages) }
+    }
+
     /// Get source language
     public func getSourceLanguage() throws(XCStringsError) -> String {
         try withReader { $0.getSourceLanguage() }

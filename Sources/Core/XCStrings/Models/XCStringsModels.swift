@@ -282,6 +282,61 @@ public struct AggregatedCoverage: Codable, Sendable {
     }
 }
 
+// MARK: - Untranslated Check Models
+
+/// Reason a key is flagged as untranslated for a given language.
+///
+/// Ported from Ryu0118/xcstrings-crud PR #33 — provides a structured signal
+/// beyond "key is missing" so callers can distinguish e.g. an empty string,
+/// a `needs_review` state, and partial plural/device variation coverage.
+public enum UntranslatedReason: String, Codable, Sendable {
+    /// No localization entry exists for the language at all.
+    case missingLocalization = "missing_localization"
+    /// Localization exists but has no `stringUnit` and no `variations`.
+    case missingStringUnit = "missing_string_unit"
+    /// `stringUnit` exists but `value` is an empty string.
+    case emptyValue = "empty_value"
+    /// `stringUnit.state` is not `"translated"` (e.g. `new`, `needs_review`, `stale`).
+    case stateNotTranslated = "state_not_translated"
+    /// `variations` exists but contains no values for any variant.
+    case missingVariationValues = "missing_variation_values"
+    /// A variation has no `stringUnit`.
+    case missingVariationStringUnit = "missing_variation_string_unit"
+    /// A variation's `stringUnit.value` is empty.
+    case emptyVariationValue = "empty_variation_value"
+    /// A variation's `stringUnit.state` is not `"translated"`.
+    case variationStateNotTranslated = "variation_state_not_translated"
+}
+
+/// One detected untranslated entry. `state` is the `stringUnit.state` when
+/// available (otherwise `nil`).
+public struct UntranslatedIssue: Codable, Sendable {
+    public let key: String
+    public let language: String
+    public let reason: UntranslatedReason
+    public let state: String?
+
+    public init(key: String, language: String, reason: UntranslatedReason, state: String?) {
+        self.key = key
+        self.language = language
+        self.reason = reason
+        self.state = state
+    }
+}
+
+/// Aggregate result of an untranslated check across one file × N languages.
+public struct UntranslatedCheckResult: Codable, Sendable {
+    public let file: String
+    public let issues: [UntranslatedIssue]
+    public let issueCount: Int
+
+    public init(file: String, issues: [UntranslatedIssue]) {
+        self.file = file
+        self.issues = issues
+        self.issueCount = issues.count
+    }
+}
+
 // MARK: - Stale Key Models
 
 /// Result of listing stale keys in a single file

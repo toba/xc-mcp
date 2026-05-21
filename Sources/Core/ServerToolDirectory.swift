@@ -133,5 +133,6 @@ public enum ServerToolDirectory {
         "xcstrings_list_stale", "xcstrings_batch_list_stale",
         "xcstrings_batch_check_keys", "xcstrings_batch_add_translations",
         "xcstrings_batch_update_translations", "xcstrings_check_coverage",
+        "xcstrings_check_untranslated",
     ]
 }
