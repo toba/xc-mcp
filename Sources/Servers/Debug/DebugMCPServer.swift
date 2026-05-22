@@ -186,6 +186,16 @@ public struct DebugMCPServer: Sendable {
 
             switch toolName {
                 case .buildDebugMacOS:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await buildDebugMacOSTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await buildDebugMacOSTool.execute(arguments: arguments)
                 case .debugAttachSim:
                     return try await debugAttachSimTool.execute(arguments: arguments)

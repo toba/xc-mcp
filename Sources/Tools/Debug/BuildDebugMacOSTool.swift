@@ -28,7 +28,7 @@ public struct BuildDebugMacOSTool: Sendable {
         Tool(
             name: "build_debug_macos",
             description:
-            "Build and launch a macOS app under LLDB debugger. This is the equivalent of Xcode's Run button — it builds incrementally, launches via Launch Services with DYLD_FRAMEWORK_PATH for non-embedded frameworks, and attaches the debugger. Use all existing debug tools (debug_stack, debug_breakpoint_add, etc.) with the returned PID.",
+            "Build and launch a macOS app under LLDB debugger. This is the equivalent of Xcode's Run button — it builds incrementally, launches via Launch Services with DYLD_FRAMEWORK_PATH for non-embedded frameworks, and attaches the debugger. Use all existing debug tools (debug_stack, debug_breakpoint_add, etc.) with the returned PID. NOTE: by default builds use a scoped DerivedData path (~/Library/Caches/xc-mcp/DerivedData) isolated from Xcode's, so the first build after building only in Xcode is fully cold (minutes on large projects). For single-agent workflows where you just built in Xcode, set XC_MCP_DISABLE_DERIVED_DATA_SCOPING=1 to reuse Xcode's warm cache.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -90,7 +90,10 @@ public struct BuildDebugMacOSTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+    public func execute(
+        arguments: [String: Value],
+        onProgress: (@Sendable (String) -> Void)? = nil,
+    ) async throws -> CallTool.Result {
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
             from: arguments,
         )
@@ -115,14 +118,46 @@ public struct BuildDebugMacOSTool: Sendable {
             }
         }
 
+        // Resolve the build destination up front so it can also narrow the
+        // pre-build `-showBuildSettings` pass below.
+        var destination = "platform=macOS"
+        if let arch {
+            destination += ",arch=\(arch)"
+        }
+
         do {
-            // Step 1: Get build settings to find bundle ID for existing session cleanup
-            let buildSettings = try await xcodebuildRunner.showBuildSettings(
+            // Step 1: Get build settings to find bundle ID for existing session cleanup.
+            // Pass the concrete macOS destination so xcodebuild resolves only this
+            // platform's settings instead of the entire SPM package graph for every
+            // target — without it this pre-pass alone can take tens of seconds on
+            // projects with package dependencies, before compilation even starts.
+            var buildSettings = try await xcodebuildRunner.showBuildSettings(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
                 configuration: configuration,
+                destination: destination,
             )
+
+            // An iOS-only scheme can't resolve `-destination platform=macOS`, so the
+            // fast pass above returns no settings. Retry without a destination to recover
+            // the full settings dump — this is what lets the SUPPORTED_PLATFORMS check
+            // below emit a friendly "scheme does not support macOS" error instead of an
+            // opaque destination-resolution failure later in the build.
+            if BuildSettingExtractor.extractSetting(
+                "PRODUCT_BUNDLE_IDENTIFIER", from: buildSettings.stdout,
+            ) == nil,
+                BuildSettingExtractor.extractSetting(
+                    "SUPPORTED_PLATFORMS", from: buildSettings.stdout,
+                ) == nil
+            {
+                buildSettings = try await xcodebuildRunner.showBuildSettings(
+                    projectPath: projectPath,
+                    workspacePath: workspacePath,
+                    scheme: scheme,
+                    configuration: configuration,
+                )
+            }
 
             // Validate that this scheme supports macOS before building
             if let platforms = BuildSettingExtractor.extractSetting(
@@ -153,11 +188,6 @@ public struct BuildDebugMacOSTool: Sendable {
             }
 
             // Step 2: Build (incremental — fast if nothing changed)
-            var destination = "platform=macOS"
-            if let arch {
-                destination += ",arch=\(arch)"
-            }
-
             let buildResult = try await xcodebuildRunner.build(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
@@ -171,6 +201,7 @@ public struct BuildDebugMacOSTool: Sendable {
                 timeout: Self.buildTimeout,
                 onProgress: { line in
                     Self.logger.info("\(line)")
+                    onProgress?(line)
                 },
             )
 
