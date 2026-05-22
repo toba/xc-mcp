@@ -241,8 +241,8 @@ enum TestProjectHelper {
 
     /// Creates a test project with a target whose build phases have `files = nil`.
     ///
-    /// This simulates real-world Xcode projects where a build phase exists but has
-    /// never had files added (Xcode omits the `files` key, so XcodeProj reads it as nil).
+    /// This simulates real-world Xcode projects where a build phase exists but has never had files
+    /// added (Xcode omits the `files` key, so XcodeProj reads it as nil).
     static func createTestProjectWithNilPhaseFiles(
         name: String,
         targetName: String,
@@ -252,19 +252,51 @@ enum TestProjectHelper {
 
         let xcodeproj = try XcodeProj(path: path)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == targetName }!
+
         for phase in target.buildPhases {
             if let sources = phase as? PBXSourcesBuildPhase {
                 sources.files = nil
             } else if let resources = phase as? PBXResourcesBuildPhase {
                 resources.files = nil
-            } else if let headers = phase as? PBXHeadersBuildPhase {
-                headers.files = nil
-            }
+            } else if let headers = phase as? PBXHeadersBuildPhase { headers.files = nil }
         }
         try xcodeproj.write(path: path)
     }
 
-    /// Creates a test project with a target and a synchronized folder, optionally with an exception set.
+    /// Injects `count` self-referencing sub-project entries into an existing project: a
+    /// `wrapper.pb-project` file reference pointing at `<name>.xcodeproj`, an empty Products group,
+    /// and a `projectReferences` entry tying them together. Mirrors the bogus state Xcode can
+    /// accidentally create (a project nested inside itself).
+    static func injectSelfProjectReferences(
+        name: String,
+        count: Int = 1,
+        at path: Path,
+    ) throws {
+        let xcodeproj = try XcodeProj(path: path)
+        let pbxproj = xcodeproj.pbxproj
+        let rootObject = pbxproj.rootObject!
+
+        for _ in 0..<count {
+            let selfRef = PBXFileReference(
+                sourceTree: .group,
+                name: "\(name).xcodeproj",
+                lastKnownFileType: "wrapper.pb-project",
+                path: "\(name).xcodeproj",
+            )
+            pbxproj.add(object: selfRef)
+            rootObject.mainGroup.children.append(selfRef)
+
+            let productGroup = PBXGroup(children: [], sourceTree: .group, name: "Products")
+            pbxproj.add(object: productGroup)
+
+            rootObject.projects.append(["ProjectRef": selfRef, "ProductGroup": productGroup])
+        }
+
+        try xcodeproj.write(path: path)
+    }
+
+    /// Creates a test project with a target and a synchronized folder, optionally with an exception
+    /// set.
     static func createTestProjectWithSyncFolder(
         name: String,
         targetName: String,

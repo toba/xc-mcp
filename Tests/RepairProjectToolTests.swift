@@ -19,9 +19,7 @@ struct RepairProjectToolTests {
     @Test
     func `Missing project_path throws`() throws {
         let tool = RepairProjectTool(pathUtility: PathUtility(basePath: "/tmp"))
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [:])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: [:]) }
     }
 
     @Test
@@ -38,9 +36,7 @@ struct RepairProjectToolTests {
         )
 
         let tool = RepairProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -66,8 +62,7 @@ struct RepairProjectToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
         let sourcesPhase = try #require(
-            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase,
-        )
+            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase)
 
         let nullBuildFile1 = PBXBuildFile(file: nil)
         let nullBuildFile2 = PBXBuildFile(file: nil)
@@ -77,9 +72,7 @@ struct RepairProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = RepairProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -90,12 +83,10 @@ struct RepairProjectToolTests {
 
         // Verify the null files were actually removed
         let repaired = try XcodeProj(path: projectPath)
-        let repairedTarget = try #require(
-            repaired.pbxproj.nativeTargets.first { $0.name == "App" },
-        )
-        let repairedSources = try #require(
-            repairedTarget.buildPhases.first { $0 is PBXSourcesBuildPhase },
-        )
+        let repairedTarget = try #require(repaired.pbxproj.nativeTargets.first { $0.name == "App" })
+        let repairedSources = try #require(repairedTarget.buildPhases.first {
+            $0 is PBXSourcesBuildPhase
+        })
         let nullCount = (repairedSources.files ?? [])
             .count(where: { $0.file == nil && $0.product == nil })
         #expect(nullCount == 0)
@@ -118,8 +109,7 @@ struct RepairProjectToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
         let sourcesPhase = try #require(
-            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase,
-        )
+            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase)
         let nullBuildFile = PBXBuildFile(file: nil)
         xcodeproj.pbxproj.add(object: nullBuildFile)
         sourcesPhase.files = (sourcesPhase.files ?? []) + [nullBuildFile]
@@ -140,12 +130,12 @@ struct RepairProjectToolTests {
 
         // Verify the file was NOT modified
         let unchanged = try XcodeProj(path: projectPath)
-        let unchangedTarget = try #require(
-            unchanged.pbxproj.nativeTargets.first { $0.name == "App" },
-        )
-        let unchangedSources = try #require(
-            unchangedTarget.buildPhases.first { $0 is PBXSourcesBuildPhase },
-        )
+        let unchangedTarget = try #require(unchanged.pbxproj.nativeTargets.first {
+            $0.name == "App"
+        })
+        let unchangedSources = try #require(unchangedTarget.buildPhases.first {
+            $0 is PBXSourcesBuildPhase
+        })
         let nullCount = (unchangedSources.files ?? [])
             .count(where: { $0.file == nil && $0.product == nil })
         #expect(nullCount == 1)
@@ -192,23 +182,21 @@ struct RepairProjectToolTests {
         pbxprojText = pbxprojText.replacingOccurrences(
             of: "/* End PBXFileReference section */",
             with: """
-            \t\t\(fileRefUUID) /* Orphan.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Orphan.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-            /* End PBXFileReference section */
-            """,
+                \t\t\(fileRefUUID) /* Orphan.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Orphan.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+                /* End PBXFileReference section */
+                """,
         )
         pbxprojText = pbxprojText.replacingOccurrences(
             of: "/* End PBXBuildFile section */",
             with: """
-            \t\t\(buildFileUUID) /* Orphan.framework */ = {isa = PBXBuildFile; fileRef = \(fileRefUUID) /* Orphan.framework */; };
-            /* End PBXBuildFile section */
-            """,
+                \t\t\(buildFileUUID) /* Orphan.framework */ = {isa = PBXBuildFile; fileRef = \(fileRefUUID) /* Orphan.framework */; };
+                /* End PBXBuildFile section */
+                """,
         )
         try pbxprojText.write(toFile: pbxprojPath.string, atomically: true, encoding: .utf8)
 
         let tool = RepairProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -216,5 +204,72 @@ struct RepairProjectToolTests {
         }
         #expect(content.contains("orphaned PBXBuildFile"))
         #expect(content.contains("applied"))
+    }
+
+    @Test
+    func `Removes self-referencing sub-project entries`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+        try TestProjectHelper.injectSelfProjectReferences(
+            name: "TestProject", count: 4, at: projectPath,
+        )
+
+        let tool = RepairProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
+
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("self-referencing sub-project"))
+        #expect(content.contains("4"))
+        #expect(content.contains("applied"))
+
+        // Verify the entries were actually removed.
+        let repaired = try XcodeProj(path: projectPath)
+        #expect(SelfProjectReference.detect(in: repaired, projectPath: projectPath.string).isEmpty)
+        #expect(repaired.pbxproj.rootObject?.projects.isEmpty == true)
+    }
+
+    @Test
+    func `Dry run leaves self-references intact`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+        try TestProjectHelper.injectSelfProjectReferences(
+            name: "TestProject", count: 1, at: projectPath,
+        )
+
+        let tool = RepairProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "dry_run": .bool(true),
+        ])
+
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("self-referencing sub-project"))
+
+        // Verify nothing was written.
+        let unchanged = try XcodeProj(path: projectPath)
+        #expect(
+            SelfProjectReference.detect(in: unchanged, projectPath: projectPath.string).count == 1)
     }
 }

@@ -1,20 +1,20 @@
 import MCP
+import PathKit
 import CryptoKit
 import XCMCPCore
+import XcodeProj
 import Foundation
 
 public struct DetectUnusedCodeTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "detect_unused_code",
             description:
-            "Detect unused code in a Swift package or Xcode project using Periphery. By default, reuses cached scan results from /tmp if available — set fresh_scan: true to force a new build+scan. Returns a compact summary by default; use format: \"detail\" to see per-declaration output. Automatically maintains a checklist for iterative cleanup — use mark to track progress. Supports cached results via result_file for instant drill-down without re-scanning. Requires the 'periphery' CLI (brew install periphery).",
+                "Detect unused code in a Swift package or Xcode project using Periphery. By default, reuses cached scan results from /tmp if available — set fresh_scan: true to force a new build+scan. Returns a compact summary by default; use format: \"detail\" to see per-declaration output. Automatically maintains a checklist for iterative cleanup — use mark to track progress. Supports cached results via result_file for instant drill-down without re-scanning. Requires the 'periphery' CLI (brew install periphery).",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -70,9 +70,7 @@ public struct DetectUnusedCodeTool: Sendable {
                     "exclude_targets": .object([
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
-                        "description": .string(
-                            "Targets to exclude from indexing.",
-                        ),
+                        "description": .string("Targets to exclude from indexing."),
                     ]),
                     "report_exclude": .object([
                         "type": .string("array"),
@@ -104,9 +102,7 @@ public struct DetectUnusedCodeTool: Sendable {
                                     .string("false_positive"), .string("pending"),
                                 ]),
                             ]),
-                            "note": .object([
-                                "type": .string("string"),
-                            ]),
+                            "note": .object(["type": .string("string")]),
                         ]),
                         "required": .array([.string("indices"), .string("status")]),
                     ]),
@@ -158,9 +154,7 @@ public struct DetectUnusedCodeTool: Sendable {
                         "description": .string(
                             "Group the summary by a dimension: \"target\" groups by module/target from Periphery output; \"kind\" groups by declaration kind; \"directory\" groups by top-level directory relative to project root. Each group shows count, file count, and top declaration kinds. Works with both fresh scans and result_file.",
                         ),
-                        "enum": .array([
-                            .string("target"), .string("kind"), .string("directory"),
-                        ]),
+                        "enum": .array([.string("target"), .string("kind"), .string("directory")]),
                     ]),
                 ]),
                 "required": .array([]),
@@ -202,9 +196,9 @@ public struct DetectUnusedCodeTool: Sendable {
             cachePath = cPath
         }
 
-        // Filter out "Superfluous ignore comment" warnings — these are a Periphery bug
-        // where adding `// periphery:ignore` for an assign-only property suppresses the
-        // original warning but then triggers a superfluous-ignore warning instead.
+        // Filter out "Superfluous ignore comment" warnings — these are a Periphery bug where adding
+        // `// periphery:ignore` for an assign-only property suppresses the original warning but
+        // then triggers a superfluous-ignore warning instead.
         let (declarations, superfluousCount) = Self.filterSuperfluousIgnoreComments(allDeclarations)
 
         // Always maintain a checklist for iterative cleanup
@@ -215,11 +209,13 @@ public struct DetectUnusedCodeTool: Sendable {
             state = existing
         } else {
             if declarations.isEmpty {
-                return CallTool.Result(content: [.text(
-                    text: "No unused code found.",
-                    annotations: nil,
-                    _meta: nil,
-                )])
+                return CallTool.Result(content: [
+                    .text(
+                        text: "No unused code found.",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ])
             }
             state = Self.createChecklist(from: declarations, cachePath: cachePath)
         }
@@ -230,9 +226,7 @@ public struct DetectUnusedCodeTool: Sendable {
                 let zeroIndex = index - 1
                 guard zeroIndex >= 0, zeroIndex < state.items.count else { continue }
                 state.items[zeroIndex].status = markAction.status
-                if let note = markAction.note {
-                    state.items[zeroIndex].note = note
-                }
+                if let note = markAction.note { state.items[zeroIndex].note = note }
             }
         }
 
@@ -244,6 +238,7 @@ public struct DetectUnusedCodeTool: Sendable {
 
         // Apply mark_filtered (mark ALL items matching the current filters)
         let markFilteredStr = arguments.getString("mark_filtered")
+
         if let markFilteredStr, let markStatus = ChecklistStatus(rawValue: markFilteredStr) {
             let filteredIDs = Set(filtered.map { Self.makeItemID($0) })
             for i in state.items.indices where filteredIDs.contains(state.items[i].id) {
@@ -254,17 +249,20 @@ public struct DetectUnusedCodeTool: Sendable {
         try Self.saveChecklist(state, path: clPath)
 
         if filtered.isEmpty, declarations.isEmpty {
-            return CallTool.Result(content: [.text(
-                text: "No unused code found.",
-                annotations: nil,
-                _meta: nil,
-            )])
+            return CallTool.Result(content: [
+                .text(
+                    text: "No unused code found.",
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ])
         }
 
         // Build declaration → checklist index map (1-based)
         let indexMap = Self.buildIndexMap(declarations: declarations, state: state)
 
         var message: String
+
         if let groupBy {
             message = Self.formatGroupedSummary(
                 filtered, totalUnfiltered: declarations.count,
@@ -296,6 +294,7 @@ public struct DetectUnusedCodeTool: Sendable {
     private func cacheFilePath(arguments: [String: Value]) async throws -> String {
         let project = arguments.getString("project")
         let packagePath: String
+
         do {
             packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         } catch {
@@ -315,24 +314,27 @@ public struct DetectUnusedCodeTool: Sendable {
     }
 
     /// Returns cached scan results from /tmp if the cache file exists.
-    private func findCachedResult(arguments: [String: Value]) async throws -> (
+    private func findCachedResult(
+        arguments: [String: Value]
+    ) async throws -> (
         json: String, path: String,
     )? {
         let cacheFile = try await cacheFilePath(arguments: arguments)
         guard FileManager.default.fileExists(atPath: cacheFile),
               let data = try? Data(contentsOf: URL(fileURLWithPath: cacheFile)),
               let json = String(data: data, encoding: .utf8)
-        else {
-            return nil
-        }
+        else { return nil }
         return (json, cacheFile)
     }
 
-    private func runPeripheryScan(arguments: [String: Value]) async throws -> (
+    private func runPeripheryScan(
+        arguments: [String: Value]
+    ) async throws -> (
         json: String, cachePath: String,
     ) {
         let project = arguments.getString("project")
         let packagePath: String
+
         do {
             packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         } catch {
@@ -373,21 +375,13 @@ public struct DetectUnusedCodeTool: Sendable {
             args.append(scheme)
         }
 
-        if retainPublic {
-            args.append("--retain-public")
-        }
+        if retainPublic { args.append("--retain-public") }
 
-        if retainEquatableProperties {
-            args.append("--retain-equatable-properties")
-        }
+        if retainEquatableProperties { args.append("--retain-equatable-properties") }
 
-        if retainHashableProperties {
-            args.append("--retain-hashable-properties")
-        }
+        if retainHashableProperties { args.append("--retain-hashable-properties") }
 
-        if skipBuild {
-            args.append("--skip-build")
-        }
+        if skipBuild { args.append("--skip-build") }
 
         for target in excludeTargets {
             args.append("--exclude-targets")
@@ -400,6 +394,7 @@ public struct DetectUnusedCodeTool: Sendable {
         }
 
         var guardFD: Int32?
+
         if !skipBuild {
             guardFD = try await BuildGuard.acquire(
                 path: project ?? packagePath, description: "periphery scan",
@@ -415,6 +410,15 @@ public struct DetectUnusedCodeTool: Sendable {
             if result.exitCode != 0 {
                 let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
                 let detail = stderr.isEmpty ? result.stdout : stderr
+
+                if detail.contains("Cannot calculate full path for file element"),
+                   let project
+                {
+                    throw MCPError.internalError(Self.selfReferenceGuidance(
+                        project: project,
+                        peripheryDetail: detail
+                    ))
+                }
                 throw MCPError.internalError(
                     "Periphery exited with code \(result.exitCode):\n\(detail)",
                 )
@@ -426,9 +430,7 @@ public struct DetectUnusedCodeTool: Sendable {
             let cacheFile = "/tmp/periphery-\(hash).json"
             let oldChecklist = Self.checklistPath(forCache: cacheFile)
             try? FileManager.default.removeItem(atPath: oldChecklist)
-            try result.stdout.write(
-                toFile: cacheFile, atomically: true, encoding: .utf8,
-            )
+            try result.stdout.write(toFile: cacheFile, atomically: true, encoding: .utf8)
 
             return (result.stdout, cacheFile)
         } catch let error as MCPError {
@@ -440,6 +442,35 @@ public struct DetectUnusedCodeTool: Sendable {
         }
     }
 
+    /// Builds an actionable error for Periphery's opaque "Cannot calculate full path" failure,
+    /// naming the offending self-referencing sub-project when it can be read from the project file
+    /// and pointing at `repair_project`.
+    static func selfReferenceGuidance(project: String, peripheryDetail: String) -> String {
+        var named = ""
+
+        if project.hasSuffix(".xcodeproj"),
+           let xcodeproj = try? XcodeProj(path: Path(project))
+        {
+            let selfRefs = SelfProjectReference.detect(in: xcodeproj, projectPath: project)
+
+            if !selfRefs.isEmpty {
+                let names = selfRefs.map { "\"\($0)\"" }.joined(separator: ", ")
+                named = " The project contains \(selfRefs.count) self-referencing sub-project "
+                    + "entr\(selfRefs.count == 1 ? "y" : "ies") (\(names)) — the project nested inside itself."
+            }
+        }
+        return """
+            Periphery cannot resolve a file element in this project — almost always a \
+            self-referencing sub-project entry (a "<Project>.xcodeproj" reference pointing at \
+            the project that contains it).\(named) Run `repair_project` on this project to remove \
+            the bogus file reference, projectReferences entry, and empty Products group, then \
+            re-run the scan.
+
+            Periphery output:
+            \(peripheryDetail)
+            """
+    }
+
     static func shortHash(_ input: String) -> String {
         let data = Data(input.utf8)
         let digest = SHA256.hash(data: data)
@@ -448,9 +479,9 @@ public struct DetectUnusedCodeTool: Sendable {
 
     // MARK: - Filtering
 
-    /// Filters out Periphery's "Superfluous ignore comment" warnings which arise from
-    /// an unresolvable cycle: adding `// periphery:ignore` for assign-only properties
-    /// suppresses the original warning but triggers a superfluous-ignore warning instead.
+    /// Filters out Periphery's "Superfluous ignore comment" warnings which arise from an
+    /// unresolvable cycle: adding `// periphery:ignore` for assign-only properties suppresses the
+    /// original warning but triggers a superfluous-ignore warning instead.
     static func filterSuperfluousIgnoreComments(
         _ declarations: [UnusedDeclaration],
     ) -> (filtered: [UnusedDeclaration], removedCount: Int) {
@@ -472,18 +503,14 @@ public struct DetectUnusedCodeTool: Sendable {
         let statusSet = Set(statusFilter.compactMap { ChecklistStatus(rawValue: $0) })
 
         return declarations.filter { decl in
-            if !kindFilter.isEmpty, !kindFilter.contains(formatKind(decl.kind)) {
-                return false
-            }
+            if !kindFilter.isEmpty, !kindFilter.contains(formatKind(decl.kind)) { return false }
             if !fileFilter.isEmpty, !fileFilter.contains(where: { decl.file.contains($0) }) {
                 return false
             }
             if !statusSet.isEmpty, let state {
                 let itemID = makeItemID(decl)
                 let itemStatus = state.items.first { $0.id == itemID }?.status ?? .pending
-                if !statusSet.contains(itemStatus) {
-                    return false
-                }
+                if !statusSet.contains(itemStatus) { return false }
             }
             return true
         }
@@ -542,8 +569,7 @@ public struct DetectUnusedCodeTool: Sendable {
 
     static func parseJSONOutput(_ output: String) -> [UnusedDeclaration] {
         let data = Data(output.utf8)
-        guard let entries = try? JSONDecoder().decode([PeripheryEntry].self, from: data)
-        else {
+        guard let entries = try? JSONDecoder().decode([PeripheryEntry].self, from: data) else {
             return []
         }
 
@@ -559,16 +585,14 @@ public struct DetectUnusedCodeTool: Sendable {
     }
 
     static func parseLocation(_ location: String) -> (file: String, line: Int, column: Int) {
-        // Format: "/path/to/file.swift:12:6"
-        // Split from the right to handle paths that might contain colons
+        // Format: "/path/to/file.swift:12:6" Split from the right to handle paths that might
+        // contain colons
         let parts = location.split(separator: ":")
         guard parts.count >= 3,
               let line = Int(parts[parts.count - 2]),
               let column = Int(parts[parts.count - 1])
-        else {
-            return (location, 0, 0)
-        }
-        let file = parts[0 ..< parts.count - 2].joined(separator: ":")
+        else { return (location, 0, 0) }
+        let file = parts[0..<parts.count - 2].joined(separator: ":")
         return (file, line, column)
     }
 
@@ -589,9 +613,7 @@ public struct DetectUnusedCodeTool: Sendable {
                 "\(declarations.count) unused declaration(s) in \(fileCount) file(s) (filtered from \(totalUnfiltered) total)",
             )
         } else {
-            lines.append(
-                "\(declarations.count) unused declaration(s) in \(fileCount) file(s)",
-            )
+            lines.append("\(declarations.count) unused declaration(s) in \(fileCount) file(s)")
         }
 
         // Checklist progress
@@ -599,6 +621,7 @@ public struct DetectUnusedCodeTool: Sendable {
 
         // By kind
         var kindCounts: [String: Int] = [:]
+
         for d in declarations {
             let displayKind = formatKind(d.kind)
             kindCounts[displayKind, default: 0] += 1
@@ -617,6 +640,7 @@ public struct DetectUnusedCodeTool: Sendable {
         let topFiles = fileCounts.prefix(30)
         lines.append("")
         lines.append("By file (top \(topFiles.count)):")
+
         for (file, count) in topFiles {
             let displayPath = Self.compactPath(file)
             lines
@@ -624,9 +648,7 @@ public struct DetectUnusedCodeTool: Sendable {
                     "  \(displayPath.padding(toLength: 60, withPad: " ", startingAt: 0))\(count)",
                 )
         }
-        if fileCounts.count > 30 {
-            lines.append("  ... and \(fileCounts.count - 30) more file(s)")
-        }
+        if fileCounts.count > 30 { lines.append("  ... and \(fileCounts.count - 30) more file(s)") }
 
         lines.append("")
         lines.append("Results cached: \(cachePath)")
@@ -654,9 +676,7 @@ public struct DetectUnusedCodeTool: Sendable {
                 "\(declarations.count) unused declaration(s) in \(fileCount) file(s) (filtered from \(totalUnfiltered) total)",
             )
         } else {
-            lines.append(
-                "\(declarations.count) unused declaration(s) in \(fileCount) file(s)",
-            )
+            lines.append("\(declarations.count) unused declaration(s) in \(fileCount) file(s)")
         }
 
         // Checklist progress
@@ -708,20 +728,14 @@ public struct DetectUnusedCodeTool: Sendable {
 
             // Top 3 kinds for this group
             var kindCounts: [String: Int] = [:]
-            for d in decls {
-                kindCounts[formatKind(d.kind), default: 0] += 1
-            }
+            for d in decls { kindCounts[formatKind(d.kind), default: 0] += 1 }
             let topKinds = kindCounts.sorted { $0.value > $1.value }.prefix(3)
             let kindStr = topKinds.map { "\($0.key) (\($0.value))" }
                 .joined(separator: ", ")
 
             let paddedKey = key.padding(toLength: padLen, withPad: " ", startingAt: 0)
-            let countStr = String(decls.count).padding(
-                toLength: 5, withPad: " ", startingAt: 0,
-            )
-            lines.append(
-                "  \(paddedKey)\(countStr)(\(groupFileCount) \(fileSuffix))  — \(kindStr)",
-            )
+            let countStr = String(decls.count).padding(toLength: 5, withPad: " ", startingAt: 0)
+            lines.append("  \(paddedKey)\(countStr)(\(groupFileCount) \(fileSuffix))  — \(kindStr)")
         }
 
         lines.append("")
@@ -734,14 +748,14 @@ public struct DetectUnusedCodeTool: Sendable {
         return lines.joined(separator: "\n")
     }
 
-    /// Extracts a directory group from a file path.
-    /// Uses the last two directory components before the filename
-    /// (e.g. "/Users/x/Dev/proj/Core/Sources/Foo.swift" → "Core/Sources").
+    /// Extracts a directory group from a file path. Uses the last two directory components before
+    /// the filename (e.g. "/Users/x/Dev/proj/Core/Sources/Foo.swift" → "Core/Sources").
     static func directoryGroup(_ filePath: String) -> String {
         let url = URL(fileURLWithPath: filePath)
         let dir = url.deletingLastPathComponent()
         let components = dir
-            .pathComponents // e.g. ["/", "Users", "x", "Dev", "proj", "Core", "Sources"]
+            .pathComponents  // e.g. ["/", "Users", "x", "Dev", "proj", "Core", "Sources"]
+
         if components.count >= 2 {
             let last2 = components.suffix(2)
             return last2.joined(separator: "/")
@@ -782,6 +796,7 @@ public struct DetectUnusedCodeTool: Sendable {
         for file in sortedFiles {
             guard let fileDeclarations = grouped[file] else { continue }
             lines.append(Self.compactPath(file))
+
             for d in fileDeclarations {
                 let hintsStr = d.hints.joined(separator: ", ")
                 let kindLabel = Self.formatKind(d.kind)
@@ -812,16 +827,16 @@ public struct DetectUnusedCodeTool: Sendable {
     // MARK: - Agent Instructions
 
     static let agentInstructions = """
-    For EACH finding: read the code, then either remove it (mark done) or \
-    mark false_positive. Mark items IMMEDIATELY after resolving — unmarked \
-    items reappear as pending.
+        For EACH finding: read the code, then either remove it (mark done) or \
+        mark false_positive. Mark items IMMEDIATELY after resolving — unmarked \
+        items reappear as pending.
 
-    Do NOT parse checklist JSON via bash/jq. Use this tool's parameters:
-    • Remaining: result_file + status_filter: ["pending"]
-    • Filter: kind_filter / file_filter
-    • Mark: mark: { indices: [1,2,3], status: "done" } (#N from detail output)
-    • Bulk: mark_filtered: "done" (marks all current filter results)
-    """
+        Do NOT parse checklist JSON via bash/jq. Use this tool's parameters:
+        • Remaining: result_file + status_filter: ["pending"]
+        • Filter: kind_filter / file_filter
+        • Mark: mark: { indices: [1,2,3], status: "done" } (#N from detail output)
+        • Bulk: mark_filtered: "done" (marks all current filter results)
+        """
 
     // MARK: - Checklist Helpers
 
@@ -830,18 +845,15 @@ public struct DetectUnusedCodeTool: Sendable {
     }
 
     static func checklistPath(forCache cachePath: String) -> String {
-        if cachePath.hasSuffix(".json") {
-            return String(cachePath.dropLast(5)) + "-checklist.json"
-        }
-        return cachePath + "-checklist"
+        cachePath.hasSuffix(".json")
+            ? String(cachePath.dropLast(5)) + "-checklist.json"
+            : cachePath + "-checklist"
     }
 
     static func loadChecklist(path: String) -> ChecklistState? {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)),
               let state = try? JSONDecoder().decode(ChecklistState.self, from: data)
-        else {
-            return nil
-        }
+        else { return nil }
         return state
     }
 
@@ -853,12 +865,12 @@ public struct DetectUnusedCodeTool: Sendable {
     }
 
     static func createChecklist(
-        from declarations: [UnusedDeclaration], cachePath: String,
+        from declarations: [UnusedDeclaration],
+        cachePath: String,
     ) -> ChecklistState {
-        let items = declarations.map { decl in
-            ChecklistItem(id: makeItemID(decl), status: .pending)
+        let items = declarations.map { decl in ChecklistItem(id: makeItemID(decl), status: .pending)
         }
-        return ChecklistState(version: 1, source: cachePath, items: items)
+        return .init(version: 1, source: cachePath, items: items)
     }
 
     static func parseMarkAction(from arguments: [String: Value]) -> MarkAction? {
@@ -866,9 +878,7 @@ public struct DetectUnusedCodeTool: Sendable {
               case let .array(indicesArray) = markObj["indices"],
               case let .string(statusStr) = markObj["status"],
               let status = ChecklistStatus(rawValue: statusStr)
-        else {
-            return nil
-        }
+        else { return nil }
         let indices = indicesArray.compactMap { value -> Int? in
             if case let .int(i) = value { return i }
             if case let .double(d) = value, d == d.rounded() { return Int(d) }
@@ -876,30 +886,26 @@ public struct DetectUnusedCodeTool: Sendable {
         }
         guard !indices.isEmpty else { return nil }
         var note: String?
-        if case let .string(n) = markObj["note"] {
-            note = n
-        }
+        if case let .string(n) = markObj["note"] { note = n }
         return MarkAction(indices: indices, status: status, note: note)
     }
 
     /// Maps declaration IDs to their 1-based checklist index.
     static func buildIndexMap(
-        declarations: [UnusedDeclaration], state: ChecklistState,
+        declarations: [UnusedDeclaration],
+        state: ChecklistState,
     ) -> [String: Int] {
         // Build reverse lookup: item ID → 1-based index in checklist
         var idToIndex: [String: Int] = [:]
         idToIndex.reserveCapacity(state.items.count)
-        for (i, item) in state.items.enumerated() {
-            idToIndex[item.id] = i + 1
-        }
+        for (i, item) in state.items.enumerated() { idToIndex[item.id] = i + 1 }
         // Map declaration IDs to their checklist indices
         var result: [String: Int] = [:]
         result.reserveCapacity(declarations.count)
+
         for decl in declarations {
             let itemID = makeItemID(decl)
-            if let index = idToIndex[itemID] {
-                result[itemID] = index
-            }
+            if let index = idToIndex[itemID] { result[itemID] = index }
         }
         return result
     }
@@ -910,9 +916,7 @@ public struct DetectUnusedCodeTool: Sendable {
         let skippedCount = state.items.count { $0.status == .skipped }
         let fpCount = state.items.count { $0.status == .falsePositive }
 
-        if doneCount == 0, skippedCount == 0, fpCount == 0 {
-            return []
-        }
+        if doneCount == 0, skippedCount == 0, fpCount == 0 { return [] }
 
         var parts = ["\(pendingCount) pending"]
         if doneCount > 0 { parts.append("\(doneCount) done") }
@@ -923,17 +927,17 @@ public struct DetectUnusedCodeTool: Sendable {
 
     static func formatKind(_ kind: String) -> String {
         switch kind {
-            case "function.free": return "func"
-            case "function.method.instance": return "method"
-            case "function.method.static": return "static method"
-            case "function.method.class": return "class method"
-            case "var.instance": return "property"
-            case "var.static": return "static property"
-            case "var.global": return "var"
-            case "enumelement": return "case"
-            case "typealias": return "typealias"
-            case "import": return "import"
-            default: return kind
+            case "function.free": "func"
+            case "function.method.instance": "method"
+            case "function.method.static": "static method"
+            case "function.method.class": "class method"
+            case "var.instance": "property"
+            case "var.static": "static property"
+            case "var.global": "var"
+            case "enumelement": "case"
+            case "typealias": "typealias"
+            case "import": "import"
+            default: kind
         }
     }
 
@@ -941,7 +945,7 @@ public struct DetectUnusedCodeTool: Sendable {
     static func compactPath(_ path: String) -> String {
         // Strip /Users/username/... down to ~/...
         if path.hasPrefix("/Users/") {
-            let afterUsers = path.dropFirst(7) // "/Users/"
+            let afterUsers = path.dropFirst(7)  // "/Users/"
             if let slashIndex = afterUsers.firstIndex(of: "/") {
                 return "~" + afterUsers[slashIndex...]
             }

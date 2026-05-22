@@ -19,9 +19,7 @@ struct ValidateProjectToolTests {
     @Test
     func `Missing project_path throws`() throws {
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: "/tmp"))
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [:])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: [:]) }
     }
 
     @Test
@@ -46,9 +44,7 @@ struct ValidateProjectToolTests {
         )
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -96,9 +92,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -135,9 +129,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -196,9 +188,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -241,9 +231,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -298,9 +286,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -340,9 +326,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -399,9 +383,10 @@ struct ValidateProjectToolTests {
         let pbxprojPath = projectPath + "project.pbxproj"
         let pbxprojText = try String(contentsOf: URL(fileURLWithPath: pbxprojPath.string))
 
-        // Verify the orphan survived write — if PBXBuildFile section has 2 entries we're good.
-        // If XcodeProj pruned it, inject manually.
+        // Verify the orphan survived write — if PBXBuildFile section has 2 entries we're good. If
+        // XcodeProj pruned it, inject manually.
         let buildFileCount = pbxprojText.components(separatedBy: "isa = PBXBuildFile").count - 1
+
         if buildFileCount < 2 {
             // XcodeProj pruned the orphan; inject it manually
             let fileRefUUID = "DEADBEEF00000000DEADBEE1"
@@ -410,28 +395,26 @@ struct ValidateProjectToolTests {
             modified = modified.replacingOccurrences(
                 of: "/* End PBXFileReference section */",
                 with: """
-                \t\t\(
+                    \t\t\(
                     fileRefUUID
-                ) /* Orphan.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Orphan.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-                /* End PBXFileReference section */
-                """,
+                    ) /* Orphan.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Orphan.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+                    /* End PBXFileReference section */
+                    """,
             )
             modified = modified.replacingOccurrences(
                 of: "/* End PBXBuildFile section */",
                 with: """
-                \t\t\(buildFileUUID) /* Orphan.framework */ = {isa = PBXBuildFile; fileRef = \(
+                    \t\t\(buildFileUUID) /* Orphan.framework */ = {isa = PBXBuildFile; fileRef = \(
                     fileRefUUID
-                ) /* Orphan.framework */; };
-                /* End PBXBuildFile section */
-                """,
+                    ) /* Orphan.framework */; };
+                    /* End PBXBuildFile section */
+                    """,
             )
             try modified.write(toFile: pbxprojPath.string, atomically: true, encoding: .utf8)
         }
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -462,9 +445,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -511,9 +492,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -578,9 +557,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -607,8 +584,7 @@ struct ValidateProjectToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
         let sourcesPhase = try #require(
-            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase,
-        )
+            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase)
 
         // Add null build files (simulates Xcode 26 migration artifacts)
         let nullBF1 = PBXBuildFile(file: nil)
@@ -619,9 +595,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -657,9 +631,7 @@ struct ValidateProjectToolTests {
         try xcodeproj.write(path: projectPath)
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -684,9 +656,7 @@ struct ValidateProjectToolTests {
         )
 
         let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
 
         guard case let .text(content, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -694,5 +664,33 @@ struct ValidateProjectToolTests {
         }
         // Should not report the synchronized folder as orphaned
         #expect(!content.contains("not linked to any target"))
+    }
+
+    @Test
+    func `Flags self-referencing sub-project entries`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+        try TestProjectHelper.injectSelfProjectReferences(
+            name: "TestProject", count: 2, at: projectPath,
+        )
+
+        let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
+
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("Self-referencing sub-project"))
+        #expect(content.contains("repair_project"))
+        #expect(content.contains("[error]"))
     }
 }

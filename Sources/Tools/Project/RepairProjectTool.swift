@@ -13,26 +13,22 @@ import Foundation
 public struct RepairProjectTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "repair_project",
             description: """
-            Repair common Xcode project issues after migration. \
-            Removes null build file references, orphaned PBXBuildFile entries, \
-            and other artifacts left by Xcode auto-migration.
-            """,
+                Repair common Xcode project issues after migration. \
+                Removes null build file references, orphaned PBXBuildFile entries, \
+                and other artifacts left by Xcode auto-migration.
+                """,
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcodeproj file",
-                        ),
+                        "description": .string("Path to the .xcodeproj file"),
                     ]),
                     "dry_run": .object([
                         "type": .string("boolean"),
@@ -53,13 +49,10 @@ public struct RepairProjectTool: Sendable {
         }
 
         let dryRun: Bool
-        if case let .bool(dry) = arguments["dry_run"] {
-            dryRun = dry
-        } else {
-            dryRun = false
-        }
+        if case let .bool(dry) = arguments["dry_run"] { dryRun = dry } else { dryRun = false }
 
         let resolvedPath: String
+
         do {
             resolvedPath = try pathUtility.resolvePath(from: projectPath)
         } catch {
@@ -68,6 +61,7 @@ public struct RepairProjectTool: Sendable {
 
         let path = Path(resolvedPath)
         let xcodeproj: XcodeProj
+
         do {
             xcodeproj = try XcodeProj(path: path)
         } catch {
@@ -85,23 +79,38 @@ public struct RepairProjectTool: Sendable {
             for phase in target.buildPhases {
                 guard let files = phase.files else { continue }
                 let nullFiles = files.filter { $0.file == nil && $0.product == nil }
+
                 if !nullFiles.isEmpty {
                     let phaseName = phaseName(for: phase)
                     fixes.append(
                         "Removed \(nullFiles.count) null build file\(nullFiles.count == 1 ? "" : "s") from \(target.name)/\(phaseName)",
                     )
+
                     if !dryRun {
                         phase.files = files.filter { $0.file != nil || $0.product != nil }
-                        for nullFile in nullFiles {
-                            pbxproj.delete(object: nullFile)
-                        }
+                        for nullFile in nullFiles { pbxproj.delete(object: nullFile) }
                     }
                 }
             }
         }
 
+        // --- Remove self-referencing sub-project entries --- A projectReferences entry whose
+        // ProjectRef points at this project itself (e.g. "Foo.xcodeproj" nested inside
+        // Foo.xcodeproj) blocks Periphery scans with "Cannot calculate full path for file element".
+        // Remove the file ref, the projectReferences entry, and its empty Products group.
+        let selfRefs = SelfProjectReference.detect(in: xcodeproj, projectPath: resolvedPath)
+
+        if !selfRefs.isEmpty {
+            let names = selfRefs.map { "\"\($0)\"" }.joined(separator: ", ")
+            fixes.append(
+                "Removed \(selfRefs.count) self-referencing sub-project entr\(selfRefs.count == 1 ? "y" : "ies") (\(names))",
+            )
+            if !dryRun { SelfProjectReference.remove(from: xcodeproj, projectPath: resolvedPath) }
+        }
+
         // --- Remove orphaned PBXBuildFile entries ---
         var referencedBuildFileIDs = Set<ObjectIdentifier>()
+
         for target in targets {
             for phase in target.buildPhases {
                 for buildFile in phase.files ?? [] {
@@ -112,15 +121,12 @@ public struct RepairProjectTool: Sendable {
         let orphans = pbxproj.buildFiles.filter {
             !referencedBuildFileIDs.contains(ObjectIdentifier($0))
         }
+
         if !orphans.isEmpty {
             fixes.append(
                 "Removed \(orphans.count) orphaned PBXBuildFile\(orphans.count == 1 ? "" : "s") not in any build phase",
             )
-            if !dryRun {
-                for orphan in orphans {
-                    pbxproj.delete(object: orphan)
-                }
-            }
+            if !dryRun { for orphan in orphans { pbxproj.delete(object: orphan) } }
         }
 
         // --- Write if changes were made ---
@@ -136,17 +142,13 @@ public struct RepairProjectTool: Sendable {
 
         // --- Format output ---
         var output = [String]()
-        if dryRun {
-            output.append("## Dry Run — no changes written\n")
-        }
+        if dryRun { output.append("## Dry Run — no changes written\n") }
 
         if fixes.isEmpty {
             output.append("No issues found in \(resolvedPath).")
         } else {
             output.append("## Repairs\(dryRun ? " (would apply)" : "")\n")
-            for fix in fixes {
-                output.append("- \(fix)")
-            }
+            for fix in fixes { output.append("- \(fix)") }
             output.append("")
             output.append(
                 dryRun
@@ -155,15 +157,18 @@ public struct RepairProjectTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: output.joined(separator: "\n"),
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result(content: [
+            .text(
+                text: output.joined(separator: "\n"),
+                annotations: nil,
+                _meta: nil,
+            )
+        ])
     }
 
     private func phaseName(for phase: PBXBuildPhase) -> String {
         if let name = phase.name() { return name }
+
         switch phase {
             case is PBXSourcesBuildPhase: return "Sources"
             case is PBXFrameworksBuildPhase: return "Frameworks"

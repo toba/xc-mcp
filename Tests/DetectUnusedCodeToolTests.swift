@@ -1,11 +1,39 @@
 import MCP
+import PathKit
 import Testing
-@testable import XCMCPCore
+import XcodeProj
 import Foundation
+@testable import XCMCPCore
 @testable import XCMCPTools
 
 struct DetectUnusedCodeToolTests {
     let sessionManager = SessionManager()
+
+    @Test
+    func `Self-reference guidance names the offending entry and points to repair_project`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+        try TestProjectHelper.injectSelfProjectReferences(
+            name: "TestProject", count: 3, at: projectPath,
+        )
+
+        let message = DetectUnusedCodeTool.selfReferenceGuidance(
+            project: projectPath.string,
+            peripheryDetail: "Cannot calculate full path for file element \"TestProject.xcodeproj\"",
+        )
+        #expect(message.contains("repair_project"))
+        #expect(message.contains("3 self-referencing sub-project"))
+        #expect(message.contains("\"TestProject.xcodeproj\""))
+        #expect(message.contains("Periphery output:"))
+    }
 
     @Test
     func `Tool schema has correct name and description`() {
@@ -47,31 +75,31 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `Parses JSON output with unused declarations`() {
         let json = """
-        [
-          {
-            "name": "unusedFunc()",
-            "kind": "function.free",
-            "hints": ["unused"],
-            "accessibility": "internal",
-            "location": "/path/to/Foo.swift:12:6",
-            "modules": ["MyModule"],
-            "ids": ["s:8MyModule10unusedFuncyyF"],
-            "attributes": [],
-            "modifiers": []
-          },
-          {
-            "name": "OldStruct",
-            "kind": "struct",
-            "hints": ["unused"],
-            "accessibility": "public",
-            "location": "/path/to/Bar.swift:5:15",
-            "modules": ["MyModule"],
-            "ids": ["s:8MyModule9OldStructV"],
-            "attributes": [],
-            "modifiers": []
-          }
-        ]
-        """
+            [
+              {
+                "name": "unusedFunc()",
+                "kind": "function.free",
+                "hints": ["unused"],
+                "accessibility": "internal",
+                "location": "/path/to/Foo.swift:12:6",
+                "modules": ["MyModule"],
+                "ids": ["s:8MyModule10unusedFuncyyF"],
+                "attributes": [],
+                "modifiers": []
+              },
+              {
+                "name": "OldStruct",
+                "kind": "struct",
+                "hints": ["unused"],
+                "accessibility": "public",
+                "location": "/path/to/Bar.swift:5:15",
+                "modules": ["MyModule"],
+                "ids": ["s:8MyModule9OldStructV"],
+                "attributes": [],
+                "modifiers": []
+              }
+            ]
+            """
         let results = DetectUnusedCodeTool.parseJSONOutput(json)
         #expect(results.count == 2)
         #expect(results[0].name == "unusedFunc()")
@@ -104,42 +132,42 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `Parses multiple hint types`() {
         let json = """
-        [
-          {
-            "name": "helperMethod()",
-            "kind": "function.method.instance",
-            "hints": ["redundantPublicAccessibility"],
-            "accessibility": "public",
-            "location": "/path/to/Foo.swift:33:17",
-            "modules": ["M"],
-            "ids": [],
-            "attributes": [],
-            "modifiers": []
-          },
-          {
-            "name": "Foundation",
-            "kind": "import",
-            "hints": ["unusedImport"],
-            "accessibility": "internal",
-            "location": "/path/to/Bar.swift:1:1",
-            "modules": ["M"],
-            "ids": [],
-            "attributes": [],
-            "modifiers": []
-          },
-          {
-            "name": "debugFlag",
-            "kind": "var.instance",
-            "hints": ["assignOnlyProperty"],
-            "accessibility": "internal",
-            "location": "/path/to/Baz.swift:10:9",
-            "modules": ["M"],
-            "ids": [],
-            "attributes": [],
-            "modifiers": []
-          }
-        ]
-        """
+            [
+              {
+                "name": "helperMethod()",
+                "kind": "function.method.instance",
+                "hints": ["redundantPublicAccessibility"],
+                "accessibility": "public",
+                "location": "/path/to/Foo.swift:33:17",
+                "modules": ["M"],
+                "ids": [],
+                "attributes": [],
+                "modifiers": []
+              },
+              {
+                "name": "Foundation",
+                "kind": "import",
+                "hints": ["unusedImport"],
+                "accessibility": "internal",
+                "location": "/path/to/Bar.swift:1:1",
+                "modules": ["M"],
+                "ids": [],
+                "attributes": [],
+                "modifiers": []
+              },
+              {
+                "name": "debugFlag",
+                "kind": "var.instance",
+                "hints": ["assignOnlyProperty"],
+                "accessibility": "internal",
+                "location": "/path/to/Baz.swift:10:9",
+                "modules": ["M"],
+                "ids": [],
+                "attributes": [],
+                "modifiers": []
+              }
+            ]
+            """
         let results = DetectUnusedCodeTool.parseJSONOutput(json)
         #expect(results.count == 3)
         #expect(results[0].hints == ["redundantPublicAccessibility"])
@@ -373,7 +401,7 @@ struct DetectUnusedCodeToolTests {
             declarations, kindFilter: [], fileFilter: ["/path/to/"],
         )
 
-        #expect(filtered.count == 5) // all match
+        #expect(filtered.count == 5)  // all match
     }
 
     @Test
@@ -402,7 +430,7 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `Short hash produces 12 char hex string`() throws {
         let hash = DetectUnusedCodeTool.shortHash("test input")
-        #expect(hash.count == 12) // 6 bytes * 2 hex chars
+        #expect(hash.count == 12)  // 6 bytes * 2 hex chars
         #expect(try hash.allSatisfy(\.isHexDigit))
     }
 
@@ -494,9 +522,7 @@ struct DetectUnusedCodeToolTests {
 
         let encoder = JSONEncoder()
         let data = try encoder.encode(state)
-        let decoded = try JSONDecoder().decode(
-            DetectUnusedCodeTool.ChecklistState.self, from: data,
-        )
+        let decoded = try JSONDecoder().decode(DetectUnusedCodeTool.ChecklistState.self, from: data)
 
         #expect(decoded.version == 1)
         #expect(decoded.source == "/tmp/test.json")
@@ -510,11 +536,13 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `checklistPath derivation`() {
         #expect(
-            DetectUnusedCodeTool.checklistPath(forCache: "/tmp/periphery-abc123.json")
+            DetectUnusedCodeTool.checklistPath(
+                forCache: "/tmp/periphery-abc123.json")
                 == "/tmp/periphery-abc123-checklist.json",
         )
         #expect(
-            DetectUnusedCodeTool.checklistPath(forCache: "/tmp/results.json")
+            DetectUnusedCodeTool.checklistPath(
+                forCache: "/tmp/results.json")
                 == "/tmp/results-checklist.json",
         )
     }
@@ -540,7 +568,7 @@ struct DetectUnusedCodeToolTests {
                 "indices": .array([.int(1), .int(3)]),
                 "status": .string("done"),
                 "note": .string("Removed"),
-            ]),
+            ])
         ]
         let action = DetectUnusedCodeTool.parseMarkAction(from: arguments)
         #expect(action != nil)
@@ -685,11 +713,13 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `directoryGroup extracts last two components`() {
         #expect(
-            DetectUnusedCodeTool.directoryGroup("/Users/x/Dev/proj/Core/Sources/Foo.swift")
+            DetectUnusedCodeTool.directoryGroup(
+                "/Users/x/Dev/proj/Core/Sources/Foo.swift")
                 == "Core/Sources",
         )
         #expect(
-            DetectUnusedCodeTool.directoryGroup("/a/b/File.swift")
+            DetectUnusedCodeTool.directoryGroup(
+                "/a/b/File.swift")
                 == "a/b",
         )
     }
@@ -702,7 +732,7 @@ struct DetectUnusedCodeToolTests {
                 hints: ["unused"], accessibility: "internal",
                 module: "",
                 file: "/path/to/Orphan.swift", line: 1, column: 1,
-            ),
+            )
         ]
         let state = DetectUnusedCodeTool.createChecklist(
             from: declarations, cachePath: "/tmp/test.json",
@@ -719,20 +749,20 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `parseJSONOutput extracts module from modules array`() {
         let json = """
-        [
-          {
-            "name": "foo()",
-            "kind": "function.free",
-            "hints": ["unused"],
-            "accessibility": "internal",
-            "location": "/path/to/Foo.swift:1:1",
-            "modules": ["CoreModule"],
-            "ids": [],
-            "attributes": [],
-            "modifiers": []
-          }
-        ]
-        """
+            [
+              {
+                "name": "foo()",
+                "kind": "function.free",
+                "hints": ["unused"],
+                "accessibility": "internal",
+                "location": "/path/to/Foo.swift:1:1",
+                "modules": ["CoreModule"],
+                "ids": [],
+                "attributes": [],
+                "modifiers": []
+              }
+            ]
+            """
         let results = DetectUnusedCodeTool.parseJSONOutput(json)
         #expect(results.count == 1)
         #expect(results[0].module == "CoreModule")
@@ -741,16 +771,16 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `parseJSONOutput uses empty string when modules missing`() {
         let json = """
-        [
-          {
-            "name": "foo()",
-            "kind": "function.free",
-            "hints": ["unused"],
-            "accessibility": "internal",
-            "location": "/path/to/Foo.swift:1:1"
-          }
-        ]
-        """
+            [
+              {
+                "name": "foo()",
+                "kind": "function.free",
+                "hints": ["unused"],
+                "accessibility": "internal",
+                "location": "/path/to/Foo.swift:1:1"
+              }
+            ]
+            """
         let results = DetectUnusedCodeTool.parseJSONOutput(json)
         #expect(results.count == 1)
         #expect(results[0].module.isEmpty)
@@ -783,7 +813,7 @@ struct DetectUnusedCodeToolTests {
 
         let (filtered, removedCount) =
             DetectUnusedCodeTool
-                .filterSuperfluousIgnoreComments(declarations)
+            .filterSuperfluousIgnoreComments(declarations)
         #expect(filtered.count == 1)
         #expect(filtered[0].name == "unusedFunc()")
         #expect(removedCount == 2)
@@ -794,7 +824,7 @@ struct DetectUnusedCodeToolTests {
         let declarations = Self.sampleDeclarations()
         let (filtered, removedCount) =
             DetectUnusedCodeTool
-                .filterSuperfluousIgnoreComments(declarations)
+            .filterSuperfluousIgnoreComments(declarations)
         #expect(filtered.count == declarations.count)
         #expect(removedCount == 0)
     }
@@ -802,31 +832,31 @@ struct DetectUnusedCodeToolTests {
     @Test
     func `parseJSONOutput includes superfluous hints for filtering`() {
         let json = """
-        [
-          {
-            "name": "ignoredProp",
-            "kind": "var.instance",
-            "hints": ["superfluousIgnoreComment"],
-            "accessibility": "internal",
-            "location": "/path/to/Foo.swift:10:9",
-            "modules": ["M"],
-            "ids": [],
-            "attributes": [],
-            "modifiers": []
-          },
-          {
-            "name": "reallyUnused()",
-            "kind": "function.free",
-            "hints": ["unused"],
-            "accessibility": "internal",
-            "location": "/path/to/Foo.swift:20:5",
-            "modules": ["M"],
-            "ids": [],
-            "attributes": [],
-            "modifiers": []
-          }
-        ]
-        """
+            [
+              {
+                "name": "ignoredProp",
+                "kind": "var.instance",
+                "hints": ["superfluousIgnoreComment"],
+                "accessibility": "internal",
+                "location": "/path/to/Foo.swift:10:9",
+                "modules": ["M"],
+                "ids": [],
+                "attributes": [],
+                "modifiers": []
+              },
+              {
+                "name": "reallyUnused()",
+                "kind": "function.free",
+                "hints": ["unused"],
+                "accessibility": "internal",
+                "location": "/path/to/Foo.swift:20:5",
+                "modules": ["M"],
+                "ids": [],
+                "attributes": [],
+                "modifiers": []
+              }
+            ]
+            """
         let all = DetectUnusedCodeTool.parseJSONOutput(json)
         #expect(all.count == 2)
 
