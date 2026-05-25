@@ -5,11 +5,11 @@ status: completed
 type: bug
 priority: critical
 created_at: 2026-05-22T23:05:47Z
-updated_at: 2026-05-22T23:09:54Z
+updated_at: 2026-05-23T05:16:48Z
 sync:
     github:
         issue_number: "329"
-        synced_at: "2026-05-22T23:19:50Z"
+        synced_at: "2026-05-25T05:37:08Z"
 ---
 
 ## Symptom
@@ -80,3 +80,25 @@ Addressed the two dominant, low-risk causes; split progress-streaming into follo
 3. **Deferred**: streaming build progress to the client → follow-up `ncf-11d` (requires plumbing a progress token through `execute()`).
 
 Build green (`swift_package_build`).
+
+
+## Update — TRUE HANG persists post-fix (new findings, may warrant reopen / separate bug)
+
+Hit while using `build_debug_macos` (scheme `Standard`, this Thesis project) across a long session. The completed fix addresses *cold-build slowness*, but there is a **separate, more severe failure mode**: the tool **hangs indefinitely** (one call sat ~4h before the user cancelled), and this is **not** just cold-compile time.
+
+### Evidence it's a real hang, not slowness
+- A plain `build_macos` (scheme `Standard`, `errors_only`) of the **same** working tree completed normally (`Build succeeded`, 53 warnings) in a reasonable time. So compilation itself is fine and the toolchain/caches are warm.
+- Immediately afterward, `build_debug_macos` (which only needs an incremental link + LLDB attach on top of that warm state) **still hung** and had to be cancelled. With everything already compiled, there is nothing to justify minutes/hours — the hang is in the debug-launch/attach path, not the build.
+
+### `XC_MCP_DISABLE_DERIVED_DATA_SCOPING=1` via the tool `env` param did not take effect
+- Passed as `build_debug_macos(env: {"XC_MCP_DISABLE_DERIVED_DATA_SCOPING": "1"})`. The build still used the **scoped** path `~/Library/Caches/xc-mcp/DerivedData/Thesis-4019ecb6511d` (cold), i.e. it did **not** fall back to Xcode's warm DerivedData. Suggests the flag is read from the *server process* environment, not the per-call `env` dictionary — so the documented escape hatch is unreachable through the MCP `env` argument. Worth verifying where `DerivedDataScoper` reads the flag.
+
+### Orphaned `lldb-rpc-server` wedges subsequent launches (likely the hang's mechanism)
+- After cancelling a `build_debug_macos` call (or killing the launched app), a `lldb-rpc-server` process is left running (observed PID e.g. `94318`).
+- The **next** `build_debug_macos` then hangs. Recovery required manual `pkill -9 -f lldb-rpc-server` (and killing the orphaned `ThesisApp (debug)` PID).
+- Also seen: `debug_stack`/`process interrupt` against the launched PID reported the process as "running" and required an interrupt that itself didn't complete before cancel.
+- Strong signal the hang is in **LLDB session setup/attach or teardown**: cancelled calls don't reap the `lldb-rpc-server`, and a stale server blocks the next attach. Suggest: (a) reap `lldb-rpc-server` on tool cancel/timeout; (b) detect & clear a pre-existing stale session before launch; (c) add an attach timeout that returns instead of hanging.
+
+### Impact / workaround
+- `build_debug_macos` was effectively **unusable** this session (multiple multi-hour hangs). Fallback that worked: `build_macos` to verify compilation, then Build+Run in Xcode for the actual debug launch.
+- This is distinct enough from the original "cold builds are slow" bug (now fixed) that it likely deserves reopening this issue or a dedicated bug for the **LLDB-attach hang + orphaned `lldb-rpc-server`**.

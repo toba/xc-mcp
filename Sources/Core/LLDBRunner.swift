@@ -325,25 +325,53 @@ public actor LLDBSession {
     /// Terminates the LLDB process and closes PTY file descriptors.
     ///
     /// Sends `quit` to LLDB and waits for exit, escalating to SIGTERM then SIGKILL if needed.
+    /// Also reaps the `lldb-rpc-server` child: `lldb` spawns it as a child process that does
+    /// **not** die when `lldb` is killed (it reparents to launchd and keeps running), so a
+    /// cancelled/timed-out/force-killed session would otherwise leak a stale `lldb-rpc-server`
+    /// that wedges the next debug launch.
     public func terminate() async {
+        let lldbPID = process.processIdentifier
+        // Capture child pids now, while lldb is still their parent — once lldb exits they
+        // reparent to launchd and can no longer be found via `pgrep -P <lldbPID>`.
+        let rpcServerPIDs = lldbPID > 0 ? await Self.childPIDs(ofParent: lldbPID) : []
+
         if process.isRunning {
             // Try graceful quit first
             let quitData = Data("quit\n".utf8)
             try? stdin.write(contentsOf: quitData)
 
-            let pid = process.processIdentifier
-            let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(2))
+            let exited = await ProcessResult.waitForProcessExit(pid: lldbPID, timeout: .seconds(2))
 
             if !exited, process.isRunning {
                 process.terminate()  // SIGTERM
                 let exitedAfterTerm = await ProcessResult.waitForProcessExit(
-                    pid: pid,
+                    pid: lldbPID,
                     timeout: .seconds(3),
                 )
-                if !exitedAfterTerm, process.isRunning { kill(pid, SIGKILL) }
+                if !exitedAfterTerm, process.isRunning { kill(lldbPID, SIGKILL) }
             }
         }
+
+        // Reap any lldb-rpc-server child that outlived lldb. A graceful quit usually takes it
+        // down already, in which case `kill(pid, 0)` reports it gone and we skip it.
+        for child in rpcServerPIDs where kill(child, 0) == 0 {
+            kill(child, SIGKILL)
+        }
+
         for fd in ptyFDs { close(fd) }
+    }
+
+    /// Returns the PIDs of the direct child processes of `parent` via `pgrep -P`.
+    static func childPIDs(ofParent parent: Int32) async -> [Int32] {
+        guard
+            let result = try? await ProcessResult.run(
+                "/usr/bin/pgrep", arguments: ["-P", "\(parent)"], mergeStderr: false,
+            ),
+            result.succeeded
+        else { return [] }
+        return result.stdout
+            .split(whereSeparator: \.isNewline)
+            .compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
     }
 
     /// Reads output from LLDB until the `(lldb) ` prompt appears.
@@ -651,6 +679,33 @@ public actor LLDBSessionManager {
         // Create a session with a long timeout — waitfor blocks until the process appears
         let session = try LLDBSession(pid: 0, commandTimeout: 120)
 
+        do {
+            return try await runOpenAndAttach(
+                session: session,
+                appPath: appPath,
+                executableName: executableName,
+                arguments: arguments,
+                environment: environment,
+                stopAtEntry: stopAtEntry,
+            )
+        } catch {
+            // Any failure before the session is fully established (e.g. a waitfor/attach
+            // timeout, or the tool task being cancelled) must reap LLDB and its
+            // lldb-rpc-server child — otherwise the next launch attaches against a wedged
+            // stale session.
+            await session.terminate()
+            throw error
+        }
+    }
+
+    private func runOpenAndAttach(
+        session: LLDBSession,
+        appPath: String,
+        executableName: String,
+        arguments: [String],
+        environment: [String: String],
+        stopAtEntry: Bool,
+    ) async throws(LLDBError) -> LLDBSession {
         // Consume the initial LLDB prompt
         _ = try await session.readUntilPrompt()
 
@@ -686,13 +741,11 @@ public actor LLDBSessionManager {
         do {
             try openProcess.run()
         } catch {
-            await session.terminate()
             throw LLDBError.commandFailed("Failed to launch app via /usr/bin/open: \(error)")
         }
         openProcess.waitUntilExit()
 
         guard openProcess.terminationStatus == 0 else {
-            await session.terminate()
             throw LLDBError.commandFailed(
                 "Failed to launch app via /usr/bin/open (exit code \(openProcess.terminationStatus))",
             )
@@ -975,15 +1028,19 @@ public struct LLDBRunner: Sendable {
     /// - Parameter pid: The process ID to detach from.
     /// - Returns: The result containing the detach output.
     public func detach(pid: Int32) async throws(LLDBError) -> LLDBResult {
-        let session = await LLDBSessionManager.shared.getSession(pid: pid)
-
-        if let session {
-            let output = try await session.sendCommand("detach")
-            await LLDBSessionManager.shared.removeSession(pid: pid)
-            return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+        guard let session = await LLDBSessionManager.shared.getSession(pid: pid) else {
+            // No existing session — nothing to detach from
+            return .init(exitCode: 0, stdout: "No active session for PID \(pid)", stderr: "")
         }
-        // No existing session — nothing to detach from
-        return .init(exitCode: 0, stdout: "No active session for PID \(pid)", stderr: "")
+
+        // `detach` can block when the target is wedged (the read for the prompt never
+        // completes and the command times out). Treat that as a partial success: the detach
+        // was issued, and `removeSession` → `terminate` tears down LLDB and reaps the
+        // lldb-rpc-server regardless, so we never leak a stale session on timeout.
+        let output = (try? await session.sendCommand("detach"))
+            ?? "detach issued (LLDB did not confirm before timeout — session torn down anyway)"
+        await LLDBSessionManager.shared.removeSession(pid: pid)
+        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
     }
 
     /// Sets a breakpoint at a symbol (function name).

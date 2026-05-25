@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of May 24 – May 30, 2026
+
+### 🐞 Fixes
+
+- `build_debug_macos` hangs in LLDB attach/teardown; orphaned `lldb-rpc-server` wedges next launch; `lldb` spawns `lldb-rpc-server` as a child that survives a SIGKILL of `lldb` (reparents to launchd), and several teardown paths leaked it; `LLDBSession.terminate()` now captures `lldb`'s direct child PIDs via `pgrep -P` before killing and SIGKILLs survivors; `detach(pid:)` treats a wedged-target timeout as partial success and always tears the session down; the launch path terminates the session on any error or cancellation mid-attach ([#330](https://github.com/toba/xc-mcp/issues/330))
+
 ## Week of May 17 – May 23, 2026
 
 ### ✨ Features
