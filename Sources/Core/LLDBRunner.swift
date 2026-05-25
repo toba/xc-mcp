@@ -388,32 +388,56 @@ public actor LLDBSession {
             .compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
     }
 
+    /// Upper bound on output a single command may produce before we treat it as a runaway flood.
+    ///
+    /// A breakpoint on a high-frequency symbol (e.g. `sqlite3_prepare_v2`, `malloc`,
+    /// `objc_msgSend`) — especially with an inferior-function-calling condition — makes LLDB emit
+    /// stop/continue chatter faster than it ever returns a clean `(lldb) ` prompt. The reader would
+    /// otherwise grow an unbounded string and spin a CPU core, starving the cooperative pool so the
+    /// timeout `Task` never even gets scheduled (the >1h13m wedge in dq5-oel). Capping total bytes
+    /// lets the read abort in bounded time and memory regardless of scheduler pressure.
+    static let maxResponseBytes = 1_000_000
+
     /// Reads output from LLDB until the `(lldb) ` prompt appears.
     ///
-    /// Uses a lock-guarded flag to ensure the continuation is resumed exactly once. On timeout,
-    /// marks the session as poisoned so it will be recreated on next use.
+    /// Uses a lock-guarded flag to ensure the continuation is resumed exactly once. On timeout or a
+    /// runaway-output flood, marks the session as poisoned so it will be recreated on next use.
     func readUntilPrompt() async throws(LLDBError) -> String {
         let promptMarker = "(lldb) "
 
         do {
-            return try await withCheckedThrowingContinuation { continuation in
+            return try await withCheckedThrowingContinuation {
+                (continuation: CheckedContinuation<String, any Error>) in
                 // One-shot guard ensures the continuation is resumed exactly once.
                 let gate = OneShotContinuation(continuation)
                 // Shared accumulator so timeout handler can report partial output.
                 let partialOutput = Mutex("")
+                // Set once the gate has been resolved (by reader, flood guard, or timeout) so the
+                // reader thread stops promptly instead of spinning on flooding output forever.
+                let finished = Mutex(false)
+
+                let finish: @Sendable (Bool) -> Void = { resumed in
+                    if resumed { finished.withLock { $0 = true } }
+                }
 
                 // Reader: runs on a GCD thread because FileHandle.availableData blocks.
                 DispatchQueue.global().async { [stdout] in
                     var accumulated = ""
                     var buffer = Data()
+                    var totalBytes = 0
                     while true {
+                        // Bail out the moment another path (timeout) has already resolved the gate,
+                        // so a hot breakpoint flooding the PTY can't keep this thread spinning.
+                        if finished.withLock({ $0 }) { return }
+
                         let chunk = stdout.availableData
 
                         if chunk.isEmpty {
                             // EOF — process exited
-                            gate.resume(returning: accumulated)
+                            finish(gate.resume(returning: accumulated))
                             return
                         }
+                        totalBytes += chunk.count
                         buffer.append(chunk)
 
                         if let str = String(data: buffer, encoding: .utf8) {
@@ -426,16 +450,20 @@ public actor LLDBSession {
                                 let endIndex = accumulated.index(
                                     accumulated.endIndex, offsetBy: -promptMarker.count,
                                 )
-                                gate
-                                    .resume(returning: String(
-                                        accumulated[
-                                            accumulated
-                                                .startIndex..<endIndex,
-                                        ],
-                                    ),
-                                    )
+                                finish(gate.resume(returning: String(
+                                    accumulated[accumulated.startIndex..<endIndex],
+                                )))
                                 return
                             }
+                        }
+
+                        // Flood guard: a bounded amount of output without ever seeing a prompt means
+                        // the target is emitting faster than LLDB hands back control.
+                        if totalBytes > Self.maxResponseBytes {
+                            finish(gate.resume(throwing: LLDBError.commandFailed(
+                                "LLDB emitted over \(Self.maxResponseBytes / 1000)KB without returning a prompt — the target is flooding output, typically a breakpoint on a high-frequency symbol (sqlite3_prepare_v2, malloc, objc_msgSend, …) or an inferior-function-calling condition. Aborting to avoid a wedged session; recreate the session and use a narrower breakpoint.",
+                            )))
+                            return
                         }
                     }
                 }
@@ -456,14 +484,18 @@ public actor LLDBSession {
                         detail =
                             "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
                     }
-                    if gate.resume(throwing: LLDBError.commandFailed(detail)) {
-                        if let self { await markPoisoned() }
-                    }
+                    let resumed = gate.resume(throwing: LLDBError.commandFailed(detail))
+                    finish(resumed)
+                    if resumed, let self { await markPoisoned() }
                 }
             }
         } catch let error as LLDBError {
+            // A flood abort wedges the session just as a timeout does — poison it so the manager
+            // recreates a clean LLDB on next use rather than reusing one mid-flood.
+            markPoisoned()
             throw error
         } catch {
+            markPoisoned()
             throw .commandFailed("\(error)")
         }
     }
@@ -536,6 +568,49 @@ public actor LLDBSession {
         // Timed out waiting for stop — set stopped anyway since interrupt was sent
         processState = .stopped(reason: "interrupt")
         return initialOutput
+    }
+
+    /// Collects asynchronous output (no `(lldb) ` prompt expected) until `marker` has appeared
+    /// `count` times or `timeout` elapses.
+    ///
+    /// Auto-continuing breakpoints (`--auto-continue true`) print their attached commands while the
+    /// process keeps running, so no prompt delimits the output. This polls the PTY and accumulates
+    /// chunks, stopping once enough markers are seen, the deadline passes, or the same byte cap as
+    /// ``readUntilPrompt()`` is hit (so a hot breakpoint can't flood unbounded).
+    ///
+    /// - Returns: The accumulated output (markers included; the caller strips them).
+    func collectUntilMarker(
+        _ marker: String,
+        count: Int,
+        timeout: Duration,
+    ) async -> (output: String, hits: Int) {
+        let fd = stdout.fileDescriptor
+        var accumulated = ""
+        var buffer = Data()
+        var totalBytes = 0
+        let deadline = ContinuousClock.now + timeout
+
+        while ContinuousClock.now < deadline {
+            var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+            guard poll(&pollFD, 1, 100) > 0, pollFD.revents & Int16(POLLIN) != 0 else { continue }
+
+            let chunk = stdout.availableData
+            if chunk.isEmpty { break }  // EOF — process exited
+            totalBytes += chunk.count
+            buffer.append(chunk)
+
+            if let str = String(data: buffer, encoding: .utf8) {
+                buffer = Data()
+                accumulated += str
+            }
+
+            let hits = accumulated.components(separatedBy: marker).count - 1
+            if hits >= count { return (accumulated, hits) }
+            if totalBytes > Self.maxResponseBytes { break }
+        }
+
+        let hits = accumulated.components(separatedBy: marker).count - 1
+        return (accumulated, hits)
     }
 
     /// Extracts the stop reason string from LLDB output, if present.
@@ -1517,6 +1592,97 @@ public struct LLDBRunner: Sendable {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let output = try await session.sendCommand("process status")
         return .init(exitCode: 0, stdout: output, stderr: "")
+    }
+
+    /// Marker the auto-continue breakpoint prints after each backtrace so capture knows a hit
+    /// completed. Distinctive enough not to collide with normal program output.
+    static let captureMarker = "<<<XCMCP_BT_CAPTURED>>>"
+
+    /// Builds the `breakpoint set` command for a non-interactive, auto-continuing backtrace capture.
+    ///
+    /// The breakpoint prints a bounded `bt`, then a sentinel marker, then auto-continues — so the
+    /// stack is captured without a follow-up `debug_stack` call and without leaving the target
+    /// stopped. Factored out for testing.
+    static func captureBreakpointCommand(
+        symbol: String,
+        condition: String?,
+        frameCount: Int?,
+    ) -> String {
+        var cmd = "breakpoint set --name \"\(symbol)\""
+        if let condition, !condition.isEmpty { cmd += " --condition '\(condition)'" }
+        let bt = frameCount.map { "bt \($0)" } ?? "bt"
+        // Repeated --command entries run in order on each hit; auto-continue resumes afterward.
+        cmd += " --auto-continue true --command \"\(bt)\""
+        cmd += " --command \"script print('\(captureMarker)')\""
+        return cmd
+    }
+
+    /// Sets an auto-continuing breakpoint that captures backtraces, resumes the target, collects up
+    /// to `maxHits` stacks, then interrupts and removes the breakpoint.
+    ///
+    /// This is the safe alternative to hand-rolling a conditional breakpoint on a hot symbol: it is
+    /// bounded by `timeout` and the output byte cap, so it can never wedge the session the way the
+    /// dq5-oel repro did.
+    ///
+    /// - Parameters:
+    ///   - pid: The process ID of the target.
+    ///   - symbol: The function/method name to break on.
+    ///   - condition: Optional LLDB condition. Prefer register/memory comparisons over inferior
+    ///     function calls (the latter are evaluated on every hit).
+    ///   - frameCount: Max frames per backtrace (`nil` for full).
+    ///   - maxHits: How many backtraces to collect before stopping.
+    ///   - timeoutSeconds: Overall capture budget.
+    ///   - Returns: The captured backtrace(s) plus any condition advisories.
+    public func captureBacktrace(
+        pid: Int32,
+        symbol: String,
+        condition: String?,
+        frameCount: Int?,
+        maxHits: Int,
+        timeoutSeconds: Double,
+    ) async throws(LLDBError) -> LLDBResult {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+
+        let setCmd = Self.captureBreakpointCommand(
+            symbol: symbol, condition: condition, frameCount: frameCount,
+        )
+        let setOutput = try await session.sendCommand(setCmd)
+
+        // Parse the breakpoint id ("Breakpoint N: ...") so we can remove it afterward.
+        let breakpointID: Int? = setOutput.range(
+            of: #"Breakpoint (\d+):"#, options: .regularExpression,
+        ).flatMap { range in
+            Int(setOutput[range].dropFirst("Breakpoint ".count).dropLast())
+        }
+
+        // Resume only if currently stopped; if already running the breakpoint will still hit.
+        if await session.processState.isStopped {
+            try await session.sendCommandNoWait("continue")
+            await session.setProcessState(.running)
+        }
+
+        let (raw, hits) = await session.collectUntilMarker(
+            Self.captureMarker, count: max(maxHits, 1), timeout: .seconds(timeoutSeconds),
+        )
+
+        // Leave the target stopped and tidy up the capture breakpoint so it stops firing.
+        _ = try? await session.interruptProcess()
+        if let breakpointID {
+            _ = try? await session.sendCommand("breakpoint delete \(breakpointID)")
+        }
+
+        let cleaned = raw.replacingOccurrences(of: Self.captureMarker, with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let summary: String
+        if hits == 0 {
+            summary =
+                "No backtrace captured within \(timeoutSeconds)s — the breakpoint on '\(symbol)'\(condition.map { " with condition '\($0)'" } ?? "") was not hit (or its condition never matched). The target was left stopped."
+        } else {
+            summary = "Captured \(hits) backtrace\(hits == 1 ? "" : "s") at '\(symbol)':"
+        }
+
+        return .init(exitCode: 0, stdout: summary + (cleaned.isEmpty ? "" : "\n\n" + cleaned), stderr: "")
     }
 
     /// Executes LLDB in batch mode with a script (used for cases where persistent sessions aren't

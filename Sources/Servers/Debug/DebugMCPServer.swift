@@ -13,6 +13,7 @@ public enum DebugToolName: String, CaseIterable, Sendable {
     case debugBreakpointRemove = "debug_breakpoint_remove"
     case debugContinue = "debug_continue"
     case debugStack = "debug_stack"
+    case debugCaptureBacktrace = "debug_capture_backtrace"
     case debugVariables = "debug_variables"
     case debugLLDBCommand = "debug_lldb_command"
     case debugEvaluate = "debug_evaluate"
@@ -104,6 +105,7 @@ public struct DebugMCPServer: Sendable {
         let debugBreakpointRemoveTool = DebugBreakpointRemoveTool(lldbRunner: lldbRunner)
         let debugContinueTool = DebugContinueTool(lldbRunner: lldbRunner)
         let debugStackTool = DebugStackTool(lldbRunner: lldbRunner)
+        let debugCaptureBacktraceTool = DebugCaptureBacktraceTool(lldbRunner: lldbRunner)
         let debugVariablesTool = DebugVariablesTool(lldbRunner: lldbRunner)
         let debugLLDBCommandTool = DebugLLDBCommandTool(lldbRunner: lldbRunner)
         let debugEvaluateTool = DebugEvaluateTool(lldbRunner: lldbRunner)
@@ -144,6 +146,7 @@ public struct DebugMCPServer: Sendable {
                 debugBreakpointRemoveTool.tool(),
                 debugContinueTool.tool(),
                 debugStackTool.tool(),
+                debugCaptureBacktraceTool.tool(),
                 debugVariablesTool.tool(),
                 debugLLDBCommandTool.tool(),
                 debugEvaluateTool.tool(),
@@ -209,6 +212,8 @@ public struct DebugMCPServer: Sendable {
                     return try await debugContinueTool.execute(arguments: arguments)
                 case .debugStack:
                     return try await debugStackTool.execute(arguments: arguments)
+                case .debugCaptureBacktrace:
+                    return try await debugCaptureBacktraceTool.execute(arguments: arguments)
                 case .debugVariables:
                     return try await debugVariablesTool.execute(arguments: arguments)
                 case .debugLLDBCommand:

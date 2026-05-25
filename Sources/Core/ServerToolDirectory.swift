@@ -69,7 +69,7 @@ public enum ServerToolDirectory {
     private static let debugTools: [String] = [
         "build_debug_macos", "debug_attach_sim", "debug_detach",
         "debug_breakpoint_add", "debug_breakpoint_remove",
-        "debug_continue", "debug_stack", "debug_variables",
+        "debug_continue", "debug_stack", "debug_capture_backtrace", "debug_variables",
         "debug_lldb_command", "debug_evaluate", "debug_threads",
         "debug_watchpoint", "debug_step", "debug_memory",
         "debug_symbol_lookup", "debug_view_hierarchy",

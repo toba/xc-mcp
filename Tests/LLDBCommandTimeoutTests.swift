@@ -42,4 +42,30 @@ struct LLDBCommandTimeoutTests {
         let poisoned = await session.isPoisoned
         #expect(poisoned)
     }
+
+    @Test
+    func `a flood of output aborts within the byte cap instead of running to the timeout`() async throws {
+        try #require(Self.lldbAvailable, "lldb not installed")
+
+        // A long timeout proves the abort is driven by the byte cap, not the time cap: a hot
+        // breakpoint floods the PTY faster than a prompt ever returns, and the reader must bail on
+        // the byte budget rather than spin until the (here, very long) timeout.
+        let session = try LLDBSession(pid: 0, commandTimeout: 600)
+        defer { Task { await session.terminate() } }
+        _ = try await session.readUntilPrompt()
+
+        // Emit well over the 1 MB cap with no intervening prompt, mimicking breakpoint chatter.
+        let start = ContinuousClock.now
+        await #expect(throws: LLDBError.self) {
+            _ = try await session.sendCommand(
+                "script import sys; [sys.stdout.write('x' * 100 + chr(10)) for _ in range(40000)]",
+            )
+        }
+        let elapsed = ContinuousClock.now - start
+        #expect(elapsed < .seconds(60))
+
+        // The flood wedges the session just like a timeout, so it must be poisoned for recreation.
+        let poisoned = await session.isPoisoned
+        #expect(poisoned)
+    }
 }

@@ -152,6 +152,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case debugBreakpointRemove = "debug_breakpoint_remove"
     case debugContinue = "debug_continue"
     case debugStack = "debug_stack"
+    case debugCaptureBacktrace = "debug_capture_backtrace"
     case debugVariables = "debug_variables"
     case debugLLDBCommand = "debug_lldb_command"
     case debugEvaluate = "debug_evaluate"
@@ -297,7 +298,8 @@ public enum ToolName: String, CaseIterable, Sendable {
                 return .logging
             // Debug
             case .buildDebugMacOS, .debugAttachSim, .debugDetach, .debugBreakpointAdd,
-                 .debugBreakpointRemove, .debugContinue, .debugStack, .debugVariables,
+                 .debugBreakpointRemove, .debugContinue, .debugStack, .debugCaptureBacktrace,
+                 .debugVariables,
                  .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
                  .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
                  .debugViewBorders, .debugProcessStatus,
@@ -636,6 +638,7 @@ public struct XcodeMCPServer: Sendable {
         let debugBreakpointRemoveTool = DebugBreakpointRemoveTool(lldbRunner: lldbRunner)
         let debugContinueTool = DebugContinueTool(lldbRunner: lldbRunner)
         let debugStackTool = DebugStackTool(lldbRunner: lldbRunner)
+        let debugCaptureBacktraceTool = DebugCaptureBacktraceTool(lldbRunner: lldbRunner)
         let debugVariablesTool = DebugVariablesTool(lldbRunner: lldbRunner)
         let debugLLDBCommandTool = DebugLLDBCommandTool(lldbRunner: lldbRunner)
         let debugEvaluateTool = DebugEvaluateTool(lldbRunner: lldbRunner)
@@ -900,6 +903,7 @@ public struct XcodeMCPServer: Sendable {
             (.debugBreakpointRemove, debugBreakpointRemoveTool.tool()),
             (.debugContinue, debugContinueTool.tool()),
             (.debugStack, debugStackTool.tool()),
+            (.debugCaptureBacktrace, debugCaptureBacktraceTool.tool()),
             (.debugVariables, debugVariablesTool.tool()),
             (.debugLLDBCommand, debugLLDBCommandTool.tool()),
             (.debugEvaluate, debugEvaluateTool.tool()),
@@ -1296,6 +1300,8 @@ public struct XcodeMCPServer: Sendable {
                     return try await debugContinueTool.execute(arguments: arguments)
                 case .debugStack:
                     return try await debugStackTool.execute(arguments: arguments)
+                case .debugCaptureBacktrace:
+                    return try await debugCaptureBacktraceTool.execute(arguments: arguments)
                 case .debugVariables:
                     return try await debugVariablesTool.execute(arguments: arguments)
                 case .debugLLDBCommand:

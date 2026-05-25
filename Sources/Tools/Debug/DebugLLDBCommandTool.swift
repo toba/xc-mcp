@@ -48,10 +48,18 @@ public struct DebugLLDBCommandTool: Sendable {
         // Get command
         let command = try arguments.getRequiredString("command")
 
+        // Warn about pathological breakpoint conditions (hot symbols / inferior-calling conditions)
+        // before running, so the warning is surfaced even if the command itself wedges the target.
+        let conditionWarnings = BreakpointConditionAdvisor.warnings(for: command)
+
         do {
             let result = try await lldbRunner.executeCommand(pid: targetPID, command: command)
 
-            var message = "LLDB command result:\n\n"
+            var message = ""
+            if !conditionWarnings.isEmpty {
+                message += conditionWarnings.joined(separator: "\n") + "\n\n"
+            }
+            message += "LLDB command result:\n\n"
             message += result.output
 
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])

@@ -92,6 +92,18 @@ Tools for LLDB debugging:
 - Inspect stack traces and variables
 - Execute LLDB commands
 
+> Warning: Avoid breakpoints on **high-frequency symbols** (`sqlite3_prepare_v2`, `malloc`,
+> `objc_msgSend`, …), especially with a **condition that calls inferior functions** (`strncmp`,
+> `strstr`, …). LLDB evaluates such conditions by running code in the target on every hit, which
+> can slow the process by orders of magnitude and flood the debugger with output. `debug_breakpoint_add`
+> and `debug_lldb_command` warn when they detect these patterns. To capture "the stack when a
+> specific SQL/string runs", prefer a breakpoint on your own (less frequently called) frame.
+>
+> **Recovering a wedged session:** LLDB commands are now bounded — they abort with a structured
+> error after ~30s or once output exceeds ~1 MB, poisoning the session so the next call recreates a
+> clean LLDB. If the target itself is pegged and even a fresh attach is unresponsive, the only
+> LLDB-free recovery is to `kill -9 <pid>` the target process from a shell.
+
 ### UI Automation Tools
 
 Tools for simulator UI interaction:

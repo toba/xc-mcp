@@ -26,7 +26,7 @@ xc-mcp/
 │   │   └── XcodeMCPServer.swift     # Monolithic server with all tools
 │   ├── Servers/                     # Focused servers (smaller tool surface)
 │   │   ├── Build/                   # xc-build (21 tools)
-│   │   ├── Debug/                   # xc-debug (22 tools)
+│   │   ├── Debug/                   # xc-debug (23 tools)
 │   │   ├── Device/                  # xc-device (12 tools)
 │   │   ├── Project/                 # xc-project (40 tools)
 │   │   ├── Simulator/               # xc-simulator (29 tools)
@@ -58,11 +58,11 @@ xc-mcp/
 │   │   ├── MCPErrorConvertible.swift
 │   │   ├── ProcessResult.swift
 │   │   └── XCMCPCore.swift
-│   ├── Tools/                       # 166 tools across 14 categories
+│   ├── Tools/                       # 167 tools across 14 categories
 │   │   ├── Project/                 # 43 project manipulation tools
 │   │   ├── XCStrings/               # 24 localization/string catalog tools
 │   │   ├── Simulator/               # 18 simulator tools
-│   │   ├── Debug/                   # 18 LLDB debug tools
+│   │   ├── Debug/                   # 19 LLDB debug tools
 │   │   ├── MacOS/                   # 10 macOS build tools
 │   │   ├── Interact/                # 8 macOS UI automation (accessibility)
 │   │   ├── UIAutomation/            # 8 simulator UI automation tools
@@ -86,10 +86,10 @@ The project builds 8 executables — one monolithic server and 7 focused servers
 
 | Executable | Tools | Use case |
 |------------|-------|----------|
-| `xc-mcp` | 145 | Full server (~50K tokens) |
+| `xc-mcp` | 146 | Full server (~50K tokens) |
 | `xc-project` | 40 | Project file manipulation |
 | `xc-simulator` | 29 | Simulator + UI automation |
-| `xc-debug` | 22 | LLDB debugging |
+| `xc-debug` | 23 | LLDB debugging |
 | `xc-build` | 21 | Build, test, run |
 | `xc-device` | 12 | Physical device management |
 | `xc-swift` | 12 | SPM + Swift operations |

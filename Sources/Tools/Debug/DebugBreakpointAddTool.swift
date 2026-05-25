@@ -78,7 +78,18 @@ public struct DebugBreakpointAddTool: Sendable {
                 throw MCPError.invalidParams("Invalid breakpoint specification")
             }
 
-            var message = "Breakpoint added"
+            var message = ""
+
+            // Surface a warning if the symbol is hit at very high frequency — breaking on it can
+            // flood output and stall the target (see dq5-oel).
+            if let symbol {
+                let warnings = BreakpointConditionAdvisor.warnings(
+                    for: "breakpoint set --name \(symbol)",
+                )
+                if !warnings.isEmpty { message += warnings.joined(separator: "\n") + "\n\n" }
+            }
+
+            message += "Breakpoint added"
 
             if let symbol {
                 message += " at symbol '\(symbol)'"
