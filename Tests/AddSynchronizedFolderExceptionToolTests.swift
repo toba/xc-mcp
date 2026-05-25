@@ -236,4 +236,65 @@ struct AddSynchronizedFolderExceptionToolTests {
             ])
         }
     }
+
+    @Test
+    func `Targets the sync group bound to the named target when leaf path is ambiguous`() throws {
+        let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "Ambiguous.xcodeproj"
+        try TestProjectHelper.createTestProjectWithAmbiguousSyncFolders(
+            name: "Ambiguous", modules: ["App", "Core", "BibTeX"], at: projectPath,
+        )
+
+        // Leaf "Sources" matches three groups; target_name "Core" must pick Core's group.
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Sources"),
+            "target_name": .string("Core"),
+            "files": .array([.string("Documentation.docc")]),
+        ])
+
+        if case let .text(message, _, _) = result.content.first {
+            #expect(message.contains("Successfully added membership exceptions"))
+        } else {
+            Issue.record("Expected text result")
+        }
+
+        // The exception set must be attached to Core's sync group, not App's.
+        let updated = try XcodeProj(path: projectPath)
+        let coreTarget = updated.pbxproj.nativeTargets.first { $0.name == "Core" }!
+        let coreSyncGroup = coreTarget.fileSystemSynchronizedGroups!.first!
+        #expect(coreSyncGroup.exceptions?.count == 1)
+
+        let appTarget = updated.pbxproj.nativeTargets.first { $0.name == "App" }!
+        let appSyncGroup = appTarget.fileSystemSynchronizedGroups!.first!
+        #expect((appSyncGroup.exceptions ?? []).isEmpty)
+    }
+
+    @Test
+    func `Accepts a full folder path to disambiguate shared leaf names`() throws {
+        let tool = AddSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "Ambiguous.xcodeproj"
+        try TestProjectHelper.createTestProjectWithAmbiguousSyncFolders(
+            name: "Ambiguous", modules: ["App", "Core"], at: projectPath,
+        )
+
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Core/Sources"),
+            "target_name": .string("Core"),
+            "files": .array([.string("Documentation.docc")]),
+        ])
+
+        if case let .text(message, _, _) = result.content.first {
+            #expect(message.contains("Successfully added membership exceptions"))
+        } else {
+            Issue.record("Expected text result")
+        }
+
+        let updated = try XcodeProj(path: projectPath)
+        let coreTarget = updated.pbxproj.nativeTargets.first { $0.name == "Core" }!
+        #expect(coreTarget.fileSystemSynchronizedGroups!.first!.exceptions?.count == 1)
+    }
 }

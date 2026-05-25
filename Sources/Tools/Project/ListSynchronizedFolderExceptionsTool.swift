@@ -59,12 +59,9 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
                 throw MCPError.internalError("Main group not found in project")
             }
 
-            guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
-            else {
-                throw MCPError.invalidParams(
-                    "Synchronized folder '\(folderPath)' not found in project",
-                )
-            }
+            let syncGroup = try SynchronizedFolderUtility.resolveSyncGroup(
+                folderPath: folderPath, target: nil, in: mainGroup,
+            )
 
             let exceptions = syncGroup.exceptions ?? []
 

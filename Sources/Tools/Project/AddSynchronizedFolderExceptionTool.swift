@@ -91,16 +91,6 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
             }
 
             guard
-                let syncGroup = SynchronizedFolderUtility.findSyncGroup(
-                    folderPath, in: mainGroup,
-                )
-            else {
-                throw MCPError.invalidParams(
-                    "Synchronized folder '\(folderPath)' not found in project",
-                )
-            }
-
-            guard
                 let target = xcodeproj.pbxproj.nativeTargets.first(where: {
                     $0.name == targetName
                 })
@@ -109,6 +99,10 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
                     "Target '\(targetName)' not found in project",
                 )
             }
+
+            let syncGroup = try SynchronizedFolderUtility.resolveSyncGroup(
+                folderPath: folderPath, target: target, in: mainGroup,
+            )
 
             // Check for an existing exception set for this target
             let existingExceptionSet =

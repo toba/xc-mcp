@@ -179,4 +179,42 @@ struct ListSynchronizedFolderExceptionsToolTests {
             ])
         }
     }
+
+    @Test
+    func `Errors on an ambiguous leaf path with no target to disambiguate`() throws {
+        let tool = ListSynchronizedFolderExceptionsTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "Ambiguous.xcodeproj"
+        try TestProjectHelper.createTestProjectWithAmbiguousSyncFolders(
+            name: "Ambiguous", modules: ["App", "Core"], at: projectPath,
+        )
+
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": .string(projectPath.string),
+                "folder_path": .string("Sources"),
+            ])
+        }
+    }
+
+    @Test
+    func `Resolves an ambiguous leaf via a full folder path`() throws {
+        let tool = ListSynchronizedFolderExceptionsTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "Ambiguous.xcodeproj"
+        try TestProjectHelper.createTestProjectWithAmbiguousSyncFolders(
+            name: "Ambiguous", modules: ["App", "Core"], at: projectPath,
+        )
+
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Core/Sources"),
+        ])
+
+        if case let .text(message, _, _) = result.content.first {
+            #expect(message.contains("Core/Sources"))
+        } else {
+            Issue.record("Expected text result")
+        }
+    }
 }

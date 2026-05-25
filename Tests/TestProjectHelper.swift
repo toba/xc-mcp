@@ -333,4 +333,73 @@ enum TestProjectHelper {
 
         try xcodeproj.write(path: path)
     }
+
+    /// Creates a project where every module has a synchronized folder sharing the same leaf
+    /// `path` (e.g. `Sources`), nested under a per-module parent group, and bound to that
+    /// module's target via `fileSystemSynchronizedGroups`. This reproduces the leaf-name
+    /// ambiguity from 44g-dgh.
+    ///
+    /// For each module name, the layout is `mainGroup → <Module> (PBXGroup) → Sources (sync)`,
+    /// so the sync folder's full path is `<Module>/<leaf>`.
+    static func createTestProjectWithAmbiguousSyncFolders(
+        name: String,
+        modules: [String],
+        leaf: String = "Sources",
+        at path: Path,
+    ) throws {
+        // Seed with the first module as the initial target.
+        try createTestProjectWithTarget(
+            name: name, targetName: modules[0], at: path,
+        )
+
+        let xcodeproj = try XcodeProj(path: path)
+        let pbxproj = xcodeproj.pbxproj
+        let rootProject = try pbxproj.rootProject()!
+        let mainGroup = rootProject.mainGroup!
+
+        func makeTarget(_ targetName: String) -> PBXNativeTarget {
+            let tDebug = XCBuildConfiguration(name: "Debug", buildSettings: [:])
+            let tRelease = XCBuildConfiguration(name: "Release", buildSettings: [:])
+            pbxproj.add(object: tDebug)
+            pbxproj.add(object: tRelease)
+            let tConfigList = XCConfigurationList(
+                buildConfigurations: [tDebug, tRelease],
+                defaultConfigurationName: "Release",
+            )
+            pbxproj.add(object: tConfigList)
+            let sources = PBXSourcesBuildPhase()
+            pbxproj.add(object: sources)
+            let target = PBXNativeTarget(
+                name: targetName,
+                buildConfigurationList: tConfigList,
+                buildPhases: [sources],
+                productType: .framework,
+            )
+            pbxproj.add(object: target)
+            return target
+        }
+
+        for module in modules {
+            let target = pbxproj.nativeTargets.first { $0.name == module }
+                ?? makeTarget(module)
+            if !rootProject.targets.contains(where: { $0 === target }) {
+                rootProject.targets.append(target)
+            }
+
+            let moduleGroup = PBXGroup(
+                children: [], sourceTree: .group, path: module,
+            )
+            pbxproj.add(object: moduleGroup)
+            mainGroup.children.append(moduleGroup)
+
+            let syncGroup = PBXFileSystemSynchronizedRootGroup(
+                sourceTree: .group, path: leaf, name: leaf,
+            )
+            pbxproj.add(object: syncGroup)
+            moduleGroup.children.append(syncGroup)
+            target.fileSystemSynchronizedGroups = [syncGroup]
+        }
+
+        try xcodeproj.write(path: path)
+    }
 }

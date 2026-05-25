@@ -288,4 +288,46 @@ struct RemoveSynchronizedFolderExceptionToolTests {
             ])
         }
     }
+
+    @Test
+    func `Removes from the sync group bound to the target when leaf path is ambiguous`() throws {
+        let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "Ambiguous.xcodeproj"
+        try TestProjectHelper.createTestProjectWithAmbiguousSyncFolders(
+            name: "Ambiguous", modules: ["App", "Core"], at: projectPath,
+        )
+
+        // Seed an exception set on Core's sync group only.
+        let seed = try XcodeProj(path: projectPath)
+        let coreTarget = seed.pbxproj.nativeTargets.first { $0.name == "Core" }!
+        let coreSyncGroup = coreTarget.fileSystemSynchronizedGroups!.first!
+        let exceptionSet = PBXFileSystemSynchronizedBuildFileExceptionSet(
+            target: coreTarget,
+            membershipExceptions: ["Documentation.docc"],
+            publicHeaders: nil,
+            privateHeaders: nil,
+            additionalCompilerFlagsByRelativePath: nil,
+            attributesByRelativePath: nil,
+        )
+        seed.pbxproj.add(object: exceptionSet)
+        coreSyncGroup.exceptions = [exceptionSet]
+        try seed.write(path: projectPath)
+
+        // Remove via the ambiguous leaf "Sources" — target_name must steer it to Core.
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Sources"),
+            "target_name": .string("Core"),
+        ])
+
+        if case let .text(message, _, _) = result.content.first {
+            #expect(message.contains("Removed exception set"))
+        } else {
+            Issue.record("Expected text result")
+        }
+
+        let updated = try XcodeProj(path: projectPath)
+        #expect(updated.pbxproj.fileSystemSynchronizedBuildFileExceptionSets.isEmpty)
+    }
 }
