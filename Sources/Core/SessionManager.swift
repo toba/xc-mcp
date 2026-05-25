@@ -216,17 +216,21 @@ public actor SessionManager {
         configuration: String? = nil,
         env: [String: String]? = nil,
     ) {
+        // Resolve to an absolute path eagerly (against the cwd at the time the user supplies it)
+        // and persist the absolute form. Storing relative paths lets the DerivedData scoper hash
+        // a different cwd-resolved path on each later build, producing a fresh scoped root and a
+        // cold rebuild every call (vqc-o14). Absolute paths are idempotent under resolvePath.
         if let projectPath {
-            self.projectPath = PathUtility.expandTilde(projectPath)
+            self.projectPath = PathUtility.resolvePath(from: projectPath)
             // Clear workspace if project is set (mutually exclusive)
             if workspacePath == nil { self.workspacePath = nil }
         }
         if let workspacePath {
-            self.workspacePath = PathUtility.expandTilde(workspacePath)
+            self.workspacePath = PathUtility.resolvePath(from: workspacePath)
             // Clear project if workspace is set (mutually exclusive)
             if projectPath == nil { self.projectPath = nil }
         }
-        if let packagePath { self.packagePath = PathUtility.expandTilde(packagePath) }
+        if let packagePath { self.packagePath = PathUtility.resolvePath(from: packagePath) }
         if let scheme { self.scheme = scheme }
         if let simulatorUDID { self.simulatorUDID = simulatorUDID }
         if let deviceUDID { self.deviceUDID = deviceUDID }
@@ -480,10 +484,14 @@ public actor SessionManager {
         project: String?, workspace: String?,
     ) {
         reloadIfNeeded()
-        let project = arguments.getString("project_path").map(PathUtility.expandTilde)
-            ?? projectPath
-        let workspace = arguments.getString("workspace_path").map(PathUtility.expandTilde)
-            ?? workspacePath
+        // Resolve to absolute so the path handed to xcodebuild / DerivedDataScoper is stable
+        // regardless of the server's cwd (vqc-o14). Idempotent for already-absolute session
+        // values; normalizes per-invocation relative overrides and any legacy relative paths
+        // persisted before this fix.
+        let project = (arguments.getString("project_path") ?? projectPath)
+            .map { PathUtility.resolvePath(from: $0) }
+        let workspace = (arguments.getString("workspace_path") ?? workspacePath)
+            .map { PathUtility.resolvePath(from: $0) }
 
         if project == nil, workspace == nil {
             // Auto-detect by walking up from cwd; prefer workspace over project
@@ -528,7 +536,7 @@ public actor SessionManager {
     /// - Throws: MCPError.invalidParams if no package path is available.
     public func resolvePackagePath(from arguments: [String: Value]) throws(MCPError) -> String {
         reloadIfNeeded()
-        if let value = arguments.getString("package_path") { return PathUtility.expandTilde(value) }
+        if let value = arguments.getString("package_path") { return PathUtility.resolvePath(from: value) }
         if let session = packagePath { return session }
         // Auto-detect by walking up from cwd looking for Package.swift
         if let detected = PathUtility.findPackageRoot() { return detected }

@@ -142,6 +142,62 @@ struct SessionManagerPersistenceTests {
         #expect(scheme == "External")
     }
 
+    // MARK: - Absolute Path Normalization (vqc-o14)
+
+    @Test
+    func `Relative project_path is stored as an absolute path`() async {
+        let path = makeTempPath()
+        defer { try? FileManager.default.removeItem(at: path) }
+
+        let manager = SessionManager(filePath: path)
+        await manager.setDefaults(projectPath: "Thesis.xcodeproj")
+
+        let defaults = await manager.getDefaults()
+        let stored = try! #require(defaults.projectPath)
+        #expect(stored.hasPrefix("/"))
+        #expect(stored.hasSuffix("Thesis.xcodeproj"))
+        // Must not collapse to the cwd's own leaf name (the `jason-<hash>` bug).
+        #expect(URL(fileURLWithPath: stored).deletingPathExtension().lastPathComponent == "Thesis")
+    }
+
+    @Test
+    func `resolveBuildPaths returns a stable absolute path after cwd changes`() async throws {
+        let path = makeTempPath()
+        defer { try? FileManager.default.removeItem(at: path) }
+
+        // Establish a known cwd for the moment the relative default is set.
+        let fm = FileManager.default
+        let originalCwd = fm.currentDirectoryPath
+        let projectDir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("xc-mcp-proj-\(UUID().uuidString)")
+        try fm.createDirectory(at: projectDir, withIntermediateDirectories: true)
+        defer {
+            fm.changeCurrentDirectoryPath(originalCwd)
+            try? fm.removeItem(at: projectDir)
+        }
+
+        #expect(fm.changeCurrentDirectoryPath(projectDir.path))
+        let manager = SessionManager(filePath: path)
+        await manager.setDefaults(projectPath: "Thesis.xcodeproj")
+
+        let firstResolved = try await manager.resolveBuildPaths(from: [:])
+
+        // Simulate the cwd drifting (different focused server, later tool call).
+        #expect(fm.changeCurrentDirectoryPath(NSTemporaryDirectory()))
+        let secondResolved = try await manager.resolveBuildPaths(from: [:])
+
+        // The path resolved at set-time must not move when cwd drifts — this is the bug.
+        let firstProject = try #require(firstResolved.project)
+        #expect(firstProject.hasPrefix("/"))
+        #expect(firstProject.hasSuffix("Thesis.xcodeproj"))
+        #expect(firstResolved.project == secondResolved.project)
+
+        // Same logical project ⇒ same scoped DerivedData root across calls ⇒ warm cache reuse.
+        let firstScope = DerivedDataScoper.scopedPath(workspacePath: nil, projectPath: firstResolved.project)
+        let secondScope = DerivedDataScoper.scopedPath(workspacePath: nil, projectPath: secondResolved.project)
+        #expect(firstScope == secondScope)
+    }
+
     // MARK: - Environment Variable Tests
 
     @Test

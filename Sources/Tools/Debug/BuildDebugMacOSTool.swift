@@ -28,7 +28,7 @@ public struct BuildDebugMacOSTool: Sendable {
         Tool(
             name: "build_debug_macos",
             description:
-            "Build and launch a macOS app under LLDB debugger. This is the equivalent of Xcode's Run button — it builds incrementally, launches via Launch Services with DYLD_FRAMEWORK_PATH for non-embedded frameworks, and attaches the debugger. Use all existing debug tools (debug_stack, debug_breakpoint_add, etc.) with the returned PID. NOTE: by default builds use a scoped DerivedData path (~/Library/Caches/xc-mcp/DerivedData) isolated from Xcode's, so the first build after building only in Xcode is fully cold (minutes on large projects). For single-agent workflows where you just built in Xcode, set XC_MCP_DISABLE_DERIVED_DATA_SCOPING=1 to reuse Xcode's warm cache.",
+            "Build and launch a macOS app under LLDB debugger. This is the equivalent of Xcode's Run button — it builds incrementally, launches via Launch Services with DYLD_FRAMEWORK_PATH for non-embedded frameworks, and attaches the debugger. Use all existing debug tools (debug_stack, debug_breakpoint_add, etc.) with the returned PID. NOTE: by default builds use a scoped DerivedData path (~/Library/Caches/xc-mcp/DerivedData) isolated from Xcode's, so the first build after building only in Xcode is fully cold (minutes on large projects). For single-agent workflows where you just built in Xcode, set XC_MCP_DISABLE_DERIVED_DATA_SCOPING=1 to reuse Xcode's warm cache. To relaunch the same already-built binary with different env/args without rebuilding, pass skip_build: true.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -81,6 +81,12 @@ public struct BuildDebugMacOSTool: Sendable {
                                 "Stop at the entry point before running. Defaults to false.",
                             ),
                         ]),
+                        "skip_build": .object([
+                            "type": .string("boolean"),
+                            "description": .string(
+                                "Skip the build step and relaunch the already-built product under LLDB. Use to quickly relaunch the same binary with different env/args (no source changes) without paying for a build. Fails if the product hasn't been built yet. Defaults to false.",
+                            ),
+                        ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
                 ),
@@ -102,6 +108,7 @@ public struct BuildDebugMacOSTool: Sendable {
         let arch = arguments.getString("arch")
         let launchArgs = arguments.getStringArray("args")
         let stopAtEntry = arguments.getBool("stop_at_entry")
+        let skipBuild = arguments.getBool("skip_build")
 
         // Merge session env with per-invocation env (per-invocation wins)
         let resolvedEnv = await sessionManager.resolveEnvironment(from: arguments)
@@ -187,35 +194,50 @@ public struct BuildDebugMacOSTool: Sendable {
                 }
             }
 
-            // Step 2: Build (incremental — fast if nothing changed)
-            let buildResult = try await xcodebuildRunner.build(
-                projectPath: projectPath,
-                workspacePath: workspacePath,
-                scheme: scheme,
-                destination: destination,
-                configuration: configuration,
-                additionalArguments: arguments.continueBuildingArgs()
-                    + arguments
-                    .buildSettingOverrides(),
-                environment: resolvedEnv,
-                timeout: Self.buildTimeout,
-                onProgress: { line in
-                    Self.logger.info("\(line)")
-                    onProgress?(line)
-                },
-            )
+            // Step 2: Build (incremental — fast if nothing changed). Skipped when the
+            // caller only wants to relaunch the already-built product with new env/args.
+            if skipBuild {
+                onProgress?("Skipping build (skip_build); relaunching existing product")
+            } else {
+                let buildResult = try await xcodebuildRunner.build(
+                    projectPath: projectPath,
+                    workspacePath: workspacePath,
+                    scheme: scheme,
+                    destination: destination,
+                    configuration: configuration,
+                    additionalArguments: arguments.continueBuildingArgs()
+                        + arguments
+                        .buildSettingOverrides(),
+                    environment: resolvedEnv,
+                    timeout: Self.buildTimeout,
+                    onProgress: { line in
+                        Self.logger.info("\(line)")
+                        onProgress?(line)
+                    },
+                )
 
-            let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)
+                let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)
 
-            if !buildResult.succeeded, parsedBuild.status != "success" {
-                let errorOutput = BuildResultFormatter.formatBuildResult(parsedBuild)
-                throw MCPError.internalError("Build failed:\n\(errorOutput)")
+                if !buildResult.succeeded, parsedBuild.status != "success" {
+                    let errorOutput = BuildResultFormatter.formatBuildResult(parsedBuild)
+                    throw MCPError.internalError("Build failed:\n\(errorOutput)")
+                }
             }
 
             // Step 3: Extract paths from build settings
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {
                 throw MCPError.internalError(
                     "Could not determine app path from build settings.",
+                )
+            }
+
+            // With skip_build, the product must already exist on disk — there's no build
+            // step to produce it. Fail loudly rather than handing /usr/bin/open a missing
+            // bundle (which would surface as an opaque launch failure).
+            if skipBuild, !FileManager.default.fileExists(atPath: appPath) {
+                throw MCPError.invalidRequest(
+                    "skip_build was set but no built product exists at \(appPath). "
+                        + "Run build_debug_macos without skip_build first to produce it.",
                 )
             }
 
@@ -284,7 +306,8 @@ public struct BuildDebugMacOSTool: Sendable {
                     "\n\nDebugger attached. Use debug_stack, debug_variables, debug_lldb_command for investigation."
                 message += "\n\n" + launchResult.output
             } else {
-                message = "Successfully built and launched '\(scheme)' under debugger"
+                let verb = skipBuild ? "relaunched" : "built and launched"
+                message = "Successfully \(verb) '\(scheme)' under debugger"
                 message += "\nPID: \(pid)"
                 message += "\nApp path: \(appPath)"
                 if let bundleId {
