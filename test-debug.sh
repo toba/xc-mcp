@@ -29,9 +29,12 @@ echo "Mode:    $MODE"
 echo "Timeout: ${TIMEOUT}s"
 echo ""
 
-# Build first
+# Build first. The focused servers are dispatched from the single multicall
+# `xc-mcp` binary via argv[0], so build that product and invoke it through an
+# `xc-debug`-named symlink.
 echo "Building xc-debug..."
-swift build --product xc-debug 2>&1 | tail -1
+swift build --product xc-mcp 2>&1 | tail -1
+ln -sf xc-mcp .build/debug/xc-debug
 
 BINARY=".build/debug/xc-debug"
 if [ ! -x "$BINARY" ]; then

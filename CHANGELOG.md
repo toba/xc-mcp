@@ -4,6 +4,7 @@
 
 ### 🐞 Fixes
 
+- `build_debug_macos` builds successfully but never launches the app; after `xcodebuild` prints `** BUILD SUCCEEDED **`, grandchild daemons (SwiftPM resolver, build-system services) inherit and hold its stdout/stderr pipes open, so `XcodebuildRunner`'s stream readers never finish and the 30s no-output watchdog fired `XcodebuildError.stuckProcess`, aborting the tool before the launch/attach step; the watchdog now recognizes a finished-build marker in the collected output and recovers it into a normal `XcodebuildResult` (exit code derived from the output) instead of erroring; also repaired the stale `test-debug.sh` harness to build the multicall `xc-mcp` product and invoke it via an `xc-debug` symlink ([#331](https://github.com/toba/xc-mcp/issues/331))
 - `build_debug_macos` hangs in LLDB attach/teardown; orphaned `lldb-rpc-server` wedges next launch; `lldb` spawns `lldb-rpc-server` as a child that survives a SIGKILL of `lldb` (reparents to launchd), and several teardown paths leaked it; `LLDBSession.terminate()` now captures `lldb`'s direct child PIDs via `pgrep -P` before killing and SIGKILLs survivors; `detach(pid:)` treats a wedged-target timeout as partial success and always tears the session down; the launch path terminates the session on any error or cancellation mid-attach ([#330](https://github.com/toba/xc-mcp/issues/330))
 
 ## Week of May 17 – May 23, 2026

@@ -122,11 +122,12 @@ public struct XcodebuildRunner: Sendable {
         let startTime = ContinuousClock.now
         let timeoutDuration = Duration.seconds(timeout)
 
-        let executionResult = try await Subprocess.run(
-            .name("xcrun"),
-            arguments: Arguments(["xcodebuild"] + arguments),
-            environment: environment,
-        ) {
+        do {
+            let executionResult = try await Subprocess.run(
+                .name("xcrun"),
+                arguments: Arguments(["xcodebuild"] + arguments),
+                environment: environment,
+            ) {
             (
                 execution: Execution,
                 _,
@@ -180,8 +181,19 @@ public struct XcodebuildRunner: Sendable {
                         if let outputTimeout {
                             let timeSinceLastOutput = lastOutputTime.timeSinceLastOutput()
                             if timeSinceLastOutput > outputTimeout {
-                                try? execution.send(signal: .terminate)
                                 let (stdout, stderr) = outputCollector.getOutput()
+                                try? execution.send(signal: .terminate)
+                                // xcodebuild has already reported a terminal result, but its
+                                // stdout/stderr pipes are still held open by grandchild daemons
+                                // (SwiftPM resolver, build-system services) that outlive the
+                                // parent. Treating this as "stuck" would abort a build that
+                                // actually succeeded — so surface the completed result instead
+                                // of an internal error. (qbz-ek1)
+                                if Self.outputShowsBuildFinished(stdout + stderr) {
+                                    throw XcodebuildError.completedPipesHeldOpen(
+                                        partialOutput: stdout + stderr,
+                                    )
+                                }
                                 let seconds =
                                     Double(timeSinceLastOutput.components.seconds)
                                         + Double(timeSinceLastOutput.components.attoseconds) / 1e18
@@ -204,20 +216,60 @@ public struct XcodebuildRunner: Sendable {
                     }
                 }
             }
-        }
-
-        let (stdout, stderr) = outputCollector.getOutput()
-        let exitCode: Int32 =
-            switch executionResult.terminationStatus {
-                case let .exited(code): code
-                case let .signaled(code): code
             }
 
-        return XcodebuildResult(
-            exitCode: exitCode,
-            stdout: stdout,
-            stderr: stderr,
-        )
+            let (stdout, stderr) = outputCollector.getOutput()
+            let exitCode: Int32 =
+                switch executionResult.terminationStatus {
+                    case let .exited(code): code
+                    case let .signaled(code): code
+                }
+
+            return XcodebuildResult(
+                exitCode: exitCode,
+                stdout: stdout,
+                stderr: stderr,
+            )
+        } catch let error as XcodebuildError {
+            // The build reported a terminal result but its pipes were held open by
+            // grandchild daemons. Return the completed output as a normal result so the
+            // caller (e.g. build_debug_macos) proceeds to launch instead of erroring. (qbz-ek1)
+            if case let .completedPipesHeldOpen(output) = error {
+                let (stdout, stderr) = outputCollector.getOutput()
+                let combined = stdout.isEmpty && stderr.isEmpty ? output : stdout + stderr
+                return XcodebuildResult(
+                    exitCode: Self.exitCode(forFinishedOutput: combined),
+                    stdout: stdout.isEmpty ? combined : stdout,
+                    stderr: stderr,
+                )
+            }
+            throw error
+        }
+    }
+
+    /// Markers xcodebuild prints when a build/test/clean has finished, in both the
+    /// modern (`Build succeeded in …`) and legacy (`** BUILD SUCCEEDED **`) formats.
+    static func outputShowsBuildFinished(_ output: String) -> Bool {
+        output.contains("** BUILD SUCCEEDED **")
+            || output.contains("** BUILD FAILED **")
+            || output.contains("** TEST SUCCEEDED **")
+            || output.contains("** TEST FAILED **")
+            || output.contains("** CLEAN SUCCEEDED **")
+            || output.contains("Build succeeded in ")
+            || output.contains("Build failed after ")
+            || output.contains("Build complete!")
+    }
+
+    /// Derives an exit code from finished build output when the process had to be
+    /// terminated before it returned its own status (pipes held open by grandchildren).
+    static func exitCode(forFinishedOutput output: String) -> Int32 {
+        if output.contains("** BUILD FAILED **")
+            || output.contains("** TEST FAILED **")
+            || output.contains("Build failed after ")
+        {
+            return 65
+        }
+        return 0
     }
 
     /// Builds a project for a specific destination.
@@ -545,19 +597,27 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
     /// The build process stopped producing output (likely stuck).
     case stuckProcess(noOutputFor: TimeInterval, partialOutput: String)
 
+    /// The build reported a terminal result but its stdout/stderr pipes stayed open
+    /// (grandchild daemons inheriting them outlive xcodebuild). Recovered internally by
+    /// ``XcodebuildRunner`` into a normal result — never surfaced to callers as an error.
+    case completedPipesHeldOpen(partialOutput: String)
+
     public var errorDescription: String? {
         switch self {
             case let .timeout(duration, _):
                 return "Build timed out after \(Int(duration)) seconds"
             case let .stuckProcess(noOutputFor, _):
                 return "Build appears stuck (no output for \(Int(noOutputFor)) seconds)"
+            case .completedPipesHeldOpen:
+                return "Build completed (output pipes held open by child process)"
         }
     }
 
     /// The partial output captured before the error occurred.
     public var partialOutput: String {
         switch self {
-            case let .timeout(_, output), let .stuckProcess(_, output):
+            case let .timeout(_, output), let .stuckProcess(_, output),
+                 let .completedPipesHeldOpen(output):
                 return output
         }
     }
