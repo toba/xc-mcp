@@ -113,7 +113,9 @@ public actor LLDBSession {
     private let stdin: FileHandle
     private let stdout: FileHandle
     private let stderr: FileHandle
-    private let commandTimeout: TimeInterval
+    /// Maximum time to wait for a command response. Mutable so the long launch/`--waitfor` window
+    /// can be lowered to an interactive value once attach completes (see ``setCommandTimeout(_:)``).
+    private var commandTimeout: TimeInterval
     /// File descriptors to close when the session is terminated.
     private let ptyFDs: [Int32]
 
@@ -134,6 +136,18 @@ public actor LLDBSession {
 
     /// Updates the tracked process state.
     public func setProcessState(_ state: ProcessState) { processState = state }
+
+    /// The interactive per-command timeout used after launch/attach has completed.
+    ///
+    /// Launch/`--waitfor` sessions start with a long timeout so the initial attach can block on the
+    /// target appearing; once the process is under debugger control, inspection commands
+    /// (`thread backtrace`, `frame variable`, etc.) should fail fast rather than appear to hang for
+    /// the full launch window. A wedged read then surfaces a structured timeout error and poisons
+    /// the session in ~30s instead of two minutes.
+    public static let interactiveCommandTimeout: TimeInterval = 30
+
+    /// Lowers (or raises) the per-command response timeout for subsequent commands.
+    public func setCommandTimeout(_ timeout: TimeInterval) { commandTimeout = timeout }
 
     /// Creates a new persistent LLDB session attached to a process.
     ///
@@ -649,6 +663,9 @@ public actor LLDBSessionManager {
             arguments: arguments,
             stopAtEntry: stopAtEntry,
         )
+        // The long launch window only applies to bringing the process up. Subsequent inspection
+        // commands must fail fast instead of hanging for the full launch timeout.
+        await session.setCommandTimeout(LLDBSession.interactiveCommandTimeout)
         let pid = await session.targetPID
         if pid > 0 { sessions[pid] = session }
         return session
@@ -753,6 +770,11 @@ public actor LLDBSessionManager {
 
         // Wait for LLDB to complete the attach (it blocks until the named process appears)
         let attachOutput = try await session.readUntilPrompt()
+
+        // The 120s window only covers the blocking `--waitfor` attach above. Now that the process
+        // is under debugger control, interactive commands (`thread backtrace`, `frame variable`)
+        // must fail fast rather than appear to hang for two minutes if a read wedges.
+        await session.setCommandTimeout(LLDBSession.interactiveCommandTimeout)
 
         // Parse PID from attach output like "Process NNN stopped"
         if let range = attachOutput.range(

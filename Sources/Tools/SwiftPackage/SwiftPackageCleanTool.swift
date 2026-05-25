@@ -57,13 +57,15 @@ public struct SwiftPackageCleanTool: Sendable {
 
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
+        let cleanStart = ContinuousClock.now
         do {
             let result = try await swiftRunner.clean(packagePath: packagePath)
 
             if result.succeeded {
+                let elapsed = cleanStart.duration(to: .now).elapsedDescription
                 return CallTool.Result(
                     content: [.text(
-                        text: "Package cleaned successfully at \(packagePath)",
+                        text: "Package cleaned successfully at \(packagePath) (\(elapsed))",
                         annotations: nil,
                         _meta: nil,
                     )],

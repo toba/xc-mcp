@@ -1,15 +1,15 @@
 ---
 # xc-mcp-zpk9
 title: Add push notification simulation tool
-status: draft
+status: deferred
 type: feature
 priority: normal
 created_at: 2026-01-21T07:36:52Z
-updated_at: 2026-02-15T20:53:20Z
+updated_at: 2026-05-25T15:26:40Z
 sync:
     github:
         issue_number: "21"
-        synced_at: "2026-02-15T22:08:22Z"
+        synced_at: "2026-05-25T16:02:48Z"
 ---
 
 Add `push_sim` MCP tool to simulate push notifications on iOS simulators.

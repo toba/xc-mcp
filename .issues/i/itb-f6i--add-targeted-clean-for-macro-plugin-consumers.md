@@ -1,17 +1,17 @@
 ---
 # itb-f6i
 title: Add targeted clean for macro plugin consumers
-status: draft
+status: deferred
 type: feature
 priority: low
 created_at: 2026-05-10T03:10:13Z
-updated_at: 2026-05-10T03:10:13Z
+updated_at: 2026-05-25T15:26:45Z
 blocked_by:
     - ibk-gjo
 sync:
     github:
         issue_number: "319"
-        synced_at: "2026-05-10T03:11:03Z"
+        synced_at: "2026-05-25T16:02:48Z"
 ---
 
 ## Motivation

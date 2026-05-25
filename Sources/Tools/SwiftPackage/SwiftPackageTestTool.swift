@@ -95,6 +95,7 @@ public struct SwiftPackageTestTool: Sendable {
         // on `.build/` (and so the BuildGuard flock is released promptly).
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
+        let testStart = ContinuousClock.now
         do {
             let result = try await swiftRunner.test(
                 packagePath: packagePath,
@@ -117,6 +118,7 @@ public struct SwiftPackageTestTool: Sendable {
                 output: result.output, succeeded: result.succeeded,
                 context: context,
                 projectRoot: packagePath,
+                wallClock: testStart.duration(to: .now),
             )
         } catch let ProcessError.timeout(duration) {
             var message =

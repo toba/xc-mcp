@@ -84,6 +84,7 @@ public struct SwiftPackageBuildTool: Sendable {
 
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
+        let buildStart = ContinuousClock.now
         do {
             let result = try await swiftRunner.build(
                 packagePath: packagePath,
@@ -98,11 +99,12 @@ public struct SwiftPackageBuildTool: Sendable {
             let buildResult = ErrorExtractor.parseBuildOutput(result.output)
 
             if result.succeeded || buildResult.status == "success" {
+                let elapsed = buildStart.duration(to: .now).elapsedDescription
                 var message = "Build succeeded"
                 if let product {
                     message += " for product '\(product)'"
                 }
-                message += " (\(configuration) configuration)"
+                message += " (\(configuration) configuration, \(elapsed))"
 
                 return CallTool.Result(
                     content: [.text(text: message, annotations: nil, _meta: nil)],

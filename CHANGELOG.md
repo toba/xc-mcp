@@ -2,8 +2,14 @@
 
 ## Week of May 24 – May 30, 2026
 
+### ✨ Features
+
+- Surface elapsed wall-clock time in MCP build tool results, so a multi-minute build reports how long it actually took instead of leaving the caller to guess ([#302](https://github.com/toba/xc-mcp/issues/302))
+
 ### 🐞 Fixes
 
+- MCP server stdio transport dies after request cancellation due to stale `notifications/progress` writes; once `notifications/cancelled` arrives the server must skip all responses, retire its progress reporters synchronously, ignore `SIGPIPE` process-wide, and rethrow `CancellationError` unchanged through the catch-all error wrapper so the SDK's cancellation arm fires; subprocesses now spawn in their own process group and are SIGKILLed as a group on cancel so SPM build-plugin grandchildren can't hold the pipes open ([#300](https://github.com/toba/xc-mcp/issues/300))
+- `debug_lldb_command` (e.g. `thread backtrace`) hangs when the process is stopped at a breakpoint; added a timeout so a stopped-process command can no longer wedge the debug session ([#333](https://github.com/toba/xc-mcp/issues/333))
 - `build_debug_macos` builds successfully but never launches the app; after `xcodebuild` prints `** BUILD SUCCEEDED **`, grandchild daemons (SwiftPM resolver, build-system services) inherit and hold its stdout/stderr pipes open, so `XcodebuildRunner`'s stream readers never finish and the 30s no-output watchdog fired `XcodebuildError.stuckProcess`, aborting the tool before the launch/attach step; the watchdog now recognizes a finished-build marker in the collected output and recovers it into a normal `XcodebuildResult` (exit code derived from the output) instead of erroring; also repaired the stale `test-debug.sh` harness to build the multicall `xc-mcp` product and invoke it via an `xc-debug` symlink ([#331](https://github.com/toba/xc-mcp/issues/331))
 - `build_debug_macos` hangs in LLDB attach/teardown; orphaned `lldb-rpc-server` wedges next launch; `lldb` spawns `lldb-rpc-server` as a child that survives a SIGKILL of `lldb` (reparents to launchd), and several teardown paths leaked it; `LLDBSession.terminate()` now captures `lldb`'s direct child PIDs via `pgrep -P` before killing and SIGKILLs survivors; `detach(pid:)` treats a wedged-target timeout as partial success and always tears the session down; the launch path terminates the session on any error or cancellation mid-attach ([#330](https://github.com/toba/xc-mcp/issues/330))
 

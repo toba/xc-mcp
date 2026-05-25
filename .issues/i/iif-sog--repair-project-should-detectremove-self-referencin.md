@@ -1,15 +1,15 @@
 ---
 # iif-sog
 title: repair_project should detect/remove self-referencing sub-project entries
-status: ready
+status: completed
 type: bug
 priority: normal
 created_at: 2026-05-22T05:34:46Z
-updated_at: 2026-05-22T05:34:46Z
+updated_at: 2026-05-25T15:56:29Z
 sync:
     github:
         issue_number: "326"
-        synced_at: "2026-05-22T05:42:38Z"
+        synced_at: "2026-05-25T16:02:49Z"
 ---
 
 ## Problem
@@ -43,3 +43,15 @@ Add a sub-project reference from a project to itself, then run `detect_unused_co
 ## Workaround
 
 Manually delete the self-referencing `projectReferences`, file references, and empty Products groups from project.pbxproj.
+
+
+
+## Summary of Changes
+
+Implemented in commit `2a29806`:
+
+- Added shared `Sources/Tools/Project/SelfProjectReference.swift` helper that detects `projectReferences` entries whose `ProjectRef` resolves to the containing .xcodeproj and strips the file reference, the projectReferences entry, and the empty Products group.
+- Wired into `repair_project` (removes them, honoring `dry_run`).
+- Wired into `validate_project` (flags each self-reference as an error pointing to `repair_project`).
+- Wired into `detect_unused_code` (intercepts Periphery's raw 'Cannot calculate full path for file element' error to name the offending self-reference and direct callers to `repair_project`).
+- Added/updated tests across `RepairProjectToolTests`, `DetectUnusedCodeToolTests`, and `ValidateProjectToolTests`.

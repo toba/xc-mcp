@@ -1,15 +1,15 @@
 ---
 # n9s-kny
 title: MCP server stdio transport dies after request cancellation due to stale progress notifications
-status: review
+status: completed
 type: bug
 priority: high
 created_at: 2026-05-01T03:39:58Z
-updated_at: 2026-05-01T03:53:53Z
+updated_at: 2026-05-25T15:43:13Z
 sync:
     github:
         issue_number: "300"
-        synced_at: "2026-05-01T04:16:25Z"
+        synced_at: "2026-05-25T16:02:49Z"
 ---
 
 The xc-swift MCP server's STDIO transport drops permanently after a tool request is cancelled by the client. Subsequent tool calls fail because the server is gone.

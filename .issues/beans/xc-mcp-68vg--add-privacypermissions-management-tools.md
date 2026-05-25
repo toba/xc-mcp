@@ -1,15 +1,15 @@
 ---
 # xc-mcp-68vg
 title: Add privacy/permissions management tools
-status: draft
+status: deferred
 type: feature
 priority: normal
 created_at: 2026-01-21T07:36:52Z
-updated_at: 2026-02-15T20:53:11Z
+updated_at: 2026-05-25T15:26:48Z
 sync:
     github:
         issue_number: "35"
-        synced_at: "2026-02-15T22:08:23Z"
+        synced_at: "2026-05-25T16:02:48Z"
 ---
 
 Add MCP tools to manage simulator privacy permissions: `privacy_grant_sim`, `privacy_revoke_sim`, `privacy_reset_sim`.

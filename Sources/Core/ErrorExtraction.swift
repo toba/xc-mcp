@@ -60,6 +60,7 @@ public enum ErrorExtractor {
         onlyTesting: [String]? = nil,
         scheme: String? = nil,
         errorsOnly: Bool = false,
+        wallClock: Duration? = nil,
     ) async throws -> CallTool.Result {
         var succeeded = inputSucceeded
         var testResult: String
@@ -165,9 +166,10 @@ public enum ErrorExtractor {
         let bundleSuffix = formatResultBundleSuffix(xcresultPath)
 
         if succeeded {
+            let elapsedSuffix = wallClock.map { " (\($0.elapsedDescription) total)" } ?? ""
             return CallTool.Result(
                 content: [.text(
-                    text: "Tests passed for \(context)\n\n\(testResult)\(bundleSuffix)",
+                    text: "Tests passed for \(context)\(elapsedSuffix)\n\n\(testResult)\(bundleSuffix)",
                     annotations: nil,
                     _meta: nil,
                 )],
