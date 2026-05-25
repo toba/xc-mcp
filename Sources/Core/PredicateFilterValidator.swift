@@ -6,12 +6,16 @@ import Foundation
 /// builds predicate strings from user input).
 public enum PredicateFilterError: LocalizedError, MCPErrorConvertible {
     case invalidValue(field: String, value: String)
+    case unescapableValue(field: String, value: String)
 
     public var errorDescription: String? {
         switch self {
             case let .invalidValue(field, value):
                 return
                     "Invalid \(field) '\(value)': only alphanumeric characters, dots, hyphens, and underscores are allowed. Use the explicit 'predicate' parameter for custom filtering."
+            case let .unescapableValue(field, value):
+                return
+                    "Invalid \(field) '\(value)': must not be empty or contain newlines or control characters. Use the explicit 'predicate' parameter for custom filtering."
         }
     }
 
@@ -47,5 +51,37 @@ public enum PredicateFilterValidator {
                     throw .invalidValue(field: field, value: value)
             }
         }
+    }
+
+    /// Validates a free-form value (e.g. a process name like `ThesisApp (debug)`) that will
+    /// be interpolated into a predicate *string literal* after escaping. Unlike `validate`,
+    /// this permits spaces, parentheses, and other punctuation — anything that can be safely
+    /// placed inside double quotes once `escapeStringLiteral` runs. Only empty strings,
+    /// newlines, and control characters (which can't be escaped into a single-line predicate)
+    /// are rejected.
+    public static func validateStringLiteral(
+        _ value: String, field: String,
+    ) throws(PredicateFilterError) {
+        guard !value.isEmpty else {
+            throw .unescapableValue(field: field, value: value)
+        }
+        for scalar in value.unicodeScalars {
+            // Reject C0/C1 control characters and DEL — these include newlines that would
+            // terminate the predicate string or break the `log` invocation.
+            if scalar.value < 0x20 || scalar.value == 0x7F
+                || (0x80...0x9F).contains(scalar.value)
+            {
+                throw .unescapableValue(field: field, value: value)
+            }
+        }
+    }
+
+    /// Escapes a value for safe interpolation inside a double-quoted `NSPredicate` string
+    /// literal. Backslashes must be doubled first, then double quotes escaped, so a value
+    /// like `He said "hi"` becomes `He said \"hi\"`.
+    public static func escapeStringLiteral(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 }

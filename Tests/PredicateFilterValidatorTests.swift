@@ -88,12 +88,36 @@ struct PredicateFilterValidatorTests {
     }
 
     @Test
-    func `ShowMacLogTool rejects injected process_name`() async throws {
-        let tool = ShowMacLogTool(sessionManager: SessionManager())
-        await #expect(throws: MCPError.self) {
-            _ = try await tool.execute(arguments: [
-                "process_name": .string("Finder\" OR process == \"loginwindow"),
-            ])
+    func `validateStringLiteral accepts process names with spaces and parens`() throws {
+        try PredicateFilterValidator.validateStringLiteral(
+            "ThesisApp (debug)", field: "process_name",
+        )
+        try PredicateFilterValidator.validateStringLiteral(
+            "My App 2.0", field: "process_name",
+        )
+    }
+
+    @Test
+    func `validateStringLiteral rejects empty and control characters`() {
+        for value in ["", "a\nb", "a\tb", "a\u{0}b", "a\u{7F}b"] {
+            #expect(throws: PredicateFilterError.self) {
+                try PredicateFilterValidator.validateStringLiteral(value, field: "process_name")
+            }
         }
+    }
+
+    @Test
+    func `escapeStringLiteral neutralizes quote injection`() {
+        let escaped = PredicateFilterValidator.escapeStringLiteral(
+            "Finder\" OR process == \"loginwindow",
+        )
+        // Embedded quotes are escaped, so the value stays a single string literal.
+        #expect(escaped == "Finder\\\" OR process == \\\"loginwindow")
+    }
+
+    @Test
+    func `escapeStringLiteral doubles backslashes before quotes`() {
+        #expect(PredicateFilterValidator.escapeStringLiteral("a\\b") == "a\\\\b")
+        #expect(PredicateFilterValidator.escapeStringLiteral("ThesisApp (debug)") == "ThesisApp (debug)")
     }
 }

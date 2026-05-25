@@ -26,7 +26,7 @@ public struct StartMacLogCapTool: Sendable {
                     "process_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional process name to filter logs to a specific process.",
+                            "Optional process name to filter logs to a specific process. May contain spaces and parentheses (e.g., 'ThesisApp (debug)' from a build_debug_macos launch).",
                         ),
                     ]),
                     "subsystem": .object([
@@ -81,7 +81,9 @@ public struct StartMacLogCapTool: Sendable {
                 try PredicateFilterValidator.validate(bundleId, field: "bundle_id")
             }
             if let processName {
-                try PredicateFilterValidator.validate(processName, field: "process_name")
+                try PredicateFilterValidator.validateStringLiteral(
+                    processName, field: "process_name",
+                )
             }
             if let subsystem {
                 try PredicateFilterValidator.validate(subsystem, field: "subsystem")
@@ -123,7 +125,8 @@ public struct StartMacLogCapTool: Sendable {
                     }
                 }
                 if let processName {
-                    predicateParts.append("process == \"\(processName)\"")
+                    let escaped = PredicateFilterValidator.escapeStringLiteral(processName)
+                    predicateParts.append("process == \"\(escaped)\"")
                 }
                 if let subsystem {
                     predicateParts.append("subsystem == \"\(subsystem)\"")
