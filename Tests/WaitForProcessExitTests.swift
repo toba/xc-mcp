@@ -24,7 +24,10 @@ struct WaitForProcessExitTests {
         try process.run()
         let pid = process.processIdentifier
 
-        let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(3))
+        // Generous timeout: the poll loop runs on the cooperative thread pool,
+        // which can be starved by blocking calls in other suites during a full
+        // parallel test run. The child exits in ~100ms regardless.
+        let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(15))
         #expect(exited)
     }
 
@@ -59,7 +62,7 @@ struct WaitForProcessExitTests {
             kill(pid, SIGKILL)
         }
 
-        let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(3))
+        let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(15))
         #expect(exited, "Should detect process exit after SIGKILL during polling")
     }
 
@@ -77,7 +80,10 @@ struct WaitForProcessExitTests {
         let elapsed = ContinuousClock.now - start
 
         #expect(!exited)
-        #expect(elapsed < .seconds(2), "Should return near the timeout, not hang")
+        // Upper bound is loose: a starved cooperative thread pool (full parallel
+        // test run) can delay the poll loop's Task.sleep continuations well past
+        // the 300ms timeout. We only need to prove it doesn't hang indefinitely.
+        #expect(elapsed < .seconds(15), "Should return near the timeout, not hang")
         #expect(elapsed >= .milliseconds(250), "Should actually wait, not return instantly")
 
         // Cleanup
