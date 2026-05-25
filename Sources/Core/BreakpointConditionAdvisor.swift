@@ -99,11 +99,17 @@ public enum BreakpointConditionAdvisor {
 
         for candidate in candidates {
             let cleaned = candidate.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
-            // Exact match, or the symbol appears inside a regex name pattern.
-            if let symbol = highFrequencySymbols.first(
-                where: { cleaned == $0 || cleaned.contains($0) },
-            ) {
-                return symbol
+            // Prefer an exact match; the symbol set is unordered, so a substring match (e.g. the
+            // regex-name case) must never shadow it (`sqlite3_prepare` vs `sqlite3_prepare_v2`).
+            if let exact = highFrequencySymbols.first(where: { cleaned == $0 }) {
+                return exact
+            }
+            // Otherwise fall back to the longest symbol contained in the candidate (regex name
+            // pattern), keeping the result deterministic regardless of Set iteration order.
+            if let contained = highFrequencySymbols
+                .filter({ cleaned.contains($0) })
+                .max(by: { $0.count < $1.count }) {
+                return contained
             }
         }
         return nil
