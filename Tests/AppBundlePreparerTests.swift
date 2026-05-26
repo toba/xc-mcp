@@ -74,6 +74,41 @@ struct AppBundlePreparerTests {
         #expect(binary == "\(framework)/Versions/Current/Core")
     }
 
+    @Test func `adds disable-library-validation to existing entitlements`() throws {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>com.apple.security.app-sandbox</key>
+            <true/>
+        </dict>
+        </plist>
+        """
+        let result = try AppBundlePreparer.entitlementsWithLibraryValidationDisabled(
+            from: Data(xml.utf8),
+        )
+        let plist = try PropertyListSerialization.propertyList(
+            from: result, format: nil,
+        ) as? [String: Any]
+
+        #expect(plist?["com.apple.security.cs.disable-library-validation"] as? Bool == true)
+        // Existing entitlements are preserved.
+        #expect(plist?["com.apple.security.app-sandbox"] as? Bool == true)
+    }
+
+    @Test func `creates entitlements when bundle has none`() throws {
+        let result = try AppBundlePreparer.entitlementsWithLibraryValidationDisabled(
+            from: Data(),
+        )
+        let plist = try PropertyListSerialization.propertyList(
+            from: result, format: nil,
+        ) as? [String: Any]
+
+        #expect(plist?["com.apple.security.cs.disable-library-validation"] as? Bool == true)
+        #expect(plist?.count == 1)
+    }
+
     @Test func `resolves flat framework binary path`() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("abp-\(UUID().uuidString)")

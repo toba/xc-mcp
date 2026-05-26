@@ -211,29 +211,32 @@ public enum AppBundlePreparer {
             break
         }
 
-        // Extract entitlements
+        // Extract entitlements and add disable-library-validation. Symlinking the full
+        // mergeable-library framework (and SPM package-product frameworks) into the bundle means it
+        // can now contain code signed by a different team — e.g. ad-hoc-signed Swift-macro
+        // `*_PackageProduct.framework`s reexported at runtime. Under hardened runtime, library
+        // validation rejects those Team-ID mismatches and dyld aborts at launch. Disabling library
+        // validation on the debug re-sign lets the bundle load them, mirroring what hardened-runtime
+        // apps do via `RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION`.
         let extractResult = try await ProcessResult.runSubprocess(
             .path("/usr/bin/codesign"),
             arguments: ["-d", "--entitlements", "-", "--xml", appPath],
         )
-        var tempEntitlementsURL: URL?
 
-        let data = Data(extractResult.stdout.utf8)
-        if !data.isEmpty {
-            let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("debug_entitlements_\(UUID().uuidString).plist")
-            try data.write(to: url)
-            tempEntitlementsURL = url
-        }
+        let entitlementsURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("debug_entitlements_\(UUID().uuidString).plist")
+        let entitlementsData = try entitlementsWithLibraryValidationDisabled(
+            from: Data(extractResult.stdout.utf8),
+        )
+        try entitlementsData.write(to: entitlementsURL)
 
-        defer {
-            if let url = tempEntitlementsURL { try? FileManager.default.removeItem(at: url) }
-        }
+        defer { try? FileManager.default.removeItem(at: entitlementsURL) }
 
         // Re-sign
-        var signArgs = ["--force", "--sign", signingIdentity, "--deep"]
-        if let url = tempEntitlementsURL { signArgs += ["--entitlements", url.path] }
-        signArgs.append(appPath)
+        let signArgs = [
+            "--force", "--sign", signingIdentity, "--deep",
+            "--entitlements", entitlementsURL.path, appPath,
+        ]
 
         let signResult = try await ProcessResult.runSubprocess(
             .path("/usr/bin/codesign"),
@@ -241,5 +244,27 @@ public enum AppBundlePreparer {
         )
 
         if !signResult.succeeded { logger.warning("Re-signing failed: \(signResult.stderr)") }
+    }
+
+    /// Returns the XML-plist entitlements from `extracted` with
+    /// `com.apple.security.cs.disable-library-validation` set to `true`.
+    ///
+    /// `extracted` is the raw output of `codesign -d --entitlements - --xml`; it is empty when the
+    /// bundle has no entitlements, in which case a fresh dictionary is created.
+    static func entitlementsWithLibraryValidationDisabled(from extracted: Data) throws -> Data {
+        var entitlements: [String: Any] = [:]
+        if !extracted.isEmpty,
+            let parsed = try? PropertyListSerialization.propertyList(
+                from: extracted, format: nil,
+            ) as? [String: Any]
+        {
+            entitlements = parsed
+        }
+
+        entitlements["com.apple.security.cs.disable-library-validation"] = true
+
+        return try PropertyListSerialization.data(
+            fromPropertyList: entitlements, format: .xml, options: 0,
+        )
     }
 }

@@ -7,11 +7,11 @@ priority: high
 tags:
     - administrative
 created_at: 2026-05-26T22:12:07Z
-updated_at: 2026-05-26T22:25:55Z
+updated_at: 2026-05-26T22:59:37Z
 sync:
     github:
         issue_number: "344"
-        synced_at: "2026-05-26T22:31:00Z"
+        synced_at: "2026-05-26T23:01:49Z"
 ---
 
 ## Problem
@@ -62,22 +62,88 @@ Alternatively/additionally: launch the app via lldb `process launch` (posix_spaw
 - Workaround confirmed: `DYLD_FRAMEWORK_PATH="…/Build/Products/Debug" .../TestApp.app/Contents/MacOS/TestApp --show-node <uuid>` launches with a working window.
 
 ## Tasks
-- [x] Detect embedded mergeable-library reexport stubs in `AppBundlePreparer`
-- [x] Replace embedded stub with full framework from `BUILT_PRODUCTS_DIR` + re-sign
-- [x] (Not needed) launch via posix_spawn — embedding the full framework removes the LaunchServices dependency entirely
-- [x] Verify a fresh `TestApp` Debug build launches via `build_debug_macos` without dyld crash
+- [ ] Detect embedded mergeable-library reexport stubs in `AppBundlePreparer`
+- [ ] Replace embedded stub with full framework from `BUILT_PRODUCTS_DIR` + re-sign
+- [ ] (Or) launch debug builds via posix_spawn/lldb preserving `DYLD_FRAMEWORK_PATH` instead of LaunchServices
+- [ ] Verify a fresh `TestApp` Debug build launches via `build_debug_macos` without dyld crash
+
+---
+
+## Follow-up (2026-05-26): fix resolved the Core symbol, but launch now fails on a Team-ID / library-validation mismatch
+
+Verified the fix **works for the original problem**: the embedded `Core.framework` is now the full 20 MB framework (`nm` shows `T _$s…plainTextSSvg`), signed `TeamIdentifier=D6GX9PC3SR`. The `Core.AttributedString.plainText` `Symbol missing` crash is gone.
+
+However, TestApp still **crashes at launch** (dyld `prepare`/`halt`, `EXC_CRASH`/`SIGABRT`) — now on a different dependency:
+
+```
+Library not loaded: @rpath/SQLMacros_6ABCC7ADE539285E_PackageProduct.framework/…
+Reason: code signature … not valid for use in process: mapping process and
+        mapped file (non-platform) have different Team IDs
+```
+
+Signing audit of the prepared bundle:
+- `TestApp.debug.dylib` → `TeamIdentifier=D6GX9PC3SR`, `flags=0x10000(runtime)` (hardened runtime)
+- embedded `Core.framework` (re-signed by the fix) → `TeamIdentifier=D6GX9PC3SR`
+- `SQLMacros_…_PackageProduct.framework` (embedded **and** in `PackageFrameworks/`) → **`TeamIdentifier=not set`** (ad-hoc)
+
+`SQLMacros_…_PackageProduct` is a Swift-macro package product that `Zotero.framework` reexports at runtime. Because `AppBundlePreparer` re-signs the bundle with the developer team identity **and** hardened runtime, library validation now rejects the ad-hoc-signed macro framework (team mismatch). Before the fix, launch died earlier on the Core stub, masking this.
+
+Reproduces via `build_debug_macos` (let the process run after `debug_continue` → it aborts; under LLDB it sits suspended so it looks alive) and via direct `DYLD_FRAMEWORK_PATH` exec.
+
+### Suggested fix (one of)
+- When re-signing, also re-sign embedded **package-product** frameworks (e.g. `*_PackageProduct.framework`) with the same identity used for the app, OR
+- Add `com.apple.security.cs.disable-library-validation` to the ad-hoc re-sign entitlements for debug bundles, OR
+- Preserve/normalize Team IDs across all embedded frameworks so hardened-runtime library validation passes.
+
+(Project-side alternative for Thesis: give the `TestApp` Debug config `RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = YES` + the disable-library-validation entitlement, as `ThesisApp` already has — but the general tooling fix is preferable.)
+
+## Tasks
+- [ ] Re-sign embedded package-product frameworks consistently (or add disable-library-validation) during AppBundlePreparer re-sign
+- [ ] Verify TestApp launches and renders a window via build_debug_macos with no dyld/codesign abort
 
 
-## Summary of Changes
+---
 
-Fixed in `Sources/Core/AppBundlePreparer.swift`. Two distinct dyld-at-launch failures were resolved:
+## Follow-up (2026-05-26): fix resolved the Core symbol, but launch now fails on a Team-ID / library-validation mismatch
 
-1. **Mergeable-library reexport stub (the reported bug).** When a framework already exists in `Contents/Frameworks`, the preparer used to skip it. With `MERGEABLE_LIBRARY=YES` Xcode embeds a thin reexport *stub* (~51 KB, 0 exported symbols) that shadows the full framework (~20 MB, 20k+ symbols), causing `Symbol not found` against the app's `LC_REEXPORT_DYLIB @rpath/...`. New `isMergeableStub(embeddedFramework:fullFramework:)` detects the stub by binary-size delta (embedded < 50% of the `BUILT_PRODUCTS_DIR` copy) and replaces it with a symlink to the full framework. `frameworkBinaryPath(_:)` resolves the Mach-O binary inside versioned or flat framework layouts. Detection is idempotent (a symlinked framework matches its source size).
+Verified the fix **works for the original problem**: the embedded `Core.framework` is now the full 20 MB framework (`nm` shows `T _$s…plainTextSSvg`), signed `TeamIdentifier=D6GX9PC3SR`. The `Core.AttributedString.plainText` `Symbol missing` crash is gone.
 
-2. **SPM package-product frameworks (revealed once #1 was fixed).** Package products live in `BUILT_PRODUCTS_DIR/PackageFrameworks/` — a subdirectory the preparer never symlinked — so `@rpath` lookups (e.g. `SQLMacros_..._PackageProduct.framework` referenced from `Zotero.framework`) failed with `Library not loaded`. The symlink step was extracted into `symlinkProducts(from:into:)` and now runs over both `BUILT_PRODUCTS_DIR` and its `PackageFrameworks` subdirectory.
+However, TestApp still **crashes at launch** (dyld `prepare`/`halt`, `EXC_CRASH`/`SIGABRT`) — now on a different dependency:
 
-The bundle is re-signed as before (existing `resignBundle`). The `posix_spawn`/`DYLD_FRAMEWORK_PATH` alternative was unnecessary since embedding the real frameworks removes the LaunchServices env-stripping dependency.
+```
+Library not loaded: @rpath/SQLMacros_6ABCC7ADE539285E_PackageProduct.framework/…
+Reason: code signature … not valid for use in process: mapping process and
+        mapped file (non-platform) have different Team IDs
+```
 
-### Verification
-- 4 new unit tests in `Tests/AppBundlePreparerTests.swift` covering stub detection (positive/negative) and binary-path resolution (versioned/flat) — all pass.
-- End-to-end via `test-debug.sh ... TestApp screenshot`: the scheme builds, launches under LLDB, and runs past dyld with no crash report. Both the original `Symbol missing` (Core) and the follow-on `Library not loaded` (SQLMacros) crashes are gone. Embedded frameworks in the launched bundle are now symlinks into `BUILT_PRODUCTS_DIR`.
+Signing audit of the prepared bundle:
+- `TestApp.debug.dylib` → `TeamIdentifier=D6GX9PC3SR`, `flags=0x10000(runtime)` (hardened runtime)
+- embedded `Core.framework` (re-signed by the fix) → `TeamIdentifier=D6GX9PC3SR`
+- `SQLMacros_…_PackageProduct.framework` (embedded **and** in `PackageFrameworks/`) → **`TeamIdentifier=not set`** (ad-hoc)
+
+`SQLMacros_…_PackageProduct` is a Swift-macro package product that `Zotero.framework` reexports at runtime. Because `AppBundlePreparer` re-signs the bundle with the developer team identity **and** hardened runtime, library validation now rejects the ad-hoc-signed macro framework (team mismatch). Before the fix, launch died earlier on the Core stub, masking this.
+
+Reproduces via `build_debug_macos` (let the process run after `debug_continue` → it aborts; under LLDB it sits suspended so it looks alive) and via direct `DYLD_FRAMEWORK_PATH` exec.
+
+### Suggested fix (one of)
+- When re-signing, also re-sign embedded **package-product** frameworks (e.g. `*_PackageProduct.framework`) with the same identity used for the app, OR
+- Add `com.apple.security.cs.disable-library-validation` to the ad-hoc re-sign entitlements for debug bundles, OR
+- Preserve/normalize Team IDs across all embedded frameworks so hardened-runtime library validation passes.
+
+(Project-side alternative for Thesis: give the `TestApp` Debug config `RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION = YES` + the disable-library-validation entitlement, as `ThesisApp` already has — but the general tooling fix is preferable.)
+
+## Tasks
+- [ ] Re-sign embedded package-product frameworks consistently (or add disable-library-validation) during AppBundlePreparer re-sign
+- [ ] Verify TestApp launches and renders a window via build_debug_macos with no dyld/codesign abort
+
+
+
+## Summary of Changes (resolved)
+
+`AppBundlePreparer.resignBundle` now injects `com.apple.security.cs.disable-library-validation` into the entitlements it signs with (new `entitlementsWithLibraryValidationDisabled(from:)` helper parses the extracted plist, sets the key, re-serializes; synthesizes a fresh dict when the bundle had none). The bundle is now always re-signed with explicit entitlements.
+
+**Why this is right:** symlinking the full mergeable-library framework and SPM `*_PackageProduct.framework`s into the bundle means it can legitimately contain code signed ad-hoc / by a different team (Swift-macro package products `Zotero.framework` reexports). Under hardened runtime, library validation rejects those Team-ID mismatches and dyld aborts at launch. Disabling library validation on the *debug* re-sign mirrors `RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION` (which `ThesisApp` already sets) and generalizes across all embedded frameworks without chasing each signing identity.
+
+**Verification (the step skipped before):** forced a clean re-prepare of Thesis `TestApp`, confirmed the re-signed bundle carries `disable-library-validation`, then launched standalone via `open` (the LaunchServices path that strips `DYLD_*` and previously crashed). TestApp runs, opens a window, no new crash report. Both the Core `Symbol missing` crash and the SQLMacros Team-ID library-validation abort are gone.
+
+Files: `Sources/Core/AppBundlePreparer.swift`, `Tests/AppBundlePreparerTests.swift` (+2 tests).
