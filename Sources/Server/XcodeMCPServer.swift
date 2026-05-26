@@ -1405,11 +1405,11 @@ public struct XcodeMCPServer: Sendable {
                 case .interactGetValue:
                     return try await interactGetValueTool.execute(arguments: arguments)
                 case .interactMenu:
-                    return try interactMenuTool.execute(arguments: arguments)
+                    return try await interactMenuTool.execute(arguments: arguments)
                 case .interactFocus:
                     return try await interactFocusTool.execute(arguments: arguments)
                 case .interactKey:
-                    return try interactKeyTool.execute(arguments: arguments)
+                    return try await interactKeyTool.execute(arguments: arguments)
                 case .interactFind:
                     return try await interactFindTool.execute(arguments: arguments)
                 // Instruments tools

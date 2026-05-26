@@ -64,6 +64,11 @@ public struct InteractFocusTool: Sendable {
             result += " Focused element \(elementId)."
         }
 
-        return CallTool.Result(content: [.text(text: result, annotations: nil, _meta: nil)])
+        let snapshot = try await InteractPostAction.settledSnapshot(
+            runner: interactRunner, pid: pid,
+        )
+        return CallTool.Result(
+            content: [.text(text: "\(result)\n\(snapshot)", annotations: nil, _meta: nil)],
+        )
     }
 }

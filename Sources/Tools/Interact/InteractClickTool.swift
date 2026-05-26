@@ -88,8 +88,11 @@ public struct InteractClickTool: Sendable {
 
         let info = interactRunner.getAttributes(from: element)
         let desc = info.title ?? info.role ?? "element"
+        let snapshot = try await InteractPostAction.settledSnapshot(
+            runner: interactRunner, pid: pid,
+        )
         return CallTool.Result(content: [.text(
-            text: "Clicked \(desc) successfully.",
+            text: "Clicked \(desc) successfully.\n\(snapshot)",
             annotations: nil,
             _meta: nil,
         )])

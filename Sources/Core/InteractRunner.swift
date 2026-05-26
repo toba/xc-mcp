@@ -173,6 +173,38 @@ public struct InteractRunner: Sendable {
         return results
     }
 
+    /// Polls the UI tree until two consecutive snapshots are structurally identical
+    /// (the UI has "settled" after a mutating action), or `timeout` elapses.
+    ///
+    /// Returns the most recent tree. Throws `CancellationError` if the task is cancelled
+    /// mid-poll so the MCP layer can skip the response per the cancellation spec.
+    public func settledUITree(
+        pid: pid_t,
+        maxDepth: Int = 3,
+        timeout: Duration = .milliseconds(800),
+        pollInterval: Duration = .milliseconds(50),
+    ) async throws -> [(InteractElement, SendableAXUIElement)] {
+        var latest = try getUITree(pid: pid, maxDepth: maxDepth)
+        var latestFingerprint = Self.fingerprint(latest.lazy.map(\.0))
+        let deadline = ContinuousClock.now + timeout
+        while ContinuousClock.now < deadline {
+            try await Task.sleep(for: pollInterval)
+            let current = try getUITree(pid: pid, maxDepth: maxDepth)
+            let currentFingerprint = Self.fingerprint(current.lazy.map(\.0))
+            if currentFingerprint == latestFingerprint {
+                return current
+            }
+            latest = current
+            latestFingerprint = currentFingerprint
+        }
+        return latest
+    }
+
+    /// A structural signature of a tree snapshot, used to detect when the UI has stopped changing.
+    static func fingerprint(_ elements: some Sequence<InteractElement>) -> String {
+        elements.lazy.map { $0.summary(indent: false) }.joined(separator: "\n")
+    }
+
     private func traverseElement(
         _ element: AXUIElement,
         depth: Int,

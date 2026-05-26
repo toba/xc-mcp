@@ -32,7 +32,7 @@ public struct InteractMenuTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) throws -> CallTool.Result {
+    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let pid = try interactRunner.resolveAppFromArguments(arguments)
         let menuPath = arguments.getStringArray("menu_path")
         guard !menuPath.isEmpty else {
@@ -41,10 +41,13 @@ public struct InteractMenuTool: Sendable {
 
         try interactRunner.navigateMenu(pid: pid, menuPath: menuPath)
 
+        let snapshot = try await InteractPostAction.settledSnapshot(
+            runner: interactRunner, pid: pid,
+        )
         return CallTool.Result(
             content: [
                 .text(
-                    text: "Clicked menu: \(menuPath.joined(separator: " > "))",
+                    text: "Clicked menu: \(menuPath.joined(separator: " > "))\n\(snapshot)",
                     annotations: nil,
                     _meta: nil,
                 )
