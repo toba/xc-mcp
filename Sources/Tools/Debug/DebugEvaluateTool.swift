@@ -47,6 +47,18 @@ public struct DebugEvaluateTool: Sendable {
                             "Use 'po' (print object description) instead of 'p'. Defaults to true.",
                         ),
                     ]),
+                    "thread": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Thread index to select before evaluating. Use the thread that hit the breakpoint so 'self' and locals resolve.",
+                        ),
+                    ]),
+                    "frame": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Stack frame index to select before evaluating (0 is the innermost frame).",
+                        ),
+                    ]),
                 ]),
                 "required": .array([.string("expression")]),
             ]),
@@ -70,6 +82,8 @@ public struct DebugEvaluateTool: Sendable {
         let expression = try arguments.getRequiredString("expression")
         let language = arguments.getString("language")
         let objectDescription = arguments.getBool("object_description", default: true)
+        let thread = arguments.getInt("thread")
+        let frame = arguments.getInt("frame")
 
         do {
             // Warn if process is crashed — expression eval often fails in this state
@@ -85,6 +99,8 @@ public struct DebugEvaluateTool: Sendable {
                 expression: expression,
                 language: language,
                 objectDescription: objectDescription,
+                thread: thread,
+                frame: frame,
             )
 
             let message = "Expression result:\n\n\(result.output)"

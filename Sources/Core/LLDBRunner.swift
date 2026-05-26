@@ -198,7 +198,23 @@ public actor LLDBSession {
         // Wait for initial prompt
         _ = try await readUntilPrompt()
         // Attach to the target process
-        return try await sendCommand("process attach --pid \(targetPID)")
+        let output = try await sendCommand("process attach --pid \(targetPID)")
+        // LLDB reports a contended attach as "Process <pid> exited with status = -1 ... tried to
+        // attach to process already being debugged", which falsely implies the target died. Surface
+        // the real cause instead.
+        if Self.outputIndicatesAlreadyDebugged(output) {
+            throw LLDBError.commandFailed(
+                "Process \(targetPID) is already under another debugger (e.g. Xcode). Detach the other debugger first, then retry. (The target is still running — it did not exit.)",
+            )
+        }
+        return output
+    }
+
+    /// Whether LLDB output indicates the target is already attached by another debugger.
+    ///
+    /// Pure and `static` for unit testing without a live attach.
+    static func outputIndicatesAlreadyDebugged(_ output: String) -> Bool {
+        output.contains("already being debugged")
     }
 
     /// Launches a new process under the debugger.
@@ -505,6 +521,20 @@ public actor LLDBSession {
 
     /// Parses LLDB output and updates the tracked process state.
     private func updateProcessState(from output: String) {
+        if let newState = Self.parseProcessState(from: output) {
+            processState = newState
+        }
+    }
+
+    /// Derives a ``ProcessState`` from LLDB output, or `nil` if the output carries no run/stop
+    /// signal (in which case the caller should leave the tracked state unchanged).
+    ///
+    /// Pure and `static` so the run/stop classification can be unit-tested without a live session.
+    static func parseProcessState(from output: String) -> ProcessState? {
+        // Process exit always wins — it can co-occur with a stale "stopped" line in the same chunk.
+        if output.contains("exited with status") || output.contains("exited with signal") {
+            return .stopped(reason: "exited")
+        }
         // Look for stop reason patterns in LLDB output
         if let reasonRange = output.range(
             of: #"stop reason = (.+)"#, options: .regularExpression,
@@ -512,13 +542,30 @@ public actor LLDBSession {
             let reason = String(output[reasonRange]).replacingOccurrences(
                 of: "stop reason = ", with: "",
             )
-            processState = .stopped(reason: reason)
+            return .stopped(reason: reason)
         } else if output.contains("Process"), output.contains("stopped") {
-            processState = .stopped(reason: nil)
-        } else if output.contains("Process"), output.contains("resuming")
-        {
-            processState = .running
+            return .stopped(reason: nil)
+        } else if output.contains("Process"), output.contains("resuming") {
+            return .running
         }
+        return nil
+    }
+
+    /// Reconciles the tracked state with reality when the process is believed to be running.
+    ///
+    /// After `continue` is sent via ``sendCommandNoWait(_:)``, a breakpoint hit (or crash) emits an
+    /// async stop notification into the PTY with no command driving it. Until that output is drained,
+    /// `processState` stays `.running` even though the target is parked at the breakpoint — the
+    /// "is running" desync in 1wa-p8i. This polls the PTY non-blockingly and, if a stop notification
+    /// is waiting, reads it and updates the state. Cheap no-op when genuinely running (poll finds no
+    /// pending data) or already stopped.
+    ///
+    /// - Returns: The reconciled process state.
+    public func syncedProcessState() async -> ProcessState {
+        if case .running = processState {
+            await drainPendingOutput()
+        }
+        return processState
     }
 
     /// Interrupts a running process and waits for the stop notification.
@@ -977,11 +1024,15 @@ public struct LLDBRunner: Sendable {
     public init() {}
 
     /// Returns the current process state for a debug session, or `.unknown` if no session exists.
+    ///
+    /// Reconciles a stale `.running` state against the PTY first (see
+    /// ``LLDBSession/syncedProcessState()``) so a process that has hit a breakpoint since the last
+    /// `continue` is reported as stopped rather than running.
     public func getProcessState(pid: Int32) async -> ProcessState {
         guard let session = await LLDBSessionManager.shared.getSession(pid: pid) else {
             return .unknown
         }
-        return await session.processState
+        return await session.syncedProcessState()
     }
 
     /// Checks that the process is stopped and throws a descriptive error if not.
@@ -1299,14 +1350,26 @@ public struct LLDBRunner: Sendable {
     ///   - expression: The expression to evaluate.
     ///   - language: Optional language ( `"swift"` or `"objc"` ).
     ///   - objectDescription: Whether to use `po` (default true).
+    ///   - thread: Optional thread index to select before evaluating.
+    ///   - frame: Optional frame index to select before evaluating.
     ///   - Returns: The result containing expression output.
     public func evaluate(
         pid: Int32,
         expression: String,
         language: String?,
         objectDescription: Bool,
+        thread: Int? = nil,
+        frame: Int? = nil,
     ) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+
+        // Select the requested thread/frame first so `self`/locals resolve against the user's
+        // breakpoint frame rather than whatever frame LLDB happened to leave selected (e.g. a
+        // run-loop frame parked in mach_msg2_trap). Each is a separate command — LLDB does not
+        // split a single line on `;`.
+        if let thread { _ = try await session.sendCommand("thread select \(thread)") }
+        if let frame { _ = try await session.sendCommand("frame select \(frame)") }
+
         let command: String
 
         if let language {
