@@ -28,26 +28,14 @@ public enum AppBundlePreparer {
         let frameworksDir = "\(appPath)/Contents/Frameworks"
         try fm.createDirectory(atPath: frameworksDir, withIntermediateDirectories: true)
 
-        // Step 1: Symlink frameworks and dylibs from BUILT_PRODUCTS_DIR
-        let builtProductsURL = URL(fileURLWithPath: dir)
-        let contents = try fm.contentsOfDirectory(
-            at: builtProductsURL, includingPropertiesForKeys: nil,
-        )
-
-        var modified = false
-
-        for item in contents where item.pathExtension == "framework" {
-            let destPath = "\(frameworksDir)/\(item.lastPathComponent)"
-            if fm.fileExists(atPath: destPath) { continue }
-            try fm.createSymbolicLink(atPath: destPath, withDestinationPath: item.path)
-            modified = true
-        }
-        for item in contents where item.pathExtension == "dylib" {
-            let destPath = "\(frameworksDir)/\(item.lastPathComponent)"
-            if fm.fileExists(atPath: destPath) { continue }
-            try fm.createSymbolicLink(atPath: destPath, withDestinationPath: item.path)
-            modified = true
-        }
+        // Step 1: Symlink frameworks and dylibs from BUILT_PRODUCTS_DIR, then from its
+        // `PackageFrameworks` subdirectory. Xcode adds both to `DYLD_FRAMEWORK_PATH` at launch, so
+        // SPM package-product frameworks (which live in `PackageFrameworks/`) also need to be
+        // reachable from the bundle or dyld reports "Library not loaded" at launch.
+        var modified = try symlinkProducts(from: dir, into: frameworksDir)
+        modified = try symlinkProducts(
+            from: "\(dir)/PackageFrameworks", into: frameworksDir,
+        ) || modified
 
         // Step 2: Rewrite absolute /Library/Frameworks/ install names to @rpath/
         let macOSDir = "\(appPath)/Contents/MacOS"
@@ -78,6 +66,91 @@ public enum AppBundlePreparer {
     }
 
     // MARK: - Private
+
+    /// Symlinks every `.framework` and `.dylib` in `sourceDir` into `frameworksDir`, returning
+    /// whether anything changed.
+    ///
+    /// Frameworks that are already embedded are left alone — unless they are mergeable-library
+    /// reexport stubs, in which case the stub is replaced by a symlink to the full framework from
+    /// `sourceDir`. Returns false (without error) if `sourceDir` does not exist.
+    private static func symlinkProducts(from sourceDir: String, into frameworksDir: String) throws -> Bool {
+        let fm = FileManager.default
+        var isDir: ObjCBool = false
+        guard fm.fileExists(atPath: sourceDir, isDirectory: &isDir), isDir.boolValue else {
+            return false
+        }
+
+        let contents = try fm.contentsOfDirectory(
+            at: URL(fileURLWithPath: sourceDir), includingPropertiesForKeys: nil,
+        )
+        var modified = false
+
+        for item in contents where item.pathExtension == "framework" {
+            let destPath = "\(frameworksDir)/\(item.lastPathComponent)"
+            if fm.fileExists(atPath: destPath) {
+                // Already embedded. With mergeable libraries (`MERGEABLE_LIBRARY=YES` +
+                // `MERGED_BINARY_TYPE=manual`), Xcode embeds a thin reexport *stub* whose symbols
+                // were merged into the host binary. The stub can't satisfy the app's
+                // `LC_REEXPORT_DYLIB @rpath/...` lookups, so dyld reports "Symbol missing" at
+                // launch. Replace such stubs with the full framework from BUILT_PRODUCTS_DIR.
+                if try isMergeableStub(embeddedFramework: destPath, fullFramework: item.path) {
+                    try fm.removeItem(atPath: destPath)
+                    try fm.createSymbolicLink(atPath: destPath, withDestinationPath: item.path)
+                    modified = true
+                }
+                continue
+            }
+            try fm.createSymbolicLink(atPath: destPath, withDestinationPath: item.path)
+            modified = true
+        }
+
+        for item in contents where item.pathExtension == "dylib" {
+            let destPath = "\(frameworksDir)/\(item.lastPathComponent)"
+            if fm.fileExists(atPath: destPath) { continue }
+            try fm.createSymbolicLink(atPath: destPath, withDestinationPath: item.path)
+            modified = true
+        }
+
+        return modified
+    }
+
+    /// Determines whether `embeddedFramework` is a mergeable-library reexport stub by comparing its
+    /// binary against the full framework in `BUILT_PRODUCTS_DIR`.
+    ///
+    /// A merged stub is dramatically smaller than the real framework because its code and exported
+    /// symbols were merged into the host binary at link time. We treat the embedded framework as a
+    /// stub when its binary is less than half the size of the build-products copy. An embedded
+    /// framework that Xcode copied verbatim (the non-mergeable case) is byte-identical and therefore
+    /// the same size, so it is left untouched. The comparison is also idempotent: once the embedded
+    /// framework has been replaced by a symlink to the full framework, both sizes match.
+    static func isMergeableStub(
+        embeddedFramework: String, fullFramework: String,
+    ) throws -> Bool {
+        guard let embeddedBinary = frameworkBinaryPath(embeddedFramework),
+            let fullBinary = frameworkBinaryPath(fullFramework)
+        else { return false }
+
+        let fm = FileManager.default
+        let embeddedSize = (try fm.attributesOfItem(atPath: embeddedBinary)[.size] as? Int) ?? 0
+        let fullSize = (try fm.attributesOfItem(atPath: fullBinary)[.size] as? Int) ?? 0
+
+        guard embeddedSize > 0, fullSize > 0 else { return false }
+
+        return embeddedSize * 2 < fullSize
+    }
+
+    /// Resolves the Mach-O binary inside a `.framework` bundle, handling both versioned
+    /// (`Versions/Current/Name`) and flat (`Name`) layouts. Returns nil if no binary is found.
+    static func frameworkBinaryPath(_ frameworkPath: String) -> String? {
+        let name = URL(fileURLWithPath: frameworkPath).deletingPathExtension().lastPathComponent
+        let fm = FileManager.default
+        let candidates = [
+            "\(frameworkPath)/Versions/Current/\(name)",
+            "\(frameworkPath)/Versions/A/\(name)",
+            "\(frameworkPath)/\(name)",
+        ]
+        return candidates.first { fm.fileExists(atPath: $0) }
+    }
 
     /// Rewrites absolute `/Library/Frameworks/` references to `@rpath/` .
     private static func rewriteAbsoluteInstallNames(at binaryPath: String) async throws -> Bool {
