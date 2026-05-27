@@ -1361,6 +1361,10 @@ public struct LLDBRunner: Sendable {
         thread: Int? = nil,
         frame: Int? = nil,
     ) async throws(LLDBError) -> LLDBResult {
+        // Expression evaluation requires a stopped process; a running target returns empty output
+        // with no indication why. Fail loudly with an actionable message instead.
+        try await requireStopped(pid: pid)
+
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
 
         // Select the requested thread/frame first so `self`/locals resolve against the user's
@@ -1585,6 +1589,10 @@ public struct LLDBRunner: Sendable {
         address: String?,
         constraints: Bool,
     ) async throws(LLDBError) -> LLDBResult {
+        // The recursiveDescription/_subtreeDescription expressions run via the expression evaluator,
+        // which only works on a stopped process. A running target yields empty output otherwise.
+        try await requireStopped(pid: pid)
+
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         var outputs: [String] = []
 

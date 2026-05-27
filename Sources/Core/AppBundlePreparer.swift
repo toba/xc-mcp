@@ -47,6 +47,21 @@ public enum AppBundlePreparer {
             }
         }
 
+        // Even when nothing was symlinked or rewritten this run (e.g. a `skip_build` relaunch where
+        // the symlinks already exist), the bundle may still be unlaunchable: a prior external
+        // re-sign can leave the app carrying a real Team ID while its bundled frameworks stay
+        // ad-hoc, so dyld's library validation aborts at launch. Force a re-sign in that case — the
+        // re-sign disables library validation, which is what lets the mismatched frameworks load.
+        if !modified,
+           let consistency = await CodeSignInspector.checkBundleConsistency(appPath: appPath),
+           consistency.hasMismatch
+        {
+            logger.info(
+                "Team-ID mismatch detected on unmodified bundle; forcing disable-library-validation re-sign",
+            )
+            modified = true
+        }
+
         guard modified else { return }
 
         // Step 3: Re-sign with the original identity

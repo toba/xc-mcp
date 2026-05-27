@@ -305,6 +305,21 @@ public struct BuildDebugMacOSTool: Sendable {
                 message +=
                     "\n\nDebugger attached. Use debug_stack, debug_variables, debug_lldb_command for investigation."
                 message += "\n\n" + launchResult.output
+
+                // A dyld abort (the `__abort_with_payload` SIGABRT) shows only a generic backtrace
+                // here — the real reason (e.g. "Library not loaded … different Team IDs") lives in
+                // the crash report. Surface it, plus a Team-ID consistency check, so the actionable
+                // cause is in the launch output instead of requiring a manual DiagnosticReports grep.
+                if let mismatch = await CodeSignInspector.checkBundleConsistency(appPath: appPath),
+                   let warning = mismatch.warning()
+                {
+                    message += "\n\n" + warning
+                }
+                CrashReportParser.appendCrashReports(
+                    to: &message,
+                    processName: appName,
+                    bundleID: bundleId,
+                )
             } else {
                 let verb = skipBuild ? "relaunched" : "built and launched"
                 message = "Successfully \(verb) '\(scheme)' under debugger"
