@@ -146,6 +146,33 @@ public actor LLDBSession {
     /// the session in ~30s instead of two minutes.
     public static let interactiveCommandTimeout: TimeInterval = 30
 
+    /// LLDB's own expression-evaluation timeout, in microseconds, applied to tool-built `expr`
+    /// commands (view-hierarchy dumps, border toggles, `debug_evaluate`).
+    ///
+    /// AppKit/UIKit expression evaluation on an interrupted-at-an-arbitrary-point process can block
+    /// far longer than the read-level ``interactiveCommandTimeout`` — e.g. `_subtreeDescription` on a
+    /// macOS NSView tree (4ui-lsh). Passing `--timeout` makes LLDB itself abort the inferior call and
+    /// return a clean `(lldb) ` prompt with a "timed out" diagnostic. The read then completes
+    /// normally, so a slow dump fails the *single* call instead of wedging the PTY read and poisoning
+    /// the shared session for every other debug tool. Kept comfortably below
+    /// ``interactiveCommandTimeout`` so LLDB returns before the read-level timeout fires.
+    public static let expressionTimeoutMicroseconds = 15_000_000
+
+    /// The bounded-evaluation option string shared by all tool-built `expr` commands.
+    ///
+    /// `--timeout` caps the inferior call so a hung AppKit method returns control to LLDB; `--unwind-
+    /// on-error true` and `--ignore-breakpoints true` keep a failed/timed-out evaluation from leaving
+    /// the target parked mid-expression or tripping the user's breakpoints.
+    static var exprTimeoutOptions: String {
+        "--timeout \(expressionTimeoutMicroseconds) --unwind-on-error true --ignore-breakpoints true"
+    }
+
+    /// Builds an Objective-C `expr -O` (object-description) command with a bounded evaluation
+    /// timeout. Options precede `--`, so the expression body is passed verbatim after it.
+    static func objcExprCommand(_ body: String) -> String {
+        "expr -l objc -O \(exprTimeoutOptions) -- \(body)"
+    }
+
     /// Lowers (or raises) the per-command response timeout for subsequent commands.
     public func setCommandTimeout(_ timeout: TimeInterval) { commandTimeout = timeout }
 
@@ -1446,12 +1473,15 @@ public struct LLDBRunner: Sendable {
 
             let command: String
 
+            // Bound the inferior call so a hung evaluation (e.g. an AppKit method touched at an
+            // arbitrary interrupt point) returns control to LLDB and fails this single call rather
+            // than wedging the read and poisoning the shared session (4ui-lsh).
             if let language {
-                command = "expr -l \(language) -- \(expression)"
+                command = "expr -l \(language) \(LLDBSession.exprTimeoutOptions) -- \(expression)"
             } else if objectDescription {
-                command = "po \(expression)"
+                command = "expr -O \(LLDBSession.exprTimeoutOptions) -- \(expression)"
             } else {
-                command = "expr \(expression)"
+                command = "expr \(LLDBSession.exprTimeoutOptions) -- \(expression)"
             }
             return try await session.sendCommand(command)
         }
@@ -1673,16 +1703,16 @@ public struct LLDBRunner: Sendable {
 
             if let address {
                 let output = try await session.sendCommand(
-                    "expr -l objc -O -- [(id)\(address) recursiveDescription]",
+                    LLDBSession.objcExprCommand("[(id)\(address) recursiveDescription]"),
                 )
                 outputs.append(output)
 
                 if constraints {
                     let hOutput = try await session.sendCommand(
-                        "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:0]",
+                        LLDBSession.objcExprCommand("[(id)\(address) constraintsAffectingLayoutForAxis:0]"),
                     )
                     let vOutput = try await session.sendCommand(
-                        "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:1]",
+                        LLDBSession.objcExprCommand("[(id)\(address) constraintsAffectingLayoutForAxis:1]"),
                     )
                     outputs.append("Horizontal constraints:\n" + hOutput)
                     outputs.append("Vertical constraints:\n" + vOutput)
@@ -1691,12 +1721,16 @@ public struct LLDBRunner: Sendable {
                 // mainWindow is nil for a backgrounded or menu-bar app; fall back to the key window,
                 // then the first window, so the dump still resolves a content view.
                 let output = try await session.sendCommand(
-                    "expr -l objc -O -- ({ NSApplication *app = (NSApplication *)[NSApplication sharedApplication]; NSWindow *w = [app mainWindow]; if (!w) w = [app keyWindow]; if (!w) w = [[app windows] firstObject]; w ? [[w contentView] _subtreeDescription] : (id)@\"No window found (app has no main, key, or ordered windows).\"; })",
+                    LLDBSession.objcExprCommand(
+                        "({ NSApplication *app = (NSApplication *)[NSApplication sharedApplication]; NSWindow *w = [app mainWindow]; if (!w) w = [app keyWindow]; if (!w) w = [[app windows] firstObject]; w ? [[w contentView] _subtreeDescription] : (id)@\"No window found (app has no main, key, or ordered windows).\"; })",
+                    ),
                 )
                 outputs.append(output)
             } else {
                 let output = try await session.sendCommand(
-                    "expr -l objc -O -- [[[UIApplication sharedApplication] keyWindow] recursiveDescription]",
+                    LLDBSession.objcExprCommand(
+                        "[[[UIApplication sharedApplication] keyWindow] recursiveDescription]",
+                    ),
                 )
                 outputs.append(output)
             }
@@ -1732,8 +1766,8 @@ public struct LLDBRunner: Sendable {
 
         let expression: String
         expression = enabled
-            ? "expr -l objc -O -- @import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [v setWantsLayer:YES]; [[v layer] setBorderWidth:\(borderWidth)]; [[v layer] setBorderColor:[[NSColor \(nsColorSelector)] CGColor]]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders enabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]"
-            : "expr -l objc -O -- @import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [[v layer] setBorderWidth:0]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders disabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]"
+            ? LLDBSession.objcExprCommand("@import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [v setWantsLayer:YES]; [[v layer] setBorderWidth:\(borderWidth)]; [[v layer] setBorderColor:[[NSColor \(nsColorSelector)] CGColor]]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders enabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]")
+            : LLDBSession.objcExprCommand("@import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [[v layer] setBorderWidth:0]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders disabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]")
 
         let output = try await session.sendCommand(expression)
         return .init(exitCode: 0, stdout: output, stderr: "")

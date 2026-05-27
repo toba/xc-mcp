@@ -78,4 +78,28 @@ struct LLDBProcessStateTests {
     func `Non-eval commands are not detected as expressions`(command: String) {
         #expect(!LLDBRunner.isExpressionCommand(command))
     }
+
+    // MARK: - Bounded expression timeout (4ui-lsh)
+
+    @Test
+    func `objc expr command carries a bounded evaluation timeout`() {
+        let command = LLDBSession.objcExprCommand("[view _subtreeDescription]")
+        // --timeout makes LLDB self-abort a hung AppKit call and return a prompt, so the read never
+        // wedges and the session is never poisoned.
+        #expect(command.contains("--timeout \(LLDBSession.expressionTimeoutMicroseconds)"))
+        #expect(command.contains("--unwind-on-error true"))
+        #expect(command.contains("--ignore-breakpoints true"))
+        // Options must precede the `--` separator; the body follows verbatim.
+        #expect(command.hasSuffix("-- [view _subtreeDescription]"))
+        #expect(command.hasPrefix("expr -l objc -O "))
+    }
+
+    @Test
+    func `expression timeout is comfortably below the read-level timeout`() {
+        // LLDB must abort and return a prompt before readUntilPrompt's timeout fires — otherwise the
+        // read wedges and poisons the session, which is exactly the regression 4ui-lsh tracks.
+        let exprTimeoutSeconds = Double(LLDBSession.expressionTimeoutMicroseconds) / 1_000_000
+        #expect(exprTimeoutSeconds > 0)
+        #expect(exprTimeoutSeconds < LLDBSession.interactiveCommandTimeout)
+    }
 }
