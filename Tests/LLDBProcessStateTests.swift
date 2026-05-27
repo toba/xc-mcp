@@ -51,4 +51,31 @@ struct LLDBProcessStateTests {
     func `Clean attach is not flagged as contended`() {
         #expect(!LLDBSession.outputIndicatesAlreadyDebugged("Process 12345 stopped"))
     }
+
+    @Test(arguments: [
+        "po self",
+        "p foo",
+        "print bar",
+        "expr 1 + 1",
+        "expression -l swift -- x",
+        "expr -l objc -O -- [view recursiveDescription]",
+        "call (void)NSLog(@\"hi\")",
+    ])
+    func `Expression-eval commands are detected`(command: String) {
+        #expect(LLDBRunner.isExpressionCommand(command))
+    }
+
+    @Test(arguments: [
+        "process interrupt",
+        "continue",
+        "thread backtrace",
+        "frame variable",
+        "breakpoint set -n main",
+        "poke",      // not "po"
+        "printenv",  // not "print"
+        "process status",
+    ])
+    func `Non-eval commands are not detected as expressions`(command: String) {
+        #expect(!LLDBRunner.isExpressionCommand(command))
+    }
 }

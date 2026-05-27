@@ -1,15 +1,15 @@
 ---
 # pcm-bwn
 title: Runtime inspection (view hierarchy / evaluate / lldb objc eval) returns empty or times out on a running macOS app
-status: ready
+status: completed
 type: bug
 priority: high
 created_at: 2026-05-27T03:19:23Z
-updated_at: 2026-05-27T03:19:23Z
+updated_at: 2026-05-27T03:36:50Z
 sync:
     github:
         issue_number: "346"
-        synced_at: "2026-05-27T03:19:25Z"
+        synced_at: "2026-05-27T03:37:44Z"
 ---
 
 ## Summary
@@ -36,3 +36,18 @@ I was debugging why a block-level `NSTextAttachmentViewProvider` SwiftUI attachm
 - `debug_view_hierarchy` / `debug_evaluate` should transparently handle a *running* process (interrupt → eval → continue) or return an explicit, actionable error instead of empty output.
 - Investigate the objc-expression timeout in `debug_lldb_command` (does the eval require the process stopped on a thread? is there an expression-evaluation timeout that's too short for AppKit calls?).
 - Prefer robust window resolution (key/main/first) when dumping the macOS view hierarchy.
+
+
+## Summary of Changes
+
+Root cause: `debug_evaluate`, `debug_view_hierarchy`, and raw `expr`/`po` via `debug_lldb_command` all require a *stopped* process. Against a running target the expression evaluator returns empty output (or blocks until the 30s command timeout). The prior `requireStopped` guard only threw an error — it never recovered.
+
+Fix (`Sources/Core/LLDBRunner.swift`):
+- Added `withProcessStopped(pid:_:)` — transparently interrupts a running process, runs the body against the stopped state, then resumes it (resumes even on failure so a transient error can't freeze the app). A process already stopped at a breakpoint is left stopped so the user's inspection state isn't disturbed.
+- `evaluate` and `viewHierarchy` now route through `withProcessStopped` instead of failing with `requireStopped`. Output gets an `autoResumeNote` appended when the process was running so the caller knows it was briefly paused.
+- `executeCommand` (`debug_lldb_command`) now detects expression-eval commands (`expr`/`expression`/`po`/`p`/`print`/`call`) via `isExpressionCommand` and routes them through the same interrupt→eval→resume path — fixing the objc `NSLog` timeout.
+- Robust macOS window resolution: the view-hierarchy dump now falls back `mainWindow` → `keyWindow` → `windows.firstObject`, with an explicit "No window found" message instead of silent nil/empty output.
+
+`requireStopped` is retained for `debug_stack`/`debug_variables`/`debug_step`/`debug_threads`, where a meaningful breakpoint frame (not an arbitrary interrupt point) is what the user wants.
+
+Tests: added `isExpressionCommand` coverage to `LLDBProcessStateTests` (9 passed). `LLDBCommandTimeoutTests` still green. Build clean.

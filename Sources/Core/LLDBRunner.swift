@@ -1049,6 +1049,54 @@ public struct LLDBRunner: Sendable {
         }
     }
 
+    /// Appended to inspection output when the target was running and got auto-interrupted/resumed,
+    /// so the caller knows the process was briefly paused (and that any timing-sensitive state may
+    /// have advanced).
+    static let autoResumeNote =
+        "\n\n(Process was running — auto-interrupted to evaluate, then resumed.)"
+
+    /// Runs `body` with the target guaranteed stopped, transparently interrupting a running process
+    /// and resuming it afterward.
+    ///
+    /// Expression evaluation (`po`/`expr`, view-hierarchy dumps) only works on a stopped process; a
+    /// running target silently yields empty output or blocks until the command times out. This
+    /// interrupts a running process, runs `body` against the stopped state, then continues it again
+    /// so the user's app keeps running. If the process is already stopped (e.g. at a breakpoint),
+    /// `body` runs against that state and the process is left stopped — interrupting/resuming would
+    /// disturb the breakpoint the user is inspecting.
+    ///
+    /// - Returns: The body result and whether the process was auto-interrupted and resumed.
+    public func withProcessStopped<T: Sendable>(
+        pid: Int32,
+        _ body: (LLDBSession) async throws(LLDBError) -> T,
+    ) async throws(LLDBError) -> (result: T, autoResumed: Bool) {
+        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+
+        var didInterrupt = false
+        if case .running = await session.syncedProcessState() {
+            _ = try await session.interruptProcess()
+            didInterrupt = true
+        }
+
+        let result: T
+        do {
+            result = try await body(session)
+        } catch {
+            // Resume even on failure so a transient eval error doesn't leave the app frozen.
+            if didInterrupt {
+                try? await session.sendCommandNoWait("continue")
+                await session.setProcessState(.running)
+            }
+            throw error
+        }
+
+        if didInterrupt {
+            try await session.sendCommandNoWait("continue")
+            await session.setProcessState(.running)
+        }
+        return (result, didInterrupt)
+    }
+
     /// Checks process state and returns a warning if the process is crashed.
     ///
     /// Expression evaluation often fails on crashed processes because the runtime (ObjC/Swift) may
@@ -1336,11 +1384,34 @@ public struct LLDBRunner: Sendable {
 
         // Route `process interrupt` through the dedicated handler that waits for the async stop
         // notification — plain sendCommand races with it.
-        let output: String
-        output = trimmed == "process interrupt" || trimmed.hasPrefix("process interrupt ")
-            ? try await session.interruptProcess()
-            : try await session.sendCommand(command)
-        return .init(exitCode: 0, stdout: output, stderr: "")
+        if trimmed == "process interrupt" || trimmed.hasPrefix("process interrupt ") {
+            return .init(exitCode: 0, stdout: try await session.interruptProcess(), stderr: "")
+        }
+
+        // Expression-evaluation commands block (and eventually time out) against a running target.
+        // Auto-interrupt → run → resume so a raw `po`/`expr`/`call` works on a live app the same way
+        // debug_evaluate does.
+        if Self.isExpressionCommand(trimmed) {
+            let (output, autoResumed) = try await withProcessStopped(pid: pid) {
+                session throws(LLDBError) in try await session.sendCommand(command)
+            }
+            return .init(
+                exitCode: 0,
+                stdout: autoResumed ? output + Self.autoResumeNote : output,
+                stderr: "",
+            )
+        }
+
+        return .init(exitCode: 0, stdout: try await session.sendCommand(command), stderr: "")
+    }
+
+    /// Whether an LLDB command evaluates an expression (and therefore needs a stopped process).
+    ///
+    /// Covers the evaluator aliases (`expr`/`expression`, `po`, `p`/`print`, `call`) by their first
+    /// whitespace-delimited token so options like `expr -l objc -O --` still match.
+    static func isExpressionCommand(_ trimmed: String) -> Bool {
+        let head = trimmed.prefix { !$0.isWhitespace }
+        return ["expr", "expression", "po", "p", "print", "call"].contains(String(head))
     }
 
     /// Evaluates an expression in the debugger context.
@@ -1362,29 +1433,33 @@ public struct LLDBRunner: Sendable {
         frame: Int? = nil,
     ) async throws(LLDBError) -> LLDBResult {
         // Expression evaluation requires a stopped process; a running target returns empty output
-        // with no indication why. Fail loudly with an actionable message instead.
-        try await requireStopped(pid: pid)
+        // (or blocks until timeout). Transparently interrupt → evaluate → resume so a running app
+        // can be inspected without the caller having to manage the stop/continue dance.
+        let (output, autoResumed) = try await withProcessStopped(pid: pid) {
+            session throws(LLDBError) in
+            // Select the requested thread/frame first so `self`/locals resolve against the user's
+            // breakpoint frame rather than whatever frame LLDB happened to leave selected (e.g. a
+            // run-loop frame parked in mach_msg2_trap). Each is a separate command — LLDB does not
+            // split a single line on `;`.
+            if let thread { _ = try await session.sendCommand("thread select \(thread)") }
+            if let frame { _ = try await session.sendCommand("frame select \(frame)") }
 
-        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
+            let command: String
 
-        // Select the requested thread/frame first so `self`/locals resolve against the user's
-        // breakpoint frame rather than whatever frame LLDB happened to leave selected (e.g. a
-        // run-loop frame parked in mach_msg2_trap). Each is a separate command — LLDB does not
-        // split a single line on `;`.
-        if let thread { _ = try await session.sendCommand("thread select \(thread)") }
-        if let frame { _ = try await session.sendCommand("frame select \(frame)") }
-
-        let command: String
-
-        if let language {
-            command = "expr -l \(language) -- \(expression)"
-        } else if objectDescription {
-            command = "po \(expression)"
-        } else {
-            command = "expr \(expression)"
+            if let language {
+                command = "expr -l \(language) -- \(expression)"
+            } else if objectDescription {
+                command = "po \(expression)"
+            } else {
+                command = "expr \(expression)"
+            }
+            return try await session.sendCommand(command)
         }
-        let output = try await session.sendCommand(command)
-        return .init(exitCode: 0, stdout: output, stderr: "")
+        return .init(
+            exitCode: 0,
+            stdout: autoResumed ? output + Self.autoResumeNote : output,
+            stderr: "",
+        )
     }
 
     /// Lists threads and optionally selects one.
@@ -1590,41 +1665,50 @@ public struct LLDBRunner: Sendable {
         constraints: Bool,
     ) async throws(LLDBError) -> LLDBResult {
         // The recursiveDescription/_subtreeDescription expressions run via the expression evaluator,
-        // which only works on a stopped process. A running target yields empty output otherwise.
-        try await requireStopped(pid: pid)
+        // which only works on a stopped process. A running target yields empty output otherwise, so
+        // transparently interrupt → dump → resume.
+        let (outputs, autoResumed) = try await withProcessStopped(pid: pid) {
+            session throws(LLDBError) -> [String] in
+            var outputs: [String] = []
 
-        let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
-        var outputs: [String] = []
-
-        if let address {
-            let output = try await session.sendCommand(
-                "expr -l objc -O -- [(id)\(address) recursiveDescription]",
-            )
-            outputs.append(output)
-
-            if constraints {
-                let hOutput = try await session.sendCommand(
-                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:0]",
+            if let address {
+                let output = try await session.sendCommand(
+                    "expr -l objc -O -- [(id)\(address) recursiveDescription]",
                 )
-                let vOutput = try await session.sendCommand(
-                    "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:1]",
+                outputs.append(output)
+
+                if constraints {
+                    let hOutput = try await session.sendCommand(
+                        "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:0]",
+                    )
+                    let vOutput = try await session.sendCommand(
+                        "expr -l objc -O -- [(id)\(address) constraintsAffectingLayoutForAxis:1]",
+                    )
+                    outputs.append("Horizontal constraints:\n" + hOutput)
+                    outputs.append("Vertical constraints:\n" + vOutput)
+                }
+            } else if platform == "macos" {
+                // mainWindow is nil for a backgrounded or menu-bar app; fall back to the key window,
+                // then the first window, so the dump still resolves a content view.
+                let output = try await session.sendCommand(
+                    "expr -l objc -O -- ({ NSApplication *app = (NSApplication *)[NSApplication sharedApplication]; NSWindow *w = [app mainWindow]; if (!w) w = [app keyWindow]; if (!w) w = [[app windows] firstObject]; w ? [[w contentView] _subtreeDescription] : (id)@\"No window found (app has no main, key, or ordered windows).\"; })",
                 )
-                outputs.append("Horizontal constraints:\n" + hOutput)
-                outputs.append("Vertical constraints:\n" + vOutput)
+                outputs.append(output)
+            } else {
+                let output = try await session.sendCommand(
+                    "expr -l objc -O -- [[[UIApplication sharedApplication] keyWindow] recursiveDescription]",
+                )
+                outputs.append(output)
             }
-        } else if platform == "macos" {
-            let output = try await session.sendCommand(
-                "expr -l objc -O -- [[[NSApplication sharedApplication] mainWindow] contentView]._subtreeDescription",
-            )
-            outputs.append(output)
-        } else {
-            let output = try await session.sendCommand(
-                "expr -l objc -O -- [[[UIApplication sharedApplication] keyWindow] recursiveDescription]",
-            )
-            outputs.append(output)
+            return outputs
         }
 
-        return .init(exitCode: 0, stdout: outputs.joined(separator: "\n\n"), stderr: "")
+        let joined = outputs.joined(separator: "\n\n")
+        return .init(
+            exitCode: 0,
+            stdout: autoResumed ? joined + Self.autoResumeNote : joined,
+            stderr: "",
+        )
     }
 
     /// Toggles colored borders on all views in the key window of a running macOS app.
