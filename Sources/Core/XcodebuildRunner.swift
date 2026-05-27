@@ -2,6 +2,7 @@ import MCP
 import Foundation
 import Subprocess
 import Synchronization
+import Darwin
 
 /// Wrapper for executing xcodebuild commands.
 ///
@@ -122,19 +123,45 @@ public struct XcodebuildRunner: Sendable {
         let startTime = ContinuousClock.now
         let timeoutDuration = Duration.seconds(timeout)
 
+        // Spawn xcodebuild as a process-group leader so timeout/stuck/cancel can
+        // SIGKILL the entire tree. xcodebuild itself ignores SIGTERM-to-parent and
+        // leaves swift-frontend / build-system grandchildren running; those children
+        // hold the stdout/stderr pipes open, so the stream readers below never see
+        // EOF, the watchdog's throw can't propagate, and the call appears to hang
+        // until the client cancels manually. (ycq-rdc)
+        let platformOptions: PlatformOptions = {
+            var opts = PlatformOptions()
+            opts.processGroupID = 0
+            opts.teardownSequence = [
+                .gracefulShutDown(allowedDurationToNextStep: .seconds(2)),
+            ]
+            return opts
+        }()
+
+        // Process-group leader pid, captured once the child spawns. Killing the
+        // negated pid signals the whole group.
+        let pgidBox = Mutex<pid_t>(0)
+        let killGroup: @Sendable () -> Void = {
+            let pid = pgidBox.withLock { $0 }
+            if pid > 0 { _ = kill(-pid, SIGKILL) }
+        }
+
         do {
-            let executionResult = try await Subprocess.run(
-                .name("xcrun"),
-                arguments: Arguments(["xcodebuild"] + arguments),
-                environment: environment,
-            ) {
+            let executionResult = try await withTaskCancellationHandler {
+                try await Subprocess.run(
+                    .name("xcrun"),
+                    arguments: Arguments(["xcodebuild"] + arguments),
+                    environment: environment,
+                    platformOptions: platformOptions,
+                ) {
             (
                 execution: Execution,
                 _,
                 stdoutSeq: AsyncBufferSequence,
                 stderrSeq: AsyncBufferSequence,
             ) in
-            try await withThrowingTaskGroup(of: Void.self) { group in
+            pgidBox.withLock { $0 = execution.processIdentifier.value }
+            return try await withThrowingTaskGroup(of: Void.self) { group in
                 // Read stdout
                 group.addTask {
                     for try await chunk in stdoutSeq {
@@ -170,7 +197,9 @@ public struct XcodebuildRunner: Sendable {
 
                         let elapsed = startTime.duration(to: .now)
                         if elapsed > timeoutDuration {
-                            try? execution.send(signal: .terminate)
+                            // SIGKILL the whole group so grandchildren release the
+                            // pipes and the stream readers below see EOF. (ycq-rdc)
+                            killGroup()
                             let (stdout, stderr) = outputCollector.getOutput()
                             throw XcodebuildError.timeout(
                                 duration: timeout,
@@ -182,7 +211,9 @@ public struct XcodebuildRunner: Sendable {
                             let timeSinceLastOutput = lastOutputTime.timeSinceLastOutput()
                             if timeSinceLastOutput > outputTimeout {
                                 let (stdout, stderr) = outputCollector.getOutput()
-                                try? execution.send(signal: .terminate)
+                                // SIGKILL the whole group so grandchildren release the
+                                // pipes and the stream readers see EOF. (ycq-rdc)
+                                killGroup()
                                 // xcodebuild has already reported a terminal result, but its
                                 // stdout/stderr pipes are still held open by grandchild daemons
                                 // (SwiftPM resolver, build-system services) that outlive the
@@ -216,6 +247,11 @@ public struct XcodebuildRunner: Sendable {
                     }
                 }
             }
+            }
+            } onCancel: {
+                // External cancellation (e.g. MCP client ESC): kill the whole
+                // group so the build tree dies instead of lingering. (ycq-rdc)
+                killGroup()
             }
 
             let (stdout, stderr) = outputCollector.getOutput()

@@ -186,13 +186,16 @@ extension ProcessResult {
                 stderr: mergeStderr ? "" : stderrResult.0,
             )
         }
-        return try await withTaskCancellationHandler {
-            try await raceTimeout(timeout, run: run)
-        } onCancel: {
+        let killGroup: @Sendable () -> Void = {
             let pid = pgidBox.withLock { $0 }
             if pid > 0 {
                 _ = kill(-pid, SIGKILL)
             }
+        }
+        return try await withTaskCancellationHandler {
+            try await raceTimeout(timeout, run: run, onTimeout: killGroup)
+        } onCancel: {
+            killGroup()
         }
     }
 
@@ -227,9 +230,16 @@ extension ProcessResult {
     /// When timeout is nil, runs the closure directly. When set, uses a task group
     /// to race the subprocess against a sleep, throwing ``ProcessError/timeout(duration:)``
     /// if the deadline is exceeded.
+    ///
+    /// On timeout, `onTimeout` runs *before* the throw propagates so callers can
+    /// SIGKILL the subprocess group synchronously. Cancelling the `run` task alone
+    /// only triggers Subprocess's SIGTERM teardown of the parent — grandchildren
+    /// (swift-frontend, SPM plugins) survive, hold the pipes open, and the run task
+    /// never returns, so the group teardown that awaits it would hang. (ycq-rdc)
     private static func raceTimeout<T: Sendable>(
         _ timeout: Duration?,
         run: @escaping @Sendable () async throws -> T,
+        onTimeout: @escaping @Sendable () -> Void = {},
     ) async throws -> T {
         guard let timeout else {
             return try await run()
@@ -240,6 +250,7 @@ extension ProcessResult {
             }
             group.addTask {
                 try await Task.sleep(for: timeout)
+                onTimeout()
                 throw ProcessError.timeout(duration: timeout)
             }
             guard let result = try await group.next() else {
