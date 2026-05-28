@@ -154,6 +154,16 @@ public struct DeviceMCPServer: Sendable {
                 case .getDeviceAppPath:
                     return try await getDeviceAppPathTool.execute(arguments: arguments)
                 case .testDevice:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await testDeviceTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await testDeviceTool.execute(arguments: arguments)
                 case .deployDevice:
                     return try await deployDeviceTool.execute(arguments: arguments)

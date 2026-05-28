@@ -72,7 +72,10 @@ public struct BuildRunSimTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+    public func execute(
+        arguments: [String: Value],
+        onProgress: (@Sendable (String) -> Void)? = nil,
+    ) async throws -> CallTool.Result {
         // Resolve parameters from arguments or session defaults
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
             from: arguments,
@@ -99,6 +102,7 @@ public struct BuildRunSimTool: Sendable {
                     .buildSettingOverrides(),
                 environment: environment,
                 outputTimeout: XcodebuildRunner.deviceOutputTimeout,
+                onProgress: onProgress,
             )
 
             if !buildResult.succeeded {

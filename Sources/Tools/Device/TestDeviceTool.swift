@@ -67,7 +67,10 @@ public struct TestDeviceTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+    public func execute(
+        arguments: [String: Value],
+        onProgress: (@Sendable (String) -> Void)? = nil,
+    ) async throws -> CallTool.Result {
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
             from: arguments,
         )
@@ -99,6 +102,7 @@ public struct TestDeviceTool: Sendable {
                 .buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on device '\(device)'",
+            onProgress: onProgress,
         )
     }
 }

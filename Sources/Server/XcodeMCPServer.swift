@@ -1163,8 +1163,28 @@ public struct XcodeMCPServer: Sendable {
                 case .openSim:
                     return try await openSimTool.execute(arguments: arguments)
                 case .buildSim:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await buildSimTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await buildSimTool.execute(arguments: arguments)
                 case .buildRunSim:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await buildRunSimTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await buildRunSimTool.execute(arguments: arguments)
                 case .installAppSim:
                     return try await installAppSimTool.execute(arguments: arguments)
@@ -1175,6 +1195,16 @@ public struct XcodeMCPServer: Sendable {
                 case .getSimAppPath:
                     return try await getSimAppPathTool.execute(arguments: arguments)
                 case .testSim:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await testSimTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await testSimTool.execute(arguments: arguments)
                 case .recordSimVideo:
                     return try await recordSimVideoTool.execute(arguments: arguments)
@@ -1196,6 +1226,16 @@ public struct XcodeMCPServer: Sendable {
                 case .getDeviceAppPath:
                     return try await getDeviceAppPathTool.execute(arguments: arguments)
                 case .testDevice:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await testDeviceTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await testDeviceTool.execute(arguments: arguments)
                 case .deployDevice:
                     return try await deployDeviceTool.execute(arguments: arguments)
@@ -1213,6 +1253,16 @@ public struct XcodeMCPServer: Sendable {
                 case .getMacAppPath:
                     return try await getMacAppPathTool.execute(arguments: arguments)
                 case .testMacOS:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await testMacOSTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await testMacOSTool.execute(arguments: arguments)
                 case .getTestAttachments:
                     return try await getTestAttachmentsTool.execute(arguments: arguments)

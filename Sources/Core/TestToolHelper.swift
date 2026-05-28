@@ -77,6 +77,8 @@ public enum TestToolHelper {
     ///   - environment: Environment for the test run.
     ///   - context: Human-readable context for error messages (e.g. "on simulator 'X'").
     ///   - errorsOnly: When true, suppress warnings in output.
+    ///   - onProgress: Optional callback invoked with output lines as they arrive,
+    ///     so a cold `xcodebuild` build phase surfaces progress instead of looking hung.
     public static func runAndFormat(
         runner: XcodebuildRunner,
         testParams: TestParameters,
@@ -91,6 +93,7 @@ public enum TestToolHelper {
         context: String,
         errorsOnly: Bool = false,
         captureCrashLog: Bool = false,
+        onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> CallTool.Result {
         let resultBundlePath = testParams.resultBundlePath
             ?? TestResultBundleScoper.managedPath(
@@ -118,6 +121,7 @@ public enum TestToolHelper {
                 environment: environment,
                 timeout: TimeInterval(testParams.timeout ?? 300),
                 outputTimeout: outputTimeout,
+                onProgress: onProgress,
             )
 
             let runEnd = Date()

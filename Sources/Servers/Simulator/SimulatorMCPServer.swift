@@ -224,8 +224,28 @@ public struct SimulatorMCPServer: Sendable {
                 case .openSim:
                     return try await openSimTool.execute(arguments: arguments)
                 case .buildSim:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await buildSimTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await buildSimTool.execute(arguments: arguments)
                 case .buildRunSim:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await buildRunSimTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await buildRunSimTool.execute(arguments: arguments)
                 case .installAppSim:
                     return try await installAppSimTool.execute(arguments: arguments)
@@ -236,6 +256,16 @@ public struct SimulatorMCPServer: Sendable {
                 case .getSimAppPath:
                     return try await getSimAppPathTool.execute(arguments: arguments)
                 case .testSim:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await testSimTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
                     return try await testSimTool.execute(arguments: arguments)
                 case .recordSimVideo:
                     return try await recordSimVideoTool.execute(arguments: arguments)

@@ -72,7 +72,10 @@ public struct TestMacOSTool: Sendable {
         )
     }
 
-    public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
+    public func execute(
+        arguments: [String: Value],
+        onProgress: (@Sendable (String) -> Void)? = nil,
+    ) async throws -> CallTool.Result {
         let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
             from: arguments,
         )
@@ -116,6 +119,7 @@ public struct TestMacOSTool: Sendable {
             context: "scheme '\(scheme)' on macOS",
             errorsOnly: errorsOnly,
             captureCrashLog: true,
+            onProgress: onProgress,
         )
     }
 }

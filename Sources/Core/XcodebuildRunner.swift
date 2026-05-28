@@ -440,6 +440,8 @@ public struct XcodebuildRunner: Sendable {
     ///   - enableCodeCoverage: Whether to enable code coverage collection.
     ///   - resultBundlePath: Path to store the .xcresult bundle.
     ///   - additionalArguments: Extra arguments to pass to xcodebuild.
+    ///   - onProgress: Optional callback invoked with output lines as they arrive,
+    ///     so callers can surface build/test progress during long cold runs.
     /// - Returns: The test result containing exit code and output.
     /// - Throws: An error if the process fails to launch.
     public func test(
@@ -457,6 +459,7 @@ public struct XcodebuildRunner: Sendable {
         environment: Environment = .inherit,
         timeout: TimeInterval = defaultTimeout,
         outputTimeout: Duration? = defaultTestOutputTimeout,
+        onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> XcodebuildResult {
         var args: [String] = []
 
@@ -513,7 +516,7 @@ public struct XcodebuildRunner: Sendable {
         return try await run(
             arguments: args, environment: environment,
             timeout: timeout, outputTimeout: outputTimeout,
-            onProgress: nil,
+            onProgress: onProgress,
         )
     }
 
