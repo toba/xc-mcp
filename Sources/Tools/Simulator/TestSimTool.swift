@@ -94,6 +94,8 @@ public struct TestSimTool: Sendable {
                 .buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on simulator '\(simulator)'",
+            captureCrashLog: true,
+            crashSimulatorUDID: simulator,
             onProgress: onProgress,
         )
     }

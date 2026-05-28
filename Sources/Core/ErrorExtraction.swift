@@ -63,6 +63,7 @@ public enum ErrorExtractor {
         wallClock: Duration? = nil,
         crashLogWindow: (start: Date, end: Date)? = nil,
         crashProcessName: String? = nil,
+        crashSimulatorUDID: String? = nil,
     ) async throws -> CallTool.Result {
         var succeeded = inputSucceeded
         var testResult: String
@@ -173,6 +174,7 @@ public enum ErrorExtractor {
                 stderr: stderr,
                 logWindow: crashLogWindow,
                 processName: crashProcessName,
+                simulatorUDID: crashSimulatorUDID,
             ) {
                 testResult += "\n\n" + diagnosis
             } else {

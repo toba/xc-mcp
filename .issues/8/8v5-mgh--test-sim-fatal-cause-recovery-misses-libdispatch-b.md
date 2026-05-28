@@ -5,11 +5,11 @@ status: completed
 type: feature
 priority: high
 created_at: 2026-05-28T03:51:18Z
-updated_at: 2026-05-28T03:56:15Z
+updated_at: 2026-05-28T04:22:42Z
 sync:
     github:
         issue_number: "355"
-        synced_at: "2026-05-28T03:57:26Z"
+        synced_at: "2026-05-28T04:26:18Z"
 ---
 
 While chasing the iOS whole-plan green run in toba/thesis sgp-4wi, the test process aborted with:
@@ -71,3 +71,25 @@ Extended `Sources/Core/TestCrashDiagnostics.swift` to recover crash causes outsi
 - `fatalLogPredicate`: added `composedMessage CONTAINS` clauses for `BUG IN CLIENT`, `Abort trap`, `EXC_CRASH`, `Swift runtime failure`, `ERROR: AddressSanitizer`, `ERROR: ThreadSanitizer`.
 
 Added three regression tests in `Tests/TestCrashDiagnosticsTests.swift` covering libdispatch BUG IN CLIENT extraction, abort/runtime/sanitizer stderr extraction, and the expanded predicate clauses. All 15 tests pass.
+
+## Follow-up fix: wire captureCrashLog into TestSimTool / TestDeviceTool
+
+The 1.74.1 brew binary contains the new signatures (`strings /opt/homebrew/Cellar/xc-mcp/1.74.1/bin/xc-simulator | grep "BUG IN CLIENT OF"` matches) — but a fresh `mcp__xc-simulator__test_sim` whole-plan iOS run still returns the *old* fallback verbatim:
+
+  Test process crashed but no fatal-error message was recovered. Query the unified log directly:
+  show_mac_log with predicate `composedMessage CONTAINS "Fatal error" OR composedMessage CONTAINS "Exception"`.
+
+…while the unified log clearly carries the killer:
+
+  ThesisApp (debug)[88128] [com.apple.libsystem.libdispatch:]
+  BUG IN CLIENT OF LIBDISPATCH: Block was expected to execute on queue [com.apple.main-thread]
+
+Root cause is in `TestSimTool`, not in `TestCrashDiagnostics`:
+
+- `Sources/Core/TestToolHelper.swift:143` only wires the unified-log query when `captureCrashLog: true` is passed by the caller (the parameter defaults to `false`).
+- `Sources/Tools/MacOS/TestMacOSTool.swift:121` passes `captureCrashLog: true`.
+- `Sources/Tools/Simulator/TestSimTool.swift:83-99` does NOT pass it; `crashLogWindow` stays `nil`, so `diagnose()` only scrapes stderr and the libdispatch/abort lines (which are emitted to the unified log, not stderr) never reach the matcher.
+
+Fixed by passing `captureCrashLog: true` in `Sources/Tools/Simulator/TestSimTool.swift` and `Sources/Tools/Device/TestDeviceTool.swift`, mirroring `TestMacOSTool`. The unified-log query now runs for sim/device test crashes and the expanded predicate (BUG IN CLIENT, Abort trap, EXC_CRASH, Swift runtime failure, sanitizers) can actually fire.
+
+Verification: rerun the toba/thesis sgp-4wi whole-plan iOS test (`mcp__xc-simulator__test_sim`, plan "iOS Tests", skip `CoreTests/ReferenceTests`). With the fix in place, the failure block should append the libdispatch line and a fatal-log section instead of the bare "no fatal-error message was recovered."

@@ -114,17 +114,28 @@ public enum TestCrashDiagnostics {
         start: Date,
         end: Date,
         processName: String? = nil,
+        simulatorUDID: String? = nil,
     ) async -> [String] {
         let predicate = fatalLogPredicate(processName: processName)
-        let args = [
+        let logArgs = [
             "show",
             "--style", "compact",
             "--start", logTimestamp(start.addingTimeInterval(-2)),
             "--end", logTimestamp(end.addingTimeInterval(2)),
             "--predicate", predicate,
         ]
+        let executable: String
+        let arguments: [String]
+        if let simulatorUDID, !simulatorUDID.isEmpty {
+            // Simulator processes log to the sim's own logd, not the host's unified log.
+            executable = "/usr/bin/xcrun"
+            arguments = ["simctl", "spawn", simulatorUDID, "log"] + logArgs
+        } else {
+            executable = "/usr/bin/log"
+            arguments = logArgs
+        }
         guard let result = try? await ProcessResult.run(
-            "/usr/bin/log", arguments: args, timeout: .seconds(30),
+            executable, arguments: arguments, timeout: .seconds(30),
         ) else { return [] }
         return result.stdout
             .split(separator: "\n", omittingEmptySubsequences: true)
@@ -144,6 +155,7 @@ public enum TestCrashDiagnostics {
         stderr: String?,
         logWindow: (start: Date, end: Date)? = nil,
         processName: String? = nil,
+        simulatorUDID: String? = nil,
     ) async -> String? {
         var sections: [String] = []
 
@@ -157,7 +169,8 @@ public enum TestCrashDiagnostics {
 
         if let logWindow {
             let logLines = await queryFatalLog(
-                start: logWindow.start, end: logWindow.end, processName: processName,
+                start: logWindow.start, end: logWindow.end,
+                processName: processName, simulatorUDID: simulatorUDID,
             )
 
             if !logLines.isEmpty {

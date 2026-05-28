@@ -102,6 +102,7 @@ public struct TestDeviceTool: Sendable {
                 .buildSettingOverrides(),
             environment: environment,
             context: "scheme '\(scheme)' on device '\(device)'",
+            captureCrashLog: true,
             onProgress: onProgress,
         )
     }

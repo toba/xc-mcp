@@ -93,6 +93,7 @@ public enum TestToolHelper {
         context: String,
         errorsOnly: Bool = false,
         captureCrashLog: Bool = false,
+        crashSimulatorUDID: String? = nil,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> CallTool.Result {
         let resultBundlePath = testParams.resultBundlePath
@@ -141,6 +142,7 @@ public enum TestToolHelper {
                 scheme: scheme,
                 errorsOnly: errorsOnly,
                 crashLogWindow: captureCrashLog ? (start: runStart, end: runEnd) : nil,
+                crashSimulatorUDID: crashSimulatorUDID,
             )
 
             if let validationWarning {
