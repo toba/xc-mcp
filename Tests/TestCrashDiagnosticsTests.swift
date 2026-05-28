@@ -1,5 +1,5 @@
-import Foundation
 import Testing
+import Foundation
 @testable import XCMCPCore
 
 struct TestCrashDiagnosticsTests {
@@ -12,19 +12,17 @@ struct TestCrashDiagnosticsTests {
 
     @Test
     func `Detect restart-after-crash banner`() {
-        #expect(
-            TestCrashDiagnostics.detectCrash(
-                in: "Restarting after unexpected exit, crash, or test timeout",
-            ),
-        )
+        #expect(TestCrashDiagnostics.detectCrash(
+            in: "Restarting after unexpected exit, crash, or test timeout",
+        ), )
     }
 
     @Test
     func `Ordinary assertion failure is not a crash`() {
         let output = """
-        Test Case '-[MyTests testThing]' failed (0.1 seconds).
-          ✗ testThing — XCTAssertEqual failed: ("1") is not equal to ("2")
-        """
+            Test Case '-[MyTests testThing]' failed (0.1 seconds).
+              ✗ testThing — XCTAssertEqual failed: ("1") is not equal to ("2")
+            """
         #expect(!TestCrashDiagnostics.detectCrash(in: output))
     }
 
@@ -33,10 +31,10 @@ struct TestCrashDiagnosticsTests {
     @Test
     func `Extract Swift fatal error line`() {
         let stderr = """
-        Some noise here
-        DOM/Document+changes.swift:119: Fatal error: Dropped 1 text element change(s); text view may be stale
-        more noise
-        """
+            Some noise here
+            DOM/Document+changes.swift:119: Fatal error: Dropped 1 text element change(s); text view may be stale
+            more noise
+            """
         let lines = TestCrashDiagnostics.extractTrapLines(from: stderr)
         #expect(lines.count == 1)
         #expect(lines[0].contains("Fatal error: Dropped 1 text element change"))
@@ -45,9 +43,9 @@ struct TestCrashDiagnosticsTests {
     @Test
     func `Extract precondition and exception lines`() {
         let stderr = """
-        Precondition failed: index out of range
-        *** Terminating app due to uncaught exception 'NSRangeException', reason: 'Out of bounds'
-        """
+            Precondition failed: index out of range
+            *** Terminating app due to uncaught exception 'NSRangeException', reason: 'Out of bounds'
+            """
         let lines = TestCrashDiagnostics.extractTrapLines(from: stderr)
         #expect(lines.count == 2)
     }
@@ -55,15 +53,36 @@ struct TestCrashDiagnosticsTests {
     @Test
     func `Trap line extraction de-duplicates`() {
         let stderr = """
-        Fatal error: boom
-        Fatal error: boom
-        """
+            Fatal error: boom
+            Fatal error: boom
+            """
         #expect(TestCrashDiagnostics.extractTrapLines(from: stderr).count == 1)
     }
 
     @Test
     func `No trap lines in clean stderr`() {
         #expect(TestCrashDiagnostics.extractTrapLines(from: "all good\nnothing here").isEmpty)
+    }
+
+    @Test
+    func `Extract libdispatch BUG IN CLIENT line`() {
+        let stderr = """
+            BUG IN CLIENT OF LIBDISPATCH: Assertion failed: Block was expected to execute on queue [com.apple.main-thread (0x1f38cffc0)]
+            """
+        let lines = TestCrashDiagnostics.extractTrapLines(from: stderr)
+        #expect(lines.count == 1)
+        #expect(lines[0].contains("BUG IN CLIENT OF LIBDISPATCH"))
+    }
+
+    @Test
+    func `Extract abort and Swift runtime failure lines`() {
+        let stderr = """
+            Abort trap: 6
+            Swift runtime failure: Isolation violation
+            ERROR: ThreadSanitizer: data race on 0x1234
+            """
+        let lines = TestCrashDiagnostics.extractTrapLines(from: stderr)
+        #expect(lines.count == 3)
     }
 
     // MARK: - predicate / timestamp
@@ -80,6 +99,17 @@ struct TestCrashDiagnosticsTests {
         let predicate = TestCrashDiagnostics.fatalLogPredicate(processName: "ThesisTests")
         #expect(predicate.hasPrefix("process == \"ThesisTests\""))
         #expect(predicate.contains("Fatal error"))
+    }
+
+    @Test
+    func `Fatal log predicate covers libdispatch and abort-class causes`() {
+        let predicate = TestCrashDiagnostics.fatalLogPredicate(processName: nil)
+        #expect(predicate.contains("BUG IN CLIENT"))
+        #expect(predicate.contains("Abort trap"))
+        #expect(predicate.contains("EXC_CRASH"))
+        #expect(predicate.contains("Swift runtime failure"))
+        #expect(predicate.contains("ERROR: AddressSanitizer"))
+        #expect(predicate.contains("ERROR: ThreadSanitizer"))
     }
 
     @Test
