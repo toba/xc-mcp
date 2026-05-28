@@ -61,6 +61,8 @@ public enum ErrorExtractor {
         scheme: String? = nil,
         errorsOnly: Bool = false,
         wallClock: Duration? = nil,
+        crashLogWindow: (start: Date, end: Date)? = nil,
+        crashProcessName: String? = nil,
     ) async throws -> CallTool.Result {
         var succeeded = inputSucceeded
         var testResult: String
@@ -161,6 +163,24 @@ public enum ErrorExtractor {
                     + "Note: method-level filtering may not work for XCUI test targets — "
                     + "use class-level filtering instead (e.g. \"TargetName/TestClassName\").",
             )
+        }
+
+        // When the test *process* crashed (signal trap / uncaught exception) rather
+        // than failing an assertion, xcodebuild reports only a bare signal. Recover
+        // the actual cause from the test-host stderr and the unified log.
+        if !succeeded, TestCrashDiagnostics.detectCrash(in: testResult + "\n" + output) {
+            if let diagnosis = await TestCrashDiagnostics.diagnose(
+                stderr: stderr,
+                logWindow: crashLogWindow,
+                processName: crashProcessName,
+            ) {
+                testResult += "\n\n" + diagnosis
+            } else {
+                testResult +=
+                    "\n\nTest process crashed but no fatal-error message was recovered. "
+                    + "Query the unified log directly: show_mac_log with predicate "
+                    + "`composedMessage CONTAINS \"Fatal error\" OR composedMessage CONTAINS \"Exception\"`."
+            }
         }
 
         let bundleSuffix = formatResultBundleSuffix(xcresultPath)

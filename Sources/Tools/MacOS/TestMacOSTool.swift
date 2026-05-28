@@ -18,7 +18,10 @@ public struct TestMacOSTool: Sendable {
         Tool(
             name: "test_macos",
             description:
-            "Run tests for an Xcode project or workspace on macOS.",
+            "Run tests for an Xcode project or workspace on macOS. When a test process crashes "
+            + "(signal trap / uncaught exception), the fatal-error message and backtrace are "
+            + "recovered automatically from the test-host stderr and the unified log and included "
+            + "in the failure result.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -112,6 +115,7 @@ public struct TestMacOSTool: Sendable {
             environment: environment,
             context: "scheme '\(scheme)' on macOS",
             errorsOnly: errorsOnly,
+            captureCrashLog: true,
         )
     }
 }

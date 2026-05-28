@@ -90,6 +90,7 @@ public enum TestToolHelper {
         environment: Environment = .inherit,
         context: String,
         errorsOnly: Bool = false,
+        captureCrashLog: Bool = false,
     ) async throws -> CallTool.Result {
         let resultBundlePath = testParams.resultBundlePath
             ?? TestResultBundleScoper.managedPath(
@@ -100,6 +101,8 @@ public enum TestToolHelper {
         do {
             let outputTimeout = resolveOutputTimeout(testParams)
 
+            // Wall-clock window for scoping a post-crash unified-log query.
+            let runStart = Date()
             let result = try await runner.test(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
@@ -117,6 +120,8 @@ public enum TestToolHelper {
                 outputTimeout: outputTimeout,
             )
 
+            let runEnd = Date()
+
             let projectRoot = (workspacePath ?? projectPath)
                 .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
 
@@ -131,6 +136,7 @@ public enum TestToolHelper {
                 onlyTesting: testParams.onlyTesting,
                 scheme: scheme,
                 errorsOnly: errorsOnly,
+                crashLogWindow: captureCrashLog ? (start: runStart, end: runEnd) : nil,
             )
 
             if let validationWarning {
