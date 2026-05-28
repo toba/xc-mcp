@@ -16,6 +16,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case moveFile = "move_file"
     case createGroup = "create_group"
     case removeGroup = "remove_group"
+    case moveGroup = "move_group"
     case addTarget = "add_target"
     case removeTarget = "remove_target"
     case renameTarget = "rename_target"
@@ -139,6 +140,7 @@ public struct ProjectMCPServer: Sendable {
         let moveFileTool = MoveFileTool(pathUtility: pathUtility)
         let createGroupTool = CreateGroupTool(pathUtility: pathUtility)
         let removeGroupTool = RemoveGroupTool(pathUtility: pathUtility)
+        let moveGroupTool = MoveGroupTool(pathUtility: pathUtility)
         let addTargetTool = AddTargetTool(pathUtility: pathUtility)
         let removeTargetTool = RemoveTargetTool(pathUtility: pathUtility)
         let renameTargetTool = RenameTargetTool(pathUtility: pathUtility)
@@ -220,6 +222,7 @@ public struct ProjectMCPServer: Sendable {
                 moveFileTool.tool(),
                 createGroupTool.tool(),
                 removeGroupTool.tool(),
+                moveGroupTool.tool(),
                 addTargetTool.tool(),
                 removeTargetTool.tool(),
                 renameTargetTool.tool(),
@@ -311,6 +314,8 @@ public struct ProjectMCPServer: Sendable {
                     return try createGroupTool.execute(arguments: arguments)
                 case .removeGroup:
                     return try removeGroupTool.execute(arguments: arguments)
+                case .moveGroup:
+                    return try moveGroupTool.execute(arguments: arguments)
                 case .addTarget:
                     return try addTargetTool.execute(arguments: arguments)
                 case .removeTarget:

@@ -124,6 +124,116 @@ struct AddFolderToolTests {
     }
 
     @Test
+    func `Adds folder under group with path strips redundant prefix`() throws {
+        // Reproduction for issue bhc-8co: when the parent group has `path = Sync`
+        // and the folder lives at `Sync/Sources` on disk, the stored `path`
+        // attribute on the synchronized root group should be just `Sources`
+        // (relative to its parent), not `Sync/Sources`.
+        let tool = AddFolderTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        // Parent group has BOTH a name and a path -- this is the shape that triggers the bug.
+        let syncGroup = PBXGroup(sourceTree: .group, name: "Sync", path: "Sync")
+        xcodeproj.pbxproj.add(object: syncGroup)
+        if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
+            mainGroup.children.append(syncGroup)
+        }
+        try xcodeproj.write(path: projectPath)
+
+        // Folder lives at <projectDir>/Sync/Sources on disk.
+        let folderPath = Path(tempDir) + "Sync" + "Sources"
+        try FileManager.default.createDirectory(
+            atPath: folderPath.string, withIntermediateDirectories: true,
+        )
+
+        _ = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Sync/Sources"),
+            "group_name": .string("Sync"),
+        ])
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let syncRoot = try #require(
+            reloaded.pbxproj.fileSystemSynchronizedRootGroups.first { $0.name == "Sources" },
+        )
+        #expect(syncRoot.path == "Sources")
+    }
+
+    @Test
+    func `Adds folder under group with only path set (no name) strips prefix`() throws {
+        // Variant of bhc-8co: parent group has `path = Sync` but NO `name`.
+        let tool = AddFolderTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let syncGroup = PBXGroup(sourceTree: .group, path: "Sync")
+        xcodeproj.pbxproj.add(object: syncGroup)
+        if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
+            mainGroup.children.append(syncGroup)
+        }
+        try xcodeproj.write(path: projectPath)
+
+        let folderPath = Path(tempDir) + "Sync" + "Sources"
+        try FileManager.default.createDirectory(
+            atPath: folderPath.string, withIntermediateDirectories: true,
+        )
+
+        _ = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Sync/Sources"),
+            "group_name": .string("Sync"),
+        ])
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let syncRoot = try #require(
+            reloaded.pbxproj.fileSystemSynchronizedRootGroups.first { $0.name == "Sources" },
+        )
+        #expect(syncRoot.path == "Sources")
+    }
+
+    @Test
+    func `Adds folder under virtual group (name only no path) keeps full path`() throws {
+        // A "virtual" group has only `name`, no `path` -- it does NOT add a path
+        // component to its children. The synchronized folder's path must remain
+        // project-root-relative so files resolve correctly.
+        let tool = AddFolderTool(pathUtility: pathUtility)
+
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let virtualGroup = PBXGroup(sourceTree: .group, name: "Modules")
+        xcodeproj.pbxproj.add(object: virtualGroup)
+        if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
+            mainGroup.children.append(virtualGroup)
+        }
+        try xcodeproj.write(path: projectPath)
+
+        let folderPath = Path(tempDir) + "Sync" + "Sources"
+        try FileManager.default.createDirectory(
+            atPath: folderPath.string, withIntermediateDirectories: true,
+        )
+
+        _ = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("Sync/Sources"),
+            "group_name": .string("Modules"),
+        ])
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let syncRoot = try #require(
+            reloaded.pbxproj.fileSystemSynchronizedRootGroups.first { $0.name == "Sources" },
+        )
+        // Parent has no on-disk path, so folder path stays relative to project root.
+        #expect(syncRoot.path == "Sync/Sources")
+    }
+
+    @Test
     func `Adds folder to specific group`() throws {
         let tool = AddFolderTool(pathUtility: pathUtility)
 

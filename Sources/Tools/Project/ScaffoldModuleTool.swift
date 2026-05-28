@@ -5,6 +5,11 @@ import XcodeProj
 import Foundation
 
 public struct ScaffoldModuleTool: Sendable {
+    enum GroupLayout {
+        case nested
+        case sibling
+    }
+
     private let pathUtility: PathUtility
 
     public init(pathUtility: PathUtility) {
@@ -66,7 +71,13 @@ public struct ScaffoldModuleTool: Sendable {
                     "test_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path for test files relative to project dir. Defaults to {parent_group}/{name}Tests",
+                            "Path for test files relative to project dir. Defaults to {parent_group}/{name}/Tests for nested layout, {parent_group}/{name}Tests for sibling",
+                        ),
+                    ]),
+                    "group_layout": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Navigator layout: 'nested' (default) creates a single {name} group containing Sources and Tests subgroups (Apple convention). 'sibling' creates {name} and {name}Tests as siblings at the same level.",
                         ),
                     ]),
                     "link_to": .object([
@@ -160,6 +171,20 @@ public struct ScaffoldModuleTool: Sendable {
 
         let testTargetName = "\(name)Tests"
 
+        let groupLayout: GroupLayout
+        if case let .string(gl) = arguments["group_layout"] {
+            switch gl {
+                case "nested": groupLayout = .nested
+                case "sibling": groupLayout = .sibling
+                default:
+                    throw MCPError.invalidParams(
+                        "group_layout must be 'nested' or 'sibling' (got '\(gl)')",
+                    )
+            }
+        } else {
+            groupLayout = .nested
+        }
+
         // Resolve project path
         let resolvedProjectPath: String
         let projectURL: URL
@@ -177,14 +202,20 @@ public struct ScaffoldModuleTool: Sendable {
         if case let .string(sp) = arguments["source_path"] {
             sourcePath = sp
         } else {
-            sourcePath = "\(parentPrefix)\(name)"
+            switch groupLayout {
+                case .nested: sourcePath = "\(parentPrefix)\(name)/Sources"
+                case .sibling: sourcePath = "\(parentPrefix)\(name)"
+            }
         }
 
         let testPath: String
         if case let .string(tp) = arguments["test_path"] {
             testPath = tp
         } else {
-            testPath = "\(parentPrefix)\(testTargetName)"
+            switch groupLayout {
+                case .nested: testPath = "\(parentPrefix)\(name)/Tests"
+                case .sibling: testPath = "\(parentPrefix)\(testTargetName)"
+            }
         }
 
         // Absolute paths on disk
@@ -274,7 +305,15 @@ public struct ScaffoldModuleTool: Sendable {
                 containerGroup = mainGroup
             }
 
-            let frameworkGroup = PBXGroup(sourceTree: .group, name: name)
+            // For nested layout we set `path` on the module group so child sync folders
+            // can carry just "Sources"/"Tests" rather than full paths.
+            let frameworkGroup: PBXGroup
+            switch groupLayout {
+                case .nested:
+                    frameworkGroup = PBXGroup(sourceTree: .group, path: name)
+                case .sibling:
+                    frameworkGroup = PBXGroup(sourceTree: .group, name: name)
+            }
             xcodeproj.pbxproj.add(object: frameworkGroup)
             containerGroup.children.append(frameworkGroup)
 
@@ -316,15 +355,23 @@ public struct ScaffoldModuleTool: Sendable {
                     into: tt,
                 )
 
-                // 6. Create test group + sync folder
-                let testGroup = PBXGroup(sourceTree: .group, name: testTargetName)
-                xcodeproj.pbxproj.add(object: testGroup)
-                containerGroup.children.append(testGroup)
+                // 6. Create test sync folder. For nested layout it goes inside the
+                // module group; for sibling layout we add a second top-level group.
+                let testContainer: PBXGroup
+                switch groupLayout {
+                    case .nested:
+                        testContainer = frameworkGroup
+                    case .sibling:
+                        let testGroup = PBXGroup(sourceTree: .group, name: testTargetName)
+                        xcodeproj.pbxproj.add(object: testGroup)
+                        containerGroup.children.append(testGroup)
+                        testContainer = testGroup
+                }
 
                 createSyncFolder(
                     xcodeproj: xcodeproj,
                     folderAbsPath: testAbsPath,
-                    containerGroup: testGroup,
+                    containerGroup: testContainer,
                     projectRoot: projectDir,
                     target: tt,
                 )

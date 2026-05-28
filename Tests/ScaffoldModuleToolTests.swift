@@ -79,16 +79,70 @@ struct ScaffoldModuleToolTests {
         #expect(productsGroup?.children.contains { $0 === testTarget?.product } == true)
 
         // Verify directories were created
+        // Default layout is nested: NetworkKit/Sources and NetworkKit/Tests.
         let projectDir = URL(fileURLWithPath: projectPath.string).deletingLastPathComponent().path
         #expect(
             FileManager.default.fileExists(
-                atPath: URL(fileURLWithPath: projectDir).appendingPathComponent("NetworkKit").path,
+                atPath: URL(fileURLWithPath: projectDir)
+                    .appendingPathComponent("NetworkKit/Sources").path,
             ),
         )
         #expect(
             FileManager.default.fileExists(
-                atPath: URL(fileURLWithPath: projectDir).appendingPathComponent("NetworkKitTests")
-                    .path,
+                atPath: URL(fileURLWithPath: projectDir)
+                    .appendingPathComponent("NetworkKit/Tests").path,
+            ),
+        )
+
+        // Navigator: a single NetworkKit group with Sources + Tests as children.
+        let mainGroup = try #require(try xcodeproj.pbxproj.rootProject()?.mainGroup)
+        let rootGroupNames = mainGroup.children
+            .compactMap { ($0 as? PBXGroup)?.name ?? ($0 as? PBXGroup)?.path }
+        #expect(rootGroupNames.contains("NetworkKit"))
+        #expect(!rootGroupNames.contains("NetworkKitTests"))
+
+        let moduleGroup = try #require(
+            mainGroup.children.compactMap { $0 as? PBXGroup }
+                .first { $0.path == "NetworkKit" || $0.name == "NetworkKit" },
+        )
+        let syncChildren = moduleGroup.children
+            .compactMap { $0 as? PBXFileSystemSynchronizedRootGroup }
+        let syncPaths = Set(syncChildren.compactMap(\.path))
+        #expect(syncPaths == ["Sources", "Tests"])
+    }
+
+    @Test
+    func `Sibling layout retains legacy top-level groups`() throws {
+        let (tempDir, projectPath) = try createTempProject()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let tool = ScaffoldModuleTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "name": Value.string("LegacyKit"),
+            "bundle_identifier": Value.string("com.test.legacy"),
+            "group_layout": Value.string("sibling"),
+        ])
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let mainGroup = try #require(try xcodeproj.pbxproj.rootProject()?.mainGroup)
+        let rootGroupNames = mainGroup.children
+            .compactMap { ($0 as? PBXGroup)?.name }
+        #expect(rootGroupNames.contains("LegacyKit"))
+        #expect(rootGroupNames.contains("LegacyKitTests"))
+
+        // Disk layout uses sibling directories.
+        let projectDir = URL(fileURLWithPath: projectPath.string).deletingLastPathComponent().path
+        #expect(
+            FileManager.default.fileExists(
+                atPath: URL(fileURLWithPath: projectDir)
+                    .appendingPathComponent("LegacyKit").path,
+            ),
+        )
+        #expect(
+            FileManager.default.fileExists(
+                atPath: URL(fileURLWithPath: projectDir)
+                    .appendingPathComponent("LegacyKitTests").path,
             ),
         )
     }
@@ -143,12 +197,14 @@ struct ScaffoldModuleToolTests {
 
         let reloaded = try XcodeProj(path: projectPath)
         let modGroup = reloaded.pbxproj.groups.first { $0.name == "Modules" }
-        let childNames = modGroup?.children.compactMap { ($0 as? PBXGroup)?.name } ?? []
+        let childNames = modGroup?.children
+            .compactMap { ($0 as? PBXGroup)?.name ?? ($0 as? PBXGroup)?.path } ?? []
         #expect(childNames.contains("UIKit2"))
 
         // Not in main group directly
         let mainGroup = try reloaded.pbxproj.rootProject()?.mainGroup
-        let rootChildNames = mainGroup?.children.compactMap { ($0 as? PBXGroup)?.name } ?? []
+        let rootChildNames = mainGroup?.children
+            .compactMap { ($0 as? PBXGroup)?.name ?? ($0 as? PBXGroup)?.path } ?? []
         #expect(!rootChildNames.contains("UIKit2"))
     }
 

@@ -108,28 +108,35 @@ public struct AddFolderTool: Sendable {
             // Create file system synchronized root group
             let folderName = URL(filePath: resolvedFolderPath).lastPathComponent
 
-            // Calculate the path relative to the parent group, not project root
-            // Since sourceTree is .group, Xcode resolves paths relative to the parent group
+            // Compute the path relative to the parent group. Since `sourceTree = <group>`,
+            // Xcode resolves the synchronized folder's `path` attribute relative to its
+            // parent group's accumulated path. We walk up the group chain ourselves
+            // (rather than relying on `fullPath()`, which silently returns nil when the
+            // chain has any unset `parent` reference or non-.group `sourceTree`) and trim
+            // the redundant prefix. This matches the path attribute Xcode emits when you
+            // add the folder through the IDE.
             let projectRoot = projectURL.deletingLastPathComponent().path
-            let groupFullPath: String
-            if let groupPath = try targetGroup.fullPath(sourceRoot: projectRoot) {
-                groupFullPath = groupPath
-            } else {
-                groupFullPath = projectRoot
-            }
+            let parentRelativePath = parentGroupPathFromProjectRoot(
+                of: targetGroup, pbxproj: xcodeproj.pbxproj,
+            )
+            let folderRelativeToProject: String =
+                pathUtility.makeRelativePath(from: resolvedFolderPath)
+                ?? makeRelative(absolute: resolvedFolderPath, base: projectRoot)
+                ?? resolvedFolderPath
 
-            // Make the folder path relative to the group's location
             let relativePath: String
-            if resolvedFolderPath.hasPrefix(groupFullPath + "/") {
-                // Folder is inside the group's directory - use relative path from group
-                relativePath = String(resolvedFolderPath.dropFirst(groupFullPath.count + 1))
-            } else if resolvedFolderPath == groupFullPath {
-                // Folder is the group's directory itself
+            if !parentRelativePath.isEmpty,
+               folderRelativeToProject == parentRelativePath
+            {
                 relativePath = "."
+            } else if !parentRelativePath.isEmpty,
+                      folderRelativeToProject.hasPrefix(parentRelativePath + "/")
+            {
+                relativePath = String(
+                    folderRelativeToProject.dropFirst(parentRelativePath.count + 1),
+                )
             } else {
-                // Folder is not inside the group - use path relative to project root
-                relativePath =
-                    pathUtility.makeRelativePath(from: resolvedFolderPath) ?? resolvedFolderPath
+                relativePath = folderRelativeToProject
             }
 
             let folderReference = PBXFileSystemSynchronizedRootGroup(
@@ -179,5 +186,56 @@ public struct AddFolderTool: Sendable {
                 "Failed to add folder to Xcode project: \(error.localizedDescription)",
             )
         }
+    }
+
+    /// Walks up the group hierarchy from `group` to the project's main group,
+    /// accumulating the `path` attributes of `.group`-sourceTree ancestors. Returns
+    /// the project-root-relative path that the parent group's children inherit
+    /// (an empty string if the chain contributes no on-disk path component).
+    ///
+    /// Unlike XcodeProj's `fullPath(sourceRoot:)`, this does not require parent
+    /// references to be wired up — it scans the `groups` collection to find
+    /// each ancestor — and it returns an empty string (not nil) when the chain
+    /// is purely virtual, so callers can branch on whether trimming applies.
+    private func parentGroupPathFromProjectRoot(
+        of group: PBXGroup, pbxproj: PBXProj,
+    ) -> String {
+        let mainGroup = try? pbxproj.rootProject()?.mainGroup
+        if let mainGroup, group === mainGroup { return "" }
+
+        var components: [String] = []
+        var current: PBXGroup? = group
+        var visited = Set<ObjectIdentifier>()
+
+        while let g = current {
+            if let mg = mainGroup, g === mg { break }
+            let id = ObjectIdentifier(g)
+            if visited.contains(id) { break }
+            visited.insert(id)
+
+            if g.sourceTree == .group || g.sourceTree == nil,
+               let p = g.path, !p.isEmpty
+            {
+                components.insert(p, at: 0)
+            }
+
+            current = pbxproj.groups.first(where: { candidate in
+                candidate.children.contains { $0 === g }
+            })
+        }
+
+        return components.joined(separator: "/")
+    }
+
+    /// Fallback when `PathUtility.makeRelativePath` returns nil (e.g. when the
+    /// project lives outside the configured base path). Computes a simple
+    /// relative path by prefix-matching.
+    private func makeRelative(absolute: String, base: String) -> String? {
+        let normalizedBase = base.hasSuffix("/") ? String(base.dropLast()) : base
+        if absolute == normalizedBase { return "" }
+        if absolute.hasPrefix(normalizedBase + "/") {
+            return String(absolute.dropFirst(normalizedBase.count + 1))
+        }
+        return nil
     }
 }

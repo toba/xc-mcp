@@ -19,6 +19,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case removeFile = "remove_file"
     case moveFile = "move_file"
     case createGroup = "create_group"
+    case moveGroup = "move_group"
     case addTarget = "add_target"
     case removeTarget = "remove_target"
     case renameTarget = "rename_target"
@@ -249,7 +250,7 @@ public enum ToolName: String, CaseIterable, Sendable {
         switch self {
             // Project
             case .createXcodeproj, .listTargets, .listBuildConfigurations, .listFiles,
-                 .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup,
+                 .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup, .moveGroup,
                  .addTarget, .removeTarget, .renameTarget, .renameScheme, .createScheme,
                  .validateScheme, .createTestPlan, .addTargetToTestPlan,
                  .removeTargetFromTestPlan, .setTestPlanTargetEnabled,
@@ -418,6 +419,7 @@ public struct XcodeMCPServer: Sendable {
         let removeFileTool = RemoveFileTool(pathUtility: pathUtility)
         let moveFileTool = MoveFileTool(pathUtility: pathUtility)
         let createGroupTool = CreateGroupTool(pathUtility: pathUtility)
+        let moveGroupTool = MoveGroupTool(pathUtility: pathUtility)
         let addTargetTool = AddTargetTool(pathUtility: pathUtility)
         let removeTargetTool = RemoveTargetTool(pathUtility: pathUtility)
         let renameTargetTool = RenameTargetTool(pathUtility: pathUtility)
@@ -788,6 +790,7 @@ public struct XcodeMCPServer: Sendable {
             (.removeFile, removeFileTool.tool()),
             (.moveFile, moveFileTool.tool()),
             (.createGroup, createGroupTool.tool()),
+            (.moveGroup, moveGroupTool.tool()),
             (.addTarget, addTargetTool.tool()),
             (.removeTarget, removeTargetTool.tool()),
             (.renameTarget, renameTargetTool.tool()),
@@ -1053,6 +1056,8 @@ public struct XcodeMCPServer: Sendable {
                     return try moveFileTool.execute(arguments: arguments)
                 case .createGroup:
                     return try createGroupTool.execute(arguments: arguments)
+                case .moveGroup:
+                    return try moveGroupTool.execute(arguments: arguments)
                 case .addTarget:
                     return try addTargetTool.execute(arguments: arguments)
                 case .removeTarget:
