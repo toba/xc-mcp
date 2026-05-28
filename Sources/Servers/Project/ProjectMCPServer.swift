@@ -56,6 +56,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case addSynchronizedFolderException = "add_synchronized_folder_exception"
     case removeSynchronizedFolderException = "remove_synchronized_folder_exception"
     case listSynchronizedFolderExceptions = "list_synchronized_folder_exceptions"
+    case addSynchronizedFolderPhaseMembership = "add_synchronized_folder_phase_membership"
     case listCopyFilesPhases = "list_copy_files_phases"
     case addCopyFilesPhase = "add_copy_files_phase"
     case addToCopyFilesPhase = "add_to_copy_files_phase"
@@ -194,6 +195,9 @@ public struct ProjectMCPServer: Sendable {
         let listSynchronizedFolderExceptionsTool = ListSynchronizedFolderExceptionsTool(
             pathUtility: pathUtility,
         )
+        let addSynchronizedFolderPhaseMembershipTool = AddSynchronizedFolderPhaseMembershipTool(
+            pathUtility: pathUtility,
+        )
         let listCopyFilesPhases = ListCopyFilesPhases(pathUtility: pathUtility)
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
@@ -262,6 +266,7 @@ public struct ProjectMCPServer: Sendable {
                 addSynchronizedFolderExceptionTool.tool(),
                 removeSynchronizedFolderExceptionTool.tool(),
                 listSynchronizedFolderExceptionsTool.tool(),
+                addSynchronizedFolderPhaseMembershipTool.tool(),
                 listCopyFilesPhases.tool(),
                 addCopyFilesPhase.tool(),
                 addToCopyFilesPhase.tool(),
@@ -398,6 +403,8 @@ public struct ProjectMCPServer: Sendable {
                     return try removeSynchronizedFolderExceptionTool.execute(arguments: arguments)
                 case .listSynchronizedFolderExceptions:
                     return try listSynchronizedFolderExceptionsTool.execute(arguments: arguments)
+                case .addSynchronizedFolderPhaseMembership:
+                    return try addSynchronizedFolderPhaseMembershipTool.execute(arguments: arguments)
                 case .listCopyFilesPhases:
                     return try listCopyFilesPhases.execute(arguments: arguments)
                 case .addCopyFilesPhase:

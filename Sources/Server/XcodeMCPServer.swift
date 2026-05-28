@@ -53,6 +53,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addSynchronizedFolder = "add_synchronized_folder"
     case addTargetToSynchronizedFolder = "add_target_to_synchronized_folder"
     case addSynchronizedFolderException = "add_synchronized_folder_exception"
+    case addSynchronizedFolderPhaseMembership = "add_synchronized_folder_phase_membership"
     case addAppExtension = "add_app_extension"
     case removeAppExtension = "remove_app_extension"
     case listCopyFilesPhases = "list_copy_files_phases"
@@ -263,6 +264,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .listSwiftPackages, .removeSwiftPackage, .removePackageProduct,
                  .listPackageProducts, .listGroups, .addSynchronizedFolder,
                  .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
+                 .addSynchronizedFolderPhaseMembership,
                  .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
                  .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
                  .removeRunScriptPhase,
@@ -452,6 +454,9 @@ public struct XcodeMCPServer: Sendable {
             pathUtility: pathUtility,
         )
         let addSynchronizedFolderExceptionTool = AddSynchronizedFolderExceptionTool(
+            pathUtility: pathUtility,
+        )
+        let addSynchronizedFolderPhaseMembershipTool = AddSynchronizedFolderPhaseMembershipTool(
             pathUtility: pathUtility,
         )
         let addAppExtensionTool = AddAppExtensionTool(pathUtility: pathUtility)
@@ -817,6 +822,10 @@ public struct XcodeMCPServer: Sendable {
             (.addSynchronizedFolder, addSynchronizedFolderTool.tool()),
             (.addTargetToSynchronizedFolder, addTargetToSynchronizedFolderTool.tool()),
             (.addSynchronizedFolderException, addSynchronizedFolderExceptionTool.tool()),
+            (
+                .addSynchronizedFolderPhaseMembership,
+                addSynchronizedFolderPhaseMembershipTool.tool(),
+            ),
             (.addAppExtension, addAppExtensionTool.tool()),
             (.removeAppExtension, removeAppExtensionTool.tool()),
             (.listCopyFilesPhases, listCopyFilesPhases.tool()),
@@ -1112,6 +1121,10 @@ public struct XcodeMCPServer: Sendable {
                     return try addTargetToSynchronizedFolderTool.execute(arguments: arguments)
                 case .addSynchronizedFolderException:
                     return try addSynchronizedFolderExceptionTool.execute(arguments: arguments)
+                case .addSynchronizedFolderPhaseMembership:
+                    return try addSynchronizedFolderPhaseMembershipTool.execute(
+                        arguments: arguments,
+                    )
                 case .addAppExtension:
                     return try addAppExtensionTool.execute(arguments: arguments)
                 case .removeAppExtension:

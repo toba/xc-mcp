@@ -114,6 +114,66 @@ public enum PBXProjTextEditor {
         )
     }
 
+    /// Insert a new `PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet`
+    /// block into its section (creating the section if needed).
+    public static func insertGroupBuildPhaseMembershipExceptionSetBlock(
+        _ content: String,
+        uuid: String,
+        folderName: String,
+        phaseName: String,
+        phaseUUID: String,
+        phaseComment: String,
+        targetName: String,
+        membershipExceptions: [String],
+    ) throws(EditError) -> String {
+        let comment =
+            "Exceptions for \"\(folderName)\" folder in \"\(phaseName)\" phase from \"\(targetName)\" target"
+
+        var block: [String] = []
+        block.append("\t\t\(uuid) /* \(comment) */ = {")
+        block.append(
+            "\t\t\tisa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;",
+        )
+        block.append("\t\t\tbuildPhase = \(phaseUUID) /* \(phaseComment) */;")
+        block.append("\t\t\tmembershipExceptions = (")
+        for file in membershipExceptions {
+            block.append("\t\t\t\t\(quotePBX(file)),")
+        }
+        block.append("\t\t\t);")
+        block.append("\t\t};")
+
+        var lines = content.splitLines()
+        let sectionEnd =
+            "/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */"
+
+        if let idx = lines.firstIndex(where: { $0.contains(sectionEnd) }) {
+            lines.insert(contentsOf: block, at: idx)
+            return lines.joined(separator: "\n")
+        }
+
+        // Section doesn't exist — create it before the next alphabetical section
+        let markers = [
+            "/* Begin PBXFileSystemSynchronizedRootGroup section */",
+            "/* Begin PBXFrameworksBuildPhase section */",
+            "/* Begin PBXGroup section */",
+        ]
+        for marker in markers {
+            if let idx = lines.firstIndex(where: { $0.contains(marker) }) {
+                var section = [""]
+                section.append(
+                    "/* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */",
+                )
+                section.append(contentsOf: block)
+                section.append(sectionEnd)
+                lines.insert(contentsOf: section, at: idx)
+                return lines.joined(separator: "\n")
+            }
+        }
+        throw EditError.sectionNotFound(
+            "PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet",
+        )
+    }
+
     // MARK: - Array entry operations (plain values like filenames)
 
     /// Add plain entries (e.g. filenames) to an existing array field.

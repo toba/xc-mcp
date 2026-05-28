@@ -81,41 +81,76 @@ public struct ListSynchronizedFolderExceptionsTool: Sendable {
             ]
 
             for exception in exceptions {
-                guard
-                    let exceptionSet = exception
+                if let exceptionSet = exception
                     as? PBXFileSystemSynchronizedBuildFileExceptionSet
-                else {
-                    lines.append("Unknown exception set type: \(type(of: exception))")
+                {
+                    let targetName = exceptionSet.target?.name ?? "<unknown target>"
+                    lines.append("Target: \(targetName)")
+
+                    if let membershipExceptions = exceptionSet.membershipExceptions,
+                       !membershipExceptions.isEmpty
+                    {
+                        lines.append("  Membership exceptions:")
+                        for file in membershipExceptions.sorted() {
+                            lines.append("    - \(file)")
+                        }
+                    }
+
+                    if let publicHeaders = exceptionSet.publicHeaders, !publicHeaders.isEmpty {
+                        lines.append("  Public headers:")
+                        for header in publicHeaders.sorted() {
+                            lines.append("    - \(header)")
+                        }
+                    }
+
+                    if let privateHeaders = exceptionSet.privateHeaders, !privateHeaders.isEmpty {
+                        lines.append("  Private headers:")
+                        for header in privateHeaders.sorted() {
+                            lines.append("    - \(header)")
+                        }
+                    }
+
                     lines.append("")
                     continue
                 }
 
-                let targetName = exceptionSet.target?.name ?? "<unknown target>"
-                lines.append("Target: \(targetName)")
-
-                if let membershipExceptions = exceptionSet.membershipExceptions,
-                   !membershipExceptions.isEmpty
+                if let phaseException = exception
+                    as? PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet
                 {
-                    lines.append("  Membership exceptions:")
-                    for file in membershipExceptions.sorted() {
-                        lines.append("    - \(file)")
+                    let phase = phaseException.buildPhase
+                    let phaseName = phase?.name() ?? "<unnamed phase>"
+                    lines.append("Build phase: \(phaseName)")
+                    if let copyPhase = phase as? PBXCopyFilesBuildPhase {
+                        if let dstPath = copyPhase.dstPath, !dstPath.isEmpty {
+                            lines.append("  dstPath: \(dstPath)")
+                        }
+                        if let subfolder = copyPhase.dstSubfolderSpec {
+                            lines.append("  dstSubfolder: \(subfolder)")
+                        }
                     }
+
+                    if let membershipExceptions = phaseException.membershipExceptions,
+                       !membershipExceptions.isEmpty
+                    {
+                        lines.append("  Membership exceptions:")
+                        for file in membershipExceptions.sorted() {
+                            lines.append("    - \(file)")
+                        }
+                    }
+
+                    if let attrs = phaseException.attributesByRelativePath, !attrs.isEmpty {
+                        lines.append("  Attributes by relative path:")
+                        for key in attrs.keys.sorted() {
+                            let values = attrs[key]?.joined(separator: ", ") ?? ""
+                            lines.append("    - \(key): [\(values)]")
+                        }
+                    }
+
+                    lines.append("")
+                    continue
                 }
 
-                if let publicHeaders = exceptionSet.publicHeaders, !publicHeaders.isEmpty {
-                    lines.append("  Public headers:")
-                    for header in publicHeaders.sorted() {
-                        lines.append("    - \(header)")
-                    }
-                }
-
-                if let privateHeaders = exceptionSet.privateHeaders, !privateHeaders.isEmpty {
-                    lines.append("  Private headers:")
-                    for header in privateHeaders.sorted() {
-                        lines.append("    - \(header)")
-                    }
-                }
-
+                lines.append("Unknown exception set type: \(type(of: exception))")
                 lines.append("")
             }
 
