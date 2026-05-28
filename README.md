@@ -99,7 +99,7 @@ Run a single server with all tools, or use focused servers to reduce token overh
 | `xc-project` | 61 | ~9K | .xcodeproj manipulation |
 | `xc-build` | 44 | ~7K | macOS builds, profiling, discovery, diagnostics, icons, versioning, notarization |
 | `xc-simulator` | 29 | ~5K | Simulator + UI automation + simulator logs |
-| `xc-debug` | 28 | ~4K | LLDB, memory diagnostics, crash symbolication, screenshots |
+| `xc-debug` | 37 | ~5K | LLDB, memory diagnostics, crash symbolication, screenshots, macOS UI automation (`interact_*`) |
 | `xc-strings` | 24 | ~3K | .xcstrings localization |
 | `xc-swift` | 15 | ~3K | SPM, swiftformat, swiftlint, diagnostics, coverage |
 | `xc-device` | 14 | ~3K | Physical iOS devices |

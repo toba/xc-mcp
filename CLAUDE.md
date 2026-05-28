@@ -26,7 +26,7 @@ xc-mcp/
 │   │   └── XcodeMCPServer.swift     # Monolithic server with all tools
 │   ├── Servers/                     # Focused servers (smaller tool surface)
 │   │   ├── Build/                   # xc-build (21 tools)
-│   │   ├── Debug/                   # xc-debug (23 tools)
+│   │   ├── Debug/                   # xc-debug (31 tools)
 │   │   ├── Device/                  # xc-device (12 tools)
 │   │   ├── Project/                 # xc-project (40 tools)
 │   │   ├── Simulator/               # xc-simulator (29 tools)
@@ -89,7 +89,7 @@ The project builds 8 executables — one monolithic server and 7 focused servers
 | `xc-mcp` | 146 | Full server (~50K tokens) |
 | `xc-project` | 40 | Project file manipulation |
 | `xc-simulator` | 29 | Simulator + UI automation |
-| `xc-debug` | 23 | LLDB debugging |
+| `xc-debug` | 31 | LLDB debugging + macOS UI automation |
 | `xc-build` | 21 | Build, test, run |
 | `xc-device` | 12 | Physical device management |
 | `xc-swift` | 12 | SPM + Swift operations |

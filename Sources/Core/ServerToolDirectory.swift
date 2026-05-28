@@ -75,6 +75,8 @@ public enum ServerToolDirectory {
         "debug_symbol_lookup", "debug_view_hierarchy",
         "debug_view_borders", "debug_process_status",
         "screenshot_mac_window",
+        "interact_ui_tree", "interact_click", "interact_set_value", "interact_get_value",
+        "interact_menu", "interact_focus", "interact_key", "interact_find",
         "memory_leaks", "memory_heap", "memory_vmmap",
         "memory_stringdups", "memory_malloc_history",
         "symbolicate_address",

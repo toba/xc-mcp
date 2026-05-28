@@ -39,6 +39,16 @@ public enum DebugToolName: String, CaseIterable, Sendable {
     /// macOS tools
     case screenshotMacWindow = "screenshot_mac_window"
 
+    // Interact tools (macOS Accessibility API)
+    case interactUITree = "interact_ui_tree"
+    case interactClick = "interact_click"
+    case interactSetValue = "interact_set_value"
+    case interactGetValue = "interact_get_value"
+    case interactMenu = "interact_menu"
+    case interactFocus = "interact_focus"
+    case interactKey = "interact_key"
+    case interactFind = "interact_find"
+
     // Session tools
     case setSessionDefaults = "set_session_defaults"
     case showSessionDefaults = "show_session_defaults"
@@ -131,6 +141,17 @@ public struct DebugMCPServer: Sendable {
         // Create macOS tools
         let screenshotMacWindowTool = ScreenshotMacWindowTool()
 
+        // Create interact tools (macOS Accessibility API)
+        let interactRunner = InteractRunner()
+        let interactUITreeTool = InteractUITreeTool(interactRunner: interactRunner)
+        let interactClickTool = InteractClickTool(interactRunner: interactRunner)
+        let interactSetValueTool = InteractSetValueTool(interactRunner: interactRunner)
+        let interactGetValueTool = InteractGetValueTool(interactRunner: interactRunner)
+        let interactMenuTool = InteractMenuTool(interactRunner: interactRunner)
+        let interactFocusTool = InteractFocusTool(interactRunner: interactRunner)
+        let interactKeyTool = InteractKeyTool(interactRunner: interactRunner)
+        let interactFindTool = InteractFindTool(interactRunner: interactRunner)
+
         // Create session tools
         let setSessionDefaultsTool = SetSessionDefaultsTool(sessionManager: sessionManager)
         let showSessionDefaultsTool = ShowSessionDefaultsTool(sessionManager: sessionManager)
@@ -168,6 +189,15 @@ public struct DebugMCPServer: Sendable {
                 symbolicateAddressTool.tool(),
                 // macOS tools
                 screenshotMacWindowTool.tool(),
+                // Interact tools (macOS Accessibility API)
+                interactUITreeTool.tool(),
+                interactClickTool.tool(),
+                interactSetValueTool.tool(),
+                interactGetValueTool.tool(),
+                interactMenuTool.tool(),
+                interactFocusTool.tool(),
+                interactKeyTool.tool(),
+                interactFindTool.tool(),
                 // Session tools
                 setSessionDefaultsTool.tool(),
                 showSessionDefaultsTool.tool(),
@@ -253,6 +283,23 @@ public struct DebugMCPServer: Sendable {
                 // macOS tools
                 case .screenshotMacWindow:
                     return try await screenshotMacWindowTool.execute(arguments: arguments)
+                // Interact tools (macOS Accessibility API)
+                case .interactUITree:
+                    return try await interactUITreeTool.execute(arguments: arguments)
+                case .interactClick:
+                    return try await interactClickTool.execute(arguments: arguments)
+                case .interactSetValue:
+                    return try await interactSetValueTool.execute(arguments: arguments)
+                case .interactGetValue:
+                    return try await interactGetValueTool.execute(arguments: arguments)
+                case .interactMenu:
+                    return try await interactMenuTool.execute(arguments: arguments)
+                case .interactFocus:
+                    return try await interactFocusTool.execute(arguments: arguments)
+                case .interactKey:
+                    return try await interactKeyTool.execute(arguments: arguments)
+                case .interactFind:
+                    return try await interactFindTool.execute(arguments: arguments)
                 // Session tools
                 case .setSessionDefaults:
                     return try await setSessionDefaultsTool.execute(arguments: arguments)
