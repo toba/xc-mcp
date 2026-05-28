@@ -89,13 +89,45 @@ struct SetTestPlanSkippedTagsToolTests {
         }
         #expect(message.contains("target 'AppTests'"))
 
-        // Per-target should NOT have "mode" key
+        // Per-target must have "mode" — without it Xcode defaults to AND,
+        // which silently no-ops since no test has every listed tag.
         let json = try TestPlanFile.read(from: path)
         let targets = json["testTargets"] as? [[String: Any]]
         let skipped = targets?.first?["skippedTags"] as? [String: Any]
         let tags = skipped?["tags"] as? [String]
         #expect(tags == [".api"])
-        #expect(skipped?["mode"] == nil)
+        #expect(skipped?["mode"] as? String == "or")
+    }
+
+    @Test
+    func `Adding to existing per-target block preserves mode`() throws {
+        var plan = basePlan()
+        var targets = try #require(plan["testTargets"] as? [[String: Any]])
+        var entry = targets[0]
+        entry["skippedTags"] =
+            [
+                "mode": "or",
+                "tags": [".api"],
+            ] as [String: Any]
+        targets[0] = entry
+        plan["testTargets"] = targets
+
+        let path = try createTestPlan(plan)
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        let tool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
+        let args: [String: Value] = [
+            "test_plan_path": .string(path),
+            "tags": .array([.string(".cloudKit")]),
+            "target_name": .string("AppTests"),
+        ]
+        _ = try tool.execute(arguments: args)
+
+        let json = try TestPlanFile.read(from: path)
+        let resultTargets = json["testTargets"] as? [[String: Any]]
+        let skipped = resultTargets?.first?["skippedTags"] as? [String: Any]
+        #expect(skipped?["tags"] as? [String] == [".api", ".cloudKit"])
+        #expect(skipped?["mode"] as? String == "or")
     }
 
     @Test

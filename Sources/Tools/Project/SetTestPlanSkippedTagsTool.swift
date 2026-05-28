@@ -172,9 +172,12 @@ public struct SetTestPlanSkippedTagsTool: Sendable {
         if result.isEmpty {
             entry.removeValue(forKey: "skippedTags")
         } else {
-            // Per-target: no "mode" key (Xcode omits it)
             skipped["tags"] = result
-            skipped.removeValue(forKey: "mode")
+            // Preserve existing "mode"; default to "or" so the block uses OR
+            // semantics (absence means AND, which silently no-ops in practice).
+            if skipped["mode"] == nil {
+                skipped["mode"] = "or"
+            }
             entry["skippedTags"] = skipped
         }
 
