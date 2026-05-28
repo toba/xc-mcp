@@ -28,6 +28,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case setTestPlanTargetEnabled = "set_test_plan_target_enabled"
     case setTestPlanSkippedTags = "set_test_plan_skipped_tags"
     case setTestPlanSkippedTests = "set_test_plan_skipped_tests"
+    case setTestPlanTargetParallelizable = "set_test_plan_target_parallelizable"
     case addTestPlanToScheme = "add_test_plan_to_scheme"
     case removeTestPlanFromScheme = "remove_test_plan_from_scheme"
     case listTestPlans = "list_test_plans"
@@ -149,6 +150,7 @@ public struct ProjectMCPServer: Sendable {
         let setTestPlanTargetEnabledTool = SetTestPlanTargetEnabledTool(pathUtility: pathUtility)
         let setTestPlanSkippedTagsTool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let setTestPlanSkippedTestsTool = SetTestPlanSkippedTestsTool(pathUtility: pathUtility)
+        let setTestPlanTargetParallelizableTool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
         let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
         let removeTestPlanFromSchemeTool = RemoveTestPlanFromSchemeTool(pathUtility: pathUtility)
         let listTestPlansTool = ListTestPlansTool(pathUtility: pathUtility)
@@ -226,6 +228,7 @@ public struct ProjectMCPServer: Sendable {
                 setTestPlanTargetEnabledTool.tool(),
                 setTestPlanSkippedTagsTool.tool(),
                 setTestPlanSkippedTestsTool.tool(),
+                setTestPlanTargetParallelizableTool.tool(),
                 addTestPlanToSchemeTool.tool(),
                 removeTestPlanFromSchemeTool.tool(),
                 listTestPlansTool.tool(),
@@ -327,6 +330,8 @@ public struct ProjectMCPServer: Sendable {
                     return try setTestPlanSkippedTagsTool.execute(arguments: arguments)
                 case .setTestPlanSkippedTests:
                     return try setTestPlanSkippedTestsTool.execute(arguments: arguments)
+                case .setTestPlanTargetParallelizable:
+                    return try setTestPlanTargetParallelizableTool.execute(arguments: arguments)
                 case .addTestPlanToScheme:
                     return try addTestPlanToSchemeTool.execute(arguments: arguments)
                 case .removeTestPlanFromScheme:
