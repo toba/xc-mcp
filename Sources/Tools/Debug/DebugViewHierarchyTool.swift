@@ -45,6 +45,24 @@ public struct DebugViewHierarchyTool: Sendable {
                             "Show Auto Layout constraints for the view. Defaults to false.",
                         ),
                     ]),
+                    "max_depth": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Limit recursive descent to N levels via a bounded NSView/UIView walk that prints class, address, and frame per node. Use to keep SwiftUI-heavy hierarchies under the LLDB expression timeout (defaults to unbounded `_subtreeDescription`/`recursiveDescription`).",
+                        ),
+                    ]),
+                    "class_filter": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Only print nodes whose class name contains this substring (e.g. `NSHostingView`). Triggers the bounded walk; children are still descended so a matching ancestor surfaces its matching descendants.",
+                        ),
+                    ]),
+                    "timeout": .object([
+                        "type": .string("number"),
+                        "description": .string(
+                            "Override the per-expression timeout in seconds (default 15). Raise for large hierarchies; the per-command read timeout is raised to match.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -68,6 +86,9 @@ public struct DebugViewHierarchyTool: Sendable {
         let platform = arguments.getString("platform") ?? "ios"
         let address = arguments.getString("address")
         let constraints = arguments.getBool("constraints")
+        let maxDepth = arguments.getInt("max_depth")
+        let classFilter = arguments.getString("class_filter")
+        let timeoutSeconds = arguments.getDouble("timeout")
 
         do {
             // Expression evaluation fails on crashed processes (ObjC runtime not loaded)
@@ -83,6 +104,9 @@ public struct DebugViewHierarchyTool: Sendable {
                 platform: platform,
                 address: address,
                 constraints: constraints,
+                maxDepth: maxDepth,
+                classFilter: classFilter,
+                timeoutSeconds: timeoutSeconds,
             )
 
             let message = "View hierarchy:\n\n\(result.output)"

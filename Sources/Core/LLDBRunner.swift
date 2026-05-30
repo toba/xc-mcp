@@ -163,14 +163,17 @@ public actor LLDBSession {
     /// `--timeout` caps the inferior call so a hung AppKit method returns control to LLDB; `--unwind-
     /// on-error true` and `--ignore-breakpoints true` keep a failed/timed-out evaluation from leaving
     /// the target parked mid-expression or tripping the user's breakpoints.
-    static var exprTimeoutOptions: String {
-        "--timeout \(expressionTimeoutMicroseconds) --unwind-on-error true --ignore-breakpoints true"
+    static var exprTimeoutOptions: String { exprTimeoutOptions(microseconds: expressionTimeoutMicroseconds) }
+
+    static func exprTimeoutOptions(microseconds: Int) -> String {
+        "--timeout \(microseconds) --unwind-on-error true --ignore-breakpoints true"
     }
 
     /// Builds an Objective-C `expr -O` (object-description) command with a bounded evaluation
     /// timeout. Options precede `--`, so the expression body is passed verbatim after it.
-    static func objcExprCommand(_ body: String) -> String {
-        "expr -l objc -O \(exprTimeoutOptions) -- \(body)"
+    static func objcExprCommand(_ body: String, timeoutMicroseconds: Int? = nil) -> String {
+        let opts = timeoutMicroseconds.map(exprTimeoutOptions(microseconds:)) ?? exprTimeoutOptions
+        return "expr -l objc -O \(opts) -- \(body)"
     }
 
     /// Lowers (or raises) the per-command response timeout for subsequent commands.
@@ -1109,10 +1112,17 @@ public struct LLDBRunner: Sendable {
         do {
             result = try await body(session)
         } catch {
-            // Resume even on failure so a transient eval error doesn't leave the app frozen.
+            // Resume even on failure so a transient eval error doesn't leave the app frozen. If the
+            // session got poisoned mid-body (e.g. an expression timeout in `viewHierarchy`),
+            // `sendCommandNoWait("continue")` will throw — fall back to SIGCONT so the user's app
+            // doesn't stay SIGSTOP'd until the lldb-rpc-server is reaped.
             if didInterrupt {
-                try? await session.sendCommandNoWait("continue")
-                await session.setProcessState(.running)
+                do {
+                    try await session.sendCommandNoWait("continue")
+                    await session.setProcessState(.running)
+                } catch {
+                    kill(pid, SIGCONT)
+                }
             }
             throw error
         }
@@ -1693,47 +1703,83 @@ public struct LLDBRunner: Sendable {
         platform: String,
         address: String?,
         constraints: Bool,
+        maxDepth: Int? = nil,
+        classFilter: String? = nil,
+        timeoutSeconds: Double? = nil,
     ) async throws(LLDBError) -> LLDBResult {
         // The recursiveDescription/_subtreeDescription expressions run via the expression evaluator,
         // which only works on a stopped process. A running target yields empty output otherwise, so
         // transparently interrupt → dump → resume.
+        let exprTimeoutUS = timeoutSeconds.map { max(1, Int($0 * 1_000_000)) }
+        // Raise the per-command read timeout if the caller wants to wait longer than the default 30s
+        // expression budget. Restored after the call so the shared session stays responsive.
+        let readTimeoutSeconds: TimeInterval? = timeoutSeconds.map { max($0 + 5, 30) }
+        let useBoundedTraversal = maxDepth != nil || classFilter != nil
+
         let (outputs, autoResumed) = try await withProcessStopped(pid: pid) {
             session throws(LLDBError) -> [String] in
+            // Raise the read timeout for the dump and restore it on the way out so the elevated
+            // window doesn't leak to unrelated commands on the shared session.
+            let previousReadTimeout: TimeInterval?
+            if let readTimeoutSeconds {
+                previousReadTimeout = LLDBSession.interactiveCommandTimeout
+                await session.setCommandTimeout(readTimeoutSeconds)
+            } else {
+                previousReadTimeout = nil
+            }
+
             var outputs: [String] = []
+            let rootExpr: String
+            let isMacOS = platform == "macos"
 
             if let address {
-                let output = try await session.sendCommand(
-                    LLDBSession.objcExprCommand("[(id)\(address) recursiveDescription]"),
-                )
-                outputs.append(output)
-
-                if constraints {
-                    let hOutput = try await session.sendCommand(
-                        LLDBSession.objcExprCommand("[(id)\(address) constraintsAffectingLayoutForAxis:0]"),
-                    )
-                    let vOutput = try await session.sendCommand(
-                        LLDBSession.objcExprCommand("[(id)\(address) constraintsAffectingLayoutForAxis:1]"),
-                    )
-                    outputs.append("Horizontal constraints:\n" + hOutput)
-                    outputs.append("Vertical constraints:\n" + vOutput)
-                }
-            } else if platform == "macos" {
+                rootExpr = "(id)\(address)"
+            } else if isMacOS {
                 // mainWindow is nil for a backgrounded or menu-bar app; fall back to the key window,
                 // then the first window, so the dump still resolves a content view.
-                let output = try await session.sendCommand(
-                    LLDBSession.objcExprCommand(
-                        "({ NSApplication *app = (NSApplication *)[NSApplication sharedApplication]; NSWindow *w = [app mainWindow]; if (!w) w = [app keyWindow]; if (!w) w = [[app windows] firstObject]; w ? [[w contentView] _subtreeDescription] : (id)@\"No window found (app has no main, key, or ordered windows).\"; })",
-                    ),
-                )
-                outputs.append(output)
+                rootExpr = "({ NSApplication *app = (NSApplication *)[NSApplication sharedApplication]; NSWindow *w = [app mainWindow]; if (!w) w = [app keyWindow]; if (!w) w = [[app windows] firstObject]; (id)(w ? [w contentView] : (id)nil); })"
             } else {
-                let output = try await session.sendCommand(
+                rootExpr = "(id)[[UIApplication sharedApplication] keyWindow]"
+            }
+
+            let dumpExpr: String
+            if useBoundedTraversal {
+                dumpExpr = Self.boundedTraversalExpr(
+                    rootExpr: rootExpr,
+                    maxDepth: maxDepth ?? Int.max,
+                    classFilter: classFilter,
+                    isMacOS: isMacOS,
+                )
+            } else if address != nil {
+                dumpExpr = "[\(rootExpr) recursiveDescription]"
+            } else if isMacOS {
+                dumpExpr = "({ id _r = \(rootExpr); _r ? [_r _subtreeDescription] : (id)@\"No window found (app has no main, key, or ordered windows).\"; })"
+            } else {
+                dumpExpr = "[\(rootExpr) recursiveDescription]"
+            }
+
+            let output = try await session.sendCommand(
+                LLDBSession.objcExprCommand(dumpExpr, timeoutMicroseconds: exprTimeoutUS),
+            )
+            outputs.append(output)
+
+            if constraints, let address {
+                let hOutput = try await session.sendCommand(
                     LLDBSession.objcExprCommand(
-                        "[[[UIApplication sharedApplication] keyWindow] recursiveDescription]",
+                        "[(id)\(address) constraintsAffectingLayoutForAxis:0]",
+                        timeoutMicroseconds: exprTimeoutUS,
                     ),
                 )
-                outputs.append(output)
+                let vOutput = try await session.sendCommand(
+                    LLDBSession.objcExprCommand(
+                        "[(id)\(address) constraintsAffectingLayoutForAxis:1]",
+                        timeoutMicroseconds: exprTimeoutUS,
+                    ),
+                )
+                outputs.append("Horizontal constraints:\n" + hOutput)
+                outputs.append("Vertical constraints:\n" + vOutput)
             }
+            if let previousReadTimeout { await session.setCommandTimeout(previousReadTimeout) }
             return outputs
         }
 
@@ -1743,6 +1789,30 @@ public struct LLDBRunner: Sendable {
             stdout: autoResumed ? joined + Self.autoResumeNote : joined,
             stderr: "",
         )
+    }
+
+    /// Builds a bounded stack-based traversal expression that walks an NSView/UIView tree and emits
+    /// one line per node with class, address, and frame. Avoids `_subtreeDescription`, which can
+    /// flood output on SwiftUI hierarchies and poison the LLDB session.
+    static func boundedTraversalExpr(
+        rootExpr: String,
+        maxDepth: Int,
+        classFilter: String?,
+        isMacOS: Bool,
+    ) -> String {
+        let viewType = isMacOS ? "NSView" : "UIView"
+        let rectFields = isMacOS ? "NSRect" : "CGRect"
+        let filterCheck: String
+        if let classFilter, !classFilter.isEmpty {
+            let escaped = classFilter.replacingOccurrences(of: "\"", with: "\\\"")
+            filterCheck = "if ([_cn rangeOfString:@\"\(escaped)\"].location == NSNotFound) { _skip = 1; }"
+        } else {
+            filterCheck = ""
+        }
+        let depthCap = maxDepth == Int.max ? "INT_MAX" : "\(maxDepth)"
+        return """
+        ({ id _root = \(rootExpr); if (!_root) { (id)@"No view found."; } else { NSMutableArray *_st = [NSMutableArray array]; NSMutableArray *_dp = [NSMutableArray array]; NSMutableString *_out = [NSMutableString string]; [_st addObject:_root]; [_dp addObject:@0]; int _max = \(depthCap); int _count = 0; while ([_st count] > 0 && _count < 20000) { \(viewType) *_v = (\(viewType) *)[_st lastObject]; int _d = [(NSNumber *)[_dp lastObject] intValue]; [_st removeLastObject]; [_dp removeLastObject]; NSString *_cn = NSStringFromClass([_v class]); int _skip = 0; \(filterCheck) if (!_skip) { for (int _i = 0; _i < _d; _i++) [_out appendString:@"  "]; \(rectFields) _f = [_v frame]; [_out appendFormat:@"<%@: %p> frame=(%.1f, %.1f, %.1f, %.1f)\\n", _cn, _v, (double)_f.origin.x, (double)_f.origin.y, (double)_f.size.width, (double)_f.size.height]; _count++; } if (_d < _max) { NSArray *_subs = [_v subviews]; for (NSInteger _i = (NSInteger)[_subs count] - 1; _i >= 0; _i--) { [_st addObject:[_subs objectAtIndex:_i]]; [_dp addObject:[NSNumber numberWithInt:_d + 1]]; } } } if (_count >= 20000) { [_out appendString:@"\\n(truncated at 20000 nodes — narrow with class_filter or max_depth)\\n"]; } (id)_out; } })
+        """
     }
 
     /// Toggles colored borders on all views in the key window of a running macOS app.
