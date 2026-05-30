@@ -1742,12 +1742,22 @@ public struct LLDBRunner: Sendable {
             }
 
             let dumpExpr: String
-            if useBoundedTraversal {
+            // For macOS bounded walks, stream per-node lines via libc `fwrite` into a host-readable
+            // `/tmp` file. This avoids two costs that wedge SwiftUI-heavy hierarchies past the
+            // expression timeout: (1) per-node `NSMutableString appendFormat:` dispatches inside the
+            // target, and (2) materializing the full result back across the LLDB IPC. The host reads
+            // the file from disk after `expr` returns just the byte count + path.
+            let bounded = useBoundedTraversal
+            let outputPath: String? = (bounded && isMacOS)
+                ? "/tmp/xcmcp-vh-\(pid).txt"
+                : nil
+            if bounded {
                 dumpExpr = Self.boundedTraversalExpr(
                     rootExpr: rootExpr,
                     maxDepth: maxDepth ?? Int.max,
                     classFilter: classFilter,
                     isMacOS: isMacOS,
+                    outputPath: outputPath,
                 )
             } else if address != nil {
                 dumpExpr = "[\(rootExpr) recursiveDescription]"
@@ -1757,10 +1767,38 @@ public struct LLDBRunner: Sendable {
                 dumpExpr = "[\(rootExpr) recursiveDescription]"
             }
 
-            let output = try await session.sendCommand(
-                LLDBSession.objcExprCommand(dumpExpr, timeoutMicroseconds: exprTimeoutUS),
-            )
-            outputs.append(output)
+            if let outputPath {
+                // Remove any stale dump so a failed expr can't surface a previous run's bytes.
+                try? FileManager.default.removeItem(atPath: outputPath)
+            }
+
+            // The bounded-traversal expression is ~2 KB on macOS. Sending it as a single line
+            // through LLDB's PTY (in raw mode) silently stalls — lldb receives the bytes but never
+            // begins evaluation, so the read times out without writing the output file. Workaround:
+            // write the `expr` command to a temp file and use `command source`, which lldb reads
+            // from disk. The PTY only carries the short `command source ...` line. (Short
+            // expressions still go via `sendCommand` directly to keep the existing fast path.)
+            let exprCmd = LLDBSession.objcExprCommand(dumpExpr, timeoutMicroseconds: exprTimeoutUS)
+            let output: String
+            if exprCmd.utf8.count > 512 {
+                let scriptPath = "/tmp/xcmcp-vh-cmd-\(pid).lldb"
+                try? exprCmd.write(toFile: scriptPath, atomically: true, encoding: .utf8)
+                defer { try? FileManager.default.removeItem(atPath: scriptPath) }
+                output = try await session.sendCommand("command source \"\(scriptPath)\"")
+            } else {
+                output = try await session.sendCommand(exprCmd)
+            }
+            if let outputPath {
+                // File-streamed path: expr returns a tiny status string; the real dump lives on disk.
+                let dump = (try? String(contentsOfFile: outputPath, encoding: .utf8)) ?? ""
+                if dump.isEmpty {
+                    outputs.append("(no nodes written; expr output: \(output))")
+                } else {
+                    outputs.append(dump)
+                }
+            } else {
+                outputs.append(output)
+            }
 
             if constraints, let address {
                 let hOutput = try await session.sendCommand(
@@ -1798,6 +1836,7 @@ public struct LLDBRunner: Sendable {
         maxDepth: Int,
         classFilter: String?,
         isMacOS: Bool,
+        outputPath: String? = nil,
     ) -> String {
         let viewType = isMacOS ? "NSView" : "UIView"
         let rectFields = isMacOS ? "NSRect" : "CGRect"
@@ -1809,8 +1848,33 @@ public struct LLDBRunner: Sendable {
             filterCheck = ""
         }
         let depthCap = maxDepth == Int.max ? "INT_MAX" : "\(maxDepth)"
+
+        // Recent LLDBs silently promote `-l objc` to Objective-C++ ("Expression evaluation in pure
+        // Objective-C not supported. Ran expression as 'Objective C++'"), and in that mode variadic
+        // method selectors (`appendFormat:`, `stringWithFormat:`) need Foundation in scope to parse
+        // beyond a single argument — otherwise compilation fails with "too many arguments to method
+        // call, expected 1, have N". `Darwin` brings `<stdio.h>` (FILE / fopen / fputs / fclose) so
+        // we can stream lines from the target to a host-readable file without going through the
+        // LLDB IPC return path.
+        let imports = isMacOS
+            ? "@import Darwin; @import Foundation; @import AppKit;"
+            : "@import Darwin; @import Foundation; @import UIKit;"
+
+        if let outputPath {
+            // Build each line as a small NSMutableString in the target, then write it through libc
+            // `fputs` into a host-readable file. This avoids two costs that wedge SwiftUI-heavy
+            // hierarchies past the expression timeout: (1) growing a single large NSMutableString
+            // accumulator across thousands of `appendFormat:` calls in the target; (2) materializing
+            // the full result back across the LLDB IPC. The host reads the file from disk after
+            // `expr` returns just a tiny status string.
+            let escapedPath = outputPath.replacingOccurrences(of: "\"", with: "\\\"")
+            return """
+            \(imports) ({ id _root = \(rootExpr); if (!_root) { (id)@"No view found."; } else { FILE *_fp = fopen("\(escapedPath)", "w"); if (!_fp) { (id)@"failed to open output file"; } else { NSMutableArray *_st = [NSMutableArray array]; NSMutableArray *_dp = [NSMutableArray array]; [_st addObject:_root]; [_dp addObject:@0]; int _max = \(depthCap); int _count = 0; while ([_st count] > 0 && _count < 20000) { \(viewType) *_v = (\(viewType) *)[_st lastObject]; int _d = [(NSNumber *)[_dp lastObject] intValue]; [_st removeLastObject]; [_dp removeLastObject]; NSString *_cn = NSStringFromClass([_v class]); int _skip = 0; \(filterCheck) if (!_skip) { \(rectFields) _f = [_v frame]; NSMutableString *_line = [NSMutableString string]; for (int _i = 0; _i < _d; _i++) [_line appendString:@"  "]; [_line appendFormat:@"<%@: %p> frame=(%.1f, %.1f, %.1f, %.1f)\\n", _cn, _v, (double)_f.origin.x, (double)_f.origin.y, (double)_f.size.width, (double)_f.size.height]; fputs([_line UTF8String], _fp); _count++; } if (_d < _max) { NSArray *_subs = [_v subviews]; for (NSInteger _i = (NSInteger)[_subs count] - 1; _i >= 0; _i--) { [_st addObject:[_subs objectAtIndex:_i]]; [_dp addObject:[NSNumber numberWithInt:_d + 1]]; } } } if (_count >= 20000) { fputs("\\n(truncated at 20000 nodes — narrow with class_filter or max_depth)\\n", _fp); } fclose(_fp); [NSString stringWithFormat:@"wrote %d nodes", _count]; } } })
+            """
+        }
+
         return """
-        ({ id _root = \(rootExpr); if (!_root) { (id)@"No view found."; } else { NSMutableArray *_st = [NSMutableArray array]; NSMutableArray *_dp = [NSMutableArray array]; NSMutableString *_out = [NSMutableString string]; [_st addObject:_root]; [_dp addObject:@0]; int _max = \(depthCap); int _count = 0; while ([_st count] > 0 && _count < 20000) { \(viewType) *_v = (\(viewType) *)[_st lastObject]; int _d = [(NSNumber *)[_dp lastObject] intValue]; [_st removeLastObject]; [_dp removeLastObject]; NSString *_cn = NSStringFromClass([_v class]); int _skip = 0; \(filterCheck) if (!_skip) { for (int _i = 0; _i < _d; _i++) [_out appendString:@"  "]; \(rectFields) _f = [_v frame]; [_out appendFormat:@"<%@: %p> frame=(%.1f, %.1f, %.1f, %.1f)\\n", _cn, _v, (double)_f.origin.x, (double)_f.origin.y, (double)_f.size.width, (double)_f.size.height]; _count++; } if (_d < _max) { NSArray *_subs = [_v subviews]; for (NSInteger _i = (NSInteger)[_subs count] - 1; _i >= 0; _i--) { [_st addObject:[_subs objectAtIndex:_i]]; [_dp addObject:[NSNumber numberWithInt:_d + 1]]; } } } if (_count >= 20000) { [_out appendString:@"\\n(truncated at 20000 nodes — narrow with class_filter or max_depth)\\n"]; } (id)_out; } })
+        \(imports) ({ id _root = \(rootExpr); if (!_root) { (id)@"No view found."; } else { NSMutableArray *_st = [NSMutableArray array]; NSMutableArray *_dp = [NSMutableArray array]; NSMutableString *_out = [NSMutableString string]; [_st addObject:_root]; [_dp addObject:@0]; int _max = \(depthCap); int _count = 0; while ([_st count] > 0 && _count < 20000) { \(viewType) *_v = (\(viewType) *)[_st lastObject]; int _d = [(NSNumber *)[_dp lastObject] intValue]; [_st removeLastObject]; [_dp removeLastObject]; NSString *_cn = NSStringFromClass([_v class]); int _skip = 0; \(filterCheck) if (!_skip) { for (int _i = 0; _i < _d; _i++) [_out appendString:@"  "]; \(rectFields) _f = [_v frame]; [_out appendFormat:@"<%@: %p> frame=(%.1f, %.1f, %.1f, %.1f)\\n", _cn, _v, (double)_f.origin.x, (double)_f.origin.y, (double)_f.size.width, (double)_f.size.height]; _count++; } if (_d < _max) { NSArray *_subs = [_v subviews]; for (NSInteger _i = (NSInteger)[_subs count] - 1; _i >= 0; _i--) { [_st addObject:[_subs objectAtIndex:_i]]; [_dp addObject:[NSNumber numberWithInt:_d + 1]]; } } } if (_count >= 20000) { [_out appendString:@"\\n(truncated at 20000 nodes — narrow with class_filter or max_depth)\\n"]; } (id)_out; } })
         """
     }
 
