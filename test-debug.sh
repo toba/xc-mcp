@@ -20,9 +20,23 @@ set -euo pipefail
 # Special PROJECT value `t57-fixture` scaffolds a tiny self-contained SwiftUI app
 # under /tmp so the t57-a7q reproducer doesn't depend on any external project
 # being in a buildable state.
+#
+# Special PROJECT value `lul-evz-fixture` scaffolds the same project shape but
+# overwrites the generated App.swift with a "non-trivial" host app: it opens
+# multiple NSWindows on launch, spawns background queues that DispatchQueue.main
+# .sync chatter against AppKit, and keeps the main runloop busy. The original
+# trivial SwiftUI app does NOT reproduce lul-evz — the auto-interrupt lands
+# cleanly. This busier app is meant to land the interrupt mid-syscall (the
+# Thesis-shape failure mode) so the subsequent `expr -l objc` against
+# [[NSApp windows] count] hangs without ever returning a (lldb) prompt.
 if [ "${1:-}" = "t57-fixture" ]; then
     PROJECT=".build/t57-fixture/T57Fixture/T57Fixture.xcodeproj"
     SCHEME="T57Fixture"
+    MODE="${2:-evaluate}"
+    TIMEOUT="${3:-240}"
+elif [ "${1:-}" = "lul-evz-fixture" ]; then
+    PROJECT=".build/lul-evz-fixture/LulEvzFixture/LulEvzFixture.xcodeproj"
+    SCHEME="LulEvzFixture"
     MODE="${2:-evaluate}"
     TIMEOUT="${3:-240}"
 else
@@ -52,7 +66,7 @@ ln -sf xc-mcp .build/debug/xc-debug
 # alongside the xc-debug tools in a single session. The LLDB code path is shared,
 # so this faithfully exercises the same runner the focused server uses.
 BINARY=".build/debug/xc-mcp"
-if [ "${1:-}" != "t57-fixture" ]; then
+if [ "${1:-}" != "t57-fixture" ] && [ "${1:-}" != "lul-evz-fixture" ]; then
     BINARY=".build/debug/xc-debug"
 fi
 if [ ! -x "$BINARY" ]; then
@@ -69,6 +83,13 @@ STDOUT_FILE=$(mktemp /tmp/mcp_stdout.XXXXXX)
 STDERR_FILE=$(mktemp /tmp/mcp_stderr.XXXXXX)
 
 cleanup() {
+    # Kill the inferior before tearing down the server so a fixture app (which
+    # `debug_continue` left running) doesn't keep leaking windows on the desktop
+    # after the harness exits. The MCP server only owns the LLDB session, not
+    # the inferior — once LLDB detaches/dies the app keeps going.
+    if [ -n "${PID:-}" ]; then
+        kill -9 "$PID" 2>/dev/null || true
+    fi
     exec 3>&- 2>/dev/null || true
     rm -f "$FIFO"
     kill "$SERVER_PID" 2>/dev/null || true
@@ -209,6 +230,69 @@ if [ "${1:-}" = "t57-fixture" ] && [ ! -d "$PROJECT" ]; then
     call_tool "scaffold_macos_project" \
         '{"project_name":"T57Fixture","path":"'"$FIXTURE_DIR"'","bundle_identifier":"com.xcmcp.t57","include_tests":false}' \
         60 || exit 1
+fi
+
+if [ "${1:-}" = "lul-evz-fixture" ]; then
+    FIXTURE_DIR=$(dirname "$(dirname "$PROJECT")")
+    mkdir -p "$FIXTURE_DIR"
+    if [ ! -d "$PROJECT" ]; then
+        echo "Scaffolding lul-evz-fixture project at $FIXTURE_DIR ..."
+        call_tool "scaffold_macos_project" \
+            '{"project_name":"LulEvzFixture","path":"'"$FIXTURE_DIR"'","bundle_identifier":"com.xcmcp.lulevz","include_tests":false}' \
+            60 || exit 1
+    fi
+
+    # (Re-)write the scaffold's trivial App.swift with a non-trivial host that
+    # opens many NSWindows, spawns background work that hammers main via
+    # DispatchQueue.main.sync, and keeps the main runloop in a busy state so
+    # an auto-interrupt lands mid-syscall.
+    APP_SWIFT="$FIXTURE_DIR/LulEvzFixture/LulEvzFixture/LulEvzFixtureApp.swift"
+    cat > "$APP_SWIFT" <<'SWIFT'
+import SwiftUI
+import AppKit
+
+@main
+struct LulEvzFixtureApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    var body: some Scene {
+        WindowGroup("Main") { ContentView() }
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    var extraWindows: [NSWindow] = []
+    var heartbeat: Timer?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Open several extra NSWindows so [[NSApp windows] count] has to walk
+        // a non-trivial list and the AppKit window list is live.
+        for i in 0..<6 {
+            let w = NSWindow(
+                contentRect: NSRect(x: 100 + i * 30, y: 100 + i * 30, width: 320, height: 200),
+                styleMask: [.titled, .closable, .resizable],
+                backing: .buffered, defer: false
+            )
+            w.title = "Extra \(i)"
+            w.contentView = NSHostingView(rootView: Text("Window \(i)"))
+            w.makeKeyAndOrderFront(nil)
+            extraWindows.append(w)
+        }
+
+        // Park the main thread inside a long sleep syscall so an injected
+        // AppKit expression (which must run on main) can't make progress.
+        // This mimics Thesis's startup, where the main thread sits in
+        // mach_msg2_trap during TCC preflight when auto-interrupt fires.
+        Thread.detachNewThread {
+            while true { Thread.sleep(forTimeInterval: 60) }
+        }
+        DispatchQueue.main.async {
+            // Long-blocking syscall on the main thread.
+            Thread.sleep(forTimeInterval: 3600)
+        }
+    }
+}
+SWIFT
+    echo "Wrote non-trivial App.swift to $APP_SWIFT"
 fi
 
 # ---- Build and launch ----

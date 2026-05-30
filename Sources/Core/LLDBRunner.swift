@@ -367,6 +367,29 @@ public actor LLDBSession {
         return output
     }
 
+    /// Sends a command speculatively, with a tight timeout and no session poisoning on failure.
+    ///
+    /// Used for cheap canary/warmup commands where a failure must not invalidate the shared
+    /// session — e.g. priming the JIT/runtime bridge before an AppKit expression so the user's
+    /// expr doesn't hit a cold-start hang (lul-evz). If the warmup itself wedges, the body's
+    /// expression will surface its own diagnostic; we don't compound by killing the session
+    /// preemptively.
+    ///
+    /// - Returns: The command output, or `nil` on timeout / write failure.
+    @discardableResult
+    func sendCommandSpeculative(
+        _ command: String,
+        timeout: TimeInterval,
+    ) async -> String? {
+        guard process.isRunning, !isPoisoned else { return nil }
+        await drainPendingOutput()
+        let commandData = Data((command + "\n").utf8)
+        do { try stdin.write(contentsOf: commandData) } catch { return nil }
+        let output = try? await readUntilPrompt(timeout: timeout, poisonOnFailure: false)
+        if let output { updateProcessState(from: output) }
+        return output
+    }
+
     /// Sends a command without waiting for the prompt to return.
     ///
     /// Used for commands like `continue` where LLDB won't show a prompt until the process stops
@@ -574,8 +597,25 @@ public actor LLDBSession {
                         let truncated = partial.count > maxChars
                             ? "...\(partial.suffix(maxChars))"
                             : partial
-                        detail =
-                            "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
+                        // Distinguish an expression-evaluator hang (LLDB received and echoed an
+                        // `expr` but never produced a follow-up prompt within the read window)
+                        // from a generic read timeout. Avoids the next agent re-chasing the
+                        // reader-leak path (t57-a7q) when the underlying issue is LLDB's own
+                        // expr pipeline wedging — typically ObjC/JIT runtime bridge resolution
+                        // on a freshly auto-interrupted process whose main thread is parked
+                        // mid-syscall (lul-evz).
+                        let trimmed = partial.trimmingCharacters(in: .whitespacesAndNewlines)
+                        let looksLikeExprHang = trimmed.hasPrefix("expr ")
+                            || trimmed.hasPrefix("expression ")
+                            || trimmed.contains("\nexpr ")
+                            || trimmed.contains("\nexpression ")
+                        if looksLikeExprHang {
+                            detail =
+                                "LLDB expression evaluator did not return within \(Int(effectiveTimeout))s. LLDB received the command but never produced a `(lldb)` prompt — typically the inferior is wedged in a syscall (e.g. TCC preflight) or the JIT is hung resolving runtime bridges against an auto-interrupted process. Try `process status` to see what the threads are doing; consider warming the session with a trivial `expr -- (int)0` before the AppKit-touching call. Partial output:\n\(truncated)"
+                        } else {
+                            detail =
+                                "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
+                        }
                     }
                     // Mark finished FIRST so the reader's next poll-tick exits, then wait for
                     // it (bounded) before resuming the continuation. This guarantees no leaked
@@ -667,10 +707,18 @@ public actor LLDBSession {
     /// stops. This method sends the command, then polls for the async stop notification (up to
     /// `timeout` ) and updates `processState` once the stop is confirmed.
     ///
-    /// - Parameter timeout: Maximum time to wait for the stop. Defaults to 5 seconds.
+    /// - Parameters:
+    ///   - timeout: Maximum time to wait for the stop. Defaults to 5 seconds.
+    ///   - requireExplicitStop: If `true`, throw rather than silently assume `.stopped` when the
+    ///     async stop notification fails to arrive within `timeout`. Callers that go on to issue
+    ///     expression evaluation against the interrupted process (the `withProcessStopped` path)
+    ///     opt in: sending `expr` against a still-running target wedges LLDB's expression
+    ///     evaluator with no `(lldb)` prompt produced — the lul-evz failure mode. Failing fast
+    ///     here surfaces a clean error before the wedge instead.
     /// - Returns: The combined output from the interrupt and stop notification.
     public func interruptProcess(
         timeout: Duration = .seconds(5),
+        requireExplicitStop: Bool = false,
     ) async throws(LLDBError) -> String {
         // Send the interrupt command — may return immediately with little output
         let initialOutput = try await sendCommand("process interrupt")
@@ -708,7 +756,24 @@ public actor LLDBSession {
             }
         }
 
-        // Timed out waiting for stop — set stopped anyway since interrupt was sent
+        // Timed out waiting for the async stop notification. The notification can lag the
+        // actual stop (LLDB's event queue is decoupled from the PTY), so before declaring
+        // failure verify via an explicit `process status` query. If LLDB confirms the process
+        // is stopped, we treat the interrupt as successful — the notification simply hasn't
+        // surfaced yet.
+        if requireExplicitStop {
+            let statusOutput = try await sendCommand("process status")
+            if let confirmed = Self.parseProcessState(from: statusOutput), confirmed.isStopped {
+                processState = confirmed
+                return initialOutput + "\n" + statusOutput
+            }
+            throw LLDBError.commandFailed(
+                "process interrupt did not stop the inferior within \(timeout) (no stop notification, and `process status` reported running) — the target may be wedged in an uninterruptable syscall. Follow-up `expr` would hang LLDB's expression evaluator. Retry, or detach and relaunch the target.",
+            )
+        }
+        // Soft fallback: assume stopped since the interrupt was sent. Kept for legacy callers
+        // that don't follow up with expression evaluation (e.g. view-borders toggles), where
+        // the worst case is a stale state guess rather than a wedged session.
         processState = .stopped(reason: "interrupt")
         return initialOutput
     }
@@ -1171,8 +1236,24 @@ public struct LLDBRunner: Sendable {
         var didInterrupt = false
 
         if case .running = await session.syncedProcessState() {
-            _ = try await session.interruptProcess()
+            // Strict interrupt: refuse to proceed if LLDB never confirms the stop. `body`
+            // typically issues `expr`, which silently wedges LLDB's evaluator against a
+            // still-running target — see lul-evz. Better to surface a structured error.
+            _ = try await session.interruptProcess(requireExplicitStop: true)
             didInterrupt = true
+
+            // JIT/runtime warmup. ObjC expression evaluation on a freshly-auto-interrupted
+            // process can hang during JIT runtime-bridge resolution, even though `--timeout`
+            // would otherwise bound the inferior call (lul-evz hypothesis). A trivial
+            // arithmetic expression has no inferior dispatch and no AppKit dependency, so it
+            // exercises LLDB's compiler/JIT pipeline without touching the wedge-prone path.
+            // Speculative + non-poisoning: a warmup failure must not invalidate the shared
+            // session — `body`'s own expression will surface its own diagnostic if the warmup
+            // missed something.
+            _ = await session.sendCommandSpeculative(
+                "expression \(LLDBSession.exprTimeoutOptions(microseconds: 1_000_000)) -- (int)0",
+                timeout: 5,
+            )
         }
 
         let result: T
