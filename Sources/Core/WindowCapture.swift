@@ -1,7 +1,7 @@
-import AppKit
-import CoreGraphics
-import Foundation
 import MCP
+import AppKit
+import Foundation
+import CoreGraphics
 
 /// Fast macOS window capture using CGWindowList + `screencapture`.
 ///
@@ -17,8 +17,8 @@ public enum WindowCapture {
 
     /// Finds the first on-screen window matching the given criteria.
     ///
-    /// At least one of the parameters must be non-nil. All non-nil criteria
-    /// must match (AND logic). Matching is case-insensitive substring.
+    /// At least one of the parameters must be non-nil. All non-nil criteria must match (AND logic).
+    /// Matching is case-insensitive substring.
     ///
     /// - Parameters:
     ///   - appName: Match against the window owner's application name.
@@ -31,11 +31,9 @@ public enum WindowCapture {
         bundleId: String? = nil,
         windowTitle: String? = nil,
     ) throws(MCPError) -> WindowInfo {
-        guard
-            let windowInfoList = CGWindowListCopyWindowInfo(
-                [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID,
-            ) as? [[String: Any]]
-        else {
+        guard let windowInfoList = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID,
+        ) as? [[String: Any]] else {
             throw .internalError(
                 "Failed to get window list. Ensure Screen Recording permission is granted in "
                     + "System Settings > Privacy & Security > Screen Recording.",
@@ -44,33 +42,30 @@ public enum WindowCapture {
 
         // Build PID → bundle ID cache when needed
         var bundleIDsByPID: [pid_t: String] = [:]
+
         if bundleId != nil {
             for app in NSWorkspace.shared.runningApplications {
-                if let id = app.bundleIdentifier {
-                    bundleIDsByPID[app.processIdentifier] = id
-                }
+                if let id = app.bundleIdentifier { bundleIDsByPID[app.processIdentifier] = id }
             }
         }
 
         for info in windowInfoList {
             guard let wid = info[kCGWindowNumber as String] as? CGWindowID else { continue }
+
             if let appName {
-                guard
-                    let name = info[kCGWindowOwnerName as String] as? String,
-                    name.localizedCaseInsensitiveContains(appName)
+                guard let name = info[kCGWindowOwnerName as String] as? String,
+                      name.localizedCaseInsensitiveContains(appName)
                 else { continue }
             }
             if let bundleId {
-                guard
-                    let pid = info[kCGWindowOwnerPID as String] as? pid_t,
-                    let id = bundleIDsByPID[pid],
-                    id.localizedCaseInsensitiveContains(bundleId)
+                guard let pid = info[kCGWindowOwnerPID as String] as? pid_t,
+                      let id = bundleIDsByPID[pid],
+                      id.localizedCaseInsensitiveContains(bundleId)
                 else { continue }
             }
             if let windowTitle {
-                guard
-                    let title = info[kCGWindowName as String] as? String,
-                    title.localizedCaseInsensitiveContains(windowTitle)
+                guard let title = info[kCGWindowName as String] as? String,
+                      title.localizedCaseInsensitiveContains(windowTitle)
                 else { continue }
             }
             return WindowInfo(
@@ -94,19 +89,19 @@ public enum WindowCapture {
     ///
     /// - Parameters:
     ///   - windowID: The CGWindowID to capture.
-    ///   - savePath: If provided, the PNG is written here and kept on disk.
-    ///     Otherwise a temp file is used and cleaned up.
+    ///   - savePath: If provided, the PNG is written here and kept on disk. Otherwise a temp file
+    ///     is used and cleaned up.
     /// - Returns: The raw PNG data.
     public static func capture(
         windowID: CGWindowID,
         savePath: String? = nil,
     ) async throws(MCPError) -> Data {
-        let outputPath =
-            savePath
-                ?? FileManager.default.temporaryDirectory
-                    .appendingPathComponent("xc-mcp-capture-\(windowID).png").path
+        let outputPath = savePath
+            ?? FileManager.default.temporaryDirectory
+            .appendingPathComponent("xc-mcp-capture-\(windowID).png").path
 
         let result: ProcessResult
+
         do {
             result = try await ProcessResult.run(
                 "/usr/sbin/screencapture",
@@ -123,17 +118,14 @@ public enum WindowCapture {
         }
 
         let pngData: Data
+
         do {
             pngData = try Data(contentsOf: URL(fileURLWithPath: outputPath))
         } catch {
-            throw .internalError(
-                "Failed to read screenshot file: \(error.localizedDescription)",
-            )
+            throw .internalError("Failed to read screenshot file: \(error.localizedDescription)")
         }
 
-        if savePath == nil {
-            try? FileManager.default.removeItem(atPath: outputPath)
-        }
+        if savePath == nil { try? FileManager.default.removeItem(atPath: outputPath) }
 
         return pngData
     }

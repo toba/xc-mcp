@@ -9,13 +9,11 @@ public struct XCStringsReader: Sendable {
     /// Get all keys sorted in Xcode's natural order.
     public func listKeys() -> [String] { XCStringsKeySorter.sort(file.strings.keys) }
 
-    /// Find existing keys whose normalized form matches the queried key's
-    /// normalized form. Surfaces visually-identical-but-Unicode-distinct
-    /// substitutions like APOSTROPHE U+0027 vs RIGHT SINGLE QUOTATION MARK
-    /// U+2019 (Xcode emits the latter in xcstrings keys like
-    /// "Record today's progress"). Normalization is NFKC plus folding of
-    /// curly quotes to their ASCII counterparts — pure NFKC does not unify
-    /// the two apostrophe codepoints.
+    /// Find existing keys whose normalized form matches the queried key's normalized form. Surfaces
+    /// visually-identical-but-Unicode-distinct substitutions like APOSTROPHE U+0027 vs RIGHT SINGLE
+    /// QUOTATION MARK U+2019 (Xcode emits the latter in xcstrings keys like "Record today's
+    /// progress"). Normalization is NFKC plus folding of curly quotes to their ASCII counterparts —
+    /// pure NFKC does not unify the two apostrophe codepoints.
     public func suggestions(for key: String) -> [String] {
         let target = Self.normalizeForSuggestions(key)
         let matches = file.strings.keys.filter { existing in
@@ -29,8 +27,8 @@ public struct XCStringsReader: Sendable {
         let curlyToAscii: [Character: Character] = [
             "\u{2019}": "'",  // RIGHT SINGLE QUOTATION MARK
             "\u{2018}": "'",  // LEFT SINGLE QUOTATION MARK
-            "\u{201C}": "\"", // LEFT DOUBLE QUOTATION MARK
-            "\u{201D}": "\"", // RIGHT DOUBLE QUOTATION MARK
+            "\u{201C}": "\"",  // LEFT DOUBLE QUOTATION MARK
+            "\u{201D}": "\"",  // RIGHT DOUBLE QUOTATION MARK
         ]
         folded = String(folded.map { curlyToAscii[$0] ?? $0 })
         return folded
@@ -48,14 +46,12 @@ public struct XCStringsReader: Sendable {
         return languages.sorted()
     }
 
-    /// Get untranslated keys for a specific language. Skips entries marked
-    /// `shouldTranslate: false` since those are intentionally not localized.
+    /// Get untranslated keys for a specific language. Skips entries marked `shouldTranslate: false`
+    /// since those are intentionally not localized.
     public func listUntranslated(for language: String) -> [String] {
         var untranslated: [String] = []
 
-        for (key, entry) in file.strings {
-            guard entry.requiresTranslation else { continue }
-
+        for (key, entry) in file.strings where entry.requiresTranslation {
             let isTranslated = entry.localizations?[language]?.stringUnit?.value != nil
                 || entry.localizations?[language]?.variations != nil
 
@@ -65,18 +61,22 @@ public struct XCStringsReader: Sendable {
         return XCStringsKeySorter.sort(untranslated)
     }
 
-    /// Detect untranslated entries with structured reasons across one or more
-    /// languages. Inspects state, empty values, and variation completeness —
-    /// unlike `listUntranslated(for:)` which only checks for presence.
-    /// Skips entries marked `shouldTranslate: false`.
+    /// Detect untranslated entries with structured reasons across one or more languages. Inspects
+    /// state, empty values, and variation completeness — unlike `listUntranslated(for:)` which only
+    /// checks for presence. Skips entries marked `shouldTranslate: false`.
     public func checkUntranslated(languages: [String]) -> [UntranslatedIssue] {
         var issues: [UntranslatedIssue] = []
         let sortedKeys = XCStringsKeySorter.sort(file.strings.keys)
 
         for key in sortedKeys {
             guard let entry = file.strings[key], entry.requiresTranslation else { continue }
+
             for language in languages {
-                issues.append(contentsOf: detectIssues(key: key, entry: entry, language: language))
+                issues.append(contentsOf: detectIssues(
+                    key: key,
+                    entry: entry,
+                    language: language
+                ))
             }
         }
         return issues
@@ -88,76 +88,98 @@ public struct XCStringsReader: Sendable {
         language: String,
     ) -> [UntranslatedIssue] {
         guard let localization = entry.localizations?[language] else {
-            return [UntranslatedIssue(
-                key: key, language: language,
-                reason: .missingLocalization, state: nil,
-            )]
+            return [
+                UntranslatedIssue(
+                    key: key, language: language,
+                    reason: .missingLocalization, state: nil,
+                )
+            ]
         }
 
         if let stringUnit = localization.stringUnit {
             if stringUnit.value.isEmpty {
-                return [UntranslatedIssue(
-                    key: key, language: language,
-                    reason: .emptyValue, state: stringUnit.state,
-                )]
+                return [
+                    UntranslatedIssue(
+                        key: key, language: language,
+                        reason: .emptyValue, state: stringUnit.state,
+                    )
+                ]
             }
-            if stringUnit.state != "translated" {
-                return [UntranslatedIssue(
-                    key: key, language: language,
-                    reason: .stateNotTranslated, state: stringUnit.state,
-                )]
-            }
-            return []
+            return stringUnit.state != "translated"
+                ? [
+                    UntranslatedIssue(
+                        key: key, language: language,
+                        reason: .stateNotTranslated, state: stringUnit.state,
+                    )
+                ]
+                : []
         }
 
         if let variations = localization.variations {
             let variationUnits = Self.collectVariationUnits(variations)
+
             if variationUnits.isEmpty {
-                return [UntranslatedIssue(
-                    key: key, language: language,
-                    reason: .missingVariationValues, state: nil,
-                )]
+                return [
+                    UntranslatedIssue(
+                        key: key, language: language,
+                        reason: .missingVariationValues, state: nil,
+                    )
+                ]
             }
             var variationIssues: [UntranslatedIssue] = []
+
             for unit in variationUnits {
                 guard let stringUnit = unit else {
                     variationIssues.append(UntranslatedIssue(
-                        key: key, language: language,
-                        reason: .missingVariationStringUnit, state: nil,
+                        key: key,
+                        language: language,
+                        reason: .missingVariationStringUnit,
+                        state: nil,
                     ))
                     continue
                 }
                 if stringUnit.value.isEmpty {
                     variationIssues.append(UntranslatedIssue(
-                        key: key, language: language,
-                        reason: .emptyVariationValue, state: stringUnit.state,
+                        key: key,
+                        language: language,
+                        reason: .emptyVariationValue,
+                        state: stringUnit.state,
                     ))
                 } else if stringUnit.state != "translated" {
                     variationIssues.append(UntranslatedIssue(
-                        key: key, language: language,
-                        reason: .variationStateNotTranslated, state: stringUnit.state,
+                        key: key,
+                        language: language,
+                        reason: .variationStateNotTranslated,
+                        state: stringUnit.state,
                     ))
                 }
             }
             return variationIssues
         }
 
-        return [UntranslatedIssue(
-            key: key, language: language,
-            reason: .missingStringUnit, state: nil,
-        )]
+        return [
+            UntranslatedIssue(
+                key: key, language: language,
+                reason: .missingStringUnit, state: nil,
+            )
+        ]
     }
 
     private static func collectVariationUnits(_ variations: Variations) -> [StringUnit?] {
         var units: [StringUnit?] = []
+
         if let plural = variations.plural {
-            for value in [plural.zero, plural.one, plural.two, plural.few, plural.many, plural.other] {
+            for value in [
+                plural.zero, plural.one, plural.two, plural.few, plural.many, plural.other,
+            ] {
                 guard let value else { continue }
                 units.append(value.stringUnit)
             }
         }
         if let device = variations.device {
-            for value in [device.iphone, device.ipad, device.mac, device.applewatch, device.appletv] {
+            for value in [
+                device.iphone, device.ipad, device.mac, device.applewatch, device.appletv,
+            ] {
                 guard let value else { continue }
                 units.append(value.stringUnit)
             }
@@ -252,9 +274,8 @@ public struct XCStringsReader: Sendable {
         return results
     }
 
-    /// Check coverage for a key. Non-translatable entries
-    /// (`shouldTranslate: false`) report 100% coverage with no missing
-    /// languages — they are intentionally untranslated.
+    /// Check coverage for a key. Non-translatable entries (`shouldTranslate: false`) report 100%
+    /// coverage with no missing languages — they are intentionally untranslated.
     public func checkCoverage(_ key: String) throws(XCStringsError) -> CoverageInfo {
         let allLanguages = listLanguages()
 

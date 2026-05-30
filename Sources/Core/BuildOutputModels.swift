@@ -99,11 +99,7 @@ public struct BuildError: Sendable {
     }
 }
 
-public enum WarningType: String, Sendable {
-    case compile
-    case runtime
-    case swiftui
-}
+public enum WarningType: String, Sendable { case compile, runtime, swiftui }
 
 public struct BuildWarning: Sendable {
     public let file: String?
@@ -161,7 +157,11 @@ public struct FileCoverage: Sendable {
     public let executableLines: Int
 
     public init(
-        path: String, name: String, lineCoverage: Double, coveredLines: Int, executableLines: Int,
+        path: String,
+        name: String,
+        lineCoverage: Double,
+        coveredLines: Int,
+        executableLines: Int,
     ) {
         self.path = path
         self.name = name
@@ -257,7 +257,10 @@ public struct TargetBuildInfo: Sendable {
     public let dependsOn: [String]
 
     public init(
-        name: String, duration: String? = nil, phases: [String] = [], dependsOn: [String] = [],
+        name: String,
+        duration: String? = nil,
+        phases: [String] = [],
+        dependsOn: [String] = [],
     ) {
         self.name = name
         self.duration = duration

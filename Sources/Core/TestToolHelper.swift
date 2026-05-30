@@ -4,11 +4,11 @@ import Subprocess
 
 /// Shared logic for test tools (test_sim, test_macos, test_device).
 ///
-/// Handles `only_testing` pre-validation, temporary result bundle lifecycle,
-/// `formatTestToolResult` invocation, and validation warning prepending.
+/// Handles `only_testing` pre-validation, temporary result bundle lifecycle, `formatTestToolResult`
+/// invocation, and validation warning prepending.
 public enum TestToolHelper {
-    /// Validates `only_testing` entries and returns updated test parameters
-    /// along with an optional warning about removed entries.
+    /// Validates `only_testing` entries and returns updated test parameters along with an optional
+    /// warning about removed entries.
     public static func validateTestParams(
         _ testParams: TestParameters,
         projectPath: String?,
@@ -20,9 +20,7 @@ public enum TestToolHelper {
         }
         let projectRoot = (workspacePath ?? projectPath)
             .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
-        guard let projectRoot else {
-            return (testParams, nil)
-        }
+        guard let projectRoot else { return (testParams, nil) }
 
         let validation = ErrorExtractor.validateOnlyTesting(
             onlyTesting,
@@ -31,6 +29,7 @@ public enum TestToolHelper {
             workspacePath: workspacePath,
             scheme: scheme,
         )
+
         if validation.valid.isEmpty {
             throw MCPError.invalidParams(
                 "All only_testing entries are invalid. " + (validation.warning ?? ""),
@@ -51,8 +50,8 @@ public enum TestToolHelper {
         return (testParams, nil)
     }
 
-    /// Resolves the output timeout from test parameters, applying the default
-    /// when not specified and disabling when explicitly set to zero.
+    /// Resolves the output timeout from test parameters, applying the default when not specified
+    /// and disabling when explicitly set to zero.
     public static func resolveOutputTimeout(
         _ testParams: TestParameters,
     ) -> Duration? {
@@ -77,8 +76,8 @@ public enum TestToolHelper {
     ///   - environment: Environment for the test run.
     ///   - context: Human-readable context for error messages (e.g. "on simulator 'X'").
     ///   - errorsOnly: When true, suppress warnings in output.
-    ///   - onProgress: Optional callback invoked with output lines as they arrive,
-    ///     so a cold `xcodebuild` build phase surfaces progress instead of looking hung.
+    ///   - onProgress: Optional callback invoked with output lines as they arrive, so a cold
+    ///     `xcodebuild` build phase surfaces progress instead of looking hung.
     public static func runAndFormat(
         runner: XcodebuildRunner,
         testParams: TestParameters,
@@ -147,8 +146,8 @@ public enum TestToolHelper {
 
             if let validationWarning {
                 toolResult = CallTool.Result(
-                    content: [.text(text: validationWarning, annotations: nil, _meta: nil)] +
-                        toolResult.content,
+                    content: [.text(text: validationWarning, annotations: nil, _meta: nil)]
+                        + toolResult.content,
                     isError: toolResult.isError,
                 )
             }
@@ -157,9 +156,7 @@ public enum TestToolHelper {
         } catch let error as XcodebuildError {
             let projectRoot = (workspacePath ?? projectPath)
                 .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
-            return error.formatPartialDiagnostics(
-                projectRoot: projectRoot, errorsOnly: errorsOnly,
-            )
+            return error.formatPartialDiagnostics(projectRoot: projectRoot, errorsOnly: errorsOnly)
         } catch {
             throw try error.asMCPError()
         }

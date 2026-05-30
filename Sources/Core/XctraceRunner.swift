@@ -6,9 +6,9 @@ public typealias XctraceResult = ProcessResult
 
 /// Wrapper for executing xctrace commands.
 ///
-/// `XctraceRunner` provides a Swift interface for invoking Apple's Instruments
-/// command-line tool (`xctrace`). It supports recording traces with templates,
-/// listing available templates/instruments/devices, and exporting trace data.
+/// `XctraceRunner` provides a Swift interface for invoking Apple's Instruments command-line tool
+/// (`xctrace`). It supports recording traces with templates, listing available
+/// templates/instruments/devices, and exporting trace data.
 ///
 /// ## Example
 ///
@@ -64,25 +64,17 @@ public struct XctraceRunner: Sendable {
     ) throws -> Process {
         var args = ["record", "--template", template, "--output", outputPath]
 
-        if let device {
-            args += ["--device", device]
-        }
+        if let device { args += ["--device", device] }
 
-        if let timeLimit {
-            args += ["--time-limit", timeLimit]
-        }
+        if let timeLimit { args += ["--time-limit", timeLimit] }
 
         if let launchPath {
             args += ["--launch", "--", launchPath]
         } else if let attachPID {
             args += ["--attach", attachPID]
-        } else if let attachName {
-            args += ["--attach", attachName]
-        }
+        } else if let attachName { args += ["--attach", attachName] }
 
-        if allProcesses {
-            args += ["--all-processes"]
-        }
+        if allProcesses { args += ["--all-processes"] }
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
@@ -119,11 +111,7 @@ public struct XctraceRunner: Sendable {
     ) async throws -> XctraceResult {
         var args = ["export", "--input", inputPath]
 
-        if let xpath {
-            args += ["--xpath", xpath]
-        } else if toc {
-            args += ["--toc"]
-        }
+        if let xpath { args += ["--xpath", xpath] } else if toc { args += ["--toc"] }
 
         return try await run(arguments: args)
     }

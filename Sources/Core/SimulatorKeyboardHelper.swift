@@ -3,10 +3,10 @@ import Foundation
 
 /// Sends keyboard shortcuts to the macOS Simulator app to toggle its keyboard state.
 ///
-/// The Simulator menu items "I/O > Keyboard > Toggle Software Keyboard" (`Cmd+K`) and
-/// "Connect Hardware Keyboard" (`Cmd+Shift+K`) are not exposed by `simctl`. This helper
-/// drives them via AppleScript: it focuses the Simulator window matching the booted
-/// device and sends the corresponding keystroke.
+/// The Simulator menu items "I/O > Keyboard > Toggle Software Keyboard" (`Cmd+K`) and "Connect
+/// Hardware Keyboard" (`Cmd+Shift+K`) are not exposed by `simctl`. This helper drives them via
+/// AppleScript: it focuses the Simulator window matching the booted device and sends the
+/// corresponding keystroke.
 public enum SimulatorKeyboardHelper {
     /// Which keyboard menu item to toggle.
     public enum Shortcut: Sendable {
@@ -23,8 +23,8 @@ public enum SimulatorKeyboardHelper {
         }
     }
 
-    /// Resolves the booted simulator's name from its UDID, focuses its Simulator window,
-    /// and sends the keystroke for the requested shortcut.
+    /// Resolves the booted simulator's name from its UDID, focuses its Simulator window, and sends
+    /// the keystroke for the requested shortcut.
     ///
     /// - Parameters:
     ///   - udid: UDID of a booted simulator.
@@ -35,7 +35,7 @@ public enum SimulatorKeyboardHelper {
     public static func sendShortcut(
         udid: String,
         shortcut: Shortcut,
-        simctlRunner: SimctlRunner = SimctlRunner(),
+        simctlRunner: SimctlRunner = .init(),
     ) async throws {
         let device = try await resolveBootedDevice(udid: udid, simctlRunner: simctlRunner)
         try await focusSimulatorWindow(deviceName: device.name)
@@ -47,6 +47,7 @@ public enum SimulatorKeyboardHelper {
         simctlRunner: SimctlRunner,
     ) async throws -> SimulatorDevice {
         let devices: [SimulatorDevice]
+
         do {
             devices = try await simctlRunner.listDevices()
         } catch {
@@ -66,23 +67,24 @@ public enum SimulatorKeyboardHelper {
     private static func focusSimulatorWindow(deviceName: String) async throws {
         let safeName = appleScriptEscape(deviceName)
         let script = """
-        tell application "System Events"
-          tell process "Simulator"
-            set frontmost to true
-            set matchingWindows to (every window whose (title is "\(safeName)" or title starts with "\(safeName) –" or title starts with "\(safeName) -"))
-            if (count of matchingWindows) is 0 then
-              return "NO_WINDOW"
-            end if
-            perform action "AXRaise" of (item 1 of matchingWindows)
-            return "OK"
-          end tell
-        end tell
-        """
+            tell application "System Events"
+              tell process "Simulator"
+                set frontmost to true
+                set matchingWindows to (every window whose (title is "\(safeName)" or title starts with "\(safeName) –" or title starts with "\(safeName) -"))
+                if (count of matchingWindows) is 0 then
+                  return "NO_WINDOW"
+                end if
+                perform action "AXRaise" of (item 1 of matchingWindows)
+                return "OK"
+              end tell
+            end tell
+            """
         let result = try await ProcessResult.run(
             "/usr/bin/osascript",
             arguments: ["-e", script],
             timeout: .seconds(5),
         )
+
         if !result.succeeded {
             throw MCPError.internalError(
                 "Failed to focus Simulator window: \(result.stderr.isEmpty ? result.stdout : result.stderr)",
@@ -97,17 +99,18 @@ public enum SimulatorKeyboardHelper {
 
     private static func sendKeystroke(shortcut: Shortcut) async throws {
         let script = """
-        tell application "System Events"
-          tell process "Simulator"
-            keystroke "k" using \(shortcut.modifiers)
-          end tell
-        end tell
-        """
+            tell application "System Events"
+              tell process "Simulator"
+                keystroke "k" using \(shortcut.modifiers)
+              end tell
+            end tell
+            """
         let result = try await ProcessResult.run(
             "/usr/bin/osascript",
             arguments: ["-e", script],
             timeout: .seconds(5),
         )
+
         if !result.succeeded {
             throw MCPError.internalError(
                 "Failed to send keystroke: \(result.stderr.isEmpty ? result.stdout : result.stderr)",

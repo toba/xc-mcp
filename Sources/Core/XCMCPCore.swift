@@ -1,7 +1,6 @@
-import Foundation
-
 // Re-export MCP for convenience
 @_exported import MCP
+import Foundation
 
 /// XCMCPCore - Shared utilities for Xcode MCP servers.
 ///

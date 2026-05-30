@@ -155,7 +155,8 @@ public enum CrashReportParser: Sendable {
     /// - Returns: A ``CrashSummary`` if parsing succeeds, `nil` otherwise.
     public static func parse(at path: String) -> CrashSummary? {
         guard let data = FileManager.default.contents(atPath: path),
-              let content = String(data: data, encoding: .utf8) else { return nil }
+            let content = String(data: data, encoding: .utf8)
+        else { return nil }
 
         // .ips files: JSON header on line 1, then the crash body as JSON
         guard let firstNewline = content.firstIndex(of: "\n") else { return nil }
@@ -174,7 +175,8 @@ public enum CrashReportParser: Sendable {
     /// Exposed for testing without needing a file on disk.
     public static func parseJSON(_ json: [String: Any]) -> CrashSummary {
         guard let data = try? JSONSerialization.data(withJSONObject: json),
-              let body = try? JSONDecoder().decode(CrashBody.self, from: data) else {
+              let body = try? JSONDecoder().decode(CrashBody.self, from: data)
+        else {
             return CrashSummary(
                 processName: nil, bundleID: nil, captureTime: nil,
                 exceptionType: nil, signal: nil, terminationNamespace: nil,
@@ -210,7 +212,8 @@ public enum CrashReportParser: Sendable {
     ) -> (threadIndex: Int?, frames: [StackFrame]) {
         guard let faultingThread = body.faultingThread,
               let threads = body.threads,
-              faultingThread < threads.count else { return (nil, []) }
+              faultingThread < threads.count
+        else { return (nil, []) }
 
         let thread = threads[faultingThread]
         guard let rawFrames = thread.frames else { return (faultingThread, []) }
@@ -279,7 +282,7 @@ public enum CrashReportParser: Sendable {
     ///     in the JSON header).
     ///   - bundleID: Optional bundle ID to filter by (matched against the JSON header line).
     ///   - minutes: Only include reports from the last N minutes. Defaults to 5.
-    ///   - Returns: An array of `(path, summary)` tuples, most recent first.
+    /// - Returns: An array of `(path, summary)` tuples, most recent first.
     public static func search(
         processName: String? = nil,
         bundleID: String? = nil,
@@ -299,7 +302,8 @@ public enum CrashReportParser: Sendable {
             // Filter by recency
             guard let attrs = try? fm.attributesOfItem(atPath: fullPath),
                   let modified = attrs[.modificationDate] as? Date,
-                  modified > cutoff else { continue }
+                  modified > cutoff
+            else { continue }
 
             // Quick filename pre-filter before parsing the full file
             if let processName,
@@ -312,7 +316,8 @@ public enum CrashReportParser: Sendable {
             // Filter by process name (from parsed JSON)
             if let processName,
                let proc = summary.processName,
-               !proc.localizedCaseInsensitiveContains(processName) {
+               !proc.localizedCaseInsensitiveContains(processName)
+            {
                 if !entry.localizedCaseInsensitiveContains(processName) { continue }
             }
 

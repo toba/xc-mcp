@@ -56,8 +56,8 @@ public actor XCStringsParser {
         try withReader { $0.listUntranslated(for: language) }
     }
 
-    /// Detect untranslated entries with structured reasons across one or more
-    /// languages. Inspects state, empty values, and variation completeness.
+    /// Detect untranslated entries with structured reasons across one or more languages. Inspects
+    /// state, empty values, and variation completeness.
     public func checkUntranslated(
         languages: [String]
     ) throws(XCStringsError) -> [UntranslatedIssue] {
@@ -91,10 +91,9 @@ public actor XCStringsParser {
         try withReader { $0.checkKey(key, language: language) }
     }
 
-    /// Find existing keys whose NFKC-normalized form matches the queried
-    /// key's NFKC form. Useful for surfacing "did you mean" hints when a
-    /// caller passes an APOSTROPHE U+0027 instead of the RIGHT SINGLE
-    /// QUOTATION MARK U+2019 that Xcode actually wrote.
+    /// Find existing keys whose NFKC-normalized form matches the queried key's NFKC form. Useful
+    /// for surfacing "did you mean" hints when a caller passes an APOSTROPHE U+0027 instead of the
+    /// RIGHT SINGLE QUOTATION MARK U+2019 that Xcode actually wrote.
     public func suggestions(for key: String) throws(XCStringsError) -> [String] {
         try withReader { $0.suggestions(for: key) }
     }
@@ -271,9 +270,7 @@ public actor XCStringsParser {
         entries: [BatchTranslationEntry]
     ) throws(XCStringsError) -> BatchWriteResult {
         let file = try load()
-        let (updated, result) = XCStringsWriter.updateTranslationsBatch(
-            in: file, entries: entries,
-        )
+        let (updated, result) = XCStringsWriter.updateTranslationsBatch(in: file, entries: entries)
         if result.succeeded > 0 { try save(updated) }
         return result
     }

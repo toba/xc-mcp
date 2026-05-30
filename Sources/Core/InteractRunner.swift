@@ -52,37 +52,36 @@ public enum InteractError: LocalizedError, Sendable, MCPErrorConvertible {
     public var errorDescription: String? {
         switch self {
             case .accessibilityNotTrusted:
-                return
-                    "Accessibility permission not granted. Go to System Settings > Privacy & Security > Accessibility and add this app."
-            case let .appNotFound(desc):
-                return "Application not found: \(desc)"
+
+                "Accessibility permission not granted. Go to System Settings > Privacy & Security > Accessibility and add this app."
+            case let .appNotFound(desc): "Application not found: \(desc)"
             case let .elementNotFound(id):
-                return
-                    "Element with ID \(id) not found in cache. Call interact_ui_tree first to refresh."
-            case let .elementNotFoundByQuery(query):
-                return "No element found matching: \(query)"
-            case let .actionFailed(msg):
-                return "Action failed: \(msg)"
-            case let .setValueFailed(msg):
-                return "Set value failed: \(msg)"
-            case let .menuItemNotFound(path):
-                return "Menu item not found: \(path)"
+
+                "Element with ID \(id) not found in cache. Call interact_ui_tree first to refresh."
+            case let .elementNotFoundByQuery(query): "No element found matching: \(query)"
+            case let .actionFailed(msg): "Action failed: \(msg)"
+            case let .setValueFailed(msg): "Set value failed: \(msg)"
+            case let .menuItemNotFound(path): "Menu item not found: \(path)"
             case let .invalidKeyName(name):
-                return
-                    "Invalid key name: \(name). Use names like 'return', 'tab', 'escape', 'space', 'a'-'z', '0'-'9', 'f1'-'f12', 'up', 'down', 'left', 'right', 'delete', 'home', 'end', 'pageup', 'pagedown'."
+
+                "Invalid key name: \(name). Use names like 'return', 'tab', 'escape', 'space', 'a'-'z', '0'-'9', 'f1'-'f12', 'up', 'down', 'left', 'right', 'delete', 'home', 'end', 'pageup', 'pagedown'."
             case let .noCache(pid):
-                return
-                    "No cached element tree for PID \(pid). Call interact_ui_tree first."
+
+                "No cached element tree for PID \(pid). Call interact_ui_tree first."
         }
     }
 
     public func toMCPError() -> MCPError {
         switch self {
-            case .accessibilityNotTrusted, .appNotFound, .elementNotFound,
-                 .elementNotFoundByQuery, .invalidKeyName, .noCache:
-                return MCPError.invalidParams(errorDescription ?? "Unknown interact error")
+            case .accessibilityNotTrusted,
+                 .appNotFound,
+                 .elementNotFound,
+                 .elementNotFoundByQuery,
+                 .invalidKeyName,
+                 .noCache:
+                MCPError.invalidParams(errorDescription ?? "Unknown interact error")
             case .actionFailed, .setValueFailed, .menuItemNotFound:
-                return MCPError.internalError(errorDescription ?? "Unknown interact error")
+                MCPError.internalError(errorDescription ?? "Unknown interact error")
         }
     }
 }
@@ -93,9 +92,7 @@ public enum InteractError: LocalizedError, Sendable, MCPErrorConvertible {
 public struct SendableAXUIElement: @unchecked Sendable {
     public let element: AXUIElement
 
-    public init(_ element: AXUIElement) {
-        self.element = element
-    }
+    public init(_ element: AXUIElement) { self.element = element }
 }
 
 /// Stateless runner providing Accessibility API operations.
@@ -104,14 +101,10 @@ public struct InteractRunner: Sendable {
 
     // MARK: - Accessibility Check
 
-    public func checkAccessibility() -> Bool {
-        AXIsProcessTrusted()
-    }
+    public func checkAccessibility() -> Bool { AXIsProcessTrusted() }
 
     public func ensureAccessibility() throws(InteractError) {
-        guard checkAccessibility() else {
-            throw InteractError.accessibilityNotTrusted
-        }
+        guard checkAccessibility() else { throw InteractError.accessibilityNotTrusted }
     }
 
     // MARK: - App Resolution
@@ -121,10 +114,9 @@ public struct InteractRunner: Sendable {
         bundleId: String? = nil,
         appName: String? = nil,
     ) throws(InteractError) -> pid_t {
-        if let pid {
-            return pid_t(pid)
-        }
+        if let pid { return pid_t(pid) }
         let apps = NSWorkspace.shared.runningApplications
+
         if let bundleId {
             guard let app = apps.first(where: { $0.bundleIdentifier == bundleId }) else {
                 throw InteractError.appNotFound("bundle_id=\(bundleId)")
@@ -132,24 +124,18 @@ public struct InteractRunner: Sendable {
             return app.processIdentifier
         }
         if let appName {
-            guard
-                let app = apps.first(where: {
-                    $0.localizedName?.localizedCaseInsensitiveContains(appName) == true
-                })
-            else {
-                throw InteractError.appNotFound("app_name=\(appName)")
-            }
+            guard let app = apps.first(where: {
+                $0.localizedName?.localizedCaseInsensitiveContains(appName) == true
+            }) else { throw InteractError.appNotFound("app_name=\(appName)") }
             return app.processIdentifier
         }
-        throw InteractError.appNotFound(
-            "Provide at least one of: pid, bundle_id, or app_name",
-        )
+        throw InteractError.appNotFound("Provide at least one of: pid, bundle_id, or app_name")
     }
 
     /// Resolves the target PID from MCP tool arguments.
-    public func resolveAppFromArguments(_ arguments: [String: Value]) throws(InteractError)
-        -> pid_t
-    {
+    public func resolveAppFromArguments(
+        _ arguments: [String: Value]
+    ) throws(InteractError) -> pid_t {
         let pid = arguments.getInt("pid")
         let bundleId = arguments.getString("bundle_id")
         let appName = arguments.getString("app_name")
@@ -173,11 +159,11 @@ public struct InteractRunner: Sendable {
         return results
     }
 
-    /// Polls the UI tree until two consecutive snapshots are structurally identical
-    /// (the UI has "settled" after a mutating action), or `timeout` elapses.
+    /// Polls the UI tree until two consecutive snapshots are structurally identical (the UI has
+    /// "settled" after a mutating action), or `timeout` elapses.
     ///
-    /// Returns the most recent tree. Throws `CancellationError` if the task is cancelled
-    /// mid-poll so the MCP layer can skip the response per the cancellation spec.
+    /// Returns the most recent tree. Throws `CancellationError` if the task is cancelled mid-poll
+    /// so the MCP layer can skip the response per the cancellation spec.
     public func settledUITree(
         pid: pid_t,
         maxDepth: Int = 3,
@@ -187,13 +173,12 @@ public struct InteractRunner: Sendable {
         var latest = try getUITree(pid: pid, maxDepth: maxDepth)
         var latestFingerprint = Self.fingerprint(latest.lazy.map(\.0))
         let deadline = ContinuousClock.now + timeout
+
         while ContinuousClock.now < deadline {
             try await Task.sleep(for: pollInterval)
             let current = try getUITree(pid: pid, maxDepth: maxDepth)
             let currentFingerprint = Self.fingerprint(current.lazy.map(\.0))
-            if currentFingerprint == latestFingerprint {
-                return current
-            }
+            if currentFingerprint == latestFingerprint { return current }
             latest = current
             latestFingerprint = currentFingerprint
         }
@@ -217,14 +202,13 @@ public struct InteractRunner: Sendable {
 
         // Get children before appending so we can set childCount
         var children: [AXUIElement] = []
+
         if depth < maxDepth {
             var childrenRef: CFTypeRef?
             let err = AXUIElementCopyAttributeValue(
                 element, kAXChildrenAttribute as CFString, &childrenRef,
             )
-            if err == .success, let cfArray = childrenRef as? [AXUIElement] {
-                children = cfArray
-            }
+            if err == .success, let cfArray = childrenRef as? [AXUIElement] { children = cfArray }
         }
 
         let elementWithChildren = InteractElement(
@@ -254,9 +238,11 @@ public struct InteractRunner: Sendable {
 
     // MARK: - Attribute Reading
 
-    public func getAttributes(from element: AXUIElement, id: Int = 0, depth: Int = 0)
-        -> InteractElement
-    {
+    public func getAttributes(
+        from element: AXUIElement,
+        id: Int = 0,
+        depth: Int = 0
+    ) -> InteractElement {
         let role = getStringAttribute(element, kAXRoleAttribute)
         let subrole = getStringAttribute(element, kAXSubroleAttribute)
         let title = getStringAttribute(element, kAXTitleAttribute)
@@ -269,47 +255,53 @@ public struct InteractRunner: Sendable {
 
         var position: CGPoint?
         var positionRef: CFTypeRef?
-        if AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &positionRef)
+
+        if AXUIElementCopyAttributeValue(
+            element,
+            kAXPositionAttribute as CFString,
+            &positionRef
+        )
             == .success
         {
             var point = CGPoint.zero
             // swiftlint:disable:next force_cast
-            if AXValueGetValue(positionRef as! AXValue, .cgPoint, &point) {
-                position = point
-            }
+            if AXValueGetValue(positionRef as! AXValue, .cgPoint, &point) { position = point }
         }
 
         var size: CGSize?
         var sizeRef: CFTypeRef?
-        if AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &sizeRef)
+
+        if AXUIElementCopyAttributeValue(
+            element,
+            kAXSizeAttribute as CFString,
+            &sizeRef
+        )
             == .success
         {
             var sz = CGSize.zero
             // swiftlint:disable:next force_cast
-            if AXValueGetValue(sizeRef as! AXValue, .cgSize, &sz) {
-                size = sz
-            }
+            if AXValueGetValue(sizeRef as! AXValue, .cgSize, &sz) { size = sz }
         }
 
         var actions: [String] = []
         var actionsRef: CFArray?
         if AXUIElementCopyActionNames(element, &actionsRef) == .success,
-           let actionNames = actionsRef as? [String]
-        {
-            actions = actionNames
-        }
+           let actionNames = actionsRef as? [String] { actions = actionNames }
 
         var childCount = 0
         var childrenRef: CFTypeRef?
-        if AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenRef)
+
+        if AXUIElementCopyAttributeValue(
+            element,
+            kAXChildrenAttribute as CFString,
+            &childrenRef
+        )
             == .success
         {
-            if let arr = childrenRef as? [AXUIElement] {
-                childCount = arr.count
-            }
+            if let arr = childrenRef as? [AXUIElement] { childCount = arr.count }
         }
 
-        return InteractElement(
+        return .init(
             id: id,
             role: role,
             subrole: subrole,
@@ -327,9 +319,11 @@ public struct InteractRunner: Sendable {
         )
     }
 
-    private func getAttribute<T>(_ element: AXUIElement, _ attribute: String, as _: T.Type = T.self)
-        -> T?
-    {
+    private func getAttribute<T>(
+        _ element: AXUIElement,
+        _ attribute: String,
+        as _: T.Type = T.self
+    ) -> T? {
         var ref: CFTypeRef?
         let err = AXUIElementCopyAttributeValue(element, attribute as CFString, &ref)
         guard err == .success, let value = ref else { return nil }
@@ -356,9 +350,7 @@ public struct InteractRunner: Sendable {
     public func performAction(_ action: String, on element: AXUIElement) throws(InteractError) {
         let err = AXUIElementPerformAction(element, action as CFString)
         guard err == .success else {
-            throw InteractError.actionFailed(
-                "\(action) failed with error code \(err.rawValue)",
-            )
+            throw InteractError.actionFailed("\(action) failed with error code \(err.rawValue)")
         }
     }
 
@@ -396,9 +388,10 @@ public struct InteractRunner: Sendable {
         let menuBarElement = menuBar as! AXUIElement
 
         var currentElement: AXUIElement = menuBarElement
+
         for (index, itemName) in menuPath.enumerated() {
             guard let child = findChildByTitle(currentElement, title: itemName) else {
-                let traversed = menuPath[0 ..< index].joined(separator: " > ")
+                let traversed = menuPath[0..<index].joined(separator: " > ")
                 throw InteractError.menuItemNotFound(
                     "'\(itemName)' not found" + (traversed.isEmpty ? "" : " after \(traversed)"),
                 )
@@ -411,11 +404,14 @@ public struct InteractRunner: Sendable {
                 Thread.sleep(forTimeInterval: 0.1)
                 // Navigate into the opened submenu's children
                 var submenuRef: CFTypeRef?
+
                 if AXUIElementCopyAttributeValue(
-                    child, kAXChildrenAttribute as CFString, &submenuRef,
+                    child,
+                    kAXChildrenAttribute as CFString,
+                    &submenuRef,
                 ) == .success,
-                    let submenuChildren = submenuRef as? [AXUIElement],
-                    let submenu = submenuChildren.first
+                   let submenuChildren = submenuRef as? [AXUIElement],
+                   let submenu = submenuChildren.first
                 {
                     currentElement = submenu
                 } else {
@@ -430,18 +426,18 @@ public struct InteractRunner: Sendable {
 
     private func findChildByTitle(_ element: AXUIElement, title: String) -> AXUIElement? {
         var childrenRef: CFTypeRef?
-        guard
-            AXUIElementCopyAttributeValue(element, kAXChildrenAttribute as CFString, &childrenRef)
+        guard AXUIElementCopyAttributeValue(
+            element,
+            kAXChildrenAttribute as CFString,
+            &childrenRef
+        )
             == .success,
-            let children = childrenRef as? [AXUIElement]
+              let children = childrenRef as? [AXUIElement]
         else { return nil }
 
         for child in children {
             if let childTitle = getStringAttribute(child, kAXTitleAttribute),
-               childTitle.localizedCaseInsensitiveCompare(title) == .orderedSame
-            {
-                return child
-            }
+               childTitle.localizedCaseInsensitiveCompare(title) == .orderedSame { return child }
         }
         return nil
     }
@@ -454,6 +450,7 @@ public struct InteractRunner: Sendable {
         }
 
         var flags: CGEventFlags = []
+
         for mod in modifiers {
             switch mod.lowercased() {
                 case "command", "cmd": flags.insert(.maskCommand)
@@ -467,9 +464,7 @@ public struct InteractRunner: Sendable {
 
         guard let keyDown = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true),
               let keyUp = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false)
-        else {
-            throw InteractError.actionFailed("Failed to create key events")
-        }
+        else { throw InteractError.actionFailed("Failed to create key events") }
 
         keyDown.flags = flags
         keyUp.flags = flags
@@ -497,8 +492,7 @@ public struct InteractRunner: Sendable {
                 return false
             }
             if let identifier,
-               element.identifier?.localizedCaseInsensitiveContains(identifier) != true
-            {
+               element.identifier?.localizedCaseInsensitiveContains(identifier) != true {
                 return false
             }
             if let value, element.value?.localizedCaseInsensitiveContains(value) != true {

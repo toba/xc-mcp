@@ -3,8 +3,8 @@ import MCP
 
 /// Protocol for errors that can be converted to MCPError for tool responses.
 ///
-/// Implement this protocol on domain-specific error types to provide semantic
-/// mapping to appropriate MCP error types (invalidParams vs internalError).
+/// Implement this protocol on domain-specific error types to provide semantic mapping to
+/// appropriate MCP error types (invalidParams vs internalError).
 public protocol MCPErrorConvertible: Swift.Error {
     /// Converts this error to an appropriate MCPError.
     func toMCPError() -> MCPError
@@ -13,31 +13,22 @@ public protocol MCPErrorConvertible: Swift.Error {
 extension Swift.Error {
     /// Converts any error to an MCPError, **rethrowing `CancellationError`**.
     ///
-    /// - If the error is a `CancellationError`, rethrows it unchanged so the
-    ///   MCP SDK's request handler can detect it and skip sending a response
-    ///   per the [cancellation spec](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation).
-    ///   Sending any response (including an error) for a cancelled request is
-    ///   a protocol violation that Claude Code treats as fatal and reacts to
-    ///   by tearing the stdio pipe down — the exact disconnect symptom in
-    ///   `0xp-xz6` / `ive-jzc`.
+    /// - If the error is a `CancellationError`, rethrows it unchanged so the MCP SDK's request
+    ///   handler can detect it and skip sending a response per the
+    ///   [cancellation spec](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation).
+    ///   Sending any response (including an error) for a cancelled request is a protocol violation
+    ///   that Claude Code treats as fatal and reacts to by tearing the stdio pipe down — the exact
+    ///   disconnect symptom in `0xp-xz6` / `ive-jzc`.
     /// - If the error is already an MCPError, returns it unchanged.
     /// - If the error conforms to MCPErrorConvertible, uses `toMCPError()`.
-    /// - Otherwise, wraps the error message in `MCPError.internalError`,
-    ///   with a backtrace appended on macOS 26+.
+    /// - Otherwise, wraps the error message in `MCPError.internalError`, with a backtrace appended
+    ///   on macOS 26+.
     public func asMCPError() throws -> MCPError {
-        if self is CancellationError {
-            throw self
-        }
-        if let mcpError = self as? MCPError {
-            return mcpError
-        }
-        if let convertible = self as? MCPErrorConvertible {
-            return convertible.toMCPError()
-        }
+        if self is CancellationError { throw self }
+        if let mcpError = self as? MCPError { return mcpError }
+        if let convertible = self as? MCPErrorConvertible { return convertible.toMCPError() }
         var message = String(describing: self)
-        if let backtrace = Self.captureBacktrace() {
-            message += "\n\nBacktrace:\n\(backtrace)"
-        }
+        if let backtrace = Self.captureBacktrace() { message += "\n\nBacktrace:\n\(backtrace)" }
         return MCPError.internalError(message)
     }
 

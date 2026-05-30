@@ -2,8 +2,8 @@ import Foundation
 
 /// Retrieves hardware metadata for the current machine via sysctl.
 ///
-/// Used to populate xcbaseline Info.plist run-destination entries
-/// so Xcode associates baselines with the correct hardware.
+/// Used to populate xcbaseline Info.plist run-destination entries so Xcode associates baselines
+/// with the correct hardware.
 public enum MachineMetadata {
     public struct Info: Sendable {
         public let cpuBrandString: String
@@ -13,7 +13,7 @@ public enum MachineMetadata {
     }
 
     public static func current() -> Info {
-        Info(
+        .init(
             cpuBrandString: sysctlString("machdep.cpu.brand_string") ?? "Unknown",
             coreCount: sysctlInt("hw.ncpu") ?? 0,
             modelCode: sysctlString("hw.model") ?? "Unknown",
@@ -28,8 +28,7 @@ public enum MachineMetadata {
         guard sysctlbyname(name, &buffer, &size, nil, 0) == 0 else { return nil }
         // Truncate at null terminator before decoding
         let length = buffer.firstIndex(of: 0) ?? size
-        return String(decoding: buffer[..<length],
-                      as: UTF8.self) // sm:ignore useFailableStringInit
+        return String(decoding: buffer[..<length], as: UTF8.self)  // sm:ignore useFailableStringInit
     }
 
     private static func sysctlInt(_ name: String) -> Int? {

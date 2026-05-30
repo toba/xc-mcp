@@ -4,9 +4,7 @@ import Foundation
 public struct XCStringsFileHandler: Sendable {
     private let path: String
 
-    public init(path: String) {
-        self.path = path
-    }
+    public init(path: String) { self.path = path }
 
     /// Load xcstrings file from disk
     public func load() throws(XCStringsError) -> XCStringsFile {
@@ -16,6 +14,7 @@ public struct XCStringsFileHandler: Sendable {
         }
 
         let data: Data
+
         do {
             data = try Data(contentsOf: url)
         } catch {
@@ -36,6 +35,7 @@ public struct XCStringsFileHandler: Sendable {
         let url = URL(fileURLWithPath: path)
 
         let data: Data
+
         do {
             data = try XCStringsFileEncoder.encode(file)
         } catch {
@@ -63,6 +63,7 @@ public struct XCStringsFileHandler: Sendable {
 
         let file = XCStringsFile(sourceLanguage: sourceLanguage)
         let data: Data
+
         do {
             data = try XCStringsFileEncoder.encode(file)
         } catch {

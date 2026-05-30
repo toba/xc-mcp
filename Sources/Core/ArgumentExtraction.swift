@@ -59,7 +59,7 @@ extension [String: Value] {
     /// - Parameters:
     ///   - key: The argument key to look up.
     ///   - defaultValue: The value to return if the key is missing. Defaults to false.
-    ///   - Returns: The boolean value if present, or the default value.
+    /// - Returns: The boolean value if present, or the default value.
     public func getBool(_ key: String, default defaultValue: Bool = false) -> Bool {
         if case let .bool(value) = self[key] { return value }
         return defaultValue
@@ -283,15 +283,11 @@ extension [String: Value] {
             "skip_testing": .object([
                 "type": .string("array"),
                 "items": .object(["type": .string("string")]),
-                "description": .string(
-                    "Test identifiers to skip. Same format as only_testing.",
-                ),
+                "description": .string("Test identifiers to skip. Same format as only_testing."),
             ]),
             "enable_code_coverage": .object([
                 "type": .string("boolean"),
-                "description": .string(
-                    "Enable code coverage collection. Defaults to false.",
-                ),
+                "description": .string("Enable code coverage collection. Defaults to false."),
             ]),
             "result_bundle_path": .object([
                 "type": .string("string"),
@@ -335,9 +331,7 @@ extension [String: Value] {
            let pid = await MainActor.run(body: { PIDResolver.findPID(forBundleID: bundleId) }) {
             return pid
         }
-        throw .invalidParams(
-            "Either pid or bundle_id (of a running app) is required",
-        )
+        throw .invalidParams("Either pid or bundle_id (of a running app) is required")
     }
 
     /// Resolves a target PID from arguments, checking `pid` first, then falling back to `bundle_id`
@@ -354,9 +348,7 @@ extension [String: Value] {
         }
 
         guard let targetPID = pid else {
-            throw .invalidParams(
-                "Either pid or bundle_id (with active session) is required",
-            )
+            throw .invalidParams("Either pid or bundle_id (with active session) is required")
         }
         return targetPID
     }
@@ -376,7 +368,8 @@ extension [String: Value] {
         return try entriesArray.compactMap { entryValue -> BatchTranslationEntry? in
             guard case let .object(entry) = entryValue,
                   case let .string(key) = entry["key"],
-                  case let .object(translationsObj) = entry["translations"] else {
+                  case let .object(translationsObj) = entry["translations"]
+            else {
                 throw MCPError.invalidParams(
                     "Each entry must have a 'key' string and 'translations' object",
                 )

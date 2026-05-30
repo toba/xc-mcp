@@ -2,8 +2,8 @@ import Foundation
 
 /// Parses macOS `sample` command output into structured, agent-friendly summaries.
 ///
-/// Extracts call graph trees, filters idle/waiting frames, aggregates by function,
-/// and produces sorted summaries of heaviest call paths.
+/// Extracts call graph trees, filters idle/waiting frames, aggregates by function, and produces
+/// sorted summaries of heaviest call paths.
 public enum SampleOutputParser {
     // MARK: - Public API
 
@@ -28,11 +28,10 @@ public enum SampleOutputParser {
 
         // Filter threads
         let selectedThreads: [ThreadSample]
+
         switch thread {
-            case "main":
-                selectedThreads = threads.filter(\.isMainThread)
-            case "all":
-                selectedThreads = threads
+            case "main": selectedThreads = threads.filter(\.isMainThread)
+            case "all": selectedThreads = threads
             default:
                 selectedThreads = threads.filter {
                     $0.name.localizedCaseInsensitiveContains(thread)
@@ -53,6 +52,7 @@ public enum SampleOutputParser {
 
         // Per-thread summary
         result += "\n## Thread Summary\n\n"
+
         for t in threads {
             let status = isThreadIdle(t) ? "idle" : "active"
             result += "  \(t.name): \(t.totalSamples) samples (\(status))\n"
@@ -60,9 +60,7 @@ public enum SampleOutputParser {
 
         // Heaviest functions (from leaf frames)
         let allLeaves = selectedThreads.flatMap { collectLeafFrames($0.root) }
-        let aggregated = aggregateFrames(
-            allLeaves, filterApp: filterApp, appBinary: appBinary,
-        )
+        let aggregated = aggregateFrames(allLeaves, filterApp: filterApp, appBinary: appBinary)
         let topFunctions = Array(aggregated.prefix(topN))
 
         if !topFunctions.isEmpty {
@@ -79,9 +77,7 @@ public enum SampleOutputParser {
 
         if !topPaths.isEmpty {
             result += "\n## Heaviest Call Paths\n\n"
-            for path in topPaths {
-                result += "  \(path.samples) samples: \(path.path)\n"
-            }
+            for path in topPaths { result += "  \(path.samples) samples: \(path.path)\n" }
         }
 
         return result
@@ -134,10 +130,11 @@ public enum SampleOutputParser {
             return sections
         }
 
-        sections.header = String(raw[raw.startIndex ..< callGraphRange.lowerBound])
+        sections.header = String(raw[raw.startIndex..<callGraphRange.lowerBound])
 
         let afterCallGraph = raw[callGraphRange.lowerBound...]
         let endOfCallGraph: String.Index
+
         if let sortRange = afterCallGraph.range(of: sortByMarker) {
             endOfCallGraph = sortRange.lowerBound
         } else if let binaryRange = afterCallGraph.range(of: binaryImagesMarker) {
@@ -146,7 +143,7 @@ public enum SampleOutputParser {
             endOfCallGraph = raw.endIndex
         }
 
-        sections.callGraph = String(raw[callGraphRange.lowerBound ..< endOfCallGraph])
+        sections.callGraph = String(raw[callGraphRange.lowerBound..<endOfCallGraph])
 
         if let binaryRange = raw.range(of: binaryImagesMarker) {
             sections.binaryImages = String(raw[binaryRange.lowerBound...])
@@ -169,19 +166,17 @@ public enum SampleOutputParser {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty { continue }
 
-            // Thread header: "    1000 Thread_100   DispatchQueue_1: ..."
+            // Thread header: " 1000 Thread_100 DispatchQueue_1: ..."
             if let match = trimmed.wholeMatch(of: /^(\d+)\s+(Thread_\S+.*)$/) {
                 if !currentThreadHeader.isEmpty {
                     let nodes = buildTree(from: currentFrames)
-                    threads.append(
-                        ThreadSample(
-                            name: currentThreadHeader,
-                            totalSamples: currentThreadSamples,
-                            isMainThread: currentThreadHeader.contains("main-thread")
-                                || currentThreadHeader.contains("main thread"),
-                            root: nodes,
-                        ),
-                    )
+                    threads.append(ThreadSample(
+                        name: currentThreadHeader,
+                        totalSamples: currentThreadSamples,
+                        isMainThread: currentThreadHeader.contains("main-thread")
+                            || currentThreadHeader.contains("main thread"),
+                        root: nodes,
+                    ))
                 }
                 currentThreadSamples = Int(match.1) ?? 0
                 currentThreadHeader = String(match.2)
@@ -191,6 +186,7 @@ public enum SampleOutputParser {
 
             // Frame line
             let depth = countPlusDepth(line)
+
             if let parsed = parseFrameLine(line) {
                 currentFrames.append(
                     (
@@ -206,15 +202,13 @@ public enum SampleOutputParser {
         // Save last thread
         if !currentThreadHeader.isEmpty {
             let nodes = buildTree(from: currentFrames)
-            threads.append(
-                ThreadSample(
-                    name: currentThreadHeader,
-                    totalSamples: currentThreadSamples,
-                    isMainThread: currentThreadHeader.contains("main-thread")
-                        || currentThreadHeader.contains("main thread"),
-                    root: nodes,
-                ),
-            )
+            threads.append(ThreadSample(
+                name: currentThreadHeader,
+                totalSamples: currentThreadSamples,
+                isMainThread: currentThreadHeader.contains("main-thread")
+                    || currentThreadHeader.contains("main thread"),
+                root: nodes,
+            ))
         }
 
         return threads
@@ -222,26 +216,28 @@ public enum SampleOutputParser {
 
     /// Determines nesting depth from indentation.
     ///
-    /// In `sample` output, each frame line has one `+` and the depth is indicated
-    /// by the column position of the first digit (the sample count). Each depth
-    /// level adds 2 characters of indentation after the `+`.
+    /// In `sample` output, each frame line has one `+` and the depth is indicated by the column
+    /// position of the first digit (the sample count). Each depth level adds 2 characters of
+    /// indentation after the `+`.
     static func countPlusDepth(_ line: String) -> Int {
         // Find the column of the first digit character
         var col = 0
+
         for ch in line {
             if ch.isNumber { break }
             col += 1
         }
-        // Depth 0 = no +; depth 1 starts around col 6; each level adds 2
-        // Normalize: subtract the base offset and divide by 2
+        // Depth 0 = no +; depth 1 starts around col 6; each level adds 2 Normalize: subtract the
+        // base offset and divide by 2
         return max(0, col / 2)
     }
 
-    static func parseFrameLine(_ line: String)
-        -> (function: String, library: String, samples: Int)?
-    {
+    static func parseFrameLine(
+        _ line: String
+    ) -> (function: String, library: String, samples: Int)? {
         // Strip leading tree-drawing characters: whitespace, +, |, !, :
         var startIndex = line.startIndex
+
         for ch in line {
             if ch == " " || ch == "+" || ch == "|" || ch == "!" || ch == ":" {
                 startIndex = line.index(after: startIndex)
@@ -262,16 +258,15 @@ public enum SampleOutputParser {
         )
     }
 
-    /// Builds a tree from flat frames with depth information.
-    /// Uses a stack to track the current path through the tree.
+    /// Builds a tree from flat frames with depth information. Uses a stack to track the current
+    /// path through the tree.
     static func buildTree(
         from frames: [(depth: Int, function: String, library: String, samples: Int)],
     ) -> [FrameNode] {
         guard !frames.isEmpty else { return [] }
 
-        // We'll build iteratively using an index-path stack.
-        // Each stack entry is: (depth, pointer into the tree)
-        // To avoid value-type mutation issues, build as a flat list then assemble.
+        // We'll build iteratively using an index-path stack. Each stack entry is: (depth, pointer
+        // into the tree) To avoid value-type mutation issues, build as a flat list then assemble.
 
         struct FlatEntry {
             let function: String
@@ -289,20 +284,16 @@ public enum SampleOutputParser {
 
         for frame in frames {
             let idx = entries.count
-            entries.append(
-                FlatEntry(
-                    function: frame.function,
-                    library: frame.library,
-                    samples: frame.samples,
-                    depth: frame.depth,
-                    childIndices: [],
-                ),
-            )
+            entries.append(FlatEntry(
+                function: frame.function,
+                library: frame.library,
+                samples: frame.samples,
+                depth: frame.depth,
+                childIndices: [],
+            ))
 
             // Pop stack until we find a parent with strictly lower depth
-            while let last = stack.last, last.depth >= frame.depth {
-                stack.removeLast()
-            }
+            while let last = stack.last, last.depth >= frame.depth { stack.removeLast() }
 
             if let parent = stack.last {
                 entries[parent.entryIndex].childIndices.append(idx)
@@ -316,7 +307,7 @@ public enum SampleOutputParser {
         // Convert flat entries to tree nodes (bottom-up)
         func toNode(_ index: Int) -> FrameNode {
             let entry = entries[index]
-            return FrameNode(
+            return .init(
                 function: entry.function,
                 library: entry.library,
                 samples: entry.samples,
@@ -349,18 +340,14 @@ public enum SampleOutputParser {
         "libswift", "libpthread", "Metal",
     ]
 
-    static func isIdleFunction(_ name: String) -> Bool {
-        idleFunctions.contains(name)
-    }
+    static func isIdleFunction(_ name: String) -> Bool { idleFunctions.contains(name) }
 
     static func isSystemLibrary(_ library: String) -> Bool {
         systemLibraryPrefixes.contains { library.hasPrefix($0) }
     }
 
     static func isAppFrame(_ library: String, appBinary: String?) -> Bool {
-        if let appBinary {
-            return library == appBinary || !isSystemLibrary(library)
-        }
+        if let appBinary { return library == appBinary || !isSystemLibrary(library) }
         return !isSystemLibrary(library)
     }
 
@@ -372,6 +359,7 @@ public enum SampleOutputParser {
     static func collectLeafFrames(_ nodes: [FrameNode]) -> [FrameNode] {
         var result: [FrameNode] = []
         var stack = nodes
+
         while let node = stack.popLast() {
             if node.children.isEmpty {
                 result.append(node)
@@ -396,6 +384,7 @@ public enum SampleOutputParser {
             if filterApp, !isAppFrame(frame.library, appBinary: appBinary) { continue }
 
             let key = "\(frame.function)|\(frame.library)"
+
             if var existing = map[key] {
                 existing.samples += frame.samples
                 map[key] = existing
@@ -422,13 +411,10 @@ public enum SampleOutputParser {
 
         func walk(_ node: FrameNode, path: [String]) {
             let include: Bool
-            if filterApp {
-                include = isAppFrame(node.library, appBinary: appBinary)
-            } else {
-                include = true
-            }
+            include = filterApp ? isAppFrame(node.library, appBinary: appBinary) : true
 
             let currentPath: [String]
+
             if include, !isIdleFunction(node.function), node.function != "???" {
                 currentPath = path + [node.function]
             } else {
@@ -437,29 +423,21 @@ public enum SampleOutputParser {
 
             if node.children.isEmpty {
                 if !currentPath.isEmpty {
-                    result.append(
-                        CallPath(
-                            path: currentPath.joined(separator: " → "),
-                            samples: node.samples,
-                        ),
-                    )
+                    result.append(CallPath(
+                        path: currentPath.joined(separator: " → "),
+                        samples: node.samples,
+                    ))
                 }
             } else {
-                for child in node.children {
-                    walk(child, path: currentPath)
-                }
+                for child in node.children { walk(child, path: currentPath) }
             }
         }
 
-        for node in nodes {
-            walk(node, path: [])
-        }
+        for node in nodes { walk(node, path: []) }
 
         // Merge identical paths
         var pathMap: [String: Int] = [:]
-        for p in result {
-            pathMap[p.path, default: 0] += p.samples
-        }
+        for p in result { pathMap[p.path, default: 0] += p.samples }
 
         return pathMap.map { CallPath(path: $0.key, samples: $0.value) }
     }
@@ -469,6 +447,7 @@ public enum SampleOutputParser {
     static func formatHeader(_ header: String) -> String {
         var result = "## Process Info\n\n"
         let lines = header.components(separatedBy: .newlines)
+
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.isEmpty || trimmed == "----" { continue }
@@ -495,10 +474,9 @@ public enum SampleOutputParser {
             "  \(String(repeating: "-", count: samplesWidth))-+-\(String(repeating: "-", count: funcWidth))-+------------------\n"
 
         for fn in functions {
-            let funcName =
-                fn.function.count > funcWidth
-                    ? String(fn.function.prefix(funcWidth - 3)) + "..."
-                    : fn.function
+            let funcName = fn.function.count > funcWidth
+                ? String(fn.function.prefix(funcWidth - 3)) + "..."
+                : fn.function
             result +=
                 "  \(pad(String(fn.samples), width: samplesWidth)) | \(pad(funcName, width: -funcWidth)) | \(fn.library)\n"
         }
@@ -518,14 +496,11 @@ public enum SampleOutputParser {
     // MARK: - Binary image extraction
 
     static func extractAppBinary(from binaryImages: String, header: String) -> String? {
-        if let match = header.firstMatch(of: /Process:\s+(\S+)/) {
-            return String(match.1)
-        }
+        if let match = header.firstMatch(of: /Process:\s+(\S+)/) { return String(match.1) }
         let lines = binaryImages.components(separatedBy: .newlines)
+
         for line in lines where line.contains("+") {
-            if let match = line.firstMatch(of: /\+(\S+)\s+\(/) {
-                return String(match.1)
-            }
+            if let match = line.firstMatch(of: /\+(\S+)\s+\(/) { return String(match.1) }
         }
         return nil
     }

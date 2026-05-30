@@ -116,44 +116,43 @@ public struct SimStatusBarTool: Sendable {
             }
         }
 
-        // Build status bar override options
-        var options: [String: Any] = [:]
+        let time = arguments.getString("time")
+        let batteryLevel = arguments.getInt("battery_level")
+        let batteryState = arguments.getString("battery_state")
+        let cellularMode = arguments.getString("cellular_mode")
+        let cellularBars = arguments.getInt("cellular_bars")
+        let wifiMode = arguments.getString("wifi_mode")
+        let wifiBars = arguments.getInt("wifi_bars")
 
-        if let time = arguments.getString("time") {
-            options["time"] = time
-        }
-        if let batteryLevel = arguments.getInt("battery_level") {
-            options["batteryLevel"] = batteryLevel
-        }
-        if let batteryState = arguments.getString("battery_state") {
-            options["batteryState"] = batteryState
-        }
-        if let cellularMode = arguments.getString("cellular_mode") {
-            options["cellularMode"] = cellularMode
-        }
-        if let cellularBars = arguments.getInt("cellular_bars") {
-            options["cellularBars"] = cellularBars
-        }
-        if let wifiMode = arguments.getString("wifi_mode") {
-            options["wifiMode"] = wifiMode
-        }
-        if let wifiBars = arguments.getInt("wifi_bars") {
-            options["wifiBars"] = wifiBars
-        }
+        var setOptions: [String] = []
+        if time != nil { setOptions.append("time") }
+        if batteryLevel != nil { setOptions.append("batteryLevel") }
+        if batteryState != nil { setOptions.append("batteryState") }
+        if cellularMode != nil { setOptions.append("cellularMode") }
+        if cellularBars != nil { setOptions.append("cellularBars") }
+        if wifiMode != nil { setOptions.append("wifiMode") }
+        if wifiBars != nil { setOptions.append("wifiBars") }
 
-        if options.isEmpty {
+        if setOptions.isEmpty {
             throw MCPError.invalidParams(
                 "At least one status bar option is required, or use 'clear: true' to reset.",
             )
         }
 
         do {
-            let result = try await simctlRunner.overrideStatusBar(
-                udid: simulator, options: options,
+            let result = try await simctlRunner.setStatusBar(
+                udid: simulator,
+                time: time,
+                batteryLevel: batteryLevel,
+                batteryState: batteryState,
+                cellularMode: cellularMode,
+                cellularBars: cellularBars,
+                wifiMode: wifiMode,
+                wifiBars: wifiBars,
             )
 
             if result.succeeded {
-                let optionsList = options.keys.sorted().joined(separator: ", ")
+                let optionsList = setOptions.sorted().joined(separator: ", ")
                 return CallTool.Result(
                     content: [
                         .text(text:

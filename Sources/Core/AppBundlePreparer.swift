@@ -33,9 +33,8 @@ public enum AppBundlePreparer {
         // SPM package-product frameworks (which live in `PackageFrameworks/`) also need to be
         // reachable from the bundle or dyld reports "Library not loaded" at launch.
         var modified = try symlinkProducts(from: dir, into: frameworksDir)
-        modified = try symlinkProducts(
-            from: "\(dir)/PackageFrameworks", into: frameworksDir,
-        ) || modified
+        modified = try symlinkProducts(from: "\(dir)/PackageFrameworks", into: frameworksDir)
+            || modified
 
         // Step 2: Rewrite absolute /Library/Frameworks/ install names to @rpath/
         let macOSDir = "\(appPath)/Contents/MacOS"
@@ -88,7 +87,10 @@ public enum AppBundlePreparer {
     /// Frameworks that are already embedded are left alone — unless they are mergeable-library
     /// reexport stubs, in which case the stub is replaced by a symlink to the full framework from
     /// `sourceDir`. Returns false (without error) if `sourceDir` does not exist.
-    private static func symlinkProducts(from sourceDir: String, into frameworksDir: String) throws -> Bool {
+    private static func symlinkProducts(
+        from sourceDir: String,
+        into frameworksDir: String
+    ) throws -> Bool {
         let fm = FileManager.default
         var isDir: ObjCBool = false
         guard fm.fileExists(atPath: sourceDir, isDirectory: &isDir), isDir.boolValue else {
@@ -102,6 +104,7 @@ public enum AppBundlePreparer {
 
         for item in contents where item.pathExtension == "framework" {
             let destPath = "\(frameworksDir)/\(item.lastPathComponent)"
+
             if fm.fileExists(atPath: destPath) {
                 // Already embedded. With mergeable libraries (`MERGEABLE_LIBRARY=YES` +
                 // `MERGED_BINARY_TYPE=manual`), Xcode embeds a thin reexport *stub* whose symbols
@@ -135,14 +138,16 @@ public enum AppBundlePreparer {
     /// A merged stub is dramatically smaller than the real framework because its code and exported
     /// symbols were merged into the host binary at link time. We treat the embedded framework as a
     /// stub when its binary is less than half the size of the build-products copy. An embedded
-    /// framework that Xcode copied verbatim (the non-mergeable case) is byte-identical and therefore
-    /// the same size, so it is left untouched. The comparison is also idempotent: once the embedded
-    /// framework has been replaced by a symlink to the full framework, both sizes match.
+    /// framework that Xcode copied verbatim (the non-mergeable case) is byte-identical and
+    /// therefore the same size, so it is left untouched. The comparison is also idempotent: once
+    /// the embedded framework has been replaced by a symlink to the full framework, both sizes
+    /// match.
     static func isMergeableStub(
-        embeddedFramework: String, fullFramework: String,
+        embeddedFramework: String,
+        fullFramework: String,
     ) throws -> Bool {
         guard let embeddedBinary = frameworkBinaryPath(embeddedFramework),
-            let fullBinary = frameworkBinaryPath(fullFramework)
+              let fullBinary = frameworkBinaryPath(fullFramework)
         else { return false }
 
         let fm = FileManager.default
@@ -221,7 +226,8 @@ public enum AppBundlePreparer {
         var signingIdentity = "-"
 
         for line in identityResult.stdout.components(separatedBy: .newlines)
-        where line.hasPrefix("Authority=") {
+            where line.hasPrefix("Authority=")
+        {
             signingIdentity = String(line.dropFirst("Authority=".count))
             break
         }
@@ -231,8 +237,8 @@ public enum AppBundlePreparer {
         // can now contain code signed by a different team — e.g. ad-hoc-signed Swift-macro
         // `*_PackageProduct.framework`s reexported at runtime. Under hardened runtime, library
         // validation rejects those Team-ID mismatches and dyld aborts at launch. Disabling library
-        // validation on the debug re-sign lets the bundle load them, mirroring what hardened-runtime
-        // apps do via `RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION`.
+        // validation on the debug re-sign lets the bundle load them, mirroring what
+        // hardened-runtime apps do via `RUNTIME_EXCEPTION_DISABLE_LIBRARY_VALIDATION`.
         let extractResult = try await ProcessResult.runSubprocess(
             .path("/usr/bin/codesign"),
             arguments: ["-d", "--entitlements", "-", "--xml", appPath],
@@ -240,9 +246,9 @@ public enum AppBundlePreparer {
 
         let entitlementsURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("debug_entitlements_\(UUID().uuidString).plist")
-        let entitlementsData = try entitlementsWithLibraryValidationDisabled(
-            from: Data(extractResult.stdout.utf8),
-        )
+        let entitlementsData = try entitlementsWithLibraryValidationDisabled(from: Data(
+            extractResult.stdout.utf8
+        ))
         try entitlementsData.write(to: entitlementsURL)
 
         defer { try? FileManager.default.removeItem(at: entitlementsURL) }
@@ -269,12 +275,8 @@ public enum AppBundlePreparer {
     static func entitlementsWithLibraryValidationDisabled(from extracted: Data) throws -> Data {
         var entitlements: [String: Any] = [:]
         if !extracted.isEmpty,
-            let parsed = try? PropertyListSerialization.propertyList(
-                from: extracted, format: nil,
-            ) as? [String: Any]
-        {
-            entitlements = parsed
-        }
+           let parsed = try? PropertyListSerialization.propertyList(from: extracted, format: nil)
+               as? [String: Any] { entitlements = parsed }
 
         entitlements["com.apple.security.cs.disable-library-validation"] = true
 

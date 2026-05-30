@@ -126,6 +126,7 @@ public enum TestCrashDiagnostics {
         ]
         let executable: String
         let arguments: [String]
+
         if let simulatorUDID, !simulatorUDID.isEmpty {
             // Simulator processes log to the sim's own logd, not the host's unified log.
             executable = "/usr/bin/xcrun"

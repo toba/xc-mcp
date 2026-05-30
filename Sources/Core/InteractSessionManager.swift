@@ -13,9 +13,7 @@ public actor InteractSessionManager {
     private init() {}
 
     /// Caches elements for a given PID. Replaces any existing cache for that PID.
-    public func cacheElements(pid: pid_t, elements: [SendableAXUIElement]) {
-        cache[pid] = elements
-    }
+    public func cacheElements(pid: pid_t, elements: [SendableAXUIElement]) { cache[pid] = elements }
 
     /// Retrieves a cached element by PID and element ID.
     public func getElement(pid: pid_t, elementId: Int) -> SendableAXUIElement? {
@@ -26,17 +24,11 @@ public actor InteractSessionManager {
     }
 
     /// Returns whether a cache exists for the given PID.
-    public func hasCache(pid: pid_t) -> Bool {
-        cache[pid] != nil
-    }
+    public func hasCache(pid: pid_t) -> Bool { cache[pid] != nil }
 
     /// Invalidates the cache for a given PID.
-    public func invalidateCache(pid: pid_t) {
-        cache.removeValue(forKey: pid)
-    }
+    public func invalidateCache(pid: pid_t) { cache.removeValue(forKey: pid) }
 
     /// Returns the number of cached elements for a PID.
-    public func elementCount(pid: pid_t) -> Int {
-        cache[pid]?.count ?? 0
-    }
+    public func elementCount(pid: pid_t) -> Int { cache[pid]?.count ?? 0 }
 }

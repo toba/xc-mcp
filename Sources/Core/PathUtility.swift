@@ -9,13 +9,11 @@ public enum PathError: LocalizedError, MCPErrorConvertible {
     public var errorDescription: String? {
         switch self {
             case let .pathOutsideBasePath(path, basePath):
-                return "Path '\(path)' is outside the allowed base path '\(basePath)'"
+                "Path '\(path)' is outside the allowed base path '\(basePath)'"
         }
     }
 
-    public func toMCPError() -> MCPError {
-        .invalidParams(errorDescription ?? "Invalid path")
-    }
+    public func toMCPError() -> MCPError { .invalidParams(errorDescription ?? "Invalid path") }
 }
 
 /// Utility for resolving and validating file paths within a sandboxed base directory.
@@ -48,8 +46,8 @@ public enum PathError: LocalizedError, MCPErrorConvertible {
 ///
 /// ## Disabling Sandboxing
 ///
-/// When running as an MCP server without a known working directory, sandboxing can be
-/// disabled to allow access to any path:
+/// When running as an MCP server without a known working directory, sandboxing can be disabled to
+/// allow access to any path:
 ///
 /// ```swift
 /// let utility = PathUtility(basePath: "/tmp", sandboxEnabled: false)
@@ -61,16 +59,16 @@ public struct PathUtility: Sendable {
 
     /// Whether path sandboxing is enabled.
     ///
-    /// When `true` (the default), all resolved paths must be within the base path.
-    /// When `false`, paths outside the base path are allowed.
+    /// When `true` (the default), all resolved paths must be within the base path. When `false`,
+    /// paths outside the base path are allowed.
     public let sandboxEnabled: Bool
 
     /// Creates a new path utility with the specified base directory.
     ///
     /// - Parameters:
     ///   - basePath: The root directory that constrains all path operations.
-    ///   - sandboxEnabled: Whether to enforce that paths stay within the base directory.
-    ///     Defaults to `true`.
+    ///   - sandboxEnabled: Whether to enforce that paths stay within the base directory. Defaults
+    ///     to `true`.
     public init(basePath: String, sandboxEnabled: Bool = true) {
         self.basePath = basePath
         self.sandboxEnabled = sandboxEnabled
@@ -80,7 +78,8 @@ public struct PathUtility: Sendable {
     ///
     /// - Parameter path: The path to resolve (absolute or relative).
     /// - Returns: The resolved absolute path as a string.
-    /// - Throws: ``PathError/pathOutsideBasePath(path:basePath:)`` if the path is outside the base directory.
+    /// - Throws: ``PathError/pathOutsideBasePath(path:basePath:)`` if the path is outside the base
+    ///   directory.
     public func resolvePath(from path: String) throws(PathError) -> String {
         let resolvedURL = try resolvePathURL(from: path)
         return resolvedURL.path
@@ -90,20 +89,16 @@ public struct PathUtility: Sendable {
     ///
     /// - Parameter path: The path to resolve (absolute or relative).
     /// - Returns: The resolved URL.
-    /// - Throws: ``PathError/pathOutsideBasePath(path:basePath:)`` if sandboxing is enabled
-    ///   and the path is outside the base directory.
+    /// - Throws: ``PathError/pathOutsideBasePath(path:basePath:)`` if sandboxing is enabled and the
+    ///   path is outside the base directory.
     public func resolvePathURL(from path: String) throws(PathError) -> URL {
         let baseURL = URL(fileURLWithPath: basePath).standardized
         let expanded = Self.expandTilde(path)
 
         let resolvedURL: URL
-        if expanded.hasPrefix("/") {
-            // Absolute path - must validate it's within base path (if sandboxing is enabled)
-            resolvedURL = URL(fileURLWithPath: expanded).standardized
-        } else {
-            // Relative path - resolve relative to base path
-            resolvedURL = baseURL.appendingPathComponent(expanded).standardized
-        }
+        resolvedURL = expanded.hasPrefix("/")
+            ? URL(fileURLWithPath: expanded).standardized
+            : baseURL.appendingPathComponent(expanded).standardized
 
         // Only validate when sandboxing is enabled
         if sandboxEnabled {
@@ -121,15 +116,14 @@ public struct PathUtility: Sendable {
     /// Converts an absolute path to a relative path from the base path.
     ///
     /// - Parameter absolutePath: The absolute path to convert.
-    /// - Returns: The relative path from the base path, or `nil` if the path is outside the base directory.
+    /// - Returns: The relative path from the base path, or `nil` if the path is outside the base
+    ///   directory.
     public func makeRelativePath(from absolutePath: String) -> String? {
         let baseURL = URL(fileURLWithPath: basePath).standardized
         let absoluteURL = URL(fileURLWithPath: absolutePath).standardized
 
         // Check if the absolute path is within the base path
-        guard absoluteURL.path.hasPrefix(baseURL.path) else {
-            return nil
-        }
+        guard absoluteURL.path.hasPrefix(baseURL.path) else { return nil }
 
         // Get the relative components
         let baseComponents = baseURL.pathComponents
@@ -137,12 +131,9 @@ public struct PathUtility: Sendable {
 
         // Find common prefix
         var commonPrefixLength = 0
-        for i in 0 ..< min(baseComponents.count, absoluteComponents.count) {
-            if baseComponents[i] == absoluteComponents[i] {
-                commonPrefixLength += 1
-            } else {
-                break
-            }
+
+        for i in 0..<min(baseComponents.count, absoluteComponents.count) {
+            if baseComponents[i] == absoluteComponents[i] { commonPrefixLength += 1 } else { break }
         }
 
         // Build relative path
@@ -150,21 +141,17 @@ public struct PathUtility: Sendable {
         let downComponents = Array(absoluteComponents[commonPrefixLength...])
         let relativeComponents = upComponents + downComponents
 
-        if relativeComponents.isEmpty {
-            return "."
-        }
-
-        return relativeComponents.joined(separator: "/")
+        return relativeComponents.isEmpty ? "." : relativeComponents.joined(separator: "/")
     }
 
     // MARK: - Ancestor Directory Search
 
-    /// Walks up from a starting directory looking for a directory containing a file or
-    /// subdirectory matching the given predicate.
+    /// Walks up from a starting directory looking for a directory containing a file or subdirectory
+    /// matching the given predicate.
     ///
     /// - Parameters:
-    ///   - predicate: A closure that receives directory contents and returns the matching
-    ///     entry name, or `nil` if no match is found.
+    ///   - predicate: A closure that receives directory contents and returns the matching entry
+    ///     name, or `nil` if no match is found.
     ///   - startingFrom: The directory to start searching from.
     /// - Returns: The path to the directory containing the match, or `nil` if not found.
     public static func findAncestorDirectory(
@@ -175,24 +162,22 @@ public struct PathUtility: Sendable {
         var current = URL(fileURLWithPath: start).standardized
 
         // Walk up at most 20 levels to avoid infinite loops on broken symlinks
-        for _ in 0 ..< 20 {
+        for _ in 0..<20 {
             let dirPath = current.path
             if let entries = try? fm.contentsOfDirectory(atPath: dirPath),
-               entries.contains(where: predicate)
-            {
-                return dirPath
-            }
+               entries.contains(where: predicate) { return dirPath }
             let parent = current.deletingLastPathComponent().standardized
+
             if parent.path == current.path {
-                break // Reached filesystem root
+                break  // Reached filesystem root
             }
             current = parent
         }
         return nil
     }
 
-    /// Finds the nearest ancestor directory containing `Package.swift`,
-    /// starting from the process's current working directory.
+    /// Finds the nearest ancestor directory containing `Package.swift`, starting from the process's
+    /// current working directory.
     ///
     /// - Returns: The Swift package root path, or `nil` if not found.
     public static func findPackageRoot() -> String? {
@@ -202,44 +187,38 @@ public struct PathUtility: Sendable {
         )
     }
 
-    /// Finds the nearest ancestor directory containing a `.xcodeproj` bundle,
-    /// starting from the process's current working directory.
+    /// Finds the nearest ancestor directory containing a `.xcodeproj` bundle, starting from the
+    /// process's current working directory.
     ///
     /// - Returns: The full path to the `.xcodeproj` bundle, or `nil` if not found.
     public static func findProjectPath() -> String? {
-        guard
-            let dir = findAncestorDirectory(
-                matching: { $0.hasSuffix(".xcodeproj") },
-                startingFrom: FileManager.default.currentDirectoryPath,
-            )
-        else { return nil }
+        guard let dir = findAncestorDirectory(
+            matching: { $0.hasSuffix(".xcodeproj") },
+            startingFrom: FileManager.default.currentDirectoryPath,
+        ) else { return nil }
         // Return the full .xcodeproj path, not just the containing directory
         let entries = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
         guard let proj = entries.first(where: { $0.hasSuffix(".xcodeproj") }) else { return nil }
         return "\(dir)/\(proj)"
     }
 
-    /// Finds the nearest ancestor directory containing a `.xcworkspace` bundle,
-    /// starting from the process's current working directory.
+    /// Finds the nearest ancestor directory containing a `.xcworkspace` bundle, starting from the
+    /// process's current working directory.
     ///
     /// - Returns: The full path to the `.xcworkspace` bundle, or `nil` if not found.
     public static func findWorkspacePath() -> String? {
-        guard
-            let dir = findAncestorDirectory(
-                matching: {
-                    $0.hasSuffix(".xcworkspace")
-                        && !$0.hasPrefix(".")
-                        && $0 != "Pods.xcworkspace"
-                },
-                startingFrom: FileManager.default.currentDirectoryPath,
-            )
-        else { return nil }
+        guard let dir = findAncestorDirectory(
+            matching: {
+                $0.hasSuffix(".xcworkspace")
+                    && !$0.hasPrefix(".")
+                    && $0 != "Pods.xcworkspace"
+            },
+            startingFrom: FileManager.default.currentDirectoryPath,
+        ) else { return nil }
         let entries = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
-        guard
-            let ws = entries.first(where: {
-                $0.hasSuffix(".xcworkspace") && !$0.hasPrefix(".") && $0 != "Pods.xcworkspace"
-            })
-        else { return nil }
+        guard let ws = entries.first(where: {
+            $0.hasSuffix(".xcworkspace") && !$0.hasPrefix(".") && $0 != "Pods.xcworkspace"
+        }) else { return nil }
         return "\(dir)/\(ws)"
     }
 
@@ -247,8 +226,8 @@ public struct PathUtility: Sendable {
     ///
     /// - Parameter path: The path to resolve.
     /// - Returns: The resolved URL.
-    /// - Note: This method does not validate paths against a base directory.
-    ///   Prefer the instance method ``resolvePathURL(from:)`` for secure path handling.
+    /// - Note: This method does not validate paths against a base directory. Prefer the instance
+    ///   method ``resolvePathURL(from:)`` for secure path handling.
     static func resolvePathURL(from path: String) -> URL {
         let expanded = expandTilde(path)
         let url = URL(fileURLWithPath: expanded)
@@ -270,17 +249,16 @@ public struct PathUtility: Sendable {
         guard path.hasPrefix("~") else { return path }
         let home = NSHomeDirectory()
         if path == "~" { return home }
-        if path.hasPrefix("~/") { return home + String(path.dropFirst(1)) }
-        return path
+        return path.hasPrefix("~/")
+            ? home + String(path.dropFirst(1))
+            : path
     }
 
     /// Resolves a path without base path validation (legacy compatibility).
     ///
     /// - Parameter path: The path to resolve.
     /// - Returns: The resolved absolute path as a string.
-    /// - Note: This method does not validate paths against a base directory.
-    ///   Prefer the instance method ``resolvePath(from:)`` for secure path handling.
-    static func resolvePath(from path: String) -> String {
-        resolvePathURL(from: path).path
-    }
+    /// - Note: This method does not validate paths against a base directory. Prefer the instance
+    ///   method ``resolvePath(from:)`` for secure path handling.
+    static func resolvePath(from path: String) -> String { resolvePathURL(from: path).path }
 }

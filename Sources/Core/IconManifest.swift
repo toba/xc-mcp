@@ -2,8 +2,8 @@ import Foundation
 
 /// Codable representation of an Icon Composer `.icon` bundle's `icon.json` manifest.
 ///
-/// Matches the format produced by Apple's Icon Composer app and consumed by `ictool`.
-/// Reference: [ethbak/icon-composer-mcp](https://github.com/ethbak/icon-composer-mcp)
+/// Matches the format produced by Apple's Icon Composer app and consumed by `ictool`. Reference:
+/// [ethbak/icon-composer-mcp](https://github.com/ethbak/icon-composer-mcp)
 public struct IconManifest: Codable, Sendable {
     public var groups: [Group]
     public var supportedPlatforms: SupportedPlatforms
@@ -39,6 +39,7 @@ public struct IconManifest: Codable, Sendable {
 
         public init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
+
             if let color = try container.decodeIfPresent(String.self, forKey: .solid) {
                 self = .solid(color)
             } else if let color = try container.decodeIfPresent(
@@ -53,22 +54,23 @@ public struct IconManifest: Codable, Sendable {
                 )
                 self = .linearGradient(colors, orientation: orientation)
             } else {
-                throw DecodingError.dataCorrupted(
-                    .init(codingPath: decoder.codingPath, debugDescription: "Unknown fill type")
-                )
+                throw DecodingError.dataCorrupted(.init(
+                    codingPath: decoder.codingPath,
+                    debugDescription: "Unknown fill type"
+                ))
             }
         }
 
         public func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
+
             switch self {
-            case let .solid(color):
-                try container.encode(color, forKey: .solid)
-            case let .automaticGradient(color):
-                try container.encode(color, forKey: .automaticGradient)
-            case let .linearGradient(colors, orientation):
-                try container.encode(colors, forKey: .linearGradient)
-                try container.encode(orientation, forKey: .orientation)
+                case let .solid(color): try container.encode(color, forKey: .solid)
+                case let .automaticGradient(color):
+                    try container.encode(color, forKey: .automaticGradient)
+                case let .linearGradient(colors, orientation):
+                    try container.encode(colors, forKey: .linearGradient)
+                    try container.encode(orientation, forKey: .orientation)
             }
         }
 
@@ -80,9 +82,7 @@ public struct IconManifest: Codable, Sendable {
         }
 
         /// Creates a fill from a hex color string (e.g. "#FF8800" or "FF8800").
-        public static func fromHex(_ hex: String) -> Fill {
-            .automaticGradient(hexToSRGB(hex))
-        }
+        public static func fromHex(_ hex: String) -> Fill { .automaticGradient(hexToSRGB(hex)) }
     }
 
     // MARK: - Gradient Orientation
@@ -268,20 +268,20 @@ public struct IconManifest: Codable, Sendable {
 
             public init(from decoder: Decoder) throws {
                 let container = try decoder.singleValueContainer()
+
                 if let str = try? container.decode(String.self), str == "shared" {
                     self = .shared
                 } else {
-                    self = .platforms(try container.decode([String].self))
+                    self = try .platforms(container.decode([String].self))
                 }
             }
 
             public func encode(to encoder: Encoder) throws {
                 var container = encoder.singleValueContainer()
+
                 switch self {
-                case .shared:
-                    try container.encode("shared")
-                case let .platforms(list):
-                    try container.encode(list)
+                    case .shared: try container.encode("shared")
+                    case let .platforms(list): try container.encode(list)
                 }
             }
         }
@@ -299,7 +299,7 @@ public struct IconManifest: Codable, Sendable {
               let g = UInt8(h.dropFirst(2).prefix(2), radix: 16),
               let b = UInt8(h.dropFirst(4).prefix(2), radix: 16)
         else {
-            return hex // pass through if unparseable
+            return hex  // pass through if unparseable
         }
 
         let rf = String(format: "%.5f", Double(r) / 255.0)
@@ -311,35 +311,35 @@ public struct IconManifest: Codable, Sendable {
 
 // MARK: - JSON Encoding
 
-extension IconManifest {
+public extension IconManifest {
     /// Reads and decodes `icon.json` from a `.icon` bundle directory.
-    public static func read(from iconBundlePath: String) throws -> IconManifest {
+    static func read(from iconBundlePath: String) throws -> IconManifest {
         let jsonURL = URL(fileURLWithPath: iconBundlePath).appendingPathComponent("icon.json")
         let data = try Data(contentsOf: jsonURL)
         return try JSONDecoder().decode(IconManifest.self, from: data)
     }
 
     /// Encodes to pretty-printed, sorted-keys JSON data.
-    public func jsonData() throws -> Data {
+    func jsonData() throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return try encoder.encode(self)
     }
 
     /// Writes `icon.json` into the given `.icon` bundle directory.
-    public func write(to iconBundlePath: String) throws {
+    func write(to iconBundlePath: String) throws {
         let data = try jsonData()
         try data.write(to: URL(fileURLWithPath: iconBundlePath + "/icon.json"))
     }
 
     /// Lists asset filenames in the bundle's `Assets/` directory.
-    public static func listAssets(in iconBundlePath: String) -> [String] {
+    static func listAssets(in iconBundlePath: String) -> [String] {
         let assetsDir = iconBundlePath + "/Assets"
         return (try? FileManager.default.contentsOfDirectory(atPath: assetsDir)) ?? []
     }
 
     /// Removes an asset file from the bundle's `Assets/` directory if it exists.
-    public static func removeAsset(_ filename: String, from iconBundlePath: String) throws {
+    static func removeAsset(_ filename: String, from iconBundlePath: String) throws {
         let path = iconBundlePath + "/Assets/" + filename
         if FileManager.default.fileExists(atPath: path) {
             try FileManager.default.removeItem(atPath: path)
@@ -347,13 +347,9 @@ extension IconManifest {
     }
 
     /// Returns all image filenames referenced by layers in the manifest.
-    public var referencedAssets: Set<String> {
+    var referencedAssets: Set<String> {
         var names = Set<String>()
-        for group in groups {
-            for layer in group.layers {
-                names.insert(layer.imageName)
-            }
-        }
+        for group in groups { for layer in group.layers { names.insert(layer.imageName) } }
         return names
     }
 }

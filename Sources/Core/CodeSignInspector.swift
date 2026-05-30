@@ -8,10 +8,10 @@ import Subprocess
 /// When a hardened-runtime app is signed with a real Apple Development/Distribution identity, dyld
 /// enforces *library validation*: every dynamic library it loads must be signed by the same Team ID
 /// (or by Apple), unless the app carries the `com.apple.security.cs.disable-library-validation`
-/// entitlement. SPM package-product frameworks are frequently ad-hoc signed (`TeamIdentifier=not
-/// set`), so an app re-signed with a dev identity while its frameworks stay ad-hoc aborts in dyld
-/// before `main` with a cryptic `__abort_with_payload`. This utility surfaces that class of failure
-/// with an actionable message before launch.
+/// entitlement. SPM package-product frameworks are frequently ad-hoc signed
+/// (`TeamIdentifier=not set`), so an app re-signed with a dev identity while its frameworks stay
+/// ad-hoc aborts in dyld before `main` with a cryptic `__abort_with_payload`. This utility surfaces
+/// that class of failure with an actionable message before launch.
 public enum CodeSignInspector: Sendable {
     private static let logger = Logger(label: "CodeSignInspector")
 
@@ -58,6 +58,7 @@ public enum CodeSignInspector: Sendable {
                 "⚠️  Code-signing Team-ID mismatch — dyld library validation may reject these frameworks at launch:",
                 "  App signed: Team \(appTeam)\(app.authority.map { " (\($0))" } ?? "")",
             ]
+
             for offender in mismatches {
                 let team = offender.teamIdentifier ?? "ad-hoc (not set)"
                 let name = URL(fileURLWithPath: offender.path).lastPathComponent
@@ -83,35 +84,36 @@ public enum CodeSignInspector: Sendable {
 
         for line in output.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+
             if trimmed.hasPrefix("TeamIdentifier=") {
                 let value = String(trimmed.dropFirst("TeamIdentifier=".count))
                     .trimmingCharacters(in: .whitespaces)
-                if !value.isEmpty, value.lowercased() != "not set" {
-                    teamIdentifier = value
-                }
+                if !value.isEmpty, value.lowercased() != "not set" { teamIdentifier = value }
             } else if authority == nil, trimmed.hasPrefix("Authority=") {
                 // The first Authority line is the leaf certificate.
                 authority = String(trimmed.dropFirst("Authority=".count))
             }
         }
 
-        return SigningInfo(path: path, teamIdentifier: teamIdentifier, authority: authority)
+        return .init(path: path, teamIdentifier: teamIdentifier, authority: authority)
     }
 
     /// Compares an app's signing info against its frameworks' and returns the offenders.
     ///
     /// A framework is an offender only when the app is signed with a real Team ID *and* the
     /// framework's Team ID differs (including ad-hoc frameworks). When the app itself is ad-hoc,
-    /// library validation is not enforced, so nothing is flagged. Exposed for testing without files.
+    /// library validation is not enforced, so nothing is flagged. Exposed for testing without
+    /// files.
     public static func evaluateConsistency(
-        app: SigningInfo, frameworks: some Sequence<SigningInfo>,
+        app: SigningInfo,
+        frameworks: some Sequence<SigningInfo>,
     ) -> ConsistencyResult {
         // Library validation only bites when the app carries a real Team ID.
         guard let appTeam = app.teamIdentifier else {
             return ConsistencyResult(app: app, mismatches: [])
         }
         let mismatches = frameworks.filter { $0.teamIdentifier != appTeam }
-        return ConsistencyResult(app: app, mismatches: mismatches)
+        return .init(app: app, mismatches: mismatches)
     }
 
     // MARK: - Filesystem
@@ -130,7 +132,8 @@ public enum CodeSignInspector: Sendable {
     /// `Contents/Frameworks` directory.
     ///
     /// - Returns: A ``ConsistencyResult`` when the app could be inspected, or `nil` if `appPath`
-    ///   doesn't look like a bundle. A non-`nil` result with `hasMismatch == false` means consistent.
+    ///   doesn't look like a bundle. A non-`nil` result with `hasMismatch == false` means
+    ///   consistent.
     public static func checkBundleConsistency(appPath: String) async -> ConsistencyResult? {
         let fm = FileManager.default
         guard fm.fileExists(atPath: appPath) else { return nil }
@@ -143,8 +146,9 @@ public enum CodeSignInspector: Sendable {
         }
 
         var frameworkInfos: [SigningInfo] = []
+
         for entry in entries where entry.hasSuffix(".framework") || entry.hasSuffix(".dylib") {
-            frameworkInfos.append(await inspect("\(frameworksDir)/\(entry)"))
+            await frameworkInfos.append(inspect("\(frameworksDir)/\(entry)"))
         }
 
         return evaluateConsistency(app: appInfo, frameworks: frameworkInfos)

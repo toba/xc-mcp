@@ -1,9 +1,9 @@
 import MCP
+import Darwin
 import System
 import Foundation
 import Subprocess
 import Synchronization
-import Darwin
 
 /// Errors that can occur during process execution.
 public enum ProcessError: Error, Sendable, LocalizedError, MCPErrorConvertible {
@@ -12,23 +12,22 @@ public enum ProcessError: Error, Sendable, LocalizedError, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-            case let .timeout(duration):
-                return "Process timed out after \(duration)"
+            case let .timeout(duration): "Process timed out after \(duration)"
         }
     }
 
     public func toMCPError() -> MCPError {
         switch self {
             case let .timeout(duration):
-                return .internalError("Process timed out after \(duration)")
+                .internalError("Process timed out after \(duration)")
         }
     }
 }
 
 /// Unified result of a process execution.
 ///
-/// Contains the exit code and captured output from running any command-line process.
-/// Used as the common result type for all runner utilities.
+/// Contains the exit code and captured output from running any command-line process. Used as the
+/// common result type for all runner utilities.
 public struct ProcessResult: Sendable {
     /// The process exit code (0 indicates success).
     public let exitCode: Int32
@@ -52,25 +51,21 @@ public struct ProcessResult: Sendable {
     }
 
     /// Whether the command completed successfully (exit code 0).
-    public var succeeded: Bool {
-        exitCode == 0
-    }
+    public var succeeded: Bool { exitCode == 0 }
 
     /// Combined output from stdout and stderr.
     public var output: String {
         if stderr.isEmpty {
-            return stdout
+            stdout
         } else if stdout.isEmpty {
-            return stderr
+            stderr
         } else {
-            return stdout + "\n" + stderr
+            stdout + "\n" + stderr
         }
     }
 
     /// The most relevant error output: stderr if available, otherwise stdout.
-    public var errorOutput: String {
-        stderr.isEmpty ? stdout : stderr
-    }
+    public var errorOutput: String { stderr.isEmpty ? stdout : stderr }
 }
 
 // MARK: - Run
@@ -81,8 +76,8 @@ extension ProcessResult {
     /// - Parameters:
     ///   - executablePath: Absolute path to the executable (e.g. "/usr/bin/open").
     ///   - arguments: Command-line arguments.
-    ///   - mergeStderr: When true, stderr is merged into stdout (like `2>&1`).
-    ///                  When false, stdout and stderr are captured separately.
+    ///   - mergeStderr: When true, stderr is merged into stdout (like `2>&1`). When false, stdout
+    ///     and stderr are captured separately.
     /// - Returns: A ``ProcessResult`` with exit code and captured output.
     public static func run(
         _ executablePath: String,
@@ -108,9 +103,9 @@ extension ProcessResult {
     ///   - outputLimit: Maximum bytes to capture from stdout. Defaults to 2MB.
     ///   - errorLimit: Maximum bytes to capture from stderr. Defaults to 2MB.
     ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
-    ///   - onProgress: Optional callback invoked with each chunk of stdout/stderr as
-    ///                 it arrives (decoded as UTF-8). Useful for streaming progress
-    ///                 updates back to MCP clients during long-running commands.
+    ///   - onProgress: Optional callback invoked with each chunk of stdout/stderr as it arrives
+    ///     (decoded as UTF-8). Useful for streaming progress updates back to MCP clients during
+    ///     long-running commands.
     /// - Returns: A ``ProcessResult`` with exit code and captured output.
     public static func runSubprocess(
         _ executable: Subprocess.Executable,
@@ -123,27 +118,24 @@ extension ProcessResult {
         timeout: Duration? = nil,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> ProcessResult {
-        // Spawn the child in its own process group so we can kill the entire
-        // tree on cancellation. Without this, killing the immediate child can
-        // leave grandchildren (e.g. SPM build plugins) holding the stdout/stderr
-        // pipes open, which blocks output collection forever and makes the
-        // MCP server appear hung after an ESC cancel.
+        // Spawn the child in its own process group so we can kill the entire tree on cancellation.
+        // Without this, killing the immediate child can leave grandchildren (e.g. SPM build
+        // plugins) holding the stdout/stderr pipes open, which blocks output collection forever and
+        // makes the MCP server appear hung after an ESC cancel.
         let platformOptions: PlatformOptions = {
             var opts = PlatformOptions()
             opts.processGroupID = 0
-            opts.teardownSequence = [
-                .gracefulShutDown(allowedDurationToNextStep: .seconds(2)),
-            ]
+            opts.teardownSequence = [.gracefulShutDown(allowedDurationToNextStep: .seconds(2))]
             return opts
         }()
 
-        // Tracks the spawned process group leader pid so the cancellation
-        // handler can SIGKILL the whole group.
+        // Tracks the spawned process group leader pid so the cancellation handler can SIGKILL the
+        // whole group.
         let pgidBox = Mutex<pid_t>(0)
 
-        // Use streaming collection that keeps the tail on overflow instead of
-        // throwing SubprocessError.outputLimitExceeded. Build errors appear at
-        // the end of output, so discarding the head preserves what matters.
+        // Use streaming collection that keeps the tail on overflow instead of throwing
+        // SubprocessError.outputLimitExceeded. Build errors appear at the end of output, so
+        // discarding the head preserves what matters.
         let run: @Sendable () async throws -> ProcessResult = {
             let outcome = try await Subprocess.run(
                 executable,
@@ -154,8 +146,8 @@ extension ProcessResult {
             ) { execution, inputWriter, outputSequence, errorSequence in
                 pgidBox.withLock { $0 = execution.processIdentifier.value }
                 try await inputWriter.finish()
-                // Always drain both sequences to prevent the child from blocking
-                // on a full pipe buffer.
+                // Always drain both sequences to prevent the child from blocking on a full pipe
+                // buffer.
                 async let stdout = collectTail(
                     from: outputSequence, limit: outputLimit, onProgress: onProgress,
                 )
@@ -174,11 +166,10 @@ extension ProcessResult {
             let (stdoutResult, stderrResult) = outcome.value
             var stdoutText = stdoutResult.0
             let wasTruncated = stdoutResult.1 || (mergeStderr && stderrResult.1)
-            if mergeStderr, !stderrResult.0.isEmpty {
-                stdoutText += "\n" + stderrResult.0
-            }
+            if mergeStderr, !stderrResult.0.isEmpty { stdoutText += "\n" + stderrResult.0 }
             if wasTruncated {
-                stdoutText = "[output truncated — showing last \(outputLimit / 1_048_576)MB]\n" + stdoutText
+                stdoutText = "[output truncated — showing last \(outputLimit / 1_048_576)MB]\n"
+                    + stdoutText
             }
             return ProcessResult(
                 exitCode: exitCode,
@@ -188,20 +179,15 @@ extension ProcessResult {
         }
         let killGroup: @Sendable () -> Void = {
             let pid = pgidBox.withLock { $0 }
-            if pid > 0 {
-                _ = kill(-pid, SIGKILL)
-            }
+            if pid > 0 { _ = kill(-pid, SIGKILL) }
         }
         return try await withTaskCancellationHandler {
             try await raceTimeout(timeout, run: run, onTimeout: killGroup)
-        } onCancel: {
-            killGroup()
-        }
+        } onCancel: { killGroup() }
     }
 
-    /// Collects output from an async buffer sequence, keeping only the last
-    /// `limit` bytes when the total exceeds the limit. Returns the collected
-    /// string and whether truncation occurred.
+    /// Collects output from an async buffer sequence, keeping only the last `limit` bytes when the
+    /// total exceeds the limit. Returns the collected string and whether truncation occurred.
     private static func collectTail(
         from sequence: AsyncBufferSequence,
         limit: Int,
@@ -209,45 +195,41 @@ extension ProcessResult {
     ) async throws -> (String, Bool) {
         var data = Data()
         var truncated = false
+
         for try await chunk in sequence {
-            let chunkData: Data = chunk.withUnsafeBytes { bytes in
-                Data(bytes)
-            }
+            let chunkData: Data = chunk.withUnsafeBytes { bytes in Data(bytes) }
             data.append(chunkData)
+
             if data.count > limit {
                 data = Data(data.suffix(limit))
                 truncated = true
             }
             if let onProgress, !chunkData.isEmpty {
-                onProgress(String(decoding: chunkData, as: UTF8.self)) // sm:ignore useFailableStringInit
+                onProgress(String(decoding: chunkData, as: UTF8.self))  // sm:ignore useFailableStringInit
             }
         }
-        return (String(decoding: data, as: UTF8.self), truncated) // sm:ignore useFailableStringInit
+        return (String(decoding: data, as: UTF8.self), truncated)  // sm:ignore useFailableStringInit
     }
 
     /// Races a subprocess closure against an optional timeout.
     ///
-    /// When timeout is nil, runs the closure directly. When set, uses a task group
-    /// to race the subprocess against a sleep, throwing ``ProcessError/timeout(duration:)``
-    /// if the deadline is exceeded.
+    /// When timeout is nil, runs the closure directly. When set, uses a task group to race the
+    /// subprocess against a sleep, throwing ``ProcessError/timeout(duration:)`` if the deadline is
+    /// exceeded.
     ///
-    /// On timeout, `onTimeout` runs *before* the throw propagates so callers can
-    /// SIGKILL the subprocess group synchronously. Cancelling the `run` task alone
-    /// only triggers Subprocess's SIGTERM teardown of the parent — grandchildren
-    /// (swift-frontend, SPM plugins) survive, hold the pipes open, and the run task
-    /// never returns, so the group teardown that awaits it would hang. (ycq-rdc)
+    /// On timeout, `onTimeout` runs *before* the throw propagates so callers can SIGKILL the
+    /// subprocess group synchronously. Cancelling the `run` task alone only triggers Subprocess's
+    /// SIGTERM teardown of the parent — grandchildren (swift-frontend, SPM plugins) survive, hold
+    /// the pipes open, and the run task never returns, so the group teardown that awaits it would
+    /// hang. (ycq-rdc)
     private static func raceTimeout<T: Sendable>(
         _ timeout: Duration?,
         run: @escaping @Sendable () async throws -> T,
         onTimeout: @escaping @Sendable () -> Void = {},
     ) async throws -> T {
-        guard let timeout else {
-            return try await run()
-        }
+        guard let timeout else { return try await run() }
         return try await withThrowingTaskGroup(of: T.self) { group in
-            group.addTask {
-                try await run()
-            }
+            group.addTask { try await run() }
             group.addTask {
                 try await Task.sleep(for: timeout)
                 onTimeout()
@@ -263,25 +245,25 @@ extension ProcessResult {
 
     /// Discards the result. Useful for fire-and-forget commands like `kill` or `pkill`.
     @discardableResult
-    public func ignore() -> ProcessResult {
-        self
-    }
+    public func ignore() -> ProcessResult { self }
 }
 
 // MARK: - Process Lifecycle
 
-extension ProcessResult {
-    /// Polls `kill -0` to check if a process is still alive, returning true if it exits within timeout.
+public extension ProcessResult {
+    /// Polls `kill -0` to check if a process is still alive, returning true if it exits within
+    /// timeout.
     ///
     /// - Parameters:
     ///   - pid: The process ID to monitor.
     ///   - timeout: Maximum time to wait for exit.
     /// - Returns: `true` if the process exited within the timeout, `false` if still alive.
-    public static func waitForProcessExit(
+    static func waitForProcessExit(
         pid: Int32,
         timeout: Duration = .seconds(5),
     ) async -> Bool {
         let deadline = ContinuousClock.now + timeout
+
         while ContinuousClock.now < deadline {
             if kill(pid, 0) != 0 { return true }
             try? await Task.sleep(for: .milliseconds(100))
@@ -292,9 +274,9 @@ extension ProcessResult {
 
 // MARK: - Simctl Helpers
 
-extension ProcessResult {
+public extension ProcessResult {
     /// Extracts a PID from simctl launch output (format: "bundle_id: 12345").
-    public var launchedPID: String? {
+    var launchedPID: String? {
         let components = stdout.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: ": ")
         return components.count >= 2 ? components.last : nil
@@ -306,14 +288,11 @@ extension ProcessResult {
 public enum FileUtility {
     /// Reads the last N lines from a file using tail.
     public static func readTailLines(path: String, count: Int = 50) async -> String? {
-        guard
-            let result = try? await ProcessResult.run(
-                "/usr/bin/tail", arguments: ["-n", "\(count)", path], mergeStderr: false,
-            ),
-            !result.stdout.isEmpty
-        else {
-            return nil
-        }
+        guard let result = try? await ProcessResult.run(
+            "/usr/bin/tail", arguments: ["-n", "\(count)", path], mergeStderr: false,
+        ),
+              !result.stdout.isEmpty
+        else { return nil }
         return result.stdout
     }
 }
@@ -338,7 +317,8 @@ public enum LogCapture {
         message += tailOutput
     }
 
-    /// Opens or creates a file for writing log output and returns a `FileHandle` positioned at the end.
+    /// Opens or creates a file for writing log output and returns a `FileHandle` positioned at the
+    /// end.
     ///
     /// - Parameter path: The file path to open for writing.
     /// - Returns: A `FileHandle` positioned at the end of the file.
@@ -387,12 +367,14 @@ public enum LogCapture {
 
     /// Verifies that a log stream process is still running after launch.
     ///
-    /// Waits briefly, then checks if the process has exited. If it exited with an error
-    /// (e.g., invalid predicate syntax), reads the output file for error details and throws.
+    /// Waits briefly, then checks if the process has exited. If it exited with an error (e.g.,
+    /// invalid predicate syntax), reads the output file for error details and throws.
     ///
     /// - Parameters:
-    ///   - pid: The process identifier returned by ``launchStreamProcess(executable:arguments:outputFile:)``.
-    ///   - outputFile: Path to the log output file (may contain error output from the stream process).
+    ///   - pid: The process identifier returned by
+    ///     ``launchStreamProcess(executable:arguments:outputFile:)``.
+    ///   - outputFile: Path to the log output file (may contain error output from the stream
+    ///     process).
     /// - Throws: ``MCPError/internalError(_:)`` if the process exited unexpectedly.
     public static func verifyStreamHealth(
         pid: Int32,
@@ -401,7 +383,7 @@ public enum LogCapture {
         do {
             try await Task.sleep(for: .seconds(1))
         } catch {
-            return // Cancelled — skip health check
+            return  // Cancelled — skip health check
         }
 
         // Check if the process is still running via kill(pid, 0)
@@ -411,11 +393,8 @@ public enum LogCapture {
         // Process died — read output file for error details
         var detail = "Log stream process (PID \(pid)) exited immediately after launch."
         if let data = FileManager.default.contents(atPath: outputFile),
-           let output = String(data: data, encoding: .utf8),
-           !output.isEmpty
-        {
-            detail += "\nProcess output:\n\(output.prefix(500))"
-        }
+            let output = String(data: data, encoding: .utf8),
+            !output.isEmpty { detail += "\nProcess output:\n\(output.prefix(500))" }
         throw .internalError(detail)
     }
 
@@ -435,9 +414,7 @@ public enum LogCapture {
             }
         } else {
             for pattern in pkillPatterns {
-                _ = try? await ProcessResult.run(
-                    "/usr/bin/pkill", arguments: ["-f", pattern],
-                )
+                _ = try? await ProcessResult.run("/usr/bin/pkill", arguments: ["-f", pattern])
             }
             // Brief delay to allow signal delivery for pattern-based kills
             try? await Task.sleep(for: .milliseconds(500))

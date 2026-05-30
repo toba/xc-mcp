@@ -217,9 +217,9 @@ public actor SessionManager {
         env: [String: String]? = nil,
     ) {
         // Resolve to an absolute path eagerly (against the cwd at the time the user supplies it)
-        // and persist the absolute form. Storing relative paths lets the DerivedData scoper hash
-        // a different cwd-resolved path on each later build, producing a fresh scoped root and a
-        // cold rebuild every call (vqc-o14). Absolute paths are idempotent under resolvePath.
+        // and persist the absolute form. Storing relative paths lets the DerivedData scoper hash a
+        // different cwd-resolved path on each later build, producing a fresh scoped root and a cold
+        // rebuild every call (vqc-o14). Absolute paths are idempotent under resolvePath.
         if let projectPath {
             self.projectPath = PathUtility.resolvePath(from: projectPath)
             // Clear workspace if project is set (mutually exclusive)
@@ -287,7 +287,7 @@ public actor SessionManager {
         let started = ContinuousClock.now
         warmupStatus[packagePath] = .running(startedAt: started)
         warmupTasks[
-            packagePath] = Task.detached(priority: .background) { [weak self] in
+            packagePath] = Task.immediateDetached(priority: .background) { [weak self] in
                 do {
                     try await runner(packagePath)
                     await self?.completeWarmup(packagePath: packagePath, started: started)
@@ -464,7 +464,7 @@ public actor SessionManager {
     /// - Parameters:
     ///   - arguments: The tool arguments dictionary.
     ///   - defaultValue: The fallback configuration if none is set. Defaults to "Debug".
-    ///   - Returns: The resolved configuration.
+    /// - Returns: The resolved configuration.
     public func resolveConfiguration(
         from arguments: [String: Value],
         default defaultValue: String = "Debug",
@@ -485,9 +485,9 @@ public actor SessionManager {
     ) {
         reloadIfNeeded()
         // Resolve to absolute so the path handed to xcodebuild / DerivedDataScoper is stable
-        // regardless of the server's cwd (vqc-o14). Idempotent for already-absolute session
-        // values; normalizes per-invocation relative overrides and any legacy relative paths
-        // persisted before this fix.
+        // regardless of the server's cwd (vqc-o14). Idempotent for already-absolute session values;
+        // normalizes per-invocation relative overrides and any legacy relative paths persisted
+        // before this fix.
         let project = (arguments.getString("project_path") ?? projectPath)
             .map { PathUtility.resolvePath(from: $0) }
         let workspace = (arguments.getString("workspace_path") ?? workspacePath)
@@ -536,7 +536,9 @@ public actor SessionManager {
     /// - Throws: MCPError.invalidParams if no package path is available.
     public func resolvePackagePath(from arguments: [String: Value]) throws(MCPError) -> String {
         reloadIfNeeded()
-        if let value = arguments.getString("package_path") { return PathUtility.resolvePath(from: value) }
+        if let value = arguments.getString("package_path") {
+            return PathUtility.resolvePath(from: value)
+        }
         if let session = packagePath { return session }
         // Auto-detect by walking up from cwd looking for Package.swift
         if let detected = PathUtility.findPackageRoot() { return detected }

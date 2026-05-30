@@ -114,7 +114,8 @@ public actor LLDBSession {
     private let stdout: FileHandle
     private let stderr: FileHandle
     /// Maximum time to wait for a command response. Mutable so the long launch/`--waitfor` window
-    /// can be lowered to an interactive value once attach completes (see ``setCommandTimeout(_:)``).
+    /// can be lowered to an interactive value once attach completes (see
+    /// ``setCommandTimeout(_:)``).
     private var commandTimeout: TimeInterval
     /// File descriptors to close when the session is terminated.
     private let ptyFDs: [Int32]
@@ -150,20 +151,22 @@ public actor LLDBSession {
     /// commands (view-hierarchy dumps, border toggles, `debug_evaluate`).
     ///
     /// AppKit/UIKit expression evaluation on an interrupted-at-an-arbitrary-point process can block
-    /// far longer than the read-level ``interactiveCommandTimeout`` — e.g. `_subtreeDescription` on a
-    /// macOS NSView tree (4ui-lsh). Passing `--timeout` makes LLDB itself abort the inferior call and
-    /// return a clean `(lldb) ` prompt with a "timed out" diagnostic. The read then completes
-    /// normally, so a slow dump fails the *single* call instead of wedging the PTY read and poisoning
-    /// the shared session for every other debug tool. Kept comfortably below
+    /// far longer than the read-level ``interactiveCommandTimeout`` — e.g. `_subtreeDescription` on
+    /// a macOS NSView tree (4ui-lsh). Passing `--timeout` makes LLDB itself abort the inferior call
+    /// and return a clean `(lldb) ` prompt with a "timed out" diagnostic. The read then completes
+    /// normally, so a slow dump fails the *single* call instead of wedging the PTY read and
+    /// poisoning the shared session for every other debug tool. Kept comfortably below
     /// ``interactiveCommandTimeout`` so LLDB returns before the read-level timeout fires.
     public static let expressionTimeoutMicroseconds = 15_000_000
 
     /// The bounded-evaluation option string shared by all tool-built `expr` commands.
     ///
-    /// `--timeout` caps the inferior call so a hung AppKit method returns control to LLDB; `--unwind-
-    /// on-error true` and `--ignore-breakpoints true` keep a failed/timed-out evaluation from leaving
-    /// the target parked mid-expression or tripping the user's breakpoints.
-    static var exprTimeoutOptions: String { exprTimeoutOptions(microseconds: expressionTimeoutMicroseconds) }
+    /// `--timeout` caps the inferior call so a hung AppKit method returns control to LLDB;
+    /// `--unwind- on-error true` and `--ignore-breakpoints true` keep a failed/timed-out evaluation
+    /// from leaving the target parked mid-expression or tripping the user's breakpoints.
+    static var exprTimeoutOptions: String {
+        exprTimeoutOptions(microseconds: expressionTimeoutMicroseconds)
+    }
 
     static func exprTimeoutOptions(microseconds: Int) -> String {
         "--timeout \(microseconds) --unwind-on-error true --ignore-breakpoints true"
@@ -186,7 +189,7 @@ public actor LLDBSession {
     /// - Parameters:
     ///   - pid: The process ID to debug.
     ///   - commandTimeout: Maximum time to wait for a command response (default 30s).
-    ///   - Throws: If LLDB fails to start or attach.
+    /// - Throws: If LLDB fails to start or attach.
     public init(pid: Int32, commandTimeout: TimeInterval = 30) throws(LLDBError) {
         targetPID = pid
         self.commandTimeout = commandTimeout
@@ -257,7 +260,7 @@ public actor LLDBSession {
     ///   - environment: Environment variables to set before launch.
     ///   - arguments: Command-line arguments to pass to the process.
     ///   - stopAtEntry: If true, stops at the entry point before running.
-    ///   - Returns: The launch command output.
+    /// - Returns: The launch command output.
     @discardableResult
     public func launch(
         executablePath: String,
@@ -273,9 +276,7 @@ public actor LLDBSession {
 
         // Set environment variables
         for (key, value) in environment {
-            _ = try await sendCommand(
-                "settings set target.env-vars \(key)=\(value)",
-            )
+            _ = try await sendCommand("settings set target.env-vars \(key)=\(value)")
         }
 
         // Build launch command
@@ -384,15 +385,15 @@ public actor LLDBSession {
 
     /// Terminates the LLDB process and closes PTY file descriptors.
     ///
-    /// Sends `quit` to LLDB and waits for exit, escalating to SIGTERM then SIGKILL if needed.
-    /// Also reaps the `lldb-rpc-server` child: `lldb` spawns it as a child process that does
-    /// **not** die when `lldb` is killed (it reparents to launchd and keeps running), so a
-    /// cancelled/timed-out/force-killed session would otherwise leak a stale `lldb-rpc-server`
-    /// that wedges the next debug launch.
+    /// Sends `quit` to LLDB and waits for exit, escalating to SIGTERM then SIGKILL if needed. Also
+    /// reaps the `lldb-rpc-server` child: `lldb` spawns it as a child process that does **not** die
+    /// when `lldb` is killed (it reparents to launchd and keeps running), so a
+    /// cancelled/timed-out/force-killed session would otherwise leak a stale `lldb-rpc-server` that
+    /// wedges the next debug launch.
     public func terminate() async {
         let lldbPID = process.processIdentifier
-        // Capture child pids now, while lldb is still their parent — once lldb exits they
-        // reparent to launchd and can no longer be found via `pgrep -P <lldbPID>`.
+        // Capture child pids now, while lldb is still their parent — once lldb exits they reparent
+        // to launchd and can no longer be found via `pgrep -P <lldbPID>`.
         let rpcServerPIDs = lldbPID > 0 ? await Self.childPIDs(ofParent: lldbPID) : []
 
         if process.isRunning {
@@ -412,22 +413,19 @@ public actor LLDBSession {
             }
         }
 
-        // Reap any lldb-rpc-server child that outlived lldb. A graceful quit usually takes it
-        // down already, in which case `kill(pid, 0)` reports it gone and we skip it.
-        for child in rpcServerPIDs where kill(child, 0) == 0 {
-            kill(child, SIGKILL)
-        }
+        // Reap any lldb-rpc-server child that outlived lldb. A graceful quit usually takes it down
+        // already, in which case `kill(pid, 0)` reports it gone and we skip it.
+        for child in rpcServerPIDs where kill(child, 0) == 0 { kill(child, SIGKILL) }
 
         for fd in ptyFDs { close(fd) }
     }
 
     /// Returns the PIDs of the direct child processes of `parent` via `pgrep -P`.
     static func childPIDs(ofParent parent: Int32) async -> [Int32] {
-        guard
-            let result = try? await ProcessResult.run(
-                "/usr/bin/pgrep", arguments: ["-P", "\(parent)"], mergeStderr: false,
-            ),
-            result.succeeded
+        guard let result = try? await ProcessResult.run(
+            "/usr/bin/pgrep", arguments: ["-P", "\(parent)"], mergeStderr: false,
+        ),
+              result.succeeded
         else { return [] }
         return result.stdout
             .split(whereSeparator: \.isNewline)
@@ -503,8 +501,8 @@ public actor LLDBSession {
                             }
                         }
 
-                        // Flood guard: a bounded amount of output without ever seeing a prompt means
-                        // the target is emitting faster than LLDB hands back control.
+                        // Flood guard: a bounded amount of output without ever seeing a prompt
+                        // means the target is emitting faster than LLDB hands back control.
                         if totalBytes > Self.maxResponseBytes {
                             finish(gate.resume(throwing: LLDBError.commandFailed(
                                 "LLDB emitted over \(Self.maxResponseBytes / 1000)KB without returning a prompt — the target is flooding output, typically a breakpoint on a high-frequency symbol (sqlite3_prepare_v2, malloc, objc_msgSend, …) or an inferior-function-calling condition. Aborting to avoid a wedged session; recreate the session and use a narrower breakpoint.",
@@ -551,9 +549,7 @@ public actor LLDBSession {
 
     /// Parses LLDB output and updates the tracked process state.
     private func updateProcessState(from output: String) {
-        if let newState = Self.parseProcessState(from: output) {
-            processState = newState
-        }
+        if let newState = Self.parseProcessState(from: output) { processState = newState }
     }
 
     /// Derives a ``ProcessState`` from LLDB output, or `nil` if the output carries no run/stop
@@ -566,35 +562,29 @@ public actor LLDBSession {
             return .stopped(reason: "exited")
         }
         // Look for stop reason patterns in LLDB output
-        if let reasonRange = output.range(
-            of: #"stop reason = (.+)"#, options: .regularExpression,
-        ) {
+        if let reasonRange = output.range(of: #"stop reason = (.+)"#, options: .regularExpression) {
             let reason = String(output[reasonRange]).replacingOccurrences(
                 of: "stop reason = ", with: "",
             )
             return .stopped(reason: reason)
         } else if output.contains("Process"), output.contains("stopped") {
             return .stopped(reason: nil)
-        } else if output.contains("Process"), output.contains("resuming") {
-            return .running
-        }
+        } else if output.contains("Process"), output.contains("resuming") { return .running }
         return nil
     }
 
     /// Reconciles the tracked state with reality when the process is believed to be running.
     ///
     /// After `continue` is sent via ``sendCommandNoWait(_:)``, a breakpoint hit (or crash) emits an
-    /// async stop notification into the PTY with no command driving it. Until that output is drained,
-    /// `processState` stays `.running` even though the target is parked at the breakpoint — the
-    /// "is running" desync in 1wa-p8i. This polls the PTY non-blockingly and, if a stop notification
-    /// is waiting, reads it and updates the state. Cheap no-op when genuinely running (poll finds no
-    /// pending data) or already stopped.
+    /// async stop notification into the PTY with no command driving it. Until that output is
+    /// drained, `processState` stays `.running` even though the target is parked at the breakpoint
+    /// — the "is running" desync in 1wa-p8i. This polls the PTY non-blockingly and, if a stop
+    /// notification is waiting, reads it and updates the state. Cheap no-op when genuinely running
+    /// (poll finds no pending data) or already stopped.
     ///
     /// - Returns: The reconciled process state.
     public func syncedProcessState() async -> ProcessState {
-        if case .running = processState {
-            await drainPendingOutput()
-        }
+        if case .running = processState { await drainPendingOutput() }
         return processState
     }
 
@@ -727,9 +717,8 @@ public actor LLDBSession {
         }
         // Check for crash-related stop reasons
         for indicator in crashIndicators
-        where indicator.starts(with: "stop reason") || indicator.starts(with: "EXC_") {
-            if output.contains(indicator) { return true }
-        }
+            where indicator.starts(with: "stop reason") || indicator.starts(with: "EXC_")
+        { if output.contains(indicator) { return true } }
         return false
     }
 
@@ -800,7 +789,7 @@ public actor LLDBSessionManager {
     ///   - environment: Environment variables to set before launch.
     ///   - arguments: Command-line arguments to pass to the process.
     ///   - stopAtEntry: If true, stops at the entry point before running.
-    ///   - Returns: The LLDB session with the launched process.
+    /// - Returns: The LLDB session with the launched process.
     public func createLaunchSession(
         executablePath: String,
         environment: [String: String] = [:],
@@ -837,7 +826,7 @@ public actor LLDBSessionManager {
     ///   - arguments: Command-line arguments to pass to the app via `--args` .
     ///   - environment: Environment variables to set on the launched process.
     ///   - stopAtEntry: If true, leaves the process stopped after attach.
-    ///   - Returns: The LLDB session with the attached process.
+    /// - Returns: The LLDB session with the attached process.
     public func createOpenAndAttachSession(
         appPath: String,
         executableName: String,
@@ -858,10 +847,9 @@ public actor LLDBSessionManager {
                 stopAtEntry: stopAtEntry,
             )
         } catch {
-            // Any failure before the session is fully established (e.g. a waitfor/attach
-            // timeout, or the tool task being cancelled) must reap LLDB and its
-            // lldb-rpc-server child — otherwise the next launch attaches against a wedged
-            // stale session.
+            // Any failure before the session is fully established (e.g. a waitfor/attach timeout,
+            // or the tool task being cancelled) must reap LLDB and its lldb-rpc-server child —
+            // otherwise the next launch attaches against a wedged stale session.
             await session.terminate()
             throw error
         }
@@ -879,9 +867,7 @@ public actor LLDBSessionManager {
         _ = try await session.readUntilPrompt()
 
         // Tell LLDB to wait for a process with this name to appear
-        try await session.sendCommandNoWait(
-            "process attach --name \"\(executableName)\" --waitfor",
-        )
+        try await session.sendCommandNoWait("process attach --name \"\(executableName)\" --waitfor")
 
         // Kill any existing instances of the app to avoid attaching to a stale process
         let pkill = Process()
@@ -1103,12 +1089,14 @@ public struct LLDBRunner: Sendable {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
 
         var didInterrupt = false
+
         if case .running = await session.syncedProcessState() {
             _ = try await session.interruptProcess()
             didInterrupt = true
         }
 
         let result: T
+
         do {
             result = try await body(session)
         } catch {
@@ -1172,7 +1160,7 @@ public struct LLDBRunner: Sendable {
     ///   - environment: Environment variables to set before launch.
     ///   - arguments: Command-line arguments to pass to the process.
     ///   - stopAtEntry: If true, stops at the entry point before running.
-    ///   - Returns: The result containing launch output and the PID.
+    /// - Returns: The result containing launch output and the PID.
     /// Timeout for launch sessions — loading executables and symbols takes longer than normal
     /// commands.
     private static let launchCommandTimeout: TimeInterval = 120
@@ -1207,7 +1195,7 @@ public struct LLDBRunner: Sendable {
     ///   - arguments: Command-line arguments to pass to the app.
     ///   - environment: Environment variables to set.
     ///   - stopAtEntry: If true, stops at the entry point before running.
-    ///   - Returns: The result containing attach output and the PID.
+    /// - Returns: The result containing attach output and the PID.
     public func launchViaOpenAndAttach(
         appPath: String,
         executableName: String,
@@ -1249,10 +1237,7 @@ public struct LLDBRunner: Sendable {
     public func attachToProcess(_ processName: String) async throws(LLDBError) -> LLDBResult {
         // For name-based attach, we need a temporary batch approach since we don't know the PID
         // upfront. Use the old batch method.
-        try await runBatch(commands: [
-            "process attach --name \"\(processName)\"",
-            "process status",
-        ])
+        try await runBatch(commands: ["process attach --name \"\(processName)\"", "process status"])
     }
 
     /// Detaches from a process and terminates the persistent session.
@@ -1265,14 +1250,14 @@ public struct LLDBRunner: Sendable {
             return .init(exitCode: 0, stdout: "No active session for PID \(pid)", stderr: "")
         }
 
-        // `detach` can block when the target is wedged (the read for the prompt never
-        // completes and the command times out). Treat that as a partial success: the detach
-        // was issued, and `removeSession` → `terminate` tears down LLDB and reaps the
-        // lldb-rpc-server regardless, so we never leak a stale session on timeout.
+        // `detach` can block when the target is wedged (the read for the prompt never completes and
+        // the command times out). Treat that as a partial success: the detach was issued, and
+        // `removeSession` → `terminate` tears down LLDB and reaps the lldb-rpc-server regardless,
+        // so we never leak a stale session on timeout.
         let output = (try? await session.sendCommand("detach"))
             ?? "detach issued (LLDB did not confirm before timeout — session torn down anyway)"
         await LLDBSessionManager.shared.removeSession(pid: pid)
-        return LLDBResult(exitCode: 0, stdout: output, stderr: "")
+        return .init(exitCode: 0, stdout: output, stderr: "")
     }
 
     /// Sets a breakpoint at a symbol (function name).
@@ -1280,16 +1265,12 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - symbol: The symbol name to break on (e.g., function name).
-    ///   - Returns: The result containing breakpoint information.
+    /// - Returns: The result containing breakpoint information.
     public func setBreakpoint(pid: Int32, symbol: String) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let setOutput = try await session.sendCommand("breakpoint set --name \"\(symbol)\"")
         let listOutput = try await session.sendCommand("breakpoint list")
-        return .init(
-            exitCode: 0,
-            stdout: setOutput + "\n" + listOutput,
-            stderr: "",
-        )
+        return .init(exitCode: 0, stdout: setOutput + "\n" + listOutput, stderr: "")
     }
 
     /// Sets a breakpoint at a specific file and line number.
@@ -1298,7 +1279,7 @@ public struct LLDBRunner: Sendable {
     ///   - pid: The process ID of the target process.
     ///   - file: The source file path.
     ///   - line: The line number in the source file.
-    ///   - Returns: The result containing breakpoint information.
+    /// - Returns: The result containing breakpoint information.
     public func setBreakpoint(
         pid: Int32,
         file: String,
@@ -1309,11 +1290,7 @@ public struct LLDBRunner: Sendable {
             "breakpoint set --file \"\(file)\" --line \(line)",
         )
         let listOutput = try await session.sendCommand("breakpoint list")
-        return .init(
-            exitCode: 0,
-            stdout: setOutput + "\n" + listOutput,
-            stderr: "",
-        )
+        return .init(exitCode: 0, stdout: setOutput + "\n" + listOutput, stderr: "")
     }
 
     /// Lists all breakpoints in the target process.
@@ -1331,7 +1308,7 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - breakpointId: The breakpoint ID to delete.
-    ///   - Returns: The result containing updated breakpoint list.
+    /// - Returns: The result containing updated breakpoint list.
     public func deleteBreakpoint(
         pid: Int32,
         breakpointId: Int,
@@ -1339,11 +1316,7 @@ public struct LLDBRunner: Sendable {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let deleteOutput = try await session.sendCommand("breakpoint delete \(breakpointId)")
         let listOutput = try await session.sendCommand("breakpoint list")
-        return .init(
-            exitCode: 0,
-            stdout: deleteOutput + "\n" + listOutput,
-            stderr: "",
-        )
+        return .init(exitCode: 0, stdout: deleteOutput + "\n" + listOutput, stderr: "")
     }
 
     /// Continues execution of a stopped process.
@@ -1371,7 +1344,7 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - threadIndex: Optional thread index to get backtrace for (all threads if nil).
-    ///   - Returns: The result containing stack trace information.
+    /// - Returns: The result containing stack trace information.
     public func getStack(
         pid: Int32,
         threadIndex: Int? = nil,
@@ -1393,7 +1366,7 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - frameIndex: The stack frame index to inspect (0 is current frame).
-    ///   - Returns: The result containing variable information.
+    /// - Returns: The result containing variable information.
     public func getVariables(
         pid: Int32,
         frameIndex: Int = 0,
@@ -1401,11 +1374,7 @@ public struct LLDBRunner: Sendable {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let selectOutput = try await session.sendCommand("frame select \(frameIndex)")
         let varsOutput = try await session.sendCommand("frame variable")
-        return .init(
-            exitCode: 0,
-            stdout: selectOutput + "\n" + varsOutput,
-            stderr: "",
-        )
+        return .init(exitCode: 0, stdout: selectOutput + "\n" + varsOutput, stderr: "")
     }
 
     /// Executes a custom LLDB command.
@@ -1413,7 +1382,7 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - command: The LLDB command to execute.
-    ///   - Returns: The result containing command output.
+    /// - Returns: The result containing command output.
     public func executeCommand(pid: Int32, command: String) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let trimmed = command.trimmingCharacters(in: .whitespaces)
@@ -1421,12 +1390,12 @@ public struct LLDBRunner: Sendable {
         // Route `process interrupt` through the dedicated handler that waits for the async stop
         // notification — plain sendCommand races with it.
         if trimmed == "process interrupt" || trimmed.hasPrefix("process interrupt ") {
-            return .init(exitCode: 0, stdout: try await session.interruptProcess(), stderr: "")
+            return await .init(exitCode: 0, stdout: try session.interruptProcess(), stderr: "")
         }
 
         // Expression-evaluation commands block (and eventually time out) against a running target.
-        // Auto-interrupt → run → resume so a raw `po`/`expr`/`call` works on a live app the same way
-        // debug_evaluate does.
+        // Auto-interrupt → run → resume so a raw `po`/`expr`/`call` works on a live app the same
+        // way debug_evaluate does.
         if Self.isExpressionCommand(trimmed) {
             let (output, autoResumed) = try await withProcessStopped(pid: pid) {
                 session throws(LLDBError) in try await session.sendCommand(command)
@@ -1438,7 +1407,7 @@ public struct LLDBRunner: Sendable {
             )
         }
 
-        return .init(exitCode: 0, stdout: try await session.sendCommand(command), stderr: "")
+        return await .init(exitCode: 0, stdout: try session.sendCommand(command), stderr: "")
     }
 
     /// Whether an LLDB command evaluates an expression (and therefore needs a stopped process).
@@ -1459,7 +1428,7 @@ public struct LLDBRunner: Sendable {
     ///   - objectDescription: Whether to use `po` (default true).
     ///   - thread: Optional thread index to select before evaluating.
     ///   - frame: Optional frame index to select before evaluating.
-    ///   - Returns: The result containing expression output.
+    /// - Returns: The result containing expression output.
     public func evaluate(
         pid: Int32,
         expression: String,
@@ -1506,7 +1475,7 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - selectIndex: Optional thread index to switch to.
-    ///   - Returns: The result containing thread information.
+    /// - Returns: The result containing thread information.
     public func listThreads(pid: Int32, selectIndex: Int?) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let listOutput = try await session.sendCommand("thread list")
@@ -1532,7 +1501,7 @@ public struct LLDBRunner: Sendable {
     ///   - address: Memory address for add action (alternative to variable).
     ///   - watchpointId: Watchpoint ID for remove action.
     ///   - condition: Optional condition expression for add action.
-    ///   - Returns: The result containing watchpoint information.
+    /// - Returns: The result containing watchpoint information.
     public func manageWatchpoint(
         pid: Int32,
         action: String,
@@ -1577,11 +1546,7 @@ public struct LLDBRunner: Sendable {
                     try await session
                     .sendCommand("watchpoint delete \(watchpointId)")
                 let listOutput = try await session.sendCommand("watchpoint list")
-                return LLDBResult(
-                    exitCode: 0,
-                    stdout: deleteOutput + "\n" + listOutput,
-                    stderr: "",
-                )
+                return LLDBResult(exitCode: 0, stdout: deleteOutput + "\n" + listOutput, stderr: "")
 
             case "list":
                 let output = try await session.sendCommand("watchpoint list")
@@ -1596,7 +1561,7 @@ public struct LLDBRunner: Sendable {
     /// - Parameters:
     ///   - pid: The process ID of the target process.
     ///   - mode: Step mode ( `"in"` , `"over"` , `"out"` , or `"instruction"` ).
-    ///   - Returns: The result containing the new location after stepping.
+    /// - Returns: The result containing the new location after stepping.
     public func step(pid: Int32, mode: String) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
         let command: String
@@ -1610,11 +1575,7 @@ public struct LLDBRunner: Sendable {
         }
         let stepOutput = try await session.sendCommand(command)
         let frameOutput = try await session.sendCommand("frame info")
-        return .init(
-            exitCode: 0,
-            stdout: stepOutput + "\n" + frameOutput,
-            stderr: "",
-        )
+        return .init(exitCode: 0, stdout: stepOutput + "\n" + frameOutput, stderr: "")
     }
 
     /// Reads memory at an address.
@@ -1625,7 +1586,7 @@ public struct LLDBRunner: Sendable {
     ///   - count: Number of items to read.
     ///   - format: Output format ( `"hex"` , `"bytes"` , `"ascii"` , or `"instruction"` ).
     ///   - size: Item size in bytes (1, 2, 4, or 8).
-    ///   - Returns: The result containing memory contents.
+    /// - Returns: The result containing memory contents.
     public func readMemory(
         pid: Int32,
         address: String,
@@ -1657,7 +1618,7 @@ public struct LLDBRunner: Sendable {
     ///   - name: Symbol or function name regex.
     ///   - type: Type name to look up.
     ///   - verbose: Whether to use verbose output.
-    ///   - Returns: The result containing symbol information.
+    /// - Returns: The result containing symbol information.
     public func symbolLookup(
         pid: Int32,
         address: String?,
@@ -1696,7 +1657,7 @@ public struct LLDBRunner: Sendable {
     ///   - platform: `"ios"` or `"macos"` .
     ///   - address: Optional specific view address to inspect.
     ///   - constraints: Whether to show Auto Layout constraints.
-    ///   - Returns: The result containing the view hierarchy.
+    /// - Returns: The result containing the view hierarchy.
     public func viewHierarchy(
         pid: Int32,
         platform: String,
@@ -1706,12 +1667,12 @@ public struct LLDBRunner: Sendable {
         classFilter: String? = nil,
         timeoutSeconds: Double? = nil,
     ) async throws(LLDBError) -> LLDBResult {
-        // The recursiveDescription/_subtreeDescription expressions run via the expression evaluator,
-        // which only works on a stopped process. A running target yields empty output otherwise, so
-        // transparently interrupt → dump → resume.
+        // The recursiveDescription/_subtreeDescription expressions run via the expression
+        // evaluator, which only works on a stopped process. A running target yields empty output
+        // otherwise, so transparently interrupt → dump → resume.
         let exprTimeoutUS = timeoutSeconds.map { max(1, Int($0 * 1_000_000)) }
-        // Raise the per-command read timeout if the caller wants to wait longer than the default 30s
-        // expression budget. Restored after the call so the shared session stays responsive.
+        // Raise the per-command read timeout if the caller wants to wait longer than the default
+        // 30s expression budget. Restored after the call so the shared session stays responsive.
         let readTimeoutSeconds: TimeInterval? = timeoutSeconds.map { max($0 + 5, 30) }
         let useBoundedTraversal = maxDepth != nil || classFilter != nil
 
@@ -1734,9 +1695,10 @@ public struct LLDBRunner: Sendable {
             if let address {
                 rootExpr = "(id)\(address)"
             } else if isMacOS {
-                // mainWindow is nil for a backgrounded or menu-bar app; fall back to the key window,
-                // then the first window, so the dump still resolves a content view.
-                rootExpr = "({ NSApplication *app = (NSApplication *)[NSApplication sharedApplication]; NSWindow *w = [app mainWindow]; if (!w) w = [app keyWindow]; if (!w) w = [[app windows] firstObject]; (id)(w ? [w contentView] : (id)nil); })"
+                // mainWindow is nil for a backgrounded or menu-bar app; fall back to the key
+                // window, then the first window, so the dump still resolves a content view.
+                rootExpr =
+                    "({ NSApplication *app = (NSApplication *)[NSApplication sharedApplication]; NSWindow *w = [app mainWindow]; if (!w) w = [app keyWindow]; if (!w) w = [[app windows] firstObject]; (id)(w ? [w contentView] : (id)nil); })"
             } else {
                 rootExpr = "(id)[[UIApplication sharedApplication] keyWindow]"
             }
@@ -1744,9 +1706,9 @@ public struct LLDBRunner: Sendable {
             let dumpExpr: String
             // For macOS bounded walks, stream per-node lines via libc `fwrite` into a host-readable
             // `/tmp` file. This avoids two costs that wedge SwiftUI-heavy hierarchies past the
-            // expression timeout: (1) per-node `NSMutableString appendFormat:` dispatches inside the
-            // target, and (2) materializing the full result back across the LLDB IPC. The host reads
-            // the file from disk after `expr` returns just the byte count + path.
+            // expression timeout: (1) per-node `NSMutableString appendFormat:` dispatches inside
+            // the target, and (2) materializing the full result back across the LLDB IPC. The host
+            // reads the file from disk after `expr` returns just the byte count + path.
             let bounded = useBoundedTraversal
             let outputPath: String? = (bounded && isMacOS)
                 ? "/tmp/xcmcp-vh-\(pid).txt"
@@ -1762,7 +1724,8 @@ public struct LLDBRunner: Sendable {
             } else if address != nil {
                 dumpExpr = "[\(rootExpr) recursiveDescription]"
             } else if isMacOS {
-                dumpExpr = "({ id _r = \(rootExpr); _r ? [_r _subtreeDescription] : (id)@\"No window found (app has no main, key, or ordered windows).\"; })"
+                dumpExpr =
+                    "({ id _r = \(rootExpr); _r ? [_r _subtreeDescription] : (id)@\"No window found (app has no main, key, or ordered windows).\"; })"
             } else {
                 dumpExpr = "[\(rootExpr) recursiveDescription]"
             }
@@ -1789,8 +1752,10 @@ public struct LLDBRunner: Sendable {
                 output = try await session.sendCommand(exprCmd)
             }
             if let outputPath {
-                // File-streamed path: expr returns a tiny status string; the real dump lives on disk.
+                // File-streamed path: expr returns a tiny status string; the real dump lives on
+                // disk.
                 let dump = (try? String(contentsOfFile: outputPath, encoding: .utf8)) ?? ""
+
                 if dump.isEmpty {
                     outputs.append("(no nodes written; expr output: \(output))")
                 } else {
@@ -1801,18 +1766,14 @@ public struct LLDBRunner: Sendable {
             }
 
             if constraints, let address {
-                let hOutput = try await session.sendCommand(
-                    LLDBSession.objcExprCommand(
-                        "[(id)\(address) constraintsAffectingLayoutForAxis:0]",
-                        timeoutMicroseconds: exprTimeoutUS,
-                    ),
-                )
-                let vOutput = try await session.sendCommand(
-                    LLDBSession.objcExprCommand(
-                        "[(id)\(address) constraintsAffectingLayoutForAxis:1]",
-                        timeoutMicroseconds: exprTimeoutUS,
-                    ),
-                )
+                let hOutput = try await session.sendCommand(LLDBSession.objcExprCommand(
+                    "[(id)\(address) constraintsAffectingLayoutForAxis:0]",
+                    timeoutMicroseconds: exprTimeoutUS,
+                ))
+                let vOutput = try await session.sendCommand(LLDBSession.objcExprCommand(
+                    "[(id)\(address) constraintsAffectingLayoutForAxis:1]",
+                    timeoutMicroseconds: exprTimeoutUS,
+                ))
                 outputs.append("Horizontal constraints:\n" + hOutput)
                 outputs.append("Vertical constraints:\n" + vOutput)
             }
@@ -1841,9 +1802,11 @@ public struct LLDBRunner: Sendable {
         let viewType = isMacOS ? "NSView" : "UIView"
         let rectFields = isMacOS ? "NSRect" : "CGRect"
         let filterCheck: String
+
         if let classFilter, !classFilter.isEmpty {
             let escaped = classFilter.replacingOccurrences(of: "\"", with: "\\\"")
-            filterCheck = "if ([_cn rangeOfString:@\"\(escaped)\"].location == NSNotFound) { _skip = 1; }"
+            filterCheck =
+                "if ([_cn rangeOfString:@\"\(escaped)\"].location == NSNotFound) { _skip = 1; }"
         } else {
             filterCheck = ""
         }
@@ -1864,18 +1827,18 @@ public struct LLDBRunner: Sendable {
             // Build each line as a small NSMutableString in the target, then write it through libc
             // `fputs` into a host-readable file. This avoids two costs that wedge SwiftUI-heavy
             // hierarchies past the expression timeout: (1) growing a single large NSMutableString
-            // accumulator across thousands of `appendFormat:` calls in the target; (2) materializing
-            // the full result back across the LLDB IPC. The host reads the file from disk after
-            // `expr` returns just a tiny status string.
+            // accumulator across thousands of `appendFormat:` calls in the target; (2)
+            // materializing the full result back across the LLDB IPC. The host reads the file from
+            // disk after `expr` returns just a tiny status string.
             let escapedPath = outputPath.replacingOccurrences(of: "\"", with: "\\\"")
             return """
-            \(imports) ({ id _root = \(rootExpr); if (!_root) { (id)@"No view found."; } else { FILE *_fp = fopen("\(escapedPath)", "w"); if (!_fp) { (id)@"failed to open output file"; } else { NSMutableArray *_st = [NSMutableArray array]; NSMutableArray *_dp = [NSMutableArray array]; [_st addObject:_root]; [_dp addObject:@0]; int _max = \(depthCap); int _count = 0; while ([_st count] > 0 && _count < 20000) { \(viewType) *_v = (\(viewType) *)[_st lastObject]; int _d = [(NSNumber *)[_dp lastObject] intValue]; [_st removeLastObject]; [_dp removeLastObject]; NSString *_cn = NSStringFromClass([_v class]); int _skip = 0; \(filterCheck) if (!_skip) { \(rectFields) _f = [_v frame]; NSMutableString *_line = [NSMutableString string]; for (int _i = 0; _i < _d; _i++) [_line appendString:@"  "]; [_line appendFormat:@"<%@: %p> frame=(%.1f, %.1f, %.1f, %.1f)\\n", _cn, _v, (double)_f.origin.x, (double)_f.origin.y, (double)_f.size.width, (double)_f.size.height]; fputs([_line UTF8String], _fp); _count++; } if (_d < _max) { NSArray *_subs = [_v subviews]; for (NSInteger _i = (NSInteger)[_subs count] - 1; _i >= 0; _i--) { [_st addObject:[_subs objectAtIndex:_i]]; [_dp addObject:[NSNumber numberWithInt:_d + 1]]; } } } if (_count >= 20000) { fputs("\\n(truncated at 20000 nodes — narrow with class_filter or max_depth)\\n", _fp); } fclose(_fp); [NSString stringWithFormat:@"wrote %d nodes", _count]; } } })
-            """
+                \(imports) ({ id _root = \(rootExpr); if (!_root) { (id)@"No view found."; } else { FILE *_fp = fopen("\(escapedPath)", "w"); if (!_fp) { (id)@"failed to open output file"; } else { NSMutableArray *_st = [NSMutableArray array]; NSMutableArray *_dp = [NSMutableArray array]; [_st addObject:_root]; [_dp addObject:@0]; int _max = \(depthCap); int _count = 0; while ([_st count] > 0 && _count < 20000) { \(viewType) *_v = (\(viewType) *)[_st lastObject]; int _d = [(NSNumber *)[_dp lastObject] intValue]; [_st removeLastObject]; [_dp removeLastObject]; NSString *_cn = NSStringFromClass([_v class]); int _skip = 0; \(filterCheck) if (!_skip) { \(rectFields) _f = [_v frame]; NSMutableString *_line = [NSMutableString string]; for (int _i = 0; _i < _d; _i++) [_line appendString:@"  "]; [_line appendFormat:@"<%@: %p> frame=(%.1f, %.1f, %.1f, %.1f)\\n", _cn, _v, (double)_f.origin.x, (double)_f.origin.y, (double)_f.size.width, (double)_f.size.height]; fputs([_line UTF8String], _fp); _count++; } if (_d < _max) { NSArray *_subs = [_v subviews]; for (NSInteger _i = (NSInteger)[_subs count] - 1; _i >= 0; _i--) { [_st addObject:[_subs objectAtIndex:_i]]; [_dp addObject:[NSNumber numberWithInt:_d + 1]]; } } } if (_count >= 20000) { fputs("\\n(truncated at 20000 nodes — narrow with class_filter or max_depth)\\n", _fp); } fclose(_fp); [NSString stringWithFormat:@"wrote %d nodes", _count]; } } })
+                """
         }
 
         return """
-        \(imports) ({ id _root = \(rootExpr); if (!_root) { (id)@"No view found."; } else { NSMutableArray *_st = [NSMutableArray array]; NSMutableArray *_dp = [NSMutableArray array]; NSMutableString *_out = [NSMutableString string]; [_st addObject:_root]; [_dp addObject:@0]; int _max = \(depthCap); int _count = 0; while ([_st count] > 0 && _count < 20000) { \(viewType) *_v = (\(viewType) *)[_st lastObject]; int _d = [(NSNumber *)[_dp lastObject] intValue]; [_st removeLastObject]; [_dp removeLastObject]; NSString *_cn = NSStringFromClass([_v class]); int _skip = 0; \(filterCheck) if (!_skip) { for (int _i = 0; _i < _d; _i++) [_out appendString:@"  "]; \(rectFields) _f = [_v frame]; [_out appendFormat:@"<%@: %p> frame=(%.1f, %.1f, %.1f, %.1f)\\n", _cn, _v, (double)_f.origin.x, (double)_f.origin.y, (double)_f.size.width, (double)_f.size.height]; _count++; } if (_d < _max) { NSArray *_subs = [_v subviews]; for (NSInteger _i = (NSInteger)[_subs count] - 1; _i >= 0; _i--) { [_st addObject:[_subs objectAtIndex:_i]]; [_dp addObject:[NSNumber numberWithInt:_d + 1]]; } } } if (_count >= 20000) { [_out appendString:@"\\n(truncated at 20000 nodes — narrow with class_filter or max_depth)\\n"]; } (id)_out; } })
-        """
+            \(imports) ({ id _root = \(rootExpr); if (!_root) { (id)@"No view found."; } else { NSMutableArray *_st = [NSMutableArray array]; NSMutableArray *_dp = [NSMutableArray array]; NSMutableString *_out = [NSMutableString string]; [_st addObject:_root]; [_dp addObject:@0]; int _max = \(depthCap); int _count = 0; while ([_st count] > 0 && _count < 20000) { \(viewType) *_v = (\(viewType) *)[_st lastObject]; int _d = [(NSNumber *)[_dp lastObject] intValue]; [_st removeLastObject]; [_dp removeLastObject]; NSString *_cn = NSStringFromClass([_v class]); int _skip = 0; \(filterCheck) if (!_skip) { for (int _i = 0; _i < _d; _i++) [_out appendString:@"  "]; \(rectFields) _f = [_v frame]; [_out appendFormat:@"<%@: %p> frame=(%.1f, %.1f, %.1f, %.1f)\\n", _cn, _v, (double)_f.origin.x, (double)_f.origin.y, (double)_f.size.width, (double)_f.size.height]; _count++; } if (_d < _max) { NSArray *_subs = [_v subviews]; for (NSInteger _i = (NSInteger)[_subs count] - 1; _i >= 0; _i--) { [_st addObject:[_subs objectAtIndex:_i]]; [_dp addObject:[NSNumber numberWithInt:_d + 1]]; } } } if (_count >= 20000) { [_out appendString:@"\\n(truncated at 20000 nodes — narrow with class_filter or max_depth)\\n"]; } (id)_out; } })
+            """
     }
 
     /// Toggles colored borders on all views in the key window of a running macOS app.
@@ -1888,7 +1851,7 @@ public struct LLDBRunner: Sendable {
     ///   - enabled: Whether to enable or disable borders.
     ///   - borderWidth: The border width in points.
     ///   - nsColorSelector: The NSColor selector name (e.g. "redColor").
-    ///   - Returns: The result containing the count of affected views.
+    /// - Returns: The result containing the count of affected views.
     public func toggleViewBorders(
         pid: Int32,
         enabled: Bool,
@@ -1899,8 +1862,12 @@ public struct LLDBRunner: Sendable {
 
         let expression: String
         expression = enabled
-            ? LLDBSession.objcExprCommand("@import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [v setWantsLayer:YES]; [[v layer] setBorderWidth:\(borderWidth)]; [[v layer] setBorderColor:[[NSColor \(nsColorSelector)] CGColor]]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders enabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]")
-            : LLDBSession.objcExprCommand("@import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [[v layer] setBorderWidth:0]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders disabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]")
+            ? LLDBSession.objcExprCommand(
+                "@import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [v setWantsLayer:YES]; [[v layer] setBorderWidth:\(borderWidth)]; [[v layer] setBorderColor:[[NSColor \(nsColorSelector)] CGColor]]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders enabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]"
+            )
+            : LLDBSession.objcExprCommand(
+                "@import AppKit; @import QuartzCore; NSArray *wins = [(NSApplication *)[NSApplication sharedApplication] orderedWindows]; NSMutableArray *stack = [NSMutableArray array]; for (NSWindow *w in wins) { if ([w contentView]) [stack addObject:[w contentView]]; } int nViews = 0; while ([stack count] > 0) { NSView *v = [stack lastObject]; [stack removeLastObject]; [[v layer] setBorderWidth:0]; [stack addObjectsFromArray:[v subviews]]; nViews++; } [NSString stringWithFormat:@\"Borders disabled on %d views across %lu windows\", nViews, (unsigned long)[wins count]]"
+            )
 
         let output = try await session.sendCommand(expression)
         return .init(exitCode: 0, stdout: output, stderr: "")
@@ -1920,7 +1887,8 @@ public struct LLDBRunner: Sendable {
     /// completed. Distinctive enough not to collide with normal program output.
     static let captureMarker = "<<<XCMCP_BT_CAPTURED>>>"
 
-    /// Builds the `breakpoint set` command for a non-interactive, auto-continuing backtrace capture.
+    /// Builds the `breakpoint set` command for a non-interactive, auto-continuing backtrace
+    /// capture.
     ///
     /// The breakpoint prints a bounded `bt`, then a sentinel marker, then auto-continues — so the
     /// stack is captured without a follow-up `debug_stack` call and without leaving the target
@@ -1954,7 +1922,7 @@ public struct LLDBRunner: Sendable {
     ///   - frameCount: Max frames per backtrace (`nil` for full).
     ///   - maxHits: How many backtraces to collect before stopping.
     ///   - timeoutSeconds: Overall capture budget.
-    ///   - Returns: The captured backtrace(s) plus any condition advisories.
+    /// - Returns: The captured backtrace(s) plus any condition advisories.
     public func captureBacktrace(
         pid: Int32,
         symbol: String,
@@ -1971,11 +1939,10 @@ public struct LLDBRunner: Sendable {
         let setOutput = try await session.sendCommand(setCmd)
 
         // Parse the breakpoint id ("Breakpoint N: ...") so we can remove it afterward.
-        let breakpointID: Int? = setOutput.range(
-            of: #"Breakpoint (\d+):"#, options: .regularExpression,
-        ).flatMap { range in
-            Int(setOutput[range].dropFirst("Breakpoint ".count).dropLast())
-        }
+        let breakpointID: Int? = setOutput
+            .range(
+                of: #"Breakpoint (\d+):"#, options: .regularExpression,
+            ).flatMap { range in Int(setOutput[range].dropFirst("Breakpoint ".count).dropLast()) }
 
         // Resume only if currently stopped; if already running the breakpoint will still hit.
         if await session.processState.isStopped {
@@ -1997,23 +1964,19 @@ public struct LLDBRunner: Sendable {
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
         let summary: String
-        if hits == 0 {
-            summary =
-                "No backtrace captured within \(timeoutSeconds)s — the breakpoint on '\(symbol)'\(condition.map { " with condition '\($0)'" } ?? "") was not hit (or its condition never matched). The target was left stopped."
-        } else {
-            summary = "Captured \(hits) backtrace\(hits == 1 ? "" : "s") at '\(symbol)':"
-        }
+        summary = hits == 0
+            ? "No backtrace captured within \(timeoutSeconds)s — the breakpoint on '\(symbol)'\(condition.map { " with condition '\($0)'" } ?? "") was not hit (or its condition never matched). The target was left stopped."
+            : "Captured \(hits) backtrace\(hits == 1 ? "" : "s") at '\(symbol)':"
 
-        return .init(exitCode: 0, stdout: summary + (cleaned.isEmpty ? "" : "\n\n" + cleaned), stderr: "")
+        return .init(
+            exitCode: 0, stdout: summary + (cleaned.isEmpty ? "" : "\n\n" + cleaned), stderr: "")
     }
 
     /// Executes LLDB in batch mode with a script (used for cases where persistent sessions aren't
     /// applicable).
     private func runBatch(commands: [String]) async throws(LLDBError) -> LLDBResult {
         let tempDir = FileManager.default.temporaryDirectory
-        let scriptPath = tempDir.appendingPathComponent(
-            "lldb_script_\(UUID().uuidString).lldb",
-        )
+        let scriptPath = tempDir.appendingPathComponent("lldb_script_\(UUID().uuidString).lldb")
 
         do {
             let script = commands.joined(separator: "\n")
@@ -2060,8 +2023,7 @@ public enum LLDBError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public func toMCPError() -> MCPError {
         switch self {
-            case .noActiveSession:
-                .invalidParams(errorDescription ?? "No active debug session")
+            case .noActiveSession: .invalidParams(errorDescription ?? "No active debug session")
             case .commandFailed, .attachFailed:
                 .internalError(errorDescription ?? "Debug operation failed")
         }

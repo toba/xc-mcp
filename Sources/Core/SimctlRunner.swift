@@ -42,7 +42,7 @@ public struct SimulatorDevice: Sendable, Codable {
         deviceTypeIdentifier = try container.decodeIfPresent(
             String.self, forKey: .deviceTypeIdentifier,
         )
-        runtime = nil // Runtime comes from the parent key, not the device object
+        runtime = nil  // Runtime comes from the parent key, not the device object
     }
 
     public init(
@@ -69,9 +69,8 @@ struct SimctlDevicesResponse: Codable {
 
 /// Wrapper for executing simctl commands.
 ///
-/// `SimctlRunner` provides a Swift interface for invoking the iOS Simulator
-/// control tool. It supports listing, booting, and managing simulators,
-/// as well as installing and launching apps.
+/// `SimctlRunner` provides a Swift interface for invoking the iOS Simulator control tool. It
+/// supports listing, booting, and managing simulators, as well as installing and launching apps.
 ///
 /// ## Example
 ///
@@ -110,18 +109,17 @@ public struct SimctlRunner: Sendable {
     /// Lists all available simulator devices.
     ///
     /// - Returns: An array of ``SimulatorDevice`` representing all available simulators.
-    /// - Throws: ``SimctlError/commandFailed(_:)`` if the command fails,
-    ///   or ``SimctlError/invalidOutput`` if the output cannot be parsed.
+    /// - Throws: ``SimctlError/commandFailed(_:)`` if the command fails, or
+    ///   ``SimctlError/invalidOutput`` if the output cannot be parsed.
     public func listDevices() async throws(SimctlError) -> [SimulatorDevice] {
         let result = try await run(arguments: ["list", "devices", "-j"])
 
-        guard result.succeeded else {
-            throw .commandFailed(result.stderr)
-        }
+        guard result.succeeded else { throw .commandFailed(result.stderr) }
 
         let data = Data(result.stdout.utf8)
 
         let response: SimctlDevicesResponse
+
         do {
             response = try JSONDecoder().decode(SimctlDevicesResponse.self, from: data)
         } catch {
@@ -130,6 +128,7 @@ public struct SimctlRunner: Sendable {
 
         // Flatten the devices dictionary and add runtime info
         var devices: [SimulatorDevice] = []
+
         for (runtime, runtimeDevices) in response.devices {
             for device in runtimeDevices {
                 let deviceWithRuntime = SimulatorDevice(
@@ -216,9 +215,7 @@ public struct SimctlRunner: Sendable {
         args: [String] = [],
     ) async throws(SimctlError) -> SimctlResult {
         var arguments = ["launch"]
-        if waitForDebugger {
-            arguments.append("-w")
-        }
+        if waitForDebugger { arguments.append("-w") }
         arguments.append(udid)
         arguments.append(bundleId)
         arguments.append(contentsOf: args)
@@ -252,9 +249,7 @@ public struct SimctlRunner: Sendable {
         container: String = "app",
     ) async throws(SimctlError) -> String {
         let result = try await run(arguments: ["get_app_container", udid, bundleId, container])
-        guard result.succeeded else {
-            throw .commandFailed(result.stderr)
-        }
+        guard result.succeeded else { throw .commandFailed(result.stderr) }
         return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
@@ -347,7 +342,9 @@ public struct SimctlRunner: Sendable {
     ///   - time: Custom time to display.
     ///   - batteryLevel: Battery percentage (0-100).
     ///   - batteryState: Battery state ("charging", "charged", "discharging").
+    ///   - cellularMode: Cellular mode ("notSupported", "searching", "failed", "active").
     ///   - cellularBars: Number of cellular signal bars (0-4).
+    ///   - wifiMode: WiFi mode ("searching", "failed", "active").
     ///   - wifiBars: Number of WiFi signal bars (0-3).
     /// - Returns: The result containing exit code and output.
     public func setStatusBar(
@@ -355,26 +352,24 @@ public struct SimctlRunner: Sendable {
         time: String? = nil,
         batteryLevel: Int? = nil,
         batteryState: String? = nil,
+        cellularMode: String? = nil,
         cellularBars: Int? = nil,
+        wifiMode: String? = nil,
         wifiBars: Int? = nil,
     ) async throws(SimctlError) -> SimctlResult {
         var arguments = ["status_bar", udid, "override"]
 
-        if let time {
-            arguments.append(contentsOf: ["--time", time])
-        }
+        if let time { arguments.append(contentsOf: ["--time", time]) }
         if let batteryLevel {
             arguments.append(contentsOf: ["--batteryLevel", String(batteryLevel)])
         }
-        if let batteryState {
-            arguments.append(contentsOf: ["--batteryState", batteryState])
-        }
+        if let batteryState { arguments.append(contentsOf: ["--batteryState", batteryState]) }
+        if let cellularMode { arguments.append(contentsOf: ["--cellularMode", cellularMode]) }
         if let cellularBars {
             arguments.append(contentsOf: ["--cellularBars", String(cellularBars)])
         }
-        if let wifiBars {
-            arguments.append(contentsOf: ["--wifiBars", String(wifiBars)])
-        }
+        if let wifiMode { arguments.append(contentsOf: ["--wifiMode", wifiMode]) }
+        if let wifiBars { arguments.append(contentsOf: ["--wifiBars", String(wifiBars)]) }
 
         return try await run(arguments: arguments)
     }
@@ -385,43 +380,6 @@ public struct SimctlRunner: Sendable {
     /// - Returns: The result containing exit code and output.
     public func clearStatusBar(udid: String) async throws(SimctlError) -> SimctlResult {
         try await run(arguments: ["status_bar", udid, "clear"])
-    }
-
-    /// Overrides status bar values using a dictionary of options.
-    ///
-    /// - Parameters:
-    ///   - udid: The UDID of the target simulator.
-    ///   - options: Dictionary of status bar options to set.
-    /// - Returns: The result containing exit code and output.
-    public func overrideStatusBar(
-        udid: String,
-        options: [String: Any],
-    ) async throws(SimctlError) -> SimctlResult {
-        var arguments = ["status_bar", udid, "override"]
-
-        if let time = options["time"] as? String {
-            arguments.append(contentsOf: ["--time", time])
-        }
-        if let batteryLevel = options["batteryLevel"] as? Int {
-            arguments.append(contentsOf: ["--batteryLevel", String(batteryLevel)])
-        }
-        if let batteryState = options["batteryState"] as? String {
-            arguments.append(contentsOf: ["--batteryState", batteryState])
-        }
-        if let cellularMode = options["cellularMode"] as? String {
-            arguments.append(contentsOf: ["--cellularMode", cellularMode])
-        }
-        if let cellularBars = options["cellularBars"] as? Int {
-            arguments.append(contentsOf: ["--cellularBars", String(cellularBars)])
-        }
-        if let wifiMode = options["wifiMode"] as? String {
-            arguments.append(contentsOf: ["--wifiMode", wifiMode])
-        }
-        if let wifiBars = options["wifiBars"] as? Int {
-            arguments.append(contentsOf: ["--wifiBars", String(wifiBars)])
-        }
-
-        return try await run(arguments: arguments)
     }
 }
 
@@ -438,21 +396,17 @@ public enum SimctlError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-            case let .commandFailed(message):
-                return "simctl command failed: \(message)"
-            case .invalidOutput:
-                return "simctl returned invalid output"
-            case let .deviceNotFound(udid):
-                return "Simulator device not found: \(udid)"
+            case let .commandFailed(message): "simctl command failed: \(message)"
+            case .invalidOutput: "simctl returned invalid output"
+            case let .deviceNotFound(udid): "Simulator device not found: \(udid)"
         }
     }
 
     public func toMCPError() -> MCPError {
         switch self {
-            case .deviceNotFound:
-                return .invalidParams(errorDescription ?? "Simulator not found")
+            case .deviceNotFound: .invalidParams(errorDescription ?? "Simulator not found")
             case .commandFailed, .invalidOutput:
-                return .internalError(errorDescription ?? "Simulator operation failed")
+                .internalError(errorDescription ?? "Simulator operation failed")
         }
     }
 }

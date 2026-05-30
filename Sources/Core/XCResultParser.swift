@@ -3,8 +3,8 @@ import Subprocess
 
 /// Parses `.xcresult` bundles using `xcresulttool` for detailed test results.
 ///
-/// Extracts complete failure messages and test output that may be truncated
-/// in xcodebuild's text output.
+/// Extracts complete failure messages and test output that may be truncated in xcodebuild's text
+/// output.
 public enum XCResultParser {
     /// Status of an individual test case.
     public enum TestStatus: String, Sendable {
@@ -106,23 +106,20 @@ public enum XCResultParser {
     ///   - testId: Optional test identifier to filter results.
     /// - Returns: Parsed performance metric results, or nil if parsing fails.
     public static func parsePerformanceMetrics(
-        at path: String, testId: String? = nil,
+        at path: String,
+        testId: String? = nil,
     ) async -> [PerformanceMetricResult]? {
         var arguments = [
             "xcresulttool", "get", "test-results", "metrics",
             "--path", path, "--compact",
         ]
-        if let testId {
-            arguments.append(contentsOf: ["--test-id", testId])
-        }
+        if let testId { arguments.append(contentsOf: ["--test-id", testId]) }
 
-        guard
-            let result = try? await ProcessResult.runSubprocess(
-                .name("xcrun"),
-                arguments: Arguments(arguments),
-                outputLimit: 8_388_608,
-            )
-        else { return nil }
+        guard let result = try? await ProcessResult.runSubprocess(
+            .name("xcrun"),
+            arguments: Arguments(arguments),
+            outputLimit: 8_388_608,
+        ) else { return nil }
 
         let data = Data(result.stdout.utf8)
         guard result.succeeded, !data.isEmpty else { return nil }
@@ -158,15 +155,13 @@ public enum XCResultParser {
     // MARK: - Private
 
     private static func runXCResultTool(path: String) async -> TestResultsJSON? {
-        guard
-            let result = try? await ProcessResult.runSubprocess(
-                .name("xcrun"),
-                arguments: Arguments([
-                    "xcresulttool", "get", "test-results", "tests", "--path", path, "--compact",
-                ]),
-                outputLimit: 8_388_608,
-            )
-        else { return nil }
+        guard let result = try? await ProcessResult.runSubprocess(
+            .name("xcrun"),
+            arguments: Arguments([
+                "xcresulttool", "get", "test-results", "tests", "--path", path, "--compact",
+            ]),
+            outputLimit: 8_388_608,
+        ) else { return nil }
 
         let data = Data(result.stdout.utf8)
         guard result.succeeded, !data.isEmpty else { return nil }
@@ -191,9 +186,7 @@ public enum XCResultParser {
 
         // Collect duration from the top-level test plan node
         for node in testNodes {
-            if let dur = node.durationInSeconds {
-                totalDuration = (totalDuration ?? 0) + dur
-            }
+            if let dur = node.durationInSeconds { totalDuration = (totalDuration ?? 0) + dur }
         }
 
         // Walk the tree to find test cases
@@ -209,7 +202,7 @@ public enum XCResultParser {
         // Collect test output from attachment nodes
         let testOutput = collectTestOutput(from: testNodes)
 
-        return TestResults(
+        return .init(
             failures: failures,
             passedCount: passedCount,
             failedCount: failedCount,
@@ -227,9 +220,7 @@ public enum XCResultParser {
     ) {
         for node in nodes {
             body(node)
-            if let children = node.children {
-                forEachNode(in: children, body: body)
-            }
+            if let children = node.children { forEachNode(in: children, body: body) }
         }
     }
 
@@ -253,40 +244,47 @@ public enum XCResultParser {
                 switch status {
                     case .passed:
                         passedCount += 1
-                        tests.append(
-                            TestDetail(
-                                name: name, status: .passed, duration: duration,
-                                skipReason: nil, failureMessage: nil, performanceMetrics: [],
-                            ),
-                        )
+                        tests.append(TestDetail(
+                            name: name,
+                            status: .passed,
+                            duration: duration,
+                            skipReason: nil,
+                            failureMessage: nil,
+                            performanceMetrics: [],
+                        ))
                     case .failed:
                         failedCount += 1
                         let failure = extractFailure(from: node)
                         if let failure { failures.append(failure) }
-                        tests.append(
-                            TestDetail(
-                                name: name, status: .failed, duration: duration,
-                                skipReason: nil, failureMessage: failure?.message,
-                                performanceMetrics: [],
-                            ),
-                        )
+                        tests.append(TestDetail(
+                            name: name,
+                            status: .failed,
+                            duration: duration,
+                            skipReason: nil,
+                            failureMessage: failure?.message,
+                            performanceMetrics: [],
+                        ))
                     case .skipped:
                         skippedCount += 1
                         let reason = extractSkipReason(from: node)
-                        tests.append(
-                            TestDetail(
-                                name: name, status: .skipped, duration: duration,
-                                skipReason: reason, failureMessage: nil, performanceMetrics: [],
-                            ),
-                        )
+                        tests.append(TestDetail(
+                            name: name,
+                            status: .skipped,
+                            duration: duration,
+                            skipReason: reason,
+                            failureMessage: nil,
+                            performanceMetrics: [],
+                        ))
                     case .expectedFailure:
                         passedCount += 1
-                        tests.append(
-                            TestDetail(
-                                name: name, status: .expectedFailure, duration: duration,
-                                skipReason: nil, failureMessage: nil, performanceMetrics: [],
-                            ),
-                        )
+                        tests.append(TestDetail(
+                            name: name,
+                            status: .expectedFailure,
+                            duration: duration,
+                            skipReason: nil,
+                            failureMessage: nil,
+                            performanceMetrics: [],
+                        ))
                 }
             }
         }
@@ -294,21 +292,19 @@ public enum XCResultParser {
 
     private static func extractSkipReason(from node: TestNode) -> String? {
         guard let children = node.children else { return nil }
+
         for child in children {
             let childType = child.nodeType ?? ""
             if childType == "Failure Message" || childType == "Skip Message" {
-                if let name = child.name, !name.isEmpty {
-                    return name
-                }
+                if let name = child.name, !name.isEmpty { return name }
             }
             // Check nested children
             if let nested = child.children {
                 for nestedChild in nested {
                     let nestedType = nestedChild.nodeType ?? ""
+
                     if nestedType == "Failure Message" || nestedType == "Skip Message" {
-                        if let name = nestedChild.name, !name.isEmpty {
-                            return name
-                        }
+                        if let name = nestedChild.name, !name.isEmpty { return name }
                     }
                 }
             }
@@ -331,12 +327,7 @@ public enum XCResultParser {
         var file: String?
         var line: Int?
 
-        collectFailureDetails(
-            from: children,
-            messages: &messages,
-            file: &file,
-            line: &line,
-        )
+        collectFailureDetails(from: children, messages: &messages, file: &file, line: &line)
 
         let message = messages.isEmpty ? "Test failed" : messages.joined(separator: "; ")
 
@@ -359,18 +350,15 @@ public enum XCResultParser {
             let nodeType = node.nodeType ?? ""
 
             if nodeType == "Failure Message" {
-                if let name = node.name, !name.isEmpty {
-                    messages.append(name)
-                }
+                if let name = node.name, !name.isEmpty { messages.append(name) }
             } else if nodeType == "Source Code Reference" {
                 if let name = node.name {
                     // Format: "file.swift:42"
                     let parts = name.split(separator: ":", maxSplits: 1)
+
                     if parts.count >= 1 {
                         file = String(parts[0])
-                        if parts.count >= 2 {
-                            line = Int(parts[1])
-                        }
+                        if parts.count >= 2 { line = Int(parts[1]) }
                     }
                 }
             }
@@ -395,9 +383,7 @@ public enum XCResultParser {
                 if let name = node.name,
                    name.localizedCaseInsensitiveContains("output")
                 {
-                    if let details = node.details, !details.isEmpty {
-                        outputs.append(details)
-                    }
+                    if let details = node.details, !details.isEmpty { outputs.append(details) }
                 }
             }
         }

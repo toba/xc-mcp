@@ -28,15 +28,11 @@ public enum TestPlanFile {
     ///
     /// Targets without an explicit `"enabled"` key are treated as enabled (Xcode's default).
     public static func targetEntries(from json: [String: Any]) -> [(name: String, enabled: Bool)] {
-        guard let testTargets = json["testTargets"] as? [[String: Any]] else {
-            return []
-        }
+        guard let testTargets = json["testTargets"] as? [[String: Any]] else { return [] }
         return testTargets.compactMap { entry in
             guard let target = entry["target"] as? [String: Any],
                   let name = target["name"] as? String
-            else {
-                return nil
-            }
+            else { return nil }
             let enabled = entry["enabled"] as? Bool ?? true
             return (name: name, enabled: enabled)
         }
@@ -53,26 +49,25 @@ public enum TestPlanFile {
     ///
     /// Returns tuples of `(path, json)` for each valid test plan file found.
     public static func findFiles(
-        under root: String, maxDepth: Int = 5,
+        under root: String,
+        maxDepth: Int = 5,
     ) -> [(path: String, json: [String: Any])] {
         let fm = FileManager.default
         var results: [(path: String, json: [String: Any])] = []
 
-        guard
-            let enumerator = fm.enumerator(
-                at: URL(fileURLWithPath: root),
-                includingPropertiesForKeys: nil,
-                options: [.skipsHiddenFiles],
-            )
-        else {
-            return results
-        }
+        guard let enumerator = fm.enumerator(
+            at: URL(fileURLWithPath: root),
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles],
+        ) else { return results }
 
         let rootURL = URL(fileURLWithPath: root).standardized
+
         for case let fileURL as URL in enumerator {
             // Enforce max depth
             let relative = fileURL.standardized.path.dropFirst(rootURL.path.count)
             let depth = relative.components(separatedBy: "/").count - 1
+
             if depth > maxDepth {
                 enumerator.skipDescendants()
                 continue
@@ -94,7 +89,7 @@ public enum TestPlanFile {
         public var description: String {
             switch self {
                 case let .invalidFormat(path):
-                    return "File at '\(path)' is not a valid test plan JSON"
+                    "File at '\(path)' is not a valid test plan JSON"
             }
         }
     }

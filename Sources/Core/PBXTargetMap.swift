@@ -2,8 +2,8 @@ import Foundation
 
 /// Parses a `.pbxproj` file to build a mapping of target UUIDs to target names.
 ///
-/// This avoids depending on XcodeProj for lightweight cases where only
-/// the UUID↔name mapping is needed (e.g. xcbaseline file management).
+/// This avoids depending on XcodeProj for lightweight cases where only the UUID↔name mapping is
+/// needed (e.g. xcbaseline file management).
 public enum PBXTargetMap {
     /// Returns a dictionary mapping 24-character target UUIDs to their display names.
     ///
@@ -13,10 +13,8 @@ public enum PBXTargetMap {
     public static func buildMap(projectPath: String) -> [String: String] {
         let pbxprojPath = "\(projectPath)/project.pbxproj"
         guard let data = FileManager.default.contents(atPath: pbxprojPath),
-              let content = String(data: data, encoding: .utf8)
-        else {
-            return [:]
-        }
+            let content = String(data: data, encoding: .utf8)
+        else { return [:] }
 
         var map = [String: String]()
         var inTarget = false
@@ -27,9 +25,7 @@ public enum PBXTargetMap {
             let trimmed = line.drop(while: { $0 == " " || $0 == "\t" })
 
             // Track UUID from block-opening lines like: UUID /* Name */ = {
-            if let uuid = extractLeadingUUID(trimmed) {
-                pendingUUID = uuid
-            }
+            if let uuid = extractLeadingUUID(trimmed) { pendingUUID = uuid }
 
             if trimmed.contains("isa = PBXNativeTarget") {
                 inTarget = true
@@ -38,16 +34,13 @@ public enum PBXTargetMap {
             }
 
             if inTarget, trimmed.hasPrefix("name = ") {
-                let name =
-                    trimmed
-                        .dropFirst("name = ".count)
-                        .replacingOccurrences(of: ";", with: "")
-                        .trimmingCharacters(in: .whitespaces)
-                        .replacingOccurrences(of: "\"", with: "")
+                let name = trimmed
+                    .dropFirst("name = ".count)
+                    .replacingOccurrences(of: ";", with: "")
+                    .trimmingCharacters(in: .whitespaces)
+                    .replacingOccurrences(of: "\"", with: "")
 
-                if let uuid = currentUUID {
-                    map[uuid] = name
-                }
+                if let uuid = currentUUID { map[uuid] = name }
                 inTarget = false
                 currentUUID = nil
             }
@@ -65,28 +58,24 @@ public enum PBXTargetMap {
     ///
     /// Returns the UUID string or nil if not found.
     public static func findUUID(
-        projectPath: String, targetName: String,
+        projectPath: String,
+        targetName: String,
     ) -> String? {
         let map = buildMap(projectPath: projectPath)
 
         // Direct lookup (name → UUID)
-        for (uuid, name) in map where name == targetName {
-            return uuid
-        }
+        for (uuid, name) in map where name == targetName { return uuid }
 
         // Fallback: scan for /* TargetName */ comment references
         let pbxprojPath = "\(projectPath)/project.pbxproj"
         guard let data = FileManager.default.contents(atPath: pbxprojPath),
-              let content = String(data: data, encoding: .utf8)
-        else {
-            return nil
-        }
+            let content = String(data: data, encoding: .utf8)
+        else { return nil }
 
         for line in content.split(separator: "\n", omittingEmptySubsequences: false) {
             if line.contains("PBXNativeTarget") { continue }
             if line.contains("/* \(targetName) */"),
-               let range = line.range(of: #"[A-F0-9]{24}"#, options: .regularExpression)
-            {
+               let range = line.range(of: #"[A-F0-9]{24}"#, options: .regularExpression) {
                 return String(line[range])
             }
         }

@@ -45,8 +45,8 @@ public enum BreakpointConditionAdvisor {
         let trimmed = command.trimmingCharacters(in: .whitespaces)
         let lower = trimmed.lowercased()
 
-        let isBreakpointCommand =
-            lower.hasPrefix("breakpoint set") || lower.hasPrefix("breakpoint modify")
+        let isBreakpointCommand = lower.hasPrefix("breakpoint set")
+            || lower.hasPrefix("breakpoint modify")
             || lower.hasPrefix("br s ") || lower.hasPrefix("br set")
             || lower.hasPrefix("tbreak") || lower == "b" || lower.hasPrefix("b ")
         guard isBreakpointCommand else { return [] }
@@ -60,7 +60,8 @@ public enum BreakpointConditionAdvisor {
         }
 
         if let condition = extractCondition(from: trimmed),
-           let fn = inferiorCallInCondition(condition) {
+           let fn = inferiorCallInCondition(condition)
+        {
             warnings.append(
                 "⚠️ The breakpoint condition calls '\(fn)(…)', which runs the expression evaluator in the target on every hit — orders-of-magnitude slowdown on a hot symbol, and a known cause of indefinitely wedged sessions. Prefer a condition that only reads registers/memory (e.g. compare a register value) over one that calls inferior functions.",
             )
@@ -82,15 +83,19 @@ public enum BreakpointConditionAdvisor {
         var candidates: [String] = []
 
         var index = 0
+
         while index < tokens.count {
             let token = tokens[index]
+
             if let eq = token.firstIndex(of: "="), nameFlags.contains(String(token[..<eq])) {
                 candidates.append(String(token[token.index(after: eq)...]))
             } else if nameFlags.contains(token), index + 1 < tokens.count {
                 candidates.append(tokens[index + 1])
                 index += 1
-            } else if (token == "b" || token == "tbreak"), index + 1 < tokens.count,
-                      !tokens[index + 1].hasPrefix("-") {
+            } else if token == "b" || token == "tbreak",
+               index + 1 < tokens.count,
+               !tokens[index + 1].hasPrefix("-")
+            {
                 candidates.append(tokens[index + 1])
                 index += 1
             }
@@ -101,16 +106,12 @@ public enum BreakpointConditionAdvisor {
             let cleaned = candidate.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
             // Prefer an exact match; the symbol set is unordered, so a substring match (e.g. the
             // regex-name case) must never shadow it (`sqlite3_prepare` vs `sqlite3_prepare_v2`).
-            if let exact = highFrequencySymbols.first(where: { cleaned == $0 }) {
-                return exact
-            }
+            if let exact = highFrequencySymbols.first(where: { cleaned == $0 }) { return exact }
             // Otherwise fall back to the longest symbol contained in the candidate (regex name
             // pattern), keeping the result deterministic regardless of Set iteration order.
             if let contained = highFrequencySymbols
                 .filter({ cleaned.contains($0) })
-                .max(by: { $0.count < $1.count }) {
-                return contained
-            }
+                .max(by: { $0.count < $1.count }) { return contained }
         }
         return nil
     }
@@ -140,15 +141,14 @@ public enum BreakpointConditionAdvisor {
     /// Returns the earliest-occurring inferior-calling function name used in `condition`, or `nil`.
     private static func inferiorCallInCondition(_ condition: String) -> String? {
         var best: (fn: String, index: String.Index)?
+
         for fn in inferiorCallFunctions {
             // Match `fn(` allowing a cast prefix like `(int)strncmp(`.
             guard let range = condition.range(
                 of: "\\b\(NSRegularExpression.escapedPattern(for: fn))\\s*\\(",
                 options: .regularExpression,
             ) else { continue }
-            if best == nil || range.lowerBound < best!.index {
-                best = (fn, range.lowerBound)
-            }
+            if best == nil || range.lowerBound < best!.index { best = (fn, range.lowerBound) }
         }
         return best?.fn
     }

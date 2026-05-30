@@ -24,8 +24,8 @@ public struct ConnectedDevice: Sendable {
     /// Device platform (e.g., "iOS", "tvOS", "watchOS").
     public let platform: String
 
-    /// Hardware UDID (Apple format, e.g., "00008110-00116D221AA1801E").
-    /// Differs from the CoreDevice UUID identifier. Used by libimobiledevice tools.
+    /// Hardware UDID (Apple format, e.g., "00008110-00116D221AA1801E"). Differs from the CoreDevice
+    /// UUID identifier. Used by libimobiledevice tools.
     public let hardwareUDID: String?
 
     /// Creates a new connected device instance.
@@ -50,9 +50,9 @@ public struct ConnectedDevice: Sendable {
 
 /// Wrapper for executing devicectl commands.
 ///
-/// `DeviceCtlRunner` provides a Swift interface for invoking Xcode's device
-/// control tool. It supports listing connected devices, installing apps, and
-/// launching/terminating processes on physical devices.
+/// `DeviceCtlRunner` provides a Swift interface for invoking Xcode's device control tool. It
+/// supports listing connected devices, installing apps, and launching/terminating processes on
+/// physical devices.
 ///
 /// ## Example
 ///
@@ -91,14 +91,12 @@ public struct DeviceCtlRunner: Sendable {
     /// Lists all connected physical devices.
     ///
     /// - Returns: An array of ``ConnectedDevice`` representing all connected devices.
-    /// - Throws: ``DeviceCtlError/commandFailed(_:)`` if the command fails,
-    ///   or ``DeviceCtlError/invalidOutput`` if the output cannot be parsed.
+    /// - Throws: ``DeviceCtlError/commandFailed(_:)`` if the command fails, or
+    ///   ``DeviceCtlError/invalidOutput`` if the output cannot be parsed.
     public func listDevices() async throws(DeviceCtlError) -> [ConnectedDevice] {
         let result = try await run(arguments: ["list", "devices", "--json-output", "-"])
 
-        guard result.succeeded else {
-            throw DeviceCtlError.commandFailed(result.stderr)
-        }
+        guard result.succeeded else { throw DeviceCtlError.commandFailed(result.stderr) }
 
         // Parse the JSON output
         return try parseDeviceList(from: result.stdout)
@@ -145,9 +143,9 @@ public struct DeviceCtlRunner: Sendable {
 
     /// Terminates an app on a physical device by resolving its bundle ID to a PID.
     ///
-    /// `devicectl device process terminate` requires a `--pid` argument. This method
-    /// first queries the device's running processes to find the PID matching the given
-    /// bundle identifier, then terminates that process.
+    /// `devicectl device process terminate` requires a `--pid` argument. This method first queries
+    /// the device's running processes to find the PID matching the given bundle identifier, then
+    /// terminates that process.
     ///
     /// - Parameters:
     ///   - udid: The UDID of the target device.
@@ -172,16 +170,14 @@ public struct DeviceCtlRunner: Sendable {
         let result = try await run(arguments: [
             "device", "info", "processes", "--device", udid, "--json-output", "-",
         ])
-        guard result.succeeded else {
-            throw DeviceCtlError.commandFailed(result.stderr)
-        }
+        guard result.succeeded else { throw DeviceCtlError.commandFailed(result.stderr) }
         return try parseProcessList(from: result.stdout)
     }
 
     /// Finds the PID of a running app on a device by its bundle identifier.
     ///
-    /// Queries the device's running processes and matches by bundle URL or executable
-    /// path against the bundle identifier.
+    /// Queries the device's running processes and matches by bundle URL or executable path against
+    /// the bundle identifier.
     ///
     /// - Parameters:
     ///   - bundleId: The bundle identifier to look for.
@@ -201,9 +197,7 @@ public struct DeviceCtlRunner: Sendable {
         let appName = bundleId.components(separatedBy: ".").last ?? bundleId
         if let match = processes.first(where: {
             $0.executable?.localizedCaseInsensitiveContains(appName) == true
-        }) {
-            return match.processIdentifier
-        }
+        }) { return match.processIdentifier }
         throw DeviceCtlError.processNotFound(bundleId)
     }
 
@@ -225,10 +219,11 @@ public struct DeviceCtlRunner: Sendable {
 
     private static let decoder = JSONDecoder()
 
-    private func parseProcessList(from jsonString: String) throws(DeviceCtlError)
-        -> [DeviceProcess]
-    {
+    private func parseProcessList(
+        from jsonString: String
+    ) throws(DeviceCtlError) -> [DeviceProcess] {
         let data = Data(jsonString.utf8)
+
         do {
             let response = try Self.decoder.decode(
                 DeviceCtlResponse<ProcessListResult>.self,
@@ -247,10 +242,11 @@ public struct DeviceCtlRunner: Sendable {
         }
     }
 
-    private func parseDeviceList(from jsonString: String) throws(DeviceCtlError)
-        -> [ConnectedDevice]
-    {
+    private func parseDeviceList(
+        from jsonString: String
+    ) throws(DeviceCtlError) -> [ConnectedDevice] {
         let data = Data(jsonString.utf8)
+
         do {
             let response = try Self.decoder.decode(
                 DeviceCtlResponse<DeviceListResult>.self,
@@ -262,8 +258,7 @@ public struct DeviceCtlRunner: Sendable {
                 else { return nil }
 
                 let hw = device.hardwareProperties
-                let deviceType =
-                    hw?.marketingName ?? hw?.productType ?? hw?.deviceType ?? "Unknown"
+                let deviceType = hw?.marketingName ?? hw?.productType ?? hw?.deviceType ?? "Unknown"
 
                 return ConnectedDevice(
                     udid: device.identifier,
@@ -353,25 +348,20 @@ public enum DeviceCtlError: LocalizedError, Sendable, MCPErrorConvertible {
 
     public var errorDescription: String? {
         switch self {
-            case let .commandFailed(message):
-                return "devicectl command failed: \(message)"
-            case .invalidOutput:
-                return "devicectl returned invalid output"
-            case let .deviceNotFound(udid):
-                return "Device not found: \(udid)"
+            case let .commandFailed(message): "devicectl command failed: \(message)"
+            case .invalidOutput: "devicectl returned invalid output"
+            case let .deviceNotFound(udid): "Device not found: \(udid)"
             case let .processNotFound(bundleId):
-                return "No running process found for bundle identifier: \(bundleId)"
+                "No running process found for bundle identifier: \(bundleId)"
         }
     }
 
     public func toMCPError() -> MCPError {
         switch self {
-            case .deviceNotFound:
-                return .invalidParams(errorDescription ?? "Device not found")
-            case .processNotFound:
-                return .invalidParams(errorDescription ?? "Process not found")
+            case .deviceNotFound: .invalidParams(errorDescription ?? "Device not found")
+            case .processNotFound: .invalidParams(errorDescription ?? "Process not found")
             case .commandFailed, .invalidOutput:
-                return .internalError(errorDescription ?? "Device operation failed")
+                .internalError(errorDescription ?? "Device operation failed")
         }
     }
 }

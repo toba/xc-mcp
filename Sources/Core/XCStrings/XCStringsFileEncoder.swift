@@ -1,12 +1,11 @@
 import Foundation
 
-/// Encodes an `XCStringsFile` in Xcode's on-disk format: top-level
-/// `sourceLanguage` / `strings` / `version` order, `strings` keyed in
-/// `localizedStandardCompare` order, every nested object key sorted, and
-/// `"key" : value` with a space before the colon.
+/// Encodes an `XCStringsFile` in Xcode's on-disk format: top-level `sourceLanguage` / `strings` /
+/// `version` order, `strings` keyed in `localizedStandardCompare` order, every nested object key
+/// sorted, and `"key" : value` with a space before the colon.
 ///
-/// This matches the output of Ryu0118/xcstrings-crud@84ae167 so a round trip
-/// through this encoder produces a zero-diff against an Xcode-saved catalog.
+/// This matches the output of Ryu0118/xcstrings-crud@84ae167 so a round trip through this encoder
+/// produces a zero-diff against an Xcode-saved catalog.
 public enum XCStringsFileEncoder {
     public static func encode(_ file: XCStringsFile) throws -> Data {
         let strings = try XCStringsKeySorter.sort(file.strings.keys).map { key in
@@ -19,7 +18,7 @@ public enum XCStringsFileEncoder {
                     )
                 )
             }
-            return JSONMember(key: key, value: try encodeJSONValue(entry))
+            return try JSONMember(key: key, value: encodeJSONValue(entry))
         }
 
         let root = JSONValue.object([
@@ -55,72 +54,61 @@ private enum JSONValue {
 
     init(jsonObject: Any) throws {
         switch jsonObject {
-        case let object as [String: Any]:
-            self = try .object(object.keys.sorted().map { key in
-                JSONMember(key: key, value: try JSONValue(jsonObject: object[key] as Any))
-            })
-        case let array as [Any]:
-            self = try .array(array.map { try JSONValue(jsonObject: $0) })
-        case let string as String:
-            self = .string(string)
-        case let number as NSNumber:
-            // NSNumber bridges both Bool and numeric — disambiguate via CFTypeID.
-            if CFGetTypeID(number) == CFBooleanGetTypeID() {
-                self = .bool(number.boolValue)
-            } else {
-                self = .number(number.stringValue)
-            }
-        case _ as NSNull:
-            self = .null
-        default:
-            throw EncodingError.invalidValue(
-                jsonObject,
-                EncodingError.Context(
-                    codingPath: [],
-                    debugDescription: "Unsupported JSON value \(jsonObject)"
+            case let object as [String: Any]:
+                self = try .object(
+                    object.keys.sorted().map { key in
+                        try JSONMember(key: key, value: JSONValue(jsonObject: object[key] as Any))
+                    })
+            case let array as [Any]: self = try .array(array.map { try JSONValue(jsonObject: $0) })
+            case let string as String: self = .string(string)
+            case let number as NSNumber:
+                // NSNumber bridges both Bool and numeric — disambiguate via CFTypeID.
+                self = CFGetTypeID(number) == CFBooleanGetTypeID()
+                    ? .bool(number.boolValue)
+                    : .number(number.stringValue)
+            case _ as NSNull: self = .null
+            default:
+                throw EncodingError.invalidValue(
+                    jsonObject,
+                    EncodingError.Context(
+                        codingPath: [],
+                        debugDescription: "Unsupported JSON value \(jsonObject)"
+                    )
                 )
-            )
         }
     }
 
     func render(indentation: Int = 0) -> String {
         switch self {
-        case .object(let members):
-            guard !members.isEmpty else { return "{}" }
-            let childIndentation = indentation + 2
-            let lines = members.map { member in
-                "\(String.spaces(childIndentation))\(member.key.jsonEscaped()) : \(member.value.render(indentation: childIndentation))"
-            }
-            return "{\n\(lines.joined(separator: ",\n"))\n\(String.spaces(indentation))}"
-        case .array(let values):
-            guard !values.isEmpty else { return "[]" }
-            let childIndentation = indentation + 2
-            let lines = values.map { value in
-                "\(String.spaces(childIndentation))\(value.render(indentation: childIndentation))"
-            }
-            return "[\n\(lines.joined(separator: ",\n"))\n\(String.spaces(indentation))]"
-        case .string(let string):
-            return string.jsonEscaped()
-        case .number(let number):
-            return number
-        case .bool(let bool):
-            return bool ? "true" : "false"
-        case .null:
-            return "null"
+            case let .object(members):
+                guard !members.isEmpty else { return "{}" }
+                let childIndentation = indentation + 2
+                let lines = members.map { member in
+                    "\(String.spaces(childIndentation))\(member.key.jsonEscaped()) : \(member.value.render(indentation: childIndentation))"
+                }
+                return "{\n\(lines.joined(separator: ",\n"))\n\(String.spaces(indentation))}"
+            case let .array(values):
+                guard !values.isEmpty else { return "[]" }
+                let childIndentation = indentation + 2
+                let lines = values.map { value in
+                    "\(String.spaces(childIndentation))\(value.render(indentation: childIndentation))"
+                }
+                return "[\n\(lines.joined(separator: ",\n"))\n\(String.spaces(indentation))]"
+            case let .string(string): return string.jsonEscaped()
+            case let .number(number): return number
+            case let .bool(bool): return bool ? "true" : "false"
+            case .null: return "null"
         }
     }
 }
 
-extension String {
-    fileprivate static func spaces(_ count: Int) -> String {
-        String(repeating: " ", count: count)
-    }
+fileprivate extension String {
+    static func spaces(_ count: Int) -> String { .init(repeating: " ", count: count) }
 
-    fileprivate func jsonEscaped() -> String {
-        // `.withoutEscapingSlashes` mirrors Xcode's on-disk format — `/` is
-        // valid JSON and never needs escaping; the default `\/` produces
-        // noisy diffs against catalogs containing strings like
-        // "Domestic / Foreign".
+    func jsonEscaped() -> String {
+        // `.withoutEscapingSlashes` mirrors Xcode's on-disk format — `/` is valid JSON and never
+        // needs escaping; the default `\/` produces noisy diffs against catalogs containing strings
+        // like "Domestic / Foreign".
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.withoutEscapingSlashes]
         let data = try? encoder.encode(self)

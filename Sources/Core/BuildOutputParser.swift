@@ -3,8 +3,8 @@ import Foundation
 
 /// Parses xcodebuild and swift build output into structured build results.
 ///
-/// Extracts errors, warnings, linker errors, test failures, build timing,
-/// and code coverage from raw build output text.
+/// Extracts errors, warnings, linker errors, test failures, build timing, and code coverage from
+/// raw build output text.
 public final class BuildOutputParser {
     private var errors: [BuildError] = []
     private var warnings: [BuildWarning] = []
@@ -73,24 +73,23 @@ public final class BuildOutputParser {
         for (index, line) in lines.enumerated() {
             parseLine(line)
 
-            // Swift Testing: append custom #expect comments / multi-line messages
-            // macOS detail symbol: 􀄵 (U+100135), Linux fallback: ↳ (U+21B3).
+            // Swift Testing: append custom #expect comments / multi-line messages macOS detail
+            // symbol: 􀄵 (U+100135), Linux fallback: ↳ (U+21B3).
             //
-            // Format (real swift-testing output):
-            //   􀢄  Test foo() recorded an issue at File.swift:1:1: Issue recorded
-            //   􀄵  First line of Comment body
-            //      second line of the same Comment (plain indented continuation)
-            //      third line
-            //   􀢄  Test foo() failed after 0.001 seconds with 1 issue.
+            // Format (real swift-testing output): 􀢄 Test foo() recorded an issue at File.swift:1:1:
+            // Issue recorded 􀄵 First line of Comment body second line of the same Comment (plain
+            // indented continuation) third line 􀢄 Test foo() failed after 0.001 seconds with 1
+            // issue.
             //
-            // Only the first comment line carries the detail marker; subsequent lines
-            // of a multi-line `Comment(rawValue:)` body are bare indented text. Stop
-            // when we hit a blank line or another event line (non-indented, or starts
-            // with an SF Symbol private-use marker).
+            // Only the first comment line carries the detail marker; subsequent lines of a
+            // multi-line `Comment(rawValue:)` body are bare indented text. Stop when we hit a blank
+            // line or another event line (non-indented, or starts with an SF Symbol private-use
+            // marker).
             if line.contains("recorded an issue"), index + 1 < lines.count {
                 var continuationParts: [String] = []
                 var nextIdx = index + 1
                 var sawDetailMarker = false
+
                 while nextIdx < lines.count {
                     let raw = lines[nextIdx]
                     let trimmed = raw.trimmingCharacters(in: .whitespaces)
@@ -98,21 +97,19 @@ public final class BuildOutputParser {
 
                     if trimmed.hasPrefix("􀄵") || trimmed.hasPrefix("↳") {
                         let comment = String(
-                            trimmed.drop(while: { $0 != " " }).drop(while: { $0 == " " }),
-                        )
-                        if !comment.isEmpty {
-                            continuationParts.append(comment)
-                        }
+                            trimmed.drop(while: { $0 != " " }).drop(while: { $0 == " " }))
+                        if !comment.isEmpty { continuationParts.append(comment) }
                         sawDetailMarker = true
                         nextIdx += 1
                         continue
                     }
 
-                    // Plain indented continuation of a multi-line Comment body.
-                    // Only collect once we've seen at least one detail-marker line, and
-                    // only when the line is indented (event lines start in column 0).
+                    // Plain indented continuation of a multi-line Comment body. Only collect once
+                    // we've seen at least one detail-marker line, and only when the line is
+                    // indented (event lines start in column 0).
                     let firstChar = raw.first
                     let isIndented = firstChar == " " || firstChar == "\t"
+
                     if sawDetailMarker, isIndented, !isSwiftTestingEventLine(trimmed) {
                         continuationParts.append(trimmed)
                         nextIdx += 1
@@ -137,44 +134,42 @@ public final class BuildOutputParser {
             if line.contains("Command PhaseScriptExecution failed with a nonzero exit") {
                 var contextLines: [String] = []
                 let startIndex = max(0, index - 3)
-                for contextIdx in startIndex ..< index {
+
+                for contextIdx in startIndex..<index {
                     let contextLine = lines[contextIdx].trimmingCharacters(in: .whitespaces)
                     if contextLine.isEmpty || contextLine.hasPrefix("Warning:")
-                        || contextLine.hasPrefix("Run script build phase")
-                    {
-                        continue
-                    }
+                        || contextLine.hasPrefix("Run script build phase") { continue }
                     if contextLine.contains(": warning:"), !contextLine.contains("error:") {
                         continue
                     }
                     contextLines.append(contextLine)
                 }
 
-                if !contextLines.isEmpty, let lastIndex = errors.indices.last,
+                if !contextLines.isEmpty,
+                   let lastIndex = errors.indices.last,
                    errors[lastIndex].message == line
                 {
                     let combinedMessage = contextLines.joined(separator: " ") + " " + line
-                    errors[lastIndex] = BuildError(
-                        file: nil, line: nil, message: combinedMessage,
-                    )
+                    errors[lastIndex] = BuildError(file: nil, line: nil, message: combinedMessage)
                 }
             }
         }
 
-        // Safety net: if a test started but never completed and the test run failed,
-        // record it as a crash (ported from xcsift a1723d8)
+        // Safety net: if a test started but never completed and the test run failed, record it as a
+        // crash (ported from xcsift a1723d8)
         if testRunFailed, let testName = lastStartedTestName {
             let normalizedName = normalizeTestName(testName)
+
             if !hasSeenSimilarTest(normalizedName) {
-                let message =
-                    pendingSignalCode.map {
-                        "Crashed (signal \($0)): last test started before crash"
-                    } ?? "Test did not complete — possible crash"
-                failedTests.append(
-                    FailedTest(
-                        test: testName, message: message, file: nil, line: nil,
-                    ),
-                )
+                let message = pendingSignalCode.map {
+                    "Crashed (signal \($0)): last test started before crash"
+                } ?? "Test did not complete — possible crash"
+                failedTests.append(FailedTest(
+                    test: testName,
+                    message: message,
+                    file: nil,
+                    line: nil,
+                ))
                 seenTestNames.insert(normalizedName)
             }
             lastStartedTestName = nil
@@ -184,17 +179,12 @@ public final class BuildOutputParser {
         // Aggregate test counts from both XCTest and Swift Testing
         let totalExecuted: Int? = {
             if let parallelTotal = parallelTestsTotalCount {
-                if let xctest = xctestExecutedCount {
-                    return parallelTotal + xctest
-                }
+                if let xctest = xctestExecutedCount { return parallelTotal + xctest }
                 return parallelTotal
             }
             let xctest = xctestExecutedCount ?? 0
             let swiftTesting = swiftTestingExecutedCount ?? 0
-            if xctest > 0 || swiftTesting > 0 {
-                return xctest + swiftTesting
-            }
-            return nil
+            return xctest > 0 || swiftTesting > 0 ? xctest + swiftTesting : nil
         }()
 
         let totalFailed: Int = {
@@ -205,29 +195,19 @@ public final class BuildOutputParser {
         }()
 
         let computedPassedTests: Int? = {
-            if let executed = totalExecuted {
-                return max(executed - totalFailed, 0)
-            }
-            if passedTestsCount > 0 {
-                return passedTestsCount
-            }
-            return nil
+            if let executed = totalExecuted { return max(executed - totalFailed, 0) }
+            return passedTestsCount > 0 ? passedTestsCount : nil
         }()
 
         let status: String = {
-            let hasActualFailures =
-                !errors.isEmpty || !failedTests.isEmpty || !linkerErrors.isEmpty
+            let hasActualFailures = !errors.isEmpty || !failedTests.isEmpty || !linkerErrors.isEmpty
             let hasPassedTests = (computedPassedTests ?? 0) > 0
 
             switch (hasActualFailures, testRunFailed, hasPassedTests) {
-                case (true, _, _):
-                    return "failed"
-                case (false, true, true):
-                    return "success"
-                case (false, true, false):
-                    return "failed"
-                case (false, false, _):
-                    return "success"
+                case (true, _, _): return "failed"
+                case (false, true, true): return "success"
+                case (false, true, false): return "failed"
+                case (false, false, _): return "success"
             }
         }()
 
@@ -238,10 +218,9 @@ public final class BuildOutputParser {
 
         let flakyTests = detectFlakyTests()
 
-        let formattedTestTime: String? =
-            testTimeAccumulator > 0
-                ? String(format: "%.3fs", testTimeAccumulator)
-                : nil
+        let formattedTestTime: String? = testTimeAccumulator > 0
+            ? String(format: "%.3fs", testTimeAccumulator)
+            : nil
 
         let summary = BuildSummary(
             errors: errors.count,
@@ -272,7 +251,7 @@ public final class BuildOutputParser {
             }()
             : nil
 
-        return BuildResult(
+        return .init(
             status: status,
             summary: summary,
             errors: errors,
@@ -300,9 +279,7 @@ public final class BuildOutputParser {
         }
 
         for (name, duration) in failedTestDurations where duration > threshold {
-            if !seenNames.contains(name) {
-                slow.append(SlowTest(test: name, duration: duration))
-            }
+            if !seenNames.contains(name) { slow.append(SlowTest(test: name, duration: duration)) }
         }
 
         return slow.sorted { $0.duration > $1.duration }
@@ -320,10 +297,9 @@ public final class BuildOutputParser {
             return Double(d.dropLast()) ?? 0
         }
 
-        let sorted =
-            targets
-                .filter { $0.duration != nil }
-                .sorted { parseDuration($0.duration) > parseDuration($1.duration) }
+        let sorted = targets
+            .filter { $0.duration != nil }
+            .sorted { parseDuration($0.duration) > parseDuration($1.duration) }
 
         return Array(sorted.prefix(limit).map(\.name))
     }
@@ -365,18 +341,13 @@ public final class BuildOutputParser {
     }
 
     private func parseLine(_ line: String) {
-        if line.isEmpty || line.count > 5000 {
-            return
-        }
+        if line.isEmpty || line.count > 5000 { return }
 
-        if parseLinkerLine(line) {
-            return
-        }
+        if parseLinkerLine(line) { return }
 
         if shouldParseBuildInfo {
-            if parseDependencyGraph(line) {
-                return
-            }
+            if parseDependencyGraph(line) { return }
+
             if let (phaseName, targetName) = parseBuildPhase(line) {
                 addPhaseToTarget(phaseName, target: targetName)
                 return
@@ -386,9 +357,7 @@ public final class BuildOutputParser {
                 return
             }
             if let (targetName, duration) = parseTargetTiming(line) {
-                if targetOrderSet.insert(targetName).inserted {
-                    targetOrder.append(targetName)
-                }
+                if targetOrderSet.insert(targetName).inserted { targetOrder.append(targetName) }
                 targetDurations[targetName] = duration
                 return
             }
@@ -401,26 +370,24 @@ public final class BuildOutputParser {
         }
 
         // Fast path checks
-        let containsRelevant =
-            line.contains("error:") || line.contains("warning:") || line.contains("failed")
-                || line.contains("passed")
-                || line.contains("✘") || line.contains("✓") || line.contains("❌")
-                || line.contains("Test ") || line.contains("recorded an issue")
-                || line.contains("Build succeeded")
-                || line.contains("Build failed") || line.contains("Executed")
-                || line.contains("] Testing ")
-                || line.contains("BUILD SUCCEEDED") || line.contains("BUILD FAILED")
-                || line.contains("TEST FAILED")
-                || line.contains("Build complete!")
-                || line.hasPrefix("RegisterWithLaunchServices")
-                || line.hasPrefix("Validate") || line.contains("Fatal error")
-                || line.contains("signal code") || line.contains("Restarting after")
-                || line.contains("started")
-                || (line.hasPrefix("/") && line.contains(".swift:"))
+        let containsRelevant = line.contains("error:") || line.contains("warning:")
+            || line.contains("failed")
+            || line.contains("passed")
+            || line.contains("✘") || line.contains("✓") || line.contains("❌")
+            || line.contains("Test ") || line.contains("recorded an issue")
+            || line.contains("Build succeeded")
+            || line.contains("Build failed") || line.contains("Executed")
+            || line.contains("] Testing ")
+            || line.contains("BUILD SUCCEEDED") || line.contains("BUILD FAILED")
+            || line.contains("TEST FAILED")
+            || line.contains("Build complete!")
+            || line.hasPrefix("RegisterWithLaunchServices")
+            || line.hasPrefix("Validate") || line.contains("Fatal error")
+            || line.contains("signal code") || line.contains("Restarting after")
+            || line.contains("started")
+            || (line.hasPrefix("/") && line.contains(".swift:"))
 
-        if !containsRelevant {
-            return
-        }
+        if !containsRelevant { return }
 
         // Parse parallel test scheduling: [N/TOTAL] Testing Module.Class/method
         if line.contains("] Testing ") {
@@ -428,8 +395,9 @@ public final class BuildOutputParser {
                let slashIndex = line[bracketStart...].firstIndex(of: "/"),
                let bracketEnd = line[slashIndex...].firstIndex(of: "]")
             {
-                let numStr = line[line.index(after: bracketStart) ..< slashIndex]
-                let totalStr = line[line.index(after: slashIndex) ..< bracketEnd]
+                let numStr = line[line.index(after: bracketStart)..<slashIndex]
+                let totalStr = line[line.index(after: slashIndex)..<bracketEnd]
+
                 if let num = Int(numStr), let total = Int(totalStr) {
                     if parallelTestsTotalCount == nil {
                         parallelTestsTotalCount = total
@@ -468,16 +436,17 @@ public final class BuildOutputParser {
         // Crash confirmation — associate with last started test
         if line.contains("Restarting after"), let testName = lastStartedTestName {
             let normalizedName = normalizeTestName(testName)
+
             if !hasSeenSimilarTest(normalizedName) {
-                let message =
-                    pendingSignalCode.map {
-                        "Crashed (signal \($0)): last test started before crash"
-                    } ?? "Crashed: last test started before crash"
-                failedTests.append(
-                    FailedTest(
-                        test: testName, message: message, file: nil, line: nil,
-                    ),
-                )
+                let message = pendingSignalCode.map {
+                    "Crashed (signal \($0)): last test started before crash"
+                } ?? "Crashed: last test started before crash"
+                failedTests.append(FailedTest(
+                    test: testName,
+                    message: message,
+                    file: nil,
+                    line: nil,
+                ))
                 seenTestNames.insert(normalizedName)
             }
             lastStartedTestName = nil
@@ -498,8 +467,8 @@ public final class BuildOutputParser {
                     let existing = failedTests[index]
                     let mergedFile = failedTest.file ?? existing.file
                     let mergedLine = failedTest.line ?? existing.line
-                    let mergedMessage =
-                        failedTest.file != nil ? failedTest.message : existing.message
+                    let mergedMessage = failedTest.file != nil
+                        ? failedTest.message : existing.message
                     let mergedDuration = failedTest.duration ?? existing.duration
 
                     if mergedFile != existing.file || mergedLine != existing.line
@@ -518,12 +487,14 @@ public final class BuildOutputParser {
             lastStartedTestName = nil
         } else if let error = parseError(line) {
             let key = "\(error.file ?? ""):\(error.line ?? 0):\(error.message)"
+
             if !seenErrors.contains(key) {
                 seenErrors.insert(key)
                 errors.append(error)
             }
         } else if let warning = parseWarning(line) {
             let key = "\(warning.file ?? ""):\(warning.line ?? 0):\(warning.message)"
+
             if !seenWarnings.contains(key) {
                 seenWarnings.insert(key)
                 warnings.append(warning)
@@ -531,6 +502,7 @@ public final class BuildOutputParser {
         } else if let runtimeWarning = parseRuntimeWarning(line) {
             let key =
                 "\(runtimeWarning.file ?? ""):\(runtimeWarning.line ?? 0):\(runtimeWarning.message)"
+
             if !seenWarnings.contains(key) {
                 seenWarnings.insert(key)
                 warnings.append(runtimeWarning)
@@ -549,6 +521,7 @@ public final class BuildOutputParser {
 
         if trimmed.hasPrefix("Undefined symbols for architecture ") {
             let afterPrefix = trimmed.dropFirst("Undefined symbols for architecture ".count)
+
             if let colonIndex = afterPrefix.firstIndex(of: ":") {
                 currentLinkerArchitecture = String(afterPrefix[..<colonIndex])
             }
@@ -558,21 +531,25 @@ public final class BuildOutputParser {
         if trimmed.hasPrefix("\""), trimmed.contains("\", referenced from:") {
             if let endQuote = trimmed.range(of: "\", referenced from:") {
                 let symbol = String(
-                    trimmed[trimmed.index(after: trimmed.startIndex) ..< endQuote.lowerBound],
+                    trimmed[trimmed.index(after: trimmed.startIndex)..<endQuote.lowerBound],
                 )
                 pendingLinkerSymbol = symbol
             }
             return true
         }
 
-        if let symbol = pendingLinkerSymbol, let arch = currentLinkerArchitecture,
-           trimmed.contains(" in "), trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a")
+        if let symbol = pendingLinkerSymbol,
+           let arch = currentLinkerArchitecture,
+           trimmed.contains(" in "),
+           trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a")
         {
             if let inRange = trimmed.range(of: " in ") {
                 let referencedFrom = String(trimmed[inRange.upperBound...])
-                appendLinkerErrorIfNew(
-                    LinkerError(symbol: symbol, architecture: arch, referencedFrom: referencedFrom),
-                )
+                appendLinkerErrorIfNew(LinkerError(
+                    symbol: symbol,
+                    architecture: arch,
+                    referencedFrom: referencedFrom
+                ))
                 pendingLinkerSymbol = nil
             }
             return true
@@ -592,10 +569,10 @@ public final class BuildOutputParser {
 
         if trimmed.hasPrefix("duplicate symbol '") || trimmed.hasPrefix("duplicate symbol \"") {
             let quoteChar: Character = trimmed.hasPrefix("duplicate symbol '") ? "'" : "\""
-            let afterPrefix =
-                trimmed.hasPrefix("duplicate symbol '")
-                    ? trimmed.dropFirst("duplicate symbol '".count)
-                    : trimmed.dropFirst("duplicate symbol \"".count)
+            let afterPrefix = trimmed.hasPrefix("duplicate symbol '")
+                ? trimmed.dropFirst("duplicate symbol '".count)
+                : trimmed.dropFirst("duplicate symbol \"".count)
+
             if let endQuote = afterPrefix.firstIndex(of: quoteChar) {
                 pendingDuplicateSymbol = String(afterPrefix[..<endQuote])
                 pendingConflictingFiles = []
@@ -603,7 +580,8 @@ public final class BuildOutputParser {
             return true
         }
 
-        if pendingDuplicateSymbol != nil, trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a"),
+        if pendingDuplicateSymbol != nil,
+           trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a"),
            line.hasPrefix("    ") || line.hasPrefix("\t")
         {
             pendingConflictingFiles.append(trimmed)
@@ -618,48 +596,41 @@ public final class BuildOutputParser {
         if trimmed.hasPrefix("ld: "), trimmed.contains("duplicate symbol") {
             if let symbol = pendingDuplicateSymbol {
                 var arch = ""
+
                 if let archRange = trimmed.range(of: "for architecture ") {
                     arch = String(trimmed[archRange.upperBound...])
                 }
-                appendLinkerErrorIfNew(
-                    LinkerError(
-                        symbol: symbol, architecture: arch,
-                        conflictingFiles: pendingConflictingFiles,
-                    ),
-                )
+                appendLinkerErrorIfNew(LinkerError(
+                    symbol: symbol,
+                    architecture: arch,
+                    conflictingFiles: pendingConflictingFiles,
+                ))
                 pendingDuplicateSymbol = nil
                 pendingConflictingFiles = []
             }
             return true
         }
 
-        if trimmed.hasPrefix("ld: symbol(s) not found for architecture ") {
-            return true
-        }
-
-        return false
+        return trimmed.hasPrefix("ld: symbol(s) not found for architecture ") ? true : false
     }
 
-    /// Returns true if a trimmed line looks like a swift-testing event line
-    /// (starts with one of the SF Symbol private-use markers swift-testing emits
-    /// for run/test/issue events: 􀟈, 􀟉, 􀢄, 􀢇, 􀦗, 􁁛, 􁁒, etc.) or with the
-    /// ASCII fallback `✘`/`✓`/`◇`/`↳`. We can't enumerate every glyph, so we
-    /// check whether the first scalar lives in the SF Symbols private-use ranges.
+    /// Returns true if a trimmed line looks like a swift-testing event line (starts with one of the
+    /// SF Symbol private-use markers swift-testing emits for run/test/issue events: 􀟈, 􀟉, 􀢄, 􀢇, 􀦗,
+    /// 􁁛, 􁁒, etc.) or with the ASCII fallback `✘`/`✓`/`◇`/`↳`. We can't enumerate every glyph, so
+    /// we check whether the first scalar lives in the SF Symbols private-use ranges.
     private func isSwiftTestingEventLine(_ trimmed: String) -> Bool {
         guard let first = trimmed.unicodeScalars.first else { return false }
         // SF Symbols private-use range used by swift-testing markers
-        if (0xE000 ... 0xF8FF).contains(first.value)
-            || (0xF0000 ... 0xFFFFD).contains(first.value)
-            || (0x100000 ... 0x10FFFD).contains(first.value)
-        {
-            return true
-        }
-        // ASCII fallbacks used by swift-testing event lines
-        return first == "✘" || first == "✓" || first == "◇"
+        return (0xE000...0xF8FF).contains(first.value)
+            || (0xF0000...0xFFFFD).contains(first.value)
+            || (0x100000...0x10FFFD).contains(first.value)
+            ? true
+            : first == "✘" || first == "✓" || first == "◇"
     }
 
     private func normalizeTestName(_ testName: String) -> String {
         var name = testName
+
         if name.hasPrefix("-["), name.hasSuffix("]") {
             name = String(name.dropFirst(2).dropLast(1))
         }
@@ -670,14 +641,16 @@ public final class BuildOutputParser {
         return name
     }
 
-    /// Extracts a Swift Testing test name from a line containing `Test "name"` or `Test funcName()`.
+    /// Extracts a Swift Testing test name from a line containing `Test "name"` or
+    /// `Test funcName()`.
     ///
     /// Returns the test name and the substring index after the name (past the closing quote or
-    /// parentheses and any trailing modifiers like `(aka '...')` or `with N test case(s)`),
-    /// or nil if no match.
-    private func extractSwiftTestingName(from line: String, after startIndex: String.Index)
-        -> (name: String, endIndex: String.Index)?
-    {
+    /// parentheses and any trailing modifiers like `(aka '...')` or `with N test case(s)`), or nil
+    /// if no match.
+    private func extractSwiftTestingName(
+        from line: String,
+        after startIndex: String.Index
+    ) -> (name: String, endIndex: String.Index)? {
         guard startIndex < line.endIndex else { return nil }
 
         // Quoted format: Test "name"
@@ -685,42 +658,37 @@ public final class BuildOutputParser {
             let afterQuote = line.index(after: startIndex)
             guard afterQuote < line.endIndex,
                   let closingQuote = line[afterQuote...].firstIndex(of: "\"")
-            else {
-                return nil
-            }
-            let name = String(line[afterQuote ..< closingQuote])
+            else { return nil }
+            let name = String(line[afterQuote..<closingQuote])
             var endIndex = line.index(after: closingQuote)
 
             // Skip optional (aka '...') verbose suffix
             let afterName = line[endIndex...]
             if afterName.hasPrefix(" (aka '"),
-               let closeRange = afterName.range(of: "')")
-            {
-                endIndex = closeRange.upperBound
-            }
+               let closeRange = afterName.range(of: "')") { endIndex = closeRange.upperBound }
 
             // Skip optional "with N test case(s)" parameterized suffix
             let afterModifiers = line[endIndex...]
+
             if afterModifiers.hasPrefix(" with "),
                let caseRange = afterModifiers.range(of: " test case")
             {
                 var idx = caseRange.upperBound
-                if idx < line.endIndex, line[idx] == "s" {
-                    idx = line.index(after: idx)
-                }
+                if idx < line.endIndex, line[idx] == "s" { idx = line.index(after: idx) }
                 endIndex = idx
             }
 
             return (name, endIndex)
         }
 
-        // Unquoted format: Test funcName() ...
-        // Find end by searching for known keyword markers that follow test names
+        // Unquoted format: Test funcName() ... Find end by searching for known keyword markers that
+        // follow test names
         let afterTest = line[startIndex...]
         let endMarkers = [" recorded", " failed", " passed", " started"]
+
         for marker in endMarkers {
             if let markerRange = afterTest.range(of: marker) {
-                let name = String(line[startIndex ..< markerRange.lowerBound])
+                let name = String(line[startIndex..<markerRange.lowerBound])
                     .trimmingCharacters(in: .whitespaces)
                 guard !name.isEmpty else { return nil }
                 return (name, markerRange.lowerBound)
@@ -736,6 +704,7 @@ public final class BuildOutputParser {
 
     private func appendLinkerErrorIfNew(_ error: LinkerError) {
         let key = "\(error.symbol):\(error.message)"
+
         if !seenLinkerErrors.contains(key) {
             seenLinkerErrors.insert(key)
             linkerErrors.append(error)
@@ -746,46 +715,31 @@ public final class BuildOutputParser {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
 
         if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") || trimmed.hasPrefix("}")
-            || trimmed.hasPrefix("]")
-        {
-            return true
-        }
+            || trimmed.hasPrefix("]") { return true }
 
-        if trimmed.hasPrefix("\""), trimmed.contains("\" :") {
-            return true
-        }
+        if trimmed.hasPrefix("\""), trimmed.contains("\" :") { return true }
 
-        if line.contains("\\\""), line.contains("\""), line.contains(":") {
-            return true
-        }
+        if line.contains("\\\""), line.contains("\""), line.contains(":") { return true }
 
         if line.hasPrefix(" ") || line.hasPrefix("\t") {
             if trimmed.hasPrefix("{") || trimmed.hasPrefix("}") || trimmed.hasPrefix("[")
-                || trimmed.hasPrefix("]")
-            {
-                return true
-            }
-            if trimmed.hasPrefix("\""), trimmed.contains("\" :") {
-                return true
-            }
+                || trimmed.hasPrefix("]") { return true }
+            if trimmed.hasPrefix("\""), trimmed.contains("\" :") { return true }
         }
 
         if line.contains("error:") {
-            if trimmed.hasPrefix("\""), trimmed.contains(":") {
-                return true
-            }
-            if line.hasPrefix(" ") || line.hasPrefix("\t"), trimmed.hasPrefix("\"") {
-                return true
-            }
+            if trimmed.hasPrefix("\""), trimmed.contains(":") { return true }
+            if line.hasPrefix(" ") || line.hasPrefix("\t"), trimmed.hasPrefix("\"") { return true }
+
             if !trimmed.hasPrefix("error:") {
                 let hasQuotedStrings = line.contains("\"") && line.contains(":")
                 let hasEscapedContent = line.contains("\\") && line.contains("\"")
-                if hasEscapedContent, hasQuotedStrings, !line.contains("file:"),
-                   !line.contains(".swift:"), !line.contains(".m:"),
-                   !line.contains(".h:")
-                {
-                    return true
-                }
+                if hasEscapedContent,
+                   hasQuotedStrings,
+                   !line.contains("file:"),
+                   !line.contains(".swift:"),
+                   !line.contains(".m:"),
+                   !line.contains(".h:") { return true }
             }
         }
 
@@ -794,43 +748,37 @@ public final class BuildOutputParser {
 
     private func recordPassedTest(named testName: String, duration: Double? = nil) {
         let normalizedTestName = normalizeTestName(testName)
-        guard seenPassedTestNames.insert(normalizedTestName).inserted else {
-            return
-        }
+        guard seenPassedTestNames.insert(normalizedTestName).inserted else { return }
         passedTestsCount += 1
         lastStartedTestName = nil
 
-        if let dur = duration {
-            passedTestDurations[normalizedTestName] = dur
-        }
+        if let dur = duration { passedTestDurations[normalizedTestName] = dur }
     }
 
     /// Extracts a test name from "started" lines (XCTest and Swift Testing formats).
     private func parseStartedTest(_ line: String) -> String? {
-        // XCTest: Test Case '-[Module.Class testMethod]' started.
-        // Also: Test Case 'Module.Class.testMethod' started.
+        // XCTest: Test Case '-[Module.Class testMethod]' started. Also: Test Case
+        // 'Module.Class.testMethod' started.
         if line.hasPrefix("Test Case '"), line.hasSuffix("' started.") {
-            let prefixLength = 11 // "Test Case '"
-            let suffixLength = 10 // "' started."
+            let prefixLength = 11  // "Test Case '"
+            let suffixLength = 10  // "' started."
             let startIndex = line.index(line.startIndex, offsetBy: prefixLength)
             let endIndex = line.index(line.endIndex, offsetBy: -suffixLength)
             guard startIndex < endIndex else { return nil }
-            return String(line[startIndex ..< endIndex])
+            return String(line[startIndex..<endIndex])
         }
 
-        // Swift Testing: ◇ Test "name" started.
-        // Also: ◇ Test funcName() started.
+        // Swift Testing: ◇ Test "name" started. Also: ◇ Test funcName() started.
         if line.contains("Test "), line.hasSuffix(" started.") {
             if let testRange = line.range(of: "Test ") {
                 let nameStart = testRange.upperBound
                 guard !line[nameStart...].hasPrefix("run with "),
                       !line[nameStart...].hasPrefix("Case ")
                 else { return nil }
+
                 if let extracted = extractSwiftTestingName(from: line, after: nameStart) {
                     let remaining = line[extracted.endIndex...]
-                    if remaining == " started." {
-                        return extracted.name
-                    }
+                    if remaining == " started." { return extracted.name }
                 }
             }
         }
@@ -839,14 +787,10 @@ public final class BuildOutputParser {
     }
 
     private func parseError(_ line: String) -> BuildError? {
-        if isJSONLikeLine(line) {
-            return nil
-        }
+        if isJSONLikeLine(line) { return nil }
 
         // Skip visual error lines
-        if line.hasPrefix(" "), line.contains("|") || line.contains("`") {
-            return nil
-        }
+        if line.hasPrefix(" "), line.contains("|") || line.contains("`") { return nil }
 
         // Fast path: string parsing for ": error: "
         if let errorRange = line.range(of: ": error: ") {
@@ -854,13 +798,15 @@ public final class BuildOutputParser {
             let message = String(line[errorRange.upperBound...])
 
             let components = beforeError.split(separator: ":", omittingEmptySubsequences: false)
-            if components.count >= 3, let lineNum = Int(components[components.count - 2]),
+
+            if components.count >= 3,
+               let lineNum = Int(components[components.count - 2]),
                let colNum = Int(components[components.count - 1])
             {
-                let file = components[0 ..< (components.count - 2)].joined(separator: ":")
+                let file = components[0..<(components.count - 2)].joined(separator: ":")
                 return BuildError(file: file, line: lineNum, message: message, column: colNum)
             } else if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
-                let file = components[0 ..< (components.count - 1)].joined(separator: ":")
+                let file = components[0..<(components.count - 1)].joined(separator: ":")
                 return BuildError(file: file, line: lineNum, message: message)
             } else {
                 return BuildError(file: beforeError, line: nil, message: message)
@@ -873,8 +819,9 @@ public final class BuildOutputParser {
             let message = String(line[fatalRange.upperBound...])
 
             let components = beforeError.split(separator: ":", omittingEmptySubsequences: false)
+
             if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
-                let file = components[0 ..< (components.count - 1)].joined(separator: ":")
+                let file = components[0..<(components.count - 1)].joined(separator: ":")
                 return BuildError(file: file, line: lineNum, message: message)
             } else {
                 return BuildError(file: beforeError, line: nil, message: message)
@@ -885,8 +832,9 @@ public final class BuildOutputParser {
         if line.hasSuffix(": Fatal error"), !line.contains(" xctest[") {
             let beforeFatal = String(line.dropLast(": Fatal error".count))
             let components = beforeFatal.split(separator: ":", omittingEmptySubsequences: false)
+
             if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
-                let file = components[0 ..< (components.count - 1)].joined(separator: ":")
+                let file = components[0..<(components.count - 1)].joined(separator: ":")
                 return BuildError(file: file, line: lineNum, message: "Fatal error")
             }
         }
@@ -901,36 +849,30 @@ public final class BuildOutputParser {
             return BuildError(file: nil, line: nil, message: message)
         }
 
-        if line.contains("Command PhaseScriptExecution failed with a nonzero exit") {
-            return BuildError(file: nil, line: nil, message: line)
-        }
-
-        return nil
+        return line.contains("Command PhaseScriptExecution failed with a nonzero exit")
+            ? BuildError(file: nil, line: nil, message: line)
+            : nil
     }
 
     private func parseWarning(_ line: String) -> BuildWarning? {
-        if isJSONLikeLine(line) {
-            return nil
-        }
+        if isJSONLikeLine(line) { return nil }
 
-        if line.hasPrefix(" "), line.contains("|") || line.contains("`") {
-            return nil
-        }
+        if line.hasPrefix(" "), line.contains("|") || line.contains("`") { return nil }
 
         if let warningRange = line.range(of: ": warning: ") {
             let beforeWarning = String(line[..<warningRange.lowerBound])
             let message = String(line[warningRange.upperBound...])
 
             let components = beforeWarning.split(separator: ":", omittingEmptySubsequences: false)
-            if components.count >= 3, let lineNum = Int(components[components.count - 2]),
+
+            if components.count >= 3,
+               let lineNum = Int(components[components.count - 2]),
                let colNum = Int(components[components.count - 1])
             {
-                let file = components[0 ..< (components.count - 2)].joined(separator: ":")
-                return BuildWarning(
-                    file: file, line: lineNum, message: message, column: colNum,
-                )
+                let file = components[0..<(components.count - 2)].joined(separator: ":")
+                return BuildWarning(file: file, line: lineNum, message: message, column: colNum)
             } else if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
-                let file = components[0 ..< (components.count - 1)].joined(separator: ":")
+                let file = components[0..<(components.count - 1)].joined(separator: ":")
                 return BuildWarning(file: file, line: lineNum, message: message)
             } else {
                 return BuildWarning(file: beforeWarning, line: nil, message: message)
@@ -948,21 +890,13 @@ public final class BuildOutputParser {
     // MARK: - Runtime Warning Parsing
 
     private func parseRuntimeWarning(_ line: String) -> BuildWarning? {
-        if line.contains(": warning:") || line.contains(": error:") {
-            return nil
-        }
+        if line.contains(": warning:") || line.contains(": error:") { return nil }
 
-        guard line.hasPrefix("/"), line.contains(".swift:") else {
-            return nil
-        }
+        guard line.hasPrefix("/"), line.contains(".swift:") else { return nil }
 
-        if line.contains("|") || line.contains("`-") {
-            return nil
-        }
+        if line.contains("|") || line.contains("`-") { return nil }
 
-        guard let swiftColonRange = line.range(of: ".swift:") else {
-            return nil
-        }
+        guard let swiftColonRange = line.range(of: ".swift:") else { return nil }
 
         let afterColon = line[swiftColonRange.upperBound...]
 
@@ -974,21 +908,15 @@ public final class BuildOutputParser {
         guard lineNumEnd > afterColon.startIndex,
               lineNumEnd < afterColon.endIndex,
               afterColon[lineNumEnd] == " "
-        else {
-            return nil
-        }
+        else { return nil }
 
         let lineNumStr = String(afterColon[..<lineNumEnd])
-        guard let lineNum = Int(lineNumStr) else {
-            return nil
-        }
+        guard let lineNum = Int(lineNumStr) else { return nil }
 
         let file = String(line[..<swiftColonRange.lowerBound]) + ".swift"
         let message = String(afterColon[afterColon.index(after: lineNumEnd)...])
 
-        guard !message.isEmpty else {
-            return nil
-        }
+        guard !message.isEmpty else { return nil }
 
         let type = detectRuntimeWarningType(message: message)
         return BuildWarning(file: file, line: lineNum, message: message, type: type)
@@ -1005,11 +933,9 @@ public final class BuildOutputParser {
             "will always read the default value",
         ]
 
-        if swiftuiKeywords.contains(where: { message.contains($0) }) {
-            return .swiftui
-        }
-
-        return .runtime
+        return swiftuiKeywords.contains(where: { message.contains($0) })
+            ? .swiftui
+            : .runtime
     }
 
     private func parsePassedTest(_ line: String) -> Bool {
@@ -1017,18 +943,19 @@ public final class BuildOutputParser {
         let isParallelPassed = line.hasPrefix("Test case '") && line.contains("' passed on '")
 
         if isStandardPassed || isParallelPassed {
-            let prefixLength = 11 // "Test Case '" or "Test case '"
+            let prefixLength = 11  // "Test Case '" or "Test case '"
             let startIndex = line.index(line.startIndex, offsetBy: prefixLength)
 
             let passedPattern = isParallelPassed ? "' passed on '" : "' passed ("
             guard let endQuote = line.range(of: passedPattern) else { return false }
-            let testName = String(line[startIndex ..< endQuote.lowerBound])
+            let testName = String(line[startIndex..<endQuote.lowerBound])
 
             var duration: Double?
+
             if let lastParen = line.range(of: "(", options: .backwards),
                let secondsEnd = line.range(of: " seconds", options: .backwards)
             {
-                let durationStr = String(line[lastParen.upperBound ..< secondsEnd.lowerBound])
+                let durationStr = String(line[lastParen.upperBound..<secondsEnd.lowerBound])
                 duration = Double(durationStr)
             }
 
@@ -1044,12 +971,16 @@ public final class BuildOutputParser {
                 return false
             }
             let nameStart = testRange.upperBound
+
             if let extracted = extractSwiftTestingName(from: line, after: nameStart) {
                 let remaining = line[extracted.endIndex...]
+
                 if remaining.hasPrefix(" passed") {
                     var duration: Double?
+
                     if let afterRange = remaining.range(of: " after ") {
                         let afterStr = remaining[afterRange.upperBound...]
+
                         if let secondsRange = afterStr.range(of: " seconds") {
                             let durationStr = String(afterStr[..<secondsRange.lowerBound])
                             duration = Double(durationStr)
@@ -1068,7 +999,8 @@ public final class BuildOutputParser {
 
     /// Parses XCTest measure() output lines.
     ///
-    /// Format: `measured [Time, seconds] average: 0.037, relative standard deviation: 112.254%, values: [0.125, 0.033, ...]`
+    /// Format:
+    /// `measured [Time, seconds] average: 0.037, relative standard deviation: 112.254%, values: [0.125, 0.033, ...]`
     /// May also have a leading path/test prefix or whitespace.
     private func parsePerformanceMeasurement(_ line: String) {
         guard let metricStart = line.range(of: "measured [") else { return }
@@ -1094,10 +1026,13 @@ public final class BuildOutputParser {
 
         // Extract values array
         var values: [Double] = []
+
         if let valuesRange = rest.range(of: "values: [") {
             let afterValues = rest[valuesRange.upperBound...]
+
             if let closeBracket = afterValues.firstIndex(of: "]") {
                 let valuesStr = afterValues[..<closeBracket]
+
                 for part in valuesStr.split(separator: ",") {
                     if let v = Double(part.trimmingCharacters(in: .whitespaces)) {
                         values.append(v)
@@ -1107,15 +1042,13 @@ public final class BuildOutputParser {
         }
 
         let testName = lastStartedTestName ?? "unknown"
-        performanceMeasurements.append(
-            PerformanceMeasurement(
-                test: testName,
-                metric: metric,
-                average: average,
-                relativeStandardDeviation: rsd,
-                values: values,
-            ),
-        )
+        performanceMeasurements.append(PerformanceMeasurement(
+            test: testName,
+            metric: metric,
+            average: average,
+            relativeStandardDeviation: rsd,
+            values: values,
+        ))
     }
 
     private func parseFailedTest(_ line: String) -> FailedTest? {
@@ -1125,30 +1058,27 @@ public final class BuildOutputParser {
         {
             if let errorRange = line.range(of: ": error: -["),
                let bracketEnd = line.range(
-                   of: "] : ", range: errorRange.upperBound ..< line.endIndex,
+                   of: "] : ", range: errorRange.upperBound..<line.endIndex,
                )
             {
                 let beforeError = String(line[..<errorRange.lowerBound])
-                let testName = String(line[errorRange.upperBound ..< bracketEnd.lowerBound])
+                let testName = String(line[errorRange.upperBound..<bracketEnd.lowerBound])
                 let message = String(line[bracketEnd.upperBound...])
 
-                let components = beforeError.split(
-                    separator: ":", omittingEmptySubsequences: false,
-                )
+                let components = beforeError.split(separator: ":", omittingEmptySubsequences: false)
+
                 if components.count >= 2, let lineNum = Int(components[components.count - 1]) {
-                    let file = components[0 ..< (components.count - 1)].joined(separator: ":")
-                    return FailedTest(
-                        test: testName, message: message, file: file, line: lineNum,
-                    )
+                    let file = components[0..<(components.count - 1)].joined(separator: ":")
+                    return FailedTest(test: testName, message: message, file: file, line: lineNum)
                 }
             }
 
             if let bracketStart = line.range(of: "-["),
                let bracketEnd = line.range(
-                   of: "]", range: bracketStart.upperBound ..< line.endIndex,
+                   of: "]", range: bracketStart.upperBound..<line.endIndex,
                )
             {
-                let testName = String(line[bracketStart.upperBound ..< bracketEnd.lowerBound])
+                let testName = String(line[bracketStart.upperBound..<bracketEnd.lowerBound])
                 return FailedTest(
                     test: testName,
                     message: line.trimmingCharacters(in: .whitespaces),
@@ -1173,20 +1103,19 @@ public final class BuildOutputParser {
 
             let failedPattern = isParallelFailed ? "' failed on '" : "' failed ("
             guard let endQuote = line.range(of: failedPattern) else { return nil }
-            let test = String(line[startIndex ..< endQuote.lowerBound])
+            let test = String(line[startIndex..<endQuote.lowerBound])
 
             var duration: Double?
+
             if let lastParen = line.range(of: "(", options: .backwards),
                let secondsEnd = line.range(of: " seconds", options: .backwards)
             {
-                let durationStr = String(line[lastParen.upperBound ..< secondsEnd.lowerBound])
+                let durationStr = String(line[lastParen.upperBound..<secondsEnd.lowerBound])
                 duration = Double(durationStr)
             }
 
             let normalizedTest = normalizeTestName(test)
-            if let dur = duration {
-                failedTestDurations[normalizedTest] = dur
-            }
+            if let dur = duration { failedTestDurations[normalizedTest] = dur }
 
             let message = duration.map { String(format: "%.3f seconds", $0) } ?? "failed"
             return FailedTest(
@@ -1194,10 +1123,10 @@ public final class BuildOutputParser {
             )
         }
 
-        // Swift Testing: <symbol> Test "name" recorded an issue at file:line:column: message
-        // Also supports unquoted: <symbol> Test funcName() recorded an issue at ...
-        // Also handles parameterized: Test "name" recorded an issue with N argument value(s) → ... at file:line:col: message
-        // Also handles no-location: Test "name" recorded an issue: message
+        // Swift Testing: <symbol> Test "name" recorded an issue at file:line:column: message Also
+        // supports unquoted: <symbol> Test funcName() recorded an issue at ... Also handles
+        // parameterized: Test "name" recorded an issue with N argument value(s) → ... at
+        // file:line:col: message Also handles no-location: Test "name" recorded an issue: message
         if let testRange = line.range(of: "Test ") {
             let afterTest = line[testRange.upperBound...]
             // Skip "Test run with" (summary line) and "Test Case" (XCTest format)
@@ -1205,12 +1134,11 @@ public final class BuildOutputParser {
                 return nil
             }
             guard let extracted = extractSwiftTestingName(from: line, after: testRange.upperBound)
-            else {
-                return nil
-            }
+            else { return nil }
             let remaining = line[extracted.endIndex...]
 
             let issuePrefix = " recorded an issue"
+
             if remaining.hasPrefix(issuePrefix) {
                 let afterIssueMarker = remaining[
                     remaining.index(remaining.startIndex, offsetBy: issuePrefix.count)...,
@@ -1222,6 +1150,7 @@ public final class BuildOutputParser {
                     let parts = afterAt.split(
                         separator: ":", maxSplits: 3, omittingEmptySubsequences: false,
                     )
+
                     if parts.count >= 4, let lineNum = Int(parts[1]) {
                         let file = String(parts[0])
                         let message = String(parts[3]).trimmingCharacters(in: .whitespaces)
@@ -1229,12 +1158,11 @@ public final class BuildOutputParser {
                         // Preserve argument values from parameterized tests (→ value)
                         var testName = extracted.name
                         let beforeAt = afterIssueMarker[..<atRange.lowerBound]
+
                         if let arrowRange = beforeAt.range(of: " → ") {
                             let argDesc = String(beforeAt[arrowRange.upperBound...])
                                 .trimmingCharacters(in: .whitespaces)
-                            if !argDesc.isEmpty {
-                                testName = "\(extracted.name) (→ \(argDesc))"
-                            }
+                            if !argDesc.isEmpty { testName = "\(extracted.name) (→ \(argDesc))" }
                         }
 
                         return FailedTest(
@@ -1246,27 +1174,25 @@ public final class BuildOutputParser {
                 // No-location variant: " recorded an issue: message"
                 if afterIssueMarker.hasPrefix(": ") {
                     let message = String(afterIssueMarker.dropFirst(2))
-                    return FailedTest(
-                        test: extracted.name, message: message, file: nil, line: nil,
-                    )
+                    return FailedTest(test: extracted.name, message: message, file: nil, line: nil)
                 }
             }
 
             let failedMarker = " failed after "
+
             if remaining.hasPrefix(failedMarker) {
                 let afterStr = remaining[
                     remaining.index(remaining.startIndex, offsetBy: failedMarker.count)...,
                 ]
                 var duration: Double?
+
                 if let secondsRange = afterStr.range(of: " seconds") {
                     let durationStr = String(afterStr[..<secondsRange.lowerBound])
                     duration = Double(durationStr)
                 }
 
                 let normalizedTest = normalizeTestName(extracted.name)
-                if let dur = duration {
-                    failedTestDurations[normalizedTest] = dur
-                }
+                if let dur = duration { failedTestDurations[normalizedTest] = dur }
 
                 return FailedTest(
                     test: extracted.name, message: "Test failed", file: nil, line: nil,
@@ -1276,12 +1202,13 @@ public final class BuildOutputParser {
         }
 
         // ❌ testname (message)
-        if line.hasPrefix("❌ "), let parenStart = line.range(of: " ("),
+        if line.hasPrefix("❌ "),
+           let parenStart = line.range(of: " ("),
            let parenEnd = line.range(of: ")", options: .backwards)
         {
             let startIndex = line.index(line.startIndex, offsetBy: 2)
-            let test = String(line[startIndex ..< parenStart.lowerBound])
-            let message = String(line[parenStart.upperBound ..< parenEnd.lowerBound])
+            let test = String(line[startIndex..<parenStart.lowerBound])
+            let message = String(line[parenStart.upperBound..<parenEnd.lowerBound])
             return FailedTest(test: test, message: message, file: nil, line: nil)
         }
 
@@ -1291,7 +1218,7 @@ public final class BuildOutputParser {
            let parenEnd = line.range(of: ") failed", options: .backwards)
         {
             let test = String(line[..<parenStart.lowerBound])
-            let message = String(line[parenStart.upperBound ..< parenEnd.lowerBound])
+            let message = String(line[parenStart.upperBound..<parenEnd.lowerBound])
             return FailedTest(test: test, message: message, file: nil, line: nil)
         }
 
@@ -1304,7 +1231,7 @@ public final class BuildOutputParser {
                let bracketEnd = line.range(of: "]", options: .backwards),
                bracketStart.lowerBound < bracketEnd.lowerBound
             {
-                buildTime = String(line[bracketStart.upperBound ..< bracketEnd.lowerBound])
+                buildTime = String(line[bracketStart.upperBound..<bracketEnd.lowerBound])
             }
             return
         }
@@ -1319,7 +1246,7 @@ public final class BuildOutputParser {
                let parenEnd = line.range(of: ")"),
                parenStart.lowerBound < parenEnd.lowerBound
             {
-                buildTime = String(line[parenStart.upperBound ..< parenEnd.lowerBound])
+                buildTime = String(line[parenStart.upperBound..<parenEnd.lowerBound])
             }
             return
         }
@@ -1336,16 +1263,19 @@ public final class BuildOutputParser {
 
         // XCTest: Executed N tests, with N failures
         let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+
         if trimmedLine.hasPrefix("Executed "), let withRange = trimmedLine.range(of: ", with ") {
             let afterExecuted = trimmedLine[
-                trimmedLine.index(trimmedLine.startIndex, offsetBy: 9) ..< withRange.lowerBound,
+                trimmedLine.index(trimmedLine.startIndex, offsetBy: 9)..<withRange.lowerBound,
             ]
             let testCountStr = afterExecuted.split(separator: " ").first
+
             if let testCountStr, let total = Int(testCountStr) {
                 xctestExecutedCount = (xctestExecutedCount ?? 0) + total
             }
 
             let afterWith = String(trimmedLine[withRange.upperBound...])
+
             if let failureRange = afterWith.range(of: " failure") {
                 let beforeFailure = afterWith[..<failureRange.lowerBound]
                 let words = beforeFailure.split(separator: " ")
@@ -1355,9 +1285,10 @@ public final class BuildOutputParser {
             }
 
             if let inRange = trimmedLine.range(
-                of: " in ", range: withRange.upperBound ..< trimmedLine.endIndex,
+                of: " in ", range: withRange.upperBound..<trimmedLine.endIndex,
             ) {
                 let afterIn = trimmedLine[inRange.upperBound...]
+
                 if let parenStart = afterIn.range(of: " (") {
                     accumulateTestTime(String(afterIn[..<parenStart.lowerBound]))
                 } else if let secondsRange = afterIn.range(of: " seconds", options: .backwards) {
@@ -1367,32 +1298,35 @@ public final class BuildOutputParser {
             return
         }
 
-        // Swift Testing failure summary (two formats):
-        // Format 1: Test run with N tests failed, M tests passed after X seconds.
-        // Format 2: Test run with N test(s) in M suite(s) failed after X seconds with Y issue(s).
+        // Swift Testing failure summary (two formats): Format 1: Test run with N tests failed, M
+        // tests passed after X seconds. Format 2: Test run with N test(s) in M suite(s) failed
+        // after X seconds with Y issue(s).
         if let testRunRange = line.range(of: "Test run with ") {
             // Format 1: "N tests failed, M tests passed after X seconds."
             if let failedRange = line.range(
-                of: " failed, ", range: testRunRange.upperBound ..< line.endIndex,
+                of: " failed, ", range: testRunRange.upperBound..<line.endIndex,
             ),
-                let passedRange = line.range(
-                    of: " passed after ", range: failedRange.upperBound ..< line.endIndex,
-                )
+               let passedRange = line.range(
+                   of: " passed after ", range: failedRange.upperBound..<line.endIndex,
+               )
             {
-                let beforeFailed = line[testRunRange.upperBound ..< failedRange.lowerBound]
+                let beforeFailed = line[testRunRange.upperBound..<failedRange.lowerBound]
                 let failedCountStr = beforeFailed.split(separator: " ").first
+
                 if let failedCountStr, let failedCount = Int(failedCountStr) {
                     swiftTestingFailedCount = (swiftTestingFailedCount ?? 0) + failedCount
 
-                    let beforePassed = line[failedRange.upperBound ..< passedRange.lowerBound]
+                    let beforePassed = line[failedRange.upperBound..<passedRange.lowerBound]
                     let passedCountStr = beforePassed.split(separator: " ").first
+
                     if let passedCountStr, let passedCount = Int(passedCountStr) {
-                        swiftTestingExecutedCount = (swiftTestingExecutedCount ?? 0) + passedCount +
-                            failedCount
+                        swiftTestingExecutedCount =
+                            (swiftTestingExecutedCount ?? 0) + passedCount + failedCount
                     }
                 }
 
                 let afterPassed = line[passedRange.upperBound...]
+
                 if let secondsRange = afterPassed.range(of: " seconds", options: .backwards) {
                     accumulateTestTime(String(afterPassed[..<secondsRange.lowerBound]))
                 } else {
@@ -1403,20 +1337,23 @@ public final class BuildOutputParser {
 
             // Format 2: "N test(s) in M suite(s) failed after X seconds with Y issue(s)."
             if let failedAfterRange = line.range(
-                of: " failed after ", range: testRunRange.upperBound ..< line.endIndex,
+                of: " failed after ", range: testRunRange.upperBound..<line.endIndex,
             ),
-                line.contains(" issue")
+               line.contains(" issue")
             {
-                let beforeFailed = line[testRunRange.upperBound ..< failedAfterRange.lowerBound]
+                let beforeFailed = line[testRunRange.upperBound..<failedAfterRange.lowerBound]
                 let testCountStr = beforeFailed.split(separator: " ").first
+
                 if let testCountStr, let total = Int(testCountStr) {
                     swiftTestingExecutedCount = (swiftTestingExecutedCount ?? 0) + total
 
                     // Extract issue count from "with Y issue(s)"
                     let afterFailed = line[failedAfterRange.upperBound...]
+
                     if let withRange = afterFailed.range(of: " with ") {
                         let afterWith = afterFailed[withRange.upperBound...]
                         let issueCountStr = afterWith.split(separator: " ").first
+
                         if let issueCountStr, let issueCount = Int(issueCountStr) {
                             swiftTestingFailedCount = (swiftTestingFailedCount ?? 0) + issueCount
                         } else {
@@ -1436,16 +1373,17 @@ public final class BuildOutputParser {
 
             // Swift Testing passed: Test run with N tests in M suites passed after X seconds.
             if let passedAfter = line.range(of: " passed after ") {
-                let afterPrefix = line[testRunRange.upperBound ..< passedAfter.lowerBound]
+                let afterPrefix = line[testRunRange.upperBound..<passedAfter.lowerBound]
                 let testCountStr = afterPrefix.split(separator: " ").first
+
                 if let testCountStr, let total = Int(testCountStr) {
                     swiftTestingExecutedCount = (swiftTestingExecutedCount ?? 0) + total
 
                     if total > 0 {
                         let afterPassed = line[passedAfter.upperBound...]
-                        if let secondsRange = afterPassed.range(
-                            of: " seconds", options: .backwards,
-                        ) {
+
+                        if let secondsRange = afterPassed.range(of: " seconds", options: .backwards)
+                        {
                             accumulateTestTime(String(afterPassed[..<secondsRange.lowerBound]))
                         } else {
                             accumulateTestTime(String(afterPassed))
@@ -1458,9 +1396,7 @@ public final class BuildOutputParser {
 
     private func accumulateTestTime(_ timeString: String) {
         let cleaned = timeString.trimmingCharacters(in: CharacterSet(charactersIn: ". \t"))
-        if let time = Double(cleaned) {
-            testTimeAccumulator += time
-        }
+        if let time = Double(cleaned) { testTimeAccumulator += time }
     }
 
     // MARK: - Build Phase Parsing
@@ -1468,9 +1404,7 @@ public final class BuildOutputParser {
     private func addPhaseToTarget(_ phase: String, target: String) {
         if targetPhases[target] == nil {
             targetPhases[target] = []
-            if targetOrderSet.insert(target).inserted {
-                targetOrder.append(target)
-            }
+            if targetOrderSet.insert(target).inserted { targetOrder.append(target) }
         }
         if targetPhases[target, default: []].contains(phase) == false {
             targetPhases[target, default: []].append(phase)
@@ -1480,6 +1414,7 @@ public final class BuildOutputParser {
     private func extractTarget(from line: String) -> String? {
         if let inTargetRange = line.range(of: "(in target '") {
             let afterTarget = line[inTargetRange.upperBound...]
+
             if let endQuote = afterTarget.range(of: "'") {
                 return String(afterTarget[..<endQuote.lowerBound])
             }
@@ -1504,11 +1439,9 @@ public final class BuildOutputParser {
             }
         }
 
-        if line.contains("SwiftDriver"), line.contains("Compilation"),
-           let target = extractTarget(from: line)
-        {
-            return ("SwiftCompilation", target)
-        }
+        if line.contains("SwiftDriver"),
+           line.contains("Compilation"),
+           let target = extractTarget(from: line) { return ("SwiftCompilation", target) }
 
         return nil
     }
@@ -1518,12 +1451,12 @@ public final class BuildOutputParser {
             if let compilingRange = line.range(of: "] Compiling ") {
                 let afterCompiling = line[compilingRange.upperBound...]
                 let parts = afterCompiling.split(separator: " ", maxSplits: 1)
+
                 if let targetName = parts.first {
                     let target = String(targetName)
-                    if target == "plugin" {
-                        return nil
-                    }
-                    return ("Compiling", target)
+                    return target == "plugin"
+                        ? nil
+                        : ("Compiling", target)
                 }
             }
         }
@@ -1532,9 +1465,7 @@ public final class BuildOutputParser {
             if let linkingRange = line.range(of: "] Linking ") {
                 let afterLinking = line[linkingRange.upperBound...]
                 let targetName = afterLinking.trimmingCharacters(in: .whitespaces)
-                if !targetName.isEmpty {
-                    return ("Linking", targetName)
-                }
+                if !targetName.isEmpty { return ("Linking", targetName) }
             }
         }
 
@@ -1548,17 +1479,14 @@ public final class BuildOutputParser {
 
         if trimmed.hasPrefix("Target '"), trimmed.contains("' in project '") {
             let afterTarget = trimmed.dropFirst("Target '".count)
+
             if let endQuote = afterTarget.range(of: "'") {
                 let targetName = String(afterTarget[..<endQuote.lowerBound])
                 currentDependencyTarget = targetName
 
-                if targetOrderSet.insert(targetName).inserted {
-                    targetOrder.append(targetName)
-                }
+                if targetOrderSet.insert(targetName).inserted { targetOrder.append(targetName) }
 
-                if trimmed.hasSuffix("(no dependencies)") {
-                    targetDependencies[targetName] = []
-                }
+                if trimmed.hasSuffix("(no dependencies)") { targetDependencies[targetName] = [] }
                 return true
             }
         }
@@ -1566,10 +1494,13 @@ public final class BuildOutputParser {
         if trimmed.contains("dependency on target '"), let currentTarget = currentDependencyTarget {
             if let startQuote = trimmed.range(of: "dependency on target '") {
                 let afterStartQuote = trimmed[startQuote.upperBound...]
+
                 if let endQuote = afterStartQuote.range(of: "'") {
                     let dependencyName = String(afterStartQuote[..<endQuote.lowerBound])
 
-                    if targetDependencies[currentTarget, default: []].contains(dependencyName)
+                    if targetDependencies[currentTarget, default: []].contains(
+                        dependencyName
+                    )
                         == false
                     {
                         targetDependencies[currentTarget, default: []].append(dependencyName)
@@ -1587,6 +1518,7 @@ public final class BuildOutputParser {
     private func parseTargetTiming(_ line: String) -> (String, String)? {
         if line.hasPrefix("Build target "), line.contains(" of project ") {
             let afterBuildTarget = line.dropFirst("Build target ".count)
+
             if let ofProjectRange = afterBuildTarget.range(of: " of project ") {
                 let targetName = String(afterBuildTarget[..<ofProjectRange.lowerBound])
 
@@ -1594,7 +1526,7 @@ public final class BuildOutputParser {
                    let parenEnd = line.range(of: ")", options: .backwards),
                    parenStart.lowerBound < parenEnd.lowerBound
                 {
-                    let duration = String(line[parenStart.upperBound ..< parenEnd.lowerBound])
+                    let duration = String(line[parenStart.upperBound..<parenEnd.lowerBound])
                     return (targetName, duration)
                 }
             }
@@ -1602,6 +1534,7 @@ public final class BuildOutputParser {
 
         if line.hasPrefix("Build target '"), line.contains("' completed") {
             let afterPrefix = line.dropFirst("Build target '".count)
+
             if let endQuote = afterPrefix.range(of: "'") {
                 let targetName = String(afterPrefix[..<endQuote.lowerBound])
 
@@ -1609,7 +1542,7 @@ public final class BuildOutputParser {
                    let parenEnd = line.range(of: ")", options: .backwards),
                    parenStart.lowerBound < parenEnd.lowerBound
                 {
-                    let duration = String(line[parenStart.upperBound ..< parenEnd.lowerBound])
+                    let duration = String(line[parenStart.upperBound..<parenEnd.lowerBound])
                     return (targetName, duration)
                 }
             }
@@ -1622,27 +1555,19 @@ public final class BuildOutputParser {
 
     private func parseExecutable(_ line: String) -> Executable? {
         let prefixes = ["RegisterWithLaunchServices ", "Validate "]
-        guard let prefix = prefixes.first(where: { line.hasPrefix($0) }) else {
-            return nil
-        }
+        guard let prefix = prefixes.first(where: { line.hasPrefix($0) }) else { return nil }
         let afterPrefix = line.dropFirst(prefix.count)
 
-        guard let targetRange = afterPrefix.range(of: " (in target '") else {
-            return nil
-        }
+        guard let targetRange = afterPrefix.range(of: " (in target '") else { return nil }
 
         let path = String(afterPrefix[..<targetRange.lowerBound])
 
-        if !path.hasSuffix(".app") {
-            return nil
-        }
+        if !path.hasSuffix(".app") { return nil }
 
         let name = URL(fileURLWithPath: path).lastPathComponent
 
         let afterTarget = afterPrefix[targetRange.upperBound...]
-        guard let targetEnd = afterTarget.range(of: "' from project") else {
-            return nil
-        }
+        guard let targetEnd = afterTarget.range(of: "' from project") else { return nil }
 
         let target = String(afterTarget[..<targetEnd.lowerBound])
 

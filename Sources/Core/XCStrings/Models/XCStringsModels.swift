@@ -27,8 +27,8 @@ public struct StringEntry: Codable, Sendable {
     public var shouldTranslate: Bool?
     public var localizations: [String: Localization]?
 
-    /// `false` only when the entry is explicitly marked non-translatable in
-    /// Xcode (Localization Properties → "Should Translate" off).
+    /// `false` only when the entry is explicitly marked non-translatable in Xcode (Localization
+    /// Properties → "Should Translate" off).
     public var requiresTranslation: Bool { shouldTranslate != false }
 
     public init(
@@ -81,13 +81,12 @@ public struct Variations: Codable, Sendable {
 
 /// Wrapper for a variation category value.
 ///
-/// In xcstrings JSON, each variation value is `{ "stringUnit": { "state": "...", "value": "..." } }`.
+/// In xcstrings JSON, each variation value is
+/// `{ "stringUnit": { "state": "...", "value": "..." } }`.
 public struct VariationValue: Codable, Sendable {
     public var stringUnit: StringUnit?
 
-    public init(stringUnit: StringUnit? = nil) {
-        self.stringUnit = stringUnit
-    }
+    public init(stringUnit: StringUnit? = nil) { self.stringUnit = stringUnit }
 }
 
 /// Plural variation
@@ -286,9 +285,9 @@ public struct AggregatedCoverage: Codable, Sendable {
 
 /// Reason a key is flagged as untranslated for a given language.
 ///
-/// Ported from Ryu0118/xcstrings-crud PR #33 — provides a structured signal
-/// beyond "key is missing" so callers can distinguish e.g. an empty string,
-/// a `needs_review` state, and partial plural/device variation coverage.
+/// Ported from Ryu0118/xcstrings-crud PR #33 — provides a structured signal beyond "key is missing"
+/// so callers can distinguish e.g. an empty string, a `needs_review` state, and partial
+/// plural/device variation coverage.
 public enum UntranslatedReason: String, Codable, Sendable {
     /// No localization entry exists for the language at all.
     case missingLocalization = "missing_localization"
@@ -308,8 +307,8 @@ public enum UntranslatedReason: String, Codable, Sendable {
     case variationStateNotTranslated = "variation_state_not_translated"
 }
 
-/// One detected untranslated entry. `state` is the `stringUnit.state` when
-/// available (otherwise `nil`).
+/// One detected untranslated entry. `state` is the `stringUnit.state` when available (otherwise
+/// `nil`).
 public struct UntranslatedIssue: Codable, Sendable {
     public let key: String
     public let language: String
@@ -333,7 +332,7 @@ public struct UntranslatedCheckResult: Codable, Sendable {
     public init(file: String, issues: [UntranslatedIssue]) {
         self.file = file
         self.issues = issues
-        self.issueCount = issues.count
+        issueCount = issues.count
     }
 }
 

@@ -1,5 +1,5 @@
-/// Maps tool names to their home focused server, enabling cross-server hints
-/// when an agent calls a tool that exists in a different server.
+/// Maps tool names to their home focused server, enabling cross-server hints when an agent calls a
+/// tool that exists in a different server.
 public enum ServerToolDirectory {
     /// Returns a hint string if the tool exists in another server, nil otherwise.
     public static func hint(for toolName: String, currentServer: String) -> String? {
@@ -15,27 +15,13 @@ public enum ServerToolDirectory {
             buildTools.count + simulatorTools.count + debugTools.count
                 + projectTools.count + deviceTools.count + swiftTools.count + stringsTools.count,
         )
-        for name in buildTools {
-            map[name] = "xc-build"
-        }
-        for name in simulatorTools {
-            map[name] = "xc-simulator"
-        }
-        for name in debugTools {
-            map[name] = "xc-debug"
-        }
-        for name in projectTools {
-            map[name] = "xc-project"
-        }
-        for name in deviceTools {
-            map[name] = "xc-device"
-        }
-        for name in swiftTools {
-            map[name] = "xc-swift"
-        }
-        for name in stringsTools {
-            map[name] = "xc-strings"
-        }
+        for name in buildTools { map[name] = "xc-build" }
+        for name in simulatorTools { map[name] = "xc-simulator" }
+        for name in debugTools { map[name] = "xc-debug" }
+        for name in projectTools { map[name] = "xc-project" }
+        for name in deviceTools { map[name] = "xc-device" }
+        for name in swiftTools { map[name] = "xc-swift" }
+        for name in stringsTools { map[name] = "xc-strings" }
         return map
     }()
 

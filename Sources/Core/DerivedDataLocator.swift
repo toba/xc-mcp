@@ -3,14 +3,13 @@ import Foundation
 
 /// Resolves DerivedData project root paths from xcodebuild build settings.
 ///
-/// Multiple diagnostic tools need the DerivedData project root (e.g. to find
-/// build logs, output file maps, or serialized diagnostics). This utility
-/// centralizes that resolution.
+/// Multiple diagnostic tools need the DerivedData project root (e.g. to find build logs, output
+/// file maps, or serialized diagnostics). This utility centralizes that resolution.
 public enum DerivedDataLocator {
     /// Finds the DerivedData project root by extracting `BUILD_DIR` from xcodebuild.
     ///
-    /// `BUILD_DIR` is typically `…/DerivedData/ProjectName-hash/Build/Products`.
-    /// This method strips the trailing `Build/Products` to return the project root.
+    /// `BUILD_DIR` is typically `…/DerivedData/ProjectName-hash/Build/Products`. This method strips
+    /// the trailing `Build/Products` to return the project root.
     ///
     /// - Parameters:
     ///   - xcodebuildRunner: The runner to invoke xcodebuild.
@@ -36,16 +35,14 @@ public enum DerivedDataLocator {
 
         guard let buildDir = BuildSettingExtractor.extractSetting("BUILD_DIR", from: result.stdout)
         else {
-            throw MCPError.internalError(
-                "Could not determine DerivedData path from build settings",
-            )
+            throw MCPError.internalError("Could not determine DerivedData path from build settings")
         }
 
-        // BUILD_DIR = .../DerivedData/Project-hash/Build/Products
-        // Go up two levels to the project root
+        // BUILD_DIR = .../DerivedData/Project-hash/Build/Products Go up two levels to the project
+        // root
         let url = URL(fileURLWithPath: buildDir)
-            .deletingLastPathComponent() // Products
-            .deletingLastPathComponent() // Build
+            .deletingLastPathComponent()  // Products
+            .deletingLastPathComponent()  // Build
         return url.path
     }
 

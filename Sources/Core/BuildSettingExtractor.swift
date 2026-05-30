@@ -53,10 +53,11 @@ public enum BuildSettingExtractor {
     /// - Parameters:
     ///   - key: The build setting key (e.g. "PRODUCT_BUNDLE_IDENTIFIER").
     ///   - buildSettings: The raw output from `xcodebuild -showBuildSettings` .
-    ///   - Returns: The setting value, or nil if not found.
+    /// - Returns: The setting value, or nil if not found.
     public static func extractSetting(_ key: String, from buildSettings: String) -> String? {
         // Try JSON format first
         let data = Data(buildSettings.utf8)
+
         if let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
             for entry in json {
                 if let settings = entry["buildSettings"] as? [String: Any],
@@ -83,6 +84,7 @@ public enum BuildSettingExtractor {
     public static func extractBundleId(from buildSettings: String) -> String? {
         // Try JSON format first (most reliable)
         let data = Data(buildSettings.utf8)
+
         if let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
             for targetSettings in parsed {
                 if let settings = targetSettings["buildSettings"] as? [String: Any],

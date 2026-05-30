@@ -10,9 +10,8 @@ public struct XCStringsStatsCalculator: Sendable {
         reader = XCStringsReader(file: file)
     }
 
-    /// Get overall statistics. Entries marked `shouldTranslate: false` are
-    /// excluded from per-language counts so their absence does not skew
-    /// coverage downward.
+    /// Get overall statistics. Entries marked `shouldTranslate: false` are excluded from
+    /// per-language counts so their absence does not skew coverage downward.
     public func getStats() -> StatsInfo {
         let allLanguages = reader.listLanguages()
         let translatableEntries = file.strings.values.filter(\.requiresTranslation)
@@ -64,11 +63,7 @@ public struct XCStringsStatsCalculator: Sendable {
     public func getCoverageSummary(fileName: String) -> FileCoverageSummary {
         let stats = getStats()
         let languages = stats.coverageByLanguage.mapValues { $0.coveragePercent }
-        return .init(
-            file: fileName,
-            totalKeys: stats.totalKeys,
-            languages: languages,
-        )
+        return .init(file: fileName, totalKeys: stats.totalKeys, languages: languages)
     }
 
     /// Get batch coverage for multiple files
