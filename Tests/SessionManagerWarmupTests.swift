@@ -11,11 +11,16 @@ struct SessionManagerWarmupTests {
 
     /// Polls `manager.warmupState(for:)` until the warmup reports `.completed` or `timeout`
     /// elapses. Returns `true` if completion was observed, `false` on timeout.
+    ///
+    /// The default is generous because the poll uses `Task.sleep` on the Swift cooperative
+    /// thread pool, which the full parallel test suite (1200+ tests) can starve with blocking
+    /// calls in other suites — delaying the loop's first tick well past the warmup's actual
+    /// completion. Matches the budget given to `WaitForProcessExitTests` for the same reason.
     @discardableResult
     private func waitUntilCompleted(
         manager: SessionManager,
         packagePath: String,
-        timeout: Duration = .seconds(2),
+        timeout: Duration = .seconds(15),
     ) async throws -> Bool {
         let started = ContinuousClock.now
 
