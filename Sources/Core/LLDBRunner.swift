@@ -1,5 +1,6 @@
 import MCP
 import Foundation
+import Logging
 import Subprocess
 import Synchronization
 
@@ -109,6 +110,8 @@ public enum ProcessState: Sendable, Equatable {
 }
 
 public actor LLDBSession {
+    private static let logger = Logger(label: "LLDBSession")
+
     private let process: Process
     private let stdin: FileHandle
     private let stdout: FileHandle
@@ -318,7 +321,12 @@ public actor LLDBSession {
             let result = poll(&pollFD, 1, 0)
             guard result > 0, pollFD.revents & Int16(POLLIN) != 0 else { return }
 
-            guard let output = try? await readUntilPrompt() else { return }
+            // Tight timeout + no poisoning: drain is speculative cleanup of buffered output.
+            // If the data isn't prompt-terminated within ~2s the inferior is emitting async
+            // noise we can't make sense of — bailing out is safe; poisoning the shared session
+            // because of it would silently break the very next user-issued command (rgu-xhg).
+            guard let output = try? await readUntilPrompt(timeout: 2, poisonOnFailure: false)
+            else { return }
             updateProcessState(from: output)
         }
     }
@@ -445,8 +453,13 @@ public actor LLDBSession {
     /// Reads output from LLDB until the `(lldb) ` prompt appears.
     ///
     /// Uses a lock-guarded flag to ensure the continuation is resumed exactly once. On timeout or a
-    /// runaway-output flood, marks the session as poisoned so it will be recreated on next use.
-    func readUntilPrompt() async throws(LLDBError) -> String {
+    /// runaway-output flood, marks the session as poisoned so it will be recreated on next use,
+    /// unless `poisonOnFailure` is false (used by speculative drain / early-crash callers that
+    /// tolerate unterminated buffered output without invalidating the shared session).
+    func readUntilPrompt(
+        timeout: TimeInterval? = nil,
+        poisonOnFailure: Bool = true,
+    ) async throws(LLDBError) -> String {
         let promptMarker = "(lldb) "
 
         do {
@@ -513,9 +526,9 @@ public actor LLDBSession {
                 }
 
                 // Timeout: uses Task.sleep instead of DispatchQueue.asyncAfter.
-                let timeout = self.commandTimeout
+                let effectiveTimeout = timeout ?? self.commandTimeout
                 Task { [weak self] in
-                    try? await Task.sleep(for: .seconds(timeout))
+                    try? await Task.sleep(for: .seconds(effectiveTimeout))
                     let partial = partialOutput.withLock { $0 }
                     let detail: String
                     if partial.isEmpty {
@@ -530,22 +543,34 @@ public actor LLDBSession {
                     }
                     let resumed = gate.resume(throwing: LLDBError.commandFailed(detail))
                     finish(resumed)
-                    if resumed, let self { await markPoisoned() }
+                    if resumed, poisonOnFailure, let self {
+                        await markPoisoned(reason: "readUntilPrompt timeout (\(effectiveTimeout)s)")
+                    }
                 }
             }
         } catch let error as LLDBError {
             // A flood abort wedges the session just as a timeout does — poison it so the manager
             // recreates a clean LLDB on next use rather than reusing one mid-flood.
-            markPoisoned()
+            if poisonOnFailure { markPoisoned(reason: "readUntilPrompt threw: \(error)") }
             throw error
         } catch {
-            markPoisoned()
+            if poisonOnFailure { markPoisoned(reason: "readUntilPrompt unexpected: \(error)") }
             throw .commandFailed("\(error)")
         }
     }
 
     /// Marks this session as poisoned so it will be discarded and recreated.
-    private func markPoisoned() { isPoisoned = true }
+    ///
+    /// `reason` is logged at warning level so a silent poison (e.g. a `try?`-swallowed
+    /// `readUntilPrompt` failure during drain/early-crash checks) leaves a forensic trail
+    /// pointing at the actual trigger, instead of only surfacing on the next user call.
+    private func markPoisoned(reason: String) {
+        if !isPoisoned {
+            Self.logger
+                .warning("LLDB session poisoned (pid: \(targetPID)): \(reason)")
+        }
+        isPoisoned = true
+    }
 
     /// Parses LLDB output and updates the tracked process state.
     private func updateProcessState(from output: String) {
@@ -625,7 +650,10 @@ public actor LLDBSession {
             let pollResult = poll(&pollFD, 1, min(pollTimeoutMs, 100))
 
             if pollResult > 0, pollFD.revents & Int16(POLLIN) != 0 {
-                if let stopOutput = try? await readUntilPrompt() {
+                // Bounded, non-poisoning read: an interrupt-stop notification that lacks a
+                // terminating prompt should not invalidate the shared session — we already have
+                // an explicit deadline loop around this read.
+                if let stopOutput = try? await readUntilPrompt(timeout: 2, poisonOnFailure: false) {
                     updateProcessState(from: stopOutput)
                     return initialOutput + "\n" + stopOutput
                 }
@@ -736,8 +764,12 @@ public actor LLDBSession {
         guard pollResult > 0, pollFD.revents & Int16(POLLIN) != 0 else { return nil }
 
         // Data is available — read it and check for actual crash indicators. readUntilPrompt should
-        // return quickly since data is already buffered.
-        guard let output = try? await readUntilPrompt() else { return nil }
+        // return quickly since data is already buffered; a 2s bound is plenty and we deliberately
+        // do not poison the session on failure here. checkForEarlyCrash runs during the launch
+        // flow before the caller has had any chance to interact, so a tolerated read failure must
+        // not silently invalidate the freshly-created session (rgu-xhg).
+        guard let output = try? await readUntilPrompt(timeout: 2, poisonOnFailure: false)
+        else { return nil }
         updateProcessState(from: output)
 
         // Only report a crash if the output contains semantic crash indicators. Benign output

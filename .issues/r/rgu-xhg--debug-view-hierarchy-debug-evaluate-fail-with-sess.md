@@ -1,15 +1,15 @@
 ---
 # rgu-xhg
 title: debug_view_hierarchy / debug_evaluate fail with 'session is poisoned by a previous timeout' on a freshly launched debug session
-status: in-progress
+status: completed
 type: bug
 priority: normal
 created_at: 2026-05-30T14:27:31Z
-updated_at: 2026-05-30T14:27:31Z
+updated_at: 2026-05-30T14:57:16Z
 sync:
     github:
         issue_number: "366"
-        synced_at: "2026-05-30T14:27:39Z"
+        synced_at: "2026-05-30T14:58:12Z"
 ---
 
 Reopens the wis-g7q diagnostic block. After h0c-60y / eka-s03 landed, a fresh `mcp__xc-debug__build_debug_macos` launch of TestApp followed *immediately* by any debug tool call still fails with:
@@ -36,3 +36,15 @@ Suggested investigation:
 3. Audit `LLDBSession.attach()` / the post-launch `setCommandTimeout` window — if the initial `process status` read can stall past the 30 s interactive timeout under load, that would mark the new session poisoned even though no user-visible timeout happened.
 
 Blocks: thesis `wis-g7q` (re-deferred again). Without one of debug_view_hierarchy / debug_evaluate working on a fresh launch, we cannot identify the class/owner of the zombie hosting-view panels left over the table during initial layout.
+
+
+
+## Summary of Changes
+
+Decouples session poisoning from the speculative `readUntilPrompt` calls used during the launch flow. `drainPendingOutput`, `checkForEarlyCrash`, and `interruptProcess` all wrapped the read in `try?` to advertise "failure is tolerated here", but the underlying `readUntilPrompt` poisoned the shared session on **every** failure path (timeout, >1MB flood, unexpected error). A speculative drain that wedged on unterminated PTY data therefore silently invalidated the freshly-launched session — so the very first user-issued tool call against the new PID returned `LLDB session is poisoned by a previous timeout — session will be recreated`, even though no user-visible timeout had occurred.
+
+Changes in `Sources/Core/LLDBRunner.swift`:
+- `readUntilPrompt` now takes `timeout:` and `poisonOnFailure:` parameters. Callers that own the failure tolerance (drain / early-crash / interrupt poll-loop) pass `poisonOnFailure: false` with a tight 2s bound, so a buffered fragment without a trailing prompt no longer silently kills the session. Default behaviour (`sendCommand`, `attach`, `launch`, `runOpenAndAttach`) is unchanged — a wedged or flooded read still poisons.
+- `markPoisoned` now takes a `reason` string and logs at warning level on the first transition. This leaves a forensic trail for the upstream "why no prompt" question (hot breakpoint flood, async stop without prompt, dyld-init race) that this fix does **not** answer — only the next reproducer can identify which trigger is firing, since the logging now surfaces it instead of swallowing it.
+
+Verified all 27 LLDB-tagged tests (`LLDBCommandTimeoutTests`, `LLDBCrashDetectionTests`, `LLDBProcessStateTests`, `LLDBSessionReapTests`) still pass — existing timeout/flood-poisoning contracts are preserved.
