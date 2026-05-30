@@ -351,6 +351,8 @@ public actor LLDBSession {
 
         let commandData = Data((command + "\n").utf8)
 
+        Self.logger.debug("LLDB sendCommand(pid: \(targetPID)): \(command)")
+
         do {
             try stdin.write(contentsOf: commandData)
         } catch {
@@ -472,29 +474,64 @@ public actor LLDBSession {
                 // Set once the gate has been resolved (by reader, flood guard, or timeout) so the
                 // reader thread stops promptly instead of spinning on flooding output forever.
                 let finished = Mutex(false)
+                // Set by the GCD reader on exit. The timeout path polls this before resuming
+                // the continuation so the reader can't survive past readUntilPrompt's return —
+                // if it did, it would race the NEXT command's reader for bytes on the shared
+                // PTY fd and silently swallow the response (t57-a7q).
+                let readerDone = Mutex(false)
 
                 let finish: @Sendable (Bool) -> Void = { resumed in
                     if resumed { finished.withLock { $0 = true } }
                 }
 
-                // Reader: runs on a GCD thread because FileHandle.availableData blocks.
-                DispatchQueue.global().async { [stdout] in
+                // Reader: runs on a GCD thread. Uses non-blocking read() with a short poll() wait
+                // so it can notice `finished` (set by the timeout task or a parallel resolution)
+                // within ~50ms and exit cleanly — instead of blocking forever in
+                // FileHandle.availableData, which would leak this thread past readUntilPrompt's
+                // return. A leaked reader would consume the NEXT command's response bytes and
+                // discard them on the `finished` check, leaving the next caller's reader blocked
+                // with no data until its own timeout fires (the t57-a7q "no output received" hang
+                // after a tight 2s drain timeout).
+                let fd = stdout.fileDescriptor
+                DispatchQueue.global().async {
+                    defer { readerDone.withLock { $0 = true } }
                     var accumulated = ""
                     var buffer = Data()
                     var totalBytes = 0
+                    var chunkData = Data(count: 4096)
                     while true {
-                        // Bail out the moment another path (timeout) has already resolved the gate,
-                        // so a hot breakpoint flooding the PTY can't keep this thread spinning.
                         if finished.withLock({ $0 }) { return }
 
-                        let chunk = stdout.availableData
+                        var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+                        // Short poll so we recheck `finished` ~20×/s. Long enough not to spin
+                        // a CPU; short enough that a stalled session aborts promptly so the
+                        // timeout path doesn't have to wait long for us to exit.
+                        let pollResult = poll(&pollFD, 1, 50)
+                        if pollResult <= 0 { continue }
+                        if pollFD.revents & Int16(POLLIN) == 0 {
+                            // POLLHUP/POLLERR — treat like EOF.
+                            finish(gate.resume(returning: accumulated))
+                            return
+                        }
 
-                        if chunk.isEmpty {
+                        let n = chunkData.withUnsafeMutableBytes { raw -> Int in
+                            guard let base = raw.baseAddress else { return -1 }
+                            return read(fd, base, raw.count)
+                        }
+                        if n == 0 {
                             // EOF — process exited
                             finish(gate.resume(returning: accumulated))
                             return
                         }
-                        totalBytes += chunk.count
+                        if n < 0 {
+                            if errno == EINTR || errno == EAGAIN { continue }
+                            finish(gate.resume(throwing: LLDBError.commandFailed(
+                                "read() from LLDB PTY failed: \(String(cString: strerror(errno)))",
+                            )))
+                            return
+                        }
+                        let chunk = chunkData.prefix(n)
+                        totalBytes += n
                         buffer.append(chunk)
 
                         if let str = String(data: buffer, encoding: .utf8) {
@@ -503,7 +540,6 @@ public actor LLDBSession {
                             partialOutput.withLock { $0 = accumulated }
 
                             if accumulated.hasSuffix(promptMarker) {
-                                // Strip the trailing prompt from the output
                                 let endIndex = accumulated.index(
                                     accumulated.endIndex, offsetBy: -promptMarker.count,
                                 )
@@ -541,8 +577,20 @@ public actor LLDBSession {
                         detail =
                             "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
                     }
+                    // Mark finished FIRST so the reader's next poll-tick exits, then wait for
+                    // it (bounded) before resuming the continuation. This guarantees no leaked
+                    // reader survives past readUntilPrompt's return — see t57-a7q for the
+                    // failure mode when a leaked reader silently steals the next command's bytes.
+                    // Mark finished FIRST so the reader's next poll-tick exits, then wait for
+                    // it (bounded) before resuming the continuation. This guarantees no leaked
+                    // reader survives past readUntilPrompt's return — see t57-a7q for the
+                    // failure mode when a leaked reader silently steals the next command's bytes.
+                    finished.withLock { $0 = true }
+                    let waitDeadline = ContinuousClock.now + .milliseconds(500)
+                    while !readerDone.withLock({ $0 }), ContinuousClock.now < waitDeadline {
+                        try? await Task.sleep(for: .milliseconds(10))
+                    }
                     let resumed = gate.resume(throwing: LLDBError.commandFailed(detail))
-                    finish(resumed)
                     if resumed, poisonOnFailure, let self {
                         await markPoisoned(reason: "readUntilPrompt timeout (\(effectiveTimeout)s)")
                     }
