@@ -82,8 +82,11 @@ extension [String: Value] {
     /// - Parameter key: The argument key to look up.
     /// - Returns: The double value if present and valid, nil otherwise.
     public func getDouble(_ key: String) -> Double? {
-        if case let .double(value) = self[key] { return value }
-        return nil
+        switch self[key] {
+            case let .double(value): value
+            case let .int(value): Double(value)
+            default: nil
+        }
     }
 
     /// Extracts a string-to-string dictionary for the given key.

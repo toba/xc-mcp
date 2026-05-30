@@ -1112,17 +1112,16 @@ public struct LLDBRunner: Sendable {
         do {
             result = try await body(session)
         } catch {
-            // Resume even on failure so a transient eval error doesn't leave the app frozen. If the
-            // session got poisoned mid-body (e.g. an expression timeout in `viewHierarchy`),
-            // `sendCommandNoWait("continue")` will throw — fall back to SIGCONT so the user's app
-            // doesn't stay SIGSTOP'd until the lldb-rpc-server is reaped.
+            // Resume even on failure so a transient eval error doesn't leave the app frozen. The
+            // session may be poisoned (e.g. expression timeout in `viewHierarchy`) — but poisoning
+            // happens in a fire-and-forget Task that races with this catch path, so
+            // `sendCommandNoWait("continue")` may succeed yet not actually resume the inferior.
+            // Always send SIGCONT as well so the user's app doesn't stay SIGSTOP'd regardless of
+            // whether the queued continue reaches LLDB before the rpc-server is torn down.
             if didInterrupt {
-                do {
-                    try await session.sendCommandNoWait("continue")
-                    await session.setProcessState(.running)
-                } catch {
-                    kill(pid, SIGCONT)
-                }
+                try? await session.sendCommandNoWait("continue")
+                await session.setProcessState(.running)
+                kill(pid, SIGCONT)
             }
             throw error
         }
