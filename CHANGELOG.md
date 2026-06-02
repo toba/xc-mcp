@@ -2,6 +2,10 @@
 
 ## Week of May 31 – Jun 6, 2026
 
+### 🐞 Fixes
+
+- `LLDBCommandTimeoutTests` reader-leak regression test flaked on CI when cooperative-pool starvation under parallel load delayed the next `sendCommand("version")` past its tight 3s budget on a 5s-commandTimeout session; widened the session `commandTimeout` to 30s and the "reader didn't leak" budget to 15s so the binary leak signal (response silently swallowed → call wedges to the full timeout) still trips while absorbing CI variance ([#372](https://github.com/toba/xc-mcp/issues/372))
+
 ### ✨ Features
 
 - Add `list_dependencies` and `remove_dependency` tools to `xc-project`; lists each `PBXTargetDependency` edge for a target with uuid, `proxyType`, `remoteGlobalID`, `remoteInfo`, and `containerPortal`, and drops a specific edge plus its `PBXContainerItemProxy` without touching the Frameworks build phase or the dependency target — closing the round-trip with the existing `add_dependency` ([#371](https://github.com/toba/xc-mcp/issues/371))

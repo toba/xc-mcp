@@ -68,7 +68,10 @@ struct LLDBCommandTimeoutTests {
     func `a tolerated short timeout does not leak the reader and the next command succeeds`() async throws {
         try #require(Self.lldbAvailable, "lldb not installed")
 
-        let session = try LLDBSession(pid: 0, commandTimeout: 5)
+        // Generous per-command timeout absorbs cooperative-pool starvation in the full parallel
+        // test run on CI; the leak-detection signal is "did the next sendCommand return", not
+        // "how fast did it return".
+        let session = try LLDBSession(pid: 0, commandTimeout: 30)
         defer { Task { await session.terminate() } }
         _ = try await session.readUntilPrompt()
 
@@ -82,11 +85,14 @@ struct LLDBCommandTimeoutTests {
 
         // The session must remain usable: `poisonOnFailure: false` callers expect the next
         // `sendCommand` to behave normally and the response to be correlated to *this* call.
+        // A leaked reader would silently swallow the response and force this call to time out
+        // against the session's full commandTimeout (30s), so a wide-but-bounded budget still
+        // catches the regression without flaking on a loaded CI runner.
         let start = ContinuousClock.now
         let output = try await session.sendCommand("version")
         let elapsed = ContinuousClock.now - start
 
-        #expect(elapsed < .seconds(3), "next sendCommand took \(elapsed) — reader likely leaked")
+        #expect(elapsed < .seconds(15), "next sendCommand took \(elapsed) — reader likely leaked")
         #expect(output.contains("lldb"), "expected version output, got: \(output)")
 
         let poisoned = await session.isPoisoned
