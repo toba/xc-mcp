@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of May 31 – Jun 6, 2026
+
+### ✨ Features
+
+- Add `list_dependencies` and `remove_dependency` tools to `xc-project`; lists each `PBXTargetDependency` edge for a target with uuid, `proxyType`, `remoteGlobalID`, `remoteInfo`, and `containerPortal`, and drops a specific edge plus its `PBXContainerItemProxy` without touching the Frameworks build phase or the dependency target — closing the round-trip with the existing `add_dependency` ([#371](https://github.com/toba/xc-mcp/issues/371))
+
 ## Week of May 24 – May 30, 2026
 
 ### ✨ Features

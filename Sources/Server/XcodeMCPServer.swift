@@ -39,6 +39,8 @@ public enum ToolName: String, CaseIterable, Sendable {
     case setTestTargetApplication = "set_test_target_application"
     case renameGroup = "rename_group"
     case addDependency = "add_dependency"
+    case listDependencies = "list_dependencies"
+    case removeDependency = "remove_dependency"
     case setBuildSetting = "set_build_setting"
     case addFramework = "add_framework"
     case removeFramework = "remove_framework"
@@ -259,7 +261,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .addTestPlanToScheme, .removeTestPlanFromScheme,
                  .listTestPlans, .setTestTargetApplication,
                  .renameGroup,
-                 .addDependency, .setBuildSetting,
+                 .addDependency, .listDependencies, .removeDependency, .setBuildSetting,
                  .addFramework, .removeFramework,
                  .addBuildPhase, .duplicateTarget, .addSwiftPackage, .addPackageProduct,
                  .listSwiftPackages, .removeSwiftPackage, .removePackageProduct,
@@ -439,6 +441,8 @@ public struct XcodeMCPServer: Sendable {
         let setTestTargetApplicationTool = SetTestTargetApplicationTool(pathUtility: pathUtility)
         let renameGroupTool = RenameGroupTool(pathUtility: pathUtility)
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
+        let listDependenciesTool = ListDependenciesTool(pathUtility: pathUtility)
+        let removeDependencyTool = RemoveDependencyTool(pathUtility: pathUtility)
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
         let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
@@ -810,6 +814,8 @@ public struct XcodeMCPServer: Sendable {
             (.setTestTargetApplication, setTestTargetApplicationTool.tool()),
             (.renameGroup, renameGroupTool.tool()),
             (.addDependency, addDependencyTool.tool()),
+            (.listDependencies, listDependenciesTool.tool()),
+            (.removeDependency, removeDependencyTool.tool()),
             (.setBuildSetting, setBuildSettingTool.tool()),
             (.addFramework, addFrameworkTool.tool()),
             (.removeFramework, removeFrameworkTool.tool()),
@@ -1096,6 +1102,10 @@ public struct XcodeMCPServer: Sendable {
                     return try renameGroupTool.execute(arguments: arguments)
                 case .addDependency:
                     return try addDependencyTool.execute(arguments: arguments)
+                case .listDependencies:
+                    return try listDependenciesTool.execute(arguments: arguments)
+                case .removeDependency:
+                    return try removeDependencyTool.execute(arguments: arguments)
                 case .setBuildSetting:
                     return try setBuildSettingTool.execute(arguments: arguments)
                 case .addFramework:
