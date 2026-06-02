@@ -41,6 +41,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case setBuildSetting = "set_build_setting"
     case addFramework = "add_framework"
     case removeFramework = "remove_framework"
+    case listFrameworksPhase = "list_frameworks_phase"
     case addBuildPhase = "add_build_phase"
     case duplicateTarget = "duplicate_target"
     case addSwiftPackage = "add_swift_package"
@@ -74,6 +75,8 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case validateProject = "validate_project"
     case repairProject = "repair_project"
     case scaffoldModule = "scaffold_module"
+    case dumpPIF = "dump_pif"
+    case whyTargetID = "why_target_id"
 }
 
 /// MCP server for Xcode project file manipulation.
@@ -167,6 +170,7 @@ public struct ProjectMCPServer: Sendable {
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
         let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
+        let listFrameworksPhaseTool = ListFrameworksPhaseTool(pathUtility: pathUtility)
         let addBuildPhaseTool = AddBuildPhaseTool(pathUtility: pathUtility)
         let duplicateTargetTool = DuplicateTargetTool(pathUtility: pathUtility)
         let addSwiftPackageTool = AddSwiftPackageTool(pathUtility: pathUtility)
@@ -212,6 +216,8 @@ public struct ProjectMCPServer: Sendable {
         let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
         let repairProjectTool = RepairProjectTool(pathUtility: pathUtility)
         let scaffoldModuleTool = ScaffoldModuleTool(pathUtility: pathUtility)
+        let dumpPIFTool = DumpPIFTool(pathUtility: pathUtility)
+        let whyTargetIDTool = WhyTargetIdTool(pathUtility: pathUtility)
 
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
@@ -251,6 +257,7 @@ public struct ProjectMCPServer: Sendable {
                 setBuildSettingTool.tool(),
                 addFrameworkTool.tool(),
                 removeFrameworkTool.tool(),
+                listFrameworksPhaseTool.tool(),
                 addBuildPhaseTool.tool(),
                 duplicateTargetTool.tool(),
                 addSwiftPackageTool.tool(),
@@ -284,6 +291,8 @@ public struct ProjectMCPServer: Sendable {
                 validateProjectTool.tool(),
                 repairProjectTool.tool(),
                 scaffoldModuleTool.tool(),
+                dumpPIFTool.tool(),
+                whyTargetIDTool.tool(),
             ])
         }
 
@@ -370,6 +379,8 @@ public struct ProjectMCPServer: Sendable {
                     return try addFrameworkTool.execute(arguments: arguments)
                 case .removeFramework:
                     return try removeFrameworkTool.execute(arguments: arguments)
+                case .listFrameworksPhase:
+                    return try listFrameworksPhaseTool.execute(arguments: arguments)
                 case .addBuildPhase:
                     return try addBuildPhaseTool.execute(arguments: arguments)
                 case .duplicateTarget:
@@ -436,6 +447,10 @@ public struct ProjectMCPServer: Sendable {
                     return try repairProjectTool.execute(arguments: arguments)
                 case .scaffoldModule:
                     return try scaffoldModuleTool.execute(arguments: arguments)
+                case .dumpPIF:
+                    return try dumpPIFTool.execute(arguments: arguments)
+                case .whyTargetID:
+                    return try whyTargetIDTool.execute(arguments: arguments)
             }
         }
 

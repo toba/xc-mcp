@@ -94,6 +94,12 @@ public struct ValidateProjectTool: Sendable {
                 targetProductNames: targetProductNames, diagnostics: &diagnostics,
             )
 
+            // --- Duplicate PBXTargetDependency edges ---
+            checkDuplicateTargetDependencies(target: target, diagnostics: &diagnostics)
+
+            // --- Frameworks-phase link-only paths (PBXReferenceProxy without ordering edge) ---
+            checkReferenceProxyWithoutDependency(target: target, diagnostics: &diagnostics)
+
             // --- Null file references in build phases (common after Xcode 26 migration) ---
             checkNullBuildFileReferences(target: target, diagnostics: &diagnostics)
 
@@ -138,6 +144,7 @@ public struct ValidateProjectTool: Sendable {
         checkSelfProjectReferences(
             xcodeproj: xcodeproj, projectPath: resolvedPath, diagnostics: &projectDiagnostics,
         )
+        checkStaleRemoteInfo(xcodeproj: xcodeproj, diagnostics: &projectDiagnostics)
 
         if !projectDiagnostics.isEmpty {
             output.append("## Project-level\n")
@@ -526,6 +533,138 @@ public struct ValidateProjectTool: Sendable {
                     "Has dependency on \(depTarget.name) but does not link \(productName)",
                 ))
             }
+        }
+    }
+
+    // MARK: - Duplicate Target Dependencies
+
+    /// Flags >1 PBXTargetDependency edges from `target` that resolve to the same remote target.
+    /// Xcode normally collapses these into one build-graph node, but the modern explicit-modules
+    /// planner can import them as distinct nodes that collide with
+    /// "Multiple targets in the build graph have the target ID …" at archive time.
+    private func checkDuplicateTargetDependencies(
+        target: PBXNativeTarget,
+        diagnostics: inout [Diagnostic],
+    ) {
+        // Group dependency edges by the remote target identity. Prefer the resolved target
+        // pointer, then the proxy's remoteGlobalID uuid, then the linked target uuid. This way
+        // an edge with a dangling proxy still collides with a healthy edge to the same target.
+        var groups: [String: [PBXTargetDependency]] = [:]
+        var nameByKey: [String: String] = [:]
+
+        for dep in target.dependencies {
+            let key: String
+            if let linked = dep.target {
+                key = linked.uuid
+                nameByKey[key] = linked.name
+            } else if let remote = dep.targetProxy?.remoteGlobalID {
+                switch remote {
+                    case let .object(obj):
+                        key = obj.uuid
+                        if nameByKey[key] == nil {
+                            nameByKey[key] = (obj as? PBXTarget)?.name ?? dep.name
+                        }
+                    case let .string(uuid):
+                        key = uuid
+                        if nameByKey[key] == nil { nameByKey[key] = dep.name ?? uuid }
+                }
+            } else {
+                continue
+            }
+            groups[key, default: []].append(dep)
+        }
+
+        for (key, edges) in groups where edges.count > 1 {
+            let name = nameByKey[key] ?? "<unknown>"
+            let detail = edges.map { dep in
+                let remoteInfo = dep.targetProxy?.remoteInfo ?? "<none>"
+                return "\(dep.uuid) (remoteInfo=\(remoteInfo))"
+            }.joined(separator: ", ")
+            diagnostics.append(Diagnostic(
+                .warning,
+                "Duplicate PBXTargetDependency edges to \(name) (\(key)): \(edges.count) edges — \(detail). Use remove_dependency to drop the redundant edge(s).",
+            ))
+        }
+    }
+
+    // MARK: - Reference Proxy Without Dependency
+
+    /// Flags PBXFrameworksBuildPhase entries that link a `PBXReferenceProxy` (cross-project
+    /// product reference) without a matching PBXTargetDependency edge. The link still produces
+    /// a build-graph node for the remote target, so this is the asymmetry that lets a consumer
+    /// pull in a target via the frameworks phase alone — bypassing the ordering edge and, under
+    /// the explicit-modules planner, sometimes creating duplicate target-ID nodes that collide
+    /// with "Multiple targets in the build graph have the target ID …".
+    private func checkReferenceProxyWithoutDependency(
+        target: PBXNativeTarget,
+        diagnostics: inout [Diagnostic],
+    ) {
+        let frameworksPhases = target.buildPhases.compactMap { $0 as? PBXFrameworksBuildPhase }
+        guard !frameworksPhases.isEmpty else { return }
+
+        let depTargetUUIDs = Set(target.dependencies.compactMap(\.target?.uuid))
+
+        for phase in frameworksPhases {
+            for buildFile in phase.files ?? [] {
+                guard let proxyRef = buildFile.file as? PBXReferenceProxy,
+                      let remote = proxyRef.remote?.remoteGlobalID
+                else { continue }
+
+                let remoteUUID: String
+                switch remote {
+                    case let .object(obj): remoteUUID = obj.uuid
+                    case let .string(uuid): remoteUUID = uuid
+                }
+                if depTargetUUIDs.contains(remoteUUID) { continue }
+
+                let name = proxyRef.path ?? proxyRef.name ?? "<unnamed>"
+                let remoteInfo = proxyRef.remote?.remoteInfo ?? "<none>"
+                diagnostics.append(Diagnostic(
+                    .warning,
+                    "Links \(name) (remoteInfo=\(remoteInfo), remoteGlobalID=\(remoteUUID)) via PBXReferenceProxy in the Frameworks phase but has no matching PBXTargetDependency edge — the build graph still imports the remote target, so under explicit modules this can produce duplicate target-ID nodes; add a target dependency via add_dependency to give the link an explicit ordering edge.",
+                ))
+            }
+        }
+    }
+
+    // MARK: - Stale remoteInfo
+
+    /// Flags PBXContainerItemProxy objects that point at the same `remoteGlobalID` but disagree on
+    /// `remoteInfo`. `remoteInfo` is the cached name of the target at proxy-creation time, so
+    /// divergent values indicate a target was renamed without refreshing its consumer proxies.
+    /// In the explicit-modules build system this can cause Xcode to import the same target as
+    /// distinct graph nodes that collide on `target-<Name>-<hash>-SDKROOT:<sdk>` IDs.
+    private func checkStaleRemoteInfo(
+        xcodeproj: XcodeProj,
+        diagnostics: inout [Diagnostic],
+    ) {
+        var groups: [String: [PBXContainerItemProxy]] = [:]
+        var resolvedName: [String: String] = [:]
+
+        for proxy in xcodeproj.pbxproj.containerItemProxies {
+            guard let remote = proxy.remoteGlobalID else { continue }
+            let key: String
+            switch remote {
+                case let .object(obj):
+                    key = obj.uuid
+                    if resolvedName[key] == nil {
+                        resolvedName[key] = (obj as? PBXTarget)?.name
+                    }
+                case let .string(uuid):
+                    key = uuid
+            }
+            groups[key, default: []].append(proxy)
+        }
+
+        for (key, proxies) in groups where proxies.count > 1 {
+            let infos = Set(proxies.compactMap(\.remoteInfo))
+            guard infos.count > 1 else { continue }
+            let name = resolvedName[key] ?? "<unresolved>"
+            let infoList = infos.sorted().map { "'\($0)'" }.joined(separator: ", ")
+            diagnostics.append(Diagnostic(
+                .warning,
+                "Stale remoteInfo across \(proxies.count) proxies referencing target \(name) (\(key)): \(infos.count) distinct values [\(infoList)] — a target was likely renamed without refreshing its consumer proxies; remove_dependency + add_dependency on each affected consumer will rebuild them with the current name.",
+            ))
         }
     }
 }

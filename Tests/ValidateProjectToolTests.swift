@@ -693,4 +693,131 @@ struct ValidateProjectToolTests {
         #expect(content.contains("repair_project"))
         #expect(content.contains("[error]"))
     }
+
+    @Test
+    func `Detects duplicate PBXTargetDependency edges to the same target`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Add a Framework target and wire one healthy dependency edge from App → Framework.
+        let pathUtility = PathUtility(basePath: tempDir.path)
+        _ = try AddTargetTool(pathUtility: pathUtility).execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("Framework"),
+            "product_type": .string("framework"),
+            "bundle_identifier": .string("com.test.framework"),
+        ])
+        _ = try AddDependencyTool(pathUtility: pathUtility).execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "dependency_name": .string("Framework"),
+        ])
+
+        // Inject a second PBXTargetDependency by hand so we get the duplicate edge that the
+        // checker is meant to catch (add_dependency itself refuses to re-add).
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let app = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }!
+        let framework = xcodeproj.pbxproj.nativeTargets.first { $0.name == "Framework" }!
+        let proxy = PBXContainerItemProxy(
+            containerPortal: .project(xcodeproj.pbxproj.rootObject!),
+            remoteGlobalID: .object(framework),
+            proxyType: .nativeTarget,
+            remoteInfo: "Framework",
+        )
+        xcodeproj.pbxproj.add(object: proxy)
+        let dupDep = PBXTargetDependency(
+            name: "Framework",
+            target: framework,
+            targetProxy: proxy,
+        )
+        xcodeproj.pbxproj.add(object: dupDep)
+        app.dependencies.append(dupDep)
+        try xcodeproj.write(path: projectPath)
+
+        let tool = ValidateProjectTool(pathUtility: pathUtility)
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("Duplicate PBXTargetDependency edges to Framework"))
+        #expect(content.contains("2 edges"))
+        #expect(content.contains("[warn]"))
+        #expect(content.contains("remove_dependency"))
+    }
+
+    @Test
+    func `Detects stale remoteInfo across proxies pointing at the same target`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let pathUtility = PathUtility(basePath: tempDir.path)
+        _ = try AddTargetTool(pathUtility: pathUtility).execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("Core"),
+            "product_type": .string("framework"),
+            "bundle_identifier": .string("com.test.core"),
+        ])
+        _ = try AddTargetTool(pathUtility: pathUtility).execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("Kit"),
+            "product_type": .string("framework"),
+            "bundle_identifier": .string("com.test.kit"),
+        ])
+        _ = try AddDependencyTool(pathUtility: pathUtility).execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "dependency_name": .string("Core"),
+        ])
+        _ = try AddDependencyTool(pathUtility: pathUtility).execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("Kit"),
+            "dependency_name": .string("Core"),
+        ])
+
+        // Simulate "Core was renamed but consumer proxies still cache the old name" by mutating
+        // one of the two PBXContainerItemProxy entries that point at Core.
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let core = xcodeproj.pbxproj.nativeTargets.first { $0.name == "Core" }!
+        var mutated = false
+        for proxy in xcodeproj.pbxproj.containerItemProxies {
+            guard case let .object(obj)? = proxy.remoteGlobalID, obj.uuid == core.uuid else {
+                continue
+            }
+            if !mutated {
+                proxy.remoteInfo = "LegacyCoreName"
+                mutated = true
+            }
+        }
+        #expect(mutated)
+        try xcodeproj.write(path: projectPath)
+
+        let tool = ValidateProjectTool(pathUtility: pathUtility)
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("Stale remoteInfo"))
+        #expect(content.contains("Core"))
+        #expect(content.contains("LegacyCoreName"))
+        #expect(content.contains("2 distinct values"))
+        #expect(content.contains("[warn]"))
+    }
 }

@@ -79,7 +79,8 @@ public enum ServerToolDirectory {
         "remove_test_plan_from_scheme", "list_test_plans",
         "set_test_target_application", "rename_group",
         "add_dependency", "list_dependencies", "remove_dependency",
-        "set_build_setting", "add_framework", "add_build_phase",
+        "set_build_setting", "add_framework", "remove_framework", "list_frameworks_phase",
+        "add_build_phase",
         "duplicate_target", "add_swift_package", "add_package_product",
         "list_swift_packages", "remove_swift_package", "list_groups",
         "add_synchronized_folder", "remove_synchronized_folder",
@@ -94,6 +95,7 @@ public enum ServerToolDirectory {
         "list_url_types", "manage_url_type",
         "validate_project", "repair_project",
         "scaffold_module",
+        "dump_pif", "why_target_id",
     ]
 
     private static let deviceTools: [String] = [

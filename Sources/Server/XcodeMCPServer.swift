@@ -44,6 +44,9 @@ public enum ToolName: String, CaseIterable, Sendable {
     case setBuildSetting = "set_build_setting"
     case addFramework = "add_framework"
     case removeFramework = "remove_framework"
+    case listFrameworksPhase = "list_frameworks_phase"
+    case dumpPIF = "dump_pif"
+    case whyTargetID = "why_target_id"
     case addBuildPhase = "add_build_phase"
     case duplicateTarget = "duplicate_target"
     case addSwiftPackage = "add_swift_package"
@@ -262,7 +265,8 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .listTestPlans, .setTestTargetApplication,
                  .renameGroup,
                  .addDependency, .listDependencies, .removeDependency, .setBuildSetting,
-                 .addFramework, .removeFramework,
+                 .addFramework, .removeFramework, .listFrameworksPhase,
+                 .dumpPIF, .whyTargetID,
                  .addBuildPhase, .duplicateTarget, .addSwiftPackage, .addPackageProduct,
                  .listSwiftPackages, .removeSwiftPackage, .removePackageProduct,
                  .listPackageProducts, .listGroups, .addSynchronizedFolder,
@@ -446,6 +450,9 @@ public struct XcodeMCPServer: Sendable {
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
         let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
+        let listFrameworksPhaseTool = ListFrameworksPhaseTool(pathUtility: pathUtility)
+        let dumpPIFTool = DumpPIFTool(pathUtility: pathUtility)
+        let whyTargetIDTool = WhyTargetIdTool(pathUtility: pathUtility)
         let addBuildPhaseTool = AddBuildPhaseTool(pathUtility: pathUtility)
         let duplicateTargetTool = DuplicateTargetTool(pathUtility: pathUtility)
         let addSwiftPackageTool = AddSwiftPackageTool(pathUtility: pathUtility)
@@ -819,6 +826,9 @@ public struct XcodeMCPServer: Sendable {
             (.setBuildSetting, setBuildSettingTool.tool()),
             (.addFramework, addFrameworkTool.tool()),
             (.removeFramework, removeFrameworkTool.tool()),
+            (.listFrameworksPhase, listFrameworksPhaseTool.tool()),
+            (.dumpPIF, dumpPIFTool.tool()),
+            (.whyTargetID, whyTargetIDTool.tool()),
             (.addBuildPhase, addBuildPhaseTool.tool()),
             (.duplicateTarget, duplicateTargetTool.tool()),
             (.addSwiftPackage, addSwiftPackageTool.tool()),
@@ -1112,6 +1122,12 @@ public struct XcodeMCPServer: Sendable {
                     return try addFrameworkTool.execute(arguments: arguments)
                 case .removeFramework:
                     return try removeFrameworkTool.execute(arguments: arguments)
+                case .listFrameworksPhase:
+                    return try listFrameworksPhaseTool.execute(arguments: arguments)
+                case .dumpPIF:
+                    return try dumpPIFTool.execute(arguments: arguments)
+                case .whyTargetID:
+                    return try whyTargetIDTool.execute(arguments: arguments)
                 case .addBuildPhase:
                     return try addBuildPhaseTool.execute(arguments: arguments)
                 case .duplicateTarget:
