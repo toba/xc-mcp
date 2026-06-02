@@ -47,6 +47,9 @@ public enum ToolName: String, CaseIterable, Sendable {
     case listFrameworksPhase = "list_frameworks_phase"
     case dumpPIF = "dump_pif"
     case whyTargetID = "why_target_id"
+    case findBuildSettings = "find_build_settings"
+    case findLinkFlag = "find_link_flag"
+    case listRunScriptPhases = "list_run_script_phases"
     case addBuildPhase = "add_build_phase"
     case duplicateTarget = "duplicate_target"
     case addSwiftPackage = "add_swift_package"
@@ -268,6 +271,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .addDependency, .listDependencies, .removeDependency, .setBuildSetting,
                  .addFramework, .removeFramework, .listFrameworksPhase,
                  .dumpPIF, .whyTargetID,
+                 .findBuildSettings, .findLinkFlag, .listRunScriptPhases,
                  .addBuildPhase, .duplicateTarget, .addSwiftPackage, .addPackageProduct,
                  .listSwiftPackages, .removeSwiftPackage, .removePackageProduct,
                  .listPackageProducts, .listGroups, .addSynchronizedFolder,
@@ -454,6 +458,9 @@ public struct XcodeMCPServer: Sendable {
         let listFrameworksPhaseTool = ListFrameworksPhaseTool(pathUtility: pathUtility)
         let dumpPIFTool = DumpPIFTool(pathUtility: pathUtility)
         let whyTargetIDTool = WhyTargetIdTool(pathUtility: pathUtility)
+        let findBuildSettingsTool = FindBuildSettingsTool(pathUtility: pathUtility)
+        let findLinkFlagTool = FindLinkFlagTool(pathUtility: pathUtility)
+        let listRunScriptPhasesTool = ListRunScriptPhasesTool(pathUtility: pathUtility)
         let addBuildPhaseTool = AddBuildPhaseTool(pathUtility: pathUtility)
         let duplicateTargetTool = DuplicateTargetTool(pathUtility: pathUtility)
         let addSwiftPackageTool = AddSwiftPackageTool(pathUtility: pathUtility)
@@ -833,6 +840,9 @@ public struct XcodeMCPServer: Sendable {
             (.listFrameworksPhase, listFrameworksPhaseTool.tool()),
             (.dumpPIF, dumpPIFTool.tool()),
             (.whyTargetID, whyTargetIDTool.tool()),
+            (.findBuildSettings, findBuildSettingsTool.tool()),
+            (.findLinkFlag, findLinkFlagTool.tool()),
+            (.listRunScriptPhases, listRunScriptPhasesTool.tool()),
             (.addBuildPhase, addBuildPhaseTool.tool()),
             (.duplicateTarget, duplicateTargetTool.tool()),
             (.addSwiftPackage, addSwiftPackageTool.tool()),
@@ -1133,6 +1143,12 @@ public struct XcodeMCPServer: Sendable {
                     return try dumpPIFTool.execute(arguments: arguments)
                 case .whyTargetID:
                     return try whyTargetIDTool.execute(arguments: arguments)
+                case .findBuildSettings:
+                    return try findBuildSettingsTool.execute(arguments: arguments)
+                case .findLinkFlag:
+                    return try findLinkFlagTool.execute(arguments: arguments)
+                case .listRunScriptPhases:
+                    return try listRunScriptPhasesTool.execute(arguments: arguments)
                 case .addBuildPhase:
                     return try addBuildPhaseTool.execute(arguments: arguments)
                 case .duplicateTarget:

@@ -77,6 +77,9 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case scaffoldModule = "scaffold_module"
     case dumpPIF = "dump_pif"
     case whyTargetID = "why_target_id"
+    case findBuildSettings = "find_build_settings"
+    case findLinkFlag = "find_link_flag"
+    case listRunScriptPhases = "list_run_script_phases"
 }
 
 /// MCP server for Xcode project file manipulation.
@@ -218,6 +221,9 @@ public struct ProjectMCPServer: Sendable {
         let scaffoldModuleTool = ScaffoldModuleTool(pathUtility: pathUtility)
         let dumpPIFTool = DumpPIFTool(pathUtility: pathUtility)
         let whyTargetIDTool = WhyTargetIdTool(pathUtility: pathUtility)
+        let findBuildSettingsTool = FindBuildSettingsTool(pathUtility: pathUtility)
+        let findLinkFlagTool = FindLinkFlagTool(pathUtility: pathUtility)
+        let listRunScriptPhasesTool = ListRunScriptPhasesTool(pathUtility: pathUtility)
 
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
@@ -293,6 +299,9 @@ public struct ProjectMCPServer: Sendable {
                 scaffoldModuleTool.tool(),
                 dumpPIFTool.tool(),
                 whyTargetIDTool.tool(),
+                findBuildSettingsTool.tool(),
+                findLinkFlagTool.tool(),
+                listRunScriptPhasesTool.tool(),
             ])
         }
 
@@ -451,6 +460,12 @@ public struct ProjectMCPServer: Sendable {
                     return try dumpPIFTool.execute(arguments: arguments)
                 case .whyTargetID:
                     return try whyTargetIDTool.execute(arguments: arguments)
+                case .findBuildSettings:
+                    return try findBuildSettingsTool.execute(arguments: arguments)
+                case .findLinkFlag:
+                    return try findLinkFlagTool.execute(arguments: arguments)
+                case .listRunScriptPhases:
+                    return try listRunScriptPhasesTool.execute(arguments: arguments)
             }
         }
 
