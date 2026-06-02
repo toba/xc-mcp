@@ -8,6 +8,7 @@ import XCMCPTools
 public enum BuildToolName: String, CaseIterable, Sendable {
     // macOS tools
     case buildMacOS = "build_macos"
+    case archive
     case buildRunMacOS = "build_run_macos"
     case launchMacApp = "launch_mac_app"
     case stopMacApp = "stop_mac_app"
@@ -127,6 +128,9 @@ public struct BuildMCPServer: Sendable {
         let buildMacOSTool = BuildMacOSTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let archiveTool = ArchiveTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
         let buildRunMacOSTool = BuildRunMacOSTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
@@ -239,6 +243,7 @@ public struct BuildMCPServer: Sendable {
             ListTools.Result(tools: [
                 // macOS tools
                 buildMacOSTool.tool(),
+                archiveTool.tool(),
                 buildRunMacOSTool.tool(),
                 launchMacAppTool.tool(),
                 stopMacAppTool.tool(),
@@ -316,6 +321,8 @@ public struct BuildMCPServer: Sendable {
                 // macOS tools
                 case .buildMacOS:
                     return try await buildMacOSTool.execute(arguments: arguments)
+                case .archive:
+                    return try await archiveTool.execute(arguments: arguments)
                 case .buildRunMacOS:
                     return try await buildRunMacOSTool.execute(arguments: arguments)
                 case .launchMacApp:

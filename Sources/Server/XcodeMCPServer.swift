@@ -112,6 +112,7 @@ public enum ToolName: String, CaseIterable, Sendable {
 
     // macOS tools
     case buildMacOS = "build_macos"
+    case archive
     case buildRunMacOS = "build_run_macos"
     case launchMacApp = "launch_mac_app"
     case stopMacApp = "stop_mac_app"
@@ -296,7 +297,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .deployDevice, .buildDeployDevice:
                 return .device
             // macOS
-            case .buildMacOS, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
+            case .buildMacOS, .archive, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
                  .testMacOS, .getTestAttachments, .getCoverageReport, .getFileCoverage,
                  .getPerformanceMetrics, .setPerformanceBaseline, .showPerformanceBaselines,
                  .startMacLogCap, .stopMacLogCap, .showMacLog, .showBuildLog, .screenshotMacWindow:
@@ -566,6 +567,9 @@ public struct XcodeMCPServer: Sendable {
 
         // Create macOS tools
         let buildMacOSTool = BuildMacOSTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let archiveTool = ArchiveTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
         let buildRunMacOSTool = BuildRunMacOSTool(
@@ -893,6 +897,7 @@ public struct XcodeMCPServer: Sendable {
             (.buildDeployDevice, buildDeployDeviceTool.tool()),
             // macOS tools
             (.buildMacOS, buildMacOSTool.tool()),
+            (.archive, archiveTool.tool()),
             (.buildRunMacOS, buildRunMacOSTool.tool()),
             (.launchMacApp, launchMacAppTool.tool()),
             (.stopMacApp, stopMacAppTool.tool()),
@@ -1299,6 +1304,8 @@ public struct XcodeMCPServer: Sendable {
                 // macOS tools
                 case .buildMacOS:
                     return try await buildMacOSTool.execute(arguments: arguments)
+                case .archive:
+                    return try await archiveTool.execute(arguments: arguments)
                 case .buildRunMacOS:
                     return try await buildRunMacOSTool.execute(arguments: arguments)
                 case .launchMacApp:
