@@ -30,10 +30,7 @@ struct AddDependencyToolTests {
     static let missingParamCases: [AddDependencyMissingParamTestCase] = [
         AddDependencyMissingParamTestCase(
             "Missing project_path",
-            [
-                "target_name": Value.string("App"),
-                "dependency_name": Value.string("Framework"),
-            ],
+            ["target_name": Value.string("App"), "dependency_name": Value.string("Framework")],
         ),
         AddDependencyMissingParamTestCase(
             "Missing target_name",
@@ -57,9 +54,7 @@ struct AddDependencyToolTests {
     ) throws {
         let tool = AddDependencyTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     @Test
@@ -112,10 +107,9 @@ struct AddDependencyToolTests {
         let appTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
         #expect(appTarget != nil)
 
-        let hasDependency =
-            appTarget?.dependencies.contains { dependency in
-                dependency.name == "Framework"
-            } ?? false
+        let hasDependency = appTarget?.dependencies.contains { dependency in
+            dependency.name == "Framework"
+        } ?? false
         #expect(hasDependency == true)
     }
 
@@ -199,6 +193,103 @@ struct AddDependencyToolTests {
             return
         }
         #expect(message.contains("not found"))
+    }
+
+    @Test
+    func `Add cross-project dependency via projectReferences`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // Consumer project
+        let consumerPath = Path(tempDir.path) + "Consumer.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "Consumer", targetName: "App", at: consumerPath,
+        )
+
+        // Sub-project containing the dependency target
+        let subDir = tempDir.appendingPathComponent("SubProject")
+        try FileManager.default.createDirectory(at: subDir, withIntermediateDirectories: true)
+        let subPath = Path(subDir.path) + "Sub.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "Sub", targetName: "SubFramework", at: subPath,
+        )
+
+        // Discover sub-project target UUID for later assertion.
+        let subProj = try XcodeProj(path: subPath)
+        let subTargetUUID = try #require(
+            subProj.pbxproj.nativeTargets.first { $0.name == "SubFramework" }
+        ).uuid
+
+        // Wire a projectReferences entry into the consumer project.
+        let consumer = try XcodeProj(path: consumerPath)
+        let rootObject = try #require(consumer.pbxproj.rootObject)
+
+        let subRef = PBXFileReference(
+            sourceTree: .group,
+            name: nil,
+            lastKnownFileType: "wrapper.pb-project",
+            path: "SubProject/Sub.xcodeproj",
+        )
+        consumer.pbxproj.add(object: subRef)
+        rootObject.mainGroup.children.append(subRef)
+
+        let subProducts = PBXGroup(children: [], sourceTree: .group, name: "Products")
+        consumer.pbxproj.add(object: subProducts)
+
+        rootObject.projects.append(["ProductGroup": subProducts, "ProjectRef": subRef])
+
+        try consumer.write(path: consumerPath)
+
+        // Exercise add_dependency for a cross-project target.
+        let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(consumerPath.string),
+            "target_name": Value.string("App"),
+            "dependency_name": Value.string("SubFramework"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("cross-project dependency 'SubFramework'"))
+
+        // Verify the edge was wired up correctly.
+        let reopened = try XcodeProj(path: consumerPath)
+        let app = try #require(reopened.pbxproj.nativeTargets.first { $0.name == "App" })
+        #expect(app.dependencies.count == 1)
+        let dep = app.dependencies[0]
+        #expect(dep.name == "SubFramework")
+        #expect(dep.target == nil)
+        let proxy = try #require(dep.targetProxy)
+        #expect(proxy.proxyType == .nativeTarget)
+        #expect(proxy.remoteInfo == "SubFramework")
+
+        if case let .string(uuid) = proxy.remoteGlobalID {
+            #expect(uuid == subTargetUUID)
+        } else {
+            Issue.record("Expected string remoteGlobalID for cross-project proxy")
+        }
+        if case let .fileReference(ref) = proxy.containerPortal {
+            #expect(ref.path == "SubProject/Sub.xcodeproj")
+        } else {
+            Issue.record("Expected fileReference containerPortal for cross-project proxy")
+        }
+
+        // Calling again is a no-op (already-depends message).
+        let again = try tool.execute(arguments: [
+            "project_path": Value.string(consumerPath.string),
+            "target_name": Value.string("App"),
+            "dependency_name": Value.string("SubFramework"),
+        ])
+        guard case let .text(againMessage, _, _) = again.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(againMessage.contains("already depends on"))
     }
 
     @Test
