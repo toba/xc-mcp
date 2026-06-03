@@ -106,7 +106,7 @@ public struct LaunchMacAppTool: Sendable {
                 openArgs.append("-n")
             }
 
-            if hide {
+            if hide || FocusPolicy.isHeadlessLaunchMode() {
                 openArgs.append("-g")
             }
 

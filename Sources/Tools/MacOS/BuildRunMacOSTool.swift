@@ -154,11 +154,7 @@ public struct BuildRunMacOSTool: Sendable {
             )
 
             // Step 4: Launch app using open command
-            var openArgs = [appPath]
-            if !launchArgs.isEmpty {
-                openArgs.append("--args")
-                openArgs.append(contentsOf: launchArgs)
-            }
+            let openArgs = FocusPolicy.openAppArgs(appPath: appPath, launchArgs: launchArgs)
 
             let result = try await ProcessResult.run("/usr/bin/open", arguments: openArgs)
 

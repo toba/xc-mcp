@@ -30,11 +30,13 @@ public struct OpenSimTool: Sendable {
         let simulator = arguments.getString("simulator")
 
         do {
-            let args: [String]
-            if let udid = simulator {
-                args = ["-a", "Simulator", "--args", "-CurrentDeviceUDID", udid]
-            } else {
-                args = ["-a", "Simulator"]
+            guard let args = FocusPolicy.openSimulatorAppArgs(simulatorId: simulator) else {
+                let message = "Simulator.app launch skipped by \(FocusPolicy.envVar)"
+                return CallTool.Result(content: [.text(
+                    text: message,
+                    annotations: nil,
+                    _meta: nil,
+                )])
             }
 
             let result = try await ProcessResult.run("/usr/bin/open", arguments: args)

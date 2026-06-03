@@ -649,6 +649,12 @@ Some tools require macOS privacy permissions granted via **System Settings > Pri
 
 macOS grants these to the **responsible process** — the GUI app at the top of the process tree, not `xc-mcp` itself. So **Claude Desktop**, **VS Code/Cursor**, or your **terminal emulator** needs the permission. The `xc-mcp` binary won't appear in System Settings — TCC always resolves up to the parent GUI app.
 
+## Environment Variables
+
+| Variable | Effect |
+|----------|--------|
+| `XC_MCP_HEADLESS_LAUNCH` | When set to `1` or `true`, `launch_mac_app` and `build_run_macos` pass `-g` to `open` (background launch, no focus steal), and `open_sim` skips launching `Simulator.app` entirely — `simctl boot` is sufficient for `simctl`-driven automation. Off by default. `open_in_xcode` always surfaces a window. |
+
 ## Build Output Parsing
 
 Test tools parse both **XCTest** and **Swift Testing** output formats, extracting structured pass/fail results with test names, durations, and failure details. Handles parallel output, backtick-escaped function names, SF Symbol prefixes, and failure summaries.
