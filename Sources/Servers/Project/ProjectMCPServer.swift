@@ -66,6 +66,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case addCopyFilesPhase = "add_copy_files_phase"
     case addToCopyFilesPhase = "add_to_copy_files_phase"
     case removeCopyFilesPhase = "remove_copy_files_phase"
+    case setCopyFilesPhaseSubpath = "set_copy_files_phase_subpath"
     case removeRunScriptPhase = "remove_run_script_phase"
     case listDocumentTypes = "list_document_types"
     case manageDocumentType = "manage_document_type"
@@ -217,6 +218,7 @@ public struct ProjectMCPServer: Sendable {
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
+        let setCopyFilesPhaseSubpath = SetCopyFilesPhaseSubpath(pathUtility: pathUtility)
         let removeRunScriptPhase = RemoveRunScriptPhase(pathUtility: pathUtility)
         let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
         let repairProjectTool = RepairProjectTool(pathUtility: pathUtility)
@@ -296,6 +298,7 @@ public struct ProjectMCPServer: Sendable {
                 addCopyFilesPhase.tool(),
                 addToCopyFilesPhase.tool(),
                 removeCopyFilesPhase.tool(),
+                setCopyFilesPhaseSubpath.tool(),
                 removeRunScriptPhase.tool(),
                 validateProjectTool.tool(),
                 repairProjectTool.tool(),
@@ -453,6 +456,8 @@ public struct ProjectMCPServer: Sendable {
                     return try addToCopyFilesPhase.execute(arguments: arguments)
                 case .removeCopyFilesPhase:
                     return try removeCopyFilesPhase.execute(arguments: arguments)
+                case .setCopyFilesPhaseSubpath:
+                    return try setCopyFilesPhaseSubpath.execute(arguments: arguments)
                 case .removeRunScriptPhase:
                     return try removeRunScriptPhase.execute(arguments: arguments)
                 case .validateProject:

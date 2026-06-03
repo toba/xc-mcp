@@ -520,17 +520,13 @@ struct CopyFilesPhaseToolsTests {
         )
 
         let tool = RemoveCopyFilesPhase(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-            "target_name": .string("App"),
-            "phase_name": .string("NonExistent"),
-        ])
-
-        guard case let .text(message, _, _) = result.content.first else {
-            Issue.record("Expected text result")
-            return
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": .string(projectPath.string),
+                "target_name": .string("App"),
+                "phase_name": .string("NonExistent"),
+            ])
         }
-        #expect(message.contains("not found"))
     }
 
     @Test
@@ -665,6 +661,182 @@ struct CopyFilesPhaseToolsTests {
             return
         }
         #expect(finalListMessage.contains("No Copy Files build phases found"))
+    }
+
+    // MARK: - SetCopyFilesPhaseSubpath Tests
+
+    @Test
+    func `SetCopyFilesPhaseSubpath tool creation`() {
+        let tool = SetCopyFilesPhaseSubpath(pathUtility: PathUtility(basePath: "/tmp"))
+        let toolDefinition = tool.tool()
+
+        #expect(toolDefinition.name == "set_copy_files_phase_subpath")
+    }
+
+    @Test
+    func `SetCopyFilesPhaseSubpath updates dstPath by phase_name`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let phase = PBXCopyFilesBuildPhase(
+            dstPath: "docx",
+            dstSubfolderSpec: .resources,
+            name: "Copy Default Styles",
+        )
+        xcodeproj.pbxproj.add(object: phase)
+        target.buildPhases.append(phase)
+        try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
+
+        let tool = SetCopyFilesPhaseSubpath(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "phase_name": .string("Copy Default Styles"),
+            "new_subpath": .string("DefaultStyles"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("docx"))
+        #expect(message.contains("DefaultStyles"))
+
+        let updated = try XcodeProj(path: projectPath)
+        let updatedTarget = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
+        let copy = updatedTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
+            .first { $0.name == "Copy Default Styles" }
+        #expect(copy?.dstPath == "DefaultStyles")
+    }
+
+    @Test
+    func `SetCopyFilesPhaseSubpath locates unnamed phase by dst_path`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let unnamed = PBXCopyFilesBuildPhase(
+            dstPath: "docx",
+            dstSubfolderSpec: .resources,
+            name: nil,
+        )
+        let other = PBXCopyFilesBuildPhase(
+            dstPath: "other",
+            dstSubfolderSpec: .resources,
+            name: "Other",
+        )
+        xcodeproj.pbxproj.add(object: unnamed)
+        xcodeproj.pbxproj.add(object: other)
+        target.buildPhases.append(unnamed)
+        target.buildPhases.append(other)
+        try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
+
+        let tool = SetCopyFilesPhaseSubpath(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "dst_path": .string("docx"),
+            "new_subpath": .string("DefaultStyles"),
+        ])
+
+        let updated = try XcodeProj(path: projectPath)
+        let updatedTarget = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
+        let copyPhases = updatedTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
+        #expect(copyPhases.contains { $0.name == nil && $0.dstPath == "DefaultStyles" })
+        #expect(copyPhases.contains { $0.name == "Other" && $0.dstPath == "other" })
+    }
+
+    @Test
+    func `SetCopyFilesPhaseSubpath rejects ambiguous dst_path`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        for _ in 0..<2 {
+            let phase = PBXCopyFilesBuildPhase(
+                dstPath: "docx",
+                dstSubfolderSpec: .resources,
+                name: nil,
+            )
+            xcodeproj.pbxproj.add(object: phase)
+            target.buildPhases.append(phase)
+        }
+        try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
+
+        let tool = SetCopyFilesPhaseSubpath(pathUtility: PathUtility(basePath: tempDir.path))
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": .string(projectPath.string),
+                "target_name": .string("App"),
+                "dst_path": .string("docx"),
+                "new_subpath": .string("DefaultStyles"),
+            ])
+        }
+    }
+
+    @Test
+    func `RemoveCopyFilesPhase locates unnamed phase by dst_path`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let unnamed = PBXCopyFilesBuildPhase(
+            dstPath: "docx",
+            dstSubfolderSpec: .resources,
+            name: nil,
+        )
+        xcodeproj.pbxproj.add(object: unnamed)
+        target.buildPhases.append(unnamed)
+        try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
+
+        let tool = RemoveCopyFilesPhase(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "dst_path": .string("docx"),
+        ])
+
+        let updated = try XcodeProj(path: projectPath)
+        let updatedTarget = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
+        let copyPhases = updatedTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
+        #expect(copyPhases.isEmpty)
     }
 
     @Test

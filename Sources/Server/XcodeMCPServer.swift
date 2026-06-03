@@ -70,6 +70,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addCopyFilesPhase = "add_copy_files_phase"
     case addToCopyFilesPhase = "add_to_copy_files_phase"
     case removeCopyFilesPhase = "remove_copy_files_phase"
+    case setCopyFilesPhaseSubpath = "set_copy_files_phase_subpath"
     case removeRunScriptPhase = "remove_run_script_phase"
     case validateProject = "validate_project"
     case repairProject = "repair_project"
@@ -280,6 +281,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .addSynchronizedFolderPhaseMembership,
                  .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
                  .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
+                 .setCopyFilesPhaseSubpath,
                  .removeRunScriptPhase,
                  .validateProject, .repairProject, .scaffoldModule,
                  .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
@@ -488,6 +490,7 @@ public struct XcodeMCPServer: Sendable {
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
+        let setCopyFilesPhaseSubpath = SetCopyFilesPhaseSubpath(pathUtility: pathUtility)
         let removeRunScriptPhase = RemoveRunScriptPhase(pathUtility: pathUtility)
         let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
         let repairProjectTool = RepairProjectTool(pathUtility: pathUtility)
@@ -868,6 +871,7 @@ public struct XcodeMCPServer: Sendable {
             (.addCopyFilesPhase, addCopyFilesPhase.tool()),
             (.addToCopyFilesPhase, addToCopyFilesPhase.tool()),
             (.removeCopyFilesPhase, removeCopyFilesPhase.tool()),
+            (.setCopyFilesPhaseSubpath, setCopyFilesPhaseSubpath.tool()),
             (.removeRunScriptPhase, removeRunScriptPhase.tool()),
             (.validateProject, validateProjectTool.tool()),
             (.repairProject, repairProjectTool.tool()),
@@ -1194,6 +1198,8 @@ public struct XcodeMCPServer: Sendable {
                     return try addToCopyFilesPhase.execute(arguments: arguments)
                 case .removeCopyFilesPhase:
                     return try removeCopyFilesPhase.execute(arguments: arguments)
+                case .setCopyFilesPhaseSubpath:
+                    return try setCopyFilesPhaseSubpath.execute(arguments: arguments)
                 case .removeRunScriptPhase:
                     return try removeRunScriptPhase.execute(arguments: arguments)
                 case .validateProject:

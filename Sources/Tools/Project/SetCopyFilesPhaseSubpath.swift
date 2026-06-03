@@ -4,7 +4,7 @@ import XCMCPCore
 import XcodeProj
 import Foundation
 
-public struct RemoveCopyFilesPhase: Sendable {
+public struct SetCopyFilesPhaseSubpath: Sendable {
     private let pathUtility: PathUtility
 
     public init(pathUtility: PathUtility) {
@@ -13,9 +13,9 @@ public struct RemoveCopyFilesPhase: Sendable {
 
     public func tool() -> Tool {
         Tool(
-            name: "remove_copy_files_phase",
+            name: "set_copy_files_phase_subpath",
             description:
-            "Remove a Copy Files build phase from a target. Locates the phase by phase_name or dst_path; if the target has exactly one Copy Files phase, that one is used.",
+            "Rename a Copy Files build phase's dstPath (subpath) in place. Locates the phase by phase_name or current dst_path; if the target has exactly one Copy Files phase, that one is used. Preserves the phase's identity, files, name, destination, and any synchronized-folder membership exception sets — unlike remove + recreate.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -32,29 +32,38 @@ public struct RemoveCopyFilesPhase: Sendable {
                     "phase_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional: name of the Copy Files phase to remove. If absent, the phase is located via dst_path or by being the target's only Copy Files phase.",
+                            "Optional: name of the Copy Files phase. If absent, the phase is located via dst_path or by being the target's only Copy Files phase.",
                         ),
                     ]),
                     "dst_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Optional: dstPath of the Copy Files phase (e.g., 'docx'). Used to locate phases that have no name.",
+                            "Optional: current dstPath of the Copy Files phase (e.g., 'docx'). Used to locate phases that have no name.",
+                        ),
+                    ]),
+                    "new_subpath": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "New dstPath for the phase. Pass an empty string to clear the subpath.",
                         ),
                     ]),
                 ]),
                 "required": .array([
-                    .string("project_path"), .string("target_name"),
+                    .string("project_path"), .string("target_name"), .string("new_subpath"),
                 ]),
             ]),
-            annotations: .destructive,
+            annotations: .mutation,
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"]
+              case let .string(targetName) = arguments["target_name"],
+              case let .string(newSubpath) = arguments["new_subpath"]
         else {
-            throw MCPError.invalidParams("project_path and target_name are required")
+            throw MCPError.invalidParams(
+                "project_path, target_name, and new_subpath are required",
+            )
         }
 
         let phaseName: String?
@@ -80,48 +89,27 @@ public struct RemoveCopyFilesPhase: Sendable {
                 )
             }
 
-            let copyFilesPhase = try CopyFilesPhaseLocator.locate(
+            let phase = try CopyFilesPhaseLocator.locate(
                 in: target,
                 phaseName: phaseName,
                 dstPath: dstPath,
                 targetName: targetName,
             )
 
-            guard let phaseIndex = target.buildPhases.firstIndex(where: { $0 === copyFilesPhase })
-            else {
-                throw MCPError.internalError(
-                    "Located Copy Files phase is not attached to target '\(targetName)'",
-                )
-            }
-
-            // Remove build files from the phase
-            if let buildFiles = copyFilesPhase.files {
-                for buildFile in buildFiles {
-                    xcodeproj.pbxproj.delete(object: buildFile)
-                }
-            }
-
-            // Remove the phase from the target
-            target.buildPhases.remove(at: phaseIndex)
-
-            // Delete the phase object
-            xcodeproj.pbxproj.delete(object: copyFilesPhase)
+            let oldSubpath = phase.dstPath ?? ""
+            phase.dstPath = newSubpath
 
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            let label = phaseName ?? copyFilesPhase.name ?? ("dstPath=" + (dstPath ?? ""))
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully removed Copy Files phase '\(label)' from target '\(targetName)'",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            let label = phase.name ?? "(unnamed)"
+            let message =
+                "Updated Copy Files phase '\(label)' on target '\(targetName)': dstPath '\(oldSubpath)' → '\(newSubpath)'"
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch let error as MCPError {
             throw error
         } catch {
             throw MCPError.internalError(
-                "Failed to remove copy files phase: \(error.localizedDescription)",
+                "Failed to set copy files phase subpath: \(error.localizedDescription)",
             )
         }
     }

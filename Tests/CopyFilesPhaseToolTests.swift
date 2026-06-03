@@ -638,10 +638,9 @@ struct RemoveCopyFilesPhaseTests {
         let schema = tool.tool().inputSchema
         if case let .object(schemaDict) = schema {
             if case let .array(required) = schemaDict["required"] {
-                #expect(required.count == 3)
+                #expect(required.count == 2)
                 #expect(required.contains(.string("project_path")))
                 #expect(required.contains(.string("target_name")))
-                #expect(required.contains(.string("phase_name")))
             }
         }
     }
@@ -707,16 +706,12 @@ struct RemoveCopyFilesPhaseTests {
         )
 
         let tool = RemoveCopyFilesPhase(pathUtility: pathUtility)
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-            "target_name": .string("App"),
-            "phase_name": .string("NonExistent"),
-        ])
-
-        if case let .text(message, _, _) = result.content.first {
-            #expect(message.contains("not found"))
-        } else {
-            Issue.record("Expected text result")
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": .string(projectPath.string),
+                "target_name": .string("App"),
+                "phase_name": .string("NonExistent"),
+            ])
         }
     }
 
