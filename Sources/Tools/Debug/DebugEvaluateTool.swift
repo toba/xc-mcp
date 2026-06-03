@@ -109,4 +109,29 @@ public struct DebugEvaluateTool: Sendable {
             throw try error.asMCPError()
         }
     }
+
+    /// Wraps `execute` with a periodic heartbeat progress notification so the MCP client
+    /// doesn't tool-call-timeout (and cancel) on Swift expressions whose JIT compile +
+    /// inferior call exceed its default per-call patience — multi-line bodies that
+    /// define a nested type then mutate AppKit/Foundation state are the slow path.
+    public func executeWithProgress(
+        arguments: [String: Value],
+        progressToken: ProgressToken,
+        notify: @escaping @Sendable (Message<ProgressNotification>) async throws -> Void,
+    ) async throws -> CallTool.Result {
+        let reporter = ProgressReporter(token: progressToken, notify: notify)
+        return try await reporter.stream {
+            let heartbeat = Task { [reporter] in
+                let start = ContinuousClock.now
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(2))
+                    if Task.isCancelled { break }
+                    let elapsed = Int((ContinuousClock.now - start).components.seconds)
+                    reporter.ingest("evaluating expression… (\(elapsed)s)")
+                }
+            }
+            defer { heartbeat.cancel() }
+            return try await self.execute(arguments: arguments)
+        }
+    }
 }

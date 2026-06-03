@@ -6,6 +6,8 @@
 
 - `LLDBCommandTimeoutTests` reader-leak regression test flaked on CI when cooperative-pool starvation under parallel load delayed the next `sendCommand("version")` past its tight 3s budget on a 5s-commandTimeout session; widened the session `commandTimeout` to 30s and the "reader didn't leak" budget to 15s so the binary leak signal (response silently swallowed → call wedges to the full timeout) still trips while absorbing CI variance ([#372](https://github.com/toba/xc-mcp/issues/372))
 - Add `search_test_plans` to `xc-project` (and monolithic `xc-mcp`); given a project path and substring, walks every `.xctestplan` under the project parent and reports the JSON path + matching value per hit (keys and stringified leaves), with an optional `case_sensitive` flag — closes the rename-sweep gap where pbxproj/entitlements/Swift sites had bulk tools (`find_build_settings`, etc.) but test-plan JSON did not, forcing a per-file `Read` loop just to confirm no plan still references an old bundle ID, scheme, or target name ([#382](https://github.com/toba/xc-mcp/issues/382))
+- `remove_target` leaves orphaned references in `project.pbxproj` ([#347](https://github.com/toba/xc-mcp/issues/347))
+- `debug_evaluate` user-cancel on multi-line Swift expression with custom types ([#384](https://github.com/toba/xc-mcp/issues/384))
 
 ### ✨ Features
 
@@ -20,6 +22,15 @@
 - Extend `list_targets` with optional bulk filters (`product_type`, `has_dependency`, `missing_dependency`, `has_setting` with optional `value` substring, `missing_setting`) so a single call can answer audits like "every unit-test target lacking a dependency on `ThesisApp`" or "every framework target whose `SUPPORTED_PLATFORMS` is unset"; when any filter is supplied the per-target line upgrades from `- name (productType)` to `- name [id=… productType=… dependencies=[…]]` so callers don't need a paired `list_dependencies` round-trip, while unfiltered output stays byte-compatible with the prior shape ([#380](https://github.com/toba/xc-mcp/issues/380))
 - Add `set_copy_files_phase_subpath` to `xc-project` (and monolithic `xc-mcp`); renames a `PBXCopyFilesBuildPhase`'s `dstPath` in place, locating the phase by `phase_name`, `dst_path`, or as the target's sole Copy Files phase, so a rename like `docx` → `DefaultStyles` (mitigating the case-insensitive APFS collision between a framework binary `DocX` and its sibling `docx` resource folder during iOS archive) preserves the phase's identity, files, name, destination, and any `PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet` linkages instead of forcing a remove + recreate + relink sweep; `remove_copy_files_phase` gains the same `dst_path` alternate identifier and `phase_name` is now optional, making unnamed phases (common in auto-generated app-side Copy Files phases) addressable; shared `CopyFilesPhaseLocator` helper centralizes the lookup ([#383](https://github.com/toba/xc-mcp/issues/383))
 - Add `XC_MCP_HEADLESS_LAUNCH` env var that suppresses focus-stealing GUI launches; when set to `1` or `true`, `launch_mac_app` and `build_run_macos` pass `-g` to `open` (background launch, no foreground steal) and `open_sim` skips launching `Simulator.app` entirely since `simctl boot` is sufficient for `simctl`-driven automation; new `FocusPolicy` helper in `XCMCPCore` centralizes the env-var check and arg construction, `open_in_xcode` deliberately bypasses the policy since surfacing a window is its purpose; ported from getsentry/XcodeBuildMCP commit `59d5ca3e` ([#381](https://github.com/toba/xc-mcp/issues/381))
+- `xc-project`: `scaffold_module` should handle public imports and access control ([#196](https://github.com/toba/xc-mcp/issues/196))
+- Add tool to extract and query Swift module symbol graphs ([#218](https://github.com/toba/xc-mcp/issues/218))
+- Add macOS window interaction tools; scroll + click/type into a running app window ([#349](https://github.com/toba/xc-mcp/issues/349))
+- `scaffold_*_project`: use synchronized folder groups so `add_file` isn't needed for new sources ([#286](https://github.com/toba/xc-mcp/issues/286))
+- Port runtime UI-automation snapshot model (rs/1) from XcodeBuildMCP #416 to simulator tools ([#332](https://github.com/toba/xc-mcp/issues/332))
+
+### 🗜️ Tweaks
+
+- `xc-project`: `add_target` gaps and `scaffold_module` composite tool ([#170](https://github.com/toba/xc-mcp/issues/170))
 
 ## Week of May 24 – May 30, 2026
 

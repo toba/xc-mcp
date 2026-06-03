@@ -1446,6 +1446,12 @@ public struct XcodeMCPServer: Sendable {
                 case .debugLLDBCommand:
                     return try await debugLLDBCommandTool.execute(arguments: arguments)
                 case .debugEvaluate:
+                    if let token = params._meta?.progressToken {
+                        return try await debugEvaluateTool.executeWithProgress(
+                            arguments: arguments,
+                            progressToken: token,
+                        ) { msg in try await server.notify(msg) }
+                    }
                     return try await debugEvaluateTool.execute(arguments: arguments)
                 case .debugThreads:
                     return try await debugThreadsTool.execute(arguments: arguments)
