@@ -40,4 +40,31 @@ struct XcodebuildCompletionDetectionTests {
         #expect(XcodebuildRunner.exitCode(forFinishedOutput: "** BUILD FAILED **") == 65)
         #expect(XcodebuildRunner.exitCode(forFinishedOutput: "Build failed after 2.0s") == 65)
     }
+
+    // (y04-t3c) Archive action runs build then install/codesign — only archive-specific
+    // markers signal that the entire archive (including bundle write) is done.
+    @Test
+    func `Archive action requires archive marker as terminal`() {
+        let archiveArgs = ["archive", "-archivePath", "/tmp/x.xcarchive"]
+        #expect(!XcodebuildRunner.outputShowsBuildFinished(
+            "Build succeeded in 12.3s", arguments: archiveArgs,
+        ))
+        #expect(!XcodebuildRunner.outputShowsBuildFinished(
+            "** BUILD SUCCEEDED **", arguments: archiveArgs,
+        ))
+        #expect(XcodebuildRunner.outputShowsBuildFinished(
+            "** ARCHIVE SUCCEEDED **", arguments: archiveArgs,
+        ))
+        #expect(XcodebuildRunner.outputShowsBuildFinished(
+            "Archive succeeded in 24.0s", arguments: archiveArgs,
+        ))
+    }
+
+    @Test
+    func `Archive failure markers count as terminal`() {
+        #expect(XcodebuildRunner.outputShowsBuildFinished("** ARCHIVE FAILED **"))
+        #expect(XcodebuildRunner.outputShowsBuildFinished("Archive failed after 3.0s"))
+        #expect(XcodebuildRunner.exitCode(forFinishedOutput: "** ARCHIVE FAILED **") == 65)
+        #expect(XcodebuildRunner.exitCode(forFinishedOutput: "Archive failed after 3.0s") == 65)
+    }
 }

@@ -204,6 +204,21 @@ public struct ArchiveTool: Sendable {
                 result, projectRoot: projectRoot, errorsOnly: errorsOnly,
             )
 
+            // Defense in depth: xcodebuild can report success without writing the .xcarchive
+            // bundle — for example when the output-stuck watchdog short-circuits during the
+            // install/codesign phase after the build phase printed a terminal marker. Verify
+            // the bundle actually exists so callers don't get a misleading "succeeded" message
+            // and then fail to find the archive on disk. (y04-t3c)
+            if !FileManager.default.fileExists(atPath: archivePath) {
+                throw MCPError.internalError(
+                    "xcodebuild reported archive success for scheme '\(scheme)' (\(platform)), "
+                    + "but no .xcarchive bundle was created at \(archivePath). "
+                    + "The build phase likely completed while the install/codesign phase was "
+                    + "still running. Retry with a larger `timeout`, or inspect the build log "
+                    + "via show_build_log.",
+                )
+            }
+
             let summary = ErrorExtractor.extractBuildErrors(
                 from: result.output, projectRoot: projectRoot, errorsOnly: errorsOnly,
                 showWarnings: showWarnings,

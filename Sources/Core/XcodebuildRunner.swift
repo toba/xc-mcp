@@ -218,7 +218,9 @@ public struct XcodebuildRunner: Sendable {
                                         // outlive the parent. Treating this as "stuck" would abort
                                         // a build that actually succeeded — so surface the
                                         // completed result instead of an internal error. (qbz-ek1)
-                                        if Self.outputShowsBuildFinished(stdout + stderr) {
+                                        if Self.outputShowsBuildFinished(
+                                            stdout + stderr, arguments: arguments,
+                                        ) {
                                             throw XcodebuildError.completedPipesHeldOpen(
                                                 partialOutput: stdout + stderr,
                                             )
@@ -280,14 +282,31 @@ public struct XcodebuildRunner: Sendable {
 
     /// Markers xcodebuild prints when a build/test/clean has finished, in both the modern
     /// (`Build succeeded in …`) and legacy (`** BUILD SUCCEEDED **`) formats.
-    static func outputShowsBuildFinished(_ output: String) -> Bool {
-        output.contains("** BUILD SUCCEEDED **")
+    static func outputShowsBuildFinished(
+        _ output: String, arguments: [String] = [],
+    ) -> Bool {
+        // During an `archive` action, the build phase prints a `Build succeeded in …` /
+        // `** BUILD SUCCEEDED **` marker *before* the install/codesign phase runs. Treating
+        // those as terminal would short-circuit a still-running archive — xcodebuild would
+        // report success while no .xcarchive bundle exists on disk. (y04-t3c) For archive
+        // runs, only the archive-specific terminal markers count.
+        if arguments.contains("archive") {
+            return output.contains("** ARCHIVE SUCCEEDED **")
+                || output.contains("** ARCHIVE FAILED **")
+                || output.contains("Archive succeeded in ")
+                || output.contains("Archive failed after ")
+        }
+        return output.contains("** BUILD SUCCEEDED **")
             || output.contains("** BUILD FAILED **")
             || output.contains("** TEST SUCCEEDED **")
             || output.contains("** TEST FAILED **")
             || output.contains("** CLEAN SUCCEEDED **")
+            || output.contains("** ARCHIVE SUCCEEDED **")
+            || output.contains("** ARCHIVE FAILED **")
             || output.contains("Build succeeded in ")
             || output.contains("Build failed after ")
+            || output.contains("Archive succeeded in ")
+            || output.contains("Archive failed after ")
             || output.contains("Build complete!")
     }
 
@@ -296,7 +315,9 @@ public struct XcodebuildRunner: Sendable {
     static func exitCode(forFinishedOutput output: String) -> Int32 {
         output.contains("** BUILD FAILED **")
             || output.contains("** TEST FAILED **")
+            || output.contains("** ARCHIVE FAILED **")
             || output.contains("Build failed after ")
+            || output.contains("Archive failed after ")
             ? 65
             : 0
     }
