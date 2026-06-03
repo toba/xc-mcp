@@ -118,6 +118,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     // macOS tools
     case buildMacOS = "build_macos"
     case archive
+    case exportArchive = "export_archive"
     case buildRunMacOS = "build_run_macos"
     case launchMacApp = "launch_mac_app"
     case stopMacApp = "stop_mac_app"
@@ -304,7 +305,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .deployDevice, .buildDeployDevice:
                 return .device
             // macOS
-            case .buildMacOS, .archive, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
+            case .buildMacOS, .archive, .exportArchive, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
                  .testMacOS, .getTestAttachments, .getCoverageReport, .getFileCoverage,
                  .getPerformanceMetrics, .setPerformanceBaseline, .showPerformanceBaselines,
                  .startMacLogCap, .stopMacLogCap, .showMacLog, .showBuildLog, .screenshotMacWindow:
@@ -584,6 +585,7 @@ public struct XcodeMCPServer: Sendable {
         let archiveTool = ArchiveTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let exportArchiveTool = ExportArchiveTool(xcodebuildRunner: xcodebuildRunner)
         let buildRunMacOSTool = BuildRunMacOSTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
@@ -915,6 +917,7 @@ public struct XcodeMCPServer: Sendable {
             // macOS tools
             (.buildMacOS, buildMacOSTool.tool()),
             (.archive, archiveTool.tool()),
+            (.exportArchive, exportArchiveTool.tool()),
             (.buildRunMacOS, buildRunMacOSTool.tool()),
             (.launchMacApp, launchMacAppTool.tool()),
             (.stopMacApp, stopMacAppTool.tool()),
@@ -1333,6 +1336,8 @@ public struct XcodeMCPServer: Sendable {
                     return try await buildMacOSTool.execute(arguments: arguments)
                 case .archive:
                     return try await archiveTool.execute(arguments: arguments)
+                case .exportArchive:
+                    return try await exportArchiveTool.execute(arguments: arguments)
                 case .buildRunMacOS:
                     return try await buildRunMacOSTool.execute(arguments: arguments)
                 case .launchMacApp:
