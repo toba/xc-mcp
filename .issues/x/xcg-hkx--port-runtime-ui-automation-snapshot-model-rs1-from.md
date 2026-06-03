@@ -1,15 +1,15 @@
 ---
 # xcg-hkx
 title: 'Port runtime UI-automation snapshot model (rs/1) from XcodeBuildMCP #416 to simulator tools'
-status: ready
+status: completed
 type: feature
 priority: normal
 created_at: 2026-05-25T15:53:22Z
-updated_at: 2026-05-25T15:53:22Z
+updated_at: 2026-06-03T00:19:18Z
 sync:
     github:
         issue_number: "332"
-        synced_at: "2026-05-25T16:02:48Z"
+        synced_at: "2026-06-03T01:54:37Z"
 ---
 
 Port the runtime UI-automation snapshot model from XcodeBuildMCP PR #416 (commit `857954e`, "rs/1 runtime automation parity") to our **iOS-simulator** UI tools in `Sources/Tools/UIAutomation/`.

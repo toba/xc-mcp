@@ -1,15 +1,15 @@
 ---
 # rm2-isk
 title: remove_target leaves orphaned references in project.pbxproj
-status: ready
+status: completed
 type: bug
 priority: normal
 created_at: 2026-05-27T03:58:24Z
-updated_at: 2026-05-27T03:58:24Z
+updated_at: 2026-06-03T00:19:18Z
 sync:
     github:
         issue_number: "347"
-        synced_at: "2026-05-27T05:25:06Z"
+        synced_at: "2026-06-03T01:54:37Z"
 ---
 
 ## Summary

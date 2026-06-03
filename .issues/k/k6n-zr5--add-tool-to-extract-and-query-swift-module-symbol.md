@@ -1,17 +1,17 @@
 ---
 # k6n-zr5
 title: Add tool to extract and query Swift module symbol graphs
-status: in-progress
+status: completed
 type: feature
 priority: normal
 tags:
     - enhancement
 created_at: 2026-03-15T17:55:10Z
-updated_at: 2026-03-15T17:56:05Z
+updated_at: 2026-06-03T00:19:18Z
 sync:
     github:
         issue_number: "218"
-        synced_at: "2026-03-15T18:09:24Z"
+        synced_at: "2026-06-03T01:54:37Z"
 ---
 
 ## Problem

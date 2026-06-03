@@ -1,16 +1,16 @@
 ---
 # fwb-ilh
 title: 'xc-project: scaffold_module should handle public imports and access control'
-status: draft
+status: completed
 type: feature
 priority: normal
 created_at: 2026-03-08T17:51:27Z
-updated_at: 2026-03-08T18:29:19Z
+updated_at: 2026-06-03T00:19:18Z
 parent: xav-ojz
 sync:
     github:
         issue_number: "196"
-        synced_at: "2026-03-08T22:14:15Z"
+        synced_at: "2026-06-03T01:54:39Z"
 ---
 
 ## Problem

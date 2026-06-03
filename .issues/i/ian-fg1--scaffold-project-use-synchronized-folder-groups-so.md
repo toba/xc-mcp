@@ -1,17 +1,17 @@
 ---
 # ian-fg1
 title: 'scaffold_*_project: use synchronized folder groups so add_file isn''t needed for new sources'
-status: in-progress
+status: completed
 type: feature
 priority: high
 tags:
     - enhancement
 created_at: 2026-04-25T21:03:53Z
-updated_at: 2026-04-25T21:04:12Z
+updated_at: 2026-06-03T00:19:18Z
 sync:
     github:
         issue_number: "286"
-        synced_at: "2026-04-26T01:38:47Z"
+        synced_at: "2026-06-03T01:54:37Z"
 ---
 
 ## Context
