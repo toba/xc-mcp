@@ -36,6 +36,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addTestPlanToScheme = "add_test_plan_to_scheme"
     case removeTestPlanFromScheme = "remove_test_plan_from_scheme"
     case listTestPlans = "list_test_plans"
+    case searchTestPlans = "search_test_plans"
     case setTestTargetApplication = "set_test_target_application"
     case renameGroup = "rename_group"
     case addDependency = "add_dependency"
@@ -266,7 +267,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .setTestPlanSkippedTags, .setTestPlanSkippedTests,
                  .setTestPlanTargetParallelizable,
                  .addTestPlanToScheme, .removeTestPlanFromScheme,
-                 .listTestPlans, .setTestTargetApplication,
+                 .listTestPlans, .searchTestPlans, .setTestTargetApplication,
                  .renameGroup,
                  .addDependency, .listDependencies, .removeDependency, .setBuildSetting,
                  .addFramework, .removeFramework, .listFrameworksPhase,
@@ -447,6 +448,7 @@ public struct XcodeMCPServer: Sendable {
         let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
         let removeTestPlanFromSchemeTool = RemoveTestPlanFromSchemeTool(pathUtility: pathUtility)
         let listTestPlansTool = ListTestPlansTool(pathUtility: pathUtility)
+        let searchTestPlansTool = SearchTestPlansTool(pathUtility: pathUtility)
         let setTestTargetApplicationTool = SetTestTargetApplicationTool(pathUtility: pathUtility)
         let renameGroupTool = RenameGroupTool(pathUtility: pathUtility)
         let addDependencyTool = AddDependencyTool(pathUtility: pathUtility)
@@ -829,6 +831,7 @@ public struct XcodeMCPServer: Sendable {
             (.addTestPlanToScheme, addTestPlanToSchemeTool.tool()),
             (.removeTestPlanFromScheme, removeTestPlanFromSchemeTool.tool()),
             (.listTestPlans, listTestPlansTool.tool()),
+            (.searchTestPlans, searchTestPlansTool.tool()),
             (.setTestTargetApplication, setTestTargetApplicationTool.tool()),
             (.renameGroup, renameGroupTool.tool()),
             (.addDependency, addDependencyTool.tool()),
@@ -1121,6 +1124,8 @@ public struct XcodeMCPServer: Sendable {
                     return try removeTestPlanFromSchemeTool.execute(arguments: arguments)
                 case .listTestPlans:
                     return try listTestPlansTool.execute(arguments: arguments)
+                case .searchTestPlans:
+                    return try searchTestPlansTool.execute(arguments: arguments)
                 case .setTestTargetApplication:
                     return try setTestTargetApplicationTool.execute(arguments: arguments)
                 case .renameGroup:

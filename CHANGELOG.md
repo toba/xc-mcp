@@ -5,6 +5,7 @@
 ### 🐞 Fixes
 
 - `LLDBCommandTimeoutTests` reader-leak regression test flaked on CI when cooperative-pool starvation under parallel load delayed the next `sendCommand("version")` past its tight 3s budget on a 5s-commandTimeout session; widened the session `commandTimeout` to 30s and the "reader didn't leak" budget to 15s so the binary leak signal (response silently swallowed → call wedges to the full timeout) still trips while absorbing CI variance ([#372](https://github.com/toba/xc-mcp/issues/372))
+- Add `search_test_plans` to `xc-project` (and monolithic `xc-mcp`); given a project path and substring, walks every `.xctestplan` under the project parent and reports the JSON path + matching value per hit (keys and stringified leaves), with an optional `case_sensitive` flag — closes the rename-sweep gap where pbxproj/entitlements/Swift sites had bulk tools (`find_build_settings`, etc.) but test-plan JSON did not, forcing a per-file `Read` loop just to confirm no plan still references an old bundle ID, scheme, or target name ([#382](https://github.com/toba/xc-mcp/issues/382))
 
 ### ✨ Features
 
