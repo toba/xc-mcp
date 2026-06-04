@@ -40,6 +40,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case listDependencies = "list_dependencies"
     case removeDependency = "remove_dependency"
     case setBuildSetting = "set_build_setting"
+    case removeBuildSetting = "remove_build_setting"
     case addFramework = "add_framework"
     case removeFramework = "remove_framework"
     case listFrameworksPhase = "list_frameworks_phase"
@@ -174,6 +175,7 @@ public struct ProjectMCPServer: Sendable {
         let listDependenciesTool = ListDependenciesTool(pathUtility: pathUtility)
         let removeDependencyTool = RemoveDependencyTool(pathUtility: pathUtility)
         let setBuildSettingTool = SetBuildSettingTool(pathUtility: pathUtility)
+        let removeBuildSettingTool = RemoveBuildSettingTool(pathUtility: pathUtility)
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
         let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
         let listFrameworksPhaseTool = ListFrameworksPhaseTool(pathUtility: pathUtility)
@@ -266,6 +268,7 @@ public struct ProjectMCPServer: Sendable {
                 listDependenciesTool.tool(),
                 removeDependencyTool.tool(),
                 setBuildSettingTool.tool(),
+                removeBuildSettingTool.tool(),
                 addFrameworkTool.tool(),
                 removeFrameworkTool.tool(),
                 listFrameworksPhaseTool.tool(),
@@ -392,6 +395,8 @@ public struct ProjectMCPServer: Sendable {
                     return try removeDependencyTool.execute(arguments: arguments)
                 case .setBuildSetting:
                     return try setBuildSettingTool.execute(arguments: arguments)
+                case .removeBuildSetting:
+                    return try removeBuildSettingTool.execute(arguments: arguments)
                 case .addFramework:
                     return try addFrameworkTool.execute(arguments: arguments)
                 case .removeFramework:
