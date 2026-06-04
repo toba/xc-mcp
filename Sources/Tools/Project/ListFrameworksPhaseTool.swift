@@ -89,7 +89,9 @@ public struct ListFrameworksPhaseTool: Sendable {
                     continue
                 }
                 for buildFile in files {
-                    lines.append("  - \(describe(buildFile: buildFile, depTargetUUIDs: depTargetUUIDs))")
+                    let base = describe(buildFile: buildFile, depTargetUUIDs: depTargetUUIDs)
+                    let mergeSuffix = Self.hasMergeAttribute(buildFile) ? " merge=true" : ""
+                    lines.append("  - \(base)\(mergeSuffix)")
                 }
             }
 
@@ -157,5 +159,16 @@ public struct ListFrameworksPhaseTool: Sendable {
         let path = fileElement.path ?? fileElement.name ?? "<unnamed>"
         let sourceTree = fileElement.sourceTree.map { String(describing: $0) } ?? "<none>"
         return "\(path) [kind=fileRef sourceTree=\(sourceTree) fileRef=\(fileElement.uuid)]"
+    }
+
+    static func hasMergeAttribute(_ buildFile: PBXBuildFile) -> Bool {
+        guard let settings = buildFile.settings else { return false }
+        if case let .array(attrs) = settings["ATTRIBUTES"] {
+            return attrs.contains("Merge")
+        }
+        if case let .string(single) = settings["ATTRIBUTES"] {
+            return single == "Merge"
+        }
+        return false
     }
 }

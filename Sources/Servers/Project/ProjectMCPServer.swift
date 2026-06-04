@@ -44,6 +44,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case addFramework = "add_framework"
     case removeFramework = "remove_framework"
     case listFrameworksPhase = "list_frameworks_phase"
+    case setFrameworkMergeAttribute = "set_framework_merge_attribute"
     case addBuildPhase = "add_build_phase"
     case duplicateTarget = "duplicate_target"
     case addSwiftPackage = "add_swift_package"
@@ -179,6 +180,7 @@ public struct ProjectMCPServer: Sendable {
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
         let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
         let listFrameworksPhaseTool = ListFrameworksPhaseTool(pathUtility: pathUtility)
+        let setFrameworkMergeAttributeTool = SetFrameworkMergeAttributeTool(pathUtility: pathUtility)
         let addBuildPhaseTool = AddBuildPhaseTool(pathUtility: pathUtility)
         let duplicateTargetTool = DuplicateTargetTool(pathUtility: pathUtility)
         let addSwiftPackageTool = AddSwiftPackageTool(pathUtility: pathUtility)
@@ -272,6 +274,7 @@ public struct ProjectMCPServer: Sendable {
                 addFrameworkTool.tool(),
                 removeFrameworkTool.tool(),
                 listFrameworksPhaseTool.tool(),
+                setFrameworkMergeAttributeTool.tool(),
                 addBuildPhaseTool.tool(),
                 duplicateTargetTool.tool(),
                 addSwiftPackageTool.tool(),
@@ -403,6 +406,8 @@ public struct ProjectMCPServer: Sendable {
                     return try removeFrameworkTool.execute(arguments: arguments)
                 case .listFrameworksPhase:
                     return try listFrameworksPhaseTool.execute(arguments: arguments)
+                case .setFrameworkMergeAttribute:
+                    return try setFrameworkMergeAttributeTool.execute(arguments: arguments)
                 case .addBuildPhase:
                     return try addBuildPhaseTool.execute(arguments: arguments)
                 case .duplicateTarget:

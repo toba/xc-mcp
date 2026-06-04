@@ -47,6 +47,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addFramework = "add_framework"
     case removeFramework = "remove_framework"
     case listFrameworksPhase = "list_frameworks_phase"
+    case setFrameworkMergeAttribute = "set_framework_merge_attribute"
     case dumpPIF = "dump_pif"
     case whyTargetID = "why_target_id"
     case findBuildSettings = "find_build_settings"
@@ -275,6 +276,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .addDependency, .listDependencies, .removeDependency, .setBuildSetting,
                  .removeBuildSetting,
                  .addFramework, .removeFramework, .listFrameworksPhase,
+                 .setFrameworkMergeAttribute,
                  .dumpPIF, .whyTargetID,
                  .findBuildSettings, .findLinkFlag, .listRunScriptPhases,
                  .addBuildPhase, .duplicateTarget, .addSwiftPackage, .addPackageProduct,
@@ -464,6 +466,7 @@ public struct XcodeMCPServer: Sendable {
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
         let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
         let listFrameworksPhaseTool = ListFrameworksPhaseTool(pathUtility: pathUtility)
+        let setFrameworkMergeAttributeTool = SetFrameworkMergeAttributeTool(pathUtility: pathUtility)
         let dumpPIFTool = DumpPIFTool(pathUtility: pathUtility)
         let whyTargetIDTool = WhyTargetIdTool(pathUtility: pathUtility)
         let findBuildSettingsTool = FindBuildSettingsTool(pathUtility: pathUtility)
@@ -850,6 +853,7 @@ public struct XcodeMCPServer: Sendable {
             (.addFramework, addFrameworkTool.tool()),
             (.removeFramework, removeFrameworkTool.tool()),
             (.listFrameworksPhase, listFrameworksPhaseTool.tool()),
+            (.setFrameworkMergeAttribute, setFrameworkMergeAttributeTool.tool()),
             (.dumpPIF, dumpPIFTool.tool()),
             (.whyTargetID, whyTargetIDTool.tool()),
             (.findBuildSettings, findBuildSettingsTool.tool()),
@@ -1157,6 +1161,8 @@ public struct XcodeMCPServer: Sendable {
                     return try removeFrameworkTool.execute(arguments: arguments)
                 case .listFrameworksPhase:
                     return try listFrameworksPhaseTool.execute(arguments: arguments)
+                case .setFrameworkMergeAttribute:
+                    return try setFrameworkMergeAttributeTool.execute(arguments: arguments)
                 case .dumpPIF:
                     return try dumpPIFTool.execute(arguments: arguments)
                 case .whyTargetID:

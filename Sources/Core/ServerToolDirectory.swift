@@ -80,6 +80,7 @@ public enum ServerToolDirectory {
         "set_test_target_application", "rename_group",
         "add_dependency", "list_dependencies", "remove_dependency",
         "set_build_setting", "remove_build_setting", "add_framework", "remove_framework", "list_frameworks_phase",
+        "set_framework_merge_attribute",
         "add_build_phase",
         "duplicate_target", "add_swift_package", "add_package_product",
         "list_swift_packages", "remove_swift_package", "list_groups",
