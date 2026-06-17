@@ -178,6 +178,7 @@ struct BuildOutputParserTests {
         let parser = BuildOutputParser()
         let input = """
         AppDelegate.swift:67:8: warning: unused variable 'config'
+        ** BUILD SUCCEEDED **
         """
 
         let result = parser.parse(input: input)
@@ -187,6 +188,122 @@ struct BuildOutputParserTests {
         #expect(result.warnings[0].file == "AppDelegate.swift")
         #expect(result.warnings[0].line == 67)
         #expect(result.warnings[0].message == "unused variable 'config'")
+    }
+
+    // MARK: - Success requires positive evidence (xcsift #73)
+
+    @Test
+    func `Truncated build without terminal marker is incomplete`() {
+        let parser = BuildOutputParser()
+        // The process was killed (e.g. OOM) before xcodebuild emitted ** BUILD SUCCEEDED **.
+        // With no failure markers either, this must not read as a false green.
+        let input = """
+        Building for debugging...
+        CompileSwiftSources normal arm64 com.apple.xcode.tools.swift.compiler
+        CompileSwiftSources normal arm64 com.apple.xcode.tools.swift.compiler
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "incomplete")
+        #expect(result.summary.errors == 0)
+        #expect(result.summary.failedTests == 0)
+    }
+
+    @Test
+    func `Killed test run without terminal marker is incomplete`() {
+        let parser = BuildOutputParser()
+        // A test started, the process died before any pass/fail or terminal marker.
+        let input = """
+        Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
+        Test Case '-[MyTests.MyTests testExample]' started.
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "incomplete")
+        #expect(result.summary.failedTests == 0)
+    }
+
+    @Test
+    func `Aggregate failure count without individual failure line is failed`() {
+        let parser = BuildOutputParser()
+        // The failure appears only in the aggregate "Executed …, with N failures" line (e.g. KIF
+        // exceptions / aggregated parallel output), never as a "Test Case … failed" line. Status
+        // must agree with summary.failedTests.
+        let input = """
+        Test Case '-[MyTests.MyTests testA]' passed (0.001 seconds).
+        Executed 5 tests, with 1 failure in 0.500 seconds
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.summary.failedTests == 1)
+        // status never disagrees with the reported failure count
+        #expect((result.status == "success") == (result.summary.failedTests == 0))
+    }
+
+    @Test
+    func `TEST SUCCEEDED marker alone is success`() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
+        ** TEST SUCCEEDED **
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "success")
+    }
+
+    @Test
+    func `TEST EXECUTE SUCCEEDED marker alone is success`() {
+        let parser = BuildOutputParser()
+        let input = """
+        Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
+        ** TEST EXECUTE SUCCEEDED **
+        """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "success")
+    }
+
+    @Test
+    func `xcbeautify rewritten Build Succeeded is success`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: "Build Succeeded")
+
+        #expect(result.status == "success")
+    }
+
+    @Test(
+        .enabled(
+            if: Bundle.module.url(
+                forResource: "build", withExtension: "txt", subdirectory: "Fixtures",
+            ) != nil,
+        ),
+    )
+    func `Real build output truncated before BUILD SUCCEEDED is incomplete`() throws {
+        let parser = BuildOutputParser()
+
+        let fixtureURL = try #require(
+            Bundle.module.url(
+                forResource: "build", withExtension: "txt", subdirectory: "Fixtures",
+            ),
+        )
+        let full = try String(contentsOf: fixtureURL, encoding: .utf8)
+
+        // Drop the trailing ** BUILD SUCCEEDED ** marker, simulating an OOM kill / truncated stream.
+        let marker = "** BUILD SUCCEEDED **"
+        let markerRange = try #require(full.range(of: marker, options: .backwards))
+        let truncated = String(full[..<markerRange.lowerBound])
+
+        let result = parser.parse(input: truncated)
+
+        #expect(result.status == "incomplete")
+        #expect(result.summary.errors == 0)
     }
 
     @Test

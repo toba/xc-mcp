@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Jun 14 – Jun 20, 2026
+
+### 🗜️ Tweaks
+
+- Require positive evidence of build success in `BuildOutputParser`; a build or test killed before any terminal marker (OOM `Killed: 9`, truncated stream) now reports a new `incomplete` status instead of a false green, `status` is reconciled against the aggregate failed-test count so it can never disagree with `summary.failedTests`, and `** TEST SUCCEEDED **` / `** TEST EXECUTE SUCCEEDED **` / parenthesized `Build succeeded (…)` / xcbeautify `Build Succeeded` markers are now recognized; ported from xcsift #73 ([#389](https://github.com/toba/xc-mcp/issues/389))
+
 ## Week of May 31 – Jun 6, 2026
 
 ### 🐞 Fixes

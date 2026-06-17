@@ -244,6 +244,18 @@ public enum ErrorExtractor {
         let errorOutput = BuildResultFormatter.formatBuildResult(
             buildResult, projectRoot: projectRoot, errorsOnly: errorsOnly,
         )
+
+        // An "incomplete" status means the output ended before any terminal marker — the build was
+        // truncated or the process was killed (commonly OOM `Killed: 9`) — so there are usually no
+        // parsed errors to show. Surface that explicitly rather than reporting a generic failure.
+        if buildResult.status == "incomplete" {
+            throw .internalError(
+                "Build incomplete: the build ended before xcodebuild reported a result "
+                    + "(no ** BUILD SUCCEEDED ** / ** BUILD FAILED ** marker). The process was "
+                    + "likely killed (e.g. out of memory) or the output was truncated.\n\(errorOutput)",
+            )
+        }
+
         throw .internalError("Build failed:\n\(errorOutput)")
     }
 

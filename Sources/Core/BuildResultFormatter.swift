@@ -193,6 +193,8 @@ public enum BuildResultFormatter {
             components.append(override)
         } else if result.status == "success" {
             components.append("Build succeeded")
+        } else if result.status == "incomplete" {
+            components.append("Build incomplete")
         } else {
             components.append("Build failed")
         }

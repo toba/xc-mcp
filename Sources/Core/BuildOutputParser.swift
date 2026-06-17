@@ -27,6 +27,13 @@ public final class BuildOutputParser {
     private var parallelTestsTotalCount: Int?
     private var testRunFailed: Bool = false
 
+    // Terminal-marker tracking. xcodebuild/swift build always emit a terminal marker on a complete
+    // run; their absence means the stream was truncated or the process was killed (e.g. OOM
+    // `Killed: 9`) before finishing. We require positive evidence of success rather than inferring
+    // it from the mere absence of failures — otherwise a killed build reads as a false green.
+    private var sawTerminalSuccessMarker: Bool = false
+    private var sawTerminalFailureMarker: Bool = false
+
     // Linker error parsing state
     private var currentLinkerArchitecture: String?
     private var pendingLinkerSymbol: String?
@@ -200,15 +207,26 @@ public final class BuildOutputParser {
         }()
 
         let status: String = {
-            let hasActualFailures = !errors.isEmpty || !failedTests.isEmpty || !linkerErrors.isEmpty
+            // Reconcile with the aggregate failure count so `status` can never disagree with
+            // `summary.failedTests`: a failure that surfaces only in the "Executed N tests, with M
+            // failures" line (e.g. KIF exceptions, aggregated parallel output) — never as an
+            // individual "Test Case … failed" line — must still fail the run.
+            let hasActualFailures = !errors.isEmpty || !failedTests.isEmpty
+                || !linkerErrors.isEmpty || totalFailed > 0
             let hasPassedTests = (computedPassedTests ?? 0) > 0
+            let sawFailureMarker = sawTerminalFailureMarker || testRunFailed
 
-            switch (hasActualFailures, testRunFailed, hasPassedTests) {
-                case (true, _, _): return "failed"
-                case (false, true, true): return "success"
-                case (false, true, false): return "failed"
-                case (false, false, _): return "success"
-            }
+            // Concrete failures always fail the run.
+            if hasActualFailures { return "failed" }
+            // A terminal failure marker (** BUILD/TEST FAILED **, "Build failed after …") fails the
+            // run unless tests actually passed — preserves the case where xcodebuild prints
+            // ** TEST FAILED ** after a clean pass (e.g. -skipMacroValidation, issue #52).
+            if sawFailureMarker { return hasPassedTests ? "success" : "failed" }
+            // Require positive evidence for success: a terminal success marker or passed tests.
+            if sawTerminalSuccessMarker || hasPassedTests { return "success" }
+            // No failure and no positive success evidence means the stream ended before any
+            // terminal marker — a truncated or killed (OOM) build. Don't report a false green.
+            return "incomplete"
         }()
 
         let slowTests: [SlowTest] = {
@@ -328,6 +346,8 @@ public final class BuildOutputParser {
         pendingSignalCode = nil
         parallelTestsTotalCount = nil
         testRunFailed = false
+        sawTerminalSuccessMarker = false
+        sawTerminalFailureMarker = false
         passedTestDurations = [:]
         failedTestDurations = [:]
         performanceMeasurements = []
@@ -379,7 +399,8 @@ public final class BuildOutputParser {
             || line.contains("Build failed") || line.contains("Executed")
             || line.contains("] Testing ")
             || line.contains("BUILD SUCCEEDED") || line.contains("BUILD FAILED")
-            || line.contains("TEST FAILED")
+            || line.contains("TEST FAILED") || line.contains("SUCCEEDED")
+            || line.contains("Succeeded") || line.contains("Failed")
             || line.contains("Build complete!")
             || line.hasPrefix("RegisterWithLaunchServices")
             || line.hasPrefix("Validate") || line.contains("Fatal error")
@@ -1227,6 +1248,11 @@ public final class BuildOutputParser {
 
     private func parseBuildAndTestTime(_ line: String) {
         if line.contains("** BUILD SUCCEEDED **") || line.contains("** BUILD FAILED **") {
+            if line.contains("** BUILD SUCCEEDED **") {
+                sawTerminalSuccessMarker = true
+            } else {
+                sawTerminalFailureMarker = true
+            }
             if let bracketStart = line.range(of: "[", options: .backwards),
                let bracketEnd = line.range(of: "]", options: .backwards),
                bracketStart.lowerBound < bracketEnd.lowerBound
@@ -1236,12 +1262,21 @@ public final class BuildOutputParser {
             return
         }
 
+        // xcodebuild prints ** TEST SUCCEEDED ** (and ** TEST EXECUTE SUCCEEDED ** for some test
+        // actions) on a clean test run — positive evidence the run completed.
+        if line.contains("** TEST SUCCEEDED **") || line.contains("** TEST EXECUTE SUCCEEDED **") {
+            sawTerminalSuccessMarker = true
+            return
+        }
+
         if line.contains("** TEST FAILED **") {
             testRunFailed = true
+            sawTerminalFailureMarker = true
             return
         }
 
         if line.hasPrefix("Build complete!") {
+            sawTerminalSuccessMarker = true
             if let parenStart = line.range(of: "("),
                let parenEnd = line.range(of: ")"),
                parenStart.lowerBound < parenEnd.lowerBound
@@ -1251,13 +1286,39 @@ public final class BuildOutputParser {
             return
         }
 
-        if line.hasPrefix("Build succeeded in ") {
-            buildTime = String(line.dropFirst(19))
+        // Terminal success forms: "Build succeeded in 1.2s" (swift build),
+        // "Build succeeded (2.3s)", and xcbeautify's capitalized "Build Succeeded".
+        if line.hasPrefix("Build succeeded") || line.hasPrefix("Build Succeeded") {
+            sawTerminalSuccessMarker = true
+            if line.hasPrefix("Build succeeded in ") {
+                buildTime = String(line.dropFirst("Build succeeded in ".count))
+            } else if let parenStart = line.range(of: "("),
+                      let parenEnd = line.range(of: ")", options: .backwards),
+                      parenStart.lowerBound < parenEnd.lowerBound
+            {
+                buildTime = String(line[parenStart.upperBound..<parenEnd.lowerBound])
+            }
             return
         }
 
-        if line.hasPrefix("Build failed after ") {
-            buildTime = String(line.dropFirst(19))
+        // Terminal failure forms: "Build failed after 1.2s", "Build failed (2 errors, …)", and
+        // xcbeautify's capitalized "Build Failed".
+        if line.hasPrefix("Build failed") || line.hasPrefix("Build Failed") {
+            sawTerminalFailureMarker = true
+            if line.hasPrefix("Build failed after ") {
+                buildTime = String(line.dropFirst("Build failed after ".count))
+            }
+            return
+        }
+
+        // xcbeautify rewrites the test terminal markers without the `** **` fences.
+        if line.contains("Test Succeeded") {
+            sawTerminalSuccessMarker = true
+            return
+        }
+
+        if line.contains("Test Failed") {
+            sawTerminalFailureMarker = true
             return
         }
 
