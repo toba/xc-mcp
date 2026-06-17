@@ -118,7 +118,7 @@ public struct BuildMacOSTool: Sendable {
                 configuration: configuration,
             )
 
-            var destination = "platform=macOS"
+            var destination = XcodebuildRunner.macOSDestination
             if let arch {
                 destination += ",arch=\(arch)"
             }

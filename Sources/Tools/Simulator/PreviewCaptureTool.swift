@@ -261,7 +261,7 @@ public struct PreviewCaptureTool: Sendable {
             if let sim = simulator {
                 destination = "platform=iOS Simulator,id=\(sim)"
             } else {
-                destination = "platform=macOS"
+                destination = XcodebuildRunner.macOSDestination
                 isMacOS = true
             }
 
@@ -315,7 +315,7 @@ public struct PreviewCaptureTool: Sendable {
                             .utf8,
                     ),
                 )
-                destination = "platform=macOS"
+                destination = XcodebuildRunner.macOSDestination
                 isMacOS = true
                 buildResult = try await runBuildTolerant(
                     arguments: buildArgs(destination), timeout: 300,

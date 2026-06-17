@@ -134,6 +134,7 @@ public struct GetMacAppPathTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 configuration: configuration,
+                destination: XcodebuildRunner.macOSDestination,
             )
 
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {

@@ -166,34 +166,14 @@ public struct ShowBuildLogTool: Sendable {
     private func findDerivedDataPath(
         projectPath: String?, workspacePath: String?, scheme: String,
     ) async throws -> String {
-        var args: [String] = []
-        if let workspacePath {
-            args += ["-workspace", workspacePath]
-        } else if let projectPath {
-            args += ["-project", projectPath]
-        }
-        args += ["-scheme", scheme, "-showBuildSettings"]
-
-        let result = try await xcodebuildRunner.run(
-            arguments: args, timeout: 30, outputTimeout: .seconds(15), onProgress: nil,
-        )
-
-        // Extract BUILD_DIR, then go up to the DerivedData project root
-        // BUILD_DIR = /Users/.../DerivedData/Project-hash/Build/Products
-        for line in result.output.split(separator: "\n") {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("BUILD_DIR = ") {
-                let buildDir = String(trimmed.dropFirst("BUILD_DIR = ".count))
-                // Go up from Build/Products to the DerivedData project root
-                let url = URL(fileURLWithPath: buildDir)
-                    .deletingLastPathComponent() // Products
-                    .deletingLastPathComponent() // Build
-                return url.path
-            }
-        }
-
-        throw MCPError.internalError(
-            "Could not determine DerivedData path from build settings",
+        // Resolve BUILD_DIR through the runner so the same platform-scoped `-derivedDataPath` the
+        // macOS build used is applied — otherwise this reads Xcode's default DerivedData location
+        // (or the wrong platform slice) and finds no logs.
+        try await DerivedDataLocator.findProjectRoot(
+            xcodebuildRunner: xcodebuildRunner,
+            projectPath: projectPath,
+            workspacePath: workspacePath,
+            scheme: scheme,
         )
     }
 

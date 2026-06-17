@@ -129,20 +129,47 @@ public struct CleanTool: Sendable {
         var deleted: [String] = []
         var failures: [String] = []
 
-        // 1) Clean the scoped DerivedData path that xc-mcp's own builds actually use.
+        // 1) Clean the scoped DerivedData paths that xc-mcp's own builds actually use.
         //    Without this, `clean(derived_data: true)` clears Xcode's standard location
         //    while subsequent `build_macos`/`test_macos` invocations keep reading stale
         //    artifacts (notably macro plugin expansions) from the scoped cache.
-        if let scoped = DerivedDataScoper.effectivePath(
+        //
+        //    Builds are namespaced per platform (`<name>-<hash>-macosx`,
+        //    `<name>-<hash>-iphonesimulator`, …), so remove the base directory *and* every
+        //    platform-suffixed sibling — a single clean must not leave the other platform's
+        //    contaminated cache behind.
+        if let scoped = DerivedDataScoper.scopedPath(
             workspacePath: workspacePath,
             projectPath: projectPath,
         ) {
-            if FileManager.default.fileExists(atPath: scoped) {
-                if let err = removePath(scoped) {
-                    failures.append("\(scoped): \(err)")
-                } else {
-                    deleted.append(scoped)
+            let scopedURL = URL(fileURLWithPath: scoped)
+            let scopedName = scopedURL.lastPathComponent
+            let parent = scopedURL.deletingLastPathComponent().path
+            let fileManager = FileManager.default
+            if let siblings = try? fileManager.contentsOfDirectory(atPath: parent) {
+                for name in siblings
+                    where name == scopedName || name.hasPrefix(scopedName + "-")
+                {
+                    let fullPath = parent + "/" + name
+                    if let err = removePath(fullPath) {
+                        failures.append("\(fullPath): \(err)")
+                    } else {
+                        deleted.append(fullPath)
+                    }
                 }
+            }
+        }
+
+        // Honor an explicit `XC_MCP_DERIVED_DATA_PATH` override (e.g. CI), which lives outside the
+        // computed cache directory and so isn't covered by the sibling sweep above.
+        if let override = DerivedDataScoper.effectivePath(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+        ), !deleted.contains(override), FileManager.default.fileExists(atPath: override) {
+            if let err = removePath(override) {
+                failures.append("\(override): \(err)")
+            } else {
+                deleted.append(override)
             }
         }
 

@@ -103,7 +103,7 @@ public struct BuildRunMacOSTool: Sendable {
                 configuration: configuration,
             )
 
-            var destination = "platform=macOS"
+            var destination = XcodebuildRunner.macOSDestination
             if let arch {
                 destination += ",arch=\(arch)"
             }
@@ -131,12 +131,14 @@ public struct BuildRunMacOSTool: Sendable {
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
 
-            // Step 2: Get app path from build settings
+            // Step 2: Get app path from build settings (same destination as the build, so the
+            // platform-scoped DerivedData resolves to the slice we just produced)
             let buildSettings = try await xcodebuildRunner.showBuildSettings(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
                 configuration: configuration,
+                destination: destination,
             )
 
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {

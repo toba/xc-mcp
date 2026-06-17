@@ -94,4 +94,97 @@ struct DerivedDataScoperTests {
         )
         #expect(path == nil)
     }
+
+    // MARK: - Per-platform namespacing
+
+    @Test func `platformSlug maps destinations to SDK-style slugs`() {
+        #expect(DerivedDataScoper.platformSlug(forDestination: "platform=macOS") == "macosx")
+        #expect(
+            DerivedDataScoper.platformSlug(forDestination: "platform=macOS,arch=arm64") == "macosx",
+        )
+        #expect(
+            DerivedDataScoper.platformSlug(forDestination: "platform=iOS Simulator,id=ABC")
+                == "iphonesimulator",
+        )
+        #expect(
+            DerivedDataScoper.platformSlug(forDestination: "platform=iOS,id=ABC") == "iphoneos",
+        )
+        #expect(
+            DerivedDataScoper.platformSlug(forDestination: "generic/platform=iOS") == "iphoneos",
+        )
+        #expect(
+            DerivedDataScoper.platformSlug(forDestination: "platform=tvOS Simulator,id=X")
+                == "appletvsimulator",
+        )
+        #expect(
+            DerivedDataScoper.platformSlug(forDestination: "platform=watchOS Simulator,id=X")
+                == "watchsimulator",
+        )
+        #expect(
+            DerivedDataScoper.platformSlug(forDestination: "platform=visionOS Simulator,id=X")
+                == "xrsimulator",
+        )
+        #expect(
+            DerivedDataScoper.platformSlug(forDestination: "platform=macOS,variant=Mac Catalyst")
+                == "maccatalyst",
+        )
+    }
+
+    @Test func `platformSlug returns nil for nil empty or unknown destination`() {
+        #expect(DerivedDataScoper.platformSlug(forDestination: nil) == nil)
+        #expect(DerivedDataScoper.platformSlug(forDestination: "") == nil)
+        #expect(DerivedDataScoper.platformSlug(forDestination: "platform=linux") == nil)
+    }
+
+    @Test func `scopedPath appends platform suffix for known destination`() {
+        let macOS = DerivedDataScoper.scopedPath(
+            workspacePath: nil,
+            projectPath: "/Users/me/Developer/MyApp.xcodeproj",
+            destination: "platform=macOS",
+        )
+        #expect(macOS?.hasSuffix("-macosx") == true)
+        #expect(macOS?.contains("/MyApp-") == true)
+    }
+
+    @Test func `scopedPath without destination matches base path`() {
+        let base = DerivedDataScoper.scopedPath(
+            workspacePath: nil, projectPath: "/Users/me/Developer/MyApp.xcodeproj",
+        )
+        let nilDest = DerivedDataScoper.scopedPath(
+            workspacePath: nil,
+            projectPath: "/Users/me/Developer/MyApp.xcodeproj",
+            destination: nil,
+        )
+        #expect(base == nilDest)
+        #expect(base?.hasSuffix("-macosx") == false)
+    }
+
+    @Test func `scopedPath separates macOS from iOS-simulator for same project`() {
+        let project = "/Users/me/Developer/Thesis.xcodeproj"
+        let macOS = DerivedDataScoper.scopedPath(
+            workspacePath: nil, projectPath: project, destination: "platform=macOS",
+        )
+        let sim = DerivedDataScoper.scopedPath(
+            workspacePath: nil, projectPath: project,
+            destination: "platform=iOS Simulator,id=ABC",
+        )
+        #expect(macOS != nil)
+        #expect(sim != nil)
+        #expect(macOS != sim)
+        #expect(macOS?.hasSuffix("-macosx") == true)
+        #expect(sim?.hasSuffix("-iphonesimulator") == true)
+        // Same project hash, different platform suffix: shared prefix, divergent leaf.
+        #expect(macOS?.contains("/Thesis-") == true)
+        #expect(sim?.contains("/Thesis-") == true)
+    }
+
+    @Test func `effectivePath threads destination into scoped path`() {
+        let path = DerivedDataScoper.effectivePath(
+            workspacePath: nil,
+            projectPath: "/Users/me/Developer/MyApp.xcodeproj",
+            destination: "platform=iOS Simulator,id=ABC",
+            environment: [:],
+        )
+        #expect(path?.hasSuffix("-iphonesimulator") == true)
+    }
 }

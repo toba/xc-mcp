@@ -89,7 +89,7 @@ public struct ProfileAppLaunchTool: Sendable {
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
-                destination: "platform=macOS",
+                destination: XcodebuildRunner.macOSDestination,
                 configuration: configuration,
                 environment: environment,
             )
@@ -100,12 +100,13 @@ public struct ProfileAppLaunchTool: Sendable {
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
 
-            // Step 2: Get app path from build settings
+            // Step 2: Get app path from build settings (macOS-scoped DerivedData, matching the build)
             let buildSettings = try await xcodebuildRunner.showBuildSettings(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
                 configuration: configuration,
+                destination: XcodebuildRunner.macOSDestination,
             )
 
             guard let appPath = BuildSettingExtractor.extractAppPath(from: buildSettings.stdout)

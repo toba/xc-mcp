@@ -95,12 +95,14 @@ public struct DiffBuildSettingsTool: Sendable {
             workspacePath: workspacePath,
             scheme: targetA,
             configuration: configA,
+            destination: XcodebuildRunner.macOSDestination,
         )
         async let settingsBResult = xcodebuildRunner.showBuildSettings(
             projectPath: projectPath,
             workspacePath: workspacePath,
             scheme: targetB,
             configuration: configB,
+            destination: XcodebuildRunner.macOSDestination,
         )
 
         let settingsA = try await parseBuildSettings(from: settingsAResult.stdout)

@@ -101,7 +101,7 @@ public struct DiagnosticsTool: Sendable {
                     projectPath: projectPath,
                     workspacePath: workspacePath,
                     scheme: scheme,
-                    destination: "platform=macOS",
+                    destination: XcodebuildRunner.macOSDestination,
                     configuration: configuration,
                     additionalArguments: arguments.enableSanitizersArgs(),
                     timeout: timeout,

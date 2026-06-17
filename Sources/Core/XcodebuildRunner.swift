@@ -43,6 +43,10 @@ public struct XcodebuildRunner: Sendable {
     /// threshold.
     public static let deviceOutputTimeout: Duration = .seconds(120)
 
+    /// The xcodebuild `-destination` value for a native macOS build. Centralized so the macOS
+    /// diagnostic/read-back tools all resolve the same platform-scoped DerivedData as the build.
+    public static let macOSDestination = "platform=macOS"
+
     /// Creates a new xcodebuild runner.
     public init() {}
 
@@ -355,6 +359,7 @@ public struct XcodebuildRunner: Sendable {
         if let derivedData = DerivedDataScoper.effectivePath(
             workspacePath: workspacePath,
             projectPath: projectPath,
+            destination: destination,
             additionalArguments: additionalArguments,
         ) {
             args += ["-derivedDataPath", derivedData]
@@ -418,6 +423,7 @@ public struct XcodebuildRunner: Sendable {
         if let derivedData = DerivedDataScoper.effectivePath(
             workspacePath: workspacePath,
             projectPath: projectPath,
+            destination: destination,
             additionalArguments: additionalArguments,
         ) {
             args += ["-derivedDataPath", derivedData]
@@ -481,6 +487,7 @@ public struct XcodebuildRunner: Sendable {
         if let derivedData = DerivedDataScoper.effectivePath(
             workspacePath: workspacePath,
             projectPath: projectPath,
+            destination: destination,
             additionalArguments: additionalArguments,
         ) {
             args += ["-derivedDataPath", derivedData]
@@ -591,6 +598,7 @@ public struct XcodebuildRunner: Sendable {
         if let derivedData = DerivedDataScoper.effectivePath(
             workspacePath: workspacePath,
             projectPath: projectPath,
+            destination: destination,
         ) { args += ["-derivedDataPath", derivedData] }
 
         args += ["-scheme", scheme, "-configuration", configuration]

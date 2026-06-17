@@ -17,6 +17,10 @@ public enum DerivedDataLocator {
     ///   - workspacePath: Path to the .xcworkspace file.
     ///   - scheme: The scheme to query.
     ///   - configuration: Build configuration. Defaults to "Debug".
+    ///   - destination: The build destination whose platform-scoped DerivedData to resolve.
+    ///     Defaults to `platform=macOS` (every current caller is a macOS build diagnostic). Must
+    ///     match the destination the artifacts were built with, since DerivedData is namespaced per
+    ///     platform.
     /// - Returns: The DerivedData project root path.
     /// - Throws: ``MCPError/internalError(_:)`` if BUILD_DIR cannot be determined.
     public static func findProjectRoot(
@@ -25,12 +29,14 @@ public enum DerivedDataLocator {
         workspacePath: String?,
         scheme: String,
         configuration: String = "Debug",
+        destination: String = XcodebuildRunner.macOSDestination,
     ) async throws -> String {
         let result = try await xcodebuildRunner.showBuildSettings(
             projectPath: projectPath,
             workspacePath: workspacePath,
             scheme: scheme,
             configuration: configuration,
+            destination: destination,
         )
 
         guard let buildDir = BuildSettingExtractor.extractSetting("BUILD_DIR", from: result.stdout)

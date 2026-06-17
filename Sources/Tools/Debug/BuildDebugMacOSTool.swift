@@ -127,7 +127,7 @@ public struct BuildDebugMacOSTool: Sendable {
 
         // Resolve the build destination up front so it can also narrow the
         // pre-build `-showBuildSettings` pass below.
-        var destination = "platform=macOS"
+        var destination = XcodebuildRunner.macOSDestination
         if let arch {
             destination += ",arch=\(arch)"
         }
