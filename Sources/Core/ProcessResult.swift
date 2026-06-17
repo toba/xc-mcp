@@ -68,6 +68,18 @@ public struct ProcessResult: Sendable {
     public var errorOutput: String { stderr.isEmpty ? stdout : stderr }
 }
 
+/// A thread-safe, copyable, `Sendable` one-shot flag.
+///
+/// Used by ``ProcessResult/raceTimeout(_:run:onTimeout:)`` to record that the wall-clock deadline
+/// fired before killing the subprocess group. A reference type (rather than a bare `~Copyable`
+/// `Mutex`) so it can be shared across the task group's `sending` `addTask` boundary while still
+/// being read from the group body.
+private final class TimeoutFlag: Sendable {
+    private let raised = Mutex(false)
+    func raise() { raised.withLock { $0 = true } }
+    var isRaised: Bool { raised.withLock { $0 } }
+}
+
 // MARK: - Run
 
 extension ProcessResult {
@@ -222,23 +234,40 @@ extension ProcessResult {
     /// SIGTERM teardown of the parent — grandchildren (swift-frontend, SPM plugins) survive, hold
     /// the pipes open, and the run task never returns, so the group teardown that awaits it would
     /// hang. (ycq-rdc)
+    ///
+    /// The kill, however, is exactly what lets the `run` task finally drain its pipes and return a
+    /// (signaled) result — so once the deadline fires, *both* children are eligible to finish and
+    /// the throwing task group surfaces whichever posts its completion first. Relying on that
+    /// ordering is flaky under parallel CI load (the `run` result occasionally wins, swallowing the
+    /// timeout). To make the timeout the deterministic winner, the deadline task records a sticky
+    /// flag *before* killing; any subsequent `run` completion is therefore known to be a
+    /// kill-induced unblock and is reported as a timeout regardless of scheduler ordering. (ycq-rdc)
     private static func raceTimeout<T: Sendable>(
         _ timeout: Duration?,
         run: @escaping @Sendable () async throws -> T,
         onTimeout: @escaping @Sendable () -> Void = {},
     ) async throws -> T {
         guard let timeout else { return try await run() }
-        return try await withThrowingTaskGroup(of: T.self) { group in
+        // A Sendable reference box: the deadline task and the group body both touch the flag
+        // concurrently, and a copyable Sendable class is what lets it cross the addTask `sending`
+        // boundary (a bare `~Copyable` Mutex cannot).
+        let timedOut = TimeoutFlag()
+        return try await withThrowingTaskGroup(of: T?.self) { group in
             group.addTask { try await run() }
             group.addTask {
                 try await Task.sleep(for: timeout)
+                // Mark the breach before the kill: the SIGKILL unblocks `run`, so by the time
+                // run can complete this flag is already set. The sentinel `nil` distinguishes the
+                // deadline task from a genuine `run` result.
+                timedOut.raise()
                 onTimeout()
-                throw ProcessError.timeout(duration: timeout)
+                return nil
             }
-            guard let result = try await group.next() else {
-                throw ProcessError.timeout(duration: timeout)
-            }
+            let first = (try await group.next()) ?? nil
             group.cancelAll()
+            if timedOut.isRaised { throw ProcessError.timeout(duration: timeout) }
+            // The only non-timeout finisher is the `run` task, which yields a non-nil value.
+            guard let result = first else { throw ProcessError.timeout(duration: timeout) }
             return result
         }
     }

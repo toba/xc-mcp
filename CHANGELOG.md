@@ -2,6 +2,10 @@
 
 ## Week of Jun 14 – Jun 20, 2026
 
+### 🐞 Fixes
+
+- Fix two flaky CI tests; `raceTimeout` in `Sources/Core/ProcessResult.swift` is now deterministic — the deadline task raises a sticky `TimeoutFlag` (a copyable `Sendable` box around a `Mutex`, so it crosses the `addTask` `sending` boundary) *before* killing the process group, so a post-kill `run` completion can no longer win the task-group race and swallow the `ProcessError.timeout` under parallel load; `SessionManagerWarmupTests` drops its explicit 5s poll override for the 15s default so the `.background`-priority warmup isn't starved on saturated runners ([#390](https://github.com/toba/xc-mcp/issues/390))
+
 ### 🗜️ Tweaks
 
 - Require positive evidence of build success in `BuildOutputParser`; a build or test killed before any terminal marker (OOM `Killed: 9`, truncated stream) now reports a new `incomplete` status instead of a false green, `status` is reconciled against the aggregate failed-test count so it can never disagree with `summary.failedTests`, and `** TEST SUCCEEDED **` / `** TEST EXECUTE SUCCEEDED **` / parenthesized `Build succeeded (…)` / xcbeautify `Build Succeeded` markers are now recognized; ported from xcsift #73 ([#389](https://github.com/toba/xc-mcp/issues/389))

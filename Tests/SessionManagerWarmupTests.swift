@@ -108,10 +108,9 @@ struct SessionManagerWarmupTests {
 
         // Poll for the (single) warmup to complete. A fixed sleep here was flaky on CI: the warmup
         // task runs at .background priority, so under runner starvation it could be deferred long
-        // enough that runCount was still 0 when the assertion fired.
-        try await waitUntilCompleted(
-            manager: manager, packagePath: pkgDir.path, timeout: .seconds(5),
-        )
+        // enough that runCount was still 0 when the assertion fired. Use the generous 15s default
+        // budget (an explicit 5s override here still flaked on saturated runners — #264/#267).
+        try await waitUntilCompleted(manager: manager, packagePath: pkgDir.path)
         // Brief grace period to surface any spurious duplicate warmups that would also increment
         // runCount.
         try await Task.sleep(for: .milliseconds(100))
