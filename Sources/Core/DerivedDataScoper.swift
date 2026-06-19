@@ -102,7 +102,7 @@ public enum DerivedDataScoper {
             return "xrsimulator"
         }
         if lower.contains("driverkit") { return "driverkit" }
-        if lower.contains("macos") || lower.contains("os x") { return "macosx" }
+        if lower.contains("macos") { return "macosx" }
         if lower.contains("ios") { return "iphoneos" }
         if lower.contains("tvos") { return "appletvos" }
         if lower.contains("watchos") { return "watchos" }

@@ -31,6 +31,7 @@ public enum StringsToolName: String, CaseIterable, Sendable {
     case batchUpdateTranslations = "xcstrings_batch_update_translations"
     case checkCoverage = "xcstrings_check_coverage"
     case checkUntranslated = "xcstrings_check_untranslated"
+    case promoteLiterals = "xcstrings_promote_literals"
 }
 
 /// MCP server for Xcode String Catalog (.xcstrings) file manipulation.
@@ -40,7 +41,7 @@ public enum StringsToolName: String, CaseIterable, Sendable {
 ///
 /// ## Token Efficiency
 ///
-/// This server exposes 18 tools with approximately 6K token overhead. Use this server
+/// This server exposes 26 tools with approximately 6K token overhead. Use this server
 /// when you need localization management capabilities.
 ///
 /// ## Tools
@@ -109,6 +110,7 @@ public struct StringsMCPServer: Sendable {
         )
         let checkCoverageTool = XCStringsCheckCoverageTool(pathUtility: pathUtility)
         let checkUntranslatedTool = XCStringsCheckUntranslatedTool(pathUtility: pathUtility)
+        let promoteLiteralsTool = XCStringsPromoteLiteralsTool(pathUtility: pathUtility)
 
         // Register tools/list handler
         await server.withMethodHandler(ListTools.self) { _ in
@@ -138,6 +140,7 @@ public struct StringsMCPServer: Sendable {
                 batchUpdateTranslationsTool.tool(),
                 checkCoverageTool.tool(),
                 checkUntranslatedTool.tool(),
+                promoteLiteralsTool.tool(),
             ])
         }
 
@@ -204,6 +207,8 @@ public struct StringsMCPServer: Sendable {
                     return try await checkCoverageTool.execute(arguments: arguments)
                 case .checkUntranslated:
                     return try await checkUntranslatedTool.execute(arguments: arguments)
+                case .promoteLiterals:
+                    return try await promoteLiteralsTool.execute(arguments: arguments)
             }
         }
 

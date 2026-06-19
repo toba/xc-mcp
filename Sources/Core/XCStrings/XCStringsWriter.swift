@@ -21,9 +21,7 @@ public enum XCStringsWriter {
         if result.strings[key]?.localizations == nil { result.strings[key]?.localizations = [:] }
 
         result.strings[key]?.localizations?[language] = Localization(stringUnit: StringUnit(
-            state: "translated",
-            value: value
-        ))
+            state: "translated", value: value))
 
         return result
     }
@@ -47,10 +45,37 @@ public enum XCStringsWriter {
             }
 
             result.strings[key]?.localizations?[language] = Localization(stringUnit: StringUnit(
-                state: "translated",
-                value: value
-            ))
+                state: "translated", value: value))
         }
+
+        return result
+    }
+
+    /// Add a manual source-language key for a promoted localizable literal.
+    ///
+    /// Creates an entry with `extractionState: "manual"` and a single source-language `stringUnit`
+    /// holding the literal text — mirroring what Xcode writes when a key is added by hand. Throws
+    /// ``XCStringsError/keyAlreadyExists(key:)`` if the key already exists (callers that want to
+    /// reuse an existing key should check first).
+    public static func addManualKey(
+        to file: XCStringsFile,
+        key: String,
+        sourceLanguage: String,
+        value: String,
+        comment: String? = nil,
+    ) throws(XCStringsError) -> XCStringsFile {
+        var result = file
+
+        guard result.strings[key] == nil else { throw XCStringsError.keyAlreadyExists(key: key) }
+
+        result.strings[key] = StringEntry(
+            comment: comment,
+            extractionState: "manual",
+            localizations: [
+                sourceLanguage: Localization(stringUnit: StringUnit(
+                    state: "translated", value: value))
+            ],
+        )
 
         return result
     }
@@ -71,9 +96,7 @@ public enum XCStringsWriter {
         }
 
         result.strings[key]?.localizations?[language] = Localization(stringUnit: StringUnit(
-            state: "translated",
-            value: value
-        ))
+            state: "translated", value: value))
 
         return result
     }
@@ -94,9 +117,7 @@ public enum XCStringsWriter {
             }
 
             result.strings[key]?.localizations?[language] = Localization(stringUnit: StringUnit(
-                state: "translated",
-                value: value
-            ))
+                state: "translated", value: value))
         }
 
         return result

@@ -2,6 +2,10 @@
 
 ## Week of Jun 14 – Jun 20, 2026
 
+### ✨ Features
+
+- Add `xcstrings_promote_literals` to `xc-strings` (and `ServerToolDirectory`); promotes hand-typed localizable string literals to reusable manual String Catalog keys by adding `extractionState = manual` source-language entries to the `.xcstrings`, deriving a `SCREAMING_SNAKE` key (or accepting an explicit one) and reporting the camelCased Swift symbol Xcode 26 generates (e.g. `NONE_SELECTED` → `.noneSelected`) so call sites like `Button("Cancel")` can be rewritten to `Button(.cancel)`; reuses an existing key that already holds the same value and reports collisions when a key exists with a different value; parameterized values are supported (pass the format string, e.g. `"Add %1$(ordinal)@ citation"`, and the result includes the generated method signature `addCitationToGroup(ordinal: String)`); create-only — it does not scan or rewrite Swift sources ([#392](https://github.com/toba/xc-mcp/issues/392))
+
 ### 🐞 Fixes
 
 - Namespace xc-mcp's scoped `-derivedDataPath` by platform so `xc-build` (macOS) and `xc-simulator` (iOS) builds against the same project no longer share `Build/Products` / `Build/Intermediates.noindex` and cross-link framework slices (the `building for 'macOS', but linking in dylib built for 'iOS-simulator'` GRDB cascade); `DerivedDataScoper` now derives an SDK-style suffix (`-macosx`, `-iphonesimulator`, …) from the build destination, `XcodebuildRunner` threads `destination` through `build`/`buildTarget`/`test`/`showBuildSettings`, every macOS read-back tool (`GetMacAppPath`, `BuildRunMacOS`, `ProfileAppLaunch`, `DiffBuildSettings`, the `findProjectRoot` diagnostics, and `ShowBuildLog` — which had been bypassing scoping entirely) passes the matching destination, and `clean(derived_data: true)` sweeps every per-platform sibling so one clean can't leave the other platform's contaminated cache behind ([#391](https://github.com/toba/xc-mcp/issues/391))

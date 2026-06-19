@@ -412,6 +412,91 @@ public struct BatchWriteError: Codable, Sendable {
     }
 }
 
+// MARK: - Promote Literal Models
+
+/// A request to promote a hand-typed localizable literal to a reusable manual catalog key.
+public struct PromoteLiteralRequest: Sendable {
+    /// The source-language literal text (e.g. `"Cancel"`).
+    public let value: String
+    /// Explicit `SCREAMING_SNAKE` key. When `nil`, one is derived from `value`.
+    public let key: String?
+    /// Optional developer comment stored on the entry.
+    public let comment: String?
+
+    public init(value: String, key: String? = nil, comment: String? = nil) {
+        self.value = value
+        self.key = key
+        self.comment = comment
+    }
+}
+
+/// Outcome of promoting a single literal.
+public enum PromotedLiteralStatus: String, Codable, Sendable { case created, reused, collision }
+
+/// Result of promoting one literal, including the Swift symbol Xcode will generate for the key.
+public struct PromotedLiteral: Codable, Sendable {
+    public let value: String
+    public let key: String
+    public let symbol: String
+    /// Full generated member signature when the value is parameterized (has format placeholders),
+    /// e.g. `addCitationToGroup(ordinal: String)`. `nil` for plain values, whose member is a
+    /// property called as `.symbol`.
+    public let signature: String?
+    public let status: PromotedLiteralStatus
+    public let message: String?
+
+    public init(
+        value: String,
+        key: String,
+        symbol: String,
+        signature: String? = nil,
+        status: PromotedLiteralStatus,
+        message: String? = nil,
+    ) {
+        self.value = value
+        self.key = key
+        self.symbol = symbol
+        self.signature = signature
+        self.status = status
+        self.message = message
+    }
+
+    /// Build a result, deriving `symbol` and `signature` for the value from `key` so every
+    /// outcome (created / reused / collision) reports them consistently.
+    public init(
+        value: String,
+        key: String,
+        status: PromotedLiteralStatus,
+        message: String? = nil,
+    ) {
+        self.init(
+            value: value,
+            key: key,
+            symbol: LocalizableKeyNaming.generatedSymbol(forKey: key),
+            signature: LocalizableKeyNaming.generatedSignature(forKey: key, value: value),
+            status: status,
+            message: message,
+        )
+    }
+}
+
+/// Aggregate result of a promote-literals operation.
+public struct PromoteLiteralsResult: Codable, Sendable {
+    public let file: String
+    public let promoted: [PromotedLiteral]
+    public let createdCount: Int
+    public let reusedCount: Int
+    public let collisionCount: Int
+
+    public init(file: String, promoted: [PromotedLiteral]) {
+        self.file = file
+        self.promoted = promoted
+        createdCount = promoted.count(where: { $0.status == .created })
+        reusedCount = promoted.count(where: { $0.status == .reused })
+        collisionCount = promoted.count(where: { $0.status == .collision })
+    }
+}
+
 // MARK: - Compact Output Models (100% languages omitted)
 
 /// Compact stats info - only shows languages under 100%

@@ -243,6 +243,82 @@ public actor XCStringsParser {
         try save(updated)
     }
 
+    /// Promote hand-typed localizable literals to reusable manual source-language keys.
+    ///
+    /// For each request a `SCREAMING_SNAKE` key is derived from the literal (unless an explicit key
+    /// is supplied). A literal whose value already lives under an existing key is reused rather
+    /// than duplicated; a key that already exists with a *different* value is reported as a
+    /// collision and skipped. The catalog is saved only when at least one key is created.
+    ///
+    /// Returns one ``PromotedLiteral`` per request, in order, each carrying the Swift symbol Xcode
+    /// generates for the key (e.g. key `NONE_SELECTED` → `.noneSelected`).
+    public func promoteLiterals(
+        _ requests: [PromoteLiteralRequest],
+    ) throws(XCStringsError) -> [PromotedLiteral] {
+        var file = try load()
+        let sourceLanguage = file.sourceLanguage
+
+        // Map existing source-language values to their keys, for reuse.
+        var valueToKey: [String: String] = [:]
+        valueToKey.reserveCapacity(file.strings.count)
+
+        for (key, entry) in file.strings {
+            if let value = entry.localizations?[sourceLanguage]?.stringUnit?.value {
+                valueToKey[value] = key
+            }
+        }
+
+        var promoted: [PromotedLiteral] = []
+        promoted.reserveCapacity(requests.count)
+        var didCreate = false
+
+        for request in requests {
+            let key = request.key ?? LocalizableKeyNaming.screamingSnakeKey(from: request.value)
+
+            // Reuse an existing key holding this exact value when no explicit key was requested.
+            if request.key == nil, let existing = valueToKey[request.value] {
+                promoted.append(PromotedLiteral(
+                    value: request.value, key: existing, status: .reused,
+                    message: "Value already present under key '\(existing)'.",
+                ))
+                continue
+            }
+
+            if let entry = file.strings[key] {
+                let existingValue = entry.localizations?[sourceLanguage]?.stringUnit?.value
+
+                if existingValue == request.value {
+                    promoted.append(PromotedLiteral(
+                        value: request.value, key: key, status: .reused,
+                        message: "Key already exists with this value.",
+                    ))
+                } else {
+                    promoted.append(PromotedLiteral(
+                        value: request.value, key: key, status: .collision,
+                        message: "Key '\(key)' already exists with a different value"
+                            + (existingValue.map { " ('\($0)')" } ?? "")
+                            + ". Pass an explicit key to override.",
+                    ))
+                }
+                continue
+            }
+
+            file = try XCStringsWriter.addManualKey(
+                to: file,
+                key: key,
+                sourceLanguage: sourceLanguage,
+                value: request.value,
+                comment: request.comment,
+            )
+            valueToKey[request.value] = key
+            didCreate = true
+            promoted.append(PromotedLiteral(value: request.value, key: key, status: .created))
+        }
+
+        if didCreate { try save(file) }
+        return promoted
+    }
+
     /// Rename a key
     public func renameKey(from oldKey: String, to newKey: String) throws(XCStringsError) {
         let file = try load()
