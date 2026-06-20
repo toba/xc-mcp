@@ -93,9 +93,7 @@ struct AddTargetToolTests {
     func `Add target with missing parameters`(_ testCase: MissingParamTestCase) throws {
         let tool = AddTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     static let productTypeCases: [ProductTypeTestCase] = [
@@ -135,9 +133,7 @@ struct AddTargetToolTests {
             "bundle_identifier": Value.string("com.test.\(testCase.targetName.lowercased())"),
         ]
 
-        if let platform = testCase.platform {
-            args["platform"] = Value.string(platform)
-        }
+        if let platform = testCase.platform { args["platform"] = Value.string(platform) }
         if let deploymentTarget = testCase.deploymentTarget {
             args["deployment_target"] = Value.string(deploymentTarget)
         }
@@ -160,9 +156,7 @@ struct AddTargetToolTests {
         #expect(productRef != nil, "Target should have a productReference")
         #expect(productRef?.sourceTree == .buildProductsDir)
         #expect(productRef?.includeInIndex == false)
-        #expect(
-            productRef?.explicitFileType == testCase.expectedProductType.explicitFileType,
-        )
+        #expect(productRef?.explicitFileType == testCase.expectedProductType.explicitFileType)
 
         // Verify product is in Products group
         let productsGroup = xcodeproj.pbxproj.rootObject?.productsGroup
@@ -180,7 +174,8 @@ struct AddTargetToolTests {
                 $0.name == "Debug"
             }
             #expect(
-                buildConfig?.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"]?.stringValue
+                buildConfig?.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"]?
+                    .stringValue
                     == deploymentTarget,
             )
         }
@@ -233,9 +228,7 @@ struct AddTargetToolTests {
             buildConfig?.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"]?
                 .stringValue == "com.test.newapp",
         )
-        #expect(
-            buildConfig?.buildSettings["GENERATE_INFOPLIST_FILE"]?.stringValue == "YES",
-        )
+        #expect(buildConfig?.buildSettings["GENERATE_INFOPLIST_FILE"]?.stringValue == "YES")
         // Verify inherited settings are NOT present
         #expect(buildConfig?.buildSettings["BUNDLE_IDENTIFIER"] == nil)
         #expect(buildConfig?.buildSettings["ALWAYS_SEARCH_USER_PATHS"] == nil)
@@ -396,9 +389,7 @@ struct AddTargetToolTests {
 
         // Add a "Components" group first
         let xcodeproj = try XcodeProj(path: projectPath)
-        let componentsGroup = PBXGroup(
-            sourceTree: .group, name: "Components", path: "Components",
-        )
+        let componentsGroup = PBXGroup(sourceTree: .group, name: "Components", path: "Components")
         xcodeproj.pbxproj.add(object: componentsGroup)
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(componentsGroup)
@@ -428,6 +419,91 @@ struct AddTargetToolTests {
     }
 
     @Test
+    func `Add framework target sets DEFINES_MODULE and SKIP_INSTALL`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let tool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("Feature"),
+            "product_type": Value.string("framework"),
+            "bundle_identifier": Value.string("com.test.feature"),
+        ])
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let target = try #require(reloaded.pbxproj.nativeTargets.first { $0.name == "Feature" })
+        let configs = try #require(target.buildConfigurationList?.buildConfigurations)
+        #expect(!configs.isEmpty)
+
+        for config in configs {
+            #expect(config.buildSettings["DEFINES_MODULE"] == .string("YES"))
+            #expect(config.buildSettings["SKIP_INSTALL"] == .string("YES"))
+        }
+    }
+
+    @Test
+    func `Application target does not get framework-only settings`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let tool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_type": Value.string("application"),
+            "bundle_identifier": Value.string("com.test.app"),
+        ])
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let target = try #require(reloaded.pbxproj.nativeTargets.first { $0.name == "App" })
+        let configs = try #require(target.buildConfigurationList?.buildConfigurations)
+
+        for config in configs {
+            #expect(config.buildSettings["DEFINES_MODULE"] == nil)
+            #expect(config.buildSettings["SKIP_INSTALL"] == nil)
+        }
+    }
+
+    @Test
+    func `create_group false skips the placeholder navigator group`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let tool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("Feature"),
+            "product_type": Value.string("framework"),
+            "bundle_identifier": Value.string("com.test.feature"),
+            "create_group": Value.bool(false),
+        ])
+
+        let reloaded = try XcodeProj(path: projectPath)
+        // The target exists, but no empty navigator group named "Feature" was created.
+        #expect(reloaded.pbxproj.nativeTargets.contains { $0.name == "Feature" })
+        #expect(!reloaded.pbxproj.groups.contains { $0.name == "Feature" })
+    }
+
+    @Test
     func `Add target with invalid parent_group`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -450,9 +526,7 @@ struct AddTargetToolTests {
             "parent_group": Value.string("NonExistent/Group"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 
     @Test
@@ -477,8 +551,6 @@ struct AddTargetToolTests {
             "bundle_identifier": Value.string("com.test.newtarget"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 }

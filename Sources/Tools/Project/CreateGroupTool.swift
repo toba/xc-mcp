@@ -7,12 +7,10 @@ import Foundation
 public struct CreateGroupTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "create_group",
             description: "Create a new group in the project navigator",
             inputSchema: .object([
@@ -55,6 +53,7 @@ public struct CreateGroupTool: Sendable {
         }
 
         let parentGroupName: String?
+
         if case let .string(parent) = arguments["parent_group"] {
             parentGroupName = parent
         } else {
@@ -62,11 +61,7 @@ public struct CreateGroupTool: Sendable {
         }
 
         let groupPath: String?
-        if case let .string(path) = arguments["path"] {
-            groupPath = path
-        } else {
-            groupPath = nil
-        }
+        if case let .string(path) = arguments["path"] { groupPath = path } else { groupPath = nil }
 
         do {
             // Resolve and validate the project path
@@ -77,15 +72,13 @@ public struct CreateGroupTool: Sendable {
 
             // Check if group already exists
             if xcodeproj.pbxproj.groups.contains(where: { $0.name == groupName }) {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Group '\(groupName)' already exists in project",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Group '\(groupName)' already exists in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ],)
             }
 
             // Create new group
@@ -94,12 +87,11 @@ public struct CreateGroupTool: Sendable {
 
             // Find parent group
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                  let mainGroup = project.mainGroup
-            else {
-                throw MCPError.internalError("Main group not found in project")
-            }
+                let mainGroup = project.mainGroup
+            else { throw MCPError.internalError("Main group not found in project") }
 
             let parentGroup: PBXGroup
+
             if let parentGroupName {
                 parentGroup = try mainGroup.resolveGroupPath(parentGroupName)
             } else {
@@ -109,16 +101,38 @@ public struct CreateGroupTool: Sendable {
             // Add new group to parent
             parentGroup.children.append(newGroup)
 
+            // When the group represents an on-disk directory, warn if its resolved path (relative
+            // to the parent group, not the project root) does not exist. This catches the common
+            // mistake of passing a project-root-relative path — e.g. parent_group='Integrations',
+            // path='Integrations/GoogleDocs' resolves to 'Integrations/Integrations/GoogleDocs' and
+            // renders red in Xcode.
+            var warning: String?
+
+            if let groupPath, !groupPath.isEmpty {
+                let projectRoot = projectURL.deletingLastPathComponent().path
+                let parentAccumulated = OnDiskPath.accumulated(of: parentGroup, in: mainGroup) ?? ""
+                let resolved = OnDiskPath.join(parentAccumulated, groupPath)
+                let dir = URL(fileURLWithPath: projectRoot)
+                    .appendingPathComponent(resolved).path
+                var isDirectory: ObjCBool = false
+                let exists = FileManager.default.fileExists(atPath: dir, isDirectory: &isDirectory)
+
+                if !exists || !isDirectory.boolValue {
+                    warning = "Warning: path is relative to the parent group, so this group "
+                        + "resolves to '\(resolved)' on disk, which does not exist. "
+                        + "If you meant a project-root-relative path, the parent group's "
+                        + "path is being prepended (doubling the prefix). Create the "
+                        + "directory first, or pass a path relative to the parent group."
+                }
+            }
+
             // Save project
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully created group '\(groupName)' in \(parentGroupName ?? "main group")",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            var message =
+                "Successfully created group '\(groupName)' in \(parentGroupName ?? "main group")"
+            if let warning { message += "\n\(warning)" }
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw MCPError.internalError(
                 "Failed to create group in Xcode project: \(error.localizedDescription)",

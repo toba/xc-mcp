@@ -52,6 +52,12 @@ public struct AddTargetTool: Sendable {
                             "Group to nest the target's folder under (e.g. 'Components' or 'Modules/UI'). Optional, defaults to project root.",
                         ),
                     ]),
+                    "create_group": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "Whether to create an empty navigator group named after the target. Defaults to true. Pass false when you will wire up your own Sources/Tests synchronized folders and don't want a leftover placeholder group to remove.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("target_name"), .string("product_type"),
@@ -66,7 +72,8 @@ public struct AddTargetTool: Sendable {
         guard case let .string(projectPath) = arguments["project_path"],
               case let .string(targetName) = arguments["target_name"],
               case let .string(productTypeString) = arguments["product_type"],
-              case let .string(bundleIdentifier) = arguments["bundle_identifier"] else {
+              case let .string(bundleIdentifier) = arguments["bundle_identifier"]
+        else {
             throw MCPError.invalidParams(
                 "project_path, target_name, product_type, and bundle_identifier are required",
             )
@@ -94,6 +101,14 @@ public struct AddTargetTool: Sendable {
             parentGroupPath = pg
         } else {
             parentGroupPath = nil
+        }
+
+        let createGroup: Bool
+
+        if case let .bool(cg) = arguments["create_group"] {
+            createGroup = cg
+        } else {
+            createGroup = true
         }
 
         // Map product type string to PBXProductType
@@ -147,15 +162,13 @@ public struct AddTargetTool: Sendable {
 
             // Check if target already exists
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Target '\(targetName)' already exists in project",
-                            annotations: nil,
-                            _meta: nil,
-                        )
-                    ],
-                )
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Target '\(targetName)' already exists in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ],)
             }
 
             // Introspect project-level build configurations to match all config names
@@ -174,11 +187,20 @@ public struct AddTargetTool: Sendable {
                 : projectConfigs.map(\.name)
 
             // Minimal target-specific settings
-            let baseSettings: [String: BuildSetting] = [
+            var baseSettings: [String: BuildSetting] = [
                 "PRODUCT_NAME": .string(targetName),
                 "PRODUCT_BUNDLE_IDENTIFIER": .string(bundleIdentifier),
                 "GENERATE_INFOPLIST_FILE": .string("YES"),
             ]
+
+            // Framework essentials Xcode sets by default but XcodeProj does not: a clang module map
+            // (DEFINES_MODULE) so the framework is importable, and SKIP_INSTALL so an embedded
+            // framework isn't installed standalone in archives. Platform support
+            // (SUPPORTED_PLATFORMS) is intentionally left to project defaults.
+            if productType == .framework || productType == .staticFramework {
+                baseSettings["DEFINES_MODULE"] = .string("YES")
+                baseSettings["SKIP_INSTALL"] = .string("YES")
+            }
 
             // Add deployment target if specified
             let deploymentKey: String? =
@@ -258,7 +280,8 @@ public struct AddTargetTool: Sendable {
             }
 
             // Create target folder in the appropriate group
-            if let project = try xcodeproj.pbxproj.rootProject(),
+            if createGroup,
+               let project = try xcodeproj.pbxproj.rootProject(),
                let mainGroup = project.mainGroup
             {
                 let targetGroup = PBXGroup(sourceTree: .group, name: targetName)
@@ -277,14 +300,11 @@ public struct AddTargetTool: Sendable {
             // Save project
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text:
-                            "Successfully created target '\(targetName)' with product type '\(productTypeString)' and bundle identifier '\(bundleIdentifier)'",
-                        annotations: nil, _meta: nil)
-                ],
-            )
+            return CallTool.Result(content: [
+                .text(
+                    text: "Successfully created target '\(targetName)' with product type '\(productTypeString)' and bundle identifier '\(bundleIdentifier)'",
+                    annotations: nil, _meta: nil)
+            ],)
         } catch {
             throw MCPError.internalError(
                 "Failed to create target in Xcode project: \(error.localizedDescription)",
@@ -319,8 +339,7 @@ extension PBXProductType {
                  .xcodeExtension,
                  .intentsServiceExtension,
                  .driverExtension,
-                 .systemExtension:
-                "wrapper.app-extension"
+                 .systemExtension: "wrapper.app-extension"
             case .commandLineTool: "compiled.mach-o.executable"
             case .xpcService: "wrapper.xpc-service"
             case .instrumentsPackage: "com.apple.instruments.instrdst"

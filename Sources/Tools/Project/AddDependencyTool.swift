@@ -38,6 +38,12 @@ public struct AddDependencyTool: Sendable {
                             "Optional path (absolute or relative to project_path's directory, or a suffix like 'GRDB/GRDBCustom.xcodeproj') of a sub-project already referenced by project_path's projectReferences. Use to disambiguate when multiple referenced sub-projects expose a target named dependency_name. When dependency_name is not found among the consumer project's own native targets, add_dependency will auto-scan projectReferences for a matching target; this argument restricts the scan to one sub-project.",
                         ),
                     ]),
+                    "link_binary": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "Also add the dependency's product to target_name's Link Binary With Libraries phase. Defaults to false. Set true for framework/library dependencies that target_name links against (the common case). Re-running with link_binary=true links a dependency that was previously added without a Link Binary entry. Only supported for in-project dependencies; for cross-project, use add_framework.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("target_name"), .string("dependency_name"),
@@ -62,6 +68,14 @@ public struct AddDependencyTool: Sendable {
             crossProjectPath = value
         }
 
+        let linkBinary: Bool
+
+        if case let .bool(value) = arguments["link_binary"] {
+            linkBinary = value
+        } else {
+            linkBinary = false
+        }
+
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
@@ -84,6 +98,7 @@ public struct AddDependencyTool: Sendable {
                     targetName: targetName,
                     dependencyTarget: dependencyTarget,
                     dependencyName: dependencyName,
+                    linkBinary: linkBinary,
                 )
             }
 
@@ -119,6 +134,7 @@ public struct AddDependencyTool: Sendable {
                 dependencyName: dependencyName,
                 projectRef: match.projectRef,
                 remoteTargetUUID: match.remoteTargetUUID,
+                linkBinary: linkBinary,
             )
         } catch {
             throw MCPError.internalError(
@@ -134,32 +150,94 @@ public struct AddDependencyTool: Sendable {
         targetName: String,
         dependencyTarget: PBXNativeTarget,
         dependencyName: String,
+        linkBinary: Bool,
     ) throws -> CallTool.Result {
-        let dependencyExists = target.dependencies.contains { $0.target == dependencyTarget }
-        if dependencyExists {
+        var didAddDependency = false
+
+        if !target.dependencies.contains(where: { $0.target == dependencyTarget }) {
+            let containerItemProxy = PBXContainerItemProxy(
+                containerPortal: .project(xcodeproj.pbxproj.rootObject!),
+                remoteGlobalID: .object(dependencyTarget),
+                proxyType: .nativeTarget,
+                remoteInfo: dependencyName,
+            )
+            xcodeproj.pbxproj.add(object: containerItemProxy)
+
+            let targetDependency = PBXTargetDependency(
+                name: dependencyName,
+                target: dependencyTarget,
+                targetProxy: containerItemProxy,
+            )
+            xcodeproj.pbxproj.add(object: targetDependency)
+
+            target.dependencies.append(targetDependency)
+            didAddDependency = true
+        }
+
+        var linkNote = ""
+        var didLink = false
+
+        if linkBinary {
+            if let product = dependencyTarget.product {
+                didLink = linkProduct(product, into: target, xcodeproj: xcodeproj)
+            } else {
+                linkNote = "; cannot link '\(dependencyName)' (it produces no linkable product)"
+            }
+        }
+
+        // Nothing to write when the dependency already existed and no new link was added.
+        if !didAddDependency, !didLink, linkNote.isEmpty {
             return .text("Target '\(targetName)' already depends on '\(dependencyName)'")
         }
 
-        let containerItemProxy = PBXContainerItemProxy(
-            containerPortal: .project(xcodeproj.pbxproj.rootObject!),
-            remoteGlobalID: .object(dependencyTarget),
-            proxyType: .nativeTarget,
-            remoteInfo: dependencyName,
-        )
-        xcodeproj.pbxproj.add(object: containerItemProxy)
-
-        let targetDependency = PBXTargetDependency(
-            name: dependencyName,
-            target: dependencyTarget,
-            targetProxy: containerItemProxy,
-        )
-        xcodeproj.pbxproj.add(object: targetDependency)
-
-        target.dependencies.append(targetDependency)
-
         try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-        return .text("Successfully added dependency '\(dependencyName)' to target '\(targetName)'")
+        let head = didAddDependency
+            ? "Successfully added dependency '\(dependencyName)' to target '\(targetName)'"
+            : "Target '\(targetName)' already depends on '\(dependencyName)'"
+        let linkText: String
+
+        if didLink {
+            linkText = " and linked \(dependencyName) into Link Binary With Libraries"
+        } else if linkBinary, linkNote.isEmpty {
+            linkText = " (binary already linked)"
+        } else {
+            linkText = ""
+        }
+        return .text(head + linkText + linkNote)
+    }
+
+    /// Adds `product` to `target`'s Frameworks (Link Binary) phase, creating the phase if needed.
+    /// Returns true when a new link was added, false when it was already present.
+    private func linkProduct(
+        _ product: PBXFileReference,
+        into target: PBXNativeTarget,
+        xcodeproj: XcodeProj,
+    ) -> Bool {
+        let frameworksPhase: PBXFrameworksBuildPhase
+
+        if let existing = target.buildPhases.first(where: { $0 is PBXFrameworksBuildPhase })
+            as? PBXFrameworksBuildPhase
+        {
+            frameworksPhase = existing
+        } else {
+            let phase = PBXFrameworksBuildPhase()
+            xcodeproj.pbxproj.add(object: phase)
+            target.buildPhases.append(phase)
+            frameworksPhase = phase
+        }
+
+        if frameworksPhase.files?.contains(where: { $0.file === product }) ?? false { return false }
+
+        let buildFile = PBXBuildFile(file: product)
+        xcodeproj.pbxproj.add(object: buildFile)
+
+        if frameworksPhase.files == nil {
+            frameworksPhase.files = [buildFile]
+        } else {
+            frameworksPhase.files?.append(buildFile)
+        }
+        return true
     }
 
     private func addCrossProjectDependency(
@@ -170,13 +248,13 @@ public struct AddDependencyTool: Sendable {
         dependencyName: String,
         projectRef: PBXFileReference,
         remoteTargetUUID: String,
+        linkBinary: Bool,
     ) throws -> CallTool.Result {
         // Duplicate detection for cross-project: match by portal fileReference + remote UUID.
         let dependencyExists = target.dependencies.contains { dep in
             guard let proxy = dep.targetProxy else { return false }
-            guard case let .fileReference(ref) = proxy.containerPortal, ref === projectRef else {
-                return false
-            }
+            guard case let .fileReference(ref) = proxy.containerPortal, ref === projectRef
+            else { return false }
             switch proxy.remoteGlobalID {
                 case let .string(uuid): return uuid == remoteTargetUUID
                 case let .object(obj): return obj.uuid == remoteTargetUUID
@@ -207,8 +285,11 @@ public struct AddDependencyTool: Sendable {
         try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
         let portalName = projectRef.path ?? projectRef.name ?? projectRef.uuid
+        let linkNote = linkBinary
+            ? " (link_binary is not supported for cross-project dependencies — use add_framework to link \(dependencyName).framework)"
+            : ""
         return .text(
-            "Successfully added cross-project dependency '\(dependencyName)' (in \(portalName)) to target '\(targetName)'",
+            "Successfully added cross-project dependency '\(dependencyName)' (in \(portalName)) to target '\(targetName)'\(linkNote)",
         )
     }
 

@@ -219,9 +219,9 @@ struct AddDependencyToolTests {
 
         // Discover sub-project target UUID for later assertion.
         let subProj = try XcodeProj(path: subPath)
-        let subTargetUUID = try #require(
-            subProj.pbxproj.nativeTargets.first { $0.name == "SubFramework" }
-        ).uuid
+        let subTargetUUID = try #require(subProj.pbxproj.nativeTargets.first {
+            $0.name == "SubFramework"
+        }).uuid
 
         // Wire a projectReferences entry into the consumer project.
         let consumer = try XcodeProj(path: consumerPath)
@@ -290,6 +290,107 @@ struct AddDependencyToolTests {
             return
         }
         #expect(againMessage.contains("already depends on"))
+    }
+
+    @Test
+    func `link_binary adds the framework to the Link Binary phase`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let addTargetTool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTargetTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("Framework"),
+            "product_type": Value.string("framework"),
+            "bundle_identifier": Value.string("com.test.framework"),
+        ])
+
+        let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "dependency_name": Value.string("Framework"),
+            "link_binary": Value.bool(true),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("linked Framework into Link Binary With Libraries"))
+
+        // The framework's product must be in App's Frameworks build phase.
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let app = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let framework = try #require(xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "Framework"
+        })
+        let phase = try #require(
+            app.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase)
+        let linked = phase.files?.contains { $0.file === framework.product } ?? false
+        #expect(linked)
+    }
+
+    @Test
+    func `link_binary links a dependency that was previously added without a link`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let addTargetTool = AddTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTargetTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("Framework"),
+            "product_type": Value.string("framework"),
+            "bundle_identifier": Value.string("com.test.framework"),
+        ])
+
+        let tool = AddDependencyTool(pathUtility: PathUtility(basePath: tempDir.path))
+        // First call: dependency edge only, no link.
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "dependency_name": Value.string("Framework"),
+        ])
+
+        // Second call with link_binary still mutates the project to add the missing link.
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "dependency_name": Value.string("Framework"),
+            "link_binary": Value.bool(true),
+        ])
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("already depends on"))
+        #expect(message.contains("linked Framework into Link Binary With Libraries"))
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let app = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let framework = try #require(xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "Framework"
+        })
+        let phase = try #require(
+            app.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase)
+        let linkedCount = phase.files?.count(where: { $0.file === framework.product }) ?? 0
+        #expect(linkedCount == 1)
     }
 
     @Test
