@@ -50,7 +50,7 @@ struct SetTestPlanOptionsToolTests {
         let tool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         let result = try tool.execute(arguments: [
             "test_plan_path": .string(path),
-            "diagnostic_collection_policy": .string("OnFailure"),
+            "diagnostic_collection_policy": .string("Never"),
             "user_attachment_lifetime": .string("keepNever"),
             "code_coverage": .bool(true),
         ])
@@ -63,7 +63,7 @@ struct SetTestPlanOptionsToolTests {
 
         let json = try TestPlanFile.read(from: path)
         let defaults = try #require(json["defaultOptions"] as? [String: Any])
-        #expect(defaults["diagnosticCollectionPolicy"] as? String == "OnFailure")
+        #expect(defaults["diagnosticCollectionPolicy"] as? String == "Never")
         #expect(defaults["userAttachmentLifetime"] as? String == "keepNever")
         #expect(defaults["codeCoverage"] as? Bool == true)
     }

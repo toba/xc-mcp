@@ -28,7 +28,7 @@ public struct SetTestPlanOptionsTool: Sendable {
         Option(
             param: "diagnostic_collection_policy",
             jsonKey: "diagnosticCollectionPolicy",
-            values: ["Always", "OnFailure", "Never"],
+            values: ["Always", "Never"],
         ),
         Option(
             param: "user_attachment_lifetime",
@@ -95,7 +95,7 @@ public struct SetTestPlanOptionsTool: Sendable {
                 + "(diagnosticCollectionPolicy, userAttachmentLifetime, uiTestingScreenshotsLifetime, "
                 + "codeCoverage, mainThreadCheckerEnabled). Only the keys you provide are written; "
                 + "others are left untouched. Use 'clear' to reset keys to the plan default. "
-                + "Lowering diagnosticCollectionPolicy to OnFailure and userAttachmentLifetime to "
+                + "Setting diagnosticCollectionPolicy to Never and userAttachmentLifetime to "
                 + "keepNever cuts per-test diagnostic overhead.",
             inputSchema: .object([
                 "type": .string("object"),

@@ -2,6 +2,10 @@
 
 ## Week of Jun 21 – Jun 27, 2026
 
+### 🐞 Fixes
+
+- Drop the unsupported `OnFailure` value from `set_test_plan_options`' `diagnostic_collection_policy` enum; Xcode 26.2 only accepts `Always` and `Never` for `XCTHDiagnosticCollectionPolicy`, and writing `OnFailure` made the test plan unreadable ("String representation of XCTHDiagnosticCollectionPolicy was not a supported value"); the tool description no longer recommends `OnFailure` and now suggests `Never` to cut per-test diagnostic overhead ([#395](https://github.com/toba/xc-mcp/issues/395))
+
 ### 🗜️ Tweaks
 
 - Add `set_test_plan_options` to `xc-project` (and monolithic `xc-mcp`); edits a `.xctestplan`'s per-configuration `options` block or plan-level `defaultOptions` for the keys the sibling `SetTestPlan*Tool` tools didn't reach — `diagnosticCollectionPolicy` (Always / OnFailure / Never), `userAttachmentLifetime` and `uiTestingScreenshotsLifetime` (keepNever / keepAlways / deleteOnSuccess), `codeCoverage`, and `mainThreadCheckerEnabled`; `configuration_name` targets a named `configurations[]` entry while omitting it edits `defaultOptions`, only the keys you pass are written (others left untouched), enum values are schema- and execute-validated, and a `clear` array resets keys to the plan default; reuses `Core/TestPlanFile.swift` and also backfills the missing `set_test_plan_target_parallelizable` entry in `ServerToolDirectory` ([#394](https://github.com/toba/xc-mcp/issues/394))
