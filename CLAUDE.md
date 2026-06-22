@@ -58,8 +58,8 @@ xc-mcp/
 │   │   ├── MCPErrorConvertible.swift
 │   │   ├── ProcessResult.swift
 │   │   └── XCMCPCore.swift
-│   ├── Tools/                       # 167 tools across 14 categories
-│   │   ├── Project/                 # 43 project manipulation tools
+│   ├── Tools/                       # 168 tools across 14 categories
+│   │   ├── Project/                 # 44 project manipulation tools
 │   │   ├── XCStrings/               # 24 localization/string catalog tools
 │   │   ├── Simulator/               # 18 simulator tools
 │   │   ├── Debug/                   # 19 LLDB debug tools
@@ -86,8 +86,8 @@ The project builds 8 executables — one monolithic server and 7 focused servers
 
 | Executable | Tools | Use case |
 |------------|-------|----------|
-| `xc-mcp` | 146 | Full server (~50K tokens) |
-| `xc-project` | 40 | Project file manipulation |
+| `xc-mcp` | 147 | Full server (~50K tokens) |
+| `xc-project` | 41 | Project file manipulation |
 | `xc-simulator` | 29 | Simulator + UI automation |
 | `xc-debug` | 31 | LLDB debugging + macOS UI automation |
 | `xc-build` | 21 | Build, test, run |

@@ -33,6 +33,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case setTestPlanSkippedTags = "set_test_plan_skipped_tags"
     case setTestPlanSkippedTests = "set_test_plan_skipped_tests"
     case setTestPlanTargetParallelizable = "set_test_plan_target_parallelizable"
+    case setTestPlanOptions = "set_test_plan_options"
     case addTestPlanToScheme = "add_test_plan_to_scheme"
     case removeTestPlanFromScheme = "remove_test_plan_from_scheme"
     case listTestPlans = "list_test_plans"
@@ -269,7 +270,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .validateScheme, .createTestPlan, .addTargetToTestPlan,
                  .removeTargetFromTestPlan, .setTestPlanTargetEnabled,
                  .setTestPlanSkippedTags, .setTestPlanSkippedTests,
-                 .setTestPlanTargetParallelizable,
+                 .setTestPlanTargetParallelizable, .setTestPlanOptions,
                  .addTestPlanToScheme, .removeTestPlanFromScheme,
                  .listTestPlans, .searchTestPlans, .setTestTargetApplication,
                  .renameGroup,
@@ -452,6 +453,7 @@ public struct XcodeMCPServer: Sendable {
         let setTestPlanSkippedTagsTool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let setTestPlanSkippedTestsTool = SetTestPlanSkippedTestsTool(pathUtility: pathUtility)
         let setTestPlanTargetParallelizableTool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
+        let setTestPlanOptionsTool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
         let removeTestPlanFromSchemeTool = RemoveTestPlanFromSchemeTool(pathUtility: pathUtility)
         let listTestPlansTool = ListTestPlansTool(pathUtility: pathUtility)
@@ -839,6 +841,7 @@ public struct XcodeMCPServer: Sendable {
             (.setTestPlanSkippedTags, setTestPlanSkippedTagsTool.tool()),
             (.setTestPlanSkippedTests, setTestPlanSkippedTestsTool.tool()),
             (.setTestPlanTargetParallelizable, setTestPlanTargetParallelizableTool.tool()),
+            (.setTestPlanOptions, setTestPlanOptionsTool.tool()),
             (.addTestPlanToScheme, addTestPlanToSchemeTool.tool()),
             (.removeTestPlanFromScheme, removeTestPlanFromSchemeTool.tool()),
             (.listTestPlans, listTestPlansTool.tool()),
@@ -1133,6 +1136,8 @@ public struct XcodeMCPServer: Sendable {
                     return try setTestPlanSkippedTestsTool.execute(arguments: arguments)
                 case .setTestPlanTargetParallelizable:
                     return try setTestPlanTargetParallelizableTool.execute(arguments: arguments)
+                case .setTestPlanOptions:
+                    return try setTestPlanOptionsTool.execute(arguments: arguments)
                 case .addTestPlanToScheme:
                     return try addTestPlanToSchemeTool.execute(arguments: arguments)
                 case .removeTestPlanFromScheme:

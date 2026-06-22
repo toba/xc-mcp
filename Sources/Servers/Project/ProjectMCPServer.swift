@@ -30,6 +30,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case setTestPlanSkippedTags = "set_test_plan_skipped_tags"
     case setTestPlanSkippedTests = "set_test_plan_skipped_tests"
     case setTestPlanTargetParallelizable = "set_test_plan_target_parallelizable"
+    case setTestPlanOptions = "set_test_plan_options"
     case addTestPlanToScheme = "add_test_plan_to_scheme"
     case removeTestPlanFromScheme = "remove_test_plan_from_scheme"
     case listTestPlans = "list_test_plans"
@@ -166,6 +167,7 @@ public struct ProjectMCPServer: Sendable {
         let setTestPlanSkippedTagsTool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let setTestPlanSkippedTestsTool = SetTestPlanSkippedTestsTool(pathUtility: pathUtility)
         let setTestPlanTargetParallelizableTool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
+        let setTestPlanOptionsTool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
         let removeTestPlanFromSchemeTool = RemoveTestPlanFromSchemeTool(pathUtility: pathUtility)
         let listTestPlansTool = ListTestPlansTool(pathUtility: pathUtility)
@@ -260,6 +262,7 @@ public struct ProjectMCPServer: Sendable {
                 setTestPlanSkippedTagsTool.tool(),
                 setTestPlanSkippedTestsTool.tool(),
                 setTestPlanTargetParallelizableTool.tool(),
+                setTestPlanOptionsTool.tool(),
                 addTestPlanToSchemeTool.tool(),
                 removeTestPlanFromSchemeTool.tool(),
                 listTestPlansTool.tool(),
@@ -378,6 +381,8 @@ public struct ProjectMCPServer: Sendable {
                     return try setTestPlanSkippedTestsTool.execute(arguments: arguments)
                 case .setTestPlanTargetParallelizable:
                     return try setTestPlanTargetParallelizableTool.execute(arguments: arguments)
+                case .setTestPlanOptions:
+                    return try setTestPlanOptionsTool.execute(arguments: arguments)
                 case .addTestPlanToScheme:
                     return try addTestPlanToSchemeTool.execute(arguments: arguments)
                 case .removeTestPlanFromScheme:
