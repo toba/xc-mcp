@@ -1,7 +1,7 @@
 import MCP
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 @testable import XCMCPTools
 
 struct SetTestPlanOptionsToolTests {
@@ -16,11 +16,8 @@ struct SetTestPlanOptionsToolTests {
     private func basePlan() -> [String: Any] {
         [
             "configurations": [
-                [
-                    "id": "DEFAULT",
-                    "name": "Default",
-                    "options": [:] as [String: Any],
-                ] as [String: Any],
+                ["id": "DEFAULT", "name": "Default", "options": [:] as [String: Any]]
+                    as [String: Any]
             ],
             "defaultOptions": [:] as [String: Any],
             "testTargets": [
@@ -29,8 +26,8 @@ struct SetTestPlanOptionsToolTests {
                         "containerPath": "container:App.xcodeproj",
                         "identifier": "ABC123",
                         "name": "AppTests",
-                    ] as [String: Any],
-                ] as [String: Any],
+                    ] as [String: Any]
+                ] as [String: Any]
             ],
             "version": 1,
         ]
@@ -175,9 +172,7 @@ struct SetTestPlanOptionsToolTests {
 
         let tool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "test_plan_path": .string(path),
-            ])
+            try tool.execute(arguments: ["test_plan_path": .string(path)])
         }
     }
 

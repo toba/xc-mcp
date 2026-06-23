@@ -195,7 +195,6 @@ public struct MoveGroupTool: Sendable {
         under root: PBXGroup,
     ) -> (target: PBXFileElement, parent: PBXGroup)? {
         let components = groupPath.split(separator: "/").map(String.init)
-        guard !components.isEmpty else { return nil }
 
         var parent: PBXGroup = root
 
@@ -206,7 +205,7 @@ public struct MoveGroupTool: Sendable {
             else { return nil }
             parent = next
         }
-        let last = components.last!
+        guard let last = components.last else { return nil }
         guard let match = parent.children.first(where: { child in
             if let g = child as? PBXGroup { return g.name == last || g.path == last }
             if let s = child as? PBXFileSystemSynchronizedRootGroup {

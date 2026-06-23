@@ -12,9 +12,7 @@ import Foundation
 public struct SetTestPlanOptionsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     /// A supported option: the JSON key plus its allowed enum values (empty for booleans).
     private struct Option {
@@ -45,7 +43,8 @@ public struct SetTestPlanOptionsTool: Sendable {
     /// Boolean-valued options, keyed by the tool parameter name.
     private static let boolOptions: [Option] = [
         Option(param: "code_coverage", jsonKey: "codeCoverage", values: []),
-        Option(param: "main_thread_checker_enabled", jsonKey: "mainThreadCheckerEnabled", values: []),
+        Option(
+            param: "main_thread_checker_enabled", jsonKey: "mainThreadCheckerEnabled", values: []),
     ]
 
     /// All settable options, plus a `param -> jsonKey` map used when resolving `clear`.
@@ -75,23 +74,25 @@ public struct SetTestPlanOptionsTool: Sendable {
         ]
 
         for option in Self.enumOptions {
-            properties[option.param] = .object([
-                "type": .string("string"),
-                "enum": .array(option.values.map { .string($0) }),
-                "description": .string("Sets '\(option.jsonKey)'."),
-            ])
+            properties[
+                option.param] = .object([
+                    "type": .string("string"),
+                    "enum": .array(option.values.map { .string($0) }),
+                    "description": .string("Sets '\(option.jsonKey)'."),
+                ])
         }
         for option in Self.boolOptions {
-            properties[option.param] = .object([
-                "type": .string("boolean"),
-                "description": .string("Sets '\(option.jsonKey)'."),
-            ])
+            properties[
+                option.param] = .object([
+                    "type": .string("boolean"),
+                    "description": .string("Sets '\(option.jsonKey)'."),
+                ])
         }
 
-        return Tool(
+        return .init(
             name: "set_test_plan_options",
             description:
-            "Edit a test plan's per-configuration 'options' block or plan-level 'defaultOptions' "
+                "Edit a test plan's per-configuration 'options' block or plan-level 'defaultOptions' "
                 + "(diagnosticCollectionPolicy, userAttachmentLifetime, uiTestingScreenshotsLifetime, "
                 + "codeCoverage, mainThreadCheckerEnabled). Only the keys you provide are written; "
                 + "others are left untouched. Use 'clear' to reset keys to the plan default. "
@@ -112,6 +113,7 @@ public struct SetTestPlanOptionsTool: Sendable {
 
         // Collect the keys to clear, validating each against a known option.
         var clearKeys: [String] = []
+
         for param in arguments.getStringArray("clear") {
             guard let option = Self.allOptions.first(where: { $0.param == param }) else {
                 throw MCPError.invalidParams(
@@ -124,6 +126,7 @@ public struct SetTestPlanOptionsTool: Sendable {
 
         // Collect the keys to set, validating enum values.
         var setValues: [(jsonKey: String, value: Any, display: String)] = []
+
         for option in Self.enumOptions {
             guard let value = arguments.getString(option.param) else { continue }
             guard option.values.contains(value) else {
@@ -139,9 +142,7 @@ public struct SetTestPlanOptionsTool: Sendable {
         }
 
         guard !setValues.isEmpty || !clearKeys.isEmpty else {
-            throw MCPError.invalidParams(
-                "Provide at least one option to set, or keys to clear.",
-            )
+            throw MCPError.invalidParams("Provide at least one option to set, or keys to clear.")
         }
 
         let resolvedPath = try pathUtility.resolvePath(from: testPlanPath)
@@ -156,23 +157,20 @@ public struct SetTestPlanOptionsTool: Sendable {
 
             try TestPlanFile.write(json, to: resolvedPath)
 
-            let scope = configurationName.map { "configuration '\($0)'" } ?? "plan-level defaultOptions"
+            let scope = configurationName.map { "configuration '\($0)'" }
+                ?? "plan-level defaultOptions"
             var changes: [String] = []
             if !setValues.isEmpty {
                 changes.append("set \(setValues.map(\.display).joined(separator: ", "))")
             }
-            if !clearKeys.isEmpty {
-                changes.append("cleared \(clearKeys.joined(separator: ", "))")
-            }
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Updated \(scope) in \(resolvedPath): \(changes.joined(separator: "; "))",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
+            if !clearKeys.isEmpty { changes.append("cleared \(clearKeys.joined(separator: ", "))") }
+            return CallTool.Result(content: [
+                .text(
+                    text: "Updated \(scope) in \(resolvedPath): \(changes.joined(separator: "; "))",
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ],)
         } catch let error as MCPError {
             throw error
         } catch {
@@ -199,11 +197,9 @@ public struct SetTestPlanOptionsTool: Sendable {
         guard var configurations = json["configurations"] as? [[String: Any]] else {
             throw MCPError.invalidParams("Test plan has no configurations")
         }
-        guard
-            let index = configurations.firstIndex(where: {
-                $0["name"] as? String == configurationName
-            })
-        else {
+        guard let index = configurations.firstIndex(where: {
+            $0["name"] as? String == configurationName
+        }) else {
             let names = configurations.compactMap { $0["name"] as? String }.joined(separator: ", ")
             throw MCPError.invalidParams(
                 "Configuration '\(configurationName)' not found in test plan."

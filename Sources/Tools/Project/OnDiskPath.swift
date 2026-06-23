@@ -41,10 +41,11 @@ enum OnDiskPath {
 
     /// Joins two relative path fragments and normalizes the result.
     static func join(_ base: String, _ leaf: String) -> String {
-        if base.isEmpty { return normalize(leaf) }
-        return leaf.isEmpty
-            ? normalize(base)
-            : normalize(base + "/" + leaf)
+        base.isEmpty
+            ? normalize(leaf)
+            : leaf.isEmpty
+                ? normalize(base)
+                : normalize(base + "/" + leaf)
     }
 
     /// Expresses `target` relative to `base` (both project-root-relative), using `..` segments when

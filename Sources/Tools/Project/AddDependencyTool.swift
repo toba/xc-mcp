@@ -68,13 +68,7 @@ public struct AddDependencyTool: Sendable {
             crossProjectPath = value
         }
 
-        let linkBinary: Bool
-
-        if case let .bool(value) = arguments["link_binary"] {
-            linkBinary = value
-        } else {
-            linkBinary = false
-        }
+        let linkBinary = arguments.getBool("link_binary")
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)

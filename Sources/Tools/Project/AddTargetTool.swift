@@ -103,13 +103,7 @@ public struct AddTargetTool: Sendable {
             parentGroupPath = nil
         }
 
-        let createGroup: Bool
-
-        if case let .bool(cg) = arguments["create_group"] {
-            createGroup = cg
-        } else {
-            createGroup = true
-        }
+        let createGroup = arguments.getBool("create_group", default: true)
 
         // Map product type string to PBXProductType
         let productType: PBXProductType
