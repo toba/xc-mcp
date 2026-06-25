@@ -6,8 +6,8 @@ import XCMCPTools
 
 /// All available tool names exposed by the MCP server.
 ///
-/// Each case maps to a specific MCP tool that can be called by clients.
-/// The raw values are the actual tool names used in the MCP protocol.
+/// Each case maps to a specific MCP tool that can be called by clients. The raw values are the
+/// actual tool names used in the MCP protocol.
 public enum ToolName: String, CaseIterable, Sendable {
     // Project tools
     case createXcodeproj = "create_xcodeproj"
@@ -264,109 +264,242 @@ public enum ToolName: String, CaseIterable, Sendable {
     public var workflow: Workflow {
         switch self {
             // Project
-            case .createXcodeproj, .listTargets, .listBuildConfigurations, .listFiles,
-                 .getBuildSettings, .addFile, .removeFile, .moveFile, .createGroup, .moveGroup,
-                 .addTarget, .removeTarget, .renameTarget, .renameScheme, .createScheme,
-                 .validateScheme, .createTestPlan, .addTargetToTestPlan,
-                 .removeTargetFromTestPlan, .setTestPlanTargetEnabled,
-                 .setTestPlanSkippedTags, .setTestPlanSkippedTests,
-                 .setTestPlanTargetParallelizable, .setTestPlanOptions,
-                 .addTestPlanToScheme, .removeTestPlanFromScheme,
-                 .listTestPlans, .searchTestPlans, .setTestTargetApplication,
+            case .createXcodeproj,
+                 .listTargets,
+                 .listBuildConfigurations,
+                 .listFiles,
+                 .getBuildSettings,
+                 .addFile,
+                 .removeFile,
+                 .moveFile,
+                 .createGroup,
+                 .moveGroup,
+                 .addTarget,
+                 .removeTarget,
+                 .renameTarget,
+                 .renameScheme,
+                 .createScheme,
+                 .validateScheme,
+                 .createTestPlan,
+                 .addTargetToTestPlan,
+                 .removeTargetFromTestPlan,
+                 .setTestPlanTargetEnabled,
+                 .setTestPlanSkippedTags,
+                 .setTestPlanSkippedTests,
+                 .setTestPlanTargetParallelizable,
+                 .setTestPlanOptions,
+                 .addTestPlanToScheme,
+                 .removeTestPlanFromScheme,
+                 .listTestPlans,
+                 .searchTestPlans,
+                 .setTestTargetApplication,
                  .renameGroup,
-                 .addDependency, .listDependencies, .removeDependency, .setBuildSetting,
+                 .addDependency,
+                 .listDependencies,
+                 .removeDependency,
+                 .setBuildSetting,
                  .removeBuildSetting,
-                 .addFramework, .removeFramework, .listFrameworksPhase,
+                 .addFramework,
+                 .removeFramework,
+                 .listFrameworksPhase,
                  .setFrameworkMergeAttribute,
-                 .dumpPIF, .whyTargetID,
-                 .findBuildSettings, .findLinkFlag, .listRunScriptPhases,
-                 .addBuildPhase, .duplicateTarget, .addSwiftPackage, .addPackageProduct,
-                 .listSwiftPackages, .removeSwiftPackage, .removePackageProduct,
-                 .listPackageProducts, .listGroups, .addSynchronizedFolder,
-                 .addTargetToSynchronizedFolder, .addSynchronizedFolderException,
+                 .dumpPIF,
+                 .whyTargetID,
+                 .findBuildSettings,
+                 .findLinkFlag,
+                 .listRunScriptPhases,
+                 .addBuildPhase,
+                 .duplicateTarget,
+                 .addSwiftPackage,
+                 .addPackageProduct,
+                 .listSwiftPackages,
+                 .removeSwiftPackage,
+                 .removePackageProduct,
+                 .listPackageProducts,
+                 .listGroups,
+                 .addSynchronizedFolder,
+                 .addTargetToSynchronizedFolder,
+                 .addSynchronizedFolderException,
                  .addSynchronizedFolderPhaseMembership,
-                 .addAppExtension, .removeAppExtension, .listCopyFilesPhases,
-                 .addCopyFilesPhase, .addToCopyFilesPhase, .removeCopyFilesPhase,
+                 .addAppExtension,
+                 .removeAppExtension,
+                 .listCopyFilesPhases,
+                 .addCopyFilesPhase,
+                 .addToCopyFilesPhase,
+                 .removeCopyFilesPhase,
                  .setCopyFilesPhaseSubpath,
                  .removeRunScriptPhase,
-                 .validateProject, .repairProject, .scaffoldModule,
-                 .listDocumentTypes, .manageDocumentType, .listTypeIdentifiers,
-                 .manageTypeIdentifier, .listURLTypes, .manageURLType:
-                return .project
+                 .validateProject,
+                 .repairProject,
+                 .scaffoldModule,
+                 .listDocumentTypes,
+                 .manageDocumentType,
+                 .listTypeIdentifiers,
+                 .manageTypeIdentifier,
+                 .listURLTypes,
+                 .manageURLType: .project
             // Session
-            case .setSessionDefaults, .showSessionDefaults, .clearSessionDefaults,
-                 .syncXcodeDefaults, .manageWorkflows:
-                return .session
+            case .setSessionDefaults,
+                 .showSessionDefaults,
+                 .clearSessionDefaults,
+                 .syncXcodeDefaults,
+                 .manageWorkflows: .session
             // Simulator
-            case .listSims, .bootSim, .openSim, .buildSim, .buildRunSim, .installAppSim,
-                 .launchAppSim, .stopAppSim, .getSimAppPath, .testSim, .recordSimVideo,
-                 .launchAppLogsSim, .previewCapture, .eraseSims, .setSimLocation,
-                 .resetSimLocation, .setSimAppearance, .simStatusbar,
-                 .toggleSoftwareKeyboard, .toggleHardwareKeyboard:
-                return .simulator
+            case .listSims,
+                 .bootSim,
+                 .openSim,
+                 .buildSim,
+                 .buildRunSim,
+                 .installAppSim,
+                 .launchAppSim,
+                 .stopAppSim,
+                 .getSimAppPath,
+                 .testSim,
+                 .recordSimVideo,
+                 .launchAppLogsSim,
+                 .previewCapture,
+                 .eraseSims,
+                 .setSimLocation,
+                 .resetSimLocation,
+                 .setSimAppearance,
+                 .simStatusbar,
+                 .toggleSoftwareKeyboard,
+                 .toggleHardwareKeyboard: .simulator
             // Device
-            case .listDevices, .buildDevice, .installAppDevice, .launchAppDevice,
-                 .stopAppDevice, .getDeviceAppPath, .testDevice,
-                 .deployDevice, .buildDeployDevice:
-                return .device
+            case .listDevices,
+                 .buildDevice,
+                 .installAppDevice,
+                 .launchAppDevice,
+                 .stopAppDevice,
+                 .getDeviceAppPath,
+                 .testDevice,
+                 .deployDevice,
+                 .buildDeployDevice: .device
             // macOS
-            case .buildMacOS, .archive, .exportArchive, .buildRunMacOS, .launchMacApp, .stopMacApp, .getMacAppPath,
-                 .testMacOS, .getTestAttachments, .getCoverageReport, .getFileCoverage,
-                 .getPerformanceMetrics, .setPerformanceBaseline, .showPerformanceBaselines,
-                 .startMacLogCap, .stopMacLogCap, .showMacLog, .showBuildLog, .screenshotMacWindow:
-                return .macos
+            case .buildMacOS,
+                 .archive,
+                 .exportArchive,
+                 .buildRunMacOS,
+                 .launchMacApp,
+                 .stopMacApp,
+                 .getMacAppPath,
+                 .testMacOS,
+                 .getTestAttachments,
+                 .getCoverageReport,
+                 .getFileCoverage,
+                 .getPerformanceMetrics,
+                 .setPerformanceBaseline,
+                 .showPerformanceBaselines,
+                 .startMacLogCap,
+                 .stopMacLogCap,
+                 .showMacLog,
+                 .showBuildLog,
+                 .screenshotMacWindow: .macos
             // Discovery
-            case .discoverProjs, .listSchemes, .showBuildSettings, .getAppBundleId,
-                 .getMacBundleId, .listTestPlanTargets, .swiftSymbols:
-                return .discovery
+            case .discoverProjs,
+                 .listSchemes,
+                 .showBuildSettings,
+                 .getAppBundleId,
+                 .getMacBundleId,
+                 .listTestPlanTargets,
+                 .swiftSymbols: .discovery
             // Logging
-            case .startSimLogCap, .stopSimLogCap, .startDeviceLogCap, .stopDeviceLogCap:
-                return .logging
+            case .startSimLogCap, .stopSimLogCap, .startDeviceLogCap, .stopDeviceLogCap: .logging
             // Debug
-            case .buildDebugMacOS, .debugAttachSim, .debugDetach, .debugBreakpointAdd,
-                 .debugBreakpointRemove, .debugContinue, .debugStack, .debugCaptureBacktrace,
+            case .buildDebugMacOS,
+                 .debugAttachSim,
+                 .debugDetach,
+                 .debugBreakpointAdd,
+                 .debugBreakpointRemove,
+                 .debugContinue,
+                 .debugStack,
+                 .debugCaptureBacktrace,
                  .debugVariables,
-                 .debugLLDBCommand, .debugEvaluate, .debugThreads, .debugWatchpoint,
-                 .debugStep, .debugMemory, .debugSymbolLookup, .debugViewHierarchy,
-                 .debugViewBorders, .debugProcessStatus,
-                 .memoryLeaks, .memoryHeap, .memoryVmmap, .memoryStringdups,
-                 .memoryMallocHistory, .symbolicateAddress:
-                return .debug
+                 .debugLLDBCommand,
+                 .debugEvaluate,
+                 .debugThreads,
+                 .debugWatchpoint,
+                 .debugStep,
+                 .debugMemory,
+                 .debugSymbolLookup,
+                 .debugViewHierarchy,
+                 .debugViewBorders,
+                 .debugProcessStatus,
+                 .memoryLeaks,
+                 .memoryHeap,
+                 .memoryVmmap,
+                 .memoryStringdups,
+                 .memoryMallocHistory,
+                 .symbolicateAddress: .debug
             // UI Automation
-            case .tap, .longPress, .swipe, .gesture, .typeText, .keyPress, .button,
-                 .screenshot:
-                return .uiAutomation
+            case .tap,
+                 .longPress,
+                 .swipe,
+                 .gesture,
+                 .typeText,
+                 .keyPress,
+                 .button,
+                 .screenshot: .uiAutomation
             // Interact
-            case .interactUITree, .interactClick, .interactSetValue, .interactGetValue,
-                 .interactMenu, .interactFocus, .interactKey, .interactFind:
-                return .interact
+            case .interactUITree,
+                 .interactClick,
+                 .interactSetValue,
+                 .interactGetValue,
+                 .interactMenu,
+                 .interactFocus,
+                 .interactKey,
+                 .interactFind: .interact
             // Swift Package
-            case .swiftPackageBuild, .swiftPackageTest, .swiftPackageRun, .swiftPackageClean,
-                 .swiftPackageList, .swiftPackageStop, .swiftFormat, .swiftLint,
-                 .swiftDiagnostics, .detectUnusedCode:
-                return .swiftPackage
+            case .swiftPackageBuild,
+                 .swiftPackageTest,
+                 .swiftPackageRun,
+                 .swiftPackageClean,
+                 .swiftPackageList,
+                 .swiftPackageStop,
+                 .swiftFormat,
+                 .swiftLint,
+                 .swiftDiagnostics,
+                 .detectUnusedCode: .swiftPackage
             // Instruments
-            case .xctraceRecord, .xctraceList, .xctraceExport,
-                 .sampleMacApp, .profileAppLaunch:
-                return .instruments
+            case .xctraceRecord,
+                 .xctraceList,
+                 .xctraceExport,
+                 .sampleMacApp,
+                 .profileAppLaunch: .instruments
             // Utility
-            case .clean, .doctor, .scaffoldIOS, .scaffoldMacOS, .searchCrashReports, .exportIcon,
-                 .createIcon, .readIcon, .addIconLayer, .removeIconLayer,
-                 .setIconFill, .setIconEffects, .setIconLayerPosition, .setIconAppearances,
-                 .diagnostics, .checkOutputFileMap, .extractCrashTraces,
-                 .listBuildPhaseStatus, .readSerializedDiagnostics,
-                 .diffBuildSettings, .showBuildDependencyGraph,
-                 .versionManagement, .notarize, .validateAssetCatalog,
-                 .openInXcode:
-                return .utility
+            case .clean,
+                 .doctor,
+                 .scaffoldIOS,
+                 .scaffoldMacOS,
+                 .searchCrashReports,
+                 .exportIcon,
+                 .createIcon,
+                 .readIcon,
+                 .addIconLayer,
+                 .removeIconLayer,
+                 .setIconFill,
+                 .setIconEffects,
+                 .setIconLayerPosition,
+                 .setIconAppearances,
+                 .diagnostics,
+                 .checkOutputFileMap,
+                 .extractCrashTraces,
+                 .listBuildPhaseStatus,
+                 .readSerializedDiagnostics,
+                 .diffBuildSettings,
+                 .showBuildDependencyGraph,
+                 .versionManagement,
+                 .notarize,
+                 .validateAssetCatalog,
+                 .openInXcode: .utility
         }
     }
 }
 
 /// The main MCP server for Xcode development operations.
 ///
-/// `XcodeMCPServer` exposes a comprehensive set of tools for Xcode project manipulation,
-/// building, testing, and device management through the Model Context Protocol (MCP).
+/// `XcodeMCPServer` exposes a comprehensive set of tools for Xcode project manipulation, building,
+/// testing, and device management through the Model Context Protocol (MCP).
 ///
 /// ## Overview
 ///
@@ -398,8 +531,8 @@ public struct XcodeMCPServer: Sendable {
     /// Creates a new Xcode MCP server instance.
     ///
     /// - Parameters:
-    ///   - basePath: The root directory for file operations. All paths are validated
-    ///     to be within this directory for security.
+    ///   - basePath: The root directory for file operations. All paths are validated to be within
+    ///     this directory for security.
     ///   - logger: Logger instance for diagnostic output.
     public init(basePath: String, logger: Logger) {
         self.basePath = basePath
@@ -409,8 +542,8 @@ public struct XcodeMCPServer: Sendable {
 
     /// Starts the MCP server and begins processing requests.
     ///
-    /// This method initializes all tool handlers and starts the server using
-    /// stdio transport. It blocks until the server completes or encounters an error.
+    /// This method initializes all tool handlers and starts the server using stdio transport. It
+    /// blocks until the server completes or encounters an error.
     ///
     /// - Throws: An error if the server fails to start or encounters a fatal error.
     public func run() async throws {
@@ -452,7 +585,8 @@ public struct XcodeMCPServer: Sendable {
         let setTestPlanTargetEnabledTool = SetTestPlanTargetEnabledTool(pathUtility: pathUtility)
         let setTestPlanSkippedTagsTool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let setTestPlanSkippedTestsTool = SetTestPlanSkippedTestsTool(pathUtility: pathUtility)
-        let setTestPlanTargetParallelizableTool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
+        let setTestPlanTargetParallelizableTool = SetTestPlanTargetParallelizableTool(
+            pathUtility: pathUtility)
         let setTestPlanOptionsTool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
         let removeTestPlanFromSchemeTool = RemoveTestPlanFromSchemeTool(pathUtility: pathUtility)
@@ -468,7 +602,8 @@ public struct XcodeMCPServer: Sendable {
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
         let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
         let listFrameworksPhaseTool = ListFrameworksPhaseTool(pathUtility: pathUtility)
-        let setFrameworkMergeAttributeTool = SetFrameworkMergeAttributeTool(pathUtility: pathUtility)
+        let setFrameworkMergeAttributeTool = SetFrameworkMergeAttributeTool(
+            pathUtility: pathUtility)
         let dumpPIFTool = DumpPIFTool(pathUtility: pathUtility)
         let whyTargetIDTool = WhyTargetIdTool(pathUtility: pathUtility)
         let findBuildSettingsTool = FindBuildSettingsTool(pathUtility: pathUtility)
@@ -609,9 +744,7 @@ public struct XcodeMCPServer: Sendable {
         let getCoverageReportTool = GetCoverageReportTool()
         let getFileCoverageTool = GetFileCoverageTool()
         let getPerformanceMetricsTool = GetPerformanceMetricsTool()
-        let setPerformanceBaselineTool = SetPerformanceBaselineTool(
-            sessionManager: sessionManager,
-        )
+        let setPerformanceBaselineTool = SetPerformanceBaselineTool(sessionManager: sessionManager)
         let showPerformanceBaselinesTool = ShowPerformanceBaselinesTool(
             sessionManager: sessionManager,
         )
@@ -708,16 +841,15 @@ public struct XcodeMCPServer: Sendable {
         let memoryMallocHistoryTool = MemoryMallocHistoryTool()
         let symbolicateAddressTool = SymbolicateAddressTool()
 
-        // Create UI automation tools
-        let tapTool = TapTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
-        let longPressTool = LongPressTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager,
-        )
-        let swipeTool = SwipeTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
-        let gestureTool = GestureTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
-        let typeTextTool = TypeTextTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
-        let keyPressTool = KeyPressTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
-        let buttonTool = ButtonTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
+        // Create UI automation tools (host-side input drives the on-screen Simulator window)
+        let simulatorUIInput = SimulatorUIInput(simctlRunner: simctlRunner)
+        let tapTool = TapTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let longPressTool = LongPressTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let swipeTool = SwipeTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let gestureTool = GestureTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let typeTextTool = TypeTextTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let keyPressTool = KeyPressTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let buttonTool = ButtonTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
         let screenshotTool = ScreenshotTool(
             simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
@@ -1063,9 +1195,7 @@ public struct XcodeMCPServer: Sendable {
                 // manage_workflows is always visible
                 if name == .manageWorkflows {
                     tools.append(tool)
-                } else if await workflowManager.isEnabled(name.workflow) {
-                    tools.append(tool)
-                }
+                } else if await workflowManager.isEnabled(name.workflow) { tools.append(tool) }
             }
             return ListTools.Result(tools: tools)
         }
@@ -1079,6 +1209,7 @@ public struct XcodeMCPServer: Sendable {
             // Check workflow is enabled (manage_workflows is always allowed)
             if toolName != .manageWorkflows {
                 let enabled = await workflowManager.isEnabled(toolName.workflow)
+
                 if !enabled {
                     throw MCPError.invalidRequest(
                         "Tool '\(params.name)' is disabled. Its workflow '\(toolName.workflow.rawValue)' is currently disabled. Use manage_workflows to re-enable it.",
@@ -1090,40 +1221,25 @@ public struct XcodeMCPServer: Sendable {
 
             switch toolName {
                 // Project tools
-                case .createXcodeproj:
-                    return try createXcodeprojTool.execute(arguments: arguments)
-                case .listTargets:
-                    return try listTargetsTool.execute(arguments: arguments)
+                case .createXcodeproj: return try createXcodeprojTool.execute(arguments: arguments)
+                case .listTargets: return try listTargetsTool.execute(arguments: arguments)
                 case .listBuildConfigurations:
                     return try listBuildConfigurationsTool.execute(arguments: arguments)
-                case .listFiles:
-                    return try listFilesTool.execute(arguments: arguments)
+                case .listFiles: return try listFilesTool.execute(arguments: arguments)
                 case .getBuildSettings:
                     return try getBuildSettingsTool.execute(arguments: arguments)
-                case .addFile:
-                    return try addFileTool.execute(arguments: arguments)
-                case .removeFile:
-                    return try removeFileTool.execute(arguments: arguments)
-                case .moveFile:
-                    return try moveFileTool.execute(arguments: arguments)
-                case .createGroup:
-                    return try createGroupTool.execute(arguments: arguments)
-                case .moveGroup:
-                    return try moveGroupTool.execute(arguments: arguments)
-                case .addTarget:
-                    return try addTargetTool.execute(arguments: arguments)
-                case .removeTarget:
-                    return try removeTargetTool.execute(arguments: arguments)
-                case .renameTarget:
-                    return try renameTargetTool.execute(arguments: arguments)
-                case .renameScheme:
-                    return try renameSchemeTool.execute(arguments: arguments)
-                case .createScheme:
-                    return try createSchemeTool.execute(arguments: arguments)
-                case .validateScheme:
-                    return try validateSchemeTool.execute(arguments: arguments)
-                case .createTestPlan:
-                    return try createTestPlanTool.execute(arguments: arguments)
+                case .addFile: return try addFileTool.execute(arguments: arguments)
+                case .removeFile: return try removeFileTool.execute(arguments: arguments)
+                case .moveFile: return try moveFileTool.execute(arguments: arguments)
+                case .createGroup: return try createGroupTool.execute(arguments: arguments)
+                case .moveGroup: return try moveGroupTool.execute(arguments: arguments)
+                case .addTarget: return try addTargetTool.execute(arguments: arguments)
+                case .removeTarget: return try removeTargetTool.execute(arguments: arguments)
+                case .renameTarget: return try renameTargetTool.execute(arguments: arguments)
+                case .renameScheme: return try renameSchemeTool.execute(arguments: arguments)
+                case .createScheme: return try createSchemeTool.execute(arguments: arguments)
+                case .validateScheme: return try validateSchemeTool.execute(arguments: arguments)
+                case .createTestPlan: return try createTestPlanTool.execute(arguments: arguments)
                 case .addTargetToTestPlan:
                     return try addTargetToTestPlanTool.execute(arguments: arguments)
                 case .removeTargetFromTestPlan:
@@ -1142,48 +1258,35 @@ public struct XcodeMCPServer: Sendable {
                     return try addTestPlanToSchemeTool.execute(arguments: arguments)
                 case .removeTestPlanFromScheme:
                     return try removeTestPlanFromSchemeTool.execute(arguments: arguments)
-                case .listTestPlans:
-                    return try listTestPlansTool.execute(arguments: arguments)
-                case .searchTestPlans:
-                    return try searchTestPlansTool.execute(arguments: arguments)
+                case .listTestPlans: return try listTestPlansTool.execute(arguments: arguments)
+                case .searchTestPlans: return try searchTestPlansTool.execute(arguments: arguments)
                 case .setTestTargetApplication:
                     return try setTestTargetApplicationTool.execute(arguments: arguments)
-                case .renameGroup:
-                    return try renameGroupTool.execute(arguments: arguments)
-                case .addDependency:
-                    return try addDependencyTool.execute(arguments: arguments)
+                case .renameGroup: return try renameGroupTool.execute(arguments: arguments)
+                case .addDependency: return try addDependencyTool.execute(arguments: arguments)
                 case .listDependencies:
                     return try listDependenciesTool.execute(arguments: arguments)
                 case .removeDependency:
                     return try removeDependencyTool.execute(arguments: arguments)
-                case .setBuildSetting:
-                    return try setBuildSettingTool.execute(arguments: arguments)
+                case .setBuildSetting: return try setBuildSettingTool.execute(arguments: arguments)
                 case .removeBuildSetting:
                     return try removeBuildSettingTool.execute(arguments: arguments)
-                case .addFramework:
-                    return try addFrameworkTool.execute(arguments: arguments)
-                case .removeFramework:
-                    return try removeFrameworkTool.execute(arguments: arguments)
+                case .addFramework: return try addFrameworkTool.execute(arguments: arguments)
+                case .removeFramework: return try removeFrameworkTool.execute(arguments: arguments)
                 case .listFrameworksPhase:
                     return try listFrameworksPhaseTool.execute(arguments: arguments)
                 case .setFrameworkMergeAttribute:
                     return try setFrameworkMergeAttributeTool.execute(arguments: arguments)
-                case .dumpPIF:
-                    return try dumpPIFTool.execute(arguments: arguments)
-                case .whyTargetID:
-                    return try whyTargetIDTool.execute(arguments: arguments)
+                case .dumpPIF: return try dumpPIFTool.execute(arguments: arguments)
+                case .whyTargetID: return try whyTargetIDTool.execute(arguments: arguments)
                 case .findBuildSettings:
                     return try findBuildSettingsTool.execute(arguments: arguments)
-                case .findLinkFlag:
-                    return try findLinkFlagTool.execute(arguments: arguments)
+                case .findLinkFlag: return try findLinkFlagTool.execute(arguments: arguments)
                 case .listRunScriptPhases:
                     return try listRunScriptPhasesTool.execute(arguments: arguments)
-                case .addBuildPhase:
-                    return try addBuildPhaseTool.execute(arguments: arguments)
-                case .duplicateTarget:
-                    return try duplicateTargetTool.execute(arguments: arguments)
-                case .addSwiftPackage:
-                    return try addSwiftPackageTool.execute(arguments: arguments)
+                case .addBuildPhase: return try addBuildPhaseTool.execute(arguments: arguments)
+                case .duplicateTarget: return try duplicateTargetTool.execute(arguments: arguments)
+                case .addSwiftPackage: return try addSwiftPackageTool.execute(arguments: arguments)
                 case .addPackageProduct:
                     return try addPackageProductTool.execute(arguments: arguments)
                 case .listSwiftPackages:
@@ -1194,8 +1297,7 @@ public struct XcodeMCPServer: Sendable {
                     return try removePackageProductTool.execute(arguments: arguments)
                 case .listPackageProducts:
                     return try listPackageProductsTool.execute(arguments: arguments)
-                case .listGroups:
-                    return try listGroupsTool.execute(arguments: arguments)
+                case .listGroups: return try listGroupsTool.execute(arguments: arguments)
                 case .addSynchronizedFolder:
                     return try addSynchronizedFolderTool.execute(arguments: arguments)
                 case .addTargetToSynchronizedFolder:
@@ -1206,14 +1308,12 @@ public struct XcodeMCPServer: Sendable {
                     return try addSynchronizedFolderPhaseMembershipTool.execute(
                         arguments: arguments,
                     )
-                case .addAppExtension:
-                    return try addAppExtensionTool.execute(arguments: arguments)
+                case .addAppExtension: return try addAppExtensionTool.execute(arguments: arguments)
                 case .removeAppExtension:
                     return try removeAppExtensionTool.execute(arguments: arguments)
                 case .listCopyFilesPhases:
                     return try listCopyFilesPhases.execute(arguments: arguments)
-                case .addCopyFilesPhase:
-                    return try addCopyFilesPhase.execute(arguments: arguments)
+                case .addCopyFilesPhase: return try addCopyFilesPhase.execute(arguments: arguments)
                 case .addToCopyFilesPhase:
                     return try addToCopyFilesPhase.execute(arguments: arguments)
                 case .removeCopyFilesPhase:
@@ -1222,12 +1322,9 @@ public struct XcodeMCPServer: Sendable {
                     return try setCopyFilesPhaseSubpath.execute(arguments: arguments)
                 case .removeRunScriptPhase:
                     return try removeRunScriptPhase.execute(arguments: arguments)
-                case .validateProject:
-                    return try validateProjectTool.execute(arguments: arguments)
-                case .repairProject:
-                    return try repairProjectTool.execute(arguments: arguments)
-                case .scaffoldModule:
-                    return try scaffoldModuleTool.execute(arguments: arguments)
+                case .validateProject: return try validateProjectTool.execute(arguments: arguments)
+                case .repairProject: return try repairProjectTool.execute(arguments: arguments)
+                case .scaffoldModule: return try scaffoldModuleTool.execute(arguments: arguments)
                 case .listDocumentTypes:
                     return try listDocumentTypesTool.execute(arguments: arguments)
                 case .manageDocumentType:
@@ -1236,10 +1333,8 @@ public struct XcodeMCPServer: Sendable {
                     return try listTypeIdentifiersTool.execute(arguments: arguments)
                 case .manageTypeIdentifier:
                     return try manageTypeIdentifierTool.execute(arguments: arguments)
-                case .listURLTypes:
-                    return try listURLTypesTool.execute(arguments: arguments)
-                case .manageURLType:
-                    return try manageURLTypeTool.execute(arguments: arguments)
+                case .listURLTypes: return try listURLTypesTool.execute(arguments: arguments)
+                case .manageURLType: return try manageURLTypeTool.execute(arguments: arguments)
                 // Session tools
                 case .setSessionDefaults:
                     return try await setSessionDefaultsTool.execute(arguments: arguments)
@@ -1253,22 +1348,16 @@ public struct XcodeMCPServer: Sendable {
                     let (result, changed) = try await manageWorkflowsTool.execute(
                         arguments: arguments,
                     )
+
                     if changed {
-                        try await server.notify(
-                            Message<ToolListChangedNotification>(
-                                method: ToolListChangedNotification.name,
-                                params: Empty(),
-                            ),
-                        )
+                        try await server.notify(Message<ToolListChangedNotification>(
+                            method: ToolListChangedNotification.name, params: Empty()))
                     }
                     return result
                 // Simulator tools
-                case .listSims:
-                    return try await listSimsTool.execute(arguments: arguments)
-                case .bootSim:
-                    return try await bootSimTool.execute(arguments: arguments)
-                case .openSim:
-                    return try await openSimTool.execute(arguments: arguments)
+                case .listSims: return try await listSimsTool.execute(arguments: arguments)
+                case .bootSim: return try await bootSimTool.execute(arguments: arguments)
+                case .openSim: return try await openSimTool.execute(arguments: arguments)
                 case .buildSim:
                     if let token = params._meta?.progressToken {
                         let reporter = ProgressReporter(token: token) { msg in
@@ -1295,10 +1384,8 @@ public struct XcodeMCPServer: Sendable {
                     return try await buildRunSimTool.execute(arguments: arguments)
                 case .installAppSim:
                     return try await installAppSimTool.execute(arguments: arguments)
-                case .launchAppSim:
-                    return try await launchAppSimTool.execute(arguments: arguments)
-                case .stopAppSim:
-                    return try await stopAppSimTool.execute(arguments: arguments)
+                case .launchAppSim: return try await launchAppSimTool.execute(arguments: arguments)
+                case .stopAppSim: return try await stopAppSimTool.execute(arguments: arguments)
                 case .getSimAppPath:
                     return try await getSimAppPathTool.execute(arguments: arguments)
                 case .testSim:
@@ -1320,10 +1407,8 @@ public struct XcodeMCPServer: Sendable {
                 case .previewCapture:
                     return try await previewCaptureTool.execute(arguments: arguments)
                 // Device tools
-                case .listDevices:
-                    return try await listDevicesTool.execute(arguments: arguments)
-                case .buildDevice:
-                    return try await buildDeviceTool.execute(arguments: arguments)
+                case .listDevices: return try await listDevicesTool.execute(arguments: arguments)
+                case .buildDevice: return try await buildDeviceTool.execute(arguments: arguments)
                 case .installAppDevice:
                     return try await installAppDeviceTool.execute(arguments: arguments)
                 case .launchAppDevice:
@@ -1344,23 +1429,18 @@ public struct XcodeMCPServer: Sendable {
                         }
                     }
                     return try await testDeviceTool.execute(arguments: arguments)
-                case .deployDevice:
-                    return try await deployDeviceTool.execute(arguments: arguments)
+                case .deployDevice: return try await deployDeviceTool.execute(arguments: arguments)
                 case .buildDeployDevice:
                     return try await buildDeployDeviceTool.execute(arguments: arguments)
                 // macOS tools
-                case .buildMacOS:
-                    return try await buildMacOSTool.execute(arguments: arguments)
-                case .archive:
-                    return try await archiveTool.execute(arguments: arguments)
+                case .buildMacOS: return try await buildMacOSTool.execute(arguments: arguments)
+                case .archive: return try await archiveTool.execute(arguments: arguments)
                 case .exportArchive:
                     return try await exportArchiveTool.execute(arguments: arguments)
                 case .buildRunMacOS:
                     return try await buildRunMacOSTool.execute(arguments: arguments)
-                case .launchMacApp:
-                    return try await launchMacAppTool.execute(arguments: arguments)
-                case .stopMacApp:
-                    return try await stopMacAppTool.execute(arguments: arguments)
+                case .launchMacApp: return try await launchMacAppTool.execute(arguments: arguments)
+                case .stopMacApp: return try await stopMacAppTool.execute(arguments: arguments)
                 case .getMacAppPath:
                     return try await getMacAppPathTool.execute(arguments: arguments)
                 case .testMacOS:
@@ -1389,19 +1469,14 @@ public struct XcodeMCPServer: Sendable {
                     return try await showPerformanceBaselinesTool.execute(arguments: arguments)
                 case .startMacLogCap:
                     return try await startMacLogCapTool.execute(arguments: arguments)
-                case .stopMacLogCap:
-                    return await stopMacLogCapTool.execute(arguments: arguments)
-                case .showMacLog:
-                    return try await showMacLogTool.execute(arguments: arguments)
-                case .showBuildLog:
-                    return try await showBuildLogTool.execute(arguments: arguments)
+                case .stopMacLogCap: return await stopMacLogCapTool.execute(arguments: arguments)
+                case .showMacLog: return try await showMacLogTool.execute(arguments: arguments)
+                case .showBuildLog: return try await showBuildLogTool.execute(arguments: arguments)
                 case .screenshotMacWindow:
                     return try await screenshotMacWindowTool.execute(arguments: arguments)
                 // Discovery tools
-                case .discoverProjs:
-                    return try discoverProjsTool.execute(arguments: arguments)
-                case .listSchemes:
-                    return try await listSchemesTool.execute(arguments: arguments)
+                case .discoverProjs: return try discoverProjsTool.execute(arguments: arguments)
+                case .listSchemes: return try await listSchemesTool.execute(arguments: arguments)
                 case .showBuildSettings:
                     return try await showBuildSettingsTool.execute(arguments: arguments)
                 case .getAppBundleId:
@@ -1410,8 +1485,7 @@ public struct XcodeMCPServer: Sendable {
                     return try await getMacBundleIdTool.execute(arguments: arguments)
                 case .listTestPlanTargets:
                     return try await listTestPlanTargetsTool.execute(arguments: arguments)
-                case .swiftSymbols:
-                    return try await swiftSymbolsTool.execute(arguments: arguments)
+                case .swiftSymbols: return try await swiftSymbolsTool.execute(arguments: arguments)
                 // Logging tools
                 case .startSimLogCap:
                     return try await startSimLogCapTool.execute(arguments: arguments)
@@ -1422,16 +1496,14 @@ public struct XcodeMCPServer: Sendable {
                 case .stopDeviceLogCap:
                     return try await stopDeviceLogCapTool.execute(arguments: arguments)
                 // Extended simulator tools
-                case .eraseSims:
-                    return try await eraseSimTool.execute(arguments: arguments)
+                case .eraseSims: return try await eraseSimTool.execute(arguments: arguments)
                 case .setSimLocation:
                     return try await setSimLocationTool.execute(arguments: arguments)
                 case .resetSimLocation:
                     return try await resetSimLocationTool.execute(arguments: arguments)
                 case .setSimAppearance:
                     return try await setSimAppearanceTool.execute(arguments: arguments)
-                case .simStatusbar:
-                    return try await simStatusBarTool.execute(arguments: arguments)
+                case .simStatusbar: return try await simStatusBarTool.execute(arguments: arguments)
                 case .toggleSoftwareKeyboard:
                     return try await toggleSoftwareKeyboardTool.execute(arguments: arguments)
                 case .toggleHardwareKeyboard:
@@ -1451,16 +1523,14 @@ public struct XcodeMCPServer: Sendable {
                     return try await buildDebugMacOSTool.execute(arguments: arguments)
                 case .debugAttachSim:
                     return try await debugAttachSimTool.execute(arguments: arguments)
-                case .debugDetach:
-                    return try await debugDetachTool.execute(arguments: arguments)
+                case .debugDetach: return try await debugDetachTool.execute(arguments: arguments)
                 case .debugBreakpointAdd:
                     return try await debugBreakpointAddTool.execute(arguments: arguments)
                 case .debugBreakpointRemove:
                     return try await debugBreakpointRemoveTool.execute(arguments: arguments)
                 case .debugContinue:
                     return try await debugContinueTool.execute(arguments: arguments)
-                case .debugStack:
-                    return try await debugStackTool.execute(arguments: arguments)
+                case .debugStack: return try await debugStackTool.execute(arguments: arguments)
                 case .debugCaptureBacktrace:
                     return try await debugCaptureBacktraceTool.execute(arguments: arguments)
                 case .debugVariables:
@@ -1475,14 +1545,11 @@ public struct XcodeMCPServer: Sendable {
                         ) { msg in try await server.notify(msg) }
                     }
                     return try await debugEvaluateTool.execute(arguments: arguments)
-                case .debugThreads:
-                    return try await debugThreadsTool.execute(arguments: arguments)
+                case .debugThreads: return try await debugThreadsTool.execute(arguments: arguments)
                 case .debugWatchpoint:
                     return try await debugWatchpointTool.execute(arguments: arguments)
-                case .debugStep:
-                    return try await debugStepTool.execute(arguments: arguments)
-                case .debugMemory:
-                    return try await debugMemoryTool.execute(arguments: arguments)
+                case .debugStep: return try await debugStepTool.execute(arguments: arguments)
+                case .debugMemory: return try await debugMemoryTool.execute(arguments: arguments)
                 case .debugSymbolLookup:
                     return try await debugSymbolLookupTool.execute(arguments: arguments)
                 case .debugViewHierarchy:
@@ -1492,12 +1559,9 @@ public struct XcodeMCPServer: Sendable {
                 case .debugProcessStatus:
                     return try await debugProcessStatusTool.execute(arguments: arguments)
                 // Memory diagnostic tools
-                case .memoryLeaks:
-                    return try await memoryLeaksTool.execute(arguments: arguments)
-                case .memoryHeap:
-                    return try await memoryHeapTool.execute(arguments: arguments)
-                case .memoryVmmap:
-                    return try await memoryVmmapTool.execute(arguments: arguments)
+                case .memoryLeaks: return try await memoryLeaksTool.execute(arguments: arguments)
+                case .memoryHeap: return try await memoryHeapTool.execute(arguments: arguments)
+                case .memoryVmmap: return try await memoryVmmapTool.execute(arguments: arguments)
                 case .memoryStringdups:
                     return try await memoryStringDupsTool.execute(arguments: arguments)
                 case .memoryMallocHistory:
@@ -1505,22 +1569,14 @@ public struct XcodeMCPServer: Sendable {
                 case .symbolicateAddress:
                     return try await symbolicateAddressTool.execute(arguments: arguments)
                 // UI Automation tools
-                case .tap:
-                    return try await tapTool.execute(arguments: arguments)
-                case .longPress:
-                    return try await longPressTool.execute(arguments: arguments)
-                case .swipe:
-                    return try await swipeTool.execute(arguments: arguments)
-                case .gesture:
-                    return try await gestureTool.execute(arguments: arguments)
-                case .typeText:
-                    return try await typeTextTool.execute(arguments: arguments)
-                case .keyPress:
-                    return try await keyPressTool.execute(arguments: arguments)
-                case .button:
-                    return try await buttonTool.execute(arguments: arguments)
-                case .screenshot:
-                    return try await screenshotTool.execute(arguments: arguments)
+                case .tap: return try await tapTool.execute(arguments: arguments)
+                case .longPress: return try await longPressTool.execute(arguments: arguments)
+                case .swipe: return try await swipeTool.execute(arguments: arguments)
+                case .gesture: return try await gestureTool.execute(arguments: arguments)
+                case .typeText: return try await typeTextTool.execute(arguments: arguments)
+                case .keyPress: return try await keyPressTool.execute(arguments: arguments)
+                case .button: return try await buttonTool.execute(arguments: arguments)
+                case .screenshot: return try await screenshotTool.execute(arguments: arguments)
                 // Swift Package Manager tools
                 case .swiftPackageBuild:
                     if let token = params._meta?.progressToken {
@@ -1554,10 +1610,8 @@ public struct XcodeMCPServer: Sendable {
                     return try await swiftPackageListTool.execute(arguments: arguments)
                 case .swiftPackageStop:
                     return try await swiftPackageStopTool.execute(arguments: arguments)
-                case .swiftFormat:
-                    return try await swiftFormatTool.execute(arguments: arguments)
-                case .swiftLint:
-                    return try await swiftLintTool.execute(arguments: arguments)
+                case .swiftFormat: return try await swiftFormatTool.execute(arguments: arguments)
+                case .swiftLint: return try await swiftLintTool.execute(arguments: arguments)
                 case .swiftDiagnostics:
                     return try await swiftDiagnosticsTool.execute(arguments: arguments)
                 case .detectUnusedCode:
@@ -1571,56 +1625,39 @@ public struct XcodeMCPServer: Sendable {
                     return try await interactSetValueTool.execute(arguments: arguments)
                 case .interactGetValue:
                     return try await interactGetValueTool.execute(arguments: arguments)
-                case .interactMenu:
-                    return try await interactMenuTool.execute(arguments: arguments)
+                case .interactMenu: return try await interactMenuTool.execute(arguments: arguments)
                 case .interactFocus:
                     return try await interactFocusTool.execute(arguments: arguments)
-                case .interactKey:
-                    return try await interactKeyTool.execute(arguments: arguments)
-                case .interactFind:
-                    return try await interactFindTool.execute(arguments: arguments)
+                case .interactKey: return try await interactKeyTool.execute(arguments: arguments)
+                case .interactFind: return try await interactFindTool.execute(arguments: arguments)
                 // Instruments tools
                 case .xctraceRecord:
                     return try await xctraceRecordTool.execute(arguments: arguments)
-                case .xctraceList:
-                    return try await xctraceListTool.execute(arguments: arguments)
+                case .xctraceList: return try await xctraceListTool.execute(arguments: arguments)
                 case .xctraceExport:
                     return try await xctraceExportTool.execute(arguments: arguments)
-                case .sampleMacApp:
-                    return try await sampleMacAppTool.execute(arguments: arguments)
+                case .sampleMacApp: return try await sampleMacAppTool.execute(arguments: arguments)
                 case .profileAppLaunch:
                     return try await profileAppLaunchTool.execute(arguments: arguments)
                 // Utility tools
-                case .clean:
-                    return try await cleanTool.execute(arguments: arguments)
-                case .doctor:
-                    return await doctorTool.execute(arguments: arguments)
-                case .scaffoldIOS:
-                    return try scaffoldIOSTool.execute(arguments: arguments)
-                case .scaffoldMacOS:
-                    return try scaffoldMacOSTool.execute(arguments: arguments)
+                case .clean: return try await cleanTool.execute(arguments: arguments)
+                case .doctor: return await doctorTool.execute(arguments: arguments)
+                case .scaffoldIOS: return try scaffoldIOSTool.execute(arguments: arguments)
+                case .scaffoldMacOS: return try scaffoldMacOSTool.execute(arguments: arguments)
                 case .searchCrashReports:
                     return searchCrashReportsTool.execute(arguments: arguments)
-                case .exportIcon:
-                    return try await exportIconTool.execute(arguments: arguments)
-                case .createIcon:
-                    return try createIconTool.execute(arguments: arguments)
-                case .readIcon:
-                    return try readIconTool.execute(arguments: arguments)
-                case .addIconLayer:
-                    return try addIconLayerTool.execute(arguments: arguments)
-                case .removeIconLayer:
-                    return try removeIconLayerTool.execute(arguments: arguments)
-                case .setIconFill:
-                    return try setIconFillTool.execute(arguments: arguments)
-                case .setIconEffects:
-                    return try setIconEffectsTool.execute(arguments: arguments)
+                case .exportIcon: return try await exportIconTool.execute(arguments: arguments)
+                case .createIcon: return try createIconTool.execute(arguments: arguments)
+                case .readIcon: return try readIconTool.execute(arguments: arguments)
+                case .addIconLayer: return try addIconLayerTool.execute(arguments: arguments)
+                case .removeIconLayer: return try removeIconLayerTool.execute(arguments: arguments)
+                case .setIconFill: return try setIconFillTool.execute(arguments: arguments)
+                case .setIconEffects: return try setIconEffectsTool.execute(arguments: arguments)
                 case .setIconLayerPosition:
                     return try setIconLayerPositionTool.execute(arguments: arguments)
                 case .setIconAppearances:
                     return try setIconAppearancesTool.execute(arguments: arguments)
-                case .diagnostics:
-                    return try await diagnosticsTool.execute(arguments: arguments)
+                case .diagnostics: return try await diagnosticsTool.execute(arguments: arguments)
                 case .checkOutputFileMap:
                     return try await checkOutputFileMapTool.execute(arguments: arguments)
                 case .extractCrashTraces:
@@ -1635,12 +1672,10 @@ public struct XcodeMCPServer: Sendable {
                     return try await showBuildDependencyGraphTool.execute(arguments: arguments)
                 case .versionManagement:
                     return try await versionManagementTool.execute(arguments: arguments)
-                case .notarize:
-                    return try await notarizeTool.execute(arguments: arguments)
+                case .notarize: return try await notarizeTool.execute(arguments: arguments)
                 case .validateAssetCatalog:
                     return try await validateAssetCatalogTool.execute(arguments: arguments)
-                case .openInXcode:
-                    return try await openInXcodeTool.execute(arguments: arguments)
+                case .openInXcode: return try await openInXcodeTool.execute(arguments: arguments)
             }
         }
 

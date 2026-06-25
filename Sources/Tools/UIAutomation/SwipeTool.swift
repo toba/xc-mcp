@@ -3,19 +3,21 @@ import XCMCPCore
 import Foundation
 
 public struct SwipeTool: Sendable {
-    private let simctlRunner: SimctlRunner
+    private let uiInput: SimulatorUIInput
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
-        self.simctlRunner = simctlRunner
+    public init(uiInput: SimulatorUIInput = .init(), sessionManager: SessionManager) {
+        self.uiInput = uiInput
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "swipe",
             description:
-            "Simulate a swipe gesture on a simulator screen.",
+                "Simulate a swipe gesture on a booted simulator screen. Start/end coordinates are in "
+                + "device pixels (as in the `screenshot` image). Drives the on-screen Simulator "
+                + "window.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -26,34 +28,21 @@ public struct SwipeTool: Sendable {
                         ),
                     ]),
                     "start_x": .object([
-                        "type": .string("number"),
-                        "description": .string(
-                            "Starting X coordinate.",
-                        ),
+                        "type": .string("number"), "description": .string("Starting X coordinate."),
                     ]),
                     "start_y": .object([
-                        "type": .string("number"),
-                        "description": .string(
-                            "Starting Y coordinate.",
-                        ),
+                        "type": .string("number"), "description": .string("Starting Y coordinate."),
                     ]),
                     "end_x": .object([
-                        "type": .string("number"),
-                        "description": .string(
-                            "Ending X coordinate.",
-                        ),
+                        "type": .string("number"), "description": .string("Ending X coordinate."),
                     ]),
                     "end_y": .object([
-                        "type": .string("number"),
-                        "description": .string(
-                            "Ending Y coordinate.",
-                        ),
+                        "type": .string("number"), "description": .string("Ending Y coordinate."),
                     ]),
                     "duration": .object([
                         "type": .string("number"),
                         "description": .string(
-                            "Duration of the swipe in seconds. Defaults to 0.5.",
-                        ),
+                            "Duration of the swipe in seconds. Defaults to 0.5."),
                     ]),
                 ]),
                 "required": .array([
@@ -65,87 +54,30 @@ public struct SwipeTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get simulator
-        let simulator: String
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
-            throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let simulator = try await sessionManager.resolveSimulator(from: arguments)
 
-        // Get coordinates
-        let startX: Double
-        if case let .double(value) = arguments["start_x"] {
-            startX = value
-        } else if case let .int(value) = arguments["start_x"] {
-            startX = Double(value)
-        } else {
-            throw MCPError.invalidParams("start_x coordinate is required")
+        func coord(_ key: String) throws -> Double {
+            guard let value = arguments.getDouble(key) ?? arguments.getInt(key).map(Double.init)
+            else { throw MCPError.invalidParams("\(key) coordinate is required") }
+            return value
         }
-
-        let startY: Double
-        if case let .double(value) = arguments["start_y"] {
-            startY = value
-        } else if case let .int(value) = arguments["start_y"] {
-            startY = Double(value)
-        } else {
-            throw MCPError.invalidParams("start_y coordinate is required")
-        }
-
-        let endX: Double
-        if case let .double(value) = arguments["end_x"] {
-            endX = value
-        } else if case let .int(value) = arguments["end_x"] {
-            endX = Double(value)
-        } else {
-            throw MCPError.invalidParams("end_x coordinate is required")
-        }
-
-        let endY: Double
-        if case let .double(value) = arguments["end_y"] {
-            endY = value
-        } else if case let .int(value) = arguments["end_y"] {
-            endY = Double(value)
-        } else {
-            throw MCPError.invalidParams("end_y coordinate is required")
-        }
-
-        let duration: Double
-        if case let .double(value) = arguments["duration"] {
-            duration = value
-        } else if case let .int(value) = arguments["duration"] {
-            duration = Double(value)
-        } else {
-            duration = 0.5
-        }
+        let startX = try coord("start_x")
+        let startY = try coord("start_y")
+        let endX = try coord("end_x")
+        let endY = try coord("end_y")
+        let duration = arguments.getDouble("duration")
+            ?? arguments.getInt("duration").map(Double.init) ?? 0.5
 
         do {
-            // Use simctl io to send swipe event
-            let result = try await simctlRunner.run(
-                arguments: [
-                    "io", simulator, "swipe",
-                    "\(startX)", "\(startY)", "\(endX)", "\(endY)",
-                    "--duration", "\(duration)",
-                ],
+            try await uiInput.swipe(
+                simulator: simulator,
+                startX: startX, startY: startY, endX: endX, endY: endY, duration: duration,
             )
-
-            if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Swiped from (\(Int(startX)), \(Int(startY))) to (\(Int(endX)), \(Int(endY))) on simulator '\(simulator)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
-            } else {
-                throw MCPError.internalError(
-                    "Failed to swipe: \(result.errorOutput)",
-                )
-            }
+            return CallTool.Result(content: [
+                .text(
+                    text: "Swiped from (\(Int(startX)), \(Int(startY))) to (\(Int(endX)), \(Int(endY))) on simulator '\(simulator)'",
+                    annotations: nil, _meta: nil)
+            ],)
         } catch {
             throw try error.asMCPError()
         }

@@ -3,19 +3,20 @@ import XCMCPCore
 import Foundation
 
 public struct LongPressTool: Sendable {
-    private let simctlRunner: SimctlRunner
+    private let uiInput: SimulatorUIInput
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
-        self.simctlRunner = simctlRunner
+    public init(uiInput: SimulatorUIInput = .init(), sessionManager: SessionManager) {
+        self.uiInput = uiInput
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "long_press",
             description:
-            "Simulate a long press at a specific coordinate on a simulator screen.",
+                "Simulate a long press at a specific coordinate (device pixels, as in the `screenshot` "
+                + "image) on a booted simulator screen. Drives the on-screen Simulator window.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -27,15 +28,11 @@ public struct LongPressTool: Sendable {
                     ]),
                     "x": .object([
                         "type": .string("number"),
-                        "description": .string(
-                            "X coordinate of the long press location.",
-                        ),
+                        "description": .string("X coordinate of the long press location."),
                     ]),
                     "y": .object([
                         "type": .string("number"),
-                        "description": .string(
-                            "Y coordinate of the long press location.",
-                        ),
+                        "description": .string("Y coordinate of the long press location."),
                     ]),
                     "duration": .object([
                         "type": .string("number"),
@@ -51,69 +48,23 @@ public struct LongPressTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get simulator
-        let simulator: String
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
-            throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
-
-        // Get coordinates
-        let x: Double
-        if case let .double(value) = arguments["x"] {
-            x = value
-        } else if case let .int(value) = arguments["x"] {
-            x = Double(value)
-        } else {
+        let simulator = try await sessionManager.resolveSimulator(from: arguments)
+        guard let x = arguments.getDouble("x") ?? arguments.getInt("x").map(Double.init) else {
             throw MCPError.invalidParams("x coordinate is required")
         }
-
-        let y: Double
-        if case let .double(value) = arguments["y"] {
-            y = value
-        } else if case let .int(value) = arguments["y"] {
-            y = Double(value)
-        } else {
+        guard let y = arguments.getDouble("y") ?? arguments.getInt("y").map(Double.init) else {
             throw MCPError.invalidParams("y coordinate is required")
         }
-
-        let duration: Double
-        if case let .double(value) = arguments["duration"] {
-            duration = value
-        } else if case let .int(value) = arguments["duration"] {
-            duration = Double(value)
-        } else {
-            duration = 1.0
-        }
+        let duration = arguments.getDouble("duration")
+            ?? arguments.getInt("duration").map(Double.init) ?? 1.0
 
         do {
-            // Use simctl io to send touch event with duration (simulate long press via touch down/up)
-            let result = try await simctlRunner.run(
-                arguments: [
-                    "io", simulator, "touch",
-                    "\(x)", "\(y)",
-                    "--duration", "\(duration)",
-                ],
-            )
-
-            if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Long pressed at (\(Int(x)), \(Int(y))) for \(duration)s on simulator '\(simulator)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
-            } else {
-                throw MCPError.internalError(
-                    "Failed to long press: \(result.errorOutput)",
-                )
-            }
+            try await uiInput.longPress(simulator: simulator, x: x, y: y, duration: duration)
+            return CallTool.Result(content: [
+                .text(
+                    text: "Long pressed at (\(Int(x)), \(Int(y))) for \(duration)s on simulator '\(simulator)'",
+                    annotations: nil, _meta: nil)
+            ],)
         } catch {
             throw try error.asMCPError()
         }

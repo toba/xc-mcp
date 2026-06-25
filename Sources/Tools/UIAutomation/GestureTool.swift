@@ -3,19 +3,19 @@ import XCMCPCore
 import Foundation
 
 public struct GestureTool: Sendable {
-    private let simctlRunner: SimctlRunner
+    private let uiInput: SimulatorUIInput
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
-        self.simctlRunner = simctlRunner
+    public init(uiInput: SimulatorUIInput = .init(), sessionManager: SessionManager) {
+        self.uiInput = uiInput
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "gesture",
             description:
-            "Perform a named gesture preset on a simulator screen. Presets compute coordinates relative to screen dimensions so you don't need to calculate them manually.",
+                "Perform a named gesture preset on a simulator screen. Presets compute coordinates relative to screen dimensions so you don't need to calculate them manually.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -41,18 +41,6 @@ public struct GestureTool: Sendable {
                             .string("swipe_down_to_dismiss"),
                         ]),
                     ]),
-                    "screen_width": .object([
-                        "type": .string("number"),
-                        "description": .string(
-                            "Screen width in points. Defaults to 393 (iPhone 15 Pro).",
-                        ),
-                    ]),
-                    "screen_height": .object([
-                        "type": .string("number"),
-                        "description": .string(
-                            "Screen height in points. Defaults to 852 (iPhone 15 Pro).",
-                        ),
-                    ]),
                 ]),
                 "required": .array([.string("preset")]),
             ]),
@@ -65,55 +53,28 @@ public struct GestureTool: Sendable {
 
         let presetName = try arguments.getRequiredString("preset")
 
-        let screenWidth: Double
-        if let w = arguments.getDouble("screen_width") {
-            screenWidth = w
-        } else if let w = arguments.getInt("screen_width") {
-            screenWidth = Double(w)
-        } else {
-            screenWidth = 393
-        }
-
-        let screenHeight: Double
-        if let h = arguments.getDouble("screen_height") {
-            screenHeight = h
-        } else if let h = arguments.getInt("screen_height") {
-            screenHeight = Double(h)
-        } else {
-            screenHeight = 852
-        }
-
         guard let preset = GesturePreset(rawValue: presetName) else {
             throw MCPError.invalidParams(
                 "Unknown gesture preset '\(presetName)'. Valid presets: \(GesturePreset.allCases.map(\.rawValue).joined(separator: ", "))",
             )
         }
 
-        let coords = preset.coordinates(width: screenWidth, height: screenHeight)
+        // Presets are screen-relative; evaluating against a 1×1 box yields fractional coordinates
+        // that the host-side mapper resolves to the actual on-screen device rectangle.
+        let coords = preset.coordinates(width: 1, height: 1)
 
         do {
-            let result = try await simctlRunner.run(
-                arguments: [
-                    "io", simulator, "swipe",
-                    "\(coords.startX)", "\(coords.startY)",
-                    "\(coords.endX)", "\(coords.endY)",
-                    "--duration", "\(coords.duration)",
-                ],
+            try await uiInput.swipeFraction(
+                simulator: simulator,
+                startX: coords.startX, startY: coords.startY,
+                endX: coords.endX, endY: coords.endY,
+                duration: coords.duration,
             )
-
-            if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Performed '\(presetName)' gesture on simulator '\(simulator)' — swiped from (\(Int(coords.startX)), \(Int(coords.startY))) to (\(Int(coords.endX)), \(Int(coords.endY)))",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
-            } else {
-                throw MCPError.internalError(
-                    "Failed to perform gesture: \(result.errorOutput)",
-                )
-            }
+            return CallTool.Result(content: [
+                .text(
+                    text: "Performed '\(presetName)' gesture on simulator '\(simulator)'",
+                    annotations: nil, _meta: nil)
+            ],)
         } catch {
             throw try error.asMCPError()
         }
@@ -143,35 +104,35 @@ private enum GesturePreset: String, CaseIterable {
     func coordinates(width w: Double, height h: Double) -> SwipeCoordinates {
         switch self {
             case .scrollUp:
-                return SwipeCoordinates(
+                SwipeCoordinates(
                     startX: 0.5 * w, startY: 0.7 * h, endX: 0.5 * w, endY: 0.3 * h, duration: 0.5,
                 )
             case .scrollDown:
-                return SwipeCoordinates(
+                SwipeCoordinates(
                     startX: 0.5 * w, startY: 0.3 * h, endX: 0.5 * w, endY: 0.7 * h, duration: 0.5,
                 )
             case .scrollLeft:
-                return SwipeCoordinates(
+                SwipeCoordinates(
                     startX: 0.8 * w, startY: 0.5 * h, endX: 0.2 * w, endY: 0.5 * h, duration: 0.5,
                 )
             case .scrollRight:
-                return SwipeCoordinates(
+                SwipeCoordinates(
                     startX: 0.2 * w, startY: 0.5 * h, endX: 0.8 * w, endY: 0.5 * h, duration: 0.5,
                 )
             case .swipeFromLeftEdge:
-                return SwipeCoordinates(
+                SwipeCoordinates(
                     startX: 0, startY: 0.5 * h, endX: 0.4 * w, endY: 0.5 * h, duration: 0.3,
                 )
             case .swipeFromRightEdge:
-                return SwipeCoordinates(
+                SwipeCoordinates(
                     startX: w, startY: 0.5 * h, endX: 0.6 * w, endY: 0.5 * h, duration: 0.3,
                 )
             case .pullToRefresh:
-                return SwipeCoordinates(
+                SwipeCoordinates(
                     startX: 0.5 * w, startY: 0.15 * h, endX: 0.5 * w, endY: 0.6 * h, duration: 0.5,
                 )
             case .swipeDownToDismiss:
-                return SwipeCoordinates(
+                SwipeCoordinates(
                     startX: 0.5 * w, startY: 0.1 * h, endX: 0.5 * w, endY: 0.9 * h, duration: 0.5,
                 )
         }

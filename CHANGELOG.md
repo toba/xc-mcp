@@ -4,6 +4,7 @@
 
 ### 🐞 Fixes
 
+- Fix the broken simulator UI-automation tools (`tap` / `long_press` / `swipe` / `gesture` / `type_text` / `key_press` / `button`); they shelled out to `simctl io <device> <tap|swipe|keyboard|button>`, but `simctl io` has no input operations, so every call was a no-op that errored; replaced with a host-side `SimulatorUIInput` actor that synthesizes `CGEvent`s on the on-screen Simulator window — locating the device window via `CGWindowList`, detecting the device-screen rectangle inside the title bar and bezel via projection profiles, and mapping device-pixel coordinates (the `screenshot` image space) onto global display points; typing connects the hardware keyboard and sends US-layout keycodes (ASCII), hardware buttons drive the Simulator `Device` menu, and the `screencapture` / `osascript` subprocesses run through `ProcessResult` for cancellation safety; requires the Simulator window visible plus Screen Recording and Accessibility permissions ([#396](https://github.com/toba/xc-mcp/issues/396))
 - Drop the unsupported `OnFailure` value from `set_test_plan_options`' `diagnostic_collection_policy` enum; Xcode 26.2 only accepts `Always` and `Never` for `XCTHDiagnosticCollectionPolicy`, and writing `OnFailure` made the test plan unreadable ("String representation of XCTHDiagnosticCollectionPolicy was not a supported value"); the tool description no longer recommends `OnFailure` and now suggests `Never` to cut per-test diagnostic overhead ([#395](https://github.com/toba/xc-mcp/issues/395))
 
 ### 🗜️ Tweaks

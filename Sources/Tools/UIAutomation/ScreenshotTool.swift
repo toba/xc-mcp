@@ -6,16 +6,15 @@ public struct ScreenshotTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "screenshot",
-            description:
-            "Take a screenshot of a simulator screen.",
+            description: "Take a screenshot of a simulator screen.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -33,9 +32,7 @@ public struct ScreenshotTool: Sendable {
                     ]),
                     "format": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Image format: 'png' or 'jpeg'. Defaults to 'png'.",
-                        ),
+                        "description": .string("Image format: 'png' or 'jpeg'. Defaults to 'png'."),
                     ]),
                 ]),
                 "required": .array([]),
@@ -47,6 +44,7 @@ public struct ScreenshotTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Get simulator
         let simulator: String
+
         if case let .string(value) = arguments["simulator"] {
             simulator = value
         } else if let sessionSimulator = await sessionManager.simulatorUDID {
@@ -59,6 +57,7 @@ public struct ScreenshotTool: Sendable {
 
         // Get output path
         let outputPath: String
+
         if case let .string(value) = arguments["output_path"] {
             outputPath = value
         } else {
@@ -68,6 +67,7 @@ public struct ScreenshotTool: Sendable {
 
         // Get format
         let format: String
+
         if case let .string(value) = arguments["format"] {
             format = value.lowercased()
         } else {
@@ -76,12 +76,12 @@ public struct ScreenshotTool: Sendable {
 
         // Adjust output path extension if needed
         var finalPath = outputPath
+
         if !finalPath.hasSuffix(".\(format)") {
             if finalPath.hasSuffix(".png") || finalPath.hasSuffix(".jpeg")
                 || finalPath.hasSuffix(".jpg")
             {
-                let pathWithoutExt =
-                    URL(fileURLWithPath: finalPath).deletingPathExtension().path
+                let pathWithoutExt = URL(fileURLWithPath: finalPath).deletingPathExtension().path
                 finalPath = "\(pathWithoutExt).\(format)"
             } else {
                 finalPath = "\(finalPath).\(format)"
@@ -92,17 +92,13 @@ public struct ScreenshotTool: Sendable {
             let result = try await simctlRunner.screenshot(udid: simulator, outputPath: finalPath)
 
             if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Screenshot saved to: \(finalPath)",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Screenshot saved to: \(finalPath)",
+                        annotations: nil, _meta: nil)
+                ],)
             } else {
-                throw MCPError.internalError(
-                    "Failed to take screenshot: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to take screenshot: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

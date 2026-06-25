@@ -3,19 +3,21 @@ import XCMCPCore
 import Foundation
 
 public struct KeyPressTool: Sendable {
-    private let simctlRunner: SimctlRunner
+    private let uiInput: SimulatorUIInput
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
-        self.simctlRunner = simctlRunner
+    public init(uiInput: SimulatorUIInput = .init(), sessionManager: SessionManager) {
+        self.uiInput = uiInput
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "key_press",
             description:
-            "Simulate pressing a hardware key on a simulator.",
+                "Press a key on a booted simulator. Hardware-button names (home/lock/siri/shake) drive "
+                + "the Simulator Device menu; other keys (return/escape/delete/space/tab/arrows or a "
+                + "single character) are sent as host keystrokes to the focused Simulator window.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -28,7 +30,7 @@ public struct KeyPressTool: Sendable {
                     "key": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Key to press. Common keys: 'home', 'volumeUp', 'volumeDown', 'lock', 'return', 'escape', 'delete', 'space', 'tab', or any single character.",
+                            "Key to press. Hardware buttons: 'home', 'lock', 'siri', 'shake'. Keys: 'return', 'escape', 'delete', 'space', 'tab', arrows, or any single character.",
                         ),
                     ]),
                 ]),
@@ -39,76 +41,18 @@ public struct KeyPressTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get simulator
-        let simulator: String
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
-            throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
-
-        // Get key
+        let simulator = try await sessionManager.resolveSimulator(from: arguments)
         guard case let .string(key) = arguments["key"] else {
             throw MCPError.invalidParams("key is required")
         }
 
         do {
-            // Map common key names to simctl keyboard commands
-            let result: SimctlResult
-            switch key.lowercased() {
-                case "home":
-                    result = try await simctlRunner.run(arguments: [
-                        "io",
-                        simulator,
-                        "button",
-                        "home",
-                    ])
-                case "lock", "power":
-                    result = try await simctlRunner.run(arguments: [
-                        "io",
-                        simulator,
-                        "button",
-                        "lock",
-                    ])
-                case "volumeup":
-                    result = try await simctlRunner.run(
-                        arguments: ["io", simulator, "button", "volumeUp"],
-                    )
-                case "volumedown":
-                    result = try await simctlRunner.run(
-                        arguments: ["io", simulator, "button", "volumeDown"],
-                    )
-                case "siri":
-                    result = try await simctlRunner.run(arguments: [
-                        "io",
-                        simulator,
-                        "button",
-                        "siri",
-                    ])
-                default:
-                    // For other keys, use keyboard key command
-                    result = try await simctlRunner.run(
-                        arguments: ["io", simulator, "keyboard", "key", key],
-                    )
-            }
-
-            if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Pressed key '\(key)' on simulator '\(simulator)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
-            } else {
-                throw MCPError.internalError(
-                    "Failed to press key: \(result.errorOutput)",
-                )
-            }
+            try await uiInput.pressKey(simulator: simulator, key: key)
+            return CallTool.Result(content: [
+                .text(
+                    text: "Pressed key '\(key)' on simulator '\(simulator)'",
+                    annotations: nil, _meta: nil)
+            ],)
         } catch {
             throw try error.asMCPError()
         }

@@ -48,14 +48,13 @@ public enum SimulatorToolName: String, CaseIterable, Sendable {
 
 /// MCP server for iOS Simulator operations.
 ///
-/// This focused server provides tools for managing iOS simulators, building and
-/// running apps, UI automation, and log capture.
+/// This focused server provides tools for managing iOS simulators, building and running apps, UI
+/// automation, and log capture.
 ///
 /// ## Token Efficiency
 ///
-/// This server exposes 29 tools with approximately 6K token overhead, compared to
-/// ~50K for the full monolithic xc-mcp server. Use this server when you only need
-/// simulator capabilities.
+/// This server exposes 29 tools with approximately 6K token overhead, compared to ~50K for the full
+/// monolithic xc-mcp server. Use this server when you only need simulator capabilities.
 ///
 /// ## Tool Categories
 ///
@@ -138,15 +137,14 @@ public struct SimulatorMCPServer: Sendable {
             simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
 
-        // Create UI automation tools
-        let tapTool = TapTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
-        let longPressTool = LongPressTool(
-            simctlRunner: simctlRunner, sessionManager: sessionManager,
-        )
-        let swipeTool = SwipeTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
-        let typeTextTool = TypeTextTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
-        let keyPressTool = KeyPressTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
-        let buttonTool = ButtonTool(simctlRunner: simctlRunner, sessionManager: sessionManager)
+        // Create UI automation tools (host-side input drives the on-screen Simulator window)
+        let simulatorUIInput = SimulatorUIInput(simctlRunner: simctlRunner)
+        let tapTool = TapTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let longPressTool = LongPressTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let swipeTool = SwipeTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let typeTextTool = TypeTextTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let keyPressTool = KeyPressTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
+        let buttonTool = ButtonTool(uiInput: simulatorUIInput, sessionManager: sessionManager)
         let screenshotTool = ScreenshotTool(
             simctlRunner: simctlRunner, sessionManager: sessionManager,
         )
@@ -207,9 +205,8 @@ public struct SimulatorMCPServer: Sendable {
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = SimulatorToolName(rawValue: params.name) else {
                 let hint = ServerToolDirectory.hint(for: params.name, currentServer: "xc-simulator")
-                let message =
-                    hint.map { "Unknown tool: \(params.name). \($0)" }
-                        ?? "Unknown tool: \(params.name)"
+                let message = hint.map { "Unknown tool: \(params.name). \($0)" }
+                    ?? "Unknown tool: \(params.name)"
                 throw MCPError.methodNotFound(message)
             }
 
@@ -217,12 +214,9 @@ public struct SimulatorMCPServer: Sendable {
 
             switch toolName {
                 // Simulator tools
-                case .listSims:
-                    return try await listSimsTool.execute(arguments: arguments)
-                case .bootSim:
-                    return try await bootSimTool.execute(arguments: arguments)
-                case .openSim:
-                    return try await openSimTool.execute(arguments: arguments)
+                case .listSims: return try await listSimsTool.execute(arguments: arguments)
+                case .bootSim: return try await bootSimTool.execute(arguments: arguments)
+                case .openSim: return try await openSimTool.execute(arguments: arguments)
                 case .buildSim:
                     if let token = params._meta?.progressToken {
                         let reporter = ProgressReporter(token: token) { msg in
@@ -249,10 +243,8 @@ public struct SimulatorMCPServer: Sendable {
                     return try await buildRunSimTool.execute(arguments: arguments)
                 case .installAppSim:
                     return try await installAppSimTool.execute(arguments: arguments)
-                case .launchAppSim:
-                    return try await launchAppSimTool.execute(arguments: arguments)
-                case .stopAppSim:
-                    return try await stopAppSimTool.execute(arguments: arguments)
+                case .launchAppSim: return try await launchAppSimTool.execute(arguments: arguments)
+                case .stopAppSim: return try await stopAppSimTool.execute(arguments: arguments)
                 case .getSimAppPath:
                     return try await getSimAppPathTool.execute(arguments: arguments)
                 case .testSim:
@@ -271,35 +263,26 @@ public struct SimulatorMCPServer: Sendable {
                     return try await recordSimVideoTool.execute(arguments: arguments)
                 case .launchAppLogsSim:
                     return try await launchAppLogsSimTool.execute(arguments: arguments)
-                case .eraseSims:
-                    return try await eraseSimTool.execute(arguments: arguments)
+                case .eraseSims: return try await eraseSimTool.execute(arguments: arguments)
                 case .setSimLocation:
                     return try await setSimLocationTool.execute(arguments: arguments)
                 case .resetSimLocation:
                     return try await resetSimLocationTool.execute(arguments: arguments)
                 case .setSimAppearance:
                     return try await setSimAppearanceTool.execute(arguments: arguments)
-                case .simStatusbar:
-                    return try await simStatusBarTool.execute(arguments: arguments)
+                case .simStatusbar: return try await simStatusBarTool.execute(arguments: arguments)
                 case .toggleSoftwareKeyboard:
                     return try await toggleSoftwareKeyboardTool.execute(arguments: arguments)
                 case .toggleHardwareKeyboard:
                     return try await toggleHardwareKeyboardTool.execute(arguments: arguments)
                 // UI Automation tools
-                case .tap:
-                    return try await tapTool.execute(arguments: arguments)
-                case .longPress:
-                    return try await longPressTool.execute(arguments: arguments)
-                case .swipe:
-                    return try await swipeTool.execute(arguments: arguments)
-                case .typeText:
-                    return try await typeTextTool.execute(arguments: arguments)
-                case .keyPress:
-                    return try await keyPressTool.execute(arguments: arguments)
-                case .button:
-                    return try await buttonTool.execute(arguments: arguments)
-                case .screenshot:
-                    return try await screenshotTool.execute(arguments: arguments)
+                case .tap: return try await tapTool.execute(arguments: arguments)
+                case .longPress: return try await longPressTool.execute(arguments: arguments)
+                case .swipe: return try await swipeTool.execute(arguments: arguments)
+                case .typeText: return try await typeTextTool.execute(arguments: arguments)
+                case .keyPress: return try await keyPressTool.execute(arguments: arguments)
+                case .button: return try await buttonTool.execute(arguments: arguments)
+                case .screenshot: return try await screenshotTool.execute(arguments: arguments)
                 // Logging tools
                 case .startSimLogCap:
                     return try await startSimLogCapTool.execute(arguments: arguments)

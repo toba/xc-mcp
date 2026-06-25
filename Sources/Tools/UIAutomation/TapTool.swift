@@ -3,19 +3,22 @@ import XCMCPCore
 import Foundation
 
 public struct TapTool: Sendable {
-    private let simctlRunner: SimctlRunner
+    private let uiInput: SimulatorUIInput
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
-        self.simctlRunner = simctlRunner
+    public init(uiInput: SimulatorUIInput = .init(), sessionManager: SessionManager) {
+        self.uiInput = uiInput
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "tap",
             description:
-            "Simulate a tap at a specific coordinate on a simulator screen.",
+                "Simulate a tap at a specific coordinate on a booted simulator screen. Coordinates are "
+                + "in device pixels — the same space as the `screenshot` tool's image (e.g. "
+                + "1206×2622 on iPhone 17), so you can read a point straight off a screenshot. Drives "
+                + "the on-screen Simulator window, so the Simulator app must be visible.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -27,15 +30,11 @@ public struct TapTool: Sendable {
                     ]),
                     "x": .object([
                         "type": .string("number"),
-                        "description": .string(
-                            "X coordinate of the tap location.",
-                        ),
+                        "description": .string("X coordinate of the tap location."),
                     ]),
                     "y": .object([
                         "type": .string("number"),
-                        "description": .string(
-                            "Y coordinate of the tap location.",
-                        ),
+                        "description": .string("Y coordinate of the tap location."),
                     ]),
                 ]),
                 "required": .array([.string("x"), .string("y")]),
@@ -45,56 +44,21 @@ public struct TapTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get simulator
-        let simulator: String
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
-            throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
-
-        // Get coordinates
-        let x: Double
-        if case let .double(value) = arguments["x"] {
-            x = value
-        } else if case let .int(value) = arguments["x"] {
-            x = Double(value)
-        } else {
+        let simulator = try await sessionManager.resolveSimulator(from: arguments)
+        guard let x = arguments.getDouble("x") ?? arguments.getInt("x").map(Double.init) else {
             throw MCPError.invalidParams("x coordinate is required")
         }
-
-        let y: Double
-        if case let .double(value) = arguments["y"] {
-            y = value
-        } else if case let .int(value) = arguments["y"] {
-            y = Double(value)
-        } else {
+        guard let y = arguments.getDouble("y") ?? arguments.getInt("y").map(Double.init) else {
             throw MCPError.invalidParams("y coordinate is required")
         }
 
         do {
-            // Use simctl io to send touch event
-            let result = try await simctlRunner.run(
-                arguments: ["io", simulator, "tap", "\(x)", "\(y)"],
-            )
-
-            if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Tapped at (\(Int(x)), \(Int(y))) on simulator '\(simulator)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
-            } else {
-                throw MCPError.internalError(
-                    "Failed to tap: \(result.errorOutput)",
-                )
-            }
+            try await uiInput.tap(simulator: simulator, x: x, y: y)
+            return CallTool.Result(content: [
+                .text(
+                    text: "Tapped at (\(Int(x)), \(Int(y))) on simulator '\(simulator)'",
+                    annotations: nil, _meta: nil)
+            ],)
         } catch {
             throw try error.asMCPError()
         }
