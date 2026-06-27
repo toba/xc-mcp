@@ -86,8 +86,8 @@ The project builds 8 executables — one monolithic server and 7 focused servers
 
 | Executable | Tools | Use case |
 |------------|-------|----------|
-| `xc-mcp` | 147 | Full server (~50K tokens) |
-| `xc-project` | 41 | Project file manipulation |
+| `xc-mcp` | 148 | Full server (~50K tokens) |
+| `xc-project` | 42 | Project file manipulation |
 | `xc-simulator` | 29 | Simulator + UI automation |
 | `xc-debug` | 31 | LLDB debugging + macOS UI automation |
 | `xc-build` | 21 | Build, test, run |

@@ -31,6 +31,37 @@ public enum SchemePathResolver {
         return "container:\(relativePath)"
     }
 
+    /// Computes the path of `absolutePath` relative to the directory containing `schemePath`.
+    ///
+    /// Scheme `StoreKitConfigurationFileReference` identifiers are stored as a path relative to
+    /// the `.xcscheme` file's own location — e.g. a repo-root `Thesis.storekit` referenced from
+    /// `Project.xcodeproj/xcshareddata/xcschemes/Standard.xcscheme` serializes as
+    /// `../../../Thesis.storekit`. Falls back to `absolutePath` if the two paths share no common
+    /// root (different volumes).
+    public static func schemeRelativeIdentifier(
+        for absolutePath: String,
+        schemePath: String,
+    ) -> String {
+        let baseComponents = URL(fileURLWithPath: schemePath)
+            .deletingLastPathComponent().standardizedFileURL.pathComponents
+        let targetComponents = URL(fileURLWithPath: absolutePath)
+            .standardizedFileURL.pathComponents
+
+        guard baseComponents.first == targetComponents.first else { return absolutePath }
+
+        var shared = 0
+        while shared < baseComponents.count, shared < targetComponents.count,
+              baseComponents[shared] == targetComponents[shared]
+        {
+            shared += 1
+        }
+
+        let ascend = Array(repeating: "..", count: baseComponents.count - shared)
+        let descend = targetComponents[shared...]
+        let parts = ascend + descend
+        return parts.isEmpty ? "." : parts.joined(separator: "/")
+    }
+
     /// Returns all scheme directories (shared + user) for the given `.xcodeproj` path.
     public static func schemeDirs(for projectPath: String) -> [String] {
         let fm = FileManager.default

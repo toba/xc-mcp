@@ -2,6 +2,10 @@
 
 ## Week of Jun 21 – Jun 27, 2026
 
+### ✨ Features
+
+- Add `set_scheme_storekit_config` to `xc-project` (and monolithic `xc-mcp`); sets or clears a scheme's StoreKit configuration by writing/removing the `<StoreKitConfigurationFileReference>` child under a shared `.xcscheme`'s `LaunchAction` (Run) and/or `TestAction` (Test), with `action` add|remove and `target_actions` launch|test|both; the `identifier` is computed as the `.storekit` path relative to the scheme file (a repo-root `Thesis.storekit` becomes `../../../Thesis.storekit`, matching Xcode's serialization) via a new `SchemePathResolver.schemeRelativeIdentifier`; idempotent (replaces an existing reference rather than duplicating), and it edits the scheme XML directly rather than round-tripping through `XCScheme` because the XcodeProj model only represents the reference on `LaunchAction`, so a model round-trip would silently drop an existing `TestAction` reference ([#398](https://github.com/toba/xc-mcp/issues/398))
+
 ### 🐞 Fixes
 
 - Fix the broken simulator UI-automation tools (`tap` / `long_press` / `swipe` / `gesture` / `type_text` / `key_press` / `button`); they shelled out to `simctl io <device> <tap|swipe|keyboard|button>`, but `simctl io` has no input operations, so every call was a no-op that errored; replaced with a host-side `SimulatorUIInput` actor that synthesizes `CGEvent`s on the on-screen Simulator window — locating the device window via `CGWindowList`, detecting the device-screen rectangle inside the title bar and bezel via projection profiles, and mapping device-pixel coordinates (the `screenshot` image space) onto global display points; typing connects the hardware keyboard and sends US-layout keycodes (ASCII), hardware buttons drive the Simulator `Device` menu, and the `screencapture` / `osascript` subprocesses run through `ProcessResult` for cancellation safety; requires the Simulator window visible plus Screen Recording and Accessibility permissions ([#396](https://github.com/toba/xc-mcp/issues/396))

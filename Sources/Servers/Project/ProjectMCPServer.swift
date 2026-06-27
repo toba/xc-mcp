@@ -33,6 +33,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case setTestPlanOptions = "set_test_plan_options"
     case addTestPlanToScheme = "add_test_plan_to_scheme"
     case removeTestPlanFromScheme = "remove_test_plan_from_scheme"
+    case setSchemeStoreKitConfig = "set_scheme_storekit_config"
     case listTestPlans = "list_test_plans"
     case searchTestPlans = "search_test_plans"
     case setTestTargetApplication = "set_test_target_application"
@@ -170,6 +171,7 @@ public struct ProjectMCPServer: Sendable {
         let setTestPlanOptionsTool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
         let removeTestPlanFromSchemeTool = RemoveTestPlanFromSchemeTool(pathUtility: pathUtility)
+        let setSchemeStoreKitConfigTool = SetSchemeStoreKitConfigTool(pathUtility: pathUtility)
         let listTestPlansTool = ListTestPlansTool(pathUtility: pathUtility)
         let searchTestPlansTool = SearchTestPlansTool(pathUtility: pathUtility)
         let setTestTargetApplicationTool = SetTestTargetApplicationTool(pathUtility: pathUtility)
@@ -265,6 +267,7 @@ public struct ProjectMCPServer: Sendable {
                 setTestPlanOptionsTool.tool(),
                 addTestPlanToSchemeTool.tool(),
                 removeTestPlanFromSchemeTool.tool(),
+                setSchemeStoreKitConfigTool.tool(),
                 listTestPlansTool.tool(),
                 searchTestPlansTool.tool(),
                 setTestTargetApplicationTool.tool(),
@@ -387,6 +390,8 @@ public struct ProjectMCPServer: Sendable {
                     return try addTestPlanToSchemeTool.execute(arguments: arguments)
                 case .removeTestPlanFromScheme:
                     return try removeTestPlanFromSchemeTool.execute(arguments: arguments)
+                case .setSchemeStoreKitConfig:
+                    return try setSchemeStoreKitConfigTool.execute(arguments: arguments)
                 case .listTestPlans:
                     return try listTestPlansTool.execute(arguments: arguments)
                 case .searchTestPlans:
