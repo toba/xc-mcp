@@ -398,6 +398,178 @@ struct TypeIdentifierToolsTests {
         #expect(FileManager.default.fileExists(atPath: expectedPlistPath))
     }
 
+    @Test
+    func `ManageTypeIdentifierTool update backfills identifier matched by description`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
+
+        // Malformed entry: has a description but no UTTypeIdentifier.
+        let plist: [String: Any] = [
+            "UTImportedTypeDeclarations": [
+                [
+                    "UTTypeDescription": "BibTeX Document",
+                    "UTTypeTagSpecification": [
+                        "public.filename-extension": ["bib"],
+                    ],
+                ] as [String: Any],
+            ] as [[String: Any]],
+        ]
+        try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
+
+        let tool = ManageTypeIdentifierTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "action": .string("update"),
+            "kind": .string("imported"),
+            "match_description": .string("BibTeX Document"),
+            "identifier": .string("org.tug.tex.bibtex"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully updated"))
+        #expect(message.contains("org.tug.tex.bibtex"))
+
+        // Still a single entry, now with a backfilled identifier.
+        let updated = try InfoPlistUtility.readInfoPlist(path: plistPath)
+        let imported = updated["UTImportedTypeDeclarations"] as? [[String: Any]]
+        #expect(imported?.count == 1)
+        #expect(imported?.first?["UTTypeIdentifier"] as? String == "org.tug.tex.bibtex")
+        #expect(imported?.first?["UTTypeDescription"] as? String == "BibTeX Document")
+    }
+
+    @Test
+    func `ManageTypeIdentifierTool remove by index`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
+
+        let plist: [String: Any] = [
+            "UTImportedTypeDeclarations": [
+                ["UTTypeIdentifier": "com.example.first"] as [String: Any],
+                // Malformed: no identifier, can only be addressed by index.
+                ["UTTypeDescription": "Citation Style Language"] as [String: Any],
+            ] as [[String: Any]],
+        ]
+        try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
+
+        let tool = ManageTypeIdentifierTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "action": .string("remove"),
+            "kind": .string("imported"),
+            "match_index": .int(2),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed"))
+
+        let updated = try InfoPlistUtility.readInfoPlist(path: plistPath)
+        let imported = updated["UTImportedTypeDeclarations"] as? [[String: Any]]
+        #expect(imported?.count == 1)
+        #expect(imported?.first?["UTTypeIdentifier"] as? String == "com.example.first")
+    }
+
+    @Test
+    func `ManageTypeIdentifierTool prune removes malformed declarations`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
+
+        let plist: [String: Any] = [
+            "UTImportedTypeDeclarations": [
+                ["UTTypeIdentifier": "com.example.valid"] as [String: Any],
+                ["UTTypeDescription": "BibTeX Document"] as [String: Any],
+                ["UTTypeDescription": "Research Information Systems"] as [String: Any],
+            ] as [[String: Any]],
+        ]
+        try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
+
+        let tool = ManageTypeIdentifierTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "action": .string("prune"),
+            "kind": .string("imported"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Pruned 2"))
+
+        let updated = try InfoPlistUtility.readInfoPlist(path: plistPath)
+        let imported = updated["UTImportedTypeDeclarations"] as? [[String: Any]]
+        #expect(imported?.count == 1)
+        #expect(imported?.first?["UTTypeIdentifier"] as? String == "com.example.valid")
+    }
+
+    @Test
+    func `ManageTypeIdentifierTool prune reports when nothing malformed`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
+
+        let plist: [String: Any] = [
+            "UTImportedTypeDeclarations": [
+                ["UTTypeIdentifier": "com.example.valid"] as [String: Any],
+            ] as [[String: Any]],
+        ]
+        try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
+
+        let tool = ManageTypeIdentifierTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "action": .string("prune"),
+            "kind": .string("imported"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("No malformed"))
+    }
+
+    @Test
+    func `ManageTypeIdentifierTool add still requires identifier`() throws {
+        let tool = ManageTypeIdentifierTool(pathUtility: PathUtility(basePath: "/tmp"))
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": .string("/path"),
+                "target_name": .string("App"),
+                "action": .string("add"),
+                "kind": .string("exported"),
+            ])
+        }
+    }
+
     // MARK: - Full Workflow
 
     @Test
