@@ -152,7 +152,9 @@ public struct AddTargetTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
-            let xcodeproj = try XcodeProj(path: Path(projectURL.path))
+            let projectPathKit = Path(projectURL.path)
+            let preimage = PBXProjWriter.preimage(of: projectPathKit)
+            let xcodeproj = try XcodeProj(path: projectPathKit)
 
             // Check if target already exists
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) {
@@ -292,7 +294,7 @@ public struct AddTargetTool: Sendable {
             }
 
             // Save project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(xcodeproj, to: projectPathKit, expectedPreimage: preimage)
 
             return CallTool.Result(content: [
                 .text(

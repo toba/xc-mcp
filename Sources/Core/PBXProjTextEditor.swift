@@ -35,9 +35,32 @@ public enum PBXProjTextEditor {
         return content
     }
 
-    public static func write(_ content: String, projectPath: String) throws {
+    /// Read the raw bytes of `project.pbxproj`, for use as the ``write`` concurrency guard
+    /// preimage.
+    public static func readData(projectPath: String) throws(EditError) -> Data {
         let path = "\(projectPath)/project.pbxproj"
-        try content.write(toFile: path, atomically: true, encoding: .utf8)
+        guard let data = FileManager.default.contents(atPath: path) else {
+            throw .fileNotFound(path)
+        }
+        return data
+    }
+
+    /// Durably write the pbxproj text via ``SafeProjectWrite`` (atomic + locked + validated).
+    ///
+    /// - Parameter expectedPreimage: When provided (the bytes read at load via ``readData``), the
+    ///   write is refused if the file changed in the meantime, preserving the concurrent edit.
+    public static func write(
+        _ content: String,
+        projectPath: String,
+        expectedPreimage: Data? = nil,
+    ) throws {
+        let path = "\(projectPath)/project.pbxproj"
+        try SafeProjectWrite.write(
+            Data(content.utf8),
+            to: path,
+            lockIdentifier: projectPath,
+            expectedPreimage: expectedPreimage,
+        )
     }
 
     // MARK: - Block operations
@@ -477,7 +500,7 @@ public enum PBXProjTextEditor {
 
     public static func quotePBX(_ s: String) -> String {
         let safe = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._/"))
-        return s.unicodeScalars.allSatisfy({ safe.contains($0) }) ? s : "\"\(s)\""
+        return s.unicodeScalars.allSatisfy { safe.contains($0) } ? s : "\"\(s)\""
     }
 }
 

@@ -7,12 +7,10 @@ import Foundation
 public struct RemoveTargetTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_target",
             description: "Remove an existing target",
             inputSchema: .object([
@@ -47,27 +45,29 @@ public struct RemoveTargetTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
-            let xcodeproj = try XcodeProj(path: Path(projectURL.path))
+            let projectPathKit = Path(projectURL.path)
+            let preimage = PBXProjWriter.preimage(of: projectPathKit)
+            let xcodeproj = try XcodeProj(path: projectPathKit)
 
             // Find the target to remove (check all target types, not just native)
             guard let project = xcodeproj.pbxproj.rootObject,
                   let target = project.targets.first(where: { $0.name == targetName })
             else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Target '\(targetName)' not found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ],)
             }
 
             // Remove target dependencies from other targets, plus their proxy objects
             let remoteGlobalID = PBXContainerItemProxy.RemoteGlobalID.object(target)
+
             for otherTarget in project.targets where otherTarget != target {
                 let orphaned = otherTarget.dependencies.filter { $0.target == target }
+
                 for dependency in orphaned {
                     if let proxy = dependency.targetProxy {
                         xcodeproj.pbxproj.delete(object: proxy)
@@ -80,14 +80,10 @@ public struct RemoveTargetTool: Sendable {
             // Remove any remaining PBXContainerItemProxy entries referencing the target
             for proxy in xcodeproj.pbxproj.containerItemProxies
                 where proxy.remoteGlobalID == remoteGlobalID
-            {
-                xcodeproj.pbxproj.delete(object: proxy)
-            }
+            { xcodeproj.pbxproj.delete(object: proxy) }
 
             // Remove build phases
-            for buildPhase in target.buildPhases {
-                xcodeproj.pbxproj.delete(object: buildPhase)
-            }
+            for buildPhase in target.buildPhases { xcodeproj.pbxproj.delete(object: buildPhase) }
 
             // Remove build configuration list
             if let configList = target.buildConfigurationList {
@@ -108,7 +104,7 @@ public struct RemoveTargetTool: Sendable {
 
             // Remove target group if exists
             if let project = try xcodeproj.pbxproj.rootProject(),
-               let mainGroup = project.mainGroup
+                let mainGroup = project.mainGroup
             {
                 /// Find and remove target folder
                 func removeTargetGroup(from group: PBXGroup) {
@@ -136,17 +132,15 @@ public struct RemoveTargetTool: Sendable {
             xcodeproj.pbxproj.delete(object: target)
 
             // Save project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(xcodeproj, to: projectPathKit, expectedPreimage: preimage)
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Successfully removed target '\(targetName)' from project",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
+            return CallTool.Result(content: [
+                .text(
+                    text: "Successfully removed target '\(targetName)' from project",
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ],)
         } catch {
             throw MCPError.internalError(
                 "Failed to remove target from Xcode project: \(error.localizedDescription)",

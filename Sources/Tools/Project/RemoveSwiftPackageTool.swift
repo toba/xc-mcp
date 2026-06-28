@@ -7,14 +7,13 @@ import Foundation
 public struct RemoveSwiftPackageTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_swift_package",
-            description: "Remove a Swift Package dependency from an Xcode project (remote or local)",
+            description:
+                "Remove a Swift Package dependency from an Xcode project (remote or local)",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -55,6 +54,7 @@ public struct RemoveSwiftPackageTool: Sendable {
         }
 
         let packageURL: String?
+
         if case let .string(url) = arguments["package_url"] {
             packageURL = url
         } else {
@@ -62,6 +62,7 @@ public struct RemoveSwiftPackageTool: Sendable {
         }
 
         let packagePath: String?
+
         if case let .string(path) = arguments["package_path"] {
             packagePath = path
         } else {
@@ -79,6 +80,7 @@ public struct RemoveSwiftPackageTool: Sendable {
         }
 
         let removeFromTargets: Bool
+
         if case let .bool(remove) = arguments["remove_from_targets"] {
             removeFromTargets = remove
         } else {
@@ -88,12 +90,14 @@ public struct RemoveSwiftPackageTool: Sendable {
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             if let packageURL {
                 return try removeRemotePackage(
                     xcodeproj: xcodeproj,
                     projectURL: projectURL,
+                    preimage: preimage,
                     packageURL: packageURL,
                     removeFromTargets: removeFromTargets,
                 )
@@ -101,6 +105,7 @@ public struct RemoveSwiftPackageTool: Sendable {
                 return try removeLocalPackage(
                     xcodeproj: xcodeproj,
                     projectURL: projectURL,
+                    preimage: preimage,
                     packagePath: packagePath!,
                     removeFromTargets: removeFromTargets,
                 )
@@ -117,6 +122,7 @@ public struct RemoveSwiftPackageTool: Sendable {
     private func removeRemotePackage(
         xcodeproj: XcodeProj,
         projectURL: URL,
+        preimage: Data?,
         packageURL: String,
         removeFromTargets: Bool,
     ) throws -> CallTool.Result {
@@ -124,20 +130,16 @@ public struct RemoveSwiftPackageTool: Sendable {
             throw MCPError.internalError("Unable to access project root")
         }
 
-        guard
-            let packageIndex = project.remotePackages.firstIndex(where: {
-                $0.repositoryURL == packageURL
-            })
-        else {
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Swift Package '\(packageURL)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
+        guard let packageIndex = project.remotePackages.firstIndex(where: {
+            $0.repositoryURL == packageURL
+        }) else {
+            return CallTool.Result(content: [
+                .text(
+                    text: "Swift Package '\(packageURL)' not found in project",
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ],)
         }
 
         let packageRef = project.remotePackages[packageIndex]
@@ -149,12 +151,10 @@ public struct RemoveSwiftPackageTool: Sendable {
         project.remotePackages.remove(at: packageIndex)
         xcodeproj.pbxproj.delete(object: packageRef)
 
-        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
         var message = "Successfully removed Swift Package '\(packageURL)' from project"
-        if removeFromTargets {
-            message += " and all targets"
-        }
+        if removeFromTargets { message += " and all targets" }
 
         return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
@@ -162,6 +162,7 @@ public struct RemoveSwiftPackageTool: Sendable {
     private func removeLocalPackage(
         xcodeproj: XcodeProj,
         projectURL: URL,
+        preimage: Data?,
         packagePath: String,
         removeFromTargets: Bool,
     ) throws -> CallTool.Result {
@@ -169,34 +170,31 @@ public struct RemoveSwiftPackageTool: Sendable {
             throw MCPError.internalError("Unable to access project root")
         }
 
-        guard
-            let packageIndex = project.localPackages.firstIndex(where: {
-                $0.relativePath == packagePath
-            })
-        else {
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Local Swift Package '\(packagePath)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
+        guard let packageIndex = project.localPackages.firstIndex(where: {
+            $0.relativePath == packagePath
+        }) else {
+            return CallTool.Result(content: [
+                .text(
+                    text: "Local Swift Package '\(packagePath)' not found in project",
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ],)
         }
 
         let localRef = project.localPackages[packageIndex]
 
-        // Remove product dependencies from targets if requested
-        // Local packages don't have a direct package ref on the product dependency,
-        // so we match by product name derived from the package path
+        // Remove product dependencies from targets if requested Local packages don't have a direct
+        // package ref on the product dependency, so we match by product name derived from the
+        // package path
         if removeFromTargets {
             let packageName = URL(fileURLWithPath: packagePath).lastPathComponent
+
             for target in xcodeproj.pbxproj.nativeTargets {
                 if let dependencies = target.packageProductDependencies {
                     let dependenciesToRemove = dependencies.filter { dependency in
-                        // Local package products don't have a package reference set,
-                        // and the product name often matches the package directory name
+                        // Local package products don't have a package reference set, and the
+                        // product name often matches the package directory name
                         dependency.package == nil && dependency.productName == packageName
                     }
                     for dependency in dependenciesToRemove {
@@ -211,12 +209,10 @@ public struct RemoveSwiftPackageTool: Sendable {
         project.localPackages.remove(at: packageIndex)
         xcodeproj.pbxproj.delete(object: localRef)
 
-        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
         var message = "Successfully removed local Swift Package '\(packagePath)' from project"
-        if removeFromTargets {
-            message += " and all targets"
-        }
+        if removeFromTargets { message += " and all targets" }
 
         return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
@@ -248,6 +244,7 @@ public struct RemoveSwiftPackageTool: Sendable {
         for phase in target.buildPhases {
             guard let files = phase.files else { continue }
             let stale = files.filter { $0.product === product }
+
             for buildFile in stale {
                 phase.files?.removeAll { $0 === buildFile }
                 xcodeproj.pbxproj.delete(object: buildFile)

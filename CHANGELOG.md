@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Jun 28 – Jul 4, 2026
+
+### 🐞 Fixes
+
+- Route every Xcode project mutation through a single durable-write chokepoint so a crash, kill, invalid serialization, or concurrent writer can no longer corrupt or clobber the shared `project.pbxproj`; the new `SafeProjectWrite` writes bytes to a same-directory temp file, `fsync`s, and `rename(2)`s over the original (so a crash leaves it byte-for-byte intact), serializes writers with an advisory `flock` on a per-project lock file, validates the candidate with `plutil -lint` before promoting it (an invalid project is rejected and the original left untouched), preserves the original mode bits, and refuses the write with a `concurrentModification` error when a caller passes the bytes it read and the file changed underneath it; both write paths (`PBXProjWriter` via `PBXProj.dataRepresentation`, `PBXProjTextEditor`) now funnel through it — making all 49 mutation call sites atomic, validated, and lock-serialized — and the highest-risk tools (`remove_target`, `add_target`, `remove_swift_package`) capture the load-time bytes to refuse a stale-read clobber outright ([#401](https://github.com/toba/xc-mcp/issues/401))
+
 ## Week of Jun 21 – Jun 27, 2026
 
 ### ✨ Features
