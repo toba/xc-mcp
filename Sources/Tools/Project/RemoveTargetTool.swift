@@ -26,6 +26,15 @@ public struct RemoveTargetTool: Sendable {
                         "type": .string("string"),
                         "description": .string("Name of the target to remove"),
                     ]),
+                    "cascade": .object([
+                        "type": .string("boolean"),
+                        "description": .string(
+                            "When other targets reference this one (depend on it, or embed/link its "
+                                + "product), remove those references too. Defaults to false, which "
+                                + "refuses the removal and lists the referencing targets so the "
+                                + "caller can decide explicitly.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([.string("project_path"), .string("target_name")]),
             ]),
@@ -39,6 +48,8 @@ public struct RemoveTargetTool: Sendable {
         else {
             throw MCPError.invalidParams("project_path and target_name are required")
         }
+
+        let cascade: Bool = if case let .bool(value) = arguments["cascade"] { value } else { false }
 
         do {
             // Resolve and validate the project path
@@ -63,6 +74,36 @@ public struct RemoveTargetTool: Sendable {
             }
 
             let projectFilename = projectURL.lastPathComponent
+
+            // Block-when-deps-remain: if OTHER targets reference this one (depend on it, or
+            // embed/link its product), refuse rather than silently severing those references —
+            // unless the caller explicitly opts in with `cascade`. The target's own artifacts are
+            // always removed; only cross-target references require the explicit acknowledgement.
+            var referencingTargets: [String] = []
+            for other in project.targets where other != target {
+                if other.dependencies.contains(where: { $0.target == target }) {
+                    referencingTargets.append("\(other.name) depends on it")
+                }
+                if let product = target.product,
+                   other.buildPhases.contains(where: { phase in
+                       (phase.files ?? []).contains { $0.file == product }
+                   })
+                {
+                    referencingTargets.append("\(other.name) embeds or links its product")
+                }
+            }
+            if !referencingTargets.isEmpty, !cascade {
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Refusing to remove target '\(targetName)': other targets still "
+                            + "reference it — " + referencingTargets.joined(separator: "; ")
+                            + ". Remove those references first, or re-run with cascade=true to "
+                            + "remove them as part of this operation.",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ],)
+            }
 
             // Remove every build file that embeds or links this target's product from other
             // targets' build phases (frameworks, copy-files, resources, …). XcodeProj's serializer
@@ -89,25 +130,11 @@ public struct RemoveTargetTool: Sendable {
                 }
             }
 
-            // Remove target dependencies from other targets, plus their proxy objects
-            let remoteGlobalID = PBXContainerItemProxy.RemoteGlobalID.object(target)
-
-            for otherTarget in project.targets where otherTarget != target {
-                let orphaned = otherTarget.dependencies.filter { $0.target == target }
-
-                for dependency in orphaned {
-                    if let proxy = dependency.targetProxy {
-                        xcodeproj.pbxproj.delete(object: proxy)
-                    }
-                    xcodeproj.pbxproj.delete(object: dependency)
-                }
-                otherTarget.dependencies.removeAll { $0.target == target }
-            }
-
-            // Remove any remaining PBXContainerItemProxy entries referencing the target
-            for proxy in xcodeproj.pbxproj.containerItemProxies
-                where proxy.remoteGlobalID == remoteGlobalID
-            { xcodeproj.pbxproj.delete(object: proxy) }
+            // Detach and delete every object that references this target from elsewhere in the
+            // graph — other targets' dependencies (and their proxies), container item proxies, the
+            // TargetAttributes entry, and synchronized-folder exception sets — so none is left
+            // dangling once the target is gone.
+            TargetGraphCleanup.removeReferences(to: target, in: xcodeproj.pbxproj)
 
             // Remove build phases
             for buildPhase in target.buildPhases { xcodeproj.pbxproj.delete(object: buildPhase) }

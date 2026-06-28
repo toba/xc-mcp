@@ -107,6 +107,23 @@ public enum SafeProjectWrite {
 
         if validate { try lint(tmpPath, finalPath: destination) }
 
+        // Referential-integrity gate: refuse a project write that *introduces* a dangling object
+        // reference (a UUID pointing at an object that no longer exists). `plutil -lint` passes such
+        // a file because it is still a valid plist; Xcode, however, fails to load it. Diffed against
+        // the current on-disk bytes so an already-broken project can still be repaired.
+        if validate, PBXProjReferenceAudit.isProjectFile(destination) {
+            let baseline = FileManager.default.contents(atPath: destination)
+            let introduced = PBXProjReferenceAudit.newDanglingReferences(
+                candidate: data, baseline: baseline)
+            guard introduced.isEmpty else {
+                throw .validationFailed(
+                    path: destination,
+                    detail: "write would introduce dangling object reference(s) "
+                        + introduced.sorted().joined(separator: ", ")
+                        + " — refusing to write a project Xcode could not load")
+            }
+        }
+
         preservePermissions(from: destination, to: tmpPath)
 
         guard rename(tmpPath, destination) == 0 else {

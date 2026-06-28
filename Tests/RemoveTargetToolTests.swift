@@ -211,11 +211,12 @@ struct RemoveTargetToolTests {
         #expect(xcodeproj.pbxproj.targetDependencies.count == 1)
         #expect(xcodeproj.pbxproj.containerItemProxies.count == 1)
 
-        // Remove LibTarget
+        // Remove LibTarget. AppTarget depends on it, so the removal must be explicit (cascade).
         let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
         let result = try tool.execute(arguments: [
             "project_path": Value.string(projectPath.string),
             "target_name": Value.string("LibTarget"),
+            "cascade": Value.bool(true),
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
@@ -371,11 +372,13 @@ struct RemoveTargetToolTests {
         host.buildPhases.append(embedPhase)
         try xcodeproj.write(path: projectPath)
 
-        // Removing Helper must succeed and not leave a dangling build file.
+        // Removing Helper must succeed and not leave a dangling build file. HostApp embeds Helper's
+        // product, so the removal must be explicit (cascade).
         let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
         let result = try tool.execute(arguments: [
             "project_path": Value.string(projectPath.string),
             "target_name": Value.string("Helper"),
+            "cascade": Value.bool(true),
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
@@ -388,5 +391,112 @@ struct RemoveTargetToolTests {
         #expect(!xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Helper" })
         // The embedded build file referencing the now-deleted product must be gone.
         #expect(xcodeproj.pbxproj.buildFiles.allSatisfy { $0.file !== product })
+    }
+
+    @Test
+    func `Remove target referenced by another target refuses without cascade`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "AppTarget", target2: "LibTarget", at: projectPath,
+        )
+
+        // Wire AppTarget -> depends on LibTarget.
+        var xcodeproj = try XcodeProj(path: projectPath)
+        let appTarget = try #require(
+            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" })
+        let libTarget = try #require(
+            xcodeproj.pbxproj.nativeTargets.first { $0.name == "LibTarget" })
+        let proxy = try PBXContainerItemProxy(
+            containerPortal: .project(#require(xcodeproj.pbxproj.rootObject)),
+            remoteGlobalID: .object(libTarget),
+            proxyType: .nativeTarget,
+            remoteInfo: "LibTarget",
+        )
+        xcodeproj.pbxproj.add(object: proxy)
+        let dependency = PBXTargetDependency(name: "LibTarget", target: libTarget, targetProxy: proxy)
+        xcodeproj.pbxproj.add(object: dependency)
+        appTarget.dependencies.append(dependency)
+        try xcodeproj.write(path: projectPath)
+
+        // Without cascade, the removal must refuse and the target must remain.
+        let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("LibTarget"),
+        ])
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Refusing to remove target 'LibTarget'"))
+        #expect(message.contains("AppTarget"))
+        #expect(message.contains("cascade=true"))
+
+        xcodeproj = try XcodeProj(path: projectPath)
+        #expect(xcodeproj.pbxproj.nativeTargets.contains { $0.name == "LibTarget" })
+    }
+
+    @Test
+    func `Remove target cleans up synchronized exception set and target attributes`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "AppTarget", target2: "AppTargetTests", at: projectPath,
+        )
+
+        // Give AppTargetTests a synchronized root group with a build-file exception set, and a
+        // TargetAttributes entry — both keyed/pointed at the target we will remove. These are the
+        // dangling references the thesis corruption left behind.
+        var xcodeproj = try XcodeProj(path: projectPath)
+        let project = try #require(xcodeproj.pbxproj.rootObject)
+        let tests = try #require(
+            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTargetTests" })
+
+        let exceptionSet = PBXFileSystemSynchronizedBuildFileExceptionSet(
+            target: tests,
+            membershipExceptions: ["TestData"],
+            publicHeaders: nil,
+            privateHeaders: nil,
+            additionalCompilerFlagsByRelativePath: nil,
+            attributesByRelativePath: nil,
+        )
+        xcodeproj.pbxproj.add(object: exceptionSet)
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(
+            sourceTree: .group, path: "AppTargetTests", exceptions: [exceptionSet],
+        )
+        xcodeproj.pbxproj.add(object: syncGroup)
+        project.mainGroup.children.append(syncGroup)
+        project.setTargetAttributes(["CreatedOnToolsVersion": .string("16.3")], target: tests)
+        try xcodeproj.write(path: projectPath)
+
+        let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("AppTargetTests"),
+        ])
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed target 'AppTargetTests'"))
+
+        // The exception set and TargetAttributes entry must be gone, leaving no dangling reference.
+        xcodeproj = try XcodeProj(path: projectPath)
+        #expect(xcodeproj.pbxproj.fileSystemSynchronizedBuildFileExceptionSets.isEmpty)
+        #expect(try #require(xcodeproj.pbxproj.rootObject).targetAttributes.isEmpty)
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: (projectPath + "project.pbxproj").string))
+        #expect(PBXProjReferenceAudit.danglingReferences(in: data).isEmpty)
     }
 }

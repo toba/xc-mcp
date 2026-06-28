@@ -241,16 +241,18 @@ struct RemoveSwiftPackageToolTests {
             Issue.record("Expected text result")
             return
         }
-        #expect(message.contains("Successfully removed Swift Package"))
-        #expect(!message.contains("and all targets"))
+        // Removing the package while a target still depends on its product would leave a dangling
+        // reference, so the tool refuses rather than writing a project Xcode could not load.
+        #expect(message.contains("Refusing to remove Swift Package"))
+        #expect(message.contains("TestApp"))
+        #expect(message.contains("remove_from_targets=true"))
 
-        // Verify package was removed but dependencies remain (though they may be broken)
+        // The package and its product dependency must both remain untouched.
         let updatedXcodeproj = try XcodeProj(path: projectPath)
         let updatedProject = try updatedXcodeproj.pbxproj.rootProject()
         let updatedTarget = updatedXcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
 
-        #expect(updatedProject?.remotePackages.isEmpty == true)
-        // Note: Target dependencies may still exist but will be broken since package reference is gone
+        #expect(updatedProject?.remotePackages.count == 1)
         #expect(updatedTarget?.packageProductDependencies?.count == 1)
     }
 

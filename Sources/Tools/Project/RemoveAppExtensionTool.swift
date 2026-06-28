@@ -92,14 +92,13 @@ public struct RemoveAppExtensionTool: Sendable {
 
             let productReference = extensionTarget.product
 
-            // Remove extension from "Embed App Extensions" build phase in all targets
-            for target in xcodeproj.pbxproj.nativeTargets {
-                // Remove target dependency
-                target.dependencies.removeAll { dependency in
-                    dependency.target == extensionTarget
-                }
+            // Detach and delete every object referencing the extension target (dependencies and
+            // their proxies, container proxies, TargetAttributes, exception sets) so none is left
+            // dangling once the target is removed.
+            TargetGraphCleanup.removeReferences(to: extensionTarget, in: xcodeproj.pbxproj)
 
-                // Remove from embed phases
+            // Remove the extension's product from each host target's embed build phases.
+            for target in xcodeproj.pbxproj.nativeTargets {
                 var emptyEmbedPhases: [PBXCopyFilesBuildPhase] = []
                 for buildPhase in target.buildPhases {
                     if let copyPhase = buildPhase as? PBXCopyFilesBuildPhase {

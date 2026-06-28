@@ -146,6 +146,26 @@ public struct RemoveSwiftPackageTool: Sendable {
 
         if removeFromTargets {
             removeProductDependencies(xcodeproj: xcodeproj, packageRef: packageRef)
+        } else {
+            // Block-when-deps-remain: removing the package while targets still depend on its
+            // products would leave each `XCSwiftPackageProductDependency.package` pointing at a
+            // deleted reference — a dangling ref Xcode cannot load. Refuse and require the caller to
+            // be explicit rather than silently writing a broken project.
+            let usingTargets = xcodeproj.pbxproj.nativeTargets.filter { target in
+                (target.packageProductDependencies ?? []).contains { $0.package === packageRef }
+            }
+            if !usingTargets.isEmpty {
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Refusing to remove Swift Package '\(packageURL)': it is still used "
+                            + "by " + usingTargets.map(\.name).joined(separator: ", ")
+                            + ". Re-run with remove_from_targets=true to remove those product "
+                            + "dependencies too.",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ],)
+            }
         }
 
         project.remotePackages.remove(at: packageIndex)
@@ -187,22 +207,38 @@ public struct RemoveSwiftPackageTool: Sendable {
         // Remove product dependencies from targets if requested Local packages don't have a direct
         // package ref on the product dependency, so we match by product name derived from the
         // package path
-        if removeFromTargets {
-            let packageName = URL(fileURLWithPath: packagePath).lastPathComponent
+        let packageName = URL(fileURLWithPath: packagePath).lastPathComponent
+        // Local package products carry no package reference, so they are matched by product name
+        // (which conventionally matches the package directory name).
+        func dependsOnPackage(_ dependency: XCSwiftPackageProductDependency) -> Bool {
+            dependency.package == nil && dependency.productName == packageName
+        }
 
+        if removeFromTargets {
             for target in xcodeproj.pbxproj.nativeTargets {
                 if let dependencies = target.packageProductDependencies {
-                    let dependenciesToRemove = dependencies.filter { dependency in
-                        // Local package products don't have a package reference set, and the
-                        // product name often matches the package directory name
-                        dependency.package == nil && dependency.productName == packageName
-                    }
-                    for dependency in dependenciesToRemove {
+                    for dependency in dependencies where dependsOnPackage(dependency) {
                         removeBuildFiles(xcodeproj: xcodeproj, target: target, product: dependency)
                         target.packageProductDependencies?.removeAll { $0 === dependency }
                         xcodeproj.pbxproj.delete(object: dependency)
                     }
                 }
+            }
+        } else {
+            let usingTargets = xcodeproj.pbxproj.nativeTargets.filter { target in
+                (target.packageProductDependencies ?? []).contains(where: dependsOnPackage)
+            }
+            if !usingTargets.isEmpty {
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Refusing to remove local Swift Package '\(packagePath)': it is "
+                            + "still used by " + usingTargets.map(\.name).joined(separator: ", ")
+                            + ". Re-run with remove_from_targets=true to remove those product "
+                            + "dependencies too.",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ],)
             }
         }
 
