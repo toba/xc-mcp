@@ -62,6 +62,33 @@ public struct RemoveTargetTool: Sendable {
                 ],)
             }
 
+            let projectFilename = projectURL.lastPathComponent
+
+            // Remove every build file that embeds or links this target's product from other
+            // targets' build phases (frameworks, copy-files, resources, …). XcodeProj's serializer
+            // force-unwraps a build file's element name while sorting; a build file left pointing
+            // at the deleted product traps the whole process — killing the MCP server — instead of
+            // surfacing as an error. Clearing them first keeps serialization total. (Defect 2)
+            if let productReference = target.product {
+                for otherTarget in project.targets where otherTarget != target {
+                    for buildPhase in otherTarget.buildPhases {
+                        buildPhase.files?.removeAll { buildFile in
+                            if buildFile.file == productReference {
+                                xcodeproj.pbxproj.delete(object: buildFile)
+                                return true
+                            }
+                            return false
+                        }
+                    }
+                }
+
+                // Sweep any remaining build files referencing the product (e.g. orphaned ones not
+                // attached to a build phase).
+                for buildFile in xcodeproj.pbxproj.buildFiles where buildFile.file == productReference {
+                    xcodeproj.pbxproj.delete(object: buildFile)
+                }
+            }
+
             // Remove target dependencies from other targets, plus their proxy objects
             let remoteGlobalID = PBXContainerItemProxy.RemoteGlobalID.object(target)
 
@@ -131,15 +158,74 @@ public struct RemoveTargetTool: Sendable {
             // Remove the target itself
             xcodeproj.pbxproj.delete(object: target)
 
-            // Save project
+            // Cascade the removal to every `.xctestplan` and `.xcscheme` that still references the
+            // target BEFORE the project file loses it. Editing the cross-file references first
+            // means no intermediate on-disk state ever has a test plan or scheme pointing at a
+            // target that no longer exists — a dangling reference makes Xcode fail to load the
+            // whole project. (Defect 1)
+            let projectDir = projectURL.deletingLastPathComponent().path
+            var editedTestPlans: [String] = []
+            for plan in TestPlanFile.findFiles(under: projectDir)
+                where TestPlanFile.targetNames(from: plan.json).contains(targetName)
+            {
+                guard var testTargets = plan.json["testTargets"] as? [[String: Any]] else { continue }
+                testTargets.removeAll { entry in
+                    (entry["target"] as? [String: Any])?["name"] as? String == targetName
+                }
+                var updated = plan.json
+                updated["testTargets"] = testTargets
+                try TestPlanFile.write(updated, to: plan.path)
+                editedTestPlans.append(plan.path)
+            }
+
+            var editedSchemes: [String] = []
+            for schemePath in SchemeTargetEditor.schemeFiles(in: resolvedProjectPath) {
+                if try SchemeTargetEditor.removeTarget(
+                    named: targetName, projectFilename: projectFilename, fromSchemeAt: schemePath,
+                ) {
+                    editedSchemes.append(schemePath)
+                }
+            }
+
+            // Save project (drops the target) last, once nothing else references it.
             try PBXProjWriter.write(xcodeproj, to: projectPathKit, expectedPreimage: preimage)
 
-            return CallTool.Result(content: [
-                .text(
-                    text: "Successfully removed target '\(targetName)' from project",
-                    annotations: nil,
-                    _meta: nil,
+            // Post-op cross-file validation: prove zero dangling references remain anywhere — not
+            // just that the project file is a valid plist.
+            var dangling: [String] = []
+            for plan in TestPlanFile.findFiles(under: projectDir)
+                where TestPlanFile.targetNames(from: plan.json).contains(targetName)
+            {
+                dangling.append(plan.path)
+            }
+            for schemePath in SchemeTargetEditor.schemeFiles(in: resolvedProjectPath)
+                where SchemeTargetEditor.references(
+                    target: targetName, projectFilename: projectFilename, schemeAt: schemePath,
                 )
+            {
+                dangling.append(schemePath)
+            }
+            if !dangling.isEmpty {
+                throw MCPError.internalError(
+                    "Target '\(targetName)' was removed but these files still reference it: "
+                        + dangling.joined(separator: ", "),
+                )
+            }
+
+            var summary = "Successfully removed target '\(targetName)' from project"
+            if !editedTestPlans.isEmpty {
+                summary += "\nUpdated \(editedTestPlans.count) test plan(s): "
+                    + editedTestPlans.map { URL(fileURLWithPath: $0).lastPathComponent }
+                    .joined(separator: ", ")
+            }
+            if !editedSchemes.isEmpty {
+                summary += "\nUpdated \(editedSchemes.count) scheme(s): "
+                    + editedSchemes.map { URL(fileURLWithPath: $0).lastPathComponent }
+                    .joined(separator: ", ")
+            }
+
+            return CallTool.Result(content: [
+                .text(text: summary, annotations: nil, _meta: nil)
             ],)
         } catch {
             throw MCPError.internalError(

@@ -232,4 +232,161 @@ struct RemoveTargetToolTests {
         #expect(xcodeproj.pbxproj.containerItemProxies.isEmpty)
         #expect(xcodeproj.pbxproj.nativeTargets.first?.dependencies.isEmpty == true)
     }
+
+    @Test
+    func `Remove target cascades to test plans referencing it`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "AppTarget", target2: "AppTargetTests", at: projectPath,
+        )
+
+        // A test plan that references the target we are about to remove.
+        let planPath = tempDir.appendingPathComponent("Tests.xctestplan").path
+        let plan: [String: Any] = [
+            "version": 1,
+            "testTargets": [
+                ["target": [
+                    "containerPath": "container:TestProject.xcodeproj",
+                    "identifier": "ABC123",
+                    "name": "AppTargetTests",
+                ]],
+            ],
+        ]
+        try TestPlanFile.write(plan, to: planPath)
+
+        let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("AppTargetTests"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed target 'AppTargetTests'"))
+        #expect(message.contains("Tests.xctestplan"))
+
+        // The dangling reference must be gone from the test plan.
+        let updated = try TestPlanFile.read(from: planPath)
+        #expect(!TestPlanFile.targetNames(from: updated).contains("AppTargetTests"))
+    }
+
+    @Test
+    func `Remove target cascades to schemes referencing it`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "AppTarget", target2: "AppTargetTests", at: projectPath,
+        )
+
+        // A shared scheme whose TestAction references the target we are about to remove.
+        let schemeDir = projectPath.string + "/xcshareddata/xcschemes"
+        try FileManager.default.createDirectory(
+            atPath: schemeDir, withIntermediateDirectories: true,
+        )
+        let schemePath = "\(schemeDir)/AppTarget.xcscheme"
+        let schemeXML = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Scheme LastUpgradeVersion="1600" version="1.7">
+           <TestAction buildConfiguration="Debug">
+              <Testables>
+                 <TestableReference skipped="NO">
+                    <BuildableReference
+                       BuildableIdentifier="primary"
+                       BlueprintIdentifier="ABC123"
+                       BuildableName="AppTargetTests.xctest"
+                       BlueprintName="AppTargetTests"
+                       ReferencedContainer="container:TestProject.xcodeproj">
+                    </BuildableReference>
+                 </TestableReference>
+              </Testables>
+           </TestAction>
+        </Scheme>
+        """
+        try schemeXML.write(toFile: schemePath, atomically: true, encoding: .utf8)
+
+        let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("AppTargetTests"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed target 'AppTargetTests'"))
+        #expect(message.contains("AppTarget.xcscheme"))
+
+        // No dangling reference may remain in the scheme.
+        #expect(!SchemeTargetEditor.references(
+            target: "AppTargetTests",
+            projectFilename: "TestProject.xcodeproj",
+            schemeAt: schemePath,
+        ))
+    }
+
+    @Test
+    func `Remove target with product embedded in another target does not crash`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "HostApp", target2: "Helper", at: projectPath,
+        )
+
+        // Give Helper a product and embed it in HostApp via a copy-files build phase. A leftover
+        // build file pointing at the deleted product is what traps XcodeProj's serializer.
+        var xcodeproj = try XcodeProj(path: projectPath)
+        let host = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "HostApp" })
+        let helper = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "Helper" })
+
+        let product = PBXFileReference(sourceTree: .buildProductsDir, name: "Helper.framework")
+        xcodeproj.pbxproj.add(object: product)
+        helper.product = product
+        xcodeproj.pbxproj.rootObject?.productsGroup?.children.append(product)
+
+        let buildFile = PBXBuildFile(file: product)
+        xcodeproj.pbxproj.add(object: buildFile)
+        let embedPhase = PBXCopyFilesBuildPhase(
+            dstSubfolderSpec: .frameworks, name: "Embed Frameworks", files: [buildFile],
+        )
+        xcodeproj.pbxproj.add(object: embedPhase)
+        host.buildPhases.append(embedPhase)
+        try xcodeproj.write(path: projectPath)
+
+        // Removing Helper must succeed and not leave a dangling build file.
+        let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("Helper"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed target 'Helper'"))
+
+        xcodeproj = try XcodeProj(path: projectPath)
+        #expect(!xcodeproj.pbxproj.nativeTargets.contains { $0.name == "Helper" })
+        // The embedded build file referencing the now-deleted product must be gone.
+        #expect(xcodeproj.pbxproj.buildFiles.allSatisfy { $0.file !== product })
+    }
 }
