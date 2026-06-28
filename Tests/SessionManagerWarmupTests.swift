@@ -12,15 +12,17 @@ struct SessionManagerWarmupTests {
     /// Polls `manager.warmupState(for:)` until the warmup reports `.completed` or `timeout`
     /// elapses. Returns `true` if completion was observed, `false` on timeout.
     ///
-    /// The default is generous because the poll uses `Task.sleep` on the Swift cooperative
-    /// thread pool, which the full parallel test suite (1200+ tests) can starve with blocking
-    /// calls in other suites — delaying the loop's first tick well past the warmup's actual
-    /// completion. Matches the budget given to `WaitForProcessExitTests` for the same reason.
+    /// The default is generous because the warmup task runs at `.background` priority and the
+    /// poll uses `Task.sleep` on the Swift cooperative thread pool, both of which the full
+    /// parallel test suite (1400+ tests) can starve with blocking calls in other suites —
+    /// deferring the warmup's first tick well past its actual (sub-second) completion. A 15s
+    /// budget still flaked on a saturated CI runner (warmup completed in 0.08s but wasn't
+    /// observed until ~18s), so the budget is large enough that only a genuine hang trips it.
     @discardableResult
     private func waitUntilCompleted(
         manager: SessionManager,
         packagePath: String,
-        timeout: Duration = .seconds(15),
+        timeout: Duration = .seconds(60),
     ) async throws -> Bool {
         let started = ContinuousClock.now
 
@@ -62,7 +64,7 @@ struct SessionManagerWarmupTests {
 
         if try await !waitUntilCompleted(manager: manager, packagePath: pkgDir.path) {
             Issue.record(
-                "Warmup did not complete within 2s; state=\(await String(describing: manager.warmupState(for: pkgDir.path)))"
+                "Warmup did not complete within the poll budget; state=\(await String(describing: manager.warmupState(for: pkgDir.path)))"
             )
         }
     }
@@ -108,8 +110,9 @@ struct SessionManagerWarmupTests {
 
         // Poll for the (single) warmup to complete. A fixed sleep here was flaky on CI: the warmup
         // task runs at .background priority, so under runner starvation it could be deferred long
-        // enough that runCount was still 0 when the assertion fired. Use the generous 15s default
-        // budget (an explicit 5s override here still flaked on saturated runners — #264/#267).
+        // enough that runCount was still 0 when the assertion fired. Use the generous default
+        // budget (explicit 5s/15s overrides here both still flaked on saturated runners —
+        // #264/#267).
         try await waitUntilCompleted(manager: manager, packagePath: pkgDir.path)
         // Brief grace period to surface any spurious duplicate warmups that would also increment
         // runCount.
