@@ -207,6 +207,53 @@ struct RepairProjectToolTests {
     }
 
     @Test
+    func `Garbage-collects orphaned target dependency and proxy objects`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Inject a PBXTargetDependency + PBXContainerItemProxy that no target's `dependencies`
+        // array references — exactly the orphan a buggy dependent-target removal left behind.
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let app = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let proxy = try PBXContainerItemProxy(
+            containerPortal: .project(#require(xcodeproj.pbxproj.rootObject)),
+            remoteGlobalID: .object(app),
+            proxyType: .nativeTarget,
+            remoteInfo: "App",
+        )
+        xcodeproj.pbxproj.add(object: proxy)
+        let dependency = PBXTargetDependency(name: "App", target: app, targetProxy: proxy)
+        xcodeproj.pbxproj.add(object: dependency)
+        // Deliberately NOT appended to any target's dependencies — this is the orphan.
+        try xcodeproj.write(path: projectPath)
+
+        #expect(try XcodeProj(path: projectPath).pbxproj.targetDependencies.count == 1)
+
+        let tool = RepairProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
+
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("orphaned PBXTargetDependency"))
+        #expect(content.contains("orphaned PBXContainerItemProxy"))
+        #expect(content.contains("applied"))
+
+        let repaired = try XcodeProj(path: projectPath)
+        #expect(repaired.pbxproj.targetDependencies.isEmpty)
+        #expect(repaired.pbxproj.containerItemProxies.isEmpty)
+    }
+
+    @Test
     func `Removes self-referencing sub-project entries`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

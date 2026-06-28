@@ -235,6 +235,71 @@ struct RemoveTargetToolTests {
     }
 
     @Test
+    func `Remove dependent target cleans up its own outgoing dependency and proxy`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        // AppTarget depends on LibTarget. We remove the DEPENDENT (AppTarget). Its outgoing
+        // dependency edge + proxy must be deleted, not left orphaned pointing at LibTarget —
+        // otherwise the orphan later blocks LibTarget's own removal. (qlc-4j9)
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "AppTarget", target2: "LibTarget", at: projectPath,
+        )
+
+        var xcodeproj = try XcodeProj(path: projectPath)
+        let appTarget = try #require(
+            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" })
+        let libTarget = try #require(
+            xcodeproj.pbxproj.nativeTargets.first { $0.name == "LibTarget" })
+        let proxy = try PBXContainerItemProxy(
+            containerPortal: .project(#require(xcodeproj.pbxproj.rootObject)),
+            remoteGlobalID: .object(libTarget),
+            proxyType: .nativeTarget,
+            remoteInfo: "LibTarget",
+        )
+        xcodeproj.pbxproj.add(object: proxy)
+        let dependency = PBXTargetDependency(name: "LibTarget", target: libTarget, targetProxy: proxy)
+        xcodeproj.pbxproj.add(object: dependency)
+        appTarget.dependencies.append(dependency)
+        try xcodeproj.write(path: projectPath)
+
+        // Remove the dependent. Nothing depends on AppTarget, so no cascade is needed.
+        let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("AppTarget"),
+        ])
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully removed target 'AppTarget'"))
+
+        // No orphaned outgoing edge may survive, and the now-loadable project must still let
+        // LibTarget be removed.
+        xcodeproj = try XcodeProj(path: projectPath)
+        #expect(xcodeproj.pbxproj.targetDependencies.isEmpty)
+        #expect(xcodeproj.pbxproj.containerItemProxies.isEmpty)
+        let data = try Data(contentsOf: URL(fileURLWithPath: (projectPath + "project.pbxproj").string))
+        #expect(PBXProjReferenceAudit.danglingReferences(in: data).isEmpty)
+
+        // The depended-on target can now be removed cleanly (the regression this prevents).
+        let second = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("LibTarget"),
+        ])
+        guard case let .text(secondMessage, _, _) = second.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(secondMessage.contains("Successfully removed target 'LibTarget'"))
+    }
+
+    @Test
     func `Remove target cascades to test plans referencing it`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,

@@ -11,9 +11,20 @@ import XcodeProj
 enum TargetGraphCleanup {
     /// Detach and delete every object referencing `target` from `pbxproj`. The target's own build
     /// phases, configuration list, product reference, and group membership are the caller's
-    /// responsibility; this handles only the references that live *outside* the target.
+    /// responsibility; this handles the references that live *outside* the target plus the
+    /// dependency edges the target owns *outgoing* — which would otherwise outlive it as orphans.
     static func removeReferences(to target: PBXTarget, in pbxproj: PBXProj) {
         let project = try? pbxproj.rootProject()
+
+        // The target's own outgoing dependencies, plus the container item proxies they own. These
+        // live on the about-to-be-deleted target, so deleting the target alone would strand them in
+        // the objects table still pointing at the depended-on target — a dangling reference that
+        // blocks that target's own later removal. (Outgoing edge of a dependent target.)
+        for dependency in target.dependencies {
+            if let proxy = dependency.targetProxy { pbxproj.delete(object: proxy) }
+            pbxproj.delete(object: dependency)
+        }
+        target.dependencies.removeAll()
 
         // Other targets' dependencies on this target, plus their proxy objects.
         for other in (project?.targets ?? []) where other !== target {

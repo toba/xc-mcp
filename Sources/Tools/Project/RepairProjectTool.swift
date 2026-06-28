@@ -129,6 +129,78 @@ public struct RepairProjectTool: Sendable {
             if !dryRun { for orphan in orphans { pbxproj.delete(object: orphan) } }
         }
 
+        // --- Remove orphaned PBXTargetDependency / PBXContainerItemProxy objects ---
+        // Dependency edges no longer reachable from any target's `dependencies` array (e.g. left
+        // behind when a dependent target was removed) keep pointing at the depended-on target, and
+        // the safe-write referential-integrity audit then refuses to drop *that* target. Garbage-
+        // collect them, plus any edge/proxy whose referenced object no longer exists.
+        let allTargets = pbxproj.projects.flatMap(\.targets)
+        let liveTargetRefs = Set(allTargets.map(ObjectIdentifier.init))
+        let referencedDependencies = Set(
+            allTargets.flatMap(\.dependencies).map(ObjectIdentifier.init),
+        )
+
+        // A dependency is orphaned if no target's `dependencies` array references it, or if the
+        // target/proxy it points at is gone.
+        let orphanedDependencies = pbxproj.targetDependencies.filter { dependency in
+            if !referencedDependencies.contains(ObjectIdentifier(dependency)) { return true }
+            if let depTarget = dependency.target,
+               !liveTargetRefs.contains(ObjectIdentifier(depTarget))
+            {
+                return true
+            }
+            return false
+        }
+
+        if !orphanedDependencies.isEmpty {
+            fixes.append(
+                "Removed \(orphanedDependencies.count) orphaned PBXTargetDependency object\(orphanedDependencies.count == 1 ? "" : "s") not referenced by any target",
+            )
+            if !dryRun {
+                for dependency in orphanedDependencies {
+                    // Detach from any target that still lists it before deleting. The proxy it owns
+                    // is left for the proxy pass below, which now sees it unreferenced and reports
+                    // it as the orphan it is.
+                    for target in allTargets {
+                        target.dependencies.removeAll { $0 === dependency }
+                    }
+                    pbxproj.delete(object: dependency)
+                }
+            }
+        }
+
+        // Container item proxies are referenced by target dependencies (targetProxy) and by
+        // reference proxies (remoteRef). Any proxy not so referenced — or whose remote object is
+        // gone — is an orphan. Proxies owned by the orphaned dependencies above are excluded from
+        // the live set so they fall through to here even on a dry run (nothing was deleted yet).
+        let orphanedDependencyIDs = Set(orphanedDependencies.map(ObjectIdentifier.init))
+        let liveProxyRefs = Set(
+            pbxproj.targetDependencies
+                .filter { !orphanedDependencyIDs.contains(ObjectIdentifier($0)) }
+                .compactMap(\.targetProxy).map(ObjectIdentifier.init),
+        ).union(
+            pbxproj.referenceProxies.compactMap(\.remote).map(ObjectIdentifier.init),
+        )
+        let orphanedProxies = pbxproj.containerItemProxies.filter { proxy in
+            if liveProxyRefs.contains(ObjectIdentifier(proxy)) {
+                // Still referenced, but the object it points at may be gone.
+                if case let .object(obj)? = proxy.remoteGlobalID,
+                   !liveTargetRefs.contains(ObjectIdentifier(obj))
+                {
+                    return true
+                }
+                return false
+            }
+            return true
+        }
+
+        if !orphanedProxies.isEmpty {
+            fixes.append(
+                "Removed \(orphanedProxies.count) orphaned PBXContainerItemProxy object\(orphanedProxies.count == 1 ? "" : "s") not referenced by any dependency",
+            )
+            if !dryRun { for proxy in orphanedProxies { pbxproj.delete(object: proxy) } }
+        }
+
         // --- Write if changes were made ---
         if !fixes.isEmpty, !dryRun {
             do {
