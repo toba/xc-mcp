@@ -60,6 +60,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addSwiftPackage = "add_swift_package"
     case addPackageProduct = "add_package_product"
     case listSwiftPackages = "list_swift_packages"
+    case auditSwiftPackages = "audit_swift_packages"
     case removeSwiftPackage = "remove_swift_package"
     case removePackageProduct = "remove_package_product"
     case listPackageProducts = "list_package_products"
@@ -315,6 +316,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .addSwiftPackage,
                  .addPackageProduct,
                  .listSwiftPackages,
+                 .auditSwiftPackages,
                  .removeSwiftPackage,
                  .removePackageProduct,
                  .listPackageProducts,
@@ -617,6 +619,7 @@ public struct XcodeMCPServer: Sendable {
         let addSwiftPackageTool = AddSwiftPackageTool(pathUtility: pathUtility)
         let addPackageProductTool = AddPackageProductTool(pathUtility: pathUtility)
         let listSwiftPackagesTool = ListSwiftPackagesTool(pathUtility: pathUtility)
+        let auditSwiftPackagesTool = AuditSwiftPackagesTool(pathUtility: pathUtility)
         let removeSwiftPackageTool = RemoveSwiftPackageTool(pathUtility: pathUtility)
         let removePackageProductTool = RemovePackageProductTool(pathUtility: pathUtility)
         let listPackageProductsTool = ListPackageProductsTool(pathUtility: pathUtility)
@@ -1003,6 +1006,7 @@ public struct XcodeMCPServer: Sendable {
             (.addSwiftPackage, addSwiftPackageTool.tool()),
             (.addPackageProduct, addPackageProductTool.tool()),
             (.listSwiftPackages, listSwiftPackagesTool.tool()),
+            (.auditSwiftPackages, auditSwiftPackagesTool.tool()),
             (.removeSwiftPackage, removeSwiftPackageTool.tool()),
             (.removePackageProduct, removePackageProductTool.tool()),
             (.listPackageProducts, listPackageProductsTool.tool()),
@@ -1297,6 +1301,8 @@ public struct XcodeMCPServer: Sendable {
                     return try addPackageProductTool.execute(arguments: arguments)
                 case .listSwiftPackages:
                     return try listSwiftPackagesTool.execute(arguments: arguments)
+                case .auditSwiftPackages:
+                    return try auditSwiftPackagesTool.execute(arguments: arguments)
                 case .removeSwiftPackage:
                     return try removeSwiftPackageTool.execute(arguments: arguments)
                 case .removePackageProduct:

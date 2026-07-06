@@ -52,6 +52,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case addSwiftPackage = "add_swift_package"
     case addPackageProduct = "add_package_product"
     case listSwiftPackages = "list_swift_packages"
+    case auditSwiftPackages = "audit_swift_packages"
     case removeSwiftPackage = "remove_swift_package"
     case removePackageProduct = "remove_package_product"
     case listPackageProducts = "list_package_products"
@@ -90,14 +91,13 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
 
 /// MCP server for Xcode project file manipulation.
 ///
-/// This focused server provides tools for creating and modifying .xcodeproj files
-/// using the XcodeProj library. It is stateless and does not require session management.
+/// This focused server provides tools for creating and modifying .xcodeproj files using the
+/// XcodeProj library. It is stateless and does not require session management.
 ///
 /// ## Token Efficiency
 ///
-/// This server exposes 29 tools with approximately 5K token overhead, compared to
-/// ~50K for the full monolithic xc-mcp server. Use this server when you only need
-/// project manipulation capabilities.
+/// This server exposes 29 tools with approximately 5K token overhead, compared to ~50K for the full
+/// monolithic xc-mcp server. Use this server when you only need project manipulation capabilities.
 ///
 /// ## Tools
 ///
@@ -108,8 +108,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
 ///   `add_target_to_synchronized_folder`, `add_synchronized_folder_exception`,
 ///   `remove_synchronized_folder_exception`, `list_synchronized_folder_exceptions`
 /// - Build settings: `get_build_settings`, `set_build_setting`, `list_build_configurations`
-/// - Dependencies: `add_dependency`, `add_framework`, `add_build_phase`,
-///   `remove_run_script_phase`
+/// - Dependencies: `add_dependency`, `add_framework`, `add_build_phase`, `remove_run_script_phase`
 /// - Copy files phases: `list_copy_files_phases`, `add_copy_files_phase`,
 ///   `add_to_copy_files_phase`, `remove_copy_files_phase`
 /// - Swift packages: `add_swift_package`, `list_swift_packages`, `remove_swift_package`
@@ -123,8 +122,8 @@ public struct ProjectMCPServer: Sendable {
     ///
     /// - Parameters:
     ///   - basePath: The root directory for file operations.
-    ///   - sandboxEnabled: Whether to enforce that paths stay within the base directory.
-    ///     Defaults to `true`.
+    ///   - sandboxEnabled: Whether to enforce that paths stay within the base directory. Defaults
+    ///     to `true`.
     ///   - logger: Logger instance for diagnostic output.
     public init(basePath: String, sandboxEnabled: Bool = true, logger: Logger) {
         self.basePath = basePath
@@ -167,7 +166,8 @@ public struct ProjectMCPServer: Sendable {
         let setTestPlanTargetEnabledTool = SetTestPlanTargetEnabledTool(pathUtility: pathUtility)
         let setTestPlanSkippedTagsTool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let setTestPlanSkippedTestsTool = SetTestPlanSkippedTestsTool(pathUtility: pathUtility)
-        let setTestPlanTargetParallelizableTool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
+        let setTestPlanTargetParallelizableTool = SetTestPlanTargetParallelizableTool(
+            pathUtility: pathUtility)
         let setTestPlanOptionsTool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         let addTestPlanToSchemeTool = AddTestPlanToSchemeTool(pathUtility: pathUtility)
         let removeTestPlanFromSchemeTool = RemoveTestPlanFromSchemeTool(pathUtility: pathUtility)
@@ -184,12 +184,14 @@ public struct ProjectMCPServer: Sendable {
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
         let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
         let listFrameworksPhaseTool = ListFrameworksPhaseTool(pathUtility: pathUtility)
-        let setFrameworkMergeAttributeTool = SetFrameworkMergeAttributeTool(pathUtility: pathUtility)
+        let setFrameworkMergeAttributeTool = SetFrameworkMergeAttributeTool(
+            pathUtility: pathUtility)
         let addBuildPhaseTool = AddBuildPhaseTool(pathUtility: pathUtility)
         let duplicateTargetTool = DuplicateTargetTool(pathUtility: pathUtility)
         let addSwiftPackageTool = AddSwiftPackageTool(pathUtility: pathUtility)
         let addPackageProductTool = AddPackageProductTool(pathUtility: pathUtility)
         let listSwiftPackagesTool = ListSwiftPackagesTool(pathUtility: pathUtility)
+        let auditSwiftPackagesTool = AuditSwiftPackagesTool(pathUtility: pathUtility)
         let removeSwiftPackageTool = RemoveSwiftPackageTool(pathUtility: pathUtility)
         let removePackageProductTool = RemovePackageProductTool(pathUtility: pathUtility)
         let listPackageProductsTool = ListPackageProductsTool(pathUtility: pathUtility)
@@ -286,6 +288,7 @@ public struct ProjectMCPServer: Sendable {
                 addSwiftPackageTool.tool(),
                 addPackageProductTool.tool(),
                 listSwiftPackagesTool.tool(),
+                auditSwiftPackagesTool.tool(),
                 removeSwiftPackageTool.tool(),
                 removePackageProductTool.tool(),
                 listPackageProductsTool.tool(),
@@ -327,51 +330,34 @@ public struct ProjectMCPServer: Sendable {
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = ProjectToolName(rawValue: params.name) else {
                 let hint = ServerToolDirectory.hint(for: params.name, currentServer: "xc-project")
-                let message =
-                    hint.map { "Unknown tool: \(params.name). \($0)" }
-                        ?? "Unknown tool: \(params.name)"
+                let message = hint.map { "Unknown tool: \(params.name). \($0)" }
+                    ?? "Unknown tool: \(params.name)"
                 throw MCPError.methodNotFound(message)
             }
 
             let arguments = params.arguments ?? [:]
 
             switch toolName {
-                case .createXcodeproj:
-                    return try createXcodeprojTool.execute(arguments: arguments)
-                case .listTargets:
-                    return try listTargetsTool.execute(arguments: arguments)
+                case .createXcodeproj: return try createXcodeprojTool.execute(arguments: arguments)
+                case .listTargets: return try listTargetsTool.execute(arguments: arguments)
                 case .listBuildConfigurations:
                     return try listBuildConfigurationsTool.execute(arguments: arguments)
-                case .listFiles:
-                    return try listFilesTool.execute(arguments: arguments)
+                case .listFiles: return try listFilesTool.execute(arguments: arguments)
                 case .getBuildSettings:
                     return try getBuildSettingsTool.execute(arguments: arguments)
-                case .addFile:
-                    return try addFileTool.execute(arguments: arguments)
-                case .removeFile:
-                    return try removeFileTool.execute(arguments: arguments)
-                case .moveFile:
-                    return try moveFileTool.execute(arguments: arguments)
-                case .createGroup:
-                    return try createGroupTool.execute(arguments: arguments)
-                case .removeGroup:
-                    return try removeGroupTool.execute(arguments: arguments)
-                case .moveGroup:
-                    return try moveGroupTool.execute(arguments: arguments)
-                case .addTarget:
-                    return try addTargetTool.execute(arguments: arguments)
-                case .removeTarget:
-                    return try removeTargetTool.execute(arguments: arguments)
-                case .renameTarget:
-                    return try renameTargetTool.execute(arguments: arguments)
-                case .renameScheme:
-                    return try renameSchemeTool.execute(arguments: arguments)
-                case .createScheme:
-                    return try createSchemeTool.execute(arguments: arguments)
-                case .validateScheme:
-                    return try validateSchemeTool.execute(arguments: arguments)
-                case .createTestPlan:
-                    return try createTestPlanTool.execute(arguments: arguments)
+                case .addFile: return try addFileTool.execute(arguments: arguments)
+                case .removeFile: return try removeFileTool.execute(arguments: arguments)
+                case .moveFile: return try moveFileTool.execute(arguments: arguments)
+                case .createGroup: return try createGroupTool.execute(arguments: arguments)
+                case .removeGroup: return try removeGroupTool.execute(arguments: arguments)
+                case .moveGroup: return try moveGroupTool.execute(arguments: arguments)
+                case .addTarget: return try addTargetTool.execute(arguments: arguments)
+                case .removeTarget: return try removeTargetTool.execute(arguments: arguments)
+                case .renameTarget: return try renameTargetTool.execute(arguments: arguments)
+                case .renameScheme: return try renameSchemeTool.execute(arguments: arguments)
+                case .createScheme: return try createSchemeTool.execute(arguments: arguments)
+                case .validateScheme: return try validateSchemeTool.execute(arguments: arguments)
+                case .createTestPlan: return try createTestPlanTool.execute(arguments: arguments)
                 case .addTargetToTestPlan:
                     return try addTargetToTestPlanTool.execute(arguments: arguments)
                 case .removeTargetFromTestPlan:
@@ -392,56 +378,46 @@ public struct ProjectMCPServer: Sendable {
                     return try removeTestPlanFromSchemeTool.execute(arguments: arguments)
                 case .setSchemeStoreKitConfig:
                     return try setSchemeStoreKitConfigTool.execute(arguments: arguments)
-                case .listTestPlans:
-                    return try listTestPlansTool.execute(arguments: arguments)
-                case .searchTestPlans:
-                    return try searchTestPlansTool.execute(arguments: arguments)
+                case .listTestPlans: return try listTestPlansTool.execute(arguments: arguments)
+                case .searchTestPlans: return try searchTestPlansTool.execute(arguments: arguments)
                 case .setTestTargetApplication:
                     return try setTestTargetApplicationTool.execute(arguments: arguments)
-                case .renameGroup:
-                    return try renameGroupTool.execute(arguments: arguments)
-                case .addDependency:
-                    return try addDependencyTool.execute(arguments: arguments)
+                case .renameGroup: return try renameGroupTool.execute(arguments: arguments)
+                case .addDependency: return try addDependencyTool.execute(arguments: arguments)
                 case .listDependencies:
                     return try listDependenciesTool.execute(arguments: arguments)
                 case .removeDependency:
                     return try removeDependencyTool.execute(arguments: arguments)
-                case .setBuildSetting:
-                    return try setBuildSettingTool.execute(arguments: arguments)
+                case .setBuildSetting: return try setBuildSettingTool.execute(arguments: arguments)
                 case .removeBuildSetting:
                     return try removeBuildSettingTool.execute(arguments: arguments)
-                case .addFramework:
-                    return try addFrameworkTool.execute(arguments: arguments)
-                case .removeFramework:
-                    return try removeFrameworkTool.execute(arguments: arguments)
+                case .addFramework: return try addFrameworkTool.execute(arguments: arguments)
+                case .removeFramework: return try removeFrameworkTool.execute(arguments: arguments)
                 case .listFrameworksPhase:
                     return try listFrameworksPhaseTool.execute(arguments: arguments)
                 case .setFrameworkMergeAttribute:
                     return try setFrameworkMergeAttributeTool.execute(arguments: arguments)
-                case .addBuildPhase:
-                    return try addBuildPhaseTool.execute(arguments: arguments)
-                case .duplicateTarget:
-                    return try duplicateTargetTool.execute(arguments: arguments)
-                case .addSwiftPackage:
-                    return try addSwiftPackageTool.execute(arguments: arguments)
+                case .addBuildPhase: return try addBuildPhaseTool.execute(arguments: arguments)
+                case .duplicateTarget: return try duplicateTargetTool.execute(arguments: arguments)
+                case .addSwiftPackage: return try addSwiftPackageTool.execute(arguments: arguments)
                 case .addPackageProduct:
                     return try addPackageProductTool.execute(arguments: arguments)
                 case .listSwiftPackages:
                     return try listSwiftPackagesTool.execute(arguments: arguments)
+                case .auditSwiftPackages:
+                    return try auditSwiftPackagesTool.execute(arguments: arguments)
                 case .removeSwiftPackage:
                     return try removeSwiftPackageTool.execute(arguments: arguments)
                 case .removePackageProduct:
                     return try removePackageProductTool.execute(arguments: arguments)
                 case .listPackageProducts:
                     return try listPackageProductsTool.execute(arguments: arguments)
-                case .listGroups:
-                    return try listGroupsTool.execute(arguments: arguments)
+                case .listGroups: return try listGroupsTool.execute(arguments: arguments)
                 case .addSynchronizedFolder:
                     return try addSynchronizedFolderTool.execute(arguments: arguments)
                 case .removeSynchronizedFolder:
                     return try removeSynchronizedFolderTool.execute(arguments: arguments)
-                case .addAppExtension:
-                    return try addAppExtensionTool.execute(arguments: arguments)
+                case .addAppExtension: return try addAppExtensionTool.execute(arguments: arguments)
                 case .removeAppExtension:
                     return try removeAppExtensionTool.execute(arguments: arguments)
                 case .listDocumentTypes:
@@ -452,10 +428,8 @@ public struct ProjectMCPServer: Sendable {
                     return try listTypeIdentifiersTool.execute(arguments: arguments)
                 case .manageTypeIdentifier:
                     return try manageTypeIdentifierTool.execute(arguments: arguments)
-                case .listURLTypes:
-                    return try listURLTypesTool.execute(arguments: arguments)
-                case .manageURLType:
-                    return try manageURLTypeTool.execute(arguments: arguments)
+                case .listURLTypes: return try listURLTypesTool.execute(arguments: arguments)
+                case .manageURLType: return try manageURLTypeTool.execute(arguments: arguments)
                 case .addTargetToSynchronizedFolder:
                     return try addTargetToSynchronizedFolderTool.execute(arguments: arguments)
                 case .removeTargetFromSynchronizedFolder:
@@ -467,11 +441,11 @@ public struct ProjectMCPServer: Sendable {
                 case .listSynchronizedFolderExceptions:
                     return try listSynchronizedFolderExceptionsTool.execute(arguments: arguments)
                 case .addSynchronizedFolderPhaseMembership:
-                    return try addSynchronizedFolderPhaseMembershipTool.execute(arguments: arguments)
+                    return try addSynchronizedFolderPhaseMembershipTool.execute(
+                        arguments: arguments)
                 case .listCopyFilesPhases:
                     return try listCopyFilesPhases.execute(arguments: arguments)
-                case .addCopyFilesPhase:
-                    return try addCopyFilesPhase.execute(arguments: arguments)
+                case .addCopyFilesPhase: return try addCopyFilesPhase.execute(arguments: arguments)
                 case .addToCopyFilesPhase:
                     return try addToCopyFilesPhase.execute(arguments: arguments)
                 case .removeCopyFilesPhase:
@@ -480,20 +454,14 @@ public struct ProjectMCPServer: Sendable {
                     return try setCopyFilesPhaseSubpath.execute(arguments: arguments)
                 case .removeRunScriptPhase:
                     return try removeRunScriptPhase.execute(arguments: arguments)
-                case .validateProject:
-                    return try validateProjectTool.execute(arguments: arguments)
-                case .repairProject:
-                    return try repairProjectTool.execute(arguments: arguments)
-                case .scaffoldModule:
-                    return try scaffoldModuleTool.execute(arguments: arguments)
-                case .dumpPIF:
-                    return try dumpPIFTool.execute(arguments: arguments)
-                case .whyTargetID:
-                    return try whyTargetIDTool.execute(arguments: arguments)
+                case .validateProject: return try validateProjectTool.execute(arguments: arguments)
+                case .repairProject: return try repairProjectTool.execute(arguments: arguments)
+                case .scaffoldModule: return try scaffoldModuleTool.execute(arguments: arguments)
+                case .dumpPIF: return try dumpPIFTool.execute(arguments: arguments)
+                case .whyTargetID: return try whyTargetIDTool.execute(arguments: arguments)
                 case .findBuildSettings:
                     return try findBuildSettingsTool.execute(arguments: arguments)
-                case .findLinkFlag:
-                    return try findLinkFlagTool.execute(arguments: arguments)
+                case .findLinkFlag: return try findLinkFlagTool.execute(arguments: arguments)
                 case .listRunScriptPhases:
                     return try listRunScriptPhasesTool.execute(arguments: arguments)
             }

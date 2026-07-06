@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Jul 5 – Jul 11, 2026
+
+### 🗜️ Tweaks
+
+- Add `audit_swift_packages` to `xc-project` (and monolithic `xc-mcp`); a read-only, offline SwiftPM dependency-health check adapted (reimplemented, not a dependency) from `crleonard/swift-package-audit` that cross-references a project's declared `XCRemoteSwiftPackageReference` requirements against its `Package.resolved` pins and reports `missingPackageResolved`, `unresolvedReference` (declared but unpinned), `stalePin` (pinned but no longer declared), `branchDependency` / `revisionDependency` / `exactVersion` stability warnings, `duplicateURLForm`, and `urlFormMismatch`; a new `Core/PackageResolvedParser` normalizes both the legacy v1 (`object.pins`) and modern v2/v3 (`pins`) formats and locates the pins file under the project's embedded `project.xcworkspace` ([#406](https://github.com/toba/xc-mcp/issues/406))
+
 ## Week of Jun 28 – Jul 4, 2026
 
 ### 🐞 Fixes
