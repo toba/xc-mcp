@@ -7,12 +7,10 @@ import Foundation
 public struct RemoveFileTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_file",
             description: "Remove a file from the Xcode project",
             inputSchema: .object([
@@ -51,6 +49,7 @@ public struct RemoveFileTool: Sendable {
         }
 
         let removeFromDisk: Bool
+
         if case let .bool(remove) = arguments["remove_from_disk"] {
             removeFromDisk = remove
         } else {
@@ -70,8 +69,8 @@ public struct RemoveFileTool: Sendable {
 
             let fileName = URL(fileURLWithPath: resolvedFilePath).lastPathComponent
 
-            /// Check whether a file reference matches the requested path by
-            /// computing its full path relative to the project source root.
+            /// Check whether a file reference matches the requested path by computing its full path
+            /// relative to the project source root.
             func matchesRequestedFile(_ fileRef: PBXFileReference) -> Bool {
                 if let fullPath = try? fileRef.fullPath(sourceRoot: projectRoot) {
                     return fullPath.string == resolvedFilePath
@@ -100,8 +99,7 @@ public struct RemoveFileTool: Sendable {
                                matchesRequestedFile(fileRef)
                             {
                                 removals.append(BuildFileRemoval(
-                                    buildFileUUID: buildFile.uuid,
-                                    phaseUUID: phase.uuid,
+                                    buildFileUUID: buildFile.uuid, phaseUUID: phase.uuid,
                                     targetName: target.name,
                                 ))
                                 fileRefUUID = fileRef.uuid
@@ -123,30 +121,23 @@ public struct RemoveFileTool: Sendable {
                         return group
                     }
                     if let childGroup = child as? PBXGroup,
-                       let found = findParentGroup(childGroup)
-                    {
-                        return found
-                    }
+                       let found = findParentGroup(childGroup) { return found }
                 }
                 return nil
             }
 
             if let mainGroup = xcodeproj.pbxproj.rootObject?.mainGroup {
-                if let group = findParentGroup(mainGroup) {
-                    parentGroupUUID = group.uuid
-                }
+                if let group = findParentGroup(mainGroup) { parentGroupUUID = group.uuid }
             }
 
             guard !removals.isEmpty || parentGroupUUID != nil else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "File not found in project: \(fileName)",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result(content: [
+                    .text(
+                        text: "File not found in project: \(fileName)",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ],)
             }
 
             // --- Phase 2: Text-based edits ---
@@ -180,18 +171,86 @@ public struct RemoveFileTool: Sendable {
                 }
             }
 
-            let removedFromTargets = removals.map(\.targetName)
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully removed \(fileName) from project. Removed from targets: \(removedFromTargets.joined(separator: ", "))",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            let removedFromTargets = removals.map(\.targetName).joined(separator: ", ")
+            var resultText = "Successfully removed \(fileName) from project. Removed from targets: "
+                + removedFromTargets
+
+            // Guardrail: removing a .storekit silently breaks the scheme's StoreKit Configuration
+            // picker and any SKTestSession(configurationFileNamed:) tests. Unwire dangling scheme
+            // references cleanly (rather than leave them pointing at a now-missing file) and warn.
+            if resolvedFilePath.hasSuffix(".storekit") {
+                let unwired = Self.unwireSchemeReferences(
+                    toStorekit: resolvedFilePath, projectPath: resolvedProjectPath,
+                )
+
+                if !unwired.isEmpty {
+                    let list = unwired.joined(separator: ", ")
+                    resultText += "\n\nUnwired StoreKit reference from \(unwired.count) scheme "
+                    resultText += "action(s): \(list)."
+                }
+                resultText += "\n\n⚠︎ This was a StoreKit config: it no longer appears in any "
+                resultText += "scheme's StoreKit Configuration picker, and "
+                resultText +=
+                    "SKTestSession(configurationFileNamed:) tests will fatalError if they "
+                resultText += "still reference it. Re-add it with add_storekit_config if this was "
+                resultText += "unintentional."
+            }
+
+            return CallTool.Result(content: [.text(text: resultText, annotations: nil, _meta: nil)])
         } catch {
             throw MCPError.internalError(
                 "Failed to remove file from Xcode project: \(error.localizedDescription)",
             )
         }
+    }
+
+    /// Clears every scheme `StoreKitConfigurationFileReference` that resolves to
+    /// `resolvedFilePath`, so removing the config leaves no scheme pointing at a missing file.
+    /// Returns `"<scheme> (launch)"`-style labels for each action unwired. Best-effort: unreadable
+    /// or unrelated schemes are skipped silently.
+    private static func unwireSchemeReferences(
+        toStorekit resolvedFilePath: String,
+        projectPath: String,
+    ) -> [String] {
+        let target = URL(fileURLWithPath: resolvedFilePath).standardizedFileURL.path
+        var unwired: [String] = []
+
+        for dir in SchemePathResolver.schemeDirs(for: projectPath) {
+            guard let entries = try? FileManager.default.contentsOfDirectory(atPath: dir) else {
+                continue
+            }
+
+            for entry in entries where entry.hasSuffix(".xcscheme") {
+                let schemePath = "\(dir)/\(entry)"
+                let schemeDir = URL(fileURLWithPath: schemePath).deletingLastPathComponent()
+                let identifiers = SetSchemeStoreKitConfigTool.storeKitIdentifiers(
+                    inSchemeAt: schemePath,
+                )
+
+                let actionsToClear = identifiers.filter { _, identifier in
+                    let resolved = schemeDir.appendingPathComponent(identifier)
+                        .standardizedFileURL.path
+                    return resolved == target
+                }.keys
+
+                guard !actionsToClear.isEmpty else { continue }
+
+                if let (edited, _) = try? SetSchemeStoreKitConfigTool.applyStoreKitReference(
+                    schemePath: schemePath,
+                    identifier: "",
+                    isAdd: false,
+                    elementNames: Array(actionsToClear),
+                ) {
+                    let schemeName = (entry as NSString).deletingPathExtension
+
+                    for action in edited {
+                        unwired.append(
+                            "\(schemeName) (\(SetSchemeStoreKitConfigTool.friendlyName(action)))",
+                        )
+                    }
+                }
+            }
+        }
+        return unwired
     }
 }

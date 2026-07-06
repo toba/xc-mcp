@@ -8,7 +8,7 @@ public struct BuildRunMacOSTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -16,10 +16,10 @@ public struct BuildRunMacOSTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "build_run_macos",
             description:
-            "Build and run an Xcode project or workspace on macOS. This combines build_macos and launch_mac_app into a single operation.",
+                "Build and run an Xcode project or workspace on macOS. This combines build_macos and launch_mac_app into a single operation.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -86,9 +86,8 @@ public struct BuildRunMacOSTool: Sendable {
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let arch = arguments.getString("arch")
         let launchArgs = arguments.getStringArray("args")
-        let timeout =
-            arguments.getInt("timeout").map { TimeInterval($0) }
-                ?? XcodebuildRunner.defaultTimeout
+        let timeout = arguments.getInt("timeout").map { TimeInterval($0) }
+            ?? XcodebuildRunner.defaultTimeout
 
         let projectRoot = ErrorExtractor.projectRoot(
             projectPath: projectPath, workspacePath: workspacePath,
@@ -104,9 +103,7 @@ public struct BuildRunMacOSTool: Sendable {
             )
 
             var destination = XcodebuildRunner.macOSDestination
-            if let arch {
-                destination += ",arch=\(arch)"
-            }
+            if let arch { destination += ",arch=\(arch)" }
 
             // Step 1: Build
             let hasExplicitTimeout = arguments["timeout"] != nil
@@ -142,9 +139,7 @@ public struct BuildRunMacOSTool: Sendable {
             )
 
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {
-                throw MCPError.internalError(
-                    "Could not determine app path from build settings.",
-                )
+                throw MCPError.internalError("Could not determine app path from build settings.")
             }
 
             // Step 3: Prepare app bundle for launch (symlink non-embedded frameworks)
@@ -164,15 +159,19 @@ public struct BuildRunMacOSTool: Sendable {
                 var message = "Successfully built and launched '\(scheme)' on macOS"
                 message += "\nApp path: \(appPath)"
 
+                if let storekitWarning = StoreKitLaunchAdvisory.warning(
+                    scheme: scheme, projectPath: projectPath, workspacePath: workspacePath,
+                ) { message += "\n\n" + storekitWarning }
+
                 // Resolve PID and check liveness
                 let appName = URL(fileURLWithPath: appPath).deletingPathExtension()
                     .lastPathComponent
                 let bundleId = extractBundleId(from: buildSettings.stdout)
-                if let pid = await PIDResolver.findLaunchedPID(
-                    bundleId: bundleId,
-                    appName: appName,
-                ) {
+
+                if let pid = await PIDResolver.findLaunchedPID(bundleId: bundleId, appName: appName)
+                {
                     try await Task.sleep(for: .seconds(1))
+
                     if kill(pid, 0) == 0 {
                         message += "\nPID: \(pid)"
                     } else {
@@ -184,11 +183,8 @@ public struct BuildRunMacOSTool: Sendable {
                     }
                 }
 
-                return CallTool.Result(content: [.text(
-                    text: message,
-                    annotations: nil,
-                    _meta: nil,
-                )])
+                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
+                )
             } else {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }

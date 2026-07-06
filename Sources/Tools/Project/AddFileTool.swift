@@ -6,21 +6,19 @@ import Foundation
 
 /// MCP tool for adding files to an Xcode project.
 ///
-/// Adds a file reference to the project and optionally adds it to a specific
-/// target's build phases based on the file type (source, header, or resource).
+/// Adds a file reference to the project and optionally adds it to a specific target's build phases
+/// based on the file type (source, header, or resource).
 public struct AddFileTool: Sendable {
     private let pathUtility: PathUtility
 
     /// Creates a new AddFileTool instance.
     ///
     /// - Parameter pathUtility: Utility for resolving and validating paths.
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     /// Returns the MCP tool definition.
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "add_file",
             description: "Add a file to an Xcode project",
             inputSchema: .object([
@@ -57,17 +55,17 @@ public struct AddFileTool: Sendable {
 
     /// Executes the tool with the given arguments.
     ///
-    /// - Parameter arguments: Dictionary containing project_path, file_path, and optional group_name and target_name.
+    /// - Parameter arguments: Dictionary containing project_path, file_path, and optional
+    ///   group_name and target_name.
     /// - Returns: The result containing success message.
     /// - Throws: MCPError if required parameters are missing or file addition fails.
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard case let .string(projectPath) = arguments["project_path"],
               case let .string(filePath) = arguments["file_path"]
-        else {
-            throw MCPError.invalidParams("project_path and file_path are required")
-        }
+        else { throw MCPError.invalidParams("project_path and file_path are required") }
 
         let groupName: String?
+
         if case let .string(group) = arguments["group_name"] {
             groupName = group
         } else {
@@ -75,6 +73,7 @@ public struct AddFileTool: Sendable {
         }
 
         let targetName: String?
+
         if case let .string(target) = arguments["target_name"] {
             targetName = target
         } else {
@@ -93,12 +92,13 @@ public struct AddFileTool: Sendable {
 
             // Find the group to add the file to
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                  let mainGroup = project.mainGroup
+                let mainGroup = project.mainGroup
             else {
                 throw MCPError.internalError("Main group not found in project")
             }
 
             let targetGroup: PBXGroup
+
             if let groupName {
                 targetGroup = try mainGroup.resolveGroupPath(groupName)
             } else {
@@ -107,74 +107,20 @@ public struct AddFileTool: Sendable {
 
             let fileName = URL(fileURLWithPath: resolvedFilePath).lastPathComponent
             let projectRoot = projectURL.deletingLastPathComponent().path
-            let groupFullPath: String
-            if let gp = try targetGroup.fullPath(sourceRoot: projectRoot) {
-                groupFullPath = gp
-            } else {
-                groupFullPath = projectRoot
-            }
 
-            // Check for existing file reference with the same resolved path to avoid duplicates
-            let existingFileRef = xcodeproj.pbxproj.fileReferences.first { ref in
-                guard let refFullPath = try? ref.fullPath(sourceRoot: projectRoot) else {
-                    return false
-                }
-                return refFullPath == resolvedFilePath
-            }
-
-            let fileReference: PBXFileReference
-            if let existingFileRef {
-                fileReference = existingFileRef
-            } else {
-                // Compute path and sourceTree based on whether the file is under the group
-                let sourceTree: PBXSourceTree
-                let relativePath: String
-                let basePath = pathUtility.basePath
-                if resolvedFilePath.hasPrefix(groupFullPath + "/") {
-                    // File is inside the group's directory — use path relative to group
-                    sourceTree = .group
-                    relativePath = String(resolvedFilePath.dropFirst(groupFullPath.count + 1))
-                } else if resolvedFilePath.hasPrefix(projectRoot + "/") {
-                    // File is outside the group but inside the project — use sourceRoot
-                    sourceTree = .sourceRoot
-                    relativePath = String(resolvedFilePath.dropFirst(projectRoot.count + 1))
-                } else if resolvedFilePath.hasPrefix(basePath + "/") {
-                    // File is outside the xcodeproj but inside the repo root — use sourceRoot
-                    // with a path relative to the project directory (may include ../ components)
-                    sourceTree = .sourceRoot
-                    relativePath = Self.relativePath(
-                        from: projectRoot, to: resolvedFilePath,
-                    )
-                } else {
-                    // File is outside the project — use absolute path
-                    sourceTree = .absolute
-                    relativePath = resolvedFilePath
-                }
-
-                let fileExtension = URL(fileURLWithPath: resolvedFilePath).pathExtension
-                let fileType = Self.fileType(forExtension: fileExtension)
-                let newRef = PBXFileReference(
-                    sourceTree: sourceTree,
-                    name: fileName,
-                    lastKnownFileType: fileType,
-                    path: relativePath,
-                )
-                xcodeproj.pbxproj.add(object: newRef)
-                fileReference = newRef
-            }
-
-            // Add file to group if not already present
-            if !targetGroup.children.contains(where: { $0 === fileReference }) {
-                targetGroup.children.append(fileReference)
-            }
+            let fileReference = try Self.resolveOrCreateFileReference(
+                resolvedFilePath: resolvedFilePath,
+                in: targetGroup,
+                pbxproj: xcodeproj.pbxproj,
+                projectRoot: projectRoot,
+                basePath: pathUtility.basePath,
+            )
 
             // Add file to target if specified
             if let targetName {
-                guard
-                    let target = xcodeproj.pbxproj.nativeTargets.first(where: {
-                        $0.name == targetName
-                    })
-                else {
+                guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                    $0.name == targetName
+                }) else {
                     throw MCPError.invalidParams("Target '\(targetName)' not found in project")
                 }
 
@@ -213,8 +159,7 @@ public struct AddFileTool: Sendable {
                     if let resourcesBuildPhase = target.buildPhases.first(where: {
                         $0 is PBXResourcesBuildPhase
                     }) as? PBXResourcesBuildPhase {
-                        resourcesBuildPhase.files =
-                            (resourcesBuildPhase.files ?? []) + [buildFile]
+                        resourcesBuildPhase.files = (resourcesBuildPhase.files ?? []) + [buildFile]
                     } else {
                         let resourcesBuildPhase = PBXResourcesBuildPhase(files: [buildFile])
                         xcodeproj.pbxproj.add(object: resourcesBuildPhase)
@@ -229,15 +174,13 @@ public struct AddFileTool: Sendable {
             let targetInfo = targetName != nil ? " to target '\(targetName!)'" : ""
             let groupInfo = groupName != nil ? " in group '\(groupName!)'" : ""
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Successfully added file '\(fileName)'\(targetInfo)\(groupInfo)",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
+            return CallTool.Result(content: [
+                .text(
+                    text: "Successfully added file '\(fileName)'\(targetInfo)\(groupInfo)",
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ],)
         } catch {
             throw MCPError.internalError(
                 "Failed to add file to Xcode project: \(error.localizedDescription)",
@@ -245,10 +188,77 @@ public struct AddFileTool: Sendable {
         }
     }
 
+    /// Finds an existing file reference resolving to `resolvedFilePath` (to avoid duplicates) or
+    /// creates one with the correct `sourceTree`/`path`, then ensures it is a child of `group`.
+    /// Does **not** add the reference to any build phase.
+    ///
+    /// Shared by `add_file` and `add_storekit_config` so the sourceTree/relative-path computation
+    /// lives in exactly one place.
+    static func resolveOrCreateFileReference(
+        resolvedFilePath: String,
+        in group: PBXGroup,
+        pbxproj: PBXProj,
+        projectRoot: String,
+        basePath: String,
+    ) throws -> PBXFileReference {
+        let groupFullPath = (try? group.fullPath(sourceRoot: projectRoot)) ?? projectRoot
+
+        // Check for an existing file reference with the same resolved path to avoid duplicates.
+        let existingFileRef = pbxproj.fileReferences.first { ref in
+            guard let refFullPath = try? ref.fullPath(sourceRoot: projectRoot) else { return false }
+            return refFullPath == resolvedFilePath
+        }
+
+        let fileReference: PBXFileReference
+
+        if let existingFileRef {
+            fileReference = existingFileRef
+        } else {
+            // Compute path and sourceTree based on where the file lives relative to the project.
+            let sourceTree: PBXSourceTree
+            let relativePath: String
+
+            if resolvedFilePath.hasPrefix(groupFullPath + "/") {
+                // File is inside the group's directory — use path relative to group
+                sourceTree = .group
+                relativePath = String(resolvedFilePath.dropFirst(groupFullPath.count + 1))
+            } else if resolvedFilePath.hasPrefix(projectRoot + "/") {
+                // File is outside the group but inside the project — use sourceRoot
+                sourceTree = .sourceRoot
+                relativePath = String(resolvedFilePath.dropFirst(projectRoot.count + 1))
+            } else if resolvedFilePath.hasPrefix(basePath + "/") {
+                // File is outside the xcodeproj but inside the repo root — use sourceRoot with a
+                // path relative to the project directory (may include ../ components)
+                sourceTree = .sourceRoot
+                relativePath = Self.relativePath(from: projectRoot, to: resolvedFilePath)
+            } else {
+                // File is outside the project — use absolute path
+                sourceTree = .absolute
+                relativePath = resolvedFilePath
+            }
+
+            let fileExtension = URL(fileURLWithPath: resolvedFilePath).pathExtension
+            let fileType = Self.fileType(forExtension: fileExtension)
+            let newRef = PBXFileReference(
+                sourceTree: sourceTree,
+                name: URL(fileURLWithPath: resolvedFilePath).lastPathComponent,
+                lastKnownFileType: fileType,
+                path: relativePath,
+            )
+            pbxproj.add(object: newRef)
+            fileReference = newRef
+        }
+
+        // Add file to group if not already present.
+        if !group.children.contains(where: { $0 === fileReference }) {
+            group.children.append(fileReference)
+        }
+
+        return fileReference
+    }
+
     /// File type overrides for extensions not in XcodeProj's `Xcode.filetype(extension:)`.
-    private static let fileTypeOverrides: [String: String] = [
-        "icon": "folder.iconcomposer.icon",
-    ]
+    private static let fileTypeOverrides: [String: String] = ["icon": "folder.iconcomposer.icon"]
 
     /// Returns the Xcode file type for a given extension, consulting local overrides first.
     static func fileType(forExtension ext: String) -> String? {
@@ -262,11 +272,10 @@ public struct AddFileTool: Sendable {
 
         // Find common prefix length
         var common = 0
-        while common < baseComponents.count, common < targetComponents.count,
+        while common < baseComponents.count,
+              common < targetComponents.count,
               baseComponents[common] == targetComponents[common]
-        {
-            common += 1
-        }
+        { common += 1 }
 
         // Go up from base to common ancestor, then down to target
         let ups = Array(repeating: "..", count: baseComponents.count - common)

@@ -5,15 +5,12 @@ import Foundation
 public struct LaunchMacAppTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "launch_mac_app",
-            description:
-            "Launch a macOS app by its path or bundle identifier.",
+            description: "Launch a macOS app by its path or bundle identifier.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -73,20 +70,17 @@ public struct LaunchMacAppTool: Sendable {
         let wait = arguments.getBool("wait")
 
         var launchArgs: [String] = []
+
         if case let .array(argsArray) = arguments["args"] {
             for arg in argsArray {
-                if case let .string(argValue) = arg {
-                    launchArgs.append(argValue)
-                }
+                if case let .string(argValue) = arg { launchArgs.append(argValue) }
             }
         }
 
         do {
             // Prepare app bundle when launching from DerivedData
             if let appPath,
-               let builtProductsDir = AppBundlePreparer.inferBuiltProductsDir(
-                   fromAppPath: appPath,
-               )
+               let builtProductsDir = AppBundlePreparer.inferBuiltProductsDir(fromAppPath: appPath)
             {
                 try await AppBundlePreparer.prepare(
                     appPath: appPath, builtProductsDir: builtProductsDir,
@@ -98,21 +92,13 @@ public struct LaunchMacAppTool: Sendable {
             if let bundleId {
                 openArgs.append("-b")
                 openArgs.append(bundleId)
-            } else if let appPath {
-                openArgs.append(appPath)
-            }
+            } else if let appPath { openArgs.append(appPath) }
 
-            if newInstance {
-                openArgs.append("-n")
-            }
+            if newInstance { openArgs.append("-n") }
 
-            if hide || FocusPolicy.isHeadlessLaunchMode() {
-                openArgs.append("-g")
-            }
+            if hide || FocusPolicy.isHeadlessLaunchMode() { openArgs.append("-g") }
 
-            if wait {
-                openArgs.append("-W")
-            }
+            if wait { openArgs.append("-W") }
 
             if !launchArgs.isEmpty {
                 openArgs.append("--args")
@@ -124,23 +110,28 @@ public struct LaunchMacAppTool: Sendable {
             if result.succeeded {
                 let identifier = bundleId ?? appPath ?? "unknown"
                 var message = "Successfully launched '\(identifier)'"
-                if newInstance {
-                    message += " (new instance)"
-                }
-                if hide {
-                    message += " (hidden)"
-                }
+                if newInstance { message += " (new instance)" }
+                if hide { message += " (hidden)" }
+
+                // Best-effort StoreKit advisory: launch_mac_app has no scheme argument, so use the
+                // session's default scheme/project. When that scheme's Run action references a
+                // StoreKit config, warn that a direct launch won't apply it (see okr-ood).
+                if let storekitWarning = await StoreKitLaunchAdvisory.warning(
+                    scheme: sessionManager.scheme,
+                    projectPath: sessionManager.projectPath,
+                    workspacePath: sessionManager.workspacePath,
+                ) { message += "\n\n" + storekitWarning }
 
                 // Resolve PID and check liveness
                 let appName =
                     appPath
-                        .map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
-                if let pid = await PIDResolver.findLaunchedPID(
-                    bundleId: bundleId,
-                    appName: appName,
-                ) {
+                    .map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
+
+                if let pid = await PIDResolver.findLaunchedPID(bundleId: bundleId, appName: appName)
+                {
                     // Brief delay then liveness check
                     try await Task.sleep(for: .seconds(1))
+
                     if kill(pid, 0) == 0 {
                         message += "\nPID: \(pid)"
                     } else {
@@ -152,9 +143,8 @@ public struct LaunchMacAppTool: Sendable {
                     }
                 }
 
-                return CallTool.Result(content: [
-                    .text(text: message, annotations: nil, _meta: nil),
-                ])
+                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
+                )
             } else {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }

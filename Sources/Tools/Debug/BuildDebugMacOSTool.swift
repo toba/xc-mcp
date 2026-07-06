@@ -15,8 +15,8 @@ public struct BuildDebugMacOSTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        lldbRunner: LLDBRunner = LLDBRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        lldbRunner: LLDBRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -25,10 +25,10 @@ public struct BuildDebugMacOSTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "build_debug_macos",
             description:
-            "Build and launch a macOS app under LLDB debugger. This is the equivalent of Xcode's Run button — it builds incrementally, launches via Launch Services with DYLD_FRAMEWORK_PATH for non-embedded frameworks, and attaches the debugger. Use all existing debug tools (debug_stack, debug_breakpoint_add, etc.) with the returned PID. NOTE: by default builds use a scoped DerivedData path (~/Library/Caches/xc-mcp/DerivedData) isolated from Xcode's, so the first build after building only in Xcode is fully cold (minutes on large projects). For single-agent workflows where you just built in Xcode, set XC_MCP_DISABLE_DERIVED_DATA_SCOPING=1 to reuse Xcode's warm cache. To relaunch the same already-built binary with different env/args without rebuilding, pass skip_build: true.",
+                "Build and launch a macOS app under LLDB debugger. This is the equivalent of Xcode's Run button — it builds incrementally, launches via Launch Services with DYLD_FRAMEWORK_PATH for non-embedded frameworks, and attaches the debugger. Use all existing debug tools (debug_stack, debug_breakpoint_add, etc.) with the returned PID. NOTE: by default builds use a scoped DerivedData path (~/Library/Caches/xc-mcp/DerivedData) isolated from Xcode's, so the first build after building only in Xcode is fully cold (minutes on large projects). For single-agent workflows where you just built in Xcode, set XC_MCP_DISABLE_DERIVED_DATA_SCOPING=1 to reuse Xcode's warm cache. To relaunch the same already-built binary with different env/args without rebuilding, pass skip_build: true.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -114,30 +114,23 @@ public struct BuildDebugMacOSTool: Sendable {
         let resolvedEnv = await sessionManager.resolveEnvironment(from: arguments)
         // Also build a plain dict for LLDBRunner which takes [String: String]
         var userEnv: [String: String] = [:]
-        if let sessionEnv = await sessionManager.env {
-            userEnv.merge(sessionEnv) { _, new in new }
-        }
+        if let sessionEnv = await sessionManager.env { userEnv.merge(sessionEnv) { _, new in new } }
+
         if case let .object(envDict) = arguments["env"] {
-            for (key, value) in envDict {
-                if case let .string(v) = value {
-                    userEnv[key] = v
-                }
-            }
+            for (key, value) in envDict { if case let .string(v) = value { userEnv[key] = v } }
         }
 
-        // Resolve the build destination up front so it can also narrow the
-        // pre-build `-showBuildSettings` pass below.
+        // Resolve the build destination up front so it can also narrow the pre-build
+        // `-showBuildSettings` pass below.
         var destination = XcodebuildRunner.macOSDestination
-        if let arch {
-            destination += ",arch=\(arch)"
-        }
+        if let arch { destination += ",arch=\(arch)" }
 
         do {
-            // Step 1: Get build settings to find bundle ID for existing session cleanup.
-            // Pass the concrete macOS destination so xcodebuild resolves only this
-            // platform's settings instead of the entire SPM package graph for every
-            // target — without it this pre-pass alone can take tens of seconds on
-            // projects with package dependencies, before compilation even starts.
+            // Step 1: Get build settings to find bundle ID for existing session cleanup. Pass the
+            // concrete macOS destination so xcodebuild resolves only this platform's settings
+            // instead of the entire SPM package graph for every target — without it this pre-pass
+            // alone can take tens of seconds on projects with package dependencies, before
+            // compilation even starts.
             var buildSettings = try await xcodebuildRunner.showBuildSettings(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
@@ -146,17 +139,19 @@ public struct BuildDebugMacOSTool: Sendable {
                 destination: destination,
             )
 
-            // An iOS-only scheme can't resolve `-destination platform=macOS`, so the
-            // fast pass above returns no settings. Retry without a destination to recover
-            // the full settings dump — this is what lets the SUPPORTED_PLATFORMS check
-            // below emit a friendly "scheme does not support macOS" error instead of an
-            // opaque destination-resolution failure later in the build.
+            // An iOS-only scheme can't resolve `-destination platform=macOS`, so the fast pass
+            // above returns no settings. Retry without a destination to recover the full settings
+            // dump — this is what lets the SUPPORTED_PLATFORMS check below emit a friendly "scheme
+            // does not support macOS" error instead of an opaque destination-resolution failure
+            // later in the build.
             if BuildSettingExtractor.extractSetting(
-                "PRODUCT_BUNDLE_IDENTIFIER", from: buildSettings.stdout,
+                "PRODUCT_BUNDLE_IDENTIFIER",
+                from: buildSettings.stdout,
             ) == nil,
-                BuildSettingExtractor.extractSetting(
-                    "SUPPORTED_PLATFORMS", from: buildSettings.stdout,
-                ) == nil
+               BuildSettingExtractor.extractSetting(
+                   "SUPPORTED_PLATFORMS",
+                   from: buildSettings.stdout,
+               ) == nil
             {
                 buildSettings = try await xcodebuildRunner.showBuildSettings(
                     projectPath: projectPath,
@@ -171,6 +166,7 @@ public struct BuildDebugMacOSTool: Sendable {
                 "SUPPORTED_PLATFORMS", from: buildSettings.stdout,
             ) {
                 let platformList = platforms.split(separator: " ").map(String.init)
+
                 if !platformList.contains("macosx") {
                     let platformDesc = platformList.joined(separator: ", ")
                     throw MCPError.invalidRequest(
@@ -194,8 +190,8 @@ public struct BuildDebugMacOSTool: Sendable {
                 }
             }
 
-            // Step 2: Build (incremental — fast if nothing changed). Skipped when the
-            // caller only wants to relaunch the already-built product with new env/args.
+            // Step 2: Build (incremental — fast if nothing changed). Skipped when the caller only
+            // wants to relaunch the already-built product with new env/args.
             if skipBuild {
                 onProgress?("Skipping build (skip_build); relaunching existing product")
             } else {
@@ -226,14 +222,12 @@ public struct BuildDebugMacOSTool: Sendable {
 
             // Step 3: Extract paths from build settings
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {
-                throw MCPError.internalError(
-                    "Could not determine app path from build settings.",
-                )
+                throw MCPError.internalError("Could not determine app path from build settings.")
             }
 
-            // With skip_build, the product must already exist on disk — there's no build
-            // step to produce it. Fail loudly rather than handing /usr/bin/open a missing
-            // bundle (which would surface as an opaque launch failure).
+            // With skip_build, the product must already exist on disk — there's no build step to
+            // produce it. Fail loudly rather than handing /usr/bin/open a missing bundle (which
+            // would surface as an opaque launch failure).
             if skipBuild, !FileManager.default.fileExists(atPath: appPath) {
                 throw MCPError.invalidRequest(
                     "skip_build was set but no built product exists at \(appPath). "
@@ -245,32 +239,27 @@ public struct BuildDebugMacOSTool: Sendable {
                 "BUILT_PRODUCTS_DIR", from: buildSettings.stdout,
             )
 
-            // Resolve the actual executable name for LLDB's --waitfor.
-            // The .app folder name may differ from the binary (e.g. "App (debug).app"
-            // contains a binary named "App"). Prefer EXECUTABLE_NAME from build settings,
-            // then CFBundleExecutable from Info.plist, then fall back to the folder name.
+            // Resolve the actual executable name for LLDB's --waitfor. The .app folder name may
+            // differ from the binary (e.g. "App (debug).app" contains a binary named "App"). Prefer
+            // EXECUTABLE_NAME from build settings, then CFBundleExecutable from Info.plist, then
+            // fall back to the folder name.
             let appName: String = {
                 if let name = extractBuildSetting("EXECUTABLE_NAME", from: buildSettings.stdout) {
                     return name
                 }
                 let infoPlistPath = "\(appPath)/Contents/Info.plist"
                 if let data = FileManager.default.contents(atPath: infoPlistPath),
-                   let plist = try? PropertyListSerialization.propertyList(
-                       from: data, format: nil,
-                   ) as? [String: Any],
-                   let name = plist["CFBundleExecutable"] as? String
-                {
-                    return name
-                }
+                    let plist = try? PropertyListSerialization.propertyList(from: data, format: nil)
+                        as? [String: Any],
+                    let name = plist["CFBundleExecutable"] as? String { return name }
                 return URL(fileURLWithPath: appPath).lastPathComponent
                     .replacingOccurrences(of: ".app", with: "")
             }()
 
-            // Step 4: Prepare the app for debug launch.
-            // Sandboxed apps crash with SIGABRT when launched directly via LLDB's
-            // `process launch` because the sandbox isn't initialized. We must launch
-            // via /usr/bin/open (Launch Services). But apps with non-embedded frameworks
-            // need DYLD_FRAMEWORK_PATH, which dyld strips for hardened-runtime apps.
+            // Step 4: Prepare the app for debug launch. Sandboxed apps crash with SIGABRT when
+            // launched directly via LLDB's `process launch` because the sandbox isn't initialized.
+            // We must launch via /usr/bin/open (Launch Services). But apps with non-embedded
+            // frameworks need DYLD_FRAMEWORK_PATH, which dyld strips for hardened-runtime apps.
             // Solution: symlink frameworks into bundle + rewrite install names + re-sign.
             try await AppBundlePreparer.prepare(
                 appPath: appPath, builtProductsDir: builtProductsDir,
@@ -296,12 +285,11 @@ public struct BuildDebugMacOSTool: Sendable {
 
             // Build response
             var message: String
+
             if crashed {
                 message = "Built '\(scheme)' but process crashed immediately after launch"
                 message += "\nPID: \(pid)"
-                if let bundleId {
-                    message += "\nBundle ID: \(bundleId)"
-                }
+                if let bundleId { message += "\nBundle ID: \(bundleId)" }
                 message +=
                     "\n\nDebugger attached. Use debug_stack, debug_variables, debug_lldb_command for investigation."
                 message += "\n\n" + launchResult.output
@@ -309,12 +297,10 @@ public struct BuildDebugMacOSTool: Sendable {
                 // A dyld abort (the `__abort_with_payload` SIGABRT) shows only a generic backtrace
                 // here — the real reason (e.g. "Library not loaded … different Team IDs") lives in
                 // the crash report. Surface it, plus a Team-ID consistency check, so the actionable
-                // cause is in the launch output instead of requiring a manual DiagnosticReports grep.
+                // cause is in the launch output instead of requiring a manual DiagnosticReports
+                // grep.
                 if let mismatch = await CodeSignInspector.checkBundleConsistency(appPath: appPath),
-                   let warning = mismatch.warning()
-                {
-                    message += "\n\n" + warning
-                }
+                   let warning = mismatch.warning() { message += "\n\n" + warning }
                 CrashReportParser.appendCrashReports(
                     to: &message,
                     processName: appName,
@@ -325,15 +311,16 @@ public struct BuildDebugMacOSTool: Sendable {
                 message = "Successfully \(verb) '\(scheme)' under debugger"
                 message += "\nPID: \(pid)"
                 message += "\nApp path: \(appPath)"
-                if let bundleId {
-                    message += "\nBundle ID: \(bundleId)"
-                }
+                if let bundleId { message += "\nBundle ID: \(bundleId)" }
+
                 if stopAtEntry {
-                    message +=
-                        "\n\nProcess stopped at entry point. Use debug_continue to run."
+                    message += "\n\nProcess stopped at entry point. Use debug_continue to run."
                 } else {
                     message += "\n\nDebugger attached. Use debug tools with pid: \(pid)"
                 }
+                if let storekitWarning = StoreKitLaunchAdvisory.warning(
+                    scheme: scheme, projectPath: projectPath, workspacePath: workspacePath,
+                ) { message += "\n\n" + storekitWarning }
                 message += "\n\n" + launchResult.output
             }
 
@@ -355,15 +342,11 @@ public struct BuildDebugMacOSTool: Sendable {
     private func extractAppPath(from buildSettings: String) -> String? {
         // Try CODESIGNING_FOLDER_PATH first
         if let path = extractBuildSetting("CODESIGNING_FOLDER_PATH", from: buildSettings),
-           path.hasSuffix(".app")
-        {
-            return path
-        }
+           path.hasSuffix(".app") { return path }
 
         // Fallback: TARGET_BUILD_DIR + FULL_PRODUCT_NAME
         if let dir = extractBuildSetting("TARGET_BUILD_DIR", from: buildSettings),
-           let name = extractBuildSetting("FULL_PRODUCT_NAME", from: buildSettings)
-        {
+           let name = extractBuildSetting("FULL_PRODUCT_NAME", from: buildSettings) {
             return "\(dir)/\(name)"
         }
 
