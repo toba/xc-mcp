@@ -28,11 +28,11 @@ public struct AnalyzeAppBundleTool: Sendable {
             name: "analyze_app_bundle",
             description:
                 "Inspect a BUILT macOS .app bundle (or the .app inside an .xcarchive): total size, "
-                    + "main-executable Mach-O segment sizes, linked (@rpath) vs embedded frameworks, "
-                    + "LC_RPATH entries, mergeable-library merge metadata (_relinkableLibraryClasses), "
-                    + "and whether the bundle is self-contained/launchable standalone. Read-only. "
-                    + "Complements find_link_flag (which only reads the project file). If app_path is "
-                    + "omitted, resolves from session project/scheme/configuration like get_mac_app_path.",
+                + "main-executable Mach-O segment sizes, linked (@rpath) vs embedded frameworks, "
+                + "LC_RPATH entries, mergeable-library merge metadata (_relinkableLibraryClasses), "
+                + "and whether the bundle is self-contained/launchable standalone. Read-only. "
+                + "Complements find_link_flag (which only reads the project file). If app_path is "
+                + "omitted, resolves from session project/scheme/configuration like get_mac_app_path.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -131,8 +131,8 @@ public struct AnalyzeAppBundleTool: Sendable {
         }
 
         let sessionConfiguration = await sessionManager.configuration
-        let configuration =
-            arguments.getString("configuration") ?? sessionConfiguration ?? "Release"
+        let configuration = arguments.getString("configuration") ?? sessionConfiguration
+            ?? "Release"
 
         if projectPath == nil, workspacePath == nil {
             throw MCPError.invalidParams(
@@ -172,7 +172,8 @@ public struct AnalyzeAppBundleTool: Sendable {
 
         var isDir: ObjCBool = false
         guard fm.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue else {
-            throw MCPError.invalidParams("Path does not exist or is not a bundle directory: \(path)")
+            throw MCPError.invalidParams(
+                "Path does not exist or is not a bundle directory: \(path)")
         }
 
         if path.hasSuffix(".app") { return path }
@@ -183,9 +184,7 @@ public struct AnalyzeAppBundleTool: Sendable {
                let app = entries.first(where: { $0.hasSuffix(".app") }) {
                 return productsApps + "/" + app
             }
-            throw MCPError.invalidParams(
-                "No .app found under \(productsApps) in the archive.",
-            )
+            throw MCPError.invalidParams("No .app found under \(productsApps) in the archive.")
         }
 
         throw MCPError.invalidParams(
@@ -224,9 +223,15 @@ public struct AnalyzeAppBundleTool: Sendable {
         let resourceSize = max(0, totalSize - mainExeSize - embeddedBinariesSize)
 
         // cctools `otool`/`size` mis-tokenize paths with spaces even via argv; run all Mach-O tools
-        // against a spaceless symlink so bundle paths like "My App (debug)" need no caller-side hack.
-        let (safeBinary, cleanup) = spaceSafeBinary(for: mainExecutable)
+        // against spaceless symlinks so a path like "My App (debug)" — or an executable whose own
+        // leaf name has a space — needs no caller-side hack. Only subprocess arguments use the
+        // mapped paths; logical resolution below still uses the real bundle paths.
+        let executableDir = appPath + "/Contents/MacOS"
+        let (safeMap, cleanup) = spaceSafeBinaries(
+            [mainExecutable] + embedded.compactMap(\.binaryPath))
         defer { cleanup() }
+        let safePath: @Sendable (String) -> String = { real in safeMap[real] ?? real }
+        let safeBinary = safePath(mainExecutable)
 
         // Mach-O inspection of the main executable (run tools concurrently).
         async let segmentsTask = machOSegments(safeBinary)
@@ -256,17 +261,17 @@ public struct AnalyzeAppBundleTool: Sendable {
         out += "## Main executable\n"
         out += "- Path: Contents/MacOS/\(executableName)\n"
         out += "- Architectures: \(archs.isEmpty ? "unknown" : archs.joined(separator: ", "))\n"
+
         if segments.isEmpty {
             out += "- Segments: (could not parse `size -m`)\n"
         } else {
             out += "- Mach-O segments (excluding __PAGEZERO):\n"
-            for seg in segments {
-                out += "  - \(seg.name): \(humanBytes(seg.size))\n"
-            }
+            for seg in segments { out += "  - \(seg.name): \(humanBytes(seg.size))\n" }
         }
         out += "\n"
 
         out += "## Merge metadata (mergeable libraries)\n"
+
         if mergeCount > 0 {
             out += "- Main executable carries `_relinkableLibraryClasses`: \(mergeCount) symbol"
                 + "\(mergeCount == 1 ? "" : "s") (mergeable-library merge marker present)\n"
@@ -277,16 +282,13 @@ public struct AnalyzeAppBundleTool: Sendable {
         out += "\n"
 
         out += "## LC_RPATH entries (\(rpaths.count))\n"
-        if rpaths.isEmpty {
-            out += "- (none)\n"
-        } else {
-            for rp in rpaths { out += "- \(rp)\n" }
-        }
+        if rpaths.isEmpty { out += "- (none)\n" } else { for rp in rpaths { out += "- \(rp)\n" } }
         out += "\n"
 
         let inProjectLinked = linked.filter(\.isRelative)
         out += "## Linked in-project frameworks (\(inProjectLinked.count))\n"
         out += "Filtered from `otool -L` to @rpath/@loader_path/@executable_path deps.\n"
+
         if inProjectLinked.isEmpty {
             out += "- (none)\n"
         } else {
@@ -296,6 +298,7 @@ public struct AnalyzeAppBundleTool: Sendable {
 
         if includeFrameworks {
             out += "## Embedded frameworks (\(embedded.count))\n"
+
             if embedded.isEmpty {
                 out += "- (none)\n"
             } else {
@@ -307,57 +310,111 @@ public struct AnalyzeAppBundleTool: Sendable {
         }
 
         if checkLaunchable {
-            out += launchabilityReport(
-                linked: inProjectLinked,
+            // Walk the full closure: the main executable plus every embedded framework binary. An
+            // app-binary-only scan misses transitive framework→framework gaps (e.g. an embedded
+            // framework linking a package-product framework that itself is not embedded).
+            let mainImage = MachOInspector.MachOImage(
+                name: "\(executableName) (main executable)",
+                loaderDir: executableDir,
                 rpaths: rpaths,
+                relativeDeps: inProjectLinked,
+            )
+            let frameworkImages = await frameworkImages(embedded: embedded, safePath: safePath)
+            out += launchabilityReport(
+                images: [mainImage] + frameworkImages,
+                executableRpaths: rpaths,
                 appPath: appPath,
-                executableDir: appPath + "/Contents/MacOS",
+                executableDir: executableDir,
             )
         }
 
         return out
     }
 
+    /// Runs `otool -L`/`otool -l` against each embedded framework binary (concurrently, via the
+    /// space-safe path) and reduces each to a `MachOImage` for closure resolution. Frameworks whose
+    /// binary could not be located are skipped. Sorted by name for deterministic output.
+    private func frameworkImages(
+        embedded: [EmbeddedFramework],
+        safePath: @Sendable (String) -> String,
+    ) async -> [MachOInspector.MachOImage] {
+        let images = await withTaskGroup(of: MachOInspector.MachOImage?.self) { group in
+            for fw in embedded {
+                guard let binary = fw.binaryPath else { continue }
+                let name = fw.name
+                let loaderDir = (binary as NSString).deletingLastPathComponent
+                let safeBinary = safePath(binary)
+                group.addTask(name: "analyze_app_bundle inspect \(name)") {
+                    async let linkedTask = linkedLibraries(safeBinary)
+                    async let rpathsTask = rpaths(safeBinary)
+                    // A framework/dylib's `otool -L` lists its own install name (LC_ID_DYLIB) as
+                    // the first entry; drop it so a framework isn't reported as depending on
+                    // itself.
+                    let deps = await linkedTask.dropFirst().filter(\.isRelative)
+                    return await MachOInspector.MachOImage(
+                        name: name,
+                        loaderDir: loaderDir,
+                        rpaths: rpathsTask,
+                        relativeDeps: deps,
+                    )
+                }
+            }
+            var result = [MachOInspector.MachOImage]()
+            for await image in group { if let image { result.append(image) } }
+            return result
+        }
+        return images.sorted { $0.name < $1.name }
+    }
+
     // MARK: - Launchability
 
-    /// Cross-references each linked `@rpath`/`@loader_path`/`@executable_path` dependency against the
-    /// binary's `LC_RPATH` set, resolving dyld-style and checking whether the result lands on a file
-    /// *inside the bundle*. Anything that only resolves via an absolute dev-time path (e.g. a
-    /// DerivedData `PackageFrameworks` rpath) is flagged as the launchability gap.
+    /// Walks the full dependency closure (main executable + every embedded framework) and resolves
+    /// each `@rpath`/`@loader_path`/`@executable_path` dependency dyld-style against the bundle.
+    /// Anything that lands on no file inside the bundle — including transitive framework→framework
+    /// deps an app-binary scan misses — is flagged as the launchability gap, annotated with which
+    /// images reference it.
     private func launchabilityReport(
-        linked: [MachOInspector.LinkedLibrary],
-        rpaths: [String],
+        images: [MachOInspector.MachOImage],
+        executableRpaths: [String],
         appPath: String,
         executableDir: String,
     ) -> String {
         let fm = FileManager.default
-        let missing = linked.filter { dep in
-            !MachOInspector.resolvesInsideBundle(
-                dep: dep,
-                rpaths: rpaths,
-                appPath: appPath,
-                executableDir: executableDir,
-                fileExists: { fm.fileExists(atPath: $0) },
-            )
-        }
+        let totalDeps = images.reduce(0) { $0 + $1.relativeDeps.count }
+        let missing = MachOInspector.unresolvedClosure(
+            images: images,
+            executableDir: executableDir,
+            executableRpaths: executableRpaths,
+            appPath: appPath,
+            fileExists: { fm.fileExists(atPath: $0) },
+        )
 
         var out = "## Embedding completeness / launchability\n"
-        if linked.isEmpty {
+        out += "Full closure scanned: \(images.count) Mach-O image"
+            + "\(images.count == 1 ? "" : "s") (main executable + embedded frameworks), "
+            + "\(totalDeps) @rpath dependenc\(totalDeps == 1 ? "y" : "ies").\n"
+
+        if totalDeps == 0 {
             out += "- No @rpath dependencies to resolve.\n"
             return out
         }
         if missing.isEmpty {
-            out += "- ✅ Self-contained: every linked @rpath dependency resolves to a file inside the "
-                + "bundle (via Contents/Frameworks, Contents/MacOS, or an @executable_path rpath). "
-                + "This bundle should launch standalone.\n"
+            out +=
+                "- ✅ Self-contained: every @rpath dependency across the whole closure resolves to a "
+                + "file inside the bundle (via Contents/Frameworks, Contents/MacOS, or an "
+                + "@executable_path rpath). This bundle should launch standalone.\n"
         } else {
-            out += "- ⚠️ NOT self-contained: \(missing.count) linked @rpath dependenc"
+            out += "- ⚠️ NOT self-contained: \(missing.count) @rpath dependenc"
                 + "\(missing.count == 1 ? "y does" : "ies do") not resolve to any file inside the "
                 + "bundle. A loose build product resolves these via an absolute DerivedData rpath "
                 + "(DYLD_FRAMEWORK_PATH) at dev-run time; a standalone copy would fail to launch "
                 + "(dyld: Library not loaded). Only an archive (export_archive) embeds everything.\n"
-            out += "- Linked-but-not-resolvable-standalone:\n"
-            for m in missing { out += "  - \(m.path)\n" }
+            out += "- Missing (linked-but-not-embedded), with referencing image(s):\n"
+
+            for m in missing {
+                out += "  - \(m.dep)\n"
+                out += "    referenced by: \(m.referencedBy.joined(separator: ", "))\n"
+            }
         }
         return out
     }
@@ -367,9 +424,9 @@ public struct AnalyzeAppBundleTool: Sendable {
     private func mainExecutableName(appPath: String) -> String? {
         let plistPath = appPath + "/Contents/Info.plist"
         guard let data = FileManager.default.contents(atPath: plistPath),
-              let plist = try? PropertyListSerialization.propertyList(
-                  from: data, options: [], format: nil,
-              ) as? [String: Any] else { return nil }
+            let plist = try? PropertyListSerialization.propertyList(
+                from: data, options: [], format: nil,
+            ) as? [String: Any] else { return nil }
         return plist["CFBundleExecutable"] as? String
     }
 
@@ -378,6 +435,8 @@ public struct AnalyzeAppBundleTool: Sendable {
     private struct EmbeddedFramework: Sendable {
         let name: String
         let binarySize: Int
+        /// Absolute path to the framework/dylib Mach-O binary, or nil if it could not be located.
+        let binaryPath: String?
     }
 
     private func embeddedFrameworks(appPath: String) -> [EmbeddedFramework] {
@@ -386,34 +445,35 @@ public struct AnalyzeAppBundleTool: Sendable {
         guard let enumerator = fm.enumerator(atPath: frameworksDir) else { return [] }
 
         var results = [EmbeddedFramework]()
+
         for case let rel as String in enumerator {
             let full = frameworksDir + "/" + rel
+
             if rel.hasSuffix(".framework") {
                 // Framework binary is Versions/A/<name> or <name> at the framework root.
                 let base = (rel as NSString).lastPathComponent
                 let name = (base as NSString).deletingPathExtension
-                let binarySize = frameworkBinarySize(frameworkPath: full, name: name)
-                results.append(.init(name: base, binarySize: binarySize))
+                let binaryPath = frameworkBinary(frameworkPath: full, name: name)
+                results.append(.init(
+                    name: base, binarySize: binaryPath.map(fileSize) ?? 0, binaryPath: binaryPath,
+                ))
                 enumerator.skipDescendants()
             } else if rel.hasSuffix(".dylib") {
                 let base = (rel as NSString).lastPathComponent
-                results.append(.init(name: base, binarySize: fileSize(full)))
+                results.append(.init(name: base, binarySize: fileSize(full), binaryPath: full))
             }
         }
         return results
     }
 
-    private func frameworkBinarySize(frameworkPath: String, name: String) -> Int {
+    private func frameworkBinary(frameworkPath: String, name: String) -> String? {
         let fm = FileManager.default
         let candidates = [
             frameworkPath + "/Versions/A/" + name,
             frameworkPath + "/Versions/Current/" + name,
             frameworkPath + "/" + name,
         ]
-        for candidate in candidates where fm.fileExists(atPath: candidate) {
-            return fileSize(candidate)
-        }
-        return 0
+        return candidates.first { fm.fileExists(atPath: $0) }
     }
 
     // MARK: - Mach-O tooling (otool / size / nm / lipo)
@@ -455,31 +515,43 @@ public struct AnalyzeAppBundleTool: Sendable {
 
     // MARK: - Space-safe path workaround
 
-    /// cctools `otool`/`size` re-split their file argument on whitespace internally, so a bundle path
+    /// cctools `otool`/`size` re-split their file argument on whitespace internally, so a path
     /// containing a space (e.g. `My App (debug)`) fails to open even when passed as a single argv
-    /// element. When the path has a space, symlink the binary into a fresh temp dir under a spaceless
-    /// name and run the Mach-O tools against the symlink; llvm tools (`nm`, `lipo`) are unaffected but
-    /// resolve the symlink transparently. Returns the path to use plus a cleanup closure.
-    private func spaceSafeBinary(for binary: String) -> (path: String, cleanup: @Sendable () -> Void) {
-        guard binary.contains(" ") else { return (binary, {}) }
+    /// element. This bites both a bundle path with a space *and* an executable/framework whose own
+    /// leaf name has one (e.g. `ThesisApp (debug)`). These Mach-O tools each read a single file and
+    /// don't traverse the bundle, so the fix is to symlink every binary we inspect into a fresh
+    /// temp dir under a spaceless name and target the symlink. Returns a real→spaceless map (only
+    /// for paths with a space) plus a cleanup closure; paths without a space are absent and used
+    /// as-is.
+    ///
+    /// Only subprocess *arguments* use the mapped paths; logical resolution (rpath prefix checks,
+    /// `fileExists`) still runs against the real bundle paths.
+    private func spaceSafeBinaries(
+        _ binaries: [String],
+    ) -> (map: [String: String], cleanup: @Sendable () -> Void) {
+        let needing = binaries.filter { $0.contains(" ") }
+        guard !needing.isEmpty else { return ([:], {}) }
         let fm = FileManager.default
         let tmpDir = (NSTemporaryDirectory() as NSString)
             .appendingPathComponent("xc-mcp-aab-" + UUID().uuidString)
-        let link = (tmpDir as NSString).appendingPathComponent("binary")
-        do {
-            try fm.createDirectory(atPath: tmpDir, withIntermediateDirectories: true)
-            try fm.createSymbolicLink(atPath: link, withDestinationPath: binary)
-        } catch {
-            return (binary, {})
+        guard (try? fm.createDirectory(atPath: tmpDir, withIntermediateDirectories: true)) != nil
+        else { return ([:], {}) }
+        var map = [String: String]()
+
+        for (index, real) in needing.enumerated() {
+            let link = (tmpDir as NSString).appendingPathComponent("bin-\(index)")
+            if (try? fm.createSymbolicLink(atPath: link, withDestinationPath: real)) != nil {
+                map[real] = link
+            }
         }
-        return (link, { try? FileManager.default.removeItem(atPath: tmpDir) })
+        return (map, { try? FileManager.default.removeItem(atPath: tmpDir) })
     }
 
     // MARK: - Filesystem sizing
 
     private func fileSize(_ path: String) -> Int {
         guard let attrs = try? FileManager.default.attributesOfItem(atPath: path),
-              let size = attrs[.size] as? Int else { return 0 }
+            let size = attrs[.size] as? Int else { return 0 }
         return size
     }
 
@@ -487,15 +559,17 @@ public struct AnalyzeAppBundleTool: Sendable {
         let fm = FileManager.default
         guard let enumerator = fm.enumerator(
             at: URL(fileURLWithPath: path),
-            includingPropertiesForKeys: [.totalFileAllocatedSizeKey, .fileSizeKey, .isRegularFileKey],
+            includingPropertiesForKeys: [
+                .totalFileAllocatedSizeKey, .fileSizeKey, .isRegularFileKey,
+            ],
             options: [],
         ) else { return fileSize(path) }
 
         var total = 0
+
         for case let url as URL in enumerator {
-            guard let values = try? url.resourceValues(
-                forKeys: [.isRegularFileKey, .fileSizeKey],
-            ), values.isRegularFile == true else { continue }
+            guard let values = try? url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey]),
+                  values.isRegularFile == true else { continue }
             total += values.fileSize ?? 0
         }
         return total
@@ -505,11 +579,13 @@ public struct AnalyzeAppBundleTool: Sendable {
         let units = ["B", "KB", "MB", "GB", "TB"]
         var value = Double(bytes)
         var unit = 0
+
         while value >= 1024, unit < units.count - 1 {
             value /= 1024
             unit += 1
         }
-        if unit == 0 { return "\(bytes) B" }
-        return String(format: "%.1f %@", value, units[unit])
+        return unit == 0
+            ? "\(bytes) B"
+            : String(format: "%.1f %@", value, units[unit])
     }
 }

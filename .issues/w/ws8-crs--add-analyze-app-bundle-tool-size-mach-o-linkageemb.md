@@ -5,11 +5,11 @@ status: completed
 type: feature
 priority: normal
 created_at: 2026-07-08T19:59:52Z
-updated_at: 2026-07-08T20:17:39Z
+updated_at: 2026-07-08T22:53:19Z
 sync:
     github:
         issue_number: "423"
-        synced_at: "2026-07-08T20:18:26Z"
+        synced_at: "2026-07-08T22:57:22Z"
 ---
 
 ## Problem
@@ -66,3 +66,26 @@ Added `analyze_app_bundle` (read-only) — inspects a *built* macOS `.app` (or t
 **Launchability**: resolves each linked `@rpath` dep against the binary's actual `LC_RPATH` set (dyld-style) and checks whether it lands on a file *inside the bundle*. A dep that only resolves via an absolute DerivedData `PackageFrameworks` rpath is flagged as the standalone-launch gap, making the "loose build product is not self-contained; only an archive embeds everything" distinction explicit.
 
 Verified end-to-end against the Thesis Debug build (correct sizes, segments, rpaths, and a ✅ self-contained verdict via the debug.dylib resolving through the `@executable_path` rpath) and error paths (invalid `app_path` → clean `-32602`). `swift build` clean; 12/12 tests pass; `sm`-formatted.
+
+## Enhancement: recursive/transitive @rpath resolution (not just the app binary)
+
+The launchability check currently cross-references only the MAIN app executable's @rpath deps against the bundle. That misses transitive framework-to-framework deps: e.g. ThesisApp embeds all 30 in-project frameworks and the app-binary check reports "✅ self-contained", but the app still dyld-crashes standalone because EPUB.framework links @rpath/ZIPFoundation_<hash>_PackageProduct.framework, which is not embedded. Package-product frameworks (ZIPFoundation, possibly OrderedCollections/HTTPTypes) that are linked only by intermediate frameworks are invisible to an app-binary-only scan.
+
+Ask: walk the FULL dependency closure — for every Mach-O in the bundle (app binary + each embedded framework, recursively), collect its @rpath/@loader_path deps and report any that don't resolve to a file inside the bundle. Emit the complete missing set in one pass (with which embedded framework references each), so an agent can fix embedding in a single step instead of iterating launch-by-launch. This is exactly the case that made "self-contained: ✅" a false positive on the ThesisApp Release bundle (oe2-owt).
+
+## Enhancement implemented: full-closure @rpath resolution
+
+Extended `analyze_app_bundle`'s launchability check from an app-binary-only scan to the **full dependency closure** — the main executable plus every embedded framework/dylib — so transitive framework→framework gaps are caught in one pass.
+
+**Core (`MachOInspector`, pure/testable)**
+- `resolves(dep:rpaths:loaderDir:executableDir:appPath:fileExists:)` — generalizes dyld resolution to any image, distinguishing `@loader_path` (the loading image's dir) from `@executable_path` (the main-exe dir); the two differ for an embedded framework. `resolvesInsideBundle` now delegates to it (`loaderDir == executableDir`), keeping existing behavior/tests intact.
+- `MachOImage` / `UnresolvedDep` value types + `unresolvedClosure(...)` — resolves each image against its own rpaths unioned with the main executable's (dyld accumulates LC_RPATH along the load chain), returns unresolved deps in first-seen order, each annotated with the sorted set of referencing images.
+
+**Tool (`AnalyzeAppBundleTool`)**
+- Gathers a `MachOImage` for the main exe (reusing already-parsed linkage/rpaths) + each embedded framework (`otool -L`/`-l` run concurrently via a TaskGroup), then reports the whole-closure verdict with per-dep attribution and a scanned-image/dep count.
+
+**Two bugs found via end-to-end run and fixed**
+1. Leaf-name spaces: the main executable filename itself (`ThesisApp (debug)`) has a space, so a whole-bundle symlink didn't help — otool still mis-tokenized it (0 rpaths, unparsable `size -m`). Reverted to per-binary spaceless symlinks (`spaceSafeBinaries`), built once from all binaries up front, covering both bundle-path and leaf-name spaces.
+2. Install-name self-reference: `otool -L`'s first entry for a framework/dylib is its own LC_ID_DYLIB — was parsed as a dependency, making every framework "depend on itself". Now dropped for framework/dylib images.
+
+**Verified end-to-end** against the Thesis Debug bundle (path + main-exe name both contain spaces): main exe now parses correctly (3 rpaths, segments, its debug.dylib); the closure flags 12 genuinely-missing deps including `ZIPFoundation_<hash>_PackageProduct.framework` referenced by `Ulysses.framework` — the exact transitive false-positive from the issue that an app-binary-only scan reported as "✅ self-contained". 3 new closure tests (16/16 pass); `swift build` clean; sm-formatted.
