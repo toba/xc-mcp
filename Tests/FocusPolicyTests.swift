@@ -67,7 +67,7 @@ struct FocusPolicyTests {
 
     @Test
     func `openSimulatorAppArgs targets a UDID when provided`() {
-        let args = FocusPolicy.openSimulatorAppArgs(simulatorId: "SIM-123", environment: [:])
+        let args = FocusPolicy.openSimulatorAppArgs(simulatorID: "SIM-123", environment: [:])
         #expect(args == ["-a", "Simulator", "--args", "-CurrentDeviceUDID", "SIM-123"])
     }
 

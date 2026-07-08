@@ -69,6 +69,10 @@ public enum SimulatorUIInputError: LocalizedError, Sendable, MCPErrorConvertible
 public actor SimulatorUIInput {
     private let simctlRunner: SimctlRunner
 
+    /// Reused event source for all synthesized mouse/key events — creating one per event is
+    /// wasteful, and a drag posts dozens. Actor isolation serializes access.
+    private let eventSource = CGEventSource(stateID: .hidSystemState)
+
     /// Cached device-screen pixel size keyed by UDID. Invalidated when the detected on-screen
     /// aspect ratio stops matching (e.g. after a rotation).
     private var pixelSizeCache: [String: CGSize] = [:]
@@ -83,9 +87,9 @@ public actor SimulatorUIInput {
         let point = geo.map(x: x, y: y)
         try await focusWindow(deviceName: geo.deviceName)
         postMouse(.mouseMoved, point)
-        usleep(40_000)
+        try await Task.sleep(for: .milliseconds(40))
         postMouse(.leftMouseDown, point)
-        usleep(60_000)
+        try await Task.sleep(for: .milliseconds(60))
         postMouse(.leftMouseUp, point)
     }
 
@@ -95,7 +99,7 @@ public actor SimulatorUIInput {
         let point = geo.map(x: x, y: y)
         try await focusWindow(deviceName: geo.deviceName)
         postMouse(.mouseMoved, point)
-        usleep(40_000)
+        try await Task.sleep(for: .milliseconds(40))
         postMouse(.leftMouseDown, point)
         try await Task.sleep(for: .seconds(duration))
         postMouse(.leftMouseUp, point)
@@ -150,7 +154,7 @@ public actor SimulatorUIInput {
 
         for character in text {
             if !postCharacter(character) { unsupported.append(character) }
-            usleep(8_000)
+            try await Task.sleep(for: .milliseconds(8))
         }
         if !unsupported.isEmpty {
             throw SimulatorUIInputError.actionFailed(
@@ -261,17 +265,18 @@ public actor SimulatorUIInput {
     }
 
     private func resolveBootedDevice(_ simulator: String) async throws -> BootedDevice {
-        let devices: [SimulatorDevice]
+        let resolution: SimctlRunner.BootedDeviceResolution
 
         do {
-            devices = try await simctlRunner.listDevices()
+            resolution = try await simctlRunner.findDevice(matching: simulator)
         } catch {
             throw SimulatorUIInputError.actionFailed("Failed to list simulators: \(error)")
         }
-        guard let device = devices.first(where: { $0.udid == simulator || $0.name == simulator })
-        else { throw SimulatorUIInputError.notBooted(simulator) }
-        guard device.state == "Booted" else { throw SimulatorUIInputError.notBooted(device.name) }
-        return .init(udid: device.udid, name: device.name)
+        switch resolution {
+            case let .booted(device): return .init(udid: device.udid, name: device.name)
+            case .notFound: throw SimulatorUIInputError.notBooted(simulator)
+            case let .notBooted(device): throw SimulatorUIInputError.notBooted(device.name)
+        }
     }
 
     /// Returns the device screen size in pixels, taking a screenshot the first time per UDID.
@@ -304,23 +309,17 @@ public actor SimulatorUIInput {
     }
 
     private func locateWindow(deviceName: String) throws -> SimWindow {
-        guard let list = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID,
-        ) as? [[String: Any]] else { throw SimulatorUIInputError.windowNotFound(deviceName) }
+        guard let windows = WindowList.onScreen() else {
+            throw SimulatorUIInputError.windowNotFound(deviceName)
+        }
 
-        for info in list {
-            guard let owner = info[kCGWindowOwnerName as String] as? String,
-                  owner == "Simulator",
-                  let title = info[kCGWindowName as String] as? String,
+        for window in windows {
+            guard window.ownerName == "Simulator",
+                  let title = window.windowName,
                   !title.isEmpty,
                   title == deviceName || title.hasPrefix("\(deviceName) "),
-                  let wid = info[kCGWindowNumber as String] as? CGWindowID,
-                  let b = info[kCGWindowBounds as String] as? [String: CGFloat],
-                  let x = b["X"],
-                  let y = b["Y"],
-                  let w = b["Width"],
-                  let h = b["Height"] else { continue }
-            return SimWindow(id: wid, bounds: CGRect(x: x, y: y, width: w, height: h))
+                  let bounds = window.bounds else { continue }
+            return SimWindow(id: window.id, bounds: bounds)
         }
         throw SimulatorUIInputError.windowNotFound(deviceName)
     }
@@ -375,19 +374,18 @@ public actor SimulatorUIInput {
     // MARK: - Event posting
 
     private func postMouse(_ type: CGEventType, _ point: CGPoint) {
-        let source = CGEventSource(stateID: .hidSystemState)
         CGEvent(
-            mouseEventSource: source, mouseType: type,
+            mouseEventSource: eventSource, mouseType: type,
             mouseCursorPosition: point, mouseButton: .left,
         )?.post(tap: .cghidEventTap)
     }
 
     private func drag(from start: CGPoint, to end: CGPoint, duration: Double) async throws {
         postMouse(.mouseMoved, start)
-        usleep(40_000)
+        try await Task.sleep(for: .milliseconds(40))
         postMouse(.leftMouseDown, start)
         let steps = max(10, Int(duration * 60))
-        let stepDelay = UInt32(max(1, duration / Double(steps) * 1_000_000))
+        let stepDelay = Duration.seconds(duration / Double(steps))
 
         for i in 1...steps {
             let t = Double(i) / Double(steps)
@@ -396,15 +394,14 @@ public actor SimulatorUIInput {
                 y: start.y + (end.y - start.y) * t,
             )
             postMouse(.leftMouseDragged, point)
-            usleep(stepDelay)
+            try await Task.sleep(for: stepDelay)
         }
         postMouse(.leftMouseUp, end)
     }
 
     private func postKeyCode(_ keyCode: CGKeyCode, shift: Bool = false) {
-        let source = CGEventSource(stateID: .hidSystemState)
-        let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
-        let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
+        let down = CGEvent(keyboardEventSource: eventSource, virtualKey: keyCode, keyDown: true)
+        let up = CGEvent(keyboardEventSource: eventSource, virtualKey: keyCode, keyDown: false)
 
         if shift {
             down?.flags = .maskShift
@@ -432,19 +429,7 @@ public actor SimulatorUIInput {
     // MARK: - AppleScript (focus + Device menu)
 
     private func focusWindow(deviceName: String) async throws {
-        let safe = Self.appleScriptEscape(deviceName)
-        let script = """
-            tell application "Simulator" to activate
-            tell application "System Events"
-              tell process "Simulator"
-                set ws to (every window whose (title is "\(safe)" or title starts with "\(safe) "))
-                if (count of ws) is 0 then return "NO_WINDOW"
-                perform action "AXRaise" of (item 1 of ws)
-                return "OK"
-              end tell
-            end tell
-            """
-        let out = try await runOsa(script)
+        let out = try await runOsa(AppleScript.raiseSimulatorWindow(named: deviceName))
         if out == "NO_WINDOW" { throw SimulatorUIInputError.windowNotFound(deviceName) }
     }
 
@@ -475,7 +460,7 @@ public actor SimulatorUIInput {
     }
 
     private func clickDeviceMenuItem(_ item: String) async throws {
-        let safe = Self.appleScriptEscape(item)
+        let safe = AppleScript.escape(item)
         let script = """
             tell application "System Events"
               tell process "Simulator"
@@ -505,12 +490,6 @@ public actor SimulatorUIInput {
             throw SimulatorUIInputError.actionFailed(message.isEmpty ? "osascript failed" : message)
         }
         return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private static func appleScriptEscape(_ value: String) -> String {
-        value
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 
     // MARK: - Tables
@@ -570,6 +549,33 @@ public actor SimulatorUIInput {
 /// centered dynamic island and the rounded corners.
 private struct ScreenRectDetector {
     let rep: NSBitmapImageRep
+
+    /// Raw interleaved pixel buffer for the common integer RGB(A) case, so per-pixel sampling
+    /// avoids the `NSColor` allocation that `colorAt(x:y:)` incurs on every call. `nil` for exotic
+    /// formats (planar, floating-point, non-24/32-bit), which fall back to `colorAt`.
+    private let pixels: UnsafePointer<UInt8>?
+    private let bytesPerRow: Int
+    private let bytesPerPixel: Int
+    /// Byte offset of the red channel within a pixel (1 when alpha is first, else 0). Channel order
+    /// beyond that doesn't matter: `isBlack` compares all three color channels to one threshold.
+    private let colorOffset: Int
+
+    init(rep: NSBitmapImageRep) {
+        self.rep = rep
+        bytesPerRow = rep.bytesPerRow
+        bytesPerPixel = rep.bitsPerPixel / 8
+        let isInteger = !rep.bitmapFormat.contains(.floatingPointSamples)
+        let isInterleavedRGB = !rep.isPlanar
+            && (rep.bitsPerPixel == 24 || rep.bitsPerPixel == 32)
+
+        if isInteger, isInterleavedRGB, let data = rep.bitmapData {
+            pixels = UnsafePointer(data)
+            colorOffset = rep.bitmapFormat.contains(.alphaFirst) ? 1 : 0
+        } else {
+            pixels = nil
+            colorOffset = 0
+        }
+    }
 
     func detect() -> CGRect? {
         let width = rep.pixelsWide
@@ -654,8 +660,13 @@ private struct ScreenRectDetector {
         return (bestStart, bestEnd)
     }
 
-    /// Whether a pixel is bezel-black (near-black across all channels).
+    /// Whether a pixel is bezel-black (near-black across all channels). `0.17` on the 0...1 scale
+    /// is ~44 on the 0...255 byte scale.
     private func isBlack(_ x: Int, _ y: Int) -> Bool {
+        if let pixels {
+            let p = pixels + y * bytesPerRow + x * bytesPerPixel + colorOffset
+            return p[0] < 44 && p[1] < 44 && p[2] < 44
+        }
         guard let color = rep.colorAt(x: x, y: y) else { return true }
         return color.redComponent < 0.17 && color.greenComponent < 0.17
             && color.blueComponent < 0.17

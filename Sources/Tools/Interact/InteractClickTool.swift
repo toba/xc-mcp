@@ -57,7 +57,7 @@ public struct InteractClickTool: Sendable {
             // Look up from cache
             guard
                 let cached = await InteractSessionManager.shared.getElement(
-                    pid: pid, elementId: elementId,
+                    pid: pid, elementID: elementId,
                 )
             else {
                 throw InteractError.elementNotFound(elementId)

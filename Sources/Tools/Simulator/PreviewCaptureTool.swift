@@ -1308,7 +1308,7 @@ public struct PreviewCaptureTool: Sendable {
 
     /// Captures a screenshot of a macOS window matching the given bundle identifier.
     private func captureMacOSWindow(bundleId: String) async throws -> Data {
-        let window = try WindowCapture.findWindow(bundleId: bundleId)
+        let window = try WindowCapture.findWindow(bundleID: bundleId)
         return try await WindowCapture.capture(windowID: window.windowID)
     }
 

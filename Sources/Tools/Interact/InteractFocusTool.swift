@@ -53,7 +53,7 @@ public struct InteractFocusTool: Sendable {
             try interactRunner.ensureAccessibility()
             guard
                 let cached = await InteractSessionManager.shared.getElement(
-                    pid: pid, elementId: elementId,
+                    pid: pid, elementID: elementId,
                 )
             else {
                 throw InteractError.elementNotFound(elementId)

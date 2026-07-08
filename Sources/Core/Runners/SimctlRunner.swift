@@ -146,6 +146,29 @@ public struct SimctlRunner: Sendable {
         return devices
     }
 
+    /// The result of looking up a device by identifier and checking whether it's booted.
+    public enum BootedDeviceResolution: Sendable {
+        /// A matching device that is booted.
+        case booted(SimulatorDevice)
+        /// A matching device that exists but is not booted.
+        case notBooted(SimulatorDevice)
+        /// No device matched the identifier.
+        case notFound
+    }
+
+    /// Finds a device by UDID or name and reports whether it is booted.
+    ///
+    /// Callers map the three outcomes onto their own error types/messages; this centralizes the
+    /// list-and-match logic shared by the simulator input and keyboard helpers.
+    public func findDevice(
+        matching identifier: String
+    ) async throws(SimctlError) -> BootedDeviceResolution {
+        let devices = try await listDevices()
+        guard let device = devices.first(where: { $0.udid == identifier || $0.name == identifier })
+        else { return .notFound }
+        return device.state == "Booted" ? .booted(device) : .notBooted(device)
+    }
+
     /// Boots a simulator.
     ///
     /// - Parameter udid: The UDID of the simulator to boot.

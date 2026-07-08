@@ -30,7 +30,7 @@ public struct OpenSimTool: Sendable {
         let simulator = arguments.getString("simulator")
 
         do {
-            guard let args = FocusPolicy.openSimulatorAppArgs(simulatorId: simulator) else {
+            guard let args = FocusPolicy.openSimulatorAppArgs(simulatorID: simulator) else {
                 let message = "Simulator.app launch skipped by \(FocusPolicy.envVar)"
                 return CallTool.Result(content: [.text(
                     text: message,

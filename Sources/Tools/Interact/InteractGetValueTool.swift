@@ -41,7 +41,7 @@ public struct InteractGetValueTool: Sendable {
         }
 
         guard let cached = await InteractSessionManager.shared.getElement(
-            pid: pid, elementId: elementId,
+            pid: pid, elementID: elementId,
         ) else { throw InteractError.elementNotFound(elementId) }
 
         let info = interactRunner.getAttributes(from: cached.element, id: elementId)

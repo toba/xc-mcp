@@ -28,12 +28,10 @@ public enum WindowCapture {
     /// - Throws: ``MCPError`` if enumeration fails or no window matches.
     public static func findWindow(
         appName: String? = nil,
-        bundleId: String? = nil,
+        bundleID: String? = nil,
         windowTitle: String? = nil,
     ) throws(MCPError) -> WindowInfo {
-        guard let windowInfoList = CGWindowListCopyWindowInfo(
-            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID,
-        ) as? [[String: Any]] else {
+        guard let windows = WindowList.onScreen() else {
             throw .internalError(
                 "Failed to get window list. Ensure Screen Recording permission is granted in "
                     + "System Settings > Privacy & Security > Screen Recording.",
@@ -43,41 +41,36 @@ public enum WindowCapture {
         // Build PID → bundle ID cache when needed
         var bundleIDsByPID: [pid_t: String] = [:]
 
-        if bundleId != nil {
+        if bundleID != nil {
             for app in NSWorkspace.shared.runningApplications {
                 if let id = app.bundleIdentifier { bundleIDsByPID[app.processIdentifier] = id }
             }
         }
 
-        for info in windowInfoList {
-            guard let wid = info[kCGWindowNumber as String] as? CGWindowID else { continue }
-
+        for window in windows {
             if let appName {
-                guard let name = info[kCGWindowOwnerName as String] as? String,
-                      name.localizedCaseInsensitiveContains(appName)
-                else { continue }
+                guard let name = window.ownerName,
+                      name.localizedCaseInsensitiveContains(appName) else { continue }
             }
-            if let bundleId {
-                guard let pid = info[kCGWindowOwnerPID as String] as? pid_t,
+            if let bundleID {
+                guard let pid = window.ownerPID,
                       let id = bundleIDsByPID[pid],
-                      id.localizedCaseInsensitiveContains(bundleId)
-                else { continue }
+                      id.localizedCaseInsensitiveContains(bundleID) else { continue }
             }
             if let windowTitle {
-                guard let title = info[kCGWindowName as String] as? String,
-                      title.localizedCaseInsensitiveContains(windowTitle)
-                else { continue }
+                guard let title = window.windowName,
+                      title.localizedCaseInsensitiveContains(windowTitle) else { continue }
             }
             return WindowInfo(
-                windowID: wid,
-                ownerName: info[kCGWindowOwnerName as String] as? String,
-                windowName: info[kCGWindowName as String] as? String,
+                windowID: window.id,
+                ownerName: window.ownerName,
+                windowName: window.windowName,
             )
         }
 
         var criteria: [String] = []
         if let appName { criteria.append("app_name='\(appName)'") }
-        if let bundleId { criteria.append("bundle_id='\(bundleId)'") }
+        if let bundleID { criteria.append("bundle_id='\(bundleID)'") }
         if let windowTitle { criteria.append("window_title='\(windowTitle)'") }
         throw .invalidParams(
             "No window found matching \(criteria.joined(separator: ", ")). "

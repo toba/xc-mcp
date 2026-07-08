@@ -16,11 +16,10 @@ public actor InteractSessionManager {
     public func cacheElements(pid: pid_t, elements: [SendableAXUIElement]) { cache[pid] = elements }
 
     /// Retrieves a cached element by PID and element ID.
-    public func getElement(pid: pid_t, elementId: Int) -> SendableAXUIElement? {
-        guard let pidCache = cache[pid], elementId >= 0, elementId < pidCache.count else {
-            return nil
-        }
-        return pidCache[elementId]
+    public func getElement(pid: pid_t, elementID: Int) -> SendableAXUIElement? {
+        guard let pidCache = cache[pid], elementID >= 0, elementID < pidCache.count
+        else { return nil }
+        return pidCache[elementID]
     }
 
     /// Returns whether a cache exists for the given PID.

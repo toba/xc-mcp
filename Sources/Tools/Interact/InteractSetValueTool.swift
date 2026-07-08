@@ -48,7 +48,7 @@ public struct InteractSetValueTool: Sendable {
         let value = try arguments.getRequiredString("value")
 
         guard let cached = await InteractSessionManager.shared.getElement(
-            pid: pid, elementId: elementId,
+            pid: pid, elementID: elementId,
         ) else { throw InteractError.elementNotFound(elementId) }
 
         try interactRunner.setValue(value, on: cached.element)

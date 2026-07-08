@@ -46,39 +46,25 @@ public enum SimulatorKeyboardHelper {
         udid: String,
         simctlRunner: SimctlRunner,
     ) async throws -> SimulatorDevice {
-        let devices: [SimulatorDevice]
+        let resolution: SimctlRunner.BootedDeviceResolution
 
         do {
-            devices = try await simctlRunner.listDevices()
+            resolution = try await simctlRunner.findDevice(matching: udid)
         } catch {
             throw MCPError.internalError("Failed to list simulators: \(error)")
         }
-        guard let device = devices.first(where: { $0.udid == udid }) else {
-            throw MCPError.invalidParams("No simulator found with UDID '\(udid)'")
+        switch resolution {
+            case let .booted(device): return device
+            case .notFound: throw MCPError.invalidParams("No simulator found with UDID '\(udid)'")
+            case let .notBooted(device):
+                throw MCPError.invalidParams(
+                    "Simulator '\(device.name)' is \(device.state). Boot it first with boot_sim.",
+                )
         }
-        guard device.state == "Booted" else {
-            throw MCPError.invalidParams(
-                "Simulator '\(device.name)' is \(device.state). Boot it first with boot_sim.",
-            )
-        }
-        return device
     }
 
     private static func focusSimulatorWindow(deviceName: String) async throws {
-        let safeName = appleScriptEscape(deviceName)
-        let script = """
-            tell application "System Events"
-              tell process "Simulator"
-                set frontmost to true
-                set matchingWindows to (every window whose (title is "\(safeName)" or title starts with "\(safeName) –" or title starts with "\(safeName) -"))
-                if (count of matchingWindows) is 0 then
-                  return "NO_WINDOW"
-                end if
-                perform action "AXRaise" of (item 1 of matchingWindows)
-                return "OK"
-              end tell
-            end tell
-            """
+        let script = AppleScript.raiseSimulatorWindow(named: deviceName)
         let result = try await ProcessResult.run(
             "/usr/bin/osascript",
             arguments: ["-e", script],
@@ -116,14 +102,5 @@ public enum SimulatorKeyboardHelper {
                 "Failed to send keystroke: \(result.stderr.isEmpty ? result.stdout : result.stderr)",
             )
         }
-    }
-
-    private static func appleScriptEscape(_ value: String) -> String {
-        value
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: "\\n")
-            .replacingOccurrences(of: "\r", with: "\\r")
-            .replacingOccurrences(of: "\t", with: "\\t")
     }
 }

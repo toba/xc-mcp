@@ -61,7 +61,7 @@ public struct ScreenshotMacWindowTool: Sendable {
         }
 
         let window = try WindowCapture.findWindow(
-            appName: appName, bundleId: bundleId, windowTitle: windowTitle,
+            appName: appName, bundleID: bundleId, windowTitle: windowTitle,
         )
         let pngData = try await WindowCapture.capture(
             windowID: window.windowID, savePath: savePath,
