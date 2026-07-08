@@ -14,6 +14,7 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     case launchMacApp = "launch_mac_app"
     case stopMacApp = "stop_mac_app"
     case getMacAppPath = "get_mac_app_path"
+    case analyzeAppBundle = "analyze_app_bundle"
     case testMacOS = "test_macos"
     case getTestAttachments = "get_test_attachments"
     case getCoverageReport = "get_coverage_report"
@@ -141,6 +142,9 @@ public struct BuildMCPServer: Sendable {
         let getMacAppPathTool = GetMacAppPathTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let analyzeAppBundleTool = AnalyzeAppBundleTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
         let testMacOSTool = TestMacOSTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
@@ -251,6 +255,7 @@ public struct BuildMCPServer: Sendable {
                 launchMacAppTool.tool(),
                 stopMacAppTool.tool(),
                 getMacAppPathTool.tool(),
+                analyzeAppBundleTool.tool(),
                 testMacOSTool.tool(),
                 getTestAttachmentsTool.tool(),
                 getCoverageReportTool.tool(),
@@ -336,6 +341,8 @@ public struct BuildMCPServer: Sendable {
                     return try await stopMacAppTool.execute(arguments: arguments)
                 case .getMacAppPath:
                     return try await getMacAppPathTool.execute(arguments: arguments)
+                case .analyzeAppBundle:
+                    return try await analyzeAppBundleTool.execute(arguments: arguments)
                 case .testMacOS:
                     if let token = params._meta?.progressToken {
                         let reporter = ProgressReporter(token: token) { msg in
