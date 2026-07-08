@@ -55,9 +55,7 @@ public struct IconManifest: Codable, Sendable {
                 self = .linearGradient(colors, orientation: orientation)
             } else {
                 throw DecodingError.dataCorrupted(.init(
-                    codingPath: decoder.codingPath,
-                    debugDescription: "Unknown fill type"
-                ))
+                    codingPath: decoder.codingPath, debugDescription: "Unknown fill type"))
             }
         }
 
@@ -329,18 +327,22 @@ public extension IconManifest {
     /// Writes `icon.json` into the given `.icon` bundle directory.
     func write(to iconBundlePath: String) throws {
         let data = try jsonData()
-        try data.write(to: URL(fileURLWithPath: iconBundlePath + "/icon.json"))
+        let jsonURL = URL(fileURLWithPath: iconBundlePath).appendingPathComponent("icon.json")
+        try data.write(to: jsonURL)
     }
 
     /// Lists asset filenames in the bundle's `Assets/` directory.
     static func listAssets(in iconBundlePath: String) -> [String] {
-        let assetsDir = iconBundlePath + "/Assets"
+        let assetsDir = URL(fileURLWithPath: iconBundlePath).appendingPathComponent("Assets").path
         return (try? FileManager.default.contentsOfDirectory(atPath: assetsDir)) ?? []
     }
 
     /// Removes an asset file from the bundle's `Assets/` directory if it exists.
     static func removeAsset(_ filename: String, from iconBundlePath: String) throws {
-        let path = iconBundlePath + "/Assets/" + filename
+        let path = URL(fileURLWithPath: iconBundlePath)
+            .appendingPathComponent("Assets")
+            .appendingPathComponent(filename)
+            .path
         if FileManager.default.fileExists(atPath: path) {
             try FileManager.default.removeItem(atPath: path)
         }

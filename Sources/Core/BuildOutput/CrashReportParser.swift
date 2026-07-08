@@ -128,9 +128,7 @@ public enum CrashReportParser: Sendable {
     private struct BundleInfo: Decodable {
         let bundleIdentifier: String?
 
-        enum CodingKeys: String, CodingKey {
-            case bundleIdentifier = "CFBundleIdentifier"
-        }
+        enum CodingKeys: String, CodingKey { case bundleIdentifier = "CFBundleIdentifier" }
     }
 
     private struct ThreadInfo: Decodable {
@@ -155,8 +153,7 @@ public enum CrashReportParser: Sendable {
     /// - Returns: A ``CrashSummary`` if parsing succeeds, `nil` otherwise.
     public static func parse(at path: String) -> CrashSummary? {
         guard let data = FileManager.default.contents(atPath: path),
-            let content = String(data: data, encoding: .utf8)
-        else { return nil }
+            let content = String(data: data, encoding: .utf8) else { return nil }
 
         // .ips files: JSON header on line 1, then the crash body as JSON
         guard let firstNewline = content.firstIndex(of: "\n") else { return nil }
@@ -212,8 +209,7 @@ public enum CrashReportParser: Sendable {
     ) -> (threadIndex: Int?, frames: [StackFrame]) {
         guard let faultingThread = body.faultingThread,
               let threads = body.threads,
-              faultingThread < threads.count
-        else { return (nil, []) }
+              faultingThread < threads.count else { return (nil, []) }
 
         let thread = threads[faultingThread]
         guard let rawFrames = thread.frames else { return (faultingThread, []) }
@@ -235,11 +231,8 @@ public enum CrashReportParser: Sendable {
                let name = usedImages[imageIndex].name { imageName = name }
 
             frames.append(StackFrame(
-                index: i,
-                imageName: imageName,
-                symbol: raw.symbol,
-                symbolOffset: raw.symbolLocation,
-                sourceFile: raw.sourceFile,
+                index: i, imageName: imageName, symbol: raw.symbol,
+                symbolOffset: raw.symbolLocation, sourceFile: raw.sourceFile,
                 sourceLine: raw.sourceLine,
             ))
         }
@@ -302,8 +295,7 @@ public enum CrashReportParser: Sendable {
             // Filter by recency
             guard let attrs = try? fm.attributesOfItem(atPath: fullPath),
                   let modified = attrs[.modificationDate] as? Date,
-                  modified > cutoff
-            else { continue }
+                  modified > cutoff else { continue }
 
             // Quick filename pre-filter before parsing the full file
             if let processName,

@@ -1,6 +1,6 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 
 struct CoverageParserTests {
     @Test
@@ -13,10 +13,7 @@ struct CoverageParserTests {
             executableLines: 58,
         )
 
-        let coverage = CodeCoverage(
-            lineCoverage: 75.0,
-            files: [fileCoverage],
-        )
+        let coverage = CodeCoverage(lineCoverage: 75.0, files: [fileCoverage])
 
         #expect(coverage.lineCoverage == 75.0)
         #expect(coverage.files.count == 1)
@@ -27,26 +24,26 @@ struct CoverageParserTests {
     @Test
     func `Parse xcodebuild coverage JSON format`() async throws {
         let xcodebuildJSON = """
-        {
-          "targets": [{
-            "name": "MyTarget",
-            "files": [
-              {
-                "path": "/path/to/main.swift",
-                "lineCoverage": 0.90,
-                "coveredLines": 45,
-                "executableLines": 50
-              },
-              {
-                "path": "/path/to/helper.swift",
-                "lineCoverage": 0.80,
-                "coveredLines": 40,
-                "executableLines": 50
-              }
-            ]
-          }]
-        }
-        """
+            {
+              "targets": [{
+                "name": "MyTarget",
+                "files": [
+                  {
+                    "path": "/path/to/main.swift",
+                    "lineCoverage": 0.90,
+                    "coveredLines": 45,
+                    "executableLines": 50
+                  },
+                  {
+                    "path": "/path/to/helper.swift",
+                    "lineCoverage": 0.80,
+                    "coveredLines": 40,
+                    "executableLines": 50
+                  }
+                ]
+              }]
+            }
+            """
 
         let tempDir = FileManager.default.temporaryDirectory
         let testFile = tempDir.appendingPathComponent(
@@ -69,31 +66,31 @@ struct CoverageParserTests {
     @Test
     func `Parse SPM coverage JSON format`() async throws {
         let spmJSON = """
-        {
-          "data": [{
-            "files": [
-              {
-                "filename": "/path/to/main.swift",
-                "summary": {
-                  "lines": {
-                    "covered": 45,
-                    "count": 50
+            {
+              "data": [{
+                "files": [
+                  {
+                    "filename": "/path/to/main.swift",
+                    "summary": {
+                      "lines": {
+                        "covered": 45,
+                        "count": 50
+                      }
+                    }
+                  },
+                  {
+                    "filename": "/path/to/helper.swift",
+                    "summary": {
+                      "lines": {
+                        "covered": 40,
+                        "count": 50
+                      }
+                    }
                   }
-                }
-              },
-              {
-                "filename": "/path/to/helper.swift",
-                "summary": {
-                  "lines": {
-                    "covered": 40,
-                    "count": 50
-                  }
-                }
-              }
-            ]
-          }]
-        }
-        """
+                ]
+              }]
+            }
+            """
 
         let tempDir = FileManager.default.temporaryDirectory
         let testFile = tempDir.appendingPathComponent("spm-coverage-\(UUID().uuidString).json")
@@ -114,10 +111,10 @@ struct CoverageParserTests {
     @Test
     func `Invalid JSON returns nil`() async throws {
         let invalidJSON = """
-        {
-          "invalid": "format"
-        }
-        """
+            {
+              "invalid": "format"
+            }
+            """
 
         let tempDir = FileManager.default.temporaryDirectory
         let testFile = tempDir.appendingPathComponent("invalid-coverage-\(UUID().uuidString).json")
@@ -135,12 +132,12 @@ struct CoverageParserTests {
     @Test
     func `Empty files array returns nil`() async throws {
         let emptyJSON = """
-        {
-          "data": [{
-            "files": []
-          }]
-        }
-        """
+            {
+              "data": [{
+                "files": []
+              }]
+            }
+            """
 
         let tempDir = FileManager.default.temporaryDirectory
         let testFile = tempDir.appendingPathComponent("empty-coverage-\(UUID().uuidString).json")
@@ -158,33 +155,33 @@ struct CoverageParserTests {
     @Test
     func `Coverage target filtering`() async throws {
         let xcodebuildJSON = """
-        {
-          "targets": [
             {
-              "name": "MyApp.app",
-              "files": [
+              "targets": [
                 {
-                  "path": "/path/to/MyFile.swift",
-                  "lineCoverage": 0.85,
-                  "coveredLines": 85,
-                  "executableLines": 100
-                }
-              ]
-            },
-            {
-              "name": "OtherApp.app",
-              "files": [
+                  "name": "MyApp.app",
+                  "files": [
+                    {
+                      "path": "/path/to/MyFile.swift",
+                      "lineCoverage": 0.85,
+                      "coveredLines": 85,
+                      "executableLines": 100
+                    }
+                  ]
+                },
                 {
-                  "path": "/path/to/OtherFile.swift",
-                  "lineCoverage": 0.50,
-                  "coveredLines": 50,
-                  "executableLines": 100
+                  "name": "OtherApp.app",
+                  "files": [
+                    {
+                      "path": "/path/to/OtherFile.swift",
+                      "lineCoverage": 0.50,
+                      "coveredLines": 50,
+                      "executableLines": 100
+                    }
+                  ]
                 }
               ]
             }
-          ]
-        }
-        """
+            """
 
         let tempDir = FileManager.default.temporaryDirectory
         let testFile = tempDir.appendingPathComponent("filtered-coverage-\(UUID().uuidString).json")
@@ -206,33 +203,33 @@ struct CoverageParserTests {
     @Test
     func `Coverage excludes test bundles`() async throws {
         let xcodebuildJSON = """
-        {
-          "targets": [
             {
-              "name": "MyModule.framework",
-              "files": [
+              "targets": [
                 {
-                  "path": "/path/to/MyFile.swift",
-                  "lineCoverage": 0.50,
-                  "coveredLines": 50,
-                  "executableLines": 100
-                }
-              ]
-            },
-            {
-              "name": "MyModuleTests.xctest",
-              "files": [
+                  "name": "MyModule.framework",
+                  "files": [
+                    {
+                      "path": "/path/to/MyFile.swift",
+                      "lineCoverage": 0.50,
+                      "coveredLines": 50,
+                      "executableLines": 100
+                    }
+                  ]
+                },
                 {
-                  "path": "/path/to/MyModuleTests.swift",
-                  "lineCoverage": 1.0,
-                  "coveredLines": 100,
-                  "executableLines": 100
+                  "name": "MyModuleTests.xctest",
+                  "files": [
+                    {
+                      "path": "/path/to/MyModuleTests.swift",
+                      "lineCoverage": 1.0,
+                      "coveredLines": 100,
+                      "executableLines": 100
+                    }
+                  ]
                 }
               ]
             }
-          ]
-        }
-        """
+            """
 
         let tempDir = FileManager.default.temporaryDirectory
         let testFile = tempDir.appendingPathComponent(
@@ -292,7 +289,7 @@ struct CoverageParserTests {
                             "lineCoverage": 0.50,
                             "coveredLines": 25,
                             "executableLines": 50,
-                        ],
+                        ]
                     ],
                 ],
                 [
@@ -303,15 +300,16 @@ struct CoverageParserTests {
                             "lineCoverage": 1.0,
                             "coveredLines": 100,
                             "executableLines": 100,
-                        ],
+                        ]
                     ],
                 ],
-            ],
+            ]
         ]
 
-        let report = CoverageParser.parseTargetCoverage(json: json)
+        let report = try CoverageParser.parseTargetCoverage(jsonData: JSONSerialization.data(
+            withJSONObject: json))
         #expect(report != nil)
-        #expect(report?.targets.count == 2) // xctest excluded
+        #expect(report?.targets.count == 2)  // xctest excluded
         #expect(report?.coveredLines == 110)
         #expect(report?.executableLines == 150)
 
@@ -321,7 +319,7 @@ struct CoverageParserTests {
     }
 
     @Test
-    func `Parse target coverage with filter`() {
+    func `Parse target coverage with filter`() throws {
         let json: [String: Any] = [
             "targets": [
                 [
@@ -332,7 +330,7 @@ struct CoverageParserTests {
                             "lineCoverage": 0.90,
                             "coveredLines": 45,
                             "executableLines": 50,
-                        ],
+                        ]
                     ],
                 ],
                 [
@@ -343,22 +341,25 @@ struct CoverageParserTests {
                             "lineCoverage": 0.50,
                             "coveredLines": 25,
                             "executableLines": 50,
-                        ],
+                        ]
                     ],
                 ],
-            ],
+            ]
         ]
 
-        let report = CoverageParser.parseTargetCoverage(json: json, targetFilter: "myapp")
+        let report = try CoverageParser.parseTargetCoverage(
+            jsonData: JSONSerialization.data(withJSONObject: json), targetFilter: "myapp",
+        )
         #expect(report != nil)
         #expect(report?.targets.count == 1)
         #expect(report?.targets[0].name == "MyApp.app")
     }
 
     @Test
-    func `Parse target coverage returns nil for empty targets`() {
+    func `Parse target coverage returns nil for empty targets`() throws {
         let json: [String: Any] = ["targets": [] as [[String: Any]]]
-        let report = CoverageParser.parseTargetCoverage(json: json)
+        let report = try CoverageParser.parseTargetCoverage(jsonData: JSONSerialization.data(
+            withJSONObject: json))
         #expect(report == nil)
     }
 
@@ -367,25 +368,25 @@ struct CoverageParserTests {
     @Test
     func `Parse function coverage JSON array format`() throws {
         let json = """
-        [
-          {
-            "name": "init()",
-            "lineNumber": 10,
-            "coveredLines": 5,
-            "executableLines": 5,
-            "lineCoverage": 1.0,
-            "executionCount": 3
-          },
-          {
-            "name": "doWork()",
-            "lineNumber": 20,
-            "coveredLines": 0,
-            "executableLines": 8,
-            "lineCoverage": 0.0,
-            "executionCount": 0
-          }
-        ]
-        """
+            [
+              {
+                "name": "init()",
+                "lineNumber": 10,
+                "coveredLines": 5,
+                "executableLines": 5,
+                "lineCoverage": 1.0,
+                "executionCount": 3
+              },
+              {
+                "name": "doWork()",
+                "lineNumber": 20,
+                "coveredLines": 0,
+                "executableLines": 8,
+                "lineCoverage": 0.0,
+                "executionCount": 0
+              }
+            ]
+            """
 
         let data = Data(json.utf8)
         let result = CoverageParser.parseFunctionCoverageJSON(
@@ -415,15 +416,15 @@ struct CoverageParserTests {
     @Test
     func `Parse uncovered lines from archive output`() {
         let archiveOutput = """
-           1: *
-           2: 1
-           3: 0
-           4: 0
-           5: 1
-           6: 1
-           7: 0
-           8: *
-        """
+               1: *
+               2: 1
+               3: 0
+               4: 0
+               5: 1
+               6: 1
+               7: 0
+               8: *
+            """
 
         let ranges = CoverageParser.parseUncoveredLinesFromArchive(archiveOutput)
 
@@ -437,10 +438,10 @@ struct CoverageParserTests {
     @Test
     func `Parse uncovered lines trailing range`() {
         let archiveOutput = """
-           1: 1
-           2: 0
-           3: 0
-        """
+               1: 1
+               2: 0
+               3: 0
+            """
 
         let ranges = CoverageParser.parseUncoveredLinesFromArchive(archiveOutput)
         #expect(ranges.count == 1)
@@ -457,10 +458,10 @@ struct CoverageParserTests {
     @Test
     func `Parse uncovered lines all covered`() {
         let archiveOutput = """
-           1: 1
-           2: 3
-           3: *
-        """
+               1: 1
+               2: 3
+               3: *
+            """
 
         let ranges = CoverageParser.parseUncoveredLinesFromArchive(archiveOutput)
         #expect(ranges.isEmpty)

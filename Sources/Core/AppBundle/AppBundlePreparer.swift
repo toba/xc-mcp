@@ -93,9 +93,8 @@ public enum AppBundlePreparer {
     ) throws -> Bool {
         let fm = FileManager.default
         var isDir: ObjCBool = false
-        guard fm.fileExists(atPath: sourceDir, isDirectory: &isDir), isDir.boolValue else {
-            return false
-        }
+        guard fm.fileExists(atPath: sourceDir, isDirectory: &isDir), isDir.boolValue
+        else { return false }
 
         let contents = try fm.contentsOfDirectory(
             at: URL(fileURLWithPath: sourceDir), includingPropertiesForKeys: nil,
@@ -147,8 +146,7 @@ public enum AppBundlePreparer {
         fullFramework: String,
     ) throws -> Bool {
         guard let embeddedBinary = frameworkBinaryPath(embeddedFramework),
-              let fullBinary = frameworkBinaryPath(fullFramework)
-        else { return false }
+              let fullBinary = frameworkBinaryPath(fullFramework) else { return false }
 
         let fm = FileManager.default
         let embeddedSize = (try fm.attributesOfItem(atPath: embeddedBinary)[.size] as? Int) ?? 0
@@ -216,21 +214,8 @@ public enum AppBundlePreparer {
 
     /// Re-signs the app bundle preserving the original signing identity and entitlements.
     private static func resignBundle(appPath: String) async throws {
-        // Extract signing identity
-        let identityResult = try await ProcessResult.runSubprocess(
-            .path("/usr/bin/codesign"),
-            arguments: ["-dvvv", appPath],
-            mergeStderr: true,
-        )
-
-        var signingIdentity = "-"
-
-        for line in identityResult.stdout.components(separatedBy: .newlines)
-            where line.hasPrefix("Authority=")
-        {
-            signingIdentity = String(line.dropFirst("Authority=".count))
-            break
-        }
+        // Extract signing identity — the leaf `Authority=` line, or `-` (ad-hoc) if unsigned.
+        let signingIdentity = await CodeSignInspector.inspect(appPath).authority ?? "-"
 
         // Extract entitlements and add disable-library-validation. Symlinking the full
         // mergeable-library framework (and SPM package-product frameworks) into the bundle means it
@@ -247,8 +232,7 @@ public enum AppBundlePreparer {
         let entitlementsURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("debug_entitlements_\(UUID().uuidString).plist")
         let entitlementsData = try entitlementsWithLibraryValidationDisabled(from: Data(
-            extractResult.stdout.utf8
-        ))
+            extractResult.stdout.utf8))
         try entitlementsData.write(to: entitlementsURL)
 
         defer { try? FileManager.default.removeItem(at: entitlementsURL) }

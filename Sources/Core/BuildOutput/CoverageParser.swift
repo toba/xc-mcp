@@ -164,7 +164,7 @@ public struct CoverageParser: Sendable {
             if let attrs = try? FileManager.default.attributesOfItem(atPath: path),
                 let modDate = attrs[.modificationDate] as? Date
             {
-                if newestDate == nil || modDate > newestDate! {
+                if newestDate.map({ modDate > $0 }) ?? true {
                     newestDate = modDate
                     newestBundle = path
                 }
@@ -178,8 +178,7 @@ public struct CoverageParser: Sendable {
         let buildDir = ".build"
 
         guard FileManager.default.fileExists(atPath: buildDir),
-            let enumerator = FileManager.default.enumerator(atPath: buildDir)
-        else { return nil }
+            let enumerator = FileManager.default.enumerator(atPath: buildDir) else { return nil }
 
         while let file = enumerator.nextObject() as? String {
             if file.hasSuffix(".xctest") {
@@ -246,24 +245,73 @@ public struct CoverageParser: Sendable {
     )
         async -> CodeCoverage?
     {
-        guard let json = await runXccovReport(xcresultPath: xcresultPath) else { return nil }
-        return Self.parseXcodebuildFormat(json: json, targetFilter: targetFilter)
+        guard let jsonData = await runXccovReport(xcresultPath: xcresultPath) else { return nil }
+        return Self.parseXcodebuildFormat(jsonData: jsonData, targetFilter: targetFilter)
     }
 
-    /// Runs `xcrun xccov view --report --json` and returns the parsed JSON dictionary.
-    private func runXccovReport(xcresultPath: String) async -> [String: Any]? {
+    /// Runs `xcrun xccov view --report --json` and returns the raw JSON output as `Data`.
+    private func runXccovReport(xcresultPath: String) async -> Data? {
         let args = ["xccov", "view", "--report", "--json", xcresultPath]
         guard let jsonOutput = await runShellCommand("xcrun", args: args) else { return nil }
-
-        let jsonData = Data(jsonOutput.utf8)
-        guard let json = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
-            return nil
-        }
-
-        return json
+        return Data(jsonOutput.utf8)
     }
 
     // MARK: - JSON Parsing
+
+    /// xccov report JSON: `{ "targets": [ { "name", "files": [...] } ] }` .
+    private struct XccovReport: Decodable {
+        let targets: [XccovTarget]
+    }
+
+    private struct XccovTarget: Decodable {
+        let name: String?
+        let files: [XccovFile]?
+    }
+
+    private struct XccovFile: Decodable {
+        let path: String
+        let lineCoverage: Double
+        let coveredLines: Int?
+        let executableLines: Int?
+    }
+
+    /// SPM `llvm-cov export` JSON: `{ "data": [ { "files": [ { "filename", "summary" } ] } ] }` .
+    private struct SPMReport: Decodable {
+        let data: [SPMData]
+    }
+
+    private struct SPMData: Decodable {
+        let files: [SPMFile]
+    }
+
+    private struct SPMFile: Decodable {
+        let filename: String
+        let summary: SPMSummary
+    }
+
+    private struct SPMSummary: Decodable {
+        let lines: SPMLines
+    }
+
+    private struct SPMLines: Decodable {
+        let covered: Int
+        let count: Int
+    }
+
+    /// One function entry from `xccov view --functions-for-file --json` .
+    private struct XccovFunction: Decodable {
+        let name: String
+        let lineNumber: Int?
+        let coveredLines: Int?
+        let executableLines: Int?
+        let lineCoverage: Double?
+        let executionCount: Int?
+    }
+
+    /// The object form of function coverage: `{ "functions": [...] }` .
+    private struct XccovFunctionsWrapper: Decodable {
+        let functions: [XccovFunction]
+    }
 
     /// Extracted file data from either Xcode or SPM JSON format.
     private struct RawFileCoverage {
@@ -284,20 +332,13 @@ public struct CoverageParser: Sendable {
     }
 
     /// Parses a single xccov file entry into a ``FileCoverage``.
-    static func parseFileEntry(_ fileData: [String: Any]) -> FileCoverage? {
-        guard let path = fileData["path"] as? String,
-              let coverage = fileData["lineCoverage"] as? Double
-        else { return nil }
-
-        let covered = fileData["coveredLines"] as? Int ?? 0
-        let executable = fileData["executableLines"] as? Int ?? 0
-
-        return FileCoverage(
-            path: path,
-            name: (path as NSString).lastPathComponent,
-            lineCoverage: normalizeLineCoverage(coverage),
-            coveredLines: covered,
-            executableLines: executable,
+    private static func parseFileEntry(_ file: XccovFile) -> FileCoverage {
+        .init(
+            path: file.path,
+            name: (file.path as NSString).lastPathComponent,
+            lineCoverage: normalizeLineCoverage(file.lineCoverage),
+            coveredLines: file.coveredLines ?? 0,
+            executableLines: file.executableLines ?? 0,
         )
     }
 
@@ -312,11 +353,8 @@ public struct CoverageParser: Sendable {
         for entry in entries {
             let name = (entry.path as NSString).lastPathComponent
             fileCoverages.append(FileCoverage(
-                path: entry.path,
-                name: name,
-                lineCoverage: entry.lineCoverage,
-                coveredLines: entry.coveredLines,
-                executableLines: entry.executableLines,
+                path: entry.path, name: name, lineCoverage: entry.lineCoverage,
+                coveredLines: entry.coveredLines, executableLines: entry.executableLines,
             ))
             totalCovered += entry.coveredLines
             totalExecutable += entry.executableLines
@@ -330,45 +368,35 @@ public struct CoverageParser: Sendable {
     private func parseCoverageJSON(at path: String, targetFilter: String? = nil) -> CodeCoverage? {
         guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
 
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return nil
-        }
-
-        if let coverage = Self.parseXcodebuildFormat(json: json, targetFilter: targetFilter) {
+        if let coverage = Self.parseXcodebuildFormat(jsonData: data, targetFilter: targetFilter) {
             return coverage
         }
 
-        if let coverage = Self.parseSPMFormat(json: json) { return coverage }
-
-        return nil
+        return Self.parseSPMFormat(jsonData: data)
     }
 
     private static func parseXcodebuildFormat(
-        json: [String: Any],
+        jsonData: Data,
         targetFilter: String? = nil
     ) -> CodeCoverage? {
-        guard let targets = json["targets"] as? [[String: Any]] else { return nil }
+        guard let report = try? JSONDecoder().decode(XccovReport.self, from: jsonData) else {
+            return nil
+        }
 
         var entries: [RawFileCoverage] = []
 
-        for target in targets {
-            let targetName = target["name"] as? String
+        for target in report.targets {
+            if let name = target.name, name.hasSuffix(".xctest") { continue }
 
-            if let name = targetName, name.hasSuffix(".xctest") { continue }
-
-            if let filter = targetFilter, let name = targetName {
+            if let filter = targetFilter, let name = target.name {
                 if !name.contains(filter), !filter.contains(name) { continue }
             }
 
-            guard let filesArray = target["files"] as? [[String: Any]] else { continue }
-
-            for fileData in filesArray {
-                guard let file = parseFileEntry(fileData) else { continue }
+            for file in target.files ?? [] {
+                let coverage = parseFileEntry(file)
                 entries.append(RawFileCoverage(
-                    path: file.path,
-                    coveredLines: file.coveredLines,
-                    executableLines: file.executableLines,
-                    lineCoverage: file.lineCoverage,
+                    path: coverage.path, coveredLines: coverage.coveredLines,
+                    executableLines: coverage.executableLines, lineCoverage: coverage.lineCoverage,
                 ))
             }
         }
@@ -376,28 +404,19 @@ public struct CoverageParser: Sendable {
         return aggregate(entries)
     }
 
-    private static func parseSPMFormat(json: [String: Any]) -> CodeCoverage? {
-        guard let dataArray = json["data"] as? [[String: Any]],
-              let firstData = dataArray.first,
-              let filesArray = firstData["files"] as? [[String: Any]]
-        else { return nil }
+    private static func parseSPMFormat(jsonData: Data) -> CodeCoverage? {
+        guard let report = try? JSONDecoder().decode(SPMReport.self, from: jsonData),
+              let firstData = report.data.first else { return nil }
 
         var entries: [RawFileCoverage] = []
 
-        for fileData in filesArray {
-            guard let filename = fileData["filename"] as? String,
-                  let summary = fileData["summary"] as? [String: Any],
-                  let lines = summary["lines"] as? [String: Any],
-                  let covered = lines["covered"] as? Int,
-                  let count = lines["count"] as? Int
-            else { continue }
-
+        for file in firstData.files {
+            let covered = file.summary.lines.covered
+            let count = file.summary.lines.count
             let coverage = count > 0 ? (Double(covered) / Double(count)) * 100.0 : 0.0
 
             entries.append(RawFileCoverage(
-                path: filename,
-                coveredLines: covered,
-                executableLines: count,
+                path: file.filename, coveredLines: covered, executableLines: count,
                 lineCoverage: coverage,
             ))
         }
@@ -417,24 +436,26 @@ public struct CoverageParser: Sendable {
         xcresultPath: String,
         targetFilter: String? = nil,
     ) async -> CoverageReport? {
-        guard let json = await runXccovReport(xcresultPath: xcresultPath) else { return nil }
-        return Self.parseTargetCoverage(json: json, targetFilter: targetFilter)
+        guard let jsonData = await runXccovReport(xcresultPath: xcresultPath) else { return nil }
+        return Self.parseTargetCoverage(jsonData: jsonData, targetFilter: targetFilter)
     }
 
     /// Parses xccov JSON into target-level coverage. Visible for testing.
     static func parseTargetCoverage(
-        json: [String: Any],
+        jsonData: Data,
         targetFilter: String? = nil,
     ) -> CoverageReport? {
-        guard let targets = json["targets"] as? [[String: Any]] else { return nil }
+        guard let report = try? JSONDecoder().decode(XccovReport.self, from: jsonData) else {
+            return nil
+        }
 
         let lowercaseFilter = targetFilter?.lowercased()
         var targetCoverages: [TargetCoverage] = []
         var totalCovered = 0
         var totalExecutable = 0
 
-        for target in targets {
-            guard let targetName = target["name"] as? String else { continue }
+        for target in report.targets {
+            guard let targetName = target.name else { continue }
 
             if targetName.hasSuffix(".xctest") { continue }
 
@@ -442,7 +463,7 @@ public struct CoverageParser: Sendable {
                 if !targetName.lowercased().contains(filter) { continue }
             }
 
-            guard let filesArray = target["files"] as? [[String: Any]] else { continue }
+            let filesArray = target.files ?? []
 
             var files: [FileCoverage] = []
             files.reserveCapacity(filesArray.count)
@@ -450,7 +471,7 @@ public struct CoverageParser: Sendable {
             var targetExecutable = 0
 
             for fileData in filesArray {
-                guard let file = parseFileEntry(fileData) else { continue }
+                let file = parseFileEntry(fileData)
                 files.append(file)
                 targetCovered += file.coveredLines
                 targetExecutable += file.executableLines
@@ -458,13 +479,8 @@ public struct CoverageParser: Sendable {
 
             targetCoverages.append(TargetCoverage(
                 name: targetName,
-                lineCoverage: coveragePercent(
-                    covered: targetCovered,
-                    executable: targetExecutable,
-                ),
-                coveredLines: targetCovered,
-                executableLines: targetExecutable,
-                files: files,
+                lineCoverage: coveragePercent(covered: targetCovered, executable: targetExecutable),
+                coveredLines: targetCovered, executableLines: targetExecutable, files: files,
             ))
             totalCovered += targetCovered
             totalExecutable += targetExecutable
@@ -508,14 +524,13 @@ public struct CoverageParser: Sendable {
     ) -> FileFunctionCoverage? {
         // xccov --functions-for-file returns an array of function entries or an object with a
         // "functions" key depending on the file match
-        let functions: [[String: Any]]
+        let decoder = JSONDecoder()
+        let functions: [XccovFunction]
 
-        if let array = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] {
+        if let array = try? decoder.decode([XccovFunction].self, from: jsonData) {
             functions = array
-        } else if let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
-           let fns = obj["functions"] as? [[String: Any]]
-        {
-            functions = fns
+        } else if let wrapper = try? decoder.decode(XccovFunctionsWrapper.self, from: jsonData) {
+            functions = wrapper.functions
         } else {
             return nil
         }
@@ -528,20 +543,14 @@ public struct CoverageParser: Sendable {
         var totalExecutable = 0
 
         for fn in functions {
-            guard let name = fn["name"] as? String else { continue }
-            let lineNumber = fn["lineNumber"] as? Int ?? 0
-            let covered = fn["coveredLines"] as? Int ?? 0
-            let executable = fn["executableLines"] as? Int ?? 0
-            let coverage = fn["lineCoverage"] as? Double ?? 0.0
-            let executionCount = fn["executionCount"] as? Int ?? 0
+            let covered = fn.coveredLines ?? 0
+            let executable = fn.executableLines ?? 0
 
             functionCoverages.append(FunctionCoverage(
-                name: name,
-                lineNumber: lineNumber,
-                coveredLines: covered,
+                name: fn.name, lineNumber: fn.lineNumber ?? 0, coveredLines: covered,
                 executableLines: executable,
-                lineCoverage: normalizeLineCoverage(coverage),
-                executionCount: executionCount,
+                lineCoverage: normalizeLineCoverage(fn.lineCoverage ?? 0.0),
+                executionCount: fn.executionCount ?? 0,
             ))
             totalCovered += covered
             totalExecutable += executable
@@ -629,8 +638,7 @@ public struct CoverageParser: Sendable {
             arguments: Arguments(args),
             mergeStderr: true,
         ),
-              result.succeeded
-        else { return nil }
+              result.succeeded else { return nil }
         return result.stdout
     }
 }

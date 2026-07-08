@@ -172,6 +172,12 @@ public struct FileCoverage: Sendable {
 }
 
 public struct LinkerError: Sendable {
+    /// The `ld` diagnostic category. Distinguishing these matters: an undefined symbol and a
+    /// duplicate symbol are opposite root causes, so the label must be preserved rather than
+    /// normalized. `.other` covers non-symbol diagnostics (framework/library not found, etc.).
+    public enum Kind: String, Sendable { case undefinedSymbol, duplicateSymbol, other }
+
+    public let kind: Kind
     public let symbol: String
     public let architecture: String
     public let referencedFrom: String
@@ -184,6 +190,7 @@ public struct LinkerError: Sendable {
         referencedFrom: String,
         message: String = "",
     ) {
+        kind = .undefinedSymbol
         self.symbol = symbol
         self.architecture = architecture
         self.referencedFrom = referencedFrom
@@ -192,6 +199,7 @@ public struct LinkerError: Sendable {
     }
 
     public init(message: String) {
+        kind = .other
         symbol = ""
         architecture = ""
         referencedFrom = ""
@@ -200,6 +208,7 @@ public struct LinkerError: Sendable {
     }
 
     public init(symbol: String, architecture: String, conflictingFiles: [String]) {
+        kind = .duplicateSymbol
         self.symbol = symbol
         self.architecture = architecture
         referencedFrom = ""

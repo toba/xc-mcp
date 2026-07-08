@@ -39,21 +39,9 @@ public enum PreviewExtractor {
         var i = 0
 
         while i < count {
-            // Skip string literals
-            if chars[i] == "\"" {
-                i = skipStringLiteral(chars, from: i)
-                continue
-            }
-
-            // Skip line comments
-            if chars[i] == "/", i + 1 < count, chars[i + 1] == "/" {
-                i = skipLineComment(chars, from: i)
-                continue
-            }
-
-            // Skip block comments
-            if chars[i] == "/", i + 1 < count, chars[i + 1] == "*" {
-                i = skipBlockComment(chars, from: i)
+            // Skip string literals and comments
+            if let end = skipCommentOrString(chars, at: i) {
+                i = end
                 continue
             }
 
@@ -83,22 +71,12 @@ public enum PreviewExtractor {
                 var j = bodyStart
 
                 while j < count, depth > 0 {
+                    if let end = skipCommentOrString(chars, at: j) {
+                        j = end
+                        continue
+                    }
+
                     let c = chars[j]
-
-                    if c == "\"" {
-                        j = skipStringLiteral(chars, from: j)
-                        continue
-                    }
-
-                    if c == "/", j + 1 < count, chars[j + 1] == "/" {
-                        j = skipLineComment(chars, from: j)
-                        continue
-                    }
-
-                    if c == "/", j + 1 < count, chars[j + 1] == "*" {
-                        j = skipBlockComment(chars, from: j)
-                        continue
-                    }
 
                     if c == "{" { depth += 1 } else if c == "}" { depth -= 1 }
 
@@ -134,25 +112,8 @@ public enum PreviewExtractor {
         var i = 0
 
         while i < count {
-            // Skip string literals
-            if chars[i] == "\"" {
-                let end = skipStringLiteral(chars, from: i)
-                result.append(contentsOf: chars[i..<end])
-                i = end
-                continue
-            }
-
-            // Skip line comments
-            if chars[i] == "/", i + 1 < count, chars[i + 1] == "/" {
-                let end = skipLineComment(chars, from: i)
-                result.append(contentsOf: chars[i..<end])
-                i = end
-                continue
-            }
-
-            // Skip block comments
-            if chars[i] == "/", i + 1 < count, chars[i + 1] == "*" {
-                let end = skipBlockComment(chars, from: i)
+            // Skip string literals and comments (preserving them in the output)
+            if let end = skipCommentOrString(chars, at: i) {
                 result.append(contentsOf: chars[i..<end])
                 i = end
                 continue
@@ -176,20 +137,11 @@ public enum PreviewExtractor {
                     j += 1
 
                     while j < count, depth > 0 {
+                        if let end = skipCommentOrString(chars, at: j) {
+                            j = end
+                            continue
+                        }
                         let c = chars[j]
-
-                        if c == "\"" {
-                            j = skipStringLiteral(chars, from: j)
-                            continue
-                        }
-                        if c == "/", j + 1 < count, chars[j + 1] == "/" {
-                            j = skipLineComment(chars, from: j)
-                            continue
-                        }
-                        if c == "/", j + 1 < count, chars[j + 1] == "*" {
-                            j = skipBlockComment(chars, from: j)
-                            continue
-                        }
                         if c == "{" { depth += 1 } else if c == "}" { depth -= 1 }
                         j += 1
                     }
@@ -209,12 +161,35 @@ public enum PreviewExtractor {
 
     // MARK: - Private Helpers
 
+    /// If a string literal or comment begins at `index`, returns the index just past it (so the
+    /// scanner steps over content that could contain brace/quote characters); otherwise nil.
+    private static func skipCommentOrString(
+        _ chars: [Unicode.Scalar],
+        at index: Int,
+    ) -> Int? {
+        let count = chars.count
+        guard index < count else { return nil }
+
+        if chars[index] == "\"" { return skipStringLiteral(chars, from: index) }
+
+        if chars[index] == "/", index + 1 < count, chars[index + 1] == "/" {
+            return skipLineComment(chars, from: index)
+        }
+        if chars[index] == "/", index + 1 < count, chars[index + 1] == "*" {
+            return skipBlockComment(chars, from: index)
+        }
+        return nil
+    }
+
+    /// The `#Preview` keyword as scalars, built once rather than per `matchesPreview` call.
+    private static let previewKeyword: [Unicode.Scalar] = Array("#Preview".unicodeScalars)
+
     /// Checks if `#Preview` keyword starts at the given index.
     private static func matchesPreview(
         _ chars: [Unicode.Scalar],
         at index: Int,
     ) -> Bool {
-        let keyword: [Unicode.Scalar] = Array("#Preview".unicodeScalars)
+        let keyword = previewKeyword
         guard index + keyword.count <= chars.count else { return false }
         for k in 0..<keyword.count where chars[index + k] != keyword[k] { return false }
         // Must not be followed by an alphanumeric (to avoid matching #PreviewFoo)

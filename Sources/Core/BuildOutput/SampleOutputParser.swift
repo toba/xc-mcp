@@ -171,11 +171,9 @@ public enum SampleOutputParser {
                 if !currentThreadHeader.isEmpty {
                     let nodes = buildTree(from: currentFrames)
                     threads.append(ThreadSample(
-                        name: currentThreadHeader,
-                        totalSamples: currentThreadSamples,
+                        name: currentThreadHeader, totalSamples: currentThreadSamples,
                         isMainThread: currentThreadHeader.contains("main-thread")
-                            || currentThreadHeader.contains("main thread"),
-                        root: nodes,
+                            || currentThreadHeader.contains("main thread"), root: nodes,
                     ))
                 }
                 currentThreadSamples = Int(match.1) ?? 0
@@ -203,11 +201,9 @@ public enum SampleOutputParser {
         if !currentThreadHeader.isEmpty {
             let nodes = buildTree(from: currentFrames)
             threads.append(ThreadSample(
-                name: currentThreadHeader,
-                totalSamples: currentThreadSamples,
+                name: currentThreadHeader, totalSamples: currentThreadSamples,
                 isMainThread: currentThreadHeader.contains("main-thread")
-                    || currentThreadHeader.contains("main thread"),
-                root: nodes,
+                    || currentThreadHeader.contains("main thread"), root: nodes,
             ))
         }
 
@@ -285,11 +281,8 @@ public enum SampleOutputParser {
         for frame in frames {
             let idx = entries.count
             entries.append(FlatEntry(
-                function: frame.function,
-                library: frame.library,
-                samples: frame.samples,
-                depth: frame.depth,
-                childIndices: [],
+                function: frame.function, library: frame.library, samples: frame.samples,
+                depth: frame.depth, childIndices: [],
             ))
 
             // Pop stack until we find a parent with strictly lower depth
@@ -305,17 +298,17 @@ public enum SampleOutputParser {
         }
 
         // Convert flat entries to tree nodes (bottom-up)
-        func toNode(_ index: Int) -> FrameNode {
+        func node(at index: Int) -> FrameNode {
             let entry = entries[index]
             return .init(
                 function: entry.function,
                 library: entry.library,
                 samples: entry.samples,
-                children: entry.childIndices.map { toNode($0) },
+                children: entry.childIndices.map { node(at: $0) },
             )
         }
 
-        return rootIndices.map { toNode($0) }
+        return rootIndices.map { node(at: $0) }
     }
 
     // MARK: - Filtering
@@ -424,8 +417,7 @@ public enum SampleOutputParser {
             if node.children.isEmpty {
                 if !currentPath.isEmpty {
                     result.append(CallPath(
-                        path: currentPath.joined(separator: " → "),
-                        samples: node.samples,
+                        path: currentPath.joined(separator: " → "), samples: node.samples,
                     ))
                 }
             } else {

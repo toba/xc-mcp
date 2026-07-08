@@ -8,3 +8,6 @@ DerivedData/
 .netrc
 /.claude/settings.local.json
 /fixtures/repos/
+
+# Swiftiomatic lint cache / stray SwiftPM build dirs under Sources
+**/.build/

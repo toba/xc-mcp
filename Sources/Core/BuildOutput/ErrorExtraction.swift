@@ -187,7 +187,7 @@ public enum ErrorExtractor {
                     annotations: nil,
                     _meta: nil,
                 )
-            ], )
+            ],)
         } else {
             throw MCPError.internalError("Tests failed:\n\(testResult)\(bundleSuffix)")
         }
@@ -381,8 +381,7 @@ public enum ErrorExtractor {
     /// Toggled via `XC_MCP_SHOW_TEST_TIMING` (any non-empty, non-`0`/`false` value enables it).
     private static func showTestTimingEnabled() -> Bool {
         guard let value = ProcessInfo.processInfo.environment["XC_MCP_SHOW_TEST_TIMING"],
-            !value.isEmpty
-        else { return false }
+            !value.isEmpty else { return false }
         let lowered = value.lowercased()
         return lowered != "0" && lowered != "false" && lowered != "no"
     }
@@ -451,12 +450,11 @@ public enum ErrorExtractor {
         workspacePath: String?,
         scheme: String?,
     ) -> OnlyTestingValidation {
-        let availableTargets = discoverTestTargets(
-            projectRoot: projectRoot,
-            projectPath: projectPath,
-            workspacePath: workspacePath,
+        // Set membership so the per-entry lookup below is O(1) rather than a linear scan.
+        let availableTargets = Set(discoverTestTargets(
+            projectRoot: projectRoot, projectPath: projectPath, workspacePath: workspacePath,
             scheme: scheme,
-        )
+        ))
 
         // If we can't discover any targets, skip validation to avoid false positives
         guard !availableTargets.isEmpty else {
@@ -692,8 +690,7 @@ public enum ErrorExtractor {
         // For workspaces, read contents.xcworkspacedata to find referenced .xcodeproj files
         let contentsPath = "\(workspacePath)/contents.xcworkspacedata"
         guard let data = FileManager.default.contents(atPath: contentsPath),
-            let xml = String(data: data, encoding: .utf8)
-        else { return [] }
+            let xml = String(data: data, encoding: .utf8) else { return [] }
 
         let fm = FileManager.default
         let workspaceDir = URL(fileURLWithPath: workspacePath).deletingLastPathComponent().path
@@ -739,8 +736,7 @@ public enum ErrorExtractor {
     /// within `TestableReference` elements.
     private static func extractTestTargets(fromSchemeAt path: String) -> Set<String> {
         guard let data = FileManager.default.contents(atPath: path),
-            let xml = String(data: data, encoding: .utf8)
-        else { return [] }
+            let xml = String(data: data, encoding: .utf8) else { return [] }
 
         var targets: Set<String> = []
 

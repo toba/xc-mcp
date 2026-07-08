@@ -45,6 +45,26 @@ public enum BuildSettingExtractor {
         }
     }
 
+    /// One target's entry in `xcodebuild -showBuildSettings -json` output.
+    ///
+    /// The `-json` form emits every setting value as a string, so a `[String: String]` map decodes
+    /// the whole `buildSettings` object without any per-field casting.
+    private struct SettingsEntry: Decodable {
+        let buildSettings: [String: String]
+    }
+
+    /// Decodes the `-json` build-settings array, or nil if the output is text format.
+    private static func decodeEntries(_ buildSettings: String) -> [SettingsEntry]? {
+        try? JSONDecoder().decode([SettingsEntry].self, from: Data(buildSettings.utf8))
+    }
+
+    /// Looks up a key in the `-json` build-settings output, scanning every target entry.
+    private static func jsonSetting(_ key: String, from buildSettings: String) -> String? {
+        guard let entries = decodeEntries(buildSettings) else { return nil }
+        for entry in entries { if let value = entry.buildSettings[key] { return value } }
+        return nil
+    }
+
     /// Extracts a raw build setting value by key from xcodebuild output.
     ///
     /// Tries JSON format first ( `-showBuildSettings -json` ), then falls back to text format (
@@ -56,14 +76,7 @@ public enum BuildSettingExtractor {
     /// - Returns: The setting value, or nil if not found.
     public static func extractSetting(_ key: String, from buildSettings: String) -> String? {
         // Try JSON format first
-        let data = Data(buildSettings.utf8)
-
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-            for entry in json {
-                if let settings = entry["buildSettings"] as? [String: Any],
-                   let value = settings[key] as? String { return value }
-            }
-        }
+        if let value = jsonSetting(key, from: buildSettings) { return value }
 
         // Fallback: parse text format (key = value)
         let lines = buildSettings.components(separatedBy: .newlines)
@@ -83,16 +96,8 @@ public enum BuildSettingExtractor {
     /// - Returns: The resolved bundle ID, or nil if not found or still contains variables.
     public static func extractBundleId(from buildSettings: String) -> String? {
         // Try JSON format first (most reliable)
-        let data = Data(buildSettings.utf8)
-
-        if let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-            for targetSettings in parsed {
-                if let settings = targetSettings["buildSettings"] as? [String: Any],
-                   let bundleId = settings["PRODUCT_BUNDLE_IDENTIFIER"] as? String {
-                    if !bundleId.contains("$(") { return bundleId }
-                }
-            }
-        }
+        if let bundleId = jsonSetting("PRODUCT_BUNDLE_IDENTIFIER", from: buildSettings),
+           !bundleId.contains("$(") { return bundleId }
 
         // Fallback: parse text or JSON-ish line format
         let lines = buildSettings.components(separatedBy: .newlines)
@@ -131,9 +136,19 @@ public enum BuildSettingExtractor {
     /// - Parameter buildSettings: The raw output from `xcodebuild -showBuildSettings` .
     /// - Returns: The app path, or nil if not found.
     public static func extractAppPath(from buildSettings: String) -> String? {
+        // Prefer the JSON form: CODESIGNING_FOLDER_PATH is the complete .app path, otherwise
+        // assemble TARGET_BUILD_DIR + FULL_PRODUCT_NAME.
+        if let path = jsonSetting("CODESIGNING_FOLDER_PATH", from: buildSettings),
+           path.hasSuffix(".app") { return path }
+
+        if let dir = jsonSetting("TARGET_BUILD_DIR", from: buildSettings),
+           let name = jsonSetting("FULL_PRODUCT_NAME", from: buildSettings) {
+            return "\(dir)/\(name)"
+        }
+
         let lines = buildSettings.components(separatedBy: .newlines)
 
-        // First try CODESIGNING_FOLDER_PATH which is the complete .app path
+        // Fallback: text format. First try CODESIGNING_FOLDER_PATH which is the complete .app path
         for line in lines where line.contains("CODESIGNING_FOLDER_PATH") {
             if let range = line.range(of: "/") {
                 let path = String(line[range.lowerBound...])

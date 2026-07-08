@@ -245,45 +245,29 @@ public enum XCResultParser {
                     case .passed:
                         passedCount += 1
                         tests.append(TestDetail(
-                            name: name,
-                            status: .passed,
-                            duration: duration,
-                            skipReason: nil,
-                            failureMessage: nil,
-                            performanceMetrics: [],
+                            name: name, status: .passed, duration: duration, skipReason: nil,
+                            failureMessage: nil, performanceMetrics: [],
                         ))
                     case .failed:
                         failedCount += 1
                         let failure = extractFailure(from: node)
                         if let failure { failures.append(failure) }
                         tests.append(TestDetail(
-                            name: name,
-                            status: .failed,
-                            duration: duration,
-                            skipReason: nil,
-                            failureMessage: failure?.message,
-                            performanceMetrics: [],
+                            name: name, status: .failed, duration: duration, skipReason: nil,
+                            failureMessage: failure?.message, performanceMetrics: [],
                         ))
                     case .skipped:
                         skippedCount += 1
                         let reason = extractSkipReason(from: node)
                         tests.append(TestDetail(
-                            name: name,
-                            status: .skipped,
-                            duration: duration,
-                            skipReason: reason,
-                            failureMessage: nil,
-                            performanceMetrics: [],
+                            name: name, status: .skipped, duration: duration, skipReason: reason,
+                            failureMessage: nil, performanceMetrics: [],
                         ))
                     case .expectedFailure:
                         passedCount += 1
                         tests.append(TestDetail(
-                            name: name,
-                            status: .expectedFailure,
-                            duration: duration,
-                            skipReason: nil,
-                            failureMessage: nil,
-                            performanceMetrics: [],
+                            name: name, status: .expectedFailure, duration: duration,
+                            skipReason: nil, failureMessage: nil, performanceMetrics: [],
                         ))
                 }
             }

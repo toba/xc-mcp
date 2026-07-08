@@ -62,15 +62,14 @@ public struct PackageResolvedParser: Sendable {
     public static func candidateLocations(for path: String) -> [String] {
         let expanded = PathUtility.expandTilde(path)
 
-        if expanded.hasSuffix(".xcodeproj") {
-            return [
+        return expanded.hasSuffix(".xcodeproj")
+            ? [
                 expanded + "/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
                 expanded + "/xcshareddata/swiftpm/Package.resolved",
             ]
-        }
-        return expanded.hasSuffix(".xcworkspace")
-            ? [expanded + "/xcshareddata/swiftpm/Package.resolved"]
-            : [expanded + "/Package.resolved"]
+            : expanded.hasSuffix(".xcworkspace")
+                ? [expanded + "/xcshareddata/swiftpm/Package.resolved"]
+                : [expanded + "/Package.resolved"]
     }
 
     /// Locates the first existing `Package.resolved` for the given project/package path.
@@ -92,54 +91,69 @@ public struct PackageResolvedParser: Sendable {
 
     /// Decodes raw `Package.resolved` bytes, auto-detecting the format version.
     public func decode(_ data: Data) throws(ParseError) -> [ResolvedPin] {
-        let root: [String: Any]
+        let file: ResolvedFile
 
         do {
-            guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                throw ParseError.malformed("root is not a JSON object")
-            }
-            root = object
-        } catch let error as ParseError {
-            throw error
+            file = try JSONDecoder().decode(ResolvedFile.self, from: data)
         } catch {
-            throw .malformed("invalid JSON: \(error.localizedDescription)")
+            throw .malformed("invalid Package.resolved: \(error.localizedDescription)")
         }
 
         // v1: { "version": 1, "object": { "pins": [...] } }
-        if let object = root["object"] as? [String: Any],
-           let pins = object["pins"] as? [[String: Any]] { return pins.map(Self.pinFromV1) }
+        if let container = file.object { return (container.pins ?? []).map(\.normalizedV1) }
 
         // v2/v3: { "version": 2|3, "pins": [...] }
-        if let pins = root["pins"] as? [[String: Any]] { return pins.map(Self.pinFromV2) }
+        if let pins = file.pins { return pins.map(\.normalizedV2) }
 
-        // A pins file with no dependencies is valid and yields no pins.
-        if root["object"] != nil || root["pins"] != nil { return [] }
         throw .malformed("no recognizable pins array (v1 object.pins or v2 pins)")
     }
 
-    private static func pinFromV1(_ pin: [String: Any]) -> ResolvedPin {
-        let url = (pin["repositoryURL"] as? String) ?? ""
-        let state = pin["state"] as? [String: Any]
-        return .init(
-            identity: identity(forURL: url),
-            location: url,
-            version: state?["version"] as? String,
-            branch: state?["branch"] as? String,
-            revision: state?["revision"] as? String,
-        )
-    }
+    /// Decodable mirror of a `Package.resolved` file spanning both on-disk layouts: `object.pins`
+    /// (v1) and top-level `pins` (v2/v3). Unknown keys (e.g. `version`, `originHash`, `package`,
+    /// `kind`) are ignored, and every field is optional so a pins-less container decodes cleanly.
+    private struct ResolvedFile: Decodable {
+        struct Container: Decodable { let pins: [RawPin]? }
 
-    private static func pinFromV2(_ pin: [String: Any]) -> ResolvedPin {
-        let location = (pin["location"] as? String) ?? ""
-        let identity = (pin["identity"] as? String).map { $0.lowercased() }
-            ?? Self.identity(forURL: location)
-        let state = pin["state"] as? [String: Any]
-        return .init(
-            identity: identity,
-            location: location,
-            version: state?["version"] as? String,
-            branch: state?["branch"] as? String,
-            revision: state?["revision"] as? String,
-        )
+        struct State: Decodable {
+            let version: String?
+            let branch: String?
+            let revision: String?
+        }
+
+        struct RawPin: Decodable {
+            let identity: String?
+            let repositoryURL: String?
+            let location: String?
+            let state: State?
+
+            /// v1 pin: identity is derived from the `repositoryURL`.
+            var normalizedV1: ResolvedPin {
+                let url = repositoryURL ?? ""
+                return resolved(
+                    identity: PackageResolvedParser.identity(forURL: url), location: url)
+            }
+
+            /// v2/v3 pin: identity is the recorded (lowercased) value, falling back to deriving it
+            /// from the `location`.
+            var normalizedV2: ResolvedPin {
+                let location = location ?? ""
+                let identity = identity.map { $0.lowercased() }
+                    ?? PackageResolvedParser.identity(forURL: location)
+                return resolved(identity: identity, location: location)
+            }
+
+            private func resolved(identity: String, location: String) -> ResolvedPin {
+                .init(
+                    identity: identity,
+                    location: location,
+                    version: state?.version,
+                    branch: state?.branch,
+                    revision: state?.revision,
+                )
+            }
+        }
+
+        let object: Container?
+        let pins: [RawPin]?
     }
 }

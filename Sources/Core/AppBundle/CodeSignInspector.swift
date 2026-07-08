@@ -145,10 +145,19 @@ public enum CodeSignInspector: Sendable {
             return ConsistencyResult(app: appInfo, mismatches: [])
         }
 
-        var frameworkInfos: [SigningInfo] = []
-
-        for entry in entries where entry.hasSuffix(".framework") || entry.hasSuffix(".dylib") {
-            await frameworkInfos.append(inspect("\(frameworksDir)/\(entry)"))
+        // Each `inspect` spawns an independent `codesign -dvv` subprocess; fan them out so a bundle
+        // with many SPM package-product frameworks doesn't pay N serial spawns on the launch path.
+        // Order is irrelevant — the results only feed set-membership in `evaluateConsistency`.
+        let frameworksToInspect = entries.filter {
+            $0.hasSuffix(".framework") || $0.hasSuffix(".dylib")
+        }
+        let frameworkInfos = await withTaskGroup(of: SigningInfo.self) { group in
+            for entry in frameworksToInspect {
+                group.addTask(name: "inspect \(entry)") {
+                    await inspect("\(frameworksDir)/\(entry)")
+                }
+            }
+            return await group.reduce(into: [SigningInfo]()) { $0.append($1) }
         }
 
         return evaluateConsistency(app: appInfo, frameworks: frameworkInfos)

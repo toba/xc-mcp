@@ -34,7 +34,7 @@ public enum BuildResultFormatter {
 
             if cascadeCount > 0 {
                 parts.append(
-                    "(+\(cascadeCount) cascade error\(cascadeCount == 1 ? "" : "s") from downstream targets hidden)",
+                    "(+\(pluralized(cascadeCount, "cascade error")) from downstream targets hidden)",
                 )
             }
         }
@@ -58,7 +58,7 @@ public enum BuildResultFormatter {
 
                     if externalCount > 0 {
                         parts.append(
-                            "(+\(externalCount) warning\(externalCount == 1 ? "" : "s") from dependencies hidden)",
+                            "(+\(pluralized(externalCount, "warning")) from dependencies hidden)",
                         )
                     }
                 } else {
@@ -201,18 +201,12 @@ public enum BuildResultFormatter {
 
         var details: [String] = []
 
-        if result.summary.errors > 0 {
-            details.append("\(result.summary.errors) error\(result.summary.errors == 1 ? "" : "s")")
-        }
+        if result.summary.errors > 0 { details.append(pluralized(result.summary.errors, "error")) }
         if result.summary.linkerErrors > 0 {
-            details.append(
-                "\(result.summary.linkerErrors) linker error\(result.summary.linkerErrors == 1 ? "" : "s")",
-            )
+            details.append(pluralized(result.summary.linkerErrors, "linker error"))
         }
         if result.summary.warnings > 0 {
-            details.append(
-                "\(result.summary.warnings) warning\(result.summary.warnings == 1 ? "" : "s")",
-            )
+            details.append(pluralized(result.summary.warnings, "warning"))
         }
         if let buildTime = result.summary.buildTime { details.append(buildTime) }
 
@@ -248,6 +242,7 @@ public enum BuildResultFormatter {
 
     private static func formatErrors(_ errors: [BuildError]) -> String {
         var lines = ["Errors:"]
+        lines.reserveCapacity(errors.count + 1)
 
         for error in errors {
             lines.append(
@@ -259,17 +254,19 @@ public enum BuildResultFormatter {
 
     private static func formatLinkerErrors(_ errors: [LinkerError]) -> String {
         var lines = ["Linker errors:"]
+        lines.reserveCapacity(errors.count + 1)
 
         for error in errors {
             if !error.symbol.isEmpty {
-                var detail = "  Undefined symbol '\(error.symbol)'"
+                let label = error.kind == .duplicateSymbol ? "Duplicate symbol" : "Undefined symbol"
+                var detail = "  \(label) '\(error.symbol)'"
                 if !error.architecture.isEmpty { detail += " (\(error.architecture))" }
                 if !error.referencedFrom.isEmpty {
                     detail += " referenced from \(error.referencedFrom)"
                 }
 
                 if !error.conflictingFiles.isEmpty {
-                    detail += " — duplicate in: \(error.conflictingFiles.joined(separator: ", "))"
+                    detail += " — defined in: \(error.conflictingFiles.joined(separator: ", "))"
                 }
                 lines.append(detail)
             } else if !error.message.isEmpty { lines.append("  \(error.message)") }
@@ -279,6 +276,7 @@ public enum BuildResultFormatter {
 
     private static func formatWarnings(_ warnings: [BuildWarning]) -> String {
         var lines = ["Warnings:"]
+        lines.reserveCapacity(warnings.count + 1)
 
         for warning in warnings {
             lines.append(
@@ -290,6 +288,7 @@ public enum BuildResultFormatter {
 
     private static func formatFailedTests(_ tests: [FailedTest]) -> String {
         var lines = ["Failures:"]
+        lines.reserveCapacity(tests.count + 1)
 
         for test in tests {
             // Split multi-line messages so the file:line tag stays on the header and the body (e.g.
@@ -316,6 +315,7 @@ public enum BuildResultFormatter {
         _ measurements: [PerformanceMeasurement],
     ) -> String {
         var lines = ["Performance:"]
+        lines.reserveCapacity(measurements.count + 1)
 
         for m in measurements {
             let valuesStr = m.values.map { String(format: "%.6f", $0) }.joined(separator: ", ")
@@ -326,6 +326,11 @@ public enum BuildResultFormatter {
             )
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// Renders a count with a singular/plural noun, e.g. `pluralized(2, "error")` -> "2 errors".
+    private static func pluralized(_ count: Int, _ noun: String) -> String {
+        "\(count) \(noun)\(count == 1 ? "" : "s")"
     }
 
     private static func formatLocation(file: String?, line: Int?, column: Int?) -> String {

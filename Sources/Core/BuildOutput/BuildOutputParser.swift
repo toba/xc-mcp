@@ -162,6 +162,10 @@ public final class BuildOutputParser {
             }
         }
 
+        // Flush any duplicate-symbol block still pending (output truncated before ld's summary
+        // line).
+        flushPendingDuplicateSymbol()
+
         // Safety net: if a test started but never completed and the test run failed, record it as a
         // crash (ported from xcsift a1723d8)
         if testRunFailed, let testName = lastStartedTestName {
@@ -172,10 +176,7 @@ public final class BuildOutputParser {
                     "Crashed (signal \($0)): last test started before crash"
                 } ?? "Test did not complete — possible crash"
                 failedTests.append(FailedTest(
-                    test: testName,
-                    message: message,
-                    file: nil,
-                    line: nil,
+                    test: testName, message: message, file: nil, line: nil,
                 ))
                 seenTestNames.insert(normalizedName)
             }
@@ -217,16 +218,11 @@ public final class BuildOutputParser {
             let sawFailureMarker = sawTerminalFailureMarker || testRunFailed
 
             // Concrete failures always fail the run.
-            if hasActualFailures { return "failed" }
-            // A terminal failure marker (** BUILD/TEST FAILED **, "Build failed after …") fails the
-            // run unless tests actually passed — preserves the case where xcodebuild prints
-            // ** TEST FAILED ** after a clean pass (e.g. -skipMacroValidation, issue #52).
-            if sawFailureMarker { return hasPassedTests ? "success" : "failed" }
-            // Require positive evidence for success: a terminal success marker or passed tests.
-            if sawTerminalSuccessMarker || hasPassedTests { return "success" }
-            // No failure and no positive success evidence means the stream ended before any
-            // terminal marker — a truncated or killed (OOM) build. Don't report a false green.
-            return "incomplete"
+            return hasActualFailures
+                ? "failed"
+                : sawFailureMarker
+                    ? hasPassedTests ? "success" : "failed"
+                    : sawTerminalSuccessMarker || hasPassedTests ? "success" : "incomplete"
         }()
 
         let slowTests: [SlowTest] = {
@@ -463,10 +459,7 @@ public final class BuildOutputParser {
                     "Crashed (signal \($0)): last test started before crash"
                 } ?? "Crashed: last test started before crash"
                 failedTests.append(FailedTest(
-                    test: testName,
-                    message: message,
-                    file: nil,
-                    line: nil,
+                    test: testName, message: message, file: nil, line: nil,
                 ))
                 seenTestNames.insert(normalizedName)
             }
@@ -489,7 +482,8 @@ public final class BuildOutputParser {
                     let mergedFile = failedTest.file ?? existing.file
                     let mergedLine = failedTest.line ?? existing.line
                     let mergedMessage = failedTest.file != nil
-                        ? failedTest.message : existing.message
+                        ? failedTest.message
+                        : existing.message
                     let mergedDuration = failedTest.duration ?? existing.duration
 
                     if mergedFile != existing.file || mergedLine != existing.line
@@ -507,27 +501,11 @@ public final class BuildOutputParser {
             }
             lastStartedTestName = nil
         } else if let error = parseError(line) {
-            let key = "\(error.file ?? ""):\(error.line ?? 0):\(error.message)"
-
-            if !seenErrors.contains(key) {
-                seenErrors.insert(key)
-                errors.append(error)
-            }
+            appendErrorIfNew(error)
         } else if let warning = parseWarning(line) {
-            let key = "\(warning.file ?? ""):\(warning.line ?? 0):\(warning.message)"
-
-            if !seenWarnings.contains(key) {
-                seenWarnings.insert(key)
-                warnings.append(warning)
-            }
+            appendWarningIfNew(warning)
         } else if let runtimeWarning = parseRuntimeWarning(line) {
-            let key =
-                "\(runtimeWarning.file ?? ""):\(runtimeWarning.line ?? 0):\(runtimeWarning.message)"
-
-            if !seenWarnings.contains(key) {
-                seenWarnings.insert(key)
-                warnings.append(runtimeWarning)
-            }
+            appendWarningIfNew(runtimeWarning)
         } else if parsePassedTest(line) {
             return
         } else {
@@ -567,10 +545,7 @@ public final class BuildOutputParser {
             if let inRange = trimmed.range(of: " in ") {
                 let referencedFrom = String(trimmed[inRange.upperBound...])
                 appendLinkerErrorIfNew(LinkerError(
-                    symbol: symbol,
-                    architecture: arch,
-                    referencedFrom: referencedFrom
-                ))
+                    symbol: symbol, architecture: arch, referencedFrom: referencedFrom))
                 pendingLinkerSymbol = nil
             }
             return true
@@ -589,6 +564,12 @@ public final class BuildOutputParser {
         }
 
         if trimmed.hasPrefix("duplicate symbol '") || trimmed.hasPrefix("duplicate symbol \"") {
+            // ld lists each duplicate symbol as its own `duplicate symbol 'X' in:` block before the
+            // trailing `ld: N duplicate symbols` summary. A new header therefore closes the
+            // previous block — flush it so multiple duplicates aren't collapsed into just the last
+            // one.
+            flushPendingDuplicateSymbol()
+
             let quoteChar: Character = trimmed.hasPrefix("duplicate symbol '") ? "'" : "\""
             let afterPrefix = trimmed.hasPrefix("duplicate symbol '")
                 ? trimmed.dropFirst("duplicate symbol '".count)
@@ -601,9 +582,15 @@ public final class BuildOutputParser {
             return true
         }
 
+        // Every indented, non-empty line under a duplicate-symbol header is one of the files that
+        // redefines the symbol. ld emits object files (`.o`/`.a`), framework binaries
+        // (`.../Foo.framework/Versions/A/Foo`), dylibs, and the literal `bundle-file` here, so
+        // collect by indentation rather than filtering on a file extension (the old `.o`/`.a`-only
+        // check dropped framework/bundle paths, leaving the error looking like an undefined
+        // symbol).
         if pendingDuplicateSymbol != nil,
-           trimmed.hasSuffix(".o") || trimmed.hasSuffix(".a"),
-           line.hasPrefix("    ") || line.hasPrefix("\t")
+           line.hasPrefix("    ") || line.hasPrefix("\t"),
+           !trimmed.isEmpty
         {
             pendingConflictingFiles.append(trimmed)
             return true
@@ -615,20 +602,12 @@ public final class BuildOutputParser {
         }
 
         if trimmed.hasPrefix("ld: "), trimmed.contains("duplicate symbol") {
-            if let symbol = pendingDuplicateSymbol {
-                var arch = ""
+            var arch = ""
 
-                if let archRange = trimmed.range(of: "for architecture ") {
-                    arch = String(trimmed[archRange.upperBound...])
-                }
-                appendLinkerErrorIfNew(LinkerError(
-                    symbol: symbol,
-                    architecture: arch,
-                    conflictingFiles: pendingConflictingFiles,
-                ))
-                pendingDuplicateSymbol = nil
-                pendingConflictingFiles = []
+            if let archRange = trimmed.range(of: "for architecture ") {
+                arch = String(trimmed[archRange.upperBound...])
             }
+            flushPendingDuplicateSymbol(architecture: arch)
             return true
         }
 
@@ -678,8 +657,7 @@ public final class BuildOutputParser {
         if line[startIndex] == "\"" {
             let afterQuote = line.index(after: startIndex)
             guard afterQuote < line.endIndex,
-                  let closingQuote = line[afterQuote...].firstIndex(of: "\"")
-            else { return nil }
+                  let closingQuote = line[afterQuote...].firstIndex(of: "\"") else { return nil }
             let name = String(line[afterQuote..<closingQuote])
             var endIndex = line.index(after: closingQuote)
 
@@ -724,11 +702,42 @@ public final class BuildOutputParser {
     }
 
     private func appendLinkerErrorIfNew(_ error: LinkerError) {
-        let key = "\(error.symbol):\(error.message)"
+        // Include the kind so an undefined and a duplicate error for the same symbol name don't
+        // collapse into one — they are opposite diagnoses.
+        let key = "\(error.kind.rawValue):\(error.symbol):\(error.message)"
 
         if !seenLinkerErrors.contains(key) {
             seenLinkerErrors.insert(key)
             linkerErrors.append(error)
+        }
+    }
+
+    /// Emits the pending duplicate-symbol error (with whatever defining files were collected) and
+    /// clears the pending state. No-op when nothing is pending.
+    private func flushPendingDuplicateSymbol(architecture: String = "") {
+        guard let symbol = pendingDuplicateSymbol else { return }
+        appendLinkerErrorIfNew(LinkerError(
+            symbol: symbol, architecture: architecture, conflictingFiles: pendingConflictingFiles,
+        ))
+        pendingDuplicateSymbol = nil
+        pendingConflictingFiles = []
+    }
+
+    private func appendErrorIfNew(_ error: BuildError) {
+        let key = "\(error.file ?? ""):\(error.line ?? 0):\(error.message)"
+
+        if !seenErrors.contains(key) {
+            seenErrors.insert(key)
+            errors.append(error)
+        }
+    }
+
+    private func appendWarningIfNew(_ warning: BuildWarning) {
+        let key = "\(warning.file ?? ""):\(warning.line ?? 0):\(warning.message)"
+
+        if !seenWarnings.contains(key) {
+            seenWarnings.insert(key)
+            warnings.append(warning)
         }
     }
 
@@ -794,8 +803,7 @@ public final class BuildOutputParser {
             if let testRange = line.range(of: "Test ") {
                 let nameStart = testRange.upperBound
                 guard !line[nameStart...].hasPrefix("run with "),
-                      !line[nameStart...].hasPrefix("Case ")
-                else { return nil }
+                      !line[nameStart...].hasPrefix("Case ") else { return nil }
 
                 if let extracted = extractSwiftTestingName(from: line, after: nameStart) {
                     let remaining = line[extracted.endIndex...]
@@ -928,8 +936,7 @@ public final class BuildOutputParser {
 
         guard lineNumEnd > afterColon.startIndex,
               lineNumEnd < afterColon.endIndex,
-              afterColon[lineNumEnd] == " "
-        else { return nil }
+              afterColon[lineNumEnd] == " " else { return nil }
 
         let lineNumStr = String(afterColon[..<lineNumEnd])
         guard let lineNum = Int(lineNumStr) else { return nil }
@@ -988,9 +995,8 @@ public final class BuildOutputParser {
         if let testRange = line.range(of: "Test ") {
             let afterTest = line[testRange.upperBound...]
             // Skip "Test run with" (summary line) and "Test Case" (XCTest format)
-            guard !afterTest.hasPrefix("run with "), !afterTest.hasPrefix("Case ") else {
-                return false
-            }
+            guard !afterTest.hasPrefix("run with "), !afterTest.hasPrefix("Case ")
+            else { return false }
             let nameStart = testRange.upperBound
 
             if let extracted = extractSwiftTestingName(from: line, after: nameStart) {
@@ -1064,10 +1070,7 @@ public final class BuildOutputParser {
 
         let testName = lastStartedTestName ?? "unknown"
         performanceMeasurements.append(PerformanceMeasurement(
-            test: testName,
-            metric: metric,
-            average: average,
-            relativeStandardDeviation: rsd,
+            test: testName, metric: metric, average: average, relativeStandardDeviation: rsd,
             values: values,
         ))
     }
@@ -1078,9 +1081,7 @@ public final class BuildOutputParser {
             || line.contains("XCTAssertFalse failed")
         {
             if let errorRange = line.range(of: ": error: -["),
-               let bracketEnd = line.range(
-                   of: "] : ", range: errorRange.upperBound..<line.endIndex,
-               )
+               let bracketEnd = line.range(of: "] : ", range: errorRange.upperBound..<line.endIndex)
             {
                 let beforeError = String(line[..<errorRange.lowerBound])
                 let testName = String(line[errorRange.upperBound..<bracketEnd.lowerBound])
@@ -1095,9 +1096,7 @@ public final class BuildOutputParser {
             }
 
             if let bracketStart = line.range(of: "-["),
-               let bracketEnd = line.range(
-                   of: "]", range: bracketStart.upperBound..<line.endIndex,
-               )
+               let bracketEnd = line.range(of: "]", range: bracketStart.upperBound..<line.endIndex)
             {
                 let testName = String(line[bracketStart.upperBound..<bracketEnd.lowerBound])
                 return FailedTest(
@@ -1151,9 +1150,8 @@ public final class BuildOutputParser {
         if let testRange = line.range(of: "Test ") {
             let afterTest = line[testRange.upperBound...]
             // Skip "Test run with" (summary line) and "Test Case" (XCTest format)
-            guard !afterTest.hasPrefix("run with "), !afterTest.hasPrefix("Case ") else {
-                return nil
-            }
+            guard !afterTest.hasPrefix("run with "), !afterTest.hasPrefix("Case ")
+            else { return nil }
             guard let extracted = extractSwiftTestingName(from: line, after: testRange.upperBound)
             else { return nil }
             let remaining = line[extracted.endIndex...]
@@ -1277,6 +1275,7 @@ public final class BuildOutputParser {
 
         if line.hasPrefix("Build complete!") {
             sawTerminalSuccessMarker = true
+
             if let parenStart = line.range(of: "("),
                let parenEnd = line.range(of: ")"),
                parenStart.lowerBound < parenEnd.lowerBound
@@ -1286,16 +1285,16 @@ public final class BuildOutputParser {
             return
         }
 
-        // Terminal success forms: "Build succeeded in 1.2s" (swift build),
-        // "Build succeeded (2.3s)", and xcbeautify's capitalized "Build Succeeded".
+        // Terminal success forms: "Build succeeded in 1.2s" (swift build), "Build succeeded
+        // (2.3s)", and xcbeautify's capitalized "Build Succeeded".
         if line.hasPrefix("Build succeeded") || line.hasPrefix("Build Succeeded") {
             sawTerminalSuccessMarker = true
+
             if line.hasPrefix("Build succeeded in ") {
                 buildTime = String(line.dropFirst("Build succeeded in ".count))
             } else if let parenStart = line.range(of: "("),
-                      let parenEnd = line.range(of: ")", options: .backwards),
-                      parenStart.lowerBound < parenEnd.lowerBound
-            {
+               let parenEnd = line.range(of: ")", options: .backwards),
+               parenStart.lowerBound < parenEnd.lowerBound {
                 buildTime = String(line[parenStart.upperBound..<parenEnd.lowerBound])
             }
             return
@@ -1305,6 +1304,7 @@ public final class BuildOutputParser {
         // xcbeautify's capitalized "Build Failed".
         if line.hasPrefix("Build failed") || line.hasPrefix("Build Failed") {
             sawTerminalFailureMarker = true
+
             if line.hasPrefix("Build failed after ") {
                 buildTime = String(line.dropFirst("Build failed after ".count))
             }
