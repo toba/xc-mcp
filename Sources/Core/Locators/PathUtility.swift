@@ -119,7 +119,10 @@ public struct PathUtility: Sendable {
     /// would let a path outside the sandbox pass. This requires the match to land on a path
     /// separator so only genuine descendants qualify. Both arguments must already be standardized.
     private static func isPath(_ path: String, within basePath: String) -> Bool {
-        path == basePath || path.hasPrefix(basePath + "/")
+        // The filesystem root contains every absolute path. Special-casing it avoids computing the
+        // separator prefix "//", which no real path matches and would reject everything.
+        if basePath == "/" { return path.hasPrefix("/") }
+        return path == basePath || path.hasPrefix(basePath + "/")
     }
 
     /// Converts an absolute path to a relative path from the base path.

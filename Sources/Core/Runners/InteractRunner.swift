@@ -322,14 +322,15 @@ public struct InteractRunner: Sendable {
     /// crashing.
     ///
     /// `as?` can't be used to downcast `CFTypeRef` to a concrete CF type — it bridges
-    /// unconditionally without checking the dynamic `CFTypeID` — so we gate the cast on
-    /// `CFGetTypeID` and force-cast only once the type is confirmed.
+    /// unconditionally without checking the dynamic `CFTypeID` — so we gate on `CFGetTypeID` and
+    /// `unsafeDowncast` only once the type is confirmed (a plain `as!` warns that the forced
+    /// downcast can never yield `nil`).
     private func axValueAttribute(_ element: AXUIElement, _ attribute: String) -> AXValue? {
         var ref: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &ref) == .success,
               let ref,
               CFGetTypeID(ref) == AXValueGetTypeID() else { return nil }
-        return ref as! AXValue  // sm:ignore noForceUnwrap noForceCast — CFTypeID verified above
+        return unsafeDowncast(ref, to: AXValue.self)  // CFTypeID verified above
     }
 
     // MARK: - Actions
