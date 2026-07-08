@@ -105,12 +105,21 @@ public struct PathUtility: Sendable {
             let basePath = baseURL.path
             let resolvedPath = resolvedURL.path
 
-            if !resolvedPath.hasPrefix(basePath) {
+            if !Self.isPath(resolvedPath, within: basePath) {
                 throw PathError.pathOutsideBasePath(path: resolvedPath, basePath: basePath)
             }
         }
 
         return resolvedURL
+    }
+
+    /// Reports whether `path` is the base path itself or a descendant of it.
+    ///
+    /// A raw `hasPrefix` check is unsafe here: `/a/b` is a prefix of the sibling `/a/bcd`, which
+    /// would let a path outside the sandbox pass. This requires the match to land on a path
+    /// separator so only genuine descendants qualify. Both arguments must already be standardized.
+    private static func isPath(_ path: String, within basePath: String) -> Bool {
+        path == basePath || path.hasPrefix(basePath + "/")
     }
 
     /// Converts an absolute path to a relative path from the base path.
@@ -123,7 +132,7 @@ public struct PathUtility: Sendable {
         let absoluteURL = URL(fileURLWithPath: absolutePath).standardized
 
         // Check if the absolute path is within the base path
-        guard absoluteURL.path.hasPrefix(baseURL.path) else { return nil }
+        guard Self.isPath(absoluteURL.path, within: baseURL.path) else { return nil }
 
         // Get the relative components
         let baseComponents = baseURL.pathComponents
@@ -146,18 +155,25 @@ public struct PathUtility: Sendable {
 
     // MARK: - Ancestor Directory Search
 
-    /// Walks up from a starting directory looking for a directory containing a file or subdirectory
-    /// matching the given predicate.
+    /// Reports whether `entry` names a real `.xcworkspace` bundle, excluding hidden entries and the
+    /// CocoaPods workspace (which is an implementation detail, not the user's workspace).
+    static func isWorkspaceBundle(_ entry: String) -> Bool {
+        entry.hasSuffix(".xcworkspace") && !entry.hasPrefix(".") && entry != "Pods.xcworkspace"
+    }
+
+    /// Walks up from a starting directory looking for a directory containing an entry (file or
+    /// subdirectory) that satisfies the given predicate, returning both the directory and the
+    /// matching entry name.
     ///
     /// - Parameters:
-    ///   - predicate: A closure that receives directory contents and returns the matching entry
-    ///     name, or `nil` if no match is found.
+    ///   - predicate: A closure that receives an entry name and returns `true` if it matches.
     ///   - startingFrom: The directory to start searching from.
-    /// - Returns: The path to the directory containing the match, or `nil` if not found.
-    public static func findAncestorDirectory(
+    /// - Returns: The containing directory and the first matching entry name, or `nil` if not
+    ///   found.
+    public static func findAncestorEntry(
         matching predicate: (String) -> Bool,
         startingFrom start: String,
-    ) -> String? {
+    ) -> (directory: String, entry: String)? {
         let fm = FileManager.default
         var current = URL(fileURLWithPath: start).standardized
 
@@ -165,7 +181,7 @@ public struct PathUtility: Sendable {
         for _ in 0..<20 {
             let dirPath = current.path
             if let entries = try? fm.contentsOfDirectory(atPath: dirPath),
-               entries.contains(where: predicate) { return dirPath }
+               let match = entries.first(where: predicate) { return (dirPath, match) }
             let parent = current.deletingLastPathComponent().standardized
 
             if parent.path == current.path {
@@ -174,6 +190,20 @@ public struct PathUtility: Sendable {
             current = parent
         }
         return nil
+    }
+
+    /// Walks up from a starting directory looking for a directory containing a file or subdirectory
+    /// matching the given predicate.
+    ///
+    /// - Parameters:
+    ///   - predicate: A closure that receives an entry name and returns `true` if it matches.
+    ///   - startingFrom: The directory to start searching from.
+    /// - Returns: The path to the directory containing the match, or `nil` if not found.
+    public static func findAncestorDirectory(
+        matching predicate: (String) -> Bool,
+        startingFrom start: String,
+    ) -> String? {
+        findAncestorEntry(matching: predicate, startingFrom: start)?.directory
     }
 
     /// Finds the nearest ancestor directory containing `Package.swift`, starting from the process's
@@ -192,14 +222,12 @@ public struct PathUtility: Sendable {
     ///
     /// - Returns: The full path to the `.xcodeproj` bundle, or `nil` if not found.
     public static func findProjectPath() -> String? {
-        guard let dir = findAncestorDirectory(
+        guard let match = findAncestorEntry(
             matching: { $0.hasSuffix(".xcodeproj") },
             startingFrom: FileManager.default.currentDirectoryPath,
         ) else { return nil }
         // Return the full .xcodeproj path, not just the containing directory
-        let entries = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
-        guard let proj = entries.first(where: { $0.hasSuffix(".xcodeproj") }) else { return nil }
-        return "\(dir)/\(proj)"
+        return "\(match.directory)/\(match.entry)"
     }
 
     /// Finds the nearest ancestor directory containing a `.xcworkspace` bundle, starting from the
@@ -207,19 +235,11 @@ public struct PathUtility: Sendable {
     ///
     /// - Returns: The full path to the `.xcworkspace` bundle, or `nil` if not found.
     public static func findWorkspacePath() -> String? {
-        guard let dir = findAncestorDirectory(
-            matching: {
-                $0.hasSuffix(".xcworkspace")
-                    && !$0.hasPrefix(".")
-                    && $0 != "Pods.xcworkspace"
-            },
+        guard let match = findAncestorEntry(
+            matching: isWorkspaceBundle,
             startingFrom: FileManager.default.currentDirectoryPath,
         ) else { return nil }
-        let entries = (try? FileManager.default.contentsOfDirectory(atPath: dir)) ?? []
-        guard let ws = entries.first(where: {
-            $0.hasSuffix(".xcworkspace") && !$0.hasPrefix(".") && $0 != "Pods.xcworkspace"
-        }) else { return nil }
-        return "\(dir)/\(ws)"
+        return "\(match.directory)/\(match.entry)"
     }
 
     /// Resolves a path URL without base path validation (legacy compatibility).
@@ -248,10 +268,11 @@ public struct PathUtility: Sendable {
     public static func expandTilde(_ path: String) -> String {
         guard path.hasPrefix("~") else { return path }
         let home = NSHomeDirectory()
-        if path == "~" { return home }
-        return path.hasPrefix("~/")
-            ? home + String(path.dropFirst(1))
-            : path
+        return path == "~"
+            ? home
+            : path.hasPrefix("~/")
+                ? home + String(path.dropFirst(1))
+                : path
     }
 
     /// Resolves a path without base path validation (legacy compatibility).

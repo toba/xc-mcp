@@ -8,11 +8,11 @@ public enum PIDResolver {
     /// Uses `NSRunningApplication` for reliable bundle ID matching, unlike `pgrep` which searches
     /// command-line text and can't match bundle IDs.
     ///
-    /// - Parameter bundleId: The app's bundle identifier (e.g., "com.example.MyApp").
+    /// - Parameter bundleID: The app's bundle identifier (e.g., "com.example.MyApp").
     /// - Returns: The PID of the matching process, or `nil` if not found.
     @MainActor
-    public static func findPID(forBundleID bundleId: String) -> Int32? {
-        NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
+    public static func findPID(forBundleID bundleID: String) -> Int32? {
+        NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
             .first?.processIdentifier
     }
 
@@ -29,22 +29,19 @@ public enum PIDResolver {
               result.succeeded,
               let pidString = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
                   .components(separatedBy: .newlines).first,
-              let pid = Int32(pidString)
-        else { return nil }
+              let pid = Int32(pidString) else { return nil }
         return pid
     }
 
     /// Finds the PID of a recently launched app, trying bundle ID first then app name.
     ///
     /// - Parameters:
-    ///   - bundleId: The app's bundle identifier (e.g., "com.example.MyApp").
+    ///   - bundleID: The app's bundle identifier (e.g., "com.example.MyApp").
     ///   - appName: The app's name (e.g., "MyApp").
     /// - Returns: The PID of the matching process, or `nil` if not found.
-    public static func findLaunchedPID(bundleId: String?, appName: String?) async -> Int32? {
-        if let bundleId, let pid = await MainActor.run(body: { findPID(forBundleID: bundleId) }) {
-            return pid
-        }
-        for pattern in [bundleId, appName].compactMap(\.self) {
+    public static func findLaunchedPID(bundleID: String?, appName: String?) async -> Int32? {
+        if let bundleID, let pid = await findPID(forBundleID: bundleID) { return pid }
+        for pattern in [bundleID, appName].compactMap(\.self) {
             if let pid = await findPID(matching: pattern) { return pid }
         }
         return nil

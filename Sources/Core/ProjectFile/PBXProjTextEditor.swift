@@ -5,6 +5,12 @@ import Foundation
 /// XcodeProj's round-trip serializer corrupts unrelated sections (strips comments, adds spurious
 /// fields, reformats arrays). These helpers use XcodeProj for reading/validation only, then make
 /// targeted text edits to the pbxproj file.
+///
+/// Two entry points share one implementation:
+/// - ``PBXProjEditor`` holds the file as a mutable `[String]` of lines and applies edits in place —
+///   use it when a tool chains several edits, so the file is split and re-joined exactly once.
+/// - The `static` `String -> String` methods on this enum are thin wrappers over a single-edit
+///   ``PBXProjEditor``, kept for callers that apply one edit.
 public enum PBXProjTextEditor {
     public enum EditError: Error, CustomStringConvertible {
         case blockNotFound(uuid: String)
@@ -26,7 +32,7 @@ public enum PBXProjTextEditor {
     // MARK: - File I/O
 
     public static func read(projectPath: String) throws(EditError) -> String {
-        let path = "\(projectPath)/project.pbxproj"
+        let path = PBXProjParsing.pbxprojPath(forProject: projectPath)
         guard let data = FileManager.default.contents(atPath: path),
             let content = String(data: data, encoding: .utf8)
         else {
@@ -38,7 +44,7 @@ public enum PBXProjTextEditor {
     /// Read the raw bytes of `project.pbxproj`, for use as the ``write`` concurrency guard
     /// preimage.
     public static func readData(projectPath: String) throws(EditError) -> Data {
-        let path = "\(projectPath)/project.pbxproj"
+        let path = PBXProjParsing.pbxprojPath(forProject: projectPath)
         guard let data = FileManager.default.contents(atPath: path) else {
             throw .fileNotFound(path)
         }
@@ -54,7 +60,7 @@ public enum PBXProjTextEditor {
         projectPath: String,
         expectedPreimage: Data? = nil,
     ) throws {
-        let path = "\(projectPath)/project.pbxproj"
+        let path = PBXProjParsing.pbxprojPath(forProject: projectPath)
         try SafeProjectWrite.write(
             Data(content.utf8),
             to: path,
@@ -63,17 +69,13 @@ public enum PBXProjTextEditor {
         )
     }
 
-    // MARK: - Block operations
+    // MARK: - Single-edit convenience wrappers
 
     /// Remove an entire object block (from its UUID line through closing `};`).
-    public static func removeBlock(
-        _ content: String,
-        uuid: String,
-    ) throws(EditError) -> String {
-        var lines = content.splitLines()
-        let (start, end) = try findBlock(in: lines, uuid: uuid)
-        lines.removeSubrange(start...end)
-        return lines.joined(separator: "\n")
+    public static func removeBlock(_ content: String, uuid: String) throws(EditError) -> String {
+        var editor = PBXProjEditor(content)
+        try editor.removeBlock(uuid: uuid)
+        return editor.text
     }
 
     /// Insert a new `PBXFileSystemSynchronizedBuildFileExceptionSet` block into its section
@@ -86,23 +88,180 @@ public enum PBXProjTextEditor {
         targetUUID: String,
         membershipExceptions: [String],
     ) throws(EditError) -> String {
+        var editor = PBXProjEditor(content)
+        try editor.insertExceptionSetBlock(
+            uuid: uuid, folderName: folderName, targetName: targetName,
+            targetUUID: targetUUID, membershipExceptions: membershipExceptions,
+        )
+        return editor.text
+    }
+
+    /// Insert a new `PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet` block into its
+    /// section (creating the section if needed).
+    public static func insertGroupBuildPhaseMembershipExceptionSetBlock(
+        _ content: String,
+        uuid: String,
+        folderName: String,
+        phaseName: String,
+        phaseUUID: String,
+        phaseComment: String,
+        targetName: String,
+        membershipExceptions: [String],
+    ) throws(EditError) -> String {
+        var editor = PBXProjEditor(content)
+        try editor.insertGroupBuildPhaseMembershipExceptionSetBlock(
+            uuid: uuid, folderName: folderName, phaseName: phaseName, phaseUUID: phaseUUID,
+            phaseComment: phaseComment, targetName: targetName,
+            membershipExceptions: membershipExceptions,
+        )
+        return editor.text
+    }
+
+    /// Add plain entries (e.g. filenames) to an existing array field.
+    public static func addEntriesToArray(
+        _ content: String,
+        blockUUID: String,
+        field: String,
+        entries: [String],
+    ) throws(EditError) -> String {
+        var editor = PBXProjEditor(content)
+        try editor.addEntriesToArray(blockUUID: blockUUID, field: field, entries: entries)
+        return editor.text
+    }
+
+    /// Remove plain entries from an array field. Returns modified content and number of entries
+    /// remaining.
+    public static func removeEntriesFromArray(
+        _ content: String,
+        blockUUID: String,
+        field: String,
+        entries: Set<String>,
+    ) throws(EditError) -> (content: String, remainingCount: Int) {
+        var editor = PBXProjEditor(content)
+        let remaining = try editor.removeEntriesFromArray(
+            blockUUID: blockUUID, field: field, entries: entries,
+        )
+        return (editor.text, remaining)
+    }
+
+    /// Add a UUID reference to an array field, creating the field if absent.
+    public static func addReference(
+        _ content: String,
+        blockUUID: String,
+        field: String,
+        refUUID: String,
+        comment: String,
+    ) throws(EditError) -> String {
+        var editor = PBXProjEditor(content)
+        try editor.addReference(
+            blockUUID: blockUUID, field: field, refUUID: refUUID, comment: comment,
+        )
+        return editor.text
+    }
+
+    /// Remove a UUID reference from an array field. Removes the entire field if it becomes empty.
+    public static func removeReference(
+        _ content: String,
+        blockUUID: String,
+        field: String,
+        refUUID: String,
+    ) throws(EditError) -> String {
+        var editor = PBXProjEditor(content)
+        try editor.removeReference(blockUUID: blockUUID, field: field, refUUID: refUUID)
+        return editor.text
+    }
+
+    /// Insert block lines into a named section (e.g. "PBXBuildFile"). Creates the section at the
+    /// correct alphabetical position if it doesn't exist.
+    public static func insertBlockInSection(
+        _ content: String,
+        section: String,
+        blockLines: [String],
+    ) throws(EditError) -> String {
+        var editor = PBXProjEditor(content)
+        try editor.insertBlockInSection(section: section, blockLines: blockLines)
+        return editor.text
+    }
+
+    /// Add an array build setting to a configuration, only if the key doesn't already exist.
+    public static func addBuildSettingArray(
+        _ content: String,
+        configUUID: String,
+        key: String,
+        values: [String],
+    ) throws(EditError) -> String {
+        var editor = PBXProjEditor(content)
+        try editor.addBuildSettingArray(configUUID: configUUID, key: key, values: values)
+        return editor.text
+    }
+
+    // MARK: - UUID generation
+
+    public static func generateUUID() -> String {
+        let hex = Array("0123456789ABCDEF".utf8)
+        return .init(unsafeUninitializedCapacity: PBXProjParsing.identifierLength) { buffer in
+            for i in 0..<PBXProjParsing.identifierLength { buffer[i] = hex.randomElement()! }
+            return PBXProjParsing.identifierLength
+        }
+    }
+
+    public static func quotePBX(_ s: String) -> String {
+        let safe = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._/"))
+        return s.unicodeScalars.allSatisfy { safe.contains($0) } ? s : "\"\(s)\""
+    }
+}
+
+/// A mutable pbxproj document held as an array of lines.
+///
+/// Construct once from the file text, apply any number of edits in place, then read ``text`` to
+/// serialize. Chaining edits through a single editor splits and re-joins the file exactly once,
+/// instead of the O(edits × fileSize) split/join churn of piping the whole `String` through each
+/// static ``PBXProjTextEditor`` method.
+public struct PBXProjEditor {
+    public typealias EditError = PBXProjTextEditor.EditError
+
+    private var lines: [String]
+
+    public init(_ content: String) { lines = content.splitLines() }
+
+    /// The current document serialized back to pbxproj text.
+    public var text: String { lines.joined(separator: "\n") }
+
+    // MARK: - Block operations
+
+    /// Remove an entire object block (from its UUID line through closing `};`).
+    public mutating func removeBlock(uuid: String) throws(EditError) {
+        let (start, end) = try findBlock(uuid: uuid)
+        lines.removeSubrange(start...end)
+    }
+
+    /// Insert a new `PBXFileSystemSynchronizedBuildFileExceptionSet` block into its section
+    /// (creating the section if needed).
+    public mutating func insertExceptionSetBlock(
+        uuid: String,
+        folderName: String,
+        targetName: String,
+        targetUUID: String,
+        membershipExceptions: [String],
+    ) throws(EditError) {
         let comment = "Exceptions for \"\(folderName)\" folder in \"\(targetName)\" target"
 
         var block: [String] = []
         block.append("\t\t\(uuid) /* \(comment) */ = {")
         block.append("\t\t\tisa = PBXFileSystemSynchronizedBuildFileExceptionSet;")
         block.append("\t\t\tmembershipExceptions = (")
-        for file in membershipExceptions { block.append("\t\t\t\t\(quotePBX(file)),") }
+        for file in membershipExceptions {
+            block.append("\t\t\t\t\(PBXProjTextEditor.quotePBX(file)),")
+        }
         block.append("\t\t\t);")
         block.append("\t\t\ttarget = \(targetUUID) /* \(targetName) */;")
         block.append("\t\t};")
 
-        var lines = content.splitLines()
         let sectionEnd = "/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */"
 
         if let idx = lines.firstIndex(where: { $0.contains(sectionEnd) }) {
             lines.insert(contentsOf: block, at: idx)
-            return lines.joined(separator: "\n")
+            return
         }
 
         // Section doesn't exist — create it before the next alphabetical section
@@ -120,7 +279,7 @@ public enum PBXProjTextEditor {
                 section.append(contentsOf: block)
                 section.append(sectionEnd)
                 lines.insert(contentsOf: section, at: idx)
-                return lines.joined(separator: "\n")
+                return
             }
         }
         throw EditError.sectionNotFound("PBXFileSystemSynchronizedBuildFileExceptionSet")
@@ -128,8 +287,7 @@ public enum PBXProjTextEditor {
 
     /// Insert a new `PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet` block into its
     /// section (creating the section if needed).
-    public static func insertGroupBuildPhaseMembershipExceptionSetBlock(
-        _ content: String,
+    public mutating func insertGroupBuildPhaseMembershipExceptionSetBlock(
         uuid: String,
         folderName: String,
         phaseName: String,
@@ -137,7 +295,7 @@ public enum PBXProjTextEditor {
         phaseComment: String,
         targetName: String,
         membershipExceptions: [String],
-    ) throws(EditError) -> String {
+    ) throws(EditError) {
         let comment =
             "Exceptions for \"\(folderName)\" folder in \"\(phaseName)\" phase from \"\(targetName)\" target"
 
@@ -146,17 +304,18 @@ public enum PBXProjTextEditor {
         block.append("\t\t\tisa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;")
         block.append("\t\t\tbuildPhase = \(phaseUUID) /* \(phaseComment) */;")
         block.append("\t\t\tmembershipExceptions = (")
-        for file in membershipExceptions { block.append("\t\t\t\t\(quotePBX(file)),") }
+        for file in membershipExceptions {
+            block.append("\t\t\t\t\(PBXProjTextEditor.quotePBX(file)),")
+        }
         block.append("\t\t\t);")
         block.append("\t\t};")
 
-        var lines = content.splitLines()
         let sectionEnd =
             "/* End PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */"
 
         if let idx = lines.firstIndex(where: { $0.contains(sectionEnd) }) {
             lines.insert(contentsOf: block, at: idx)
-            return lines.joined(separator: "\n")
+            return
         }
 
         // Section doesn't exist — create it before the next alphabetical section
@@ -175,7 +334,7 @@ public enum PBXProjTextEditor {
                 section.append(contentsOf: block)
                 section.append(sectionEnd)
                 lines.insert(contentsOf: section, at: idx)
-                return lines.joined(separator: "\n")
+                return
             }
         }
         throw EditError.sectionNotFound(
@@ -186,88 +345,75 @@ public enum PBXProjTextEditor {
     // MARK: - Array entry operations (plain values like filenames)
 
     /// Add plain entries (e.g. filenames) to an existing array field.
-    public static func addEntriesToArray(
-        _ content: String,
+    public mutating func addEntriesToArray(
         blockUUID: String,
         field: String,
         entries: [String],
-    ) throws(EditError) -> String {
-        var lines = content.splitLines()
-        let (_, arrayEnd) = try findArrayField(in: lines, blockUUID: blockUUID, field: field)
-        let indent = detectEntryIndent(in: lines, blockUUID: blockUUID, field: field)
+    ) throws(EditError) {
+        let (_, arrayEnd) = try findArrayField(blockUUID: blockUUID, field: field)
+        let indent = detectEntryIndent(blockUUID: blockUUID, field: field)
 
         var newLines: [String] = []
-        for entry in entries { newLines.append("\(indent)\(quotePBX(entry)),") }
+        for entry in entries { newLines.append("\(indent)\(PBXProjTextEditor.quotePBX(entry)),") }
         lines.insert(contentsOf: newLines, at: arrayEnd)
-        return lines.joined(separator: "\n")
     }
 
-    /// Remove plain entries from an array field. Returns modified content and number of entries
-    /// remaining.
-    public static func removeEntriesFromArray(
-        _ content: String,
+    /// Remove plain entries from an array field. Returns the number of entries remaining.
+    public mutating func removeEntriesFromArray(
         blockUUID: String,
         field: String,
         entries: Set<String>,
-    ) throws(EditError) -> (content: String, remainingCount: Int) {
-        var lines = content.splitLines()
-        let (arrayStart, arrayEnd) = try findArrayField(
-            in: lines, blockUUID: blockUUID, field: field,
-        )
+    ) throws(EditError) -> Int {
+        let (arrayStart, arrayEnd) = try findArrayField(blockUUID: blockUUID, field: field)
 
         var toRemove: [Int] = []
 
         for i in (arrayStart + 1)..<arrayEnd {
-            if let name = extractPlainEntry(lines[i]), entries.contains(name) { toRemove.append(i) }
+            if let name = Self.extractPlainEntry(lines[i]), entries.contains(name) {
+                toRemove.append(i)
+            }
         }
         for i in toRemove.reversed() { lines.remove(at: i) }
 
         let newEnd = arrayEnd - toRemove.count
         var remaining = 0
-        for i in (arrayStart + 1)..<newEnd where extractPlainEntry(lines[i]) != nil {
+        for i in (arrayStart + 1)..<newEnd where Self.extractPlainEntry(lines[i]) != nil {
             remaining += 1
         }
-        return (lines.joined(separator: "\n"), remaining)
+        return remaining
     }
 
     // MARK: - Array reference operations (UUID references with comments)
 
     /// Add a UUID reference to an array field, creating the field if absent.
-    public static func addReference(
-        _ content: String,
+    public mutating func addReference(
         blockUUID: String,
         field: String,
         refUUID: String,
         comment: String,
-    ) throws(EditError) -> String {
-        if hasField(content, blockUUID: blockUUID, field: field) {
-            var lines = content.splitLines()
-            let (_, arrayEnd) = try findArrayField(in: lines, blockUUID: blockUUID, field: field)
-            let indent = detectEntryIndent(in: lines, blockUUID: blockUUID, field: field)
+    ) throws(EditError) {
+        if hasField(blockUUID: blockUUID, field: field) {
+            let (_, arrayEnd) = try findArrayField(blockUUID: blockUUID, field: field)
+            let indent = detectEntryIndent(blockUUID: blockUUID, field: field)
             lines.insert("\(indent)\(refUUID) /* \(comment) */,", at: arrayEnd)
-            return lines.joined(separator: "\n")
+            return
         }
-        return try insertFieldWithReferences(
-            content, blockUUID: blockUUID, field: field,
-            references: [(refUUID, comment)],
+        try insertFieldWithReferences(
+            blockUUID: blockUUID, field: field, references: [(refUUID, comment)],
         )
     }
 
     /// Remove a UUID reference from an array field. Removes the entire field if it becomes empty.
-    public static func removeReference(
-        _ content: String,
+    public mutating func removeReference(
         blockUUID: String,
         field: String,
         refUUID: String,
-    ) throws(EditError) -> String {
-        var lines = content.splitLines()
-        let (arrayStart, arrayEnd) = try findArrayField(
-            in: lines, blockUUID: blockUUID, field: field,
-        )
+    ) throws(EditError) {
+        let (arrayStart, arrayEnd) = try findArrayField(blockUUID: blockUUID, field: field)
 
         guard let idx = ((arrayStart + 1)..<arrayEnd).first(where: {
             lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix(refUUID)
-        }) else { return content }
+        }) else { return }
 
         lines.remove(at: idx)
 
@@ -277,25 +423,21 @@ public enum PBXProjTextEditor {
             !lines[$0].trimmingCharacters(in: .whitespaces).isEmpty
         }
         if empty { lines.removeSubrange(arrayStart...newEnd) }
-
-        return lines.joined(separator: "\n")
     }
 
     // MARK: - Section block insertion
 
     /// Insert block lines into a named section (e.g. "PBXBuildFile"). Creates the section at the
     /// correct alphabetical position if it doesn't exist.
-    public static func insertBlockInSection(
-        _ content: String,
+    public mutating func insertBlockInSection(
         section: String,
         blockLines: [String],
-    ) throws(EditError) -> String {
-        var lines = content.splitLines()
+    ) throws(EditError) {
         let sectionEnd = "/* End \(section) section */"
 
         if let idx = lines.firstIndex(where: { $0.contains(sectionEnd) }) {
             lines.insert(contentsOf: blockLines, at: idx)
-            return lines.joined(separator: "\n")
+            return
         }
 
         // Section doesn't exist — create it at the correct alphabetical position
@@ -321,26 +463,23 @@ public enum PBXProjTextEditor {
         newSection.append(contentsOf: blockLines)
         newSection.append("/* End \(section) section */")
         lines.insert(contentsOf: newSection, at: ip)
-        return lines.joined(separator: "\n")
     }
 
     // MARK: - Build setting operations
 
     /// Add an array build setting to a configuration, only if the key doesn't already exist.
-    public static func addBuildSettingArray(
-        _ content: String,
+    public mutating func addBuildSettingArray(
         configUUID: String,
         key: String,
         values: [String],
-    ) throws(EditError) -> String {
-        var lines = content.splitLines()
-        let (bStart, bEnd) = try findBlock(in: lines, uuid: configUUID)
+    ) throws(EditError) {
+        let (bStart, bEnd) = try findBlock(uuid: configUUID)
 
         // Check if key already exists in this block
         for i in bStart...bEnd
             where lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("\(key) ")
         {
-            return content  // Already set
+            return  // Already set
         }
 
         // Find buildSettings = { … }; within the block
@@ -372,31 +511,21 @@ public enum PBXProjTextEditor {
         // Detect indent from existing settings entries
         let settingsIndent: String
         settingsIndent = settingsStart + 1 < se
-            ? String(lines[settingsStart + 1].prefix(while: { $0 == "\t" || $0 == " " }))
+            ? Self.leadingIndent(of: lines[settingsStart + 1])
             : "\t\t\t\t"
         let valueIndent = settingsIndent + "\t"
 
         var insert: [String] = []
         insert.append("\(settingsIndent)\(key) = (")
-        for v in values { insert.append("\(valueIndent)\(quotePBX(v)),") }
+        for v in values { insert.append("\(valueIndent)\(PBXProjTextEditor.quotePBX(v)),") }
         insert.append("\(settingsIndent));")
 
         lines.insert(contentsOf: insert, at: se)
-        return lines.joined(separator: "\n")
-    }
-
-    // MARK: - UUID generation
-
-    public static func generateUUID() -> String {
-        (0..<24).map { _ in "0123456789ABCDEF".randomElement().map(String.init)! }.joined()
     }
 
     // MARK: - Internals
 
-    private static func findBlock(
-        in lines: [String],
-        uuid: String,
-    ) throws(EditError) -> (start: Int, end: Int) {
+    private func findBlock(uuid: String) throws(EditError) -> (start: Int, end: Int) {
         // Match block definitions (UUID ... = {) not array references (UUID ... ,)
         guard let start = lines.firstIndex(where: {
             let t = $0.trimmingCharacters(in: .whitespaces)
@@ -415,12 +544,11 @@ public enum PBXProjTextEditor {
         throw .blockNotFound(uuid: uuid)
     }
 
-    private static func findArrayField(
-        in lines: [String],
+    private func findArrayField(
         blockUUID: String,
         field: String,
     ) throws(EditError) -> (start: Int, end: Int) {
-        let (bStart, bEnd) = try findBlock(in: lines, uuid: blockUUID)
+        let (bStart, bEnd) = try findBlock(uuid: blockUUID)
         guard let aStart = (bStart...bEnd).first(where: {
             lines[$0].trimmingCharacters(in: .whitespaces)
                 .hasPrefix("\(field) = (")
@@ -433,29 +561,22 @@ public enum PBXProjTextEditor {
         return (aStart, aEnd)
     }
 
-    private static func hasField(
-        _ content: String,
-        blockUUID: String,
-        field: String,
-    ) -> Bool {
-        let lines = content.splitLines()
-        return (try? findArrayField(in: lines, blockUUID: blockUUID, field: field)) != nil
+    private func hasField(blockUUID: String, field: String) -> Bool {
+        (try? findArrayField(blockUUID: blockUUID, field: field)) != nil
     }
 
-    private static func insertFieldWithReferences(
-        _ content: String,
+    private mutating func insertFieldWithReferences(
         blockUUID: String,
         field: String,
         references: [(uuid: String, comment: String)],
-    ) throws(EditError) -> String {
-        var lines = content.splitLines()
-        let (bStart, bEnd) = try findBlock(in: lines, uuid: blockUUID)
+    ) throws(EditError) {
+        let (bStart, bEnd) = try findBlock(uuid: blockUUID)
         guard let isaIdx = (bStart...bEnd).first(where: {
             lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix("isa = ")
         }) else {
             throw .blockNotFound(uuid: blockUUID)
         }
-        let fieldIndent = String(lines[isaIdx].prefix(while: { $0 == "\t" || $0 == " " }))
+        let fieldIndent = Self.leadingIndent(of: lines[isaIdx])
         let entryIndent = fieldIndent + "\t"
 
         var insert = ["\(fieldIndent)\(field) = ("]
@@ -463,27 +584,27 @@ public enum PBXProjTextEditor {
         insert.append("\(fieldIndent));")
 
         lines.insert(contentsOf: insert, at: isaIdx + 1)
-        return lines.joined(separator: "\n")
     }
 
-    private static func detectEntryIndent(
-        in lines: [String],
-        blockUUID: String,
-        field: String,
-    ) -> String {
-        guard let (aStart, aEnd) = try? findArrayField(
-            in: lines, blockUUID: blockUUID, field: field,
-        ) else { return "\t\t\t\t" }
+    private func detectEntryIndent(blockUUID: String, field: String) -> String {
+        guard let (aStart, aEnd) = try? findArrayField(blockUUID: blockUUID, field: field) else {
+            return "\t\t\t\t"
+        }
 
         for i in (aStart + 1)..<aEnd {
             let line = lines[i]
 
             if !line.trimmingCharacters(in: .whitespaces).isEmpty {
-                return String(line.prefix(while: { $0 == "\t" || $0 == " " }))
+                return Self.leadingIndent(of: line)
             }
         }
-        let fieldIndent = String(lines[aStart].prefix(while: { $0 == "\t" || $0 == " " }))
-        return fieldIndent + "\t"
+        return Self.leadingIndent(of: lines[aStart]) + "\t"
+    }
+
+    /// The run of leading tabs/spaces on `line`, used to match the indentation of surrounding
+    /// pbxproj entries when inserting new lines.
+    private static func leadingIndent(of line: some StringProtocol) -> String {
+        String(line.prefix(while: { $0 == "\t" || $0 == " " }))
     }
 
     private static func extractPlainEntry(_ line: String) -> String? {
@@ -496,17 +617,5 @@ public enum PBXProjTextEditor {
             entry = String(entry.dropFirst().dropLast())
         }
         return entry.isEmpty ? nil : entry
-    }
-
-    public static func quotePBX(_ s: String) -> String {
-        let safe = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "._/"))
-        return s.unicodeScalars.allSatisfy { safe.contains($0) } ? s : "\"\(s)\""
-    }
-}
-
-extension String {
-    func splitLines() -> [String] {
-        split(separator: "\n", omittingEmptySubsequences: false)
-            .map(String.init)
     }
 }

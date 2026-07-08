@@ -31,8 +31,7 @@ public enum TestPlanFile {
         guard let testTargets = json["testTargets"] as? [[String: Any]] else { return [] }
         return testTargets.compactMap { entry in
             guard let target = entry["target"] as? [String: Any],
-                  let name = target["name"] as? String
-            else { return nil }
+                  let name = target["name"] as? String else { return nil }
             let enabled = entry["enabled"] as? Bool ?? true
             return (name: name, enabled: enabled)
         }
@@ -88,8 +87,7 @@ public enum TestPlanFile {
 
         public var description: String {
             switch self {
-                case let .invalidFormat(path):
-                    "File at '\(path)' is not a valid test plan JSON"
+                case let .invalidFormat(path): "File at '\(path)' is not a valid test plan JSON"
             }
         }
     }

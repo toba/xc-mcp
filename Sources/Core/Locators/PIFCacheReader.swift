@@ -1,23 +1,26 @@
 import Foundation
 
+/// Matches a bare 64-char hex target hash. `Regex` is not `Sendable`, so this stays
+/// `nonisolated(unsafe)`; it's only ever read, never mutated.
+private nonisolated(unsafe) let guidPattern = /[0-9a-f]{64}/
+
 /// Reads Xcode's on-disk PIF (Project Interchange Format) cache.
 ///
-/// Xcode writes the PIF — its internal build-graph representation, used between the IDE and
-/// XCBuild — to `<DerivedData>/<Project-hash>/Build/Intermediates.noindex/XCBuildData/PIFCache/`
-/// after every build. The cache contains three subdirectories:
+/// Xcode writes the PIF — its internal build-graph representation, used between the IDE and XCBuild
+/// — to `<DerivedData>/<Project-hash>/Build/Intermediates.noindex/XCBuildData/PIFCache/` after
+/// every build. The cache contains three subdirectories:
 ///
 /// - `workspace/` — workspace-level objects (lists projects)
-/// - `project/`   — project-level objects (lists targets, includes the .xcodeproj path)
-/// - `target/`    — target-level objects (top-level `guid` field is the 64-char target ID
-///                   that appears verbatim in "Multiple targets in the build graph have the
-///                   target ID …" errors)
+/// - `project/` — project-level objects (lists targets, includes the .xcodeproj path)
+/// - `target/` — target-level objects (top-level `guid` field is the 64-char target ID that appears
+///   verbatim in "Multiple targets in the build graph have the target ID …" errors)
 ///
 /// `PIFCacheReader` indexes those files so diagnostic tools can answer:
 /// - "what does target X look like in the build graph?" (`dump_pif`)
 /// - "which targets share this hash?" (`why_target_id`)
 ///
-/// The reader is purely read-only: it does not invoke `xcodebuild`. If no PIFCache exists yet
-/// (e.g. a fresh checkout that's never been built), `load(...)` throws ``Error/cacheMissing``.
+/// The reader is purely read-only: it does not invoke `xcodebuild`. If no PIFCache exists yet (e.g.
+/// a fresh checkout that's never been built), `load(...)` throws ``Error/cacheMissing``.
 public struct PIFCacheReader: Sendable {
     public enum Error: Swift.Error, CustomStringConvertible, Sendable {
         case derivedDataNotFound(projectName: String)
@@ -85,8 +88,8 @@ public struct PIFCacheReader: Sendable {
         public let projects: [Project]
         public let targets: [Target]
 
-        /// All targets, grouped by `guid`. Entries with >1 target are the duplicate
-        /// build-graph nodes that produce "Multiple targets in the build graph" errors.
+        /// All targets, grouped by `guid`. Entries with >1 target are the duplicate build-graph
+        /// nodes that produce "Multiple targets in the build graph" errors.
         public let targetsByGuid: [String: [Target]]
 
         /// Maps a target cache filename (`TARGET@v..._hash=...`) to the projects that list it.
@@ -100,16 +103,16 @@ public struct PIFCacheReader: Sendable {
     /// - Parameters:
     ///   - projectPath: Path to the `.xcodeproj`. Used to derive the DerivedData directory name
     ///     (`<basename>-*`) when `derivedDataPath` isn't given.
-    ///   - derivedDataPath: Explicit DerivedData project root override (e.g. `.../DerivedData/
-    ///     Thesis-ddfqsiuxmcpnzhcbomdlbbstfbci`). When provided, project-name autodetection is
-    ///     skipped.
-    ///   - userDerivedDataRoot: The user's `~/Library/Developer/Xcode/DerivedData` (overridable
-    ///     for testing). Defaults to the real path.
+    ///   - derivedDataPath: Explicit DerivedData project root override (e.g.
+    ///     `.../DerivedData/ Thesis-ddfqsiuxmcpnzhcbomdlbbstfbci`). When provided, project-name
+    ///     autodetection is skipped.
+    ///   - userDerivedDataRoot: The user's `~/Library/Developer/Xcode/DerivedData` (overridable for
+    ///     testing). Defaults to the real path.
     public func load(
         projectPath: String,
         derivedDataPath: String? = nil,
         userDerivedDataRoot: String? = nil,
-    ) throws -> Index {
+    ) throws(Error) -> Index {
         let derivedDataRoot = try resolveDerivedDataRoot(
             projectPath: projectPath,
             override: derivedDataPath,
@@ -122,36 +125,35 @@ public struct PIFCacheReader: Sendable {
 
         let fm = FileManager.default
         var isDir: ObjCBool = false
-        guard fm.fileExists(atPath: cacheRoot, isDirectory: &isDir), isDir.boolValue else {
-            throw Error.cacheMissing(path: cacheRoot)
-        }
+        guard fm.fileExists(atPath: cacheRoot, isDirectory: &isDir), isDir.boolValue
+        else { throw Error.cacheMissing(path: cacheRoot) }
 
         let workspaces = try loadWorkspaces(at: cacheRoot)
         let projects = try loadProjects(at: cacheRoot)
         let targets = try loadTargets(at: cacheRoot)
 
         var targetsByGuid: [String: [Target]] = [:]
-        for target in targets {
-            targetsByGuid[target.guid, default: []].append(target)
-        }
+        for target in targets { targetsByGuid[target.guid, default: []].append(target) }
 
         var projectsByTargetRef: [String: [Project]] = [:]
+
         for project in projects {
-            for ref in project.targetRefs {
-                projectsByTargetRef[ref, default: []].append(project)
-            }
+            for ref in project.targetRefs { projectsByTargetRef[ref, default: []].append(project) }
         }
 
-        let newest = ([workspaces.map(\.cacheFilePath),
-                       projects.map(\.cacheFilePath),
-                       targets.map(\.cacheFilePath)]
+        let newest =
+            ([
+                workspaces.map(\.cacheFilePath),
+                projects.map(\.cacheFilePath),
+                targets.map(\.cacheFilePath),
+            ]
             .flatMap { $0 })
-            .compactMap { (path: String) -> Date? in
-                try? fm.attributesOfItem(atPath: path)[.modificationDate] as? Date
-            }
-            .max()
+                .compactMap { (path: String) -> Date? in
+                    try? fm.attributesOfItem(atPath: path)[.modificationDate] as? Date
+                }
+                .max()
 
-        return Index(
+        return .init(
             cacheRoot: cacheRoot,
             derivedDataRoot: derivedDataRoot,
             newestEntryModified: newest,
@@ -168,10 +170,7 @@ public struct PIFCacheReader: Sendable {
     /// - the full `target-<Name>-<hash>-SDKROOT:<sdk>:SDK_VARIANT:<sdk>` build-system id
     /// Returns `nil` if no 64-char hex hash is found.
     public static func extractGuid(from raw: String) -> String? {
-        let pattern = /[0-9a-f]{64}/
-        if let match = raw.firstMatch(of: pattern) {
-            return String(match.output)
-        }
+        if let match = raw.firstMatch(of: guidPattern) { return String(match.output) }
         return nil
     }
 
@@ -181,10 +180,8 @@ public struct PIFCacheReader: Sendable {
         projectPath: String,
         override: String?,
         userDerivedDataRoot: String?,
-    ) throws -> String {
-        if let override {
-            return override
-        }
+    ) throws(Error) -> String {
+        if let override { return override }
 
         let userRoot = userDerivedDataRoot
             ?? (NSHomeDirectory() + "/Library/Developer/Xcode/DerivedData")
@@ -212,84 +209,118 @@ public struct PIFCacheReader: Sendable {
         return (userRoot as NSString).appendingPathComponent(newest.name)
     }
 
-    private func loadWorkspaces(at cacheRoot: String) throws -> [Workspace] {
-        try listJSON(in: cacheRoot, subdir: "workspace").map { url in
-            let object = try decode(url: url)
-            return Workspace(
-                guid: (object["guid"] as? String) ?? "",
-                name: object["name"] as? String,
-                path: object["path"] as? String,
-                projectRefs: (object["projects"] as? [String]) ?? [],
+    private func loadWorkspaces(at cacheRoot: String) throws(Error) -> [Workspace] {
+        try decodeEach(in: cacheRoot, subdir: "workspace") { (dto: WorkspaceDTO, url) in
+            Workspace(
+                guid: dto.guid ?? "",
+                name: dto.name,
+                path: dto.path,
+                projectRefs: dto.projects ?? [],
                 cacheFileName: url.lastPathComponent,
                 cacheFilePath: url.path,
             )
         }
     }
 
-    private func loadProjects(at cacheRoot: String) throws -> [Project] {
-        try listJSON(in: cacheRoot, subdir: "project").map { url in
-            let object = try decode(url: url)
-            return Project(
-                guid: (object["guid"] as? String) ?? "",
-                name: object["projectName"] as? String,
-                path: object["path"] as? String,
-                targetRefs: (object["targets"] as? [String]) ?? [],
+    private func loadProjects(at cacheRoot: String) throws(Error) -> [Project] {
+        try decodeEach(in: cacheRoot, subdir: "project") { (dto: ProjectDTO, url) in
+            Project(
+                guid: dto.guid ?? "",
+                name: dto.projectName,
+                path: dto.path,
+                targetRefs: dto.targets ?? [],
                 cacheFileName: url.lastPathComponent,
                 cacheFilePath: url.path,
             )
         }
     }
 
-    private func loadTargets(at cacheRoot: String) throws -> [Target] {
-        try listJSON(in: cacheRoot, subdir: "target").map { url in
-            let object = try decode(url: url)
-            let productRef = object["productReference"] as? [String: Any]
-            let depsRaw = (object["dependencies"] as? [[String: Any]]) ?? []
-            let deps = depsRaw.map { dep in
-                Target.Dependency(
-                    guid: (dep["guid"] as? String) ?? "",
-                    name: dep["name"] as? String,
-                )
+    private func loadTargets(at cacheRoot: String) throws(Error) -> [Target] {
+        try decodeEach(in: cacheRoot, subdir: "target") { (dto: TargetDTO, url) in
+            Target(
+                guid: dto.guid ?? "",
+                name: dto.name ?? "<unnamed>",
+                productType: dto.productTypeIdentifier,
+                productReferenceName: dto.productReference?.name,
+                dependencies: (dto.dependencies ?? []).map {
+                    Target.Dependency(guid: $0.guid ?? "", name: $0.name)
+                },
+                cacheFileName: url.lastPathComponent,
+                cacheFilePath: url.path,
+            )
+        }
+    }
+
+    /// Decodes every `*-json` file under `<cacheRoot>/<subdir>` into `DTO`, then maps each into a
+    /// public model via `transform`. A missing subdirectory yields an empty array; a malformed file
+    /// throws ``Error/decode(path:underlying:)``.
+    private func decodeEach<DTO: Decodable, Model>(
+        in cacheRoot: String,
+        subdir: String,
+        transform: (DTO, URL) -> Model,
+    ) throws(Error) -> [Model] {
+        let decoder = JSONDecoder()
+        var models: [Model] = []
+        let urls = listJSON(in: cacheRoot, subdir: subdir)
+        models.reserveCapacity(urls.count)
+
+        for url in urls {
+            let dto: DTO
+
+            do {
+                dto = try decoder.decode(DTO.self, from: Data(contentsOf: url))
+            } catch {
+                throw Error.decode(path: url.path, underlying: error.localizedDescription)
             }
-            return Target(
-                guid: (object["guid"] as? String) ?? "",
-                name: (object["name"] as? String) ?? "<unnamed>",
-                productType: object["productTypeIdentifier"] as? String,
-                productReferenceName: productRef?["name"] as? String,
-                dependencies: deps,
-                cacheFileName: url.lastPathComponent,
-                cacheFilePath: url.path,
-            )
+            models.append(transform(dto, url))
         }
+        return models
     }
 
-    private func listJSON(in cacheRoot: String, subdir: String) throws -> [URL] {
+    private func listJSON(in cacheRoot: String, subdir: String) -> [URL] {
         let dir = URL(fileURLWithPath: cacheRoot).appendingPathComponent(subdir)
         let fm = FileManager.default
-        guard let entries = try? fm.contentsOfDirectory(atPath: dir.path) else {
-            return []
-        }
+        guard let entries = try? fm.contentsOfDirectory(atPath: dir.path) else { return [] }
         return entries
             .filter { $0.hasSuffix("-json") }
             .map { dir.appendingPathComponent($0) }
     }
 
-    private func decode(url: URL) throws -> [String: Any] {
-        do {
-            let data = try Data(contentsOf: url)
-            guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                throw Error.decode(path: url.path, underlying: "not a JSON object")
-            }
-            return object
-        } catch let error as Error {
-            throw error
-        } catch {
-            throw Error.decode(path: url.path, underlying: error.localizedDescription)
+    // MARK: - Decodable DTOs
+
+    /// Mirrors the subset of PIF workspace JSON the reader consumes.
+    private struct WorkspaceDTO: Decodable {
+        let guid: String?
+        let name: String?
+        let path: String?
+        let projects: [String]?
+    }
+
+    /// Mirrors the subset of PIF project JSON the reader consumes.
+    private struct ProjectDTO: Decodable {
+        let guid: String?
+        let projectName: String?
+        let path: String?
+        let targets: [String]?
+    }
+
+    /// Mirrors the subset of PIF target JSON the reader consumes.
+    private struct TargetDTO: Decodable {
+        let guid: String?
+        let name: String?
+        let productTypeIdentifier: String?
+        let productReference: ProductReference?
+        let dependencies: [DependencyDTO]?
+
+        struct ProductReference: Decodable { let name: String? }
+        struct DependencyDTO: Decodable {
+            let guid: String?
+            let name: String?
         }
     }
 
-    /// Reads the raw JSON object at a target cache file path. Used by `dump_pif` to surface
-    /// the unparsed PIF for inspection.
+    /// Reads the raw JSON object at a target cache file path. Used by `dump_pif` to surface the
+    /// unparsed PIF for inspection.
     public func rawJSON(atPath path: String) throws -> String {
         let data = try Data(contentsOf: URL(fileURLWithPath: path))
         let object = try JSONSerialization.jsonObject(with: data)

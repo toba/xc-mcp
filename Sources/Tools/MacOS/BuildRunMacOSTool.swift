@@ -168,7 +168,7 @@ public struct BuildRunMacOSTool: Sendable {
                     .lastPathComponent
                 let bundleId = extractBundleId(from: buildSettings.stdout)
 
-                if let pid = await PIDResolver.findLaunchedPID(bundleId: bundleId, appName: appName)
+                if let pid = await PIDResolver.findLaunchedPID(bundleID: bundleId, appName: appName)
                 {
                     try await Task.sleep(for: .seconds(1))
 

@@ -33,8 +33,8 @@ public enum SchemePathResolver {
 
     /// Computes the path of `absolutePath` relative to the directory containing `schemePath`.
     ///
-    /// Scheme `StoreKitConfigurationFileReference` identifiers are stored as a path relative to
-    /// the `.xcscheme` file's own location — e.g. a repo-root `Thesis.storekit` referenced from
+    /// Scheme `StoreKitConfigurationFileReference` identifiers are stored as a path relative to the
+    /// `.xcscheme` file's own location — e.g. a repo-root `Thesis.storekit` referenced from
     /// `Project.xcodeproj/xcshareddata/xcschemes/Standard.xcscheme` serializes as
     /// `../../../Thesis.storekit`. Falls back to `absolutePath` if the two paths share no common
     /// root (different volumes).
@@ -50,11 +50,11 @@ public enum SchemePathResolver {
         guard baseComponents.first == targetComponents.first else { return absolutePath }
 
         var shared = 0
-        while shared < baseComponents.count, shared < targetComponents.count,
+
+        while shared < baseComponents.count,
+              shared < targetComponents.count,
               baseComponents[shared] == targetComponents[shared]
-        {
-            shared += 1
-        }
+        { shared += 1 }
 
         let ascend = Array(repeating: "..", count: baseComponents.count - shared)
         let descend = targetComponents[shared...]

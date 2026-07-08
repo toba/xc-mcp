@@ -47,9 +47,9 @@ extension [String: Value] {
     /// - Parameter key: The argument key to look up.
     /// - Returns: The string value.
     /// - Throws: MCPError.invalidParams if the key is missing or not a string.
-    public func getRequiredString(_ key: String) throws -> String {
+    public func getRequiredString(_ key: String) throws(MCPError) -> String {
         guard case let .string(value) = self[key] else {
-            throw MCPError.invalidParams("\(key) is required")
+            throw .invalidParams("\(key) is required")
         }
         return value
     }
@@ -96,8 +96,14 @@ extension [String: Value] {
     ///   missing or not an object.
     public func getStringDictionary(_ key: String) -> [String: String] {
         guard case let .object(obj) = self[key] else { return [:] }
+        return Self.stringValues(from: obj)
+    }
+
+    /// Collects the `.string`-valued entries of an MCP `Value` object into `[String: String]` ,
+    /// dropping any non-string values.
+    static func stringValues(from object: [String: Value]) -> [String: String] {
         var result: [String: String] = [:]
-        for (k, v) in obj { if case let .string(s) = v { result[k] = s } }
+        for (k, v) in object { if case let .string(s) = v { result[k] = s } }
         return result
     }
 
@@ -327,8 +333,8 @@ extension [String: Value] {
     ///   found.
     public func resolveTargetPID() async throws(MCPError) -> Int32 {
         if let pid = getInt("pid") { return Int32(pid) }
-        if let bundleId = getString("bundle_id"),
-           let pid = await MainActor.run(body: { PIDResolver.findPID(forBundleID: bundleId) }) {
+        if let bundleID = getString("bundle_id"),
+           let pid = await MainActor.run(body: { PIDResolver.findPID(forBundleID: bundleID) }) {
             return pid
         }
         throw .invalidParams("Either pid or bundle_id (of a running app) is required")
@@ -343,8 +349,8 @@ extension [String: Value] {
     public func resolveDebugPID() async throws(MCPError) -> Int32 {
         var pid = getInt("pid").map(Int32.init)
 
-        if pid == nil, let bundleId = getString("bundle_id") {
-            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
+        if pid == nil, let bundleID = getString("bundle_id") {
+            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleID)
         }
 
         guard let targetPID = pid else {
@@ -360,33 +366,32 @@ extension [String: Value] {
     ///
     /// - Returns: An array of ``BatchTranslationEntry`` values.
     /// - Throws: MCPError.invalidParams if the structure is invalid.
-    public func parseBatchTranslationEntries() throws -> [BatchTranslationEntry] {
+    public func parseBatchTranslationEntries() throws(MCPError) -> [BatchTranslationEntry] {
         guard case let .array(entriesArray) = self["entries"] else {
-            throw MCPError.invalidParams("entries must be an array")
+            throw .invalidParams("entries must be an array")
         }
 
-        return try entriesArray.compactMap { entryValue -> BatchTranslationEntry? in
+        var entries: [BatchTranslationEntry] = []
+        entries.reserveCapacity(entriesArray.count)
+        for entryValue in entriesArray {
             guard case let .object(entry) = entryValue,
                   case let .string(key) = entry["key"],
                   case let .object(translationsObj) = entry["translations"]
             else {
-                throw MCPError.invalidParams(
+                throw .invalidParams(
                     "Each entry must have a 'key' string and 'translations' object",
                 )
             }
 
-            var translations: [String: String] = [:]
-            for (lang, val) in translationsObj {
-                if case let .string(str) = val { translations[lang] = str }
-            }
-
+            let translations = Self.stringValues(from: translationsObj)
             guard !translations.isEmpty else {
-                throw MCPError.invalidParams(
+                throw .invalidParams(
                     "translations for key '\(key)' must contain at least one language",
                 )
             }
 
-            return BatchTranslationEntry(key: key, translations: translations)
+            entries.append(BatchTranslationEntry(key: key, translations: translations))
         }
+        return entries
     }
 }

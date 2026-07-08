@@ -41,15 +41,29 @@ public final class ProgressReporter: Sendable {
         guard !chunk.isEmpty else { return }
         state.withLock { s in
             s.totalBytes += chunk.utf8.count
-            for line in chunk.split(whereSeparator: \.isNewline).reversed() {
-                let trimmed = line.trimmingCharacters(in: .whitespaces)
-
-                if !trimmed.isEmpty {
-                    s.lastLine = trimmed
-                    return
-                }
-            }
+            if let line = Self.lastNonBlankLine(in: chunk) { s.lastLine = line }
         }
+    }
+
+    /// Returns the last newline-delimited line of `chunk` that is non-empty after whitespace
+    /// trimming, or `nil` if every line is blank.
+    ///
+    /// Scans backward from the end so we stop at the first non-blank line without allocating a
+    /// `[Substring]` for the whole chunk — this runs on the streaming ingest hot path.
+    private static func lastNonBlankLine(in chunk: String) -> String? {
+        var segmentEnd = chunk.endIndex
+        var i = chunk.endIndex
+        while i > chunk.startIndex {
+            let j = chunk.index(before: i)
+            if chunk[j].isNewline {
+                let trimmed = chunk[i ..< segmentEnd].trimmingCharacters(in: .whitespaces)
+                if !trimmed.isEmpty { return trimmed }
+                segmentEnd = j
+            }
+            i = j
+        }
+        let leading = chunk[chunk.startIndex ..< segmentEnd].trimmingCharacters(in: .whitespaces)
+        return leading.isEmpty ? nil : leading
     }
 
     /// Marks this reporter retired. After retirement, ``emitIfPending()`` drops any pending or
@@ -100,7 +114,7 @@ public final class ProgressReporter: Sendable {
     ) async rethrows -> T {
         let pollTaskBox = Mutex<Task<Void, Never>?>(nil)
         return try await withTaskCancellationHandler {
-            let pollTask = Task { [interval, self] in
+            let pollTask = Task(name: "progress-poll") { [interval, self] in
                 while !Task.isCancelled {
                     try? await Task.sleep(for: interval)
                     if Task.isCancelled { break }

@@ -31,12 +31,16 @@ public enum HintValue: Sendable {
     case int(Int)
     case bool(Bool)
 
+    private static let stringEncoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.withoutEscapingSlashes]
+        return encoder
+    }()
+
     var rendered: String {
         switch self {
             case let .string(s):
-                let encoder = JSONEncoder()
-                encoder.outputFormatting = [.withoutEscapingSlashes]
-                let data = (try? encoder.encode(s)) ?? Data("\"\"".utf8)
+                let data = (try? Self.stringEncoder.encode(s)) ?? Data("\"\"".utf8)
                 return String(data: data, encoding: .utf8) ?? "\"\""
             case let .int(i): return String(i)
             case let .bool(b): return b ? "true" : "false"

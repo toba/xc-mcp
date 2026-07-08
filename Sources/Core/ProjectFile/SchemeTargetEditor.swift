@@ -11,6 +11,7 @@ public enum SchemeTargetEditor {
     public static func schemeFiles(in projectPath: String) -> [String] {
         let fm = FileManager.default
         var results: [String] = []
+
         for dir in SchemePathResolver.schemeDirs(for: projectPath) {
             guard let entries = try? fm.contentsOfDirectory(atPath: dir) else { continue }
             for entry in entries where entry.hasSuffix(".xcscheme") {
@@ -27,8 +28,12 @@ public enum SchemeTargetEditor {
         projectFilename: String,
         schemeAt path: String,
     ) -> Bool {
-        guard let doc = try? XMLDocument(contentsOf: URL(fileURLWithPath: path)) else { return false }
-        let nodes = (try? matchingReferences(in: doc, target: targetName, projectFilename: projectFilename)) ?? []
+        guard let doc = try? XMLDocument(contentsOf: URL(fileURLWithPath: path)) else {
+            return false
+        }
+        let nodes =
+            (try? matchingReferences(in: doc, target: targetName, projectFilename: projectFilename))
+            ?? []
         return !nodes.isEmpty
     }
 
@@ -42,7 +47,8 @@ public enum SchemeTargetEditor {
     ) throws -> Bool {
         let url = URL(fileURLWithPath: path)
         let doc = try XMLDocument(contentsOf: url)
-        let refs = try matchingReferences(in: doc, target: targetName, projectFilename: projectFilename)
+        let refs = try matchingReferences(
+            in: doc, target: targetName, projectFilename: projectFilename)
         guard !refs.isEmpty else { return false }
 
         for ref in refs {
@@ -70,10 +76,7 @@ public enum SchemeTargetEditor {
 
             // When the reference names a container, only match it if it is this project's.
             if let container = element.attribute(forName: "ReferencedContainer")?.stringValue,
-               !container.hasSuffix(projectFilename)
-            {
-                return nil
-            }
+               !container.hasSuffix(projectFilename) { return nil }
             return element
         }
     }

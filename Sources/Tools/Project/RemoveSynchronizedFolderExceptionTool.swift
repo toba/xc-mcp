@@ -7,15 +7,13 @@ import Foundation
 public struct RemoveSynchronizedFolderExceptionTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_synchronized_folder_exception",
             description:
-            "Remove a file from an exception set, or remove an entire exception set from a synchronized folder",
+                "Remove a file from an exception set, or remove an entire exception set from a synchronized folder",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -58,40 +56,26 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
               case let .string(folderPath) = arguments["folder_path"],
               case let .string(targetName) = arguments["target_name"]
         else {
-            throw MCPError.invalidParams(
-                "project_path, folder_path, and target_name are required",
-            )
+            throw MCPError.invalidParams("project_path, folder_path, and target_name are required")
         }
 
         let fileName: String?
-        if case let .string(f) = arguments["file_name"] {
-            fileName = f
-        } else {
-            fileName = nil
-        }
+        if case let .string(f) = arguments["file_name"] { fileName = f } else { fileName = nil }
 
         do {
-            let resolvedProjectPath = try pathUtility.resolvePath(
-                from: projectPath,
-            )
+            let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(filePath: resolvedProjectPath)
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                  let mainGroup = project.mainGroup
+                let mainGroup = project.mainGroup
             else {
                 throw MCPError.internalError("Main group not found in project")
             }
 
-            guard
-                let resolvedTarget = xcodeproj.pbxproj.nativeTargets.first(
-                    where: { $0.name == targetName },
-                )
-            else {
-                throw MCPError.invalidParams(
-                    "Target '\(targetName)' not found in project",
-                )
-            }
+            guard let resolvedTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else { throw MCPError.invalidParams("Target '\(targetName)' not found in project") }
 
             let syncGroup = try SynchronizedFolderUtility.resolveSyncGroup(
                 folderPath: folderPath, target: resolvedTarget, in: mainGroup,
@@ -113,13 +97,12 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
             let syncGroupUUID = syncGroup.uuid
 
             // Read the raw pbxproj text — all edits happen here
-            var text = try PBXProjTextEditor.read(
-                projectPath: projectURL.path,
-            )
+            var editor = try PBXProjEditor(PBXProjTextEditor.read(projectPath: projectURL.path))
 
             if let fileName {
-                guard
-                    exceptionSet.membershipExceptions?.contains(fileName)
+                guard exceptionSet.membershipExceptions?.contains(
+                    fileName
+                )
                     == true
                 else {
                     throw MCPError.invalidParams(
@@ -127,66 +110,48 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                     )
                 }
 
-                let (edited, remaining) =
-                    try PBXProjTextEditor.removeEntriesFromArray(
-                        text, blockUUID: exceptionUUID,
-                        field: "membershipExceptions",
-                        entries: [fileName],
-                    )
-                text = edited
+                let remaining = try editor.removeEntriesFromArray(
+                    blockUUID: exceptionUUID,
+                    field: "membershipExceptions",
+                    entries: [fileName],
+                )
 
                 if remaining == 0 {
                     // Exception set is empty — remove the block and its reference
-                    text = try PBXProjTextEditor.removeBlock(
-                        text, uuid: exceptionUUID,
-                    )
-                    text = try PBXProjTextEditor.removeReference(
-                        text, blockUUID: syncGroupUUID,
+                    try editor.removeBlock(uuid: exceptionUUID)
+                    try editor.removeReference(
+                        blockUUID: syncGroupUUID,
                         field: "exceptions", refUUID: exceptionUUID,
                     )
 
-                    try PBXProjTextEditor.write(
-                        text, projectPath: projectURL.path,
-                    )
-                    return CallTool.Result(
-                        content: [
-                            .text(text:
-                                "Removed '\(fileName)' from exception set for target '\(targetName)' on '\(folderPath)'. Exception set was empty and has been removed.",
-                                annotations: nil, _meta: nil),
-                        ],
-                    )
+                    try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
+                    return CallTool.Result(content: [
+                        .text(
+                            text: "Removed '\(fileName)' from exception set for target '\(targetName)' on '\(folderPath)'. Exception set was empty and has been removed.",
+                            annotations: nil, _meta: nil)
+                    ],)
                 }
 
-                try PBXProjTextEditor.write(
-                    text, projectPath: projectURL.path,
-                )
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Removed '\(fileName)' from exception set for target '\(targetName)' on '\(folderPath)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Removed '\(fileName)' from exception set for target '\(targetName)' on '\(folderPath)'",
+                        annotations: nil, _meta: nil)
+                ],)
             } else {
                 // Remove the entire exception set
-                text = try PBXProjTextEditor.removeBlock(
-                    text, uuid: exceptionUUID,
-                )
-                text = try PBXProjTextEditor.removeReference(
-                    text, blockUUID: syncGroupUUID,
+                try editor.removeBlock(uuid: exceptionUUID)
+                try editor.removeReference(
+                    blockUUID: syncGroupUUID,
                     field: "exceptions", refUUID: exceptionUUID,
                 )
 
-                try PBXProjTextEditor.write(
-                    text, projectPath: projectURL.path,
-                )
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Removed exception set for target '\(targetName)' from synchronized folder '\(folderPath)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Removed exception set for target '\(targetName)' from synchronized folder '\(folderPath)'",
+                        annotations: nil, _meta: nil)
+                ],)
             }
         } catch let error as MCPError {
             throw error
@@ -197,8 +162,8 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
         }
     }
 
-    /// Find the exception set for a target on a sync group.
-    /// Uses identity match first, then falls back to name/UUID match.
+    /// Find the exception set for a target on a sync group. Uses identity match first, then falls
+    /// back to name/UUID match.
     private func findExceptionSet(
         syncGroup: PBXFileSystemSynchronizedRootGroup,
         target: PBXNativeTarget,
@@ -207,14 +172,11 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
     ) -> PBXFileSystemSynchronizedBuildFileExceptionSet? {
         // Primary: from the sync group's resolved exceptions
         if let match = syncGroup.exceptions?.first(where: {
-            guard
-                let ex = $0
+            guard let ex = $0
                 as? PBXFileSystemSynchronizedBuildFileExceptionSet
             else { return false }
             return ex.target === target || ex.target?.name == targetName
-        }) as? PBXFileSystemSynchronizedBuildFileExceptionSet {
-            return match
-        }
+        }) as? PBXFileSystemSynchronizedBuildFileExceptionSet { return match }
 
         // Fallback: search all exception sets by target UUID
         return pbxproj.fileSystemSynchronizedBuildFileExceptionSets

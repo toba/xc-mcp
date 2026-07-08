@@ -141,27 +141,27 @@ public struct RemoveFileTool: Sendable {
             }
 
             // --- Phase 2: Text-based edits ---
-            var text = try PBXProjTextEditor.read(projectPath: resolvedProjectPath)
+            var editor = try PBXProjEditor(PBXProjTextEditor.read(projectPath: resolvedProjectPath))
 
             // Remove from build phases and delete build file blocks
             for removal in removals {
-                text = try PBXProjTextEditor.removeReference(
-                    text, blockUUID: removal.phaseUUID, field: "files",
+                try editor.removeReference(
+                    blockUUID: removal.phaseUUID, field: "files",
                     refUUID: removal.buildFileUUID,
                 )
-                text = try PBXProjTextEditor.removeBlock(text, uuid: removal.buildFileUUID)
+                try editor.removeBlock(uuid: removal.buildFileUUID)
             }
 
             // Remove from parent group and delete file reference block
             if let refUUID = fileRefUUID, let groupUUID = parentGroupUUID {
-                text = try PBXProjTextEditor.removeReference(
-                    text, blockUUID: groupUUID, field: "children",
+                try editor.removeReference(
+                    blockUUID: groupUUID, field: "children",
                     refUUID: refUUID,
                 )
-                text = try PBXProjTextEditor.removeBlock(text, uuid: refUUID)
+                try editor.removeBlock(uuid: refUUID)
             }
 
-            try PBXProjTextEditor.write(text, projectPath: resolvedProjectPath)
+            try PBXProjTextEditor.write(editor.text, projectPath: resolvedProjectPath)
 
             // Optionally remove from disk
             if removeFromDisk {

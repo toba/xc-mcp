@@ -127,7 +127,7 @@ public struct LaunchMacAppTool: Sendable {
                     appPath
                     .map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
 
-                if let pid = await PIDResolver.findLaunchedPID(bundleId: bundleId, appName: appName)
+                if let pid = await PIDResolver.findLaunchedPID(bundleID: bundleId, appName: appName)
                 {
                     // Brief delay then liveness check
                     try await Task.sleep(for: .seconds(1))

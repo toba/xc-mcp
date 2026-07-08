@@ -7,15 +7,13 @@ import Foundation
 public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_target_from_synchronized_folder",
             description:
-            "Remove a target's reference to a synchronized folder (unlink a shared folder from a target)",
+                "Remove a target's reference to a synchronized folder (unlink a shared folder from a target)",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -52,92 +50,72 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
               case let .string(folderPath) = arguments["folder_path"],
               case let .string(targetName) = arguments["target_name"]
         else {
-            throw MCPError.invalidParams(
-                "project_path, folder_path, and target_name are required",
-            )
+            throw MCPError.invalidParams("project_path, folder_path, and target_name are required")
         }
 
         do {
-            let resolvedProjectPath = try pathUtility.resolvePath(
-                from: projectPath,
-            )
+            let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(filePath: resolvedProjectPath)
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                  let mainGroup = project.mainGroup
+                let mainGroup = project.mainGroup
             else {
                 throw MCPError.internalError("Main group not found in project")
             }
 
-            guard
-                let syncGroup = SynchronizedFolderUtility.findSyncGroup(
-                    folderPath, in: mainGroup,
-                )
+            guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
             else {
                 throw MCPError.invalidParams(
                     "Synchronized folder '\(folderPath)' not found in project",
                 )
             }
 
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: {
-                    $0.name == targetName
-                })
-            else {
-                throw MCPError.invalidParams(
-                    "Target '\(targetName)' not found in project",
-                )
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                throw MCPError.invalidParams("Target '\(targetName)' not found in project")
             }
 
             guard let syncGroups = target.fileSystemSynchronizedGroups,
                   syncGroups.contains(where: { $0 === syncGroup })
             else {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Target '\(targetName)' does not reference synchronized folder '\(folderPath)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Target '\(targetName)' does not reference synchronized folder '\(folderPath)'",
+                        annotations: nil, _meta: nil)
+                ],)
             }
 
-            var text = try PBXProjTextEditor.read(
-                projectPath: projectURL.path,
-            )
+            var editor = try PBXProjEditor(PBXProjTextEditor.read(projectPath: projectURL.path))
 
             // Remove the sync group reference from the target
-            text = try PBXProjTextEditor.removeReference(
-                text, blockUUID: target.uuid,
+            try editor.removeReference(
+                blockUUID: target.uuid,
                 field: "fileSystemSynchronizedGroups",
                 refUUID: syncGroup.uuid,
             )
 
             // Clean up orphaned exception sets for this target
-            let orphaned =
-                (syncGroup.exceptions ?? []).compactMap {
-                    $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
-                }.filter { $0.target === target }
+            let orphaned = (syncGroup.exceptions ?? []).compactMap {
+                $0 as? PBXFileSystemSynchronizedBuildFileExceptionSet
+            }.filter { $0.target === target }
 
             for ex in orphaned {
-                text = try PBXProjTextEditor.removeBlock(
-                    text, uuid: ex.uuid,
-                )
-                text = try PBXProjTextEditor.removeReference(
-                    text, blockUUID: syncGroup.uuid,
+                try editor.removeBlock(uuid: ex.uuid)
+                try editor.removeReference(
+                    blockUUID: syncGroup.uuid,
                     field: "exceptions", refUUID: ex.uuid,
                 )
             }
 
-            try PBXProjTextEditor.write(text, projectPath: projectURL.path)
+            try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully removed target '\(targetName)' from synchronized folder '\(folderPath)'",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result(content: [
+                .text(
+                    text: "Successfully removed target '\(targetName)' from synchronized folder '\(folderPath)'",
+                    annotations: nil, _meta: nil)
+            ],)
         } catch let error as MCPError {
             throw error
         } catch {

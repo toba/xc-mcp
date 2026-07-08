@@ -7,15 +7,13 @@ import Foundation
 public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "add_synchronized_folder_phase_membership",
             description:
-            "Add files from a synchronized folder to a target's build phase via PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet. Used to opt specific files from a synced root group into a Copy Files (or other) build phase. Looks up the phase by phase_name first, then by dst_path; if the target has only one Copy Files phase, that one is used.",
+                "Add files from a synchronized folder to a target's build phase via PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet. Used to opt specific files from a synced root group into a Copy Files (or other) build phase. Looks up the phase by phase_name first, then by dst_path; if the target has only one Copy Files phase, that one is used.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -54,9 +52,7 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
                         "description": .string(
                             "Array of file names (relative to the synchronized folder) to add to the build phase",
                         ),
-                        "items": .object([
-                            "type": .string("string"),
-                        ]),
+                        "items": .object(["type": .string("string")]),
                     ]),
                 ]),
                 "required": .array([
@@ -89,9 +85,7 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
             return nil
         }
 
-        guard !files.isEmpty else {
-            throw MCPError.invalidParams("files array must not be empty")
-        }
+        guard !files.isEmpty else { throw MCPError.invalidParams("files array must not be empty") }
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -99,19 +93,15 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                  let mainGroup = project.mainGroup
+                let mainGroup = project.mainGroup
             else {
                 throw MCPError.internalError("Main group not found in project")
             }
 
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: {
-                    $0.name == targetName
-                })
-            else {
-                throw MCPError.invalidParams(
-                    "Target '\(targetName)' not found in project",
-                )
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                throw MCPError.invalidParams("Target '\(targetName)' not found in project")
             }
 
             let syncGroup = try SynchronizedFolderUtility.resolveSyncGroup(
@@ -125,35 +115,31 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
                 targetName: targetName,
             )
 
-            // Look for an existing exception set on this sync group whose buildPhase
-            // matches the resolved phase.
-            let existingExceptionSet =
-                syncGroup.exceptions?.first(where: {
-                    guard
-                        let ex = $0
-                        as? PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet
-                    else { return false }
-                    return ex.buildPhase?.uuid == phase.uuid
-                }) as? PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet
+            // Look for an existing exception set on this sync group whose buildPhase matches the
+            // resolved phase.
+            let existingExceptionSet = syncGroup.exceptions?.first(where: {
+                guard let ex = $0
+                    as? PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet
+                else { return false }
+                return ex.buildPhase?.uuid == phase.uuid
+            }) as? PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet
 
-            var text = try PBXProjTextEditor.read(projectPath: projectURL.path)
+            var editor = try PBXProjEditor(PBXProjTextEditor.read(projectPath: projectURL.path))
 
             if let existingExceptionSet {
                 let existing = Set(existingExceptionSet.membershipExceptions ?? [])
                 let newFiles = files.filter { !existing.contains($0) }
+
                 if newFiles.isEmpty {
-                    return CallTool.Result(
-                        content: [
-                            .text(
-                                text:
-                                    "All specified files are already in the phase membership exception set on '\(folderPath)' for target '\(targetName)'",
-                                annotations: nil, _meta: nil),
-                        ],
-                    )
+                    return CallTool.Result(content: [
+                        .text(
+                            text: "All specified files are already in the phase membership exception set on '\(folderPath)' for target '\(targetName)'",
+                            annotations: nil, _meta: nil)
+                    ],)
                 }
 
-                text = try PBXProjTextEditor.addEntriesToArray(
-                    text, blockUUID: existingExceptionSet.uuid,
+                try editor.addEntriesToArray(
+                    blockUUID: existingExceptionSet.uuid,
                     field: "membershipExceptions", entries: newFiles,
                 )
             } else {
@@ -162,8 +148,7 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
                 let phaseDisplayName = phase.name() ?? "CopyFiles"
                 let phaseComment = phase.name() ?? "CopyFiles"
 
-                text = try PBXProjTextEditor.insertGroupBuildPhaseMembershipExceptionSetBlock(
-                    text,
+                try editor.insertGroupBuildPhaseMembershipExceptionSetBlock(
                     uuid: newUUID,
                     folderName: folderName,
                     phaseName: phaseDisplayName,
@@ -175,24 +160,21 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
 
                 let comment =
                     "Exceptions for \"\(folderName)\" folder in \"\(phaseDisplayName)\" phase from \"\(targetName)\" target"
-                text = try PBXProjTextEditor.addReference(
-                    text, blockUUID: syncGroup.uuid, field: "exceptions",
+                try editor.addReference(
+                    blockUUID: syncGroup.uuid, field: "exceptions",
                     refUUID: newUUID, comment: comment,
                 )
             }
 
-            try PBXProjTextEditor.write(text, projectPath: projectURL.path)
+            try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
 
             let phaseDisplay = phase.name() ?? "<unnamed phase>"
             let fileList = files.joined(separator: ", ")
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text:
-                            "Successfully added [\(fileList)] from synchronized folder '\(folderPath)' to build phase '\(phaseDisplay)' on target '\(targetName)'",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result(content: [
+                .text(
+                    text: "Successfully added [\(fileList)] from synchronized folder '\(folderPath)' to build phase '\(phaseDisplay)' on target '\(targetName)'",
+                    annotations: nil, _meta: nil)
+            ],)
         } catch let error as MCPError {
             throw error
         } catch {
@@ -202,9 +184,8 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
         }
     }
 
-    /// Locate the build phase on `target` matching the given criteria.
-    /// Priority: explicit `phaseName` → `dstPath` (on Copy Files phases) →
-    /// the target's sole Copy Files phase.
+    /// Locate the build phase on `target` matching the given criteria. Priority: explicit
+    /// `phaseName` → `dstPath` (on Copy Files phases) → the target's sole Copy Files phase.
     private func locatePhase(
         in target: PBXNativeTarget,
         phaseName: String?,
@@ -212,9 +193,7 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
         targetName: String,
     ) throws -> PBXBuildPhase {
         if let phaseName {
-            let byName = target.buildPhases.first { phase in
-                phase.name() == phaseName
-            }
+            let byName = target.buildPhases.first { phase in phase.name() == phaseName }
             guard let byName else {
                 throw MCPError.invalidParams(
                     "Build phase named '\(phaseName)' not found on target '\(targetName)'",
@@ -226,13 +205,13 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
         if let dstPath {
             let copyPhases = target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
             let matches = copyPhases.filter { ($0.dstPath ?? "") == dstPath }
+
             switch matches.count {
                 case 0:
                     throw MCPError.invalidParams(
                         "No Copy Files phase with dstPath '\(dstPath)' on target '\(targetName)'",
                     )
-                case 1:
-                    return matches[0]
+                case 1: return matches[0]
                 default:
                     throw MCPError.invalidParams(
                         "Multiple Copy Files phases on target '\(targetName)' have dstPath '\(dstPath)' — pass phase_name to disambiguate",
@@ -241,13 +220,13 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
         }
 
         let copyPhases = target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
+
         switch copyPhases.count {
             case 0:
                 throw MCPError.invalidParams(
                     "Target '\(targetName)' has no Copy Files build phases. Pass phase_name to select a different phase type.",
                 )
-            case 1:
-                return copyPhases[0]
+            case 1: return copyPhases[0]
             default:
                 let names = copyPhases.map { $0.name ?? ("dstPath=" + ($0.dstPath ?? "")) }
                 throw MCPError.invalidParams(

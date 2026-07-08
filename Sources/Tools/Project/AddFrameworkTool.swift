@@ -7,12 +7,10 @@ import Foundation
 public struct AddFrameworkTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "add_framework",
             description: "Add framework dependencies",
             inputSchema: .object([
@@ -60,6 +58,7 @@ public struct AddFrameworkTool: Sendable {
         }
 
         let embed: Bool
+
         if case let .bool(shouldEmbed) = arguments["embed"] {
             embed = shouldEmbed
         } else {
@@ -74,41 +73,40 @@ public struct AddFrameworkTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the target
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
-            else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Target '\(targetName)' not found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                return CallTool.Result(content: [
+                    .text(
+                        text: "Target '\(targetName)' not found in project",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ],)
             }
 
             // Find existing frameworks build phase (may need to create one via text edit)
-            let existingFrameworksPhase = target.buildPhases.first(
-                where: { $0 is PBXFrameworksBuildPhase },
-            ) as? PBXFrameworksBuildPhase
+            let existingFrameworksPhase = target.buildPhases.first(where: {
+                $0 is PBXFrameworksBuildPhase
+            }) as? PBXFrameworksBuildPhase
 
             // Check if this is a static library (.a) that already exists as a build product
             let isStaticLibrary = frameworkName.hasSuffix(".a")
 
-            // Before classifying as system framework, check if a matching product
-            // reference exists in BUILT_PRODUCTS_DIR (e.g. a local framework target).
-            // This handles bare names like "Core" that match "Core.framework" products.
+            // Before classifying as system framework, check if a matching product reference exists
+            // in BUILT_PRODUCTS_DIR (e.g. a local framework target). This handles bare names like
+            // "Core" that match "Core.framework" products.
             let hasLocalProduct: Bool
-            if !isStaticLibrary, !frameworkName.contains("/"),
+
+            if !isStaticLibrary,
+               !frameworkName.contains("/"),
                !frameworkName.hasSuffix(".framework")
             {
                 let candidateName = "\(frameworkName).framework"
-                hasLocalProduct =
-                    xcodeproj.pbxproj.fileReferences.contains {
-                        $0.sourceTree == .buildProductsDir
-                            && ($0.path == candidateName || $0.name == candidateName)
-                    }
+                hasLocalProduct = xcodeproj.pbxproj.fileReferences.contains {
+                    $0.sourceTree == .buildProductsDir
+                        && ($0.path == candidateName || $0.name == candidateName)
+                }
                     || xcodeproj.pbxproj.referenceProxies.contains {
                         $0.sourceTree == .buildProductsDir
                             && ($0.path == candidateName || $0.name == candidateName)
@@ -118,28 +116,23 @@ public struct AddFrameworkTool: Sendable {
             }
 
             // Determine if this is a system framework or custom framework
-            let isSystemFramework =
-                !hasLocalProduct && !isStaticLibrary && !frameworkName.contains("/")
-                    && !frameworkName.hasSuffix(".framework")
+            let isSystemFramework = !hasLocalProduct && !isStaticLibrary
+                && !frameworkName.contains("/")
+                && !frameworkName.hasSuffix(".framework")
             let frameworkFileName: String
             let frameworkPath: String
 
             // Developer frameworks that live in Xcode.app, not in the SDK
-            let developerFrameworks: Set = [
-                "XcodeKit", "XCTest", "SpriteKit", "SceneKit",
-            ]
-            let isDeveloperFramework =
-                isSystemFramework
-                    && developerFrameworks
+            let developerFrameworks: Set = ["XcodeKit", "XCTest", "SpriteKit", "SceneKit"]
+            let isDeveloperFramework = isSystemFramework
+                && developerFrameworks
                     .contains(frameworkName)
 
             if isSystemFramework {
                 frameworkFileName = "\(frameworkName).framework"
-                if isDeveloperFramework {
-                    frameworkPath = "Library/Frameworks/\(frameworkFileName)"
-                } else {
-                    frameworkPath = "System/Library/Frameworks/\(frameworkFileName)"
-                }
+                frameworkPath = isDeveloperFramework
+                    ? "Library/Frameworks/\(frameworkFileName)"
+                    : "System/Library/Frameworks/\(frameworkFileName)"
             } else if isStaticLibrary {
                 frameworkFileName = frameworkName
                 frameworkPath = frameworkName
@@ -152,34 +145,31 @@ public struct AddFrameworkTool: Sendable {
                 let resolvedFrameworkPath = try pathUtility.resolvePath(from: frameworkName)
                 frameworkFileName = URL(fileURLWithPath: resolvedFrameworkPath).lastPathComponent
                 // Use relative path from project for file reference
-                frameworkPath =
-                    pathUtility.makeRelativePath(from: resolvedFrameworkPath)
-                        ?? resolvedFrameworkPath
+                frameworkPath = pathUtility.makeRelativePath(from: resolvedFrameworkPath)
+                    ?? resolvedFrameworkPath
             }
 
             // Check if framework already exists (could be PBXFileReference or PBXReferenceProxy)
-            let frameworkExists =
-                existingFrameworksPhase?.files?.contains { buildFile in
-                    guard let fileElement = buildFile.file else { return false }
-                    return fileElement.name == frameworkFileName
-                        || fileElement.path == frameworkName
-                        || fileElement.path == frameworkFileName
-                } ?? false
+            let frameworkExists = existingFrameworksPhase?.files?.contains { buildFile in
+                guard let fileElement = buildFile.file else { return false }
+                return fileElement.name == frameworkFileName
+                    || fileElement.path == frameworkName
+                    || fileElement.path == frameworkFileName
+            } ?? false
 
             if frameworkExists {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
+                return CallTool.Result(content: [
+                    .text(
+                        text:
                             "Framework '\(frameworkName)' already exists in target '\(targetName)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                        annotations: nil, _meta: nil)
+                ],)
             }
 
             let q = PBXProjTextEditor.quotePBX
 
-            // --- Text-based edits ---
-            var text = try PBXProjTextEditor.read(projectPath: resolvedProjectPath)
+            // --- Text-based edits (one split/join for the whole batch) ---
+            var editor = try PBXProjEditor(PBXProjTextEditor.read(projectPath: resolvedProjectPath))
 
             // 1. Find or create file reference
             let fileRefUUID: String
@@ -196,18 +186,14 @@ public struct AddFrameworkTool: Sendable {
                     fileRefUUID = PBXProjTextEditor.generateUUID()
                     let line =
                         "\t\t\(fileRefUUID) /* \(frameworkFileName) */ = {isa = PBXFileReference; explicitFileType = archive.ar; name = \(q(frameworkFileName)); path = \(q(frameworkPath)); sourceTree = BUILT_PRODUCTS_DIR; };"
-                    text = try PBXProjTextEditor.insertBlockInSection(
-                        text, section: "PBXFileReference", blockLines: [line],
-                    )
+                    try editor.insertBlockInSection(section: "PBXFileReference", blockLines: [line])
                 }
             } else if isSystemFramework {
                 fileRefUUID = PBXProjTextEditor.generateUUID()
                 let sourceTree = isDeveloperFramework ? "DEVELOPER_DIR" : "SDKROOT"
                 let line =
                     "\t\t\(fileRefUUID) /* \(frameworkFileName) */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = \(q(frameworkFileName)); path = \(q(frameworkPath)); sourceTree = \(sourceTree); };"
-                text = try PBXProjTextEditor.insertBlockInSection(
-                    text, section: "PBXFileReference", blockLines: [line],
-                )
+                try editor.insertBlockInSection(section: "PBXFileReference", blockLines: [line])
                 needsGroupEntry = true
             } else if let existingRef = xcodeproj.pbxproj.fileReferences.first(where: {
                 $0.sourceTree == .buildProductsDir
@@ -225,9 +211,7 @@ public struct AddFrameworkTool: Sendable {
                 fileRefUUID = PBXProjTextEditor.generateUUID()
                 let line =
                     "\t\t\(fileRefUUID) /* \(frameworkFileName) */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = \(q(frameworkFileName)); path = \(q(frameworkPath)); sourceTree = \"<group>\"; };"
-                text = try PBXProjTextEditor.insertBlockInSection(
-                    text, section: "PBXFileReference", blockLines: [line],
-                )
+                try editor.insertBlockInSection(section: "PBXFileReference", blockLines: [line])
                 needsGroupEntry = true
             }
 
@@ -237,8 +221,8 @@ public struct AddFrameworkTool: Sendable {
                     .first(where: { ($0 as? PBXGroup)?.name == "Frameworks" }) as? PBXGroup
 
                 if let groupUUID = frameworksGroup?.uuid {
-                    text = try PBXProjTextEditor.addReference(
-                        text, blockUUID: groupUUID, field: "children",
+                    try editor.addReference(
+                        blockUUID: groupUUID, field: "children",
                         refUUID: fileRefUUID, comment: frameworkFileName,
                     )
                 } else {
@@ -254,13 +238,11 @@ public struct AddFrameworkTool: Sendable {
                         "\t\t\tsourceTree = \"<group>\";",
                         "\t\t};",
                     ]
-                    text = try PBXProjTextEditor.insertBlockInSection(
-                        text, section: "PBXGroup", blockLines: groupBlock,
-                    )
+                    try editor.insertBlockInSection(section: "PBXGroup", blockLines: groupBlock)
                     // Add group to main group's children
                     if let mainGroupUUID = xcodeproj.pbxproj.rootObject?.mainGroup?.uuid {
-                        text = try PBXProjTextEditor.addReference(
-                            text, blockUUID: mainGroupUUID, field: "children",
+                        try editor.addReference(
+                            blockUUID: mainGroupUUID, field: "children",
                             refUUID: groupUUID, comment: "Frameworks",
                         )
                     }
@@ -269,6 +251,7 @@ public struct AddFrameworkTool: Sendable {
 
             // 3. Find or create frameworks build phase
             let phaseUUID: String
+
             if let existingPhase = existingFrameworksPhase {
                 phaseUUID = existingPhase.uuid
             } else {
@@ -282,11 +265,11 @@ public struct AddFrameworkTool: Sendable {
                     "\t\t\trunOnlyForDeploymentPostprocessing = 0;",
                     "\t\t};",
                 ]
-                text = try PBXProjTextEditor.insertBlockInSection(
-                    text, section: "PBXFrameworksBuildPhase", blockLines: phaseBlock,
+                try editor.insertBlockInSection(
+                    section: "PBXFrameworksBuildPhase", blockLines: phaseBlock,
                 )
-                text = try PBXProjTextEditor.addReference(
-                    text, blockUUID: target.uuid, field: "buildPhases",
+                try editor.addReference(
+                    blockUUID: target.uuid, field: "buildPhases",
                     refUUID: phaseUUID, comment: "Frameworks",
                 )
             }
@@ -295,17 +278,16 @@ public struct AddFrameworkTool: Sendable {
             let buildFileUUID = PBXProjTextEditor.generateUUID()
             let buildFileLine =
                 "\t\t\(buildFileUUID) /* \(frameworkFileName) in Frameworks */ = {isa = PBXBuildFile; fileRef = \(fileRefUUID) /* \(frameworkFileName) */; };"
-            text = try PBXProjTextEditor.insertBlockInSection(
-                text, section: "PBXBuildFile", blockLines: [buildFileLine],
-            )
-            text = try PBXProjTextEditor.addReference(
-                text, blockUUID: phaseUUID, field: "files",
+            try editor.insertBlockInSection(section: "PBXBuildFile", blockLines: [buildFileLine])
+            try editor.addReference(
+                blockUUID: phaseUUID, field: "files",
                 refUUID: buildFileUUID, comment: "\(frameworkFileName) in Frameworks",
             )
 
             // 5. Handle embed (developer frameworks like XcodeKit need embedding too)
             if embed, !isSystemFramework || isDeveloperFramework {
                 let embedPhaseUUID: String
+
                 if let existing = target.buildPhases.first(where: {
                     if let copyPhase = $0 as? PBXCopyFilesBuildPhase {
                         return copyPhase.dstSubfolderSpec == .frameworks
@@ -329,11 +311,11 @@ public struct AddFrameworkTool: Sendable {
                         "\t\t\trunOnlyForDeploymentPostprocessing = 0;",
                         "\t\t};",
                     ]
-                    text = try PBXProjTextEditor.insertBlockInSection(
-                        text, section: "PBXCopyFilesBuildPhase", blockLines: embedBlock,
+                    try editor.insertBlockInSection(
+                        section: "PBXCopyFilesBuildPhase", blockLines: embedBlock,
                     )
-                    text = try PBXProjTextEditor.addReference(
-                        text, blockUUID: target.uuid, field: "buildPhases",
+                    try editor.addReference(
+                        blockUUID: target.uuid, field: "buildPhases",
                         refUUID: newUUID, comment: "Embed Frameworks",
                     )
                 }
@@ -341,11 +323,11 @@ public struct AddFrameworkTool: Sendable {
                 let embedBuildFileUUID = PBXProjTextEditor.generateUUID()
                 let embedBuildFileLine =
                     "\t\t\(embedBuildFileUUID) /* \(frameworkFileName) in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = \(fileRefUUID) /* \(frameworkFileName) */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };"
-                text = try PBXProjTextEditor.insertBlockInSection(
-                    text, section: "PBXBuildFile", blockLines: [embedBuildFileLine],
+                try editor.insertBlockInSection(
+                    section: "PBXBuildFile", blockLines: [embedBuildFileLine],
                 )
-                text = try PBXProjTextEditor.addReference(
-                    text, blockUUID: embedPhaseUUID, field: "files",
+                try editor.addReference(
+                    blockUUID: embedPhaseUUID, field: "files",
                     refUUID: embedBuildFileUUID,
                     comment: "\(frameworkFileName) in Embed Frameworks",
                 )
@@ -356,9 +338,10 @@ public struct AddFrameworkTool: Sendable {
                 if let configList = target.buildConfigurationList {
                     for config in configList.buildConfigurations {
                         let existing = config.buildSettings["FRAMEWORK_SEARCH_PATHS"]
+
                         if existing == nil {
-                            text = try PBXProjTextEditor.addBuildSettingArray(
-                                text, configUUID: config.uuid,
+                            try editor.addBuildSettingArray(
+                                configUUID: config.uuid,
                                 key: "FRAMEWORK_SEARCH_PATHS",
                                 values: ["$(inherited)", "$(DEVELOPER_FRAMEWORKS_DIR)"],
                             )
@@ -367,17 +350,16 @@ public struct AddFrameworkTool: Sendable {
                 }
             }
 
-            try PBXProjTextEditor.write(text, projectPath: resolvedProjectPath)
+            try PBXProjTextEditor.write(editor.text, projectPath: resolvedProjectPath)
 
-            let embedText =
-                embed && (!isSystemFramework || isDeveloperFramework) ? " (embedded)" : ""
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully added framework '\(frameworkName)' to target '\(targetName)'\(embedText)",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            let embedText = embed && (!isSystemFramework || isDeveloperFramework)
+                ? " (embedded)"
+                : ""
+            return CallTool.Result(content: [
+                .text(
+                    text: "Successfully added framework '\(frameworkName)' to target '\(targetName)'\(embedText)",
+                    annotations: nil, _meta: nil)
+            ],)
         } catch {
             throw MCPError.internalError(
                 "Failed to add framework to Xcode project: \(error.localizedDescription)",

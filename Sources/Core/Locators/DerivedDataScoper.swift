@@ -18,11 +18,12 @@ import Foundation
 ///
 /// macOS (`xc-build`) and iOS-simulator (`xc-simulator`) builds against the same project must not
 /// share a `Build/Products` / `Build/Intermediates.noindex` tree: a macOS link step can otherwise
-/// resolve another platform's framework slice (e.g. grab `Debug-iphonesimulator/GRDB.framework`
-/// for a macOS target), producing confusing `building for 'macOS', but linking in dylib built for
-/// 'iOS-simulator'` cascades. The destination's platform is folded into the path as a suffix
-/// (`-macosx`, `-iphonesimulator`, `-iphoneos`, …) so the two never collide. When the destination
-/// is absent or unrecognized, the base (suffix-free) path is used.
+/// resolve another platform's framework slice (e.g. grab `Debug-iphonesimulator/GRDB.framework` for
+/// a macOS target), producing confusing
+/// `building for 'macOS', but linking in dylib built for 'iOS-simulator'` cascades. The
+/// destination's platform is folded into the path as a suffix (`-macosx`, `-iphonesimulator`,
+/// `-iphoneos`, …) so the two never collide. When the destination is absent or unrecognized, the
+/// base (suffix-free) path is used.
 ///
 /// ## Override behavior
 ///
@@ -86,7 +87,8 @@ public enum DerivedDataScoper {
     }
 
     /// Maps an xcodebuild `-destination` string to an SDK-style platform slug used to namespace
-    /// DerivedData (mirrors Xcode's `Debug-<sdk>` product-dir naming so the suffix reads naturally).
+    /// DerivedData (mirrors Xcode's `Debug-<sdk>` product-dir naming so the suffix reads
+    /// naturally).
     ///
     /// Returns `nil` for a `nil`/empty/unrecognized destination, in which case callers fall back to
     /// the base (suffix-free) path. Simulator variants are checked before the bare OS so
@@ -105,9 +107,11 @@ public enum DerivedDataScoper {
         if lower.contains("macos") { return "macosx" }
         if lower.contains("ios") { return "iphoneos" }
         if lower.contains("tvos") { return "appletvos" }
-        if lower.contains("watchos") { return "watchos" }
-        if lower.contains("visionos") || lower.contains("xros") { return "xros" }
-        return nil
+        return lower.contains("watchos")
+            ? "watchos"
+            : lower.contains("visionos") || lower.contains("xros")
+                ? "xros"
+                : nil
     }
 
     /// 12-character hex prefix of SHA-256(path). Matches Xcode's DerivedData naming style closely

@@ -11,17 +11,14 @@ public enum PBXTargetMap {
     /// - UUID and `isa` on the same line
     /// - UUID on the line preceding `isa = PBXNativeTarget`
     public static func buildMap(projectPath: String) -> [String: String] {
-        let pbxprojPath = "\(projectPath)/project.pbxproj"
-        guard let data = FileManager.default.contents(atPath: pbxprojPath),
-            let content = String(data: data, encoding: .utf8)
-        else { return [:] }
+        guard let content = PBXProjParsing.readText(projectPath: projectPath) else { return [:] }
 
         var map = [String: String]()
         var inTarget = false
         var currentUUID: String?
         var pendingUUID: String?
 
-        for line in content.split(separator: "\n", omittingEmptySubsequences: false) {
+        for line in content.splitLines() {
             let trimmed = line.drop(while: { $0 == " " || $0 == "\t" })
 
             // Track UUID from block-opening lines like: UUID /* Name */ = {
@@ -67,15 +64,14 @@ public enum PBXTargetMap {
         for (uuid, name) in map where name == targetName { return uuid }
 
         // Fallback: scan for /* TargetName */ comment references
-        let pbxprojPath = "\(projectPath)/project.pbxproj"
-        guard let data = FileManager.default.contents(atPath: pbxprojPath),
-            let content = String(data: data, encoding: .utf8)
-        else { return nil }
+        guard let content = PBXProjParsing.readText(projectPath: projectPath) else { return nil }
 
-        for line in content.split(separator: "\n", omittingEmptySubsequences: false) {
+        let uuidPattern = "[A-F0-9]{\(PBXProjParsing.identifierLength)}"
+
+        for line in content.splitLines() {
             if line.contains("PBXNativeTarget") { continue }
             if line.contains("/* \(targetName) */"),
-               let range = line.range(of: #"[A-F0-9]{24}"#, options: .regularExpression) {
+               let range = line.range(of: uuidPattern, options: .regularExpression) {
                 return String(line[range])
             }
         }
@@ -86,12 +82,10 @@ public enum PBXTargetMap {
     // MARK: - Private
 
     private static func extractLeadingUUID(_ line: some StringProtocol) -> String? {
-        guard line.count >= 24 else { return nil }
-        let prefix = line.prefix(24)
-        // Check all characters are uppercase hex
-        guard prefix.allSatisfy({ $0.isHexDigit && ($0.isUppercase || $0.isNumber) }) else {
-            return nil
-        }
+        let prefix = line.prefix(PBXProjParsing.identifierLength)
+        // On-disk identifiers are uppercase; `isIdentifier` also confirms the prefix is a full
+        // 24-character token (a shorter line yields fewer bytes and fails).
+        guard PBXProjParsing.isIdentifier(prefix, requireUppercase: true) else { return nil }
         return String(prefix)
     }
 }

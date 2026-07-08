@@ -17,12 +17,10 @@ public enum PBXProjReferenceAudit {
     /// empty set when the data cannot be parsed as a pbxproj — validating the plist *shape* is
     /// `plutil`'s job, so the audit fails open rather than blocking on a parse it doesn't own.
     public static func danglingReferences(in data: Data) -> Set<String> {
-        guard
-            let plist = try? PropertyListSerialization.propertyList(
-                from: data, options: [], format: nil),
-            let root = plist as? [String: Any],
-            let objects = root["objects"] as? [String: Any]
-        else { return [] }
+        guard let plist = try? PropertyListSerialization.propertyList(
+            from: data, options: [], format: nil),
+              let root = plist as? [String: Any],
+              let objects = root["objects"] as? [String: Any] else { return [] }
 
         let defined = Set(objects.keys)
         var referenced = Set<String>()
@@ -48,19 +46,10 @@ public enum PBXProjReferenceAudit {
     /// A 24-character hexadecimal token — the exact shape of every Xcode object identifier.
     /// Build-setting values of this precise shape do not occur in practice, so matching is
     /// reference-precise (the `newDanglingReferences` baseline diff absorbs any rare exception).
+    /// Matches either case: on-disk identifiers are uppercase, but accepting lowercase keeps the
+    /// audit a strict superset so it can never miss a real reference.
     private static func isReferenceToken(_ string: String) -> Bool {
-        string.utf8.count == 24 && string.utf8.allSatisfy(isHexByte)
-    }
-
-    private static func isHexByte(_ byte: UInt8) -> Bool {
-        switch byte {
-            case UInt8(ascii: "0")...UInt8(ascii: "9"),
-                 UInt8(ascii: "a")...UInt8(ascii: "f"),
-                 UInt8(ascii: "A")...UInt8(ascii: "F"):
-                true
-            default:
-                false
-        }
+        PBXProjParsing.isIdentifier(string)
     }
 
     private static func collectReferences(in value: Any, into out: inout Set<String>) {
@@ -79,10 +68,8 @@ public enum PBXProjReferenceAudit {
                 }
             case let array as [Any]:
                 for element in array { collectReferences(in: element, into: &out) }
-            case let string as String:
-                if isReferenceToken(string) { out.insert(string) }
-            default:
-                break
+            case let string as String: if isReferenceToken(string) { out.insert(string) }
+            default: break
         }
     }
 }
