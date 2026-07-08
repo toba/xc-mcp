@@ -308,13 +308,54 @@ public extension ProcessResult {
         pid: Int32,
         timeout: Duration = .seconds(5),
     ) async -> Bool {
-        let deadline = ContinuousClock.now + timeout
+        // Fast path: the process is already gone.
+        if kill(pid, 0) != 0 { return true }
 
-        while ContinuousClock.now < deadline {
-            if kill(pid, 0) != 0 { return true }
-            try? await Task.sleep(for: .milliseconds(100))
+        // Wait on the kernel's process-exit event from a dedicated thread. Polling
+        // with `Task.sleep` on the cooperative pool made both exit detection and the
+        // timeout unreliable: under a starved pool (e.g. a full parallel test or build
+        // run) a 100ms sleep could overshoot by tens of seconds, causing this to miss
+        // an exit or blow past its deadline. A blocking `kevent` off the pool bounds
+        // both precisely.
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            Thread.detachNewThread {
+                continuation.resume(returning: blockingWaitForProcessExit(pid: pid, timeout: timeout))
+            }
         }
-        return false
+    }
+
+    /// Blocks the calling thread until `pid` exits or `timeout` elapses, using a kqueue
+    /// `EVFILT_PROC`/`NOTE_EXIT` filter. Returns `true` if the process exited.
+    ///
+    /// Runs synchronously off the cooperative thread pool so its timing is immune to
+    /// cooperative-pool starvation.
+    private static func blockingWaitForProcessExit(pid: Int32, timeout: Duration) -> Bool {
+        let kq = kqueue()
+        if kq < 0 { return kill(pid, 0) != 0 }
+        defer { close(kq) }
+
+        var change = kevent(
+            ident: UInt(pid),
+            filter: Int16(truncatingIfNeeded: EVFILT_PROC),
+            flags: UInt16(truncatingIfNeeded: EV_ADD | EV_ONESHOT),
+            fflags: UInt32(truncatingIfNeeded: NOTE_EXIT),
+            data: 0,
+            udata: nil,
+        )
+        // Registration fails (ESRCH) if the process exited between the fast-path check
+        // and here — treat that as an exit.
+        if kevent(kq, &change, 1, nil, 0, nil) < 0 { return true }
+
+        let (seconds, attoseconds) = timeout.components
+        var deadline = timespec(
+            tv_sec: Int(seconds),
+            tv_nsec: Int(attoseconds / 1_000_000_000),
+        )
+        var event = kevent()
+        let n = kevent(kq, nil, 0, &event, 1, &deadline)
+        // n > 0: NOTE_EXIT delivered. n == 0: timed out. n < 0: error — confirm via kill.
+        if n > 0 { return true }
+        return kill(pid, 0) != 0
     }
 }
 
