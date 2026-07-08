@@ -65,6 +65,8 @@ citations:
     - repo: crleonard/swift-package-audit
       branch: main
       notes: SwiftPM dependency health checks adapted (reimplemented, not depended on) into AuditSwiftPackagesTool + PackageResolvedParser
+      last_checked_sha: 44791ceb38a1d7133635250340163f581d2ed82c
+      last_checked_date: "2026-07-07T19:06:46Z"
       paths:
         high: [Sources/**/*.swift]
         medium: [Package.swift]

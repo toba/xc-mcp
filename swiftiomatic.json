@@ -19,6 +19,7 @@
 		"nestedCallLayout": { "lint": "no", "mode": "inline", "rewrite": true },
 		"wrapCompoundCaseItems": { "lint": "no", "rewrite": false },
 		"collapseSimpleEnums": { "lint": "no", "rewrite": true },
+		"collapseSimpleChains":  { "lint" : "no", "rewrite" : false },
 		"collapseSimpleIfElse": { "lint": "no", "rewrite": true },
 		"layoutSingleLineBodies": {
 			"lint": "no",
@@ -178,6 +179,8 @@
 		"noFormatterInViewBody": { "lint": "warn" },
 		"flagForEachOverIndices": { "lint": "warn" },
 		"flagForEachIDSelfInView": { "lint": "warn" },
+		"useTypedNotificationName":  { "lint" : "warn" },
+		"useTypedSystemNotification":  { "lint" : "warn" },
 		"useAtEntryNotEnvironmentKey": { "lint": "no", "rewrite": false },
 		"dropRedundantMainActorOnView": { "lint": "warn", "rewrite": true },
 		"useClosureNotificationObserver": { "lint": "warn" }
@@ -251,11 +254,28 @@
 		"noForceTry": { "lint": "warn", "rewrite": false },
 		"noForceCast": { "lint": "warn", "rewrite": false },
 		"noForceUnwrap": { "lint": "warn", "rewrite": false },
+		"requireTaskName":  { "lint" : "warn" },
 		"flagTaskDetached": { "lint": "warn" },
 		"noNestedWithLock": { "lint": "warn" },
 		"useTypedCatchError": { "lint": "warn" },
 		"flagTaskInMainActor": { "lint": "warn" },
 		"flagMutableStaticVar": { "lint": "warn" },
+		"pairAcquireWithDefer": {
+		  "lint" : "warn",
+		  "pairs" : [
+ { "acquire" : "lock", "release" : "unlock" },
+ { "acquire" : "objc_sync_enter", "release" : "objc_sync_exit" },
+ { "acquire" : "beginUpdates", "release" : "endUpdates" },
+ { "acquire" : "beginEditing", "release" : "endEditing" },
+ { "acquire" : "saveGState", "release" : "restoreGState" },
+ { "acquire" : "beginGrouping", "release" : "endGrouping" },
+		    {
+		      "acquire" : "startAccessingSecurityScopedResource",
+		      "release" : "stopAccessingSecurityScopedResource"
+		    }
+		  ],
+		  "rewrite" : false
+		},
 		"flagUncheckedSendable": { "lint": "warn" },
 		"noAwaitInsideWithLock": { "lint": "warn" },
 		"requireAsyncStreamFinish": { "lint": "warn" },

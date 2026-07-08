@@ -32,32 +32,18 @@ xc-mcp/
 │   │   ├── Simulator/               # xc-simulator (29 tools)
 │   │   ├── Strings/                 # xc-strings (24 tools)
 │   │   └── Swift/                   # xc-swift (12 tools)
-│   ├── Core/                        # Shared utilities (25 files)
-│   │   ├── SessionManager.swift
-│   │   ├── PathUtility.swift
-│   │   ├── XcodebuildRunner.swift
-│   │   ├── SimctlRunner.swift
-│   │   ├── DeviceCtlRunner.swift
-│   │   ├── LLDBRunner.swift
-│   │   ├── SwiftRunner.swift
-│   │   ├── InteractRunner.swift
-│   │   ├── XctraceRunner.swift
-│   │   ├── BuildOutputParser.swift
-│   │   ├── BuildOutputModels.swift
-│   │   ├── BuildResultFormatter.swift
-│   │   ├── BuildSettingExtractor.swift
-│   │   ├── CoverageParser.swift
-│   │   ├── ErrorExtraction.swift
-│   │   ├── XCResultParser.swift
-│   │   ├── PreviewExtractor.swift
-│   │   ├── InteractSessionManager.swift
-│   │   ├── WorkflowManager.swift
-│   │   ├── XcodeStateReader.swift
-│   │   ├── NextStepHints.swift
-│   │   ├── ArgumentExtraction.swift
-│   │   ├── MCPErrorConvertible.swift
-│   │   ├── ProcessResult.swift
-│   │   └── XCMCPCore.swift
+│   ├── Core/                        # Shared utilities (69 files), grouped by concern
+│   │   ├── Runners/                 # Subprocess wrappers (xcodebuild, simctl, devicectl, lldb, swift, interact, xctrace) + ProcessResult
+│   │   ├── BuildOutput/             # Build/test/coverage/crash output parsing & formatting
+│   │   ├── ProjectFile/             # pbxproj/scheme/test-plan editing (PBXProj*, SafeProjectWrite, Scheme*)
+│   │   ├── Interaction/             # UI automation helpers (focus, sim input, window capture, interact session)
+│   │   ├── Locators/                # Path/binary/PID/DerivedData/PIF-cache resolution
+│   │   ├── MCP/                     # MCP protocol plumbing (errors, progress, annotations, tool directory, arg extraction, next-step hints)
+│   │   ├── Testing/                 # Test discovery/diagnostics helpers
+│   │   ├── Session/                 # Session/workflow state + build guard + Xcode state reader
+│   │   ├── AppBundle/               # App-bundle staging & inspection (preparer, codesign, icon manifest)
+│   │   ├── XCStrings/               # String-catalog parsing/encoding (+ Models/)
+│   │   └── *.swift                  # Cross-cutting singletons (XCMCPCore, ElapsedFormatting, MachineMetadata, BreakpointConditionAdvisor, PackageResolvedParser)
 │   ├── Tools/                       # 168 tools across 14 categories
 │   │   ├── Project/                 # 44 project manipulation tools
 │   │   ├── XCStrings/               # 24 localization/string catalog tools
@@ -167,7 +153,7 @@ Xcode build system knowledge for injected targets (via XcodeProj). Reference fil
 - Each tool is a separate Swift file organized by category
 - Tools follow a consistent pattern with `tool()` and `execute()` methods
 - XcodeProj library handles .xcodeproj file manipulation
-- Runner utilities in `Sources/Core/` wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift, xctrace, accessibility)
+- Runner utilities in `Sources/Core/Runners/` wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift, xctrace, accessibility)
 - **Testing**: swift-testing framework (506 tests)
 - **Swift 6.2**: Strict concurrency enabled (`swift-tools-version: 6.2`)
 - **Formatting**: `sm` (swiftiomatic from `../swiftiomatic`) before committing
@@ -177,7 +163,7 @@ Xcode build system knowledge for injected targets (via XcodeProj). Reference fil
 These rules are specific to building MCP servers and aren't covered by the generic `/swift` skill. Violating them causes the client (Claude Code) to tear down the stdio pipe — the disconnect symptom in `0xp-xz6` / `ive-jzc`.
 
 - **Never respond to a cancelled request.** The [cancellation spec](https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/cancellation) requires the server to skip *all* responses (success and error) once `notifications/cancelled` arrives. Sending one is a protocol violation that Claude Code treats as fatal.
-- **Catch-all error wrappers must rethrow `CancellationError` unchanged.** `Sources/Core/MCPErrorConvertible.swift::asMCPError()` is the chokepoint — it's `throws` and rethrows cancellation so the SDK's `catch is CancellationError` arm fires. Tool code uses `throw try error.asMCPError()`. Don't reintroduce a non-throwing variant.
+- **Catch-all error wrappers must rethrow `CancellationError` unchanged.** `Sources/Core/MCP/MCPErrorConvertible.swift::asMCPError()` is the chokepoint — it's `throws` and rethrows cancellation so the SDK's `catch is CancellationError` arm fires. Tool code uses `throw try error.asMCPError()`. Don't reintroduce a non-throwing variant.
 - **Ignore SIGPIPE process-wide.** `Sources/CLI.swift` installs `signal(SIGPIPE, SIG_IGN)` in the multicall entry point. A stale `notifications/progress` write after the client half-closes the pipe must surface as `EPIPE` (swallowable), not a fatal signal.
 - **Retire progress reporters synchronously on cancel.** `ProgressReporter.stream` cancels the poll task from `onCancel`, not just from `defer`, so no notification fires for a token the client has abandoned.
 - **Spawn subprocesses in their own process group and SIGKILL the group on cancel.** See `ProcessResult.runSubprocess` — without this, SPM build plugin grandchildren hold the pipes open and the server appears hung.
@@ -201,7 +187,7 @@ These standards apply to all code changes. Run `/swift` periodically to check fo
 
 ### Code Duplication
 
-- Runner utilities in `Sources/Core/` exist to eliminate duplication of process execution patterns — use them
+- Runner utilities in `Sources/Core/Runners/` exist to eliminate duplication of process execution patterns — use them
 - Extract shared logic into Core when the same pattern appears in 2+ tools
 - Use generics to consolidate functions that differ only in types
 
