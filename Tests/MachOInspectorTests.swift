@@ -287,4 +287,21 @@ struct MachOInspectorTests {
         // referencedBy is sorted for stable output regardless of image order.
         #expect(missing.first?.referencedBy == ["A.framework", "B.framework"])
     }
+
+    // MARK: - OS-provided runtime
+
+    @Test func `classifies @rpath libswift dylibs as OS-provided runtime`() {
+        #expect(MachOInspector.isOSProvidedRuntime("@rpath/libswiftCore.dylib"))
+        #expect(MachOInspector.isOSProvidedRuntime("@rpath/libswiftFoundation.dylib"))
+        #expect(MachOInspector.isOSProvidedRuntime("@rpath/libswiftObjectiveC.dylib"))
+    }
+
+    @Test func `does not classify embedded frameworks or absolute libs as OS-provided runtime`() {
+        // A real embedding gap (package-product framework) must stay in the "missing" bucket.
+        #expect(!MachOInspector.isOSProvidedRuntime("@rpath/ZIPFoundation.framework/ZIPFoundation"))
+        // An absolute Swift runtime path is not @rpath-linked, so it never counts as unresolved.
+        #expect(!MachOInspector.isOSProvidedRuntime("/usr/lib/swift/libswiftCore.dylib"))
+        // A non-Swift @rpath dylib is a genuine dependency, not the OS runtime.
+        #expect(!MachOInspector.isOSProvidedRuntime("@rpath/libMyHelper.dylib"))
+    }
 }

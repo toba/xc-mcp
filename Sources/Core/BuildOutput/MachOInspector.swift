@@ -185,6 +185,19 @@ public enum MachOInspector {
         return false
     }
 
+    // MARK: - OS-provided runtime
+
+    /// True for OS-provided Swift runtime dylibs linked as `@rpath/libswift*.dylib` (e.g.
+    /// `libswiftCore`, `libswiftFoundation`, `libswiftObjectiveC`). macOS ships these in
+    /// `/usr/lib/swift` and the dyld shared cache, so dyld resolves them via the standard runtime
+    /// runpath rather than bundle embedding. They surface as "unresolved" to a bundle-only closure
+    /// scan but are never a standalone-launch blocker, so callers should bucket them separately from
+    /// genuinely-missing deps instead of failing the self-contained verdict on them.
+    public static func isOSProvidedRuntime(_ depPath: String) -> Bool {
+        guard let leaf = depPath.stripping(prefix: "@rpath/") else { return false }
+        return leaf.hasPrefix("libswift") && leaf.hasSuffix(".dylib")
+    }
+
     // MARK: - Full-closure resolution
 
     /// A single Mach-O within a bundle (the main executable or an embedded framework binary)

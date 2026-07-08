@@ -5,11 +5,11 @@ status: completed
 type: feature
 priority: normal
 created_at: 2026-07-08T19:59:52Z
-updated_at: 2026-07-08T22:53:19Z
+updated_at: 2026-07-08T23:17:34Z
 sync:
     github:
         issue_number: "423"
-        synced_at: "2026-07-08T22:57:22Z"
+        synced_at: "2026-07-08T23:22:23Z"
 ---
 
 ## Problem
@@ -89,3 +89,21 @@ Extended `analyze_app_bundle`'s launchability check from an app-binary-only scan
 2. Install-name self-reference: `otool -L`'s first entry for a framework/dylib is its own LC_ID_DYLIB — was parsed as a dependency, making every framework "depend on itself". Now dropped for framework/dylib images.
 
 **Verified end-to-end** against the Thesis Debug bundle (path + main-exe name both contain spaces): main exe now parses correctly (3 rpaths, segments, its debug.dylib); the closure flags 12 genuinely-missing deps including `ZIPFoundation_<hash>_PackageProduct.framework` referenced by `Ulysses.framework` — the exact transitive false-positive from the issue that an app-binary-only scan reported as "✅ self-contained". 3 new closure tests (16/16 pass); `swift build` clean; sm-formatted.
+
+## Refinement: don't flag OS-provided Swift runtime dylibs as "missing"
+
+The recursive closure scan works well (found the real gaps: ZIPFoundation + SQLMacros package products). But after embedding those, it now reports 8 @rpath/libswift*.dylib (libswiftCore, libswiftFoundation, libswiftCoreFoundation, libswiftDarwin, libswiftDispatch, libswiftIOKit, libswiftObjectiveC, libswiftXPC) as "NOT self-contained — would fail to launch", referenced only by ZIPFoundation. These are false positives: they are the OS-provided Swift runtime (macOS ships them in /usr/lib/swift + the dyld shared cache) and resolve via the standard /usr/lib/swift runpath, not bundle embedding. Confirmed: a standalone exec of the binary produced zero "Library not loaded" errors (vs explicit crashes on @rpath/Ghost / @rpath/ZIPFoundation before those were embedded).
+
+Suggestion: treat @rpath/libswift*.dylib (and other known OS-runtime dylibs under /usr/lib/swift) as resolvable-by-OS — either exclude them from the "missing" set, or list them in a separate "OS-provided (not a launch blocker)" bucket. Optionally confirm by checking whether the referencing image carries an LC_RPATH of /usr/lib/swift. Otherwise a correctly self-contained bundle still reads as "NOT self-contained".
+
+## Refinement implemented: OS-provided Swift runtime bucketed separately
+
+The closure scan no longer counts the OS-provided Swift runtime as an embedding gap.
+
+**Core (`MachOInspector`, pure/testable)**
+- `isOSProvidedRuntime(_:)` — classifies a dep linked as `@rpath/libswift*.dylib` as OS-provided (macOS ships these in `/usr/lib/swift` + the dyld shared cache and resolves them via the standard runtime runpath, not bundle embedding). Left `unresolvedClosure` unchanged so existing behavior/tests stay intact.
+
+**Tool (`AnalyzeAppBundleTool`)**
+- `launchabilityReport` partitions the unresolved-closure result into genuinely-missing deps and OS-provided Swift runtime deps. The ✅/⚠️ self-contained verdict is now driven only by the genuine-missing set; OS-provided runtime deps are listed in a separate "OS-provided Swift runtime (not a launch blocker)" bucket with per-dep referencing-image attribution. The ✅ message now reads "…resolves — to a file inside the bundle … or to the OS-provided Swift runtime."
+
+**Tests** — 2 new `MachOInspectorTests` cases (18/18 pass): `@rpath/libswift*.dylib` classified as OS-provided; embedded package-product frameworks, absolute `/usr/lib/swift/...` paths, and non-Swift `@rpath` dylibs correctly excluded so real gaps stay in the "missing" bucket. `swift build` clean; sm-formatted.

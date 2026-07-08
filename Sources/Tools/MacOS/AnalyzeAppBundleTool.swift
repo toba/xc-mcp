@@ -381,13 +381,20 @@ public struct AnalyzeAppBundleTool: Sendable {
     ) -> String {
         let fm = FileManager.default
         let totalDeps = images.reduce(0) { $0 + $1.relativeDeps.count }
-        let missing = MachOInspector.unresolvedClosure(
+        let unresolved = MachOInspector.unresolvedClosure(
             images: images,
             executableDir: executableDir,
             executableRpaths: executableRpaths,
             appPath: appPath,
             fileExists: { fm.fileExists(atPath: $0) },
         )
+
+        // The OS-provided Swift runtime (@rpath/libswift*.dylib) is linked relocatably but resolved
+        // by macOS via /usr/lib/swift + the dyld shared cache, not bundle embedding — so it appears
+        // "unresolved" to a bundle-only scan yet is never a launch blocker. Bucket it separately so
+        // a correctly self-contained bundle isn't reported as "NOT self-contained".
+        let osProvided = unresolved.filter { MachOInspector.isOSProvidedRuntime($0.dep) }
+        let missing = unresolved.filter { !MachOInspector.isOSProvidedRuntime($0.dep) }
 
         var out = "## Embedding completeness / launchability\n"
         out += "Full closure scanned: \(images.count) Mach-O image"
@@ -400,9 +407,10 @@ public struct AnalyzeAppBundleTool: Sendable {
         }
         if missing.isEmpty {
             out +=
-                "- ✅ Self-contained: every @rpath dependency across the whole closure resolves to a "
-                + "file inside the bundle (via Contents/Frameworks, Contents/MacOS, or an "
-                + "@executable_path rpath). This bundle should launch standalone.\n"
+                "- ✅ Self-contained: every @rpath dependency across the whole closure resolves — to "
+                + "a file inside the bundle (via Contents/Frameworks, Contents/MacOS, or an "
+                + "@executable_path rpath) or to the OS-provided Swift runtime. This bundle should "
+                + "launch standalone.\n"
         } else {
             out += "- ⚠️ NOT self-contained: \(missing.count) @rpath dependenc"
                 + "\(missing.count == 1 ? "y does" : "ies do") not resolve to any file inside the "
@@ -412,6 +420,17 @@ public struct AnalyzeAppBundleTool: Sendable {
             out += "- Missing (linked-but-not-embedded), with referencing image(s):\n"
 
             for m in missing {
+                out += "  - \(m.dep)\n"
+                out += "    referenced by: \(m.referencedBy.joined(separator: ", "))\n"
+            }
+        }
+
+        if !osProvided.isEmpty {
+            out += "- OS-provided Swift runtime (not a launch blocker): \(osProvided.count) "
+                + "@rpath/libswift*.dylib dependenc\(osProvided.count == 1 ? "y" : "ies") resolved by "
+                + "macOS via /usr/lib/swift + the dyld shared cache, not bundle embedding:\n"
+
+            for m in osProvided {
                 out += "  - \(m.dep)\n"
                 out += "    referenced by: \(m.referencedBy.joined(separator: ", "))\n"
             }
