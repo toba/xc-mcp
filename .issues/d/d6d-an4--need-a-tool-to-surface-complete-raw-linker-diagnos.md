@@ -1,15 +1,15 @@
 ---
 # d6d-an4
 title: Need a tool to surface complete raw linker diagnostics from an xc-mcp build
-status: ready
+status: completed
 type: feature
 priority: normal
 created_at: 2026-07-08T15:36:53Z
-updated_at: 2026-07-08T15:36:53Z
+updated_at: 2026-07-08T22:06:48Z
 sync:
     github:
         issue_number: "414"
-        synced_at: "2026-07-08T15:43:48Z"
+        synced_at: "2026-07-08T22:07:45Z"
 ---
 
 Diagnosing linker failures through xc-mcp is currently blind because the full ld diagnostic is unrecoverable via sanctioned tools.
@@ -37,3 +37,21 @@ Net: an agent cannot see WHICH objects/frameworks a duplicate or undefined symbo
 - Ensure build_macos always persists a complete, readable activity log (never 0 bytes) for manual extraction.
 
 Minimum viable: for duplicate-symbol and undefined-symbol errors, capture and return the full multi-line block including every source path ld lists (the '... in:' files and the 'referenced from:' objects) and the failing target.
+
+## Summary of Changes
+
+Added `show_last_build_raw` — a tool returning the complete, unparsed clang/ld output of the most recent build/test run, so an agent can recover the verbatim linker diagnostic (full `Undefined symbols …` / `duplicate symbol … in:` blocks with every source path) when the parsed summary truncates or mislabels it.
+
+### New files
+- `Sources/Core/BuildOutput/RawBuildLog.swift` — persists the raw combined stdout/stderr of the most recent `xcodebuild` build/test to a PPID-scoped file (`/tmp/xc-mcp-last-build-{ppid}.log`, overridable via `XC_MCP_LAST_BUILD`) with a JSON metadata sidecar. Best-effort; empty captures never clobber a prior real one.
+- `Sources/Core/BuildOutput/LinkerDiagnostics.swift` — extracts verbatim compiler/linker diagnostic regions (anchors on error:/ld:/clang: error/Undefined symbol/duplicate symbol/framework|library-not-found/`, referenced from:`, plus indented continuation and one leading-context line). Non-adjacent regions joined with an ellipsis; capped at 500 lines.
+- `Sources/Tools/MacOS/ShowLastBuildRawTool.swift` — the `show_last_build_raw` tool. Defaults to extracted diagnostics; `full: true` dumps everything, `tail: N` the final N lines. Always prints the on-disk path as a last-resort fallback.
+
+### Wiring
+- `XcodebuildRunner.build()`/`test()` capture raw output at the single chokepoint — on both the nonzero-exit (BUILD FAILED) path and the timeout/stuck partial-output path. Covers macOS, simulator, and device scheme builds/tests; no build-time flag needed.
+- Registered in `XcodeMCPServer` (monolithic) and `xc-build` focused server; added to `ServerToolDirectory` for cross-server hints.
+
+### Tests
+- `Tests/LinkerDiagnosticsTests.swift` (6) and `Tests/RawBuildLogTests.swift` (3) — all pass.
+
+Unblocks via two of the three proposed paths: a dedicated tool AND guaranteed persistence of a complete, readable raw log (never 0 bytes).

@@ -141,6 +141,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case stopMacLogCap = "stop_mac_log_cap"
     case showMacLog = "show_mac_log"
     case showBuildLog = "show_build_log"
+    case showLastBuildRaw = "show_last_build_raw"
     case screenshotMacWindow = "screenshot_mac_window"
 
     // Discovery tools
@@ -402,6 +403,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .stopMacLogCap,
                  .showMacLog,
                  .showBuildLog,
+                 .showLastBuildRaw,
                  .screenshotMacWindow: .macos
             // Discovery
             case .discoverProjs,
@@ -768,6 +770,7 @@ public struct XcodeMCPServer: Sendable {
         let showBuildLogTool = ShowBuildLogTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let showLastBuildRawTool = ShowLastBuildRawTool()
         let screenshotMacWindowTool = ScreenshotMacWindowTool()
 
         // Create discovery tools
@@ -1094,6 +1097,7 @@ public struct XcodeMCPServer: Sendable {
             (.stopMacLogCap, stopMacLogCapTool.tool()),
             (.showMacLog, showMacLogTool.tool()),
             (.showBuildLog, showBuildLogTool.tool()),
+            (.showLastBuildRaw, showLastBuildRawTool.tool()),
             (.screenshotMacWindow, screenshotMacWindowTool.tool()),
             // Discovery tools
             (.discoverProjs, discoverProjsTool.tool()),
@@ -1498,6 +1502,8 @@ public struct XcodeMCPServer: Sendable {
                 case .stopMacLogCap: return await stopMacLogCapTool.execute(arguments: arguments)
                 case .showMacLog: return try await showMacLogTool.execute(arguments: arguments)
                 case .showBuildLog: return try await showBuildLogTool.execute(arguments: arguments)
+                case .showLastBuildRaw:
+                    return try await showLastBuildRawTool.execute(arguments: arguments)
                 case .screenshotMacWindow:
                     return try await screenshotMacWindowTool.execute(arguments: arguments)
                 // Discovery tools

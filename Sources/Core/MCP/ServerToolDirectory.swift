@@ -32,7 +32,7 @@ public enum ServerToolDirectory {
         "get_mac_app_path", "analyze_app_bundle", "test_macos",
         "get_test_attachments", "get_coverage_report", "get_file_coverage",
         "get_performance_metrics", "set_performance_baseline", "show_performance_baselines",
-        "start_mac_log_cap", "stop_mac_log_cap", "show_mac_log",
+        "start_mac_log_cap", "stop_mac_log_cap", "show_mac_log", "show_last_build_raw",
         "discover_projs", "list_schemes", "show_build_settings",
         "get_app_bundle_id", "get_mac_bundle_id", "list_test_plan_targets",
         "clean", "doctor", "scaffold_ios_project", "scaffold_macos_project",

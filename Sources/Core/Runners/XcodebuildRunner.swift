@@ -379,11 +379,28 @@ public struct XcodebuildRunner: Sendable {
 
         args += additionalArguments
 
-        return try await run(
-            arguments: args, environment: environment,
-            timeout: timeout, outputTimeout: outputTimeout,
-            onProgress: onProgress,
-        )
+        // Capture the raw combined output so `show_last_build_raw` can recover the verbatim linker
+        // diagnostic even when the parsed summary truncates it or Xcode leaves a 0-byte activity log.
+        // `run` returns normally for a BUILD FAILED (nonzero exit); it only throws on timeout/stuck,
+        // where the partial output still holds any diagnostics collected so far.
+        do {
+            let result = try await run(
+                arguments: args, environment: environment,
+                timeout: timeout, outputTimeout: outputTimeout,
+                onProgress: onProgress,
+            )
+            RawBuildLog.store(
+                rawOutput: result.output, action: action, destination: destination,
+                succeeded: result.succeeded,
+            )
+            return result
+        } catch let error as XcodebuildError {
+            RawBuildLog.store(
+                rawOutput: error.partialOutput, action: action, destination: destination,
+                succeeded: false,
+            )
+            throw error
+        }
     }
 
     /// Builds a single target for a specific destination.
@@ -500,11 +517,26 @@ public struct XcodebuildRunner: Sendable {
         args += ["test"]
         args += additionalArguments
 
-        return try await run(
-            arguments: args, environment: environment,
-            timeout: timeout, outputTimeout: outputTimeout,
-            onProgress: onProgress,
-        )
+        // See `build` — capture raw output for `show_last_build_raw` on both the normal (nonzero
+        // exit) and timeout/stuck paths.
+        do {
+            let result = try await run(
+                arguments: args, environment: environment,
+                timeout: timeout, outputTimeout: outputTimeout,
+                onProgress: onProgress,
+            )
+            RawBuildLog.store(
+                rawOutput: result.output, action: "test", destination: destination,
+                succeeded: result.succeeded,
+            )
+            return result
+        } catch let error as XcodebuildError {
+            RawBuildLog.store(
+                rawOutput: error.partialOutput, action: "test", destination: destination,
+                succeeded: false,
+            )
+            throw error
+        }
     }
 
     /// Cleans build artifacts for a scheme.

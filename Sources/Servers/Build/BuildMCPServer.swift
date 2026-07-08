@@ -23,6 +23,7 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     case stopMacLogCap = "stop_mac_log_cap"
     case showMacLog = "show_mac_log"
     case showBuildLog = "show_build_log"
+    case showLastBuildRaw = "show_last_build_raw"
 
     // Discovery tools
     case discoverProjs = "discover_projs"
@@ -157,6 +158,7 @@ public struct BuildMCPServer: Sendable {
         let showBuildLogTool = ShowBuildLogTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let showLastBuildRawTool = ShowLastBuildRawTool()
 
         // Create discovery tools
         let discoverProjsTool = DiscoverProjectsTool(pathUtility: pathUtility)
@@ -264,6 +266,7 @@ public struct BuildMCPServer: Sendable {
                 stopMacLogCapTool.tool(),
                 showMacLogTool.tool(),
                 showBuildLogTool.tool(),
+                showLastBuildRawTool.tool(),
                 // Discovery tools
                 discoverProjsTool.tool(),
                 listSchemesTool.tool(),
@@ -369,6 +372,8 @@ public struct BuildMCPServer: Sendable {
                     return try await showMacLogTool.execute(arguments: arguments)
                 case .showBuildLog:
                     return try await showBuildLogTool.execute(arguments: arguments)
+                case .showLastBuildRaw:
+                    return try await showLastBuildRawTool.execute(arguments: arguments)
                 // Discovery tools
                 case .discoverProjs:
                     return try discoverProjsTool.execute(arguments: arguments)
