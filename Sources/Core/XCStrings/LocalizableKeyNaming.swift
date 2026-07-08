@@ -99,6 +99,7 @@ public enum LocalizableKeyNaming {
             let start = i
             var j = i + 1
             guard j < n else { break }
+
             if chars[j] == "%" {
                 i = j + 1
                 continue
@@ -108,6 +109,7 @@ public enum LocalizableKeyNaming {
             var position: Int?
             var k = j
             var digits = ""
+
             while k < n, chars[k].isNumber {
                 digits.append(chars[k])
                 k += 1
@@ -124,6 +126,7 @@ public enum LocalizableKeyNaming {
             if j < n, chars[j] == "(" {
                 var m = j + 1
                 var captured = ""
+
                 while m < n, chars[m] != ")" {
                     captured.append(chars[m])
                     m += 1
@@ -144,7 +147,8 @@ public enum LocalizableKeyNaming {
 
             result.append(FormatPlaceholder(
                 position: position, name: name, type: swiftType(forConversion: conversion),
-                start: start, length: j - start, ))
+                start: start, length: j - start,
+            ))
             i = j
         }
         return result

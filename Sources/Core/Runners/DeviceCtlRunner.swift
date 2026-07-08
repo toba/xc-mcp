@@ -79,10 +79,7 @@ public struct DeviceCtlRunner: Sendable {
     /// - Throws: An error if the process fails to launch.
     public func run(arguments: [String]) async throws(DeviceCtlError) -> DeviceCtlResult {
         do {
-            return try await ProcessResult.runSubprocess(
-                .name("xcrun"),
-                arguments: Arguments(["devicectl"] + arguments),
-            )
+            return try await ProcessResult.xcrun("devicectl", arguments: arguments)
         } catch {
             throw DeviceCtlError.commandFailed("\(error)")
         }
@@ -254,8 +251,7 @@ public struct DeviceCtlRunner: Sendable {
             )
             return response.result.devices.compactMap { device in
                 guard let name = device.deviceProperties?.name,
-                      let connectionProperties = device.connectionProperties
-                else { return nil }
+                      let connectionProperties = device.connectionProperties else { return nil }
 
                 let hw = device.hardwareProperties
                 let deviceType = hw?.marketingName ?? hw?.productType ?? hw?.deviceType ?? "Unknown"

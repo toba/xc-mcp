@@ -14,13 +14,11 @@ public enum TestToolHelper {
         projectPath: String?,
         workspacePath: String?,
         scheme: String,
-    ) throws -> (params: TestParameters, warning: String?) {
-        guard let onlyTesting = testParams.onlyTesting, !onlyTesting.isEmpty else {
-            return (testParams, nil)
-        }
-        let projectRoot = (workspacePath ?? projectPath)
-            .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
-        guard let projectRoot else { return (testParams, nil) }
+    ) throws(MCPError) -> (params: TestParameters, warning: String?) {
+        guard let onlyTesting = testParams.onlyTesting, !onlyTesting.isEmpty
+        else { return (testParams, nil) }
+        guard let projectRoot = projectRoot(workspacePath: workspacePath, projectPath: projectPath)
+        else { return (testParams, nil) }
 
         let validation = ErrorExtractor.validateOnlyTesting(
             onlyTesting,
@@ -126,8 +124,7 @@ public enum TestToolHelper {
 
             let runEnd = Date()
 
-            let projectRoot = (workspacePath ?? projectPath)
-                .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
+            let projectRoot = projectRoot(workspacePath: workspacePath, projectPath: projectPath)
 
             var toolResult = try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
@@ -154,11 +151,17 @@ public enum TestToolHelper {
 
             return toolResult
         } catch let error as XcodebuildError {
-            let projectRoot = (workspacePath ?? projectPath)
-                .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
+            let projectRoot = projectRoot(workspacePath: workspacePath, projectPath: projectPath)
             return error.formatPartialDiagnostics(projectRoot: projectRoot, errorsOnly: errorsOnly)
         } catch {
             throw try error.asMCPError()
         }
+    }
+
+    /// Derives the project root directory (parent of the workspace or project file) used to resolve
+    /// relative paths in diagnostics. Returns `nil` when neither path is provided.
+    private static func projectRoot(workspacePath: String?, projectPath: String?) -> String? {
+        (workspacePath ?? projectPath)
+            .map { URL(fileURLWithPath: $0).deletingLastPathComponent().path }
     }
 }

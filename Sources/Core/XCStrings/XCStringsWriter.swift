@@ -2,6 +2,11 @@ import Foundation
 
 /// Handles write operations for xcstrings files
 public enum XCStringsWriter {
+    /// A localization holding a single `translated`-state string value.
+    private static func translated(_ value: String) -> Localization {
+        .init(stringUnit: StringUnit(state: "translated", value: value))
+    }
+
     /// Add a translation for a key
     public static func addTranslation(
         to file: XCStringsFile,
@@ -20,8 +25,7 @@ public enum XCStringsWriter {
 
         if result.strings[key]?.localizations == nil { result.strings[key]?.localizations = [:] }
 
-        result.strings[key]?.localizations?[language] = Localization(stringUnit: StringUnit(
-            state: "translated", value: value))
+        result.strings[key]?.localizations?[language] = translated(value)
 
         return result
     }
@@ -44,8 +48,7 @@ public enum XCStringsWriter {
                 throw XCStringsError.keyAlreadyExists(key: "\(key):\(language)")
             }
 
-            result.strings[key]?.localizations?[language] = Localization(stringUnit: StringUnit(
-                state: "translated", value: value))
+            result.strings[key]?.localizations?[language] = translated(value)
         }
 
         return result
@@ -71,10 +74,7 @@ public enum XCStringsWriter {
         result.strings[key] = StringEntry(
             comment: comment,
             extractionState: "manual",
-            localizations: [
-                sourceLanguage: Localization(stringUnit: StringUnit(
-                    state: "translated", value: value))
-            ],
+            localizations: [sourceLanguage: translated(value)],
         )
 
         return result
@@ -95,8 +95,7 @@ public enum XCStringsWriter {
             throw XCStringsError.languageNotFound(language: language, key: key)
         }
 
-        result.strings[key]?.localizations?[language] = Localization(stringUnit: StringUnit(
-            state: "translated", value: value))
+        result.strings[key]?.localizations?[language] = translated(value)
 
         return result
     }
@@ -116,8 +115,7 @@ public enum XCStringsWriter {
                 throw XCStringsError.languageNotFound(language: language, key: key)
             }
 
-            result.strings[key]?.localizations?[language] = Localization(stringUnit: StringUnit(
-                state: "translated", value: value))
+            result.strings[key]?.localizations?[language] = translated(value)
         }
 
         return result

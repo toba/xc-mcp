@@ -1,6 +1,6 @@
 import MCP
-import Foundation
 import Logging
+import Foundation
 import Subprocess
 import Synchronization
 
@@ -321,12 +321,13 @@ public actor LLDBSession {
             let result = poll(&pollFD, 1, 0)
             guard result > 0, pollFD.revents & Int16(POLLIN) != 0 else { return }
 
-            // Tight timeout + no poisoning: drain is speculative cleanup of buffered output.
-            // If the data isn't prompt-terminated within ~2s the inferior is emitting async
-            // noise we can't make sense of — bailing out is safe; poisoning the shared session
-            // because of it would silently break the very next user-issued command (rgu-xhg).
-            guard let output = try? await readUntilPrompt(timeout: 2, poisonOnFailure: false)
-            else { return }
+            // Tight timeout + no poisoning: drain is speculative cleanup of buffered output. If the
+            // data isn't prompt-terminated within ~2s the inferior is emitting async noise we can't
+            // make sense of — bailing out is safe; poisoning the shared session because of it would
+            // silently break the very next user-issued command (rgu-xhg).
+            guard let output = try? await readUntilPrompt(timeout: 2, poisonOnFailure: false) else {
+                return
+            }
             updateProcessState(from: output)
         }
     }
@@ -369,11 +370,10 @@ public actor LLDBSession {
 
     /// Sends a command speculatively, with a tight timeout and no session poisoning on failure.
     ///
-    /// Used for cheap canary/warmup commands where a failure must not invalidate the shared
-    /// session — e.g. priming the JIT/runtime bridge before an AppKit expression so the user's
-    /// expr doesn't hit a cold-start hang (lul-evz). If the warmup itself wedges, the body's
-    /// expression will surface its own diagnostic; we don't compound by killing the session
-    /// preemptively.
+    /// Used for cheap canary/warmup commands where a failure must not invalidate the shared session
+    /// — e.g. priming the JIT/runtime bridge before an AppKit expression so the user's expr doesn't
+    /// hit a cold-start hang (lul-evz). If the warmup itself wedges, the body's expression will
+    /// surface its own diagnostic; we don't compound by killing the session preemptively.
     ///
     /// - Returns: The command output, or `nil` on timeout / write failure.
     @discardableResult
@@ -458,8 +458,7 @@ public actor LLDBSession {
         guard let result = try? await ProcessResult.run(
             "/usr/bin/pgrep", arguments: ["-P", "\(parent)"], mergeStderr: false,
         ),
-              result.succeeded
-        else { return [] }
+              result.succeeded else { return [] }
         return result.stdout
             .split(whereSeparator: \.isNewline)
             .compactMap { Int32($0.trimmingCharacters(in: .whitespaces)) }
@@ -497,10 +496,10 @@ public actor LLDBSession {
                 // Set once the gate has been resolved (by reader, flood guard, or timeout) so the
                 // reader thread stops promptly instead of spinning on flooding output forever.
                 let finished = Mutex(false)
-                // Set by the GCD reader on exit. The timeout path polls this before resuming
-                // the continuation so the reader can't survive past readUntilPrompt's return —
-                // if it did, it would race the NEXT command's reader for bytes on the shared
-                // PTY fd and silently swallow the response (t57-a7q).
+                // Set by the GCD reader on exit. The timeout path polls this before resuming the
+                // continuation so the reader can't survive past readUntilPrompt's return — if it
+                // did, it would race the NEXT command's reader for bytes on the shared PTY fd and
+                // silently swallow the response (t57-a7q).
                 let readerDone = Mutex(false)
 
                 let finish: @Sendable (Bool) -> Void = { resumed in
@@ -526,11 +525,12 @@ public actor LLDBSession {
                         if finished.withLock({ $0 }) { return }
 
                         var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
-                        // Short poll so we recheck `finished` ~20×/s. Long enough not to spin
-                        // a CPU; short enough that a stalled session aborts promptly so the
-                        // timeout path doesn't have to wait long for us to exit.
+                        // Short poll so we recheck `finished` ~20×/s. Long enough not to spin a
+                        // CPU; short enough that a stalled session aborts promptly so the timeout
+                        // path doesn't have to wait long for us to exit.
                         let pollResult = poll(&pollFD, 1, 50)
                         if pollResult <= 0 { continue }
+
                         if pollFD.revents & Int16(POLLIN) == 0 {
                             // POLLHUP/POLLERR — treat like EOF.
                             finish(gate.resume(returning: accumulated))
@@ -586,7 +586,7 @@ public actor LLDBSession {
 
                 // Timeout: uses Task.sleep instead of DispatchQueue.asyncAfter.
                 let effectiveTimeout = timeout ?? self.commandTimeout
-                Task { [weak self] in
+                Task(name: "lldb-command-timeout") { [weak self] in
                     try? await Task.sleep(for: .seconds(effectiveTimeout))
                     let partial = partialOutput.withLock { $0 }
                     let detail: String
@@ -598,33 +598,29 @@ public actor LLDBSession {
                             ? "...\(partial.suffix(maxChars))"
                             : partial
                         // Distinguish an expression-evaluator hang (LLDB received and echoed an
-                        // `expr` but never produced a follow-up prompt within the read window)
-                        // from a generic read timeout. Avoids the next agent re-chasing the
-                        // reader-leak path (t57-a7q) when the underlying issue is LLDB's own
-                        // expr pipeline wedging — typically ObjC/JIT runtime bridge resolution
-                        // on a freshly auto-interrupted process whose main thread is parked
-                        // mid-syscall (lul-evz).
+                        // `expr` but never produced a follow-up prompt within the read window) from
+                        // a generic read timeout. Avoids the next agent re-chasing the reader-leak
+                        // path (t57-a7q) when the underlying issue is LLDB's own expr pipeline
+                        // wedging — typically ObjC/JIT runtime bridge resolution on a freshly
+                        // auto-interrupted process whose main thread is parked mid-syscall
+                        // (lul-evz).
                         let trimmed = partial.trimmingCharacters(in: .whitespacesAndNewlines)
                         let looksLikeExprHang = trimmed.hasPrefix("expr ")
                             || trimmed.hasPrefix("expression ")
                             || trimmed.contains("\nexpr ")
                             || trimmed.contains("\nexpression ")
-                        if looksLikeExprHang {
-                            detail =
-                                "LLDB expression evaluator did not return within \(Int(effectiveTimeout))s. LLDB received the command but never produced a `(lldb)` prompt — typically the inferior is wedged in a syscall (e.g. TCC preflight) or the JIT is hung resolving runtime bridges against an auto-interrupted process. Try `process status` to see what the threads are doing; consider warming the session with a trivial `expr -- (int)0` before the AppKit-touching call. Partial output:\n\(truncated)"
-                        } else {
-                            detail =
-                                "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
-                        }
+                        detail = looksLikeExprHang
+                            ? "LLDB expression evaluator did not return within \(Int(effectiveTimeout))s. LLDB received the command but never produced a `(lldb)` prompt — typically the inferior is wedged in a syscall (e.g. TCC preflight) or the JIT is hung resolving runtime bridges against an auto-interrupted process. Try `process status` to see what the threads are doing; consider warming the session with a trivial `expr -- (int)0` before the AppKit-touching call. Partial output:\n\(truncated)"
+                            : "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
                     }
-                    // Mark finished FIRST so the reader's next poll-tick exits, then wait for
-                    // it (bounded) before resuming the continuation. This guarantees no leaked
-                    // reader survives past readUntilPrompt's return — see t57-a7q for the
-                    // failure mode when a leaked reader silently steals the next command's bytes.
-                    // Mark finished FIRST so the reader's next poll-tick exits, then wait for
-                    // it (bounded) before resuming the continuation. This guarantees no leaked
-                    // reader survives past readUntilPrompt's return — see t57-a7q for the
-                    // failure mode when a leaked reader silently steals the next command's bytes.
+                    // Mark finished FIRST so the reader's next poll-tick exits, then wait for it
+                    // (bounded) before resuming the continuation. This guarantees no leaked reader
+                    // survives past readUntilPrompt's return — see t57-a7q for the failure mode
+                    // when a leaked reader silently steals the next command's bytes. Mark finished
+                    // FIRST so the reader's next poll-tick exits, then wait for it (bounded) before
+                    // resuming the continuation. This guarantees no leaked reader survives past
+                    // readUntilPrompt's return — see t57-a7q for the failure mode when a leaked
+                    // reader silently steals the next command's bytes.
                     finished.withLock { $0 = true }
                     let waitDeadline = ContinuousClock.now + .milliseconds(500)
                     while !readerDone.withLock({ $0 }), ContinuousClock.now < waitDeadline {
@@ -650,8 +646,8 @@ public actor LLDBSession {
     /// Marks this session as poisoned so it will be discarded and recreated.
     ///
     /// `reason` is logged at warning level so a silent poison (e.g. a `try?`-swallowed
-    /// `readUntilPrompt` failure during drain/early-crash checks) leaves a forensic trail
-    /// pointing at the actual trigger, instead of only surfacing on the next user call.
+    /// `readUntilPrompt` failure during drain/early-crash checks) leaves a forensic trail pointing
+    /// at the actual trigger, instead of only surfacing on the next user call.
     private func markPoisoned(reason: String) {
         if !isPoisoned {
             Self.logger
@@ -712,9 +708,9 @@ public actor LLDBSession {
     ///   - requireExplicitStop: If `true`, throw rather than silently assume `.stopped` when the
     ///     async stop notification fails to arrive within `timeout`. Callers that go on to issue
     ///     expression evaluation against the interrupted process (the `withProcessStopped` path)
-    ///     opt in: sending `expr` against a still-running target wedges LLDB's expression
-    ///     evaluator with no `(lldb)` prompt produced — the lul-evz failure mode. Failing fast
-    ///     here surfaces a clean error before the wedge instead.
+    ///     opt in: sending `expr` against a still-running target wedges LLDB's expression evaluator
+    ///     with no `(lldb)` prompt produced — the lul-evz failure mode. Failing fast here surfaces
+    ///     a clean error before the wedge instead.
     /// - Returns: The combined output from the interrupt and stop notification.
     public func interruptProcess(
         timeout: Duration = .seconds(5),
@@ -747,8 +743,8 @@ public actor LLDBSession {
 
             if pollResult > 0, pollFD.revents & Int16(POLLIN) != 0 {
                 // Bounded, non-poisoning read: an interrupt-stop notification that lacks a
-                // terminating prompt should not invalidate the shared session — we already have
-                // an explicit deadline loop around this read.
+                // terminating prompt should not invalidate the shared session — we already have an
+                // explicit deadline loop around this read.
                 if let stopOutput = try? await readUntilPrompt(timeout: 2, poisonOnFailure: false) {
                     updateProcessState(from: stopOutput)
                     return initialOutput + "\n" + stopOutput
@@ -756,13 +752,13 @@ public actor LLDBSession {
             }
         }
 
-        // Timed out waiting for the async stop notification. The notification can lag the
-        // actual stop (LLDB's event queue is decoupled from the PTY), so before declaring
-        // failure verify via an explicit `process status` query. If LLDB confirms the process
-        // is stopped, we treat the interrupt as successful — the notification simply hasn't
-        // surfaced yet.
+        // Timed out waiting for the async stop notification. The notification can lag the actual
+        // stop (LLDB's event queue is decoupled from the PTY), so before declaring failure verify
+        // via an explicit `process status` query. If LLDB confirms the process is stopped, we treat
+        // the interrupt as successful — the notification simply hasn't surfaced yet.
         if requireExplicitStop {
             let statusOutput = try await sendCommand("process status")
+
             if let confirmed = Self.parseProcessState(from: statusOutput), confirmed.isStopped {
                 processState = confirmed
                 return initialOutput + "\n" + statusOutput
@@ -771,9 +767,9 @@ public actor LLDBSession {
                 "process interrupt did not stop the inferior within \(timeout) (no stop notification, and `process status` reported running) — the target may be wedged in an uninterruptable syscall. Follow-up `expr` would hang LLDB's expression evaluator. Retry, or detach and relaunch the target.",
             )
         }
-        // Soft fallback: assume stopped since the interrupt was sent. Kept for legacy callers
-        // that don't follow up with expression evaluation (e.g. view-borders toggles), where
-        // the worst case is a stale state guess rather than a wedged session.
+        // Soft fallback: assume stopped since the interrupt was sent. Kept for legacy callers that
+        // don't follow up with expression evaluation (e.g. view-borders toggles), where the worst
+        // case is a stale state guess rather than a wedged session.
         processState = .stopped(reason: "interrupt")
         return initialOutput
     }
@@ -878,11 +874,12 @@ public actor LLDBSession {
 
         // Data is available — read it and check for actual crash indicators. readUntilPrompt should
         // return quickly since data is already buffered; a 2s bound is plenty and we deliberately
-        // do not poison the session on failure here. checkForEarlyCrash runs during the launch
-        // flow before the caller has had any chance to interact, so a tolerated read failure must
-        // not silently invalidate the freshly-created session (rgu-xhg).
-        guard let output = try? await readUntilPrompt(timeout: 2, poisonOnFailure: false)
-        else { return nil }
+        // do not poison the session on failure here. checkForEarlyCrash runs during the launch flow
+        // before the caller has had any chance to interact, so a tolerated read failure must not
+        // silently invalidate the freshly-created session (rgu-xhg).
+        guard let output = try? await readUntilPrompt(timeout: 2, poisonOnFailure: false) else {
+            return nil
+        }
         updateProcessState(from: output)
 
         // Only report a crash if the output contains semantic crash indicators. Benign output
@@ -1236,20 +1233,19 @@ public struct LLDBRunner: Sendable {
         var didInterrupt = false
 
         if case .running = await session.syncedProcessState() {
-            // Strict interrupt: refuse to proceed if LLDB never confirms the stop. `body`
-            // typically issues `expr`, which silently wedges LLDB's evaluator against a
-            // still-running target — see lul-evz. Better to surface a structured error.
+            // Strict interrupt: refuse to proceed if LLDB never confirms the stop. `body` typically
+            // issues `expr`, which silently wedges LLDB's evaluator against a still-running target
+            // — see lul-evz. Better to surface a structured error.
             _ = try await session.interruptProcess(requireExplicitStop: true)
             didInterrupt = true
 
-            // JIT/runtime warmup. ObjC expression evaluation on a freshly-auto-interrupted
-            // process can hang during JIT runtime-bridge resolution, even though `--timeout`
-            // would otherwise bound the inferior call (lul-evz hypothesis). A trivial
-            // arithmetic expression has no inferior dispatch and no AppKit dependency, so it
-            // exercises LLDB's compiler/JIT pipeline without touching the wedge-prone path.
-            // Speculative + non-poisoning: a warmup failure must not invalidate the shared
-            // session — `body`'s own expression will surface its own diagnostic if the warmup
-            // missed something.
+            // JIT/runtime warmup. ObjC expression evaluation on a freshly-auto-interrupted process
+            // can hang during JIT runtime-bridge resolution, even though `--timeout` would
+            // otherwise bound the inferior call (lul-evz hypothesis). A trivial arithmetic
+            // expression has no inferior dispatch and no AppKit dependency, so it exercises LLDB's
+            // compiler/JIT pipeline without touching the wedge-prone path. Speculative +
+            // non-poisoning: a warmup failure must not invalidate the shared session — `body`'s own
+            // expression will surface its own diagnostic if the warmup missed something.
             _ = await session.sendCommandSpeculative(
                 "expression \(LLDBSession.exprTimeoutOptions(microseconds: 1_000_000)) -- (int)0",
                 timeout: 5,
@@ -1551,7 +1547,7 @@ public struct LLDBRunner: Sendable {
         // Route `process interrupt` through the dedicated handler that waits for the async stop
         // notification — plain sendCommand races with it.
         if trimmed == "process interrupt" || trimmed.hasPrefix("process interrupt ") {
-            return await .init(exitCode: 0, stdout: try session.interruptProcess(), stderr: "")
+            return try await .init(exitCode: 0, stdout: session.interruptProcess(), stderr: "")
         }
 
         // Expression-evaluation commands block (and eventually time out) against a running target.
@@ -1568,7 +1564,7 @@ public struct LLDBRunner: Sendable {
             )
         }
 
-        return await .init(exitCode: 0, stdout: try session.sendCommand(command), stderr: "")
+        return try await .init(exitCode: 0, stdout: session.sendCommand(command), stderr: "")
     }
 
     /// Whether an LLDB command evaluates an expression (and therefore needs a stopped process).
@@ -2101,9 +2097,9 @@ public struct LLDBRunner: Sendable {
 
         // Parse the breakpoint id ("Breakpoint N: ...") so we can remove it afterward.
         let breakpointID: Int? = setOutput
-            .range(
-                of: #"Breakpoint (\d+):"#, options: .regularExpression,
-            ).flatMap { range in Int(setOutput[range].dropFirst("Breakpoint ".count).dropLast()) }
+            .range(of: #"Breakpoint (\d+):"#, options: .regularExpression).flatMap { range in
+                Int(setOutput[range].dropFirst("Breakpoint ".count).dropLast())
+            }
 
         // Resume only if currently stopped; if already running the breakpoint will still hit.
         if await session.processState.isStopped {

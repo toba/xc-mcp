@@ -10,8 +10,7 @@ public struct InteractMenuTool: Sendable {
     public func tool() -> Tool {
         .init(
             name: "interact_menu",
-            description:
-                "Navigate and click a menu bar item in a macOS application by path. "
+            description: "Navigate and click a menu bar item in a macOS application by path. "
                 + "Provide a menu path array like [\"File\", \"Export\", \"PDF\"] to open submenus and click the final item.",
             inputSchema: .object([
                 "type": .string("object"),
@@ -39,19 +38,17 @@ public struct InteractMenuTool: Sendable {
             throw MCPError.invalidParams("menu_path must be a non-empty array of menu item titles.")
         }
 
-        try interactRunner.navigateMenu(pid: pid, menuPath: menuPath)
+        try await interactRunner.navigateMenu(pid: pid, menuPath: menuPath)
 
         let snapshot = try await InteractPostAction.settledSnapshot(
             runner: interactRunner, pid: pid,
         )
-        return CallTool.Result(
-            content: [
-                .text(
-                    text: "Clicked menu: \(menuPath.joined(separator: " > "))\n\(snapshot)",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],
-        )
+        return CallTool.Result(content: [
+            .text(
+                text: "Clicked menu: \(menuPath.joined(separator: " > "))\n\(snapshot)",
+                annotations: nil,
+                _meta: nil,
+            )
+        ],)
     }
 }

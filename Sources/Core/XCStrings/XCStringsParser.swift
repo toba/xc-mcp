@@ -43,6 +43,25 @@ public actor XCStringsParser {
         return try operation(XCStringsReader(file: file))
     }
 
+    private func withStats<T>(
+        _ operation: (XCStringsStatsCalculator) throws(XCStringsError) -> T
+    )
+        throws(XCStringsError) -> T
+    {
+        let file = try load()
+        return try operation(XCStringsStatsCalculator(file: file))
+    }
+
+    /// Load every catalog at `paths`, in order.
+    private static func loadFiles(
+        paths: [String]
+    ) throws(XCStringsError) -> [(path: String, file: XCStringsFile)] {
+        var files: [(path: String, file: XCStringsFile)] = []
+        files.reserveCapacity(paths.count)
+        for path in paths { files.append((path, try XCStringsFileHandler(path: path).load())) }
+        return files
+    }
+
     /// Get all keys sorted alphabetically
     public func listKeys() throws(XCStringsError) -> [String] { try withReader { $0.listKeys() } }
 
@@ -71,8 +90,7 @@ public actor XCStringsParser {
 
     /// Get key information
     public func getKey(_ key: String) throws(XCStringsError) -> KeyInfo {
-        let file = try load()
-        return try XCStringsReader(file: file).getKey(key)
+        try XCStringsReader(file: load()).getKey(key)
     }
 
     /// Get translation for a key
@@ -81,10 +99,7 @@ public actor XCStringsParser {
         language: String?
     ) throws(XCStringsError) -> [String:
         TranslationInfo]
-    {
-        let file = try load()
-        return try XCStringsReader(file: file).getTranslation(key: key, language: language)
-    }
+    { try XCStringsReader(file: load()).getTranslation(key: key, language: language) }
 
     /// Check if a key exists
     public func checkKey(_ key: String, language: String?) throws(XCStringsError) -> Bool {
@@ -100,8 +115,7 @@ public actor XCStringsParser {
 
     /// Check coverage for a key
     public func checkCoverage(_ key: String) throws(XCStringsError) -> CoverageInfo {
-        let file = try load()
-        return try XCStringsReader(file: file).checkCoverage(key)
+        try XCStringsReader(file: load()).checkCoverage(key)
     }
 
     /// List keys with extractionState == "stale"
@@ -121,14 +135,8 @@ public actor XCStringsParser {
     public static func batchListStaleKeys(
         paths: [String]
     ) throws(XCStringsError) -> BatchStaleKeysSummary {
-        var results: [StaleKeysResult] = []
-        results.reserveCapacity(paths.count)
-
-        for path in paths {
-            let handler = XCStringsFileHandler(path: path)
-            let file = try handler.load()
-            let staleKeys = XCStringsReader(file: file).listStaleKeys()
-            results.append(StaleKeysResult(file: path, staleKeys: staleKeys))
+        let results = try loadFiles(paths: paths).map { path, file in
+            StaleKeysResult(file: path, staleKeys: XCStringsReader(file: file).listStaleKeys())
         }
         return .init(files: results)
     }
@@ -136,53 +144,32 @@ public actor XCStringsParser {
     // MARK: - Stats Operations
 
     /// Get overall statistics
-    public func getStats() throws(XCStringsError) -> StatsInfo {
-        let file = try load()
-        return XCStringsStatsCalculator(file: file).getStats()
-    }
+    public func getStats() throws(XCStringsError) -> StatsInfo { try withStats { $0.getStats() } }
 
     /// Get progress for a specific language
     public func getProgress(for language: String) throws(XCStringsError) -> LanguageStats {
-        let file = try load()
-        return try XCStringsStatsCalculator(file: file).getProgress(for: language)
+        try XCStringsStatsCalculator(file: load()).getProgress(for: language)
     }
 
     /// Get batch coverage for multiple files (token-efficient)
     public static func getBatchCoverage(
         paths: [String]
     ) throws(XCStringsError) -> BatchCoverageSummary {
-        var files: [(path: String, file: XCStringsFile)] = []
-        files.reserveCapacity(paths.count)
-
-        for path in paths {
-            let handler = XCStringsFileHandler(path: path)
-            let file = try handler.load()
-            files.append((path, file))
-        }
-        return XCStringsStatsCalculator.getBatchCoverage(files: files)
+        try XCStringsStatsCalculator.getBatchCoverage(files: loadFiles(paths: paths))
     }
 
     // MARK: - Compact Stats Operations (100% languages omitted)
 
     /// Get compact statistics (only shows incomplete languages)
     public func getCompactStats() throws(XCStringsError) -> CompactStatsInfo {
-        let file = try load()
-        return XCStringsStatsCalculator(file: file).getCompactStats()
+        try withStats { $0.getCompactStats() }
     }
 
     /// Get compact batch coverage for multiple files
     public static func getCompactBatchCoverage(
         paths: [String]
     ) throws(XCStringsError) -> CompactBatchCoverageSummary {
-        var files: [(path: String, file: XCStringsFile)] = []
-        files.reserveCapacity(paths.count)
-
-        for path in paths {
-            let handler = XCStringsFileHandler(path: path)
-            let file = try handler.load()
-            files.append((path, file))
-        }
-        return XCStringsStatsCalculator.getCompactBatchCoverage(files: files)
+        try XCStringsStatsCalculator.getCompactBatchCoverage(files: loadFiles(paths: paths))
     }
 
     // MARK: - Write Operations
@@ -193,12 +180,10 @@ public actor XCStringsParser {
         language: String,
         value: String,
         allowOverwrite: Bool = false,
-    ) throws {
-        let file = try load()
-        let updated = try XCStringsWriter.addTranslation(
-            to: file, key: key, language: language, value: value, allowOverwrite: allowOverwrite,
-        )
-        try save(updated)
+    ) throws(XCStringsError) {
+        try save(XCStringsWriter.addTranslation(
+            to: load(), key: key, language: language, value: value, allowOverwrite: allowOverwrite,
+        ))
     }
 
     /// Add translations for multiple languages
@@ -206,12 +191,10 @@ public actor XCStringsParser {
         key: String,
         translations: [String: String],
         allowOverwrite: Bool = false,
-    ) throws {
-        let file = try load()
-        let updated = try XCStringsWriter.addTranslations(
-            to: file, key: key, translations: translations, allowOverwrite: allowOverwrite,
-        )
-        try save(updated)
+    ) throws(XCStringsError) {
+        try save(XCStringsWriter.addTranslations(
+            to: load(), key: key, translations: translations, allowOverwrite: allowOverwrite,
+        ))
     }
 
     /// Update an existing translation
@@ -222,11 +205,9 @@ public actor XCStringsParser {
     )
         throws(XCStringsError)
     {
-        let file = try load()
-        let updated = try XCStringsWriter.updateTranslation(
-            in: file, key: key, language: language, value: value,
-        )
-        try save(updated)
+        try save(XCStringsWriter.updateTranslation(
+            in: load(), key: key, language: language, value: value,
+        ))
     }
 
     /// Update translations for multiple languages
@@ -236,11 +217,8 @@ public actor XCStringsParser {
     )
         throws(XCStringsError)
     {
-        let file = try load()
-        let updated = try XCStringsWriter.updateTranslations(
-            in: file, key: key, translations: translations,
-        )
-        try save(updated)
+        try save(XCStringsWriter.updateTranslations(
+            in: load(), key: key, translations: translations))
     }
 
     /// Promote hand-typed localizable literals to reusable manual source-language keys.
@@ -294,7 +272,9 @@ public actor XCStringsParser {
                     ))
                 } else {
                     promoted.append(PromotedLiteral(
-                        value: request.value, key: key, status: .collision,
+                        value: request.value,
+                        key: key,
+                        status: .collision,
                         message: "Key '\(key)' already exists with a different value"
                             + (existingValue.map { " ('\($0)')" } ?? "")
                             + ". Pass an explicit key to override.",
@@ -321,9 +301,7 @@ public actor XCStringsParser {
 
     /// Rename a key
     public func renameKey(from oldKey: String, to newKey: String) throws(XCStringsError) {
-        let file = try load()
-        let updated = try XCStringsWriter.renameKey(in: file, from: oldKey, to: newKey)
-        try save(updated)
+        try save(XCStringsWriter.renameKey(in: load(), from: oldKey, to: newKey))
     }
 
     // MARK: - Batch Write Operations
@@ -355,26 +333,16 @@ public actor XCStringsParser {
 
     /// Delete a key entirely
     public func deleteKey(_ key: String) throws(XCStringsError) {
-        let file = try load()
-        let updated = try XCStringsWriter.deleteKey(from: file, key: key)
-        try save(updated)
+        try save(XCStringsWriter.deleteKey(from: load(), key: key))
     }
 
     /// Delete a translation for a specific language
     public func deleteTranslation(key: String, language: String) throws(XCStringsError) {
-        let file = try load()
-        let updated = try XCStringsWriter.deleteTranslation(
-            from: file, key: key, language: language,
-        )
-        try save(updated)
+        try save(XCStringsWriter.deleteTranslation(from: load(), key: key, language: language))
     }
 
     /// Delete translations for multiple languages
     public func deleteTranslations(key: String, languages: [String]) throws(XCStringsError) {
-        let file = try load()
-        let updated = try XCStringsWriter.deleteTranslations(
-            from: file, key: key, languages: languages,
-        )
-        try save(updated)
+        try save(XCStringsWriter.deleteTranslations(from: load(), key: key, languages: languages))
     }
 }

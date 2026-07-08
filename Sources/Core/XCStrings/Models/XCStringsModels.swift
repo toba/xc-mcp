@@ -55,6 +55,10 @@ public struct Localization: Codable, Sendable {
         self.stringUnit = stringUnit
         self.variations = variations
     }
+
+    /// `true` when this localization carries a `stringUnit` value or any variations — the presence
+    /// check used by coverage/untranslated listings. An empty-string value still counts as present.
+    public var hasContent: Bool { stringUnit?.value != nil || variations != nil }
 }
 
 /// String unit containing the actual translation value
@@ -461,8 +465,8 @@ public struct PromotedLiteral: Codable, Sendable {
         self.message = message
     }
 
-    /// Build a result, deriving `symbol` and `signature` for the value from `key` so every
-    /// outcome (created / reused / collision) reports them consistently.
+    /// Build a result, deriving `symbol` and `signature` for the value from `key` so every outcome
+    /// (created / reused / collision) reports them consistently.
     public init(
         value: String,
         key: String,

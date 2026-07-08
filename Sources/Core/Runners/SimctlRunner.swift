@@ -87,6 +87,8 @@ struct SimctlDevicesResponse: Codable {
 /// try await runner.launch(udid: udid, bundleId: "com.example.app")
 /// ```
 public struct SimctlRunner: Sendable {
+    private static let decoder = JSONDecoder()
+
     /// Creates a new simctl runner.
     public init() {}
 
@@ -97,10 +99,7 @@ public struct SimctlRunner: Sendable {
     /// - Throws: An error if the process fails to launch.
     public func run(arguments: [String]) async throws(SimctlError) -> SimctlResult {
         do {
-            return try await ProcessResult.runSubprocess(
-                .name("xcrun"),
-                arguments: Arguments(["simctl"] + arguments),
-            )
+            return try await ProcessResult.xcrun("simctl", arguments: arguments)
         } catch {
             throw .commandFailed("\(error)")
         }
@@ -121,7 +120,7 @@ public struct SimctlRunner: Sendable {
         let response: SimctlDevicesResponse
 
         do {
-            response = try JSONDecoder().decode(SimctlDevicesResponse.self, from: data)
+            response = try Self.decoder.decode(SimctlDevicesResponse.self, from: data)
         } catch {
             throw .invalidOutput
         }
@@ -307,12 +306,7 @@ public struct SimctlRunner: Sendable {
     /// - Returns: The recording process (send SIGINT to stop recording).
     /// - Throws: An error if the process fails to start.
     public func recordVideo(udid: String, outputPath: String) throws(SimctlError) -> Process {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-        process.arguments = ["simctl", "io", udid, "recordVideo", outputPath]
-
-        let stderrPipe = Pipe()
-        process.standardError = stderrPipe
+        let process = Process.xcrun("simctl", arguments: ["io", udid, "recordVideo", outputPath])
 
         do {
             try process.run()

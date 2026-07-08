@@ -70,8 +70,7 @@ public enum TestResultBundleScoper {
             let path = "\(dir)/\(entry)"
             guard let attrs = try? fm.attributesOfItem(atPath: path),
                   let modified = attrs[.modificationDate] as? Date,
-                  modified < cutoff
-            else { continue }
+                  modified < cutoff else { continue }
             try? fm.removeItem(atPath: path)
         }
     }
@@ -85,8 +84,7 @@ public enum TestResultBundleScoper {
 
     private static func isScopingDisabled(environment: [String: String]) -> Bool {
         guard let value = environment["XC_MCP_DISABLE_TEST_RESULTS_SCOPING"],
-              !value.isEmpty
-        else { return false }
+              !value.isEmpty else { return false }
         let lowered = value.lowercased()
         return lowered != "0" && lowered != "false" && lowered != "no"
     }

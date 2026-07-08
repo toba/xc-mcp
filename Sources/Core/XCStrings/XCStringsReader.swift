@@ -52,10 +52,7 @@ public struct XCStringsReader: Sendable {
         var untranslated: [String] = []
 
         for (key, entry) in file.strings where entry.requiresTranslation {
-            let isTranslated = entry.localizations?[language]?.stringUnit?.value != nil
-                || entry.localizations?[language]?.variations != nil
-
-            if !isTranslated { untranslated.append(key) }
+            if entry.localizations?[language]?.hasContent != true { untranslated.append(key) }
         }
 
         return XCStringsKeySorter.sort(untranslated)
@@ -72,11 +69,7 @@ public struct XCStringsReader: Sendable {
             guard let entry = file.strings[key], entry.requiresTranslation else { continue }
 
             for language in languages {
-                issues.append(contentsOf: detectIssues(
-                    key: key,
-                    entry: entry,
-                    language: language
-                ))
+                issues.append(contentsOf: detectIssues(key: key, entry: entry, language: language))
             }
         }
         return issues
@@ -97,22 +90,21 @@ public struct XCStringsReader: Sendable {
         }
 
         if let stringUnit = localization.stringUnit {
-            if stringUnit.value.isEmpty {
-                return [
+            return stringUnit.value.isEmpty
+                ? [
                     UntranslatedIssue(
                         key: key, language: language,
                         reason: .emptyValue, state: stringUnit.state,
                     )
                 ]
-            }
-            return stringUnit.state != "translated"
-                ? [
-                    UntranslatedIssue(
-                        key: key, language: language,
-                        reason: .stateNotTranslated, state: stringUnit.state,
-                    )
-                ]
-                : []
+                : stringUnit.state != "translated"
+                    ? [
+                        UntranslatedIssue(
+                            key: key, language: language,
+                            reason: .stateNotTranslated, state: stringUnit.state,
+                        )
+                    ]
+                    : []
         }
 
         if let variations = localization.variations {
@@ -131,25 +123,19 @@ public struct XCStringsReader: Sendable {
             for unit in variationUnits {
                 guard let stringUnit = unit else {
                     variationIssues.append(UntranslatedIssue(
-                        key: key,
-                        language: language,
-                        reason: .missingVariationStringUnit,
+                        key: key, language: language, reason: .missingVariationStringUnit,
                         state: nil,
                     ))
                     continue
                 }
                 if stringUnit.value.isEmpty {
                     variationIssues.append(UntranslatedIssue(
-                        key: key,
-                        language: language,
-                        reason: .emptyVariationValue,
+                        key: key, language: language, reason: .emptyVariationValue,
                         state: stringUnit.state,
                     ))
                 } else if stringUnit.state != "translated" {
                     variationIssues.append(UntranslatedIssue(
-                        key: key,
-                        language: language,
-                        reason: .variationStateNotTranslated,
+                        key: key, language: language, reason: .variationStateNotTranslated,
                         state: stringUnit.state,
                     ))
                 }
@@ -158,10 +144,7 @@ public struct XCStringsReader: Sendable {
         }
 
         return [
-            UntranslatedIssue(
-                key: key, language: language,
-                reason: .missingStringUnit, state: nil,
-            )
+            UntranslatedIssue(key: key, language: language, reason: .missingStringUnit, state: nil)
         ]
     }
 

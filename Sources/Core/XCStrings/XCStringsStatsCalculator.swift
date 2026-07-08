@@ -23,10 +23,11 @@ public struct XCStringsStatsCalculator: Sendable {
             var untranslated = 0
 
             for entry in translatableEntries {
-                let isTranslated = entry.localizations?[language]?.stringUnit?.value != nil
-                    || entry.localizations?[language]?.variations != nil
-
-                if isTranslated { translated += 1 } else { untranslated += 1 }
+                if entry.localizations?[language]?.hasContent == true {
+                    translated += 1
+                } else {
+                    untranslated += 1
+                }
             }
 
             let total = translated + untranslated

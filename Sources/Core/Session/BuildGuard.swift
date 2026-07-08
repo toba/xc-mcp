@@ -43,6 +43,23 @@ public enum BuildGuard {
         throw BuildGuardError(path: path, timedOut: true)
     }
 
+    /// Runs `body` while holding the cross-process build lock for `path`, releasing it on every
+    /// exit path (return, throw, or cancellation). When `path` is nil the body runs without a lock.
+    ///
+    /// Prefer this over manual ``acquire(path:description:timeout:)`` / ``release(fd:)`` pairs —
+    /// the `defer` guarantees the fd is released even when a future edit adds an early return.
+    public static func withGuard<T>(
+        path: String?,
+        description: String,
+        timeout: Duration = defaultTimeout,
+        _ body: () async throws -> T,
+    ) async throws -> T {
+        guard let path else { return try await body() }
+        let fd = try await acquire(path: path, description: description, timeout: timeout)
+        defer { release(fd: fd) }
+        return try await body()
+    }
+
     private static func writeLockDescription(fd: Int32, description: String) {
         let data = Data(description.utf8)
         _ = ftruncate(fd, 0)

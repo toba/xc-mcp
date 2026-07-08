@@ -18,8 +18,7 @@ public enum ProcessError: Error, Sendable, LocalizedError, MCPErrorConvertible {
 
     public func toMCPError() -> MCPError {
         switch self {
-            case let .timeout(duration):
-                .internalError("Process timed out after \(duration)")
+            case let .timeout(duration): .internalError("Process timed out after \(duration)")
         }
     }
 }
@@ -241,7 +240,8 @@ extension ProcessResult {
     /// ordering is flaky under parallel CI load (the `run` result occasionally wins, swallowing the
     /// timeout). To make the timeout the deterministic winner, the deadline task records a sticky
     /// flag *before* killing; any subsequent `run` completion is therefore known to be a
-    /// kill-induced unblock and is reported as a timeout regardless of scheduler ordering. (ycq-rdc)
+    /// kill-induced unblock and is reported as a timeout regardless of scheduler ordering.
+    /// (ycq-rdc)
     private static func raceTimeout<T: Sendable>(
         _ timeout: Duration?,
         run: @escaping @Sendable () async throws -> T,
@@ -253,11 +253,11 @@ extension ProcessResult {
         // boundary (a bare `~Copyable` Mutex cannot).
         let timedOut = TimeoutFlag()
         return try await withThrowingTaskGroup(of: T?.self) { group in
-            group.addTask { try await run() }
-            group.addTask {
+            group.addTask(name: "subprocess-run") { try await run() }
+            group.addTask(name: "subprocess-timeout") {
                 try await Task.sleep(for: timeout)
-                // Mark the breach before the kill: the SIGKILL unblocks `run`, so by the time
-                // run can complete this flag is already set. The sentinel `nil` distinguishes the
+                // Mark the breach before the kill: the SIGKILL unblocks `run`, so by the time run
+                // can complete this flag is already set. The sentinel `nil` distinguishes the
                 // deadline task from a genuine `run` result.
                 timedOut.raise()
                 onTimeout()
@@ -270,6 +270,23 @@ extension ProcessResult {
             guard let result = first else { throw ProcessError.timeout(duration: timeout) }
             return result
         }
+    }
+
+    /// Runs an `xcrun` subtool (e.g. `simctl`, `devicectl`, `xctrace`) with the given arguments.
+    ///
+    /// Centralizes the `.name("xcrun")` + `[subtool] + arguments` invocation shared by the
+    /// simctl/devicectl/xctrace runners. Callers wrap this in their own typed-throws `catch` to map
+    /// the failure onto a tool-specific error.
+    ///
+    /// - Parameters:
+    ///   - subtool: The xcrun subtool name (e.g. "simctl").
+    ///   - arguments: Arguments passed after the subtool name.
+    /// - Returns: A ``ProcessResult`` with exit code and captured output.
+    public static func xcrun(
+        _ subtool: String,
+        arguments: [String],
+    ) async throws -> ProcessResult {
+        try await runSubprocess(.name("xcrun"), arguments: Arguments([subtool] + arguments))
     }
 
     /// Discards the result. Useful for fire-and-forget commands like `kill` or `pkill`.
@@ -320,8 +337,7 @@ public enum FileUtility {
         guard let result = try? await ProcessResult.run(
             "/usr/bin/tail", arguments: ["-n", "\(count)", path], mergeStderr: false,
         ),
-              !result.stdout.isEmpty
-        else { return nil }
+              !result.stdout.isEmpty else { return nil }
         return result.stdout
     }
 }
@@ -448,6 +464,27 @@ public enum LogCapture {
             // Brief delay to allow signal delivery for pattern-based kills
             try? await Task.sleep(for: .milliseconds(500))
         }
+    }
+}
+
+// MARK: - Process Factory
+
+public extension Process {
+    /// Creates (but does not start) an `xcrun` subtool process with stderr routed to a fresh pipe.
+    ///
+    /// Used for long-running recordings (`xctrace record`, `simctl io recordVideo`) where the
+    /// caller owns the process lifecycle and stops it with SIGINT.
+    ///
+    /// - Parameters:
+    ///   - subtool: The xcrun subtool name (e.g. "xctrace").
+    ///   - arguments: Arguments passed after the subtool name.
+    /// - Returns: An unstarted `Process`; call `run()` to launch it.
+    static func xcrun(_ subtool: String, arguments: [String]) -> Process {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
+        process.arguments = [subtool] + arguments
+        process.standardError = Pipe()
+        return process
     }
 }
 

@@ -210,11 +210,7 @@ public struct DetectUnusedCodeTool: Sendable {
         } else {
             if declarations.isEmpty {
                 return CallTool.Result(content: [
-                    .text(
-                        text: "No unused code found.",
-                        annotations: nil,
-                        _meta: nil,
-                    )
+                    .text(text: "No unused code found.", annotations: nil, _meta: nil)
                 ])
             }
             state = Self.createChecklist(from: declarations, cachePath: cachePath)
@@ -250,11 +246,7 @@ public struct DetectUnusedCodeTool: Sendable {
 
         if filtered.isEmpty, declarations.isEmpty {
             return CallTool.Result(content: [
-                .text(
-                    text: "No unused code found.",
-                    annotations: nil,
-                    _meta: nil,
-                )
+                .text(text: "No unused code found.", annotations: nil, _meta: nil)
             ])
         }
 
@@ -321,9 +313,8 @@ public struct DetectUnusedCodeTool: Sendable {
     )? {
         let cacheFile = try await cacheFilePath(arguments: arguments)
         guard FileManager.default.fileExists(atPath: cacheFile),
-              let data = try? Data(contentsOf: URL(fileURLWithPath: cacheFile)),
-              let json = String(data: data, encoding: .utf8)
-        else { return nil }
+            let data = try? Data(contentsOf: URL(fileURLWithPath: cacheFile)),
+            let json = String(data: data, encoding: .utf8) else { return nil }
         return (json, cacheFile)
     }
 
@@ -393,53 +384,61 @@ public struct DetectUnusedCodeTool: Sendable {
             args.append(glob)
         }
 
-        var guardFD: Int32?
-
-        if !skipBuild {
-            guardFD = try await BuildGuard.acquire(
-                path: project ?? packagePath, description: "periphery scan",
-            )
-        }
         do {
-            let result = try await ProcessResult.run(
-                executablePath, arguments: args, mergeStderr: false,
-                timeout: .seconds(600),
-            )
-            if let guardFD { BuildGuard.release(fd: guardFD) }
-
-            if result.exitCode != 0 {
-                let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
-                let detail = stderr.isEmpty ? result.stdout : stderr
-
-                if detail.contains("Cannot calculate full path for file element"),
-                   let project
-                {
-                    throw MCPError.internalError(Self.selfReferenceGuidance(
-                        project: project,
-                        peripheryDetail: detail
-                    ))
-                }
-                throw MCPError.internalError(
-                    "Periphery exited with code \(result.exitCode):\n\(detail)",
+            return try await BuildGuard.withGuard(
+                path: skipBuild ? nil : (project ?? packagePath),
+                description: "periphery scan",
+            ) {
+                try await runPeriphery(
+                    executablePath: executablePath, args: args,
+                    packagePath: packagePath, project: project, schemes: schemes,
                 )
             }
-
-            // Cache raw JSON to disk, removing any stale checklist from a prior scan
-            let hashInput = "\(packagePath)|\(project ?? "")|\(schemes.joined(separator: ","))"
-            let hash = Self.shortHash(hashInput)
-            let cacheFile = "/tmp/periphery-\(hash).json"
-            let oldChecklist = Self.checklistPath(forCache: cacheFile)
-            try? FileManager.default.removeItem(atPath: oldChecklist)
-            try result.stdout.write(toFile: cacheFile, atomically: true, encoding: .utf8)
-
-            return (result.stdout, cacheFile)
         } catch let error as MCPError {
-            if let guardFD { BuildGuard.release(fd: guardFD) }
             throw error
         } catch {
-            if let guardFD { BuildGuard.release(fd: guardFD) }
             throw try error.asMCPError()
         }
+    }
+
+    /// Runs the periphery scan and caches its JSON output, returning `(rawJSON, cacheFilePath)`.
+    private func runPeriphery(
+        executablePath: String,
+        args: [String],
+        packagePath: String,
+        project: String?,
+        schemes: [String],
+    ) async throws -> (String, String) {
+        let result = try await ProcessResult.run(
+            executablePath, arguments: args, mergeStderr: false,
+            timeout: .seconds(600),
+        )
+
+        if result.exitCode != 0 {
+            let stderr = result.stderr.trimmingCharacters(in: .whitespacesAndNewlines)
+            let detail = stderr.isEmpty ? result.stdout : stderr
+
+            if detail.contains("Cannot calculate full path for file element"),
+               let project
+            {
+                throw MCPError.internalError(Self.selfReferenceGuidance(
+                    project: project, peripheryDetail: detail,
+                ))
+            }
+            throw MCPError.internalError(
+                "Periphery exited with code \(result.exitCode):\n\(detail)",
+            )
+        }
+
+        // Cache raw JSON to disk, removing any stale checklist from a prior scan
+        let hashInput = "\(packagePath)|\(project ?? "")|\(schemes.joined(separator: ","))"
+        let hash = Self.shortHash(hashInput)
+        let cacheFile = "/tmp/periphery-\(hash).json"
+        let oldChecklist = Self.checklistPath(forCache: cacheFile)
+        try? FileManager.default.removeItem(atPath: oldChecklist)
+        try result.stdout.write(toFile: cacheFile, atomically: true, encoding: .utf8)
+
+        return (result.stdout, cacheFile)
     }
 
     /// Builds an actionable error for Periphery's opaque "Cannot calculate full path" failure,
@@ -590,8 +589,7 @@ public struct DetectUnusedCodeTool: Sendable {
         let parts = location.split(separator: ":")
         guard parts.count >= 3,
               let line = Int(parts[parts.count - 2]),
-              let column = Int(parts[parts.count - 1])
-        else { return (location, 0, 0) }
+              let column = Int(parts[parts.count - 1]) else { return (location, 0, 0) }
         let file = parts[0..<parts.count - 2].joined(separator: ":")
         return (file, line, column)
     }
@@ -877,8 +875,7 @@ public struct DetectUnusedCodeTool: Sendable {
         guard case let .object(markObj) = arguments["mark"],
               case let .array(indicesArray) = markObj["indices"],
               case let .string(statusStr) = markObj["status"],
-              let status = ChecklistStatus(rawValue: statusStr)
-        else { return nil }
+              let status = ChecklistStatus(rawValue: statusStr) else { return nil }
         let indices = indicesArray.compactMap { value -> Int? in
             if case let .int(i) = value { return i }
             if case let .double(d) = value, d == d.rounded() { return Int(d) }

@@ -36,15 +36,11 @@ public enum PredicateFilterValidator {
     public static func validate(_ value: String, field: String) throws(PredicateFilterError) {
         guard !value.isEmpty else { throw .invalidValue(field: field, value: value) }
 
+        // Allowed scalars: 0-9 (0x30-0x39), A-Z (0x41-0x5A), a-z (0x61-0x7A), '.' (0x2E), '-'
+        // (0x2D), '_' (0x5F).
         for scalar in value.unicodeScalars {
             switch scalar.value {
-                case 0x30...0x39,  // 0-9
-                     0x41...0x5A,  // A-Z
-                     0x61...0x7A,  // a-z
-                     0x2E,         // .
-                     0x2D,         // -
-                     0x5F:         // _
-                    continue
+                case 0x30...0x39, 0x41...0x5A, 0x61...0x7A, 0x2E, 0x2D, 0x5F: continue
                 default: throw .invalidValue(field: field, value: value)
             }
         }

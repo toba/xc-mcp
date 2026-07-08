@@ -30,10 +30,7 @@ public struct XctraceRunner: Sendable {
     /// - Returns: The result containing exit code and output.
     /// - Throws: An error if the process fails to launch.
     public func run(arguments: [String]) async throws -> XctraceResult {
-        try await ProcessResult.runSubprocess(
-            .name("xcrun"),
-            arguments: Arguments(["xctrace"] + arguments),
-        )
+        try await ProcessResult.xcrun("xctrace", arguments: arguments)
     }
 
     /// Starts a long-running trace recording, returning the Process for lifecycle management.
@@ -76,13 +73,7 @@ public struct XctraceRunner: Sendable {
 
         if allProcesses { args += ["--all-processes"] }
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-        process.arguments = ["xctrace"] + args
-
-        let stderrPipe = Pipe()
-        process.standardError = stderrPipe
-
+        let process = Process.xcrun("xctrace", arguments: args)
         try process.run()
         return process
     }

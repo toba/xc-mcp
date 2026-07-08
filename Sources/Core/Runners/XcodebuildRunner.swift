@@ -80,30 +80,45 @@ public struct XcodebuildRunner: Sendable {
         outputTimeout: Duration? = outputTimeout,
         onProgress: (@Sendable (String) -> Void)?,
     ) async throws -> XcodebuildResult {
-        let guardPath = Self.extractProjectPath(from: arguments)
-        var guardFD: Int32?
-
-        if let guardPath {
-            guardFD = try await BuildGuard.acquire(
-                path: guardPath,
-                description: "xcodebuild \(arguments.first ?? "")",
-            )
-        }
-
-        let result: XcodebuildResult
-
-        do {
-            result = try await runProcess(
+        try await BuildGuard.withGuard(
+            path: Self.extractProjectPath(from: arguments),
+            description: "xcodebuild \(arguments.first ?? "")",
+        ) {
+            try await runProcess(
                 arguments: arguments, environment: environment,
                 timeout: timeout, outputTimeout: outputTimeout,
                 onProgress: onProgress,
             )
-        } catch {
-            if let guardFD { BuildGuard.release(fd: guardFD) }
-            throw error
         }
-        if let guardFD { BuildGuard.release(fd: guardFD) }
-        return result
+    }
+
+    /// Builds the leading `-workspace`/`-project` (mutually exclusive) plus scoped
+    /// `-derivedDataPath` arguments shared by every project/workspace-based command.
+    ///
+    /// - Parameter includeDerivedData: When false, the DerivedData-scoping argument is omitted
+    ///   (used by `-list`, which doesn't take `-derivedDataPath`).
+    static func projectArgs(
+        projectPath: String?,
+        workspacePath: String?,
+        destination: String? = nil,
+        additionalArguments: [String] = [],
+        includeDerivedData: Bool = true,
+    ) -> [String] {
+        var args: [String] = []
+
+        if let workspacePath {
+            args += ["-workspace", workspacePath]
+        } else if let projectPath { args += ["-project", projectPath] }
+
+        if includeDerivedData,
+           let derivedData = DerivedDataScoper.effectivePath(
+               workspacePath: workspacePath,
+               projectPath: projectPath,
+               destination: destination,
+               additionalArguments: additionalArguments,
+           ) { args += ["-derivedDataPath", derivedData] }
+
+        return args
     }
 
     /// Extracts the project or workspace path from xcodebuild arguments.
@@ -163,7 +178,7 @@ public struct XcodebuildRunner: Sendable {
                     pgidBox.withLock { $0 = execution.processIdentifier.value }
                     return try await withThrowingTaskGroup(of: Void.self) { group in
                         // Read stdout
-                        group.addTask {
+                        group.addTask(name: "xcodebuild-stdout-reader") {
                             for try await chunk in stdoutSeq {
                                 chunk.withUnsafeBytes { bytes in
                                     let data = Data(bytes)
@@ -177,7 +192,7 @@ public struct XcodebuildRunner: Sendable {
                         }
 
                         // Read stderr
-                        group.addTask {
+                        group.addTask(name: "xcodebuild-stderr-reader") {
                             for try await chunk in stderrSeq {
                                 chunk.withUnsafeBytes { bytes in
                                     let data = Data(bytes)
@@ -191,7 +206,7 @@ public struct XcodebuildRunner: Sendable {
                         }
 
                         // Watchdog: check timeout + stuck detection
-                        group.addTask {
+                        group.addTask(name: "xcodebuild-watchdog") {
                             while true {
                                 try await Task.sleep(for: .milliseconds(100))
 
@@ -287,31 +302,31 @@ public struct XcodebuildRunner: Sendable {
     /// Markers xcodebuild prints when a build/test/clean has finished, in both the modern
     /// (`Build succeeded in …`) and legacy (`** BUILD SUCCEEDED **`) formats.
     static func outputShowsBuildFinished(
-        _ output: String, arguments: [String] = [],
+        _ output: String,
+        arguments: [String] = [],
     ) -> Bool {
         // During an `archive` action, the build phase prints a `Build succeeded in …` /
-        // `** BUILD SUCCEEDED **` marker *before* the install/codesign phase runs. Treating
-        // those as terminal would short-circuit a still-running archive — xcodebuild would
-        // report success while no .xcarchive bundle exists on disk. (y04-t3c) For archive
-        // runs, only the archive-specific terminal markers count.
-        if arguments.contains("archive") {
-            return output.contains("** ARCHIVE SUCCEEDED **")
+        // `** BUILD SUCCEEDED **` marker *before* the install/codesign phase runs. Treating those
+        // as terminal would short-circuit a still-running archive — xcodebuild would report success
+        // while no .xcarchive bundle exists on disk. (y04-t3c) For archive runs, only the
+        // archive-specific terminal markers count.
+        arguments.contains("archive")
+            ? output.contains("** ARCHIVE SUCCEEDED **")
                 || output.contains("** ARCHIVE FAILED **")
                 || output.contains("Archive succeeded in ")
                 || output.contains("Archive failed after ")
-        }
-        return output.contains("** BUILD SUCCEEDED **")
-            || output.contains("** BUILD FAILED **")
-            || output.contains("** TEST SUCCEEDED **")
-            || output.contains("** TEST FAILED **")
-            || output.contains("** CLEAN SUCCEEDED **")
-            || output.contains("** ARCHIVE SUCCEEDED **")
-            || output.contains("** ARCHIVE FAILED **")
-            || output.contains("Build succeeded in ")
-            || output.contains("Build failed after ")
-            || output.contains("Archive succeeded in ")
-            || output.contains("Archive failed after ")
-            || output.contains("Build complete!")
+            : output.contains("** BUILD SUCCEEDED **")
+                || output.contains("** BUILD FAILED **")
+                || output.contains("** TEST SUCCEEDED **")
+                || output.contains("** TEST FAILED **")
+                || output.contains("** CLEAN SUCCEEDED **")
+                || output.contains("** ARCHIVE SUCCEEDED **")
+                || output.contains("** ARCHIVE FAILED **")
+                || output.contains("Build succeeded in ")
+                || output.contains("Build failed after ")
+                || output.contains("Archive succeeded in ")
+                || output.contains("Archive failed after ")
+                || output.contains("Build complete!")
     }
 
     /// Derives an exit code from finished build output when the process had to be terminated before
@@ -350,20 +365,10 @@ public struct XcodebuildRunner: Sendable {
         outputTimeout: Duration? = outputTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> XcodebuildResult {
-        var args: [String] = []
-
-        if let workspacePath {
-            args += ["-workspace", workspacePath]
-        } else if let projectPath { args += ["-project", projectPath] }
-
-        if let derivedData = DerivedDataScoper.effectivePath(
-            workspacePath: workspacePath,
-            projectPath: projectPath,
-            destination: destination,
-            additionalArguments: additionalArguments,
-        ) {
-            args += ["-derivedDataPath", derivedData]
-        }
+        var args = Self.projectArgs(
+            projectPath: projectPath, workspacePath: workspacePath,
+            destination: destination, additionalArguments: additionalArguments,
+        )
 
         args += [
             "-scheme", scheme,
@@ -414,20 +419,10 @@ public struct XcodebuildRunner: Sendable {
         timeout: TimeInterval = defaultTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> XcodebuildResult {
-        var args: [String] = []
-
-        if let workspacePath {
-            args += ["-workspace", workspacePath]
-        } else if let projectPath { args += ["-project", projectPath] }
-
-        if let derivedData = DerivedDataScoper.effectivePath(
-            workspacePath: workspacePath,
-            projectPath: projectPath,
-            destination: destination,
-            additionalArguments: additionalArguments,
-        ) {
-            args += ["-derivedDataPath", derivedData]
-        }
+        var args = Self.projectArgs(
+            projectPath: projectPath, workspacePath: workspacePath,
+            destination: destination, additionalArguments: additionalArguments,
+        )
 
         args += [
             "-target", target,
@@ -478,20 +473,10 @@ public struct XcodebuildRunner: Sendable {
         outputTimeout: Duration? = defaultTestOutputTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> XcodebuildResult {
-        var args: [String] = []
-
-        if let workspacePath {
-            args += ["-workspace", workspacePath]
-        } else if let projectPath { args += ["-project", projectPath] }
-
-        if let derivedData = DerivedDataScoper.effectivePath(
-            workspacePath: workspacePath,
-            projectPath: projectPath,
-            destination: destination,
-            additionalArguments: additionalArguments,
-        ) {
-            args += ["-derivedDataPath", derivedData]
-        }
+        var args = Self.projectArgs(
+            projectPath: projectPath, workspacePath: workspacePath,
+            destination: destination, additionalArguments: additionalArguments,
+        )
 
         args += ["-scheme", scheme, "-destination", destination, "-configuration", configuration]
 
@@ -537,16 +522,7 @@ public struct XcodebuildRunner: Sendable {
         scheme: String,
         configuration: String = "Debug",
     ) async throws -> XcodebuildResult {
-        var args: [String] = []
-
-        if let workspacePath {
-            args += ["-workspace", workspacePath]
-        } else if let projectPath { args += ["-project", projectPath] }
-
-        if let derivedData = DerivedDataScoper.effectivePath(
-            workspacePath: workspacePath,
-            projectPath: projectPath,
-        ) { args += ["-derivedDataPath", derivedData] }
+        var args = Self.projectArgs(projectPath: projectPath, workspacePath: workspacePath)
 
         args += ["-scheme", scheme, "-configuration", configuration, "clean"]
 
@@ -565,10 +541,10 @@ public struct XcodebuildRunner: Sendable {
         workspacePath: String? = nil,
     ) async throws -> XcodebuildResult {
         var args: [String] = ["-list", "-json"]
-
-        if let workspacePath {
-            args += ["-workspace", workspacePath]
-        } else if let projectPath { args += ["-project", projectPath] }
+        args += Self.projectArgs(
+            projectPath: projectPath, workspacePath: workspacePath,
+            includeDerivedData: false,
+        )
 
         return try await run(arguments: args)
     }
@@ -589,17 +565,10 @@ public struct XcodebuildRunner: Sendable {
         configuration: String = "Debug",
         destination: String? = nil,
     ) async throws -> XcodebuildResult {
-        var args: [String] = []
-
-        if let workspacePath {
-            args += ["-workspace", workspacePath]
-        } else if let projectPath { args += ["-project", projectPath] }
-
-        if let derivedData = DerivedDataScoper.effectivePath(
-            workspacePath: workspacePath,
-            projectPath: projectPath,
+        var args = Self.projectArgs(
+            projectPath: projectPath, workspacePath: workspacePath,
             destination: destination,
-        ) { args += ["-derivedDataPath", derivedData] }
+        )
 
         args += ["-scheme", scheme, "-configuration", configuration]
 

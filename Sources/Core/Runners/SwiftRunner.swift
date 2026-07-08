@@ -44,8 +44,7 @@ public struct SwiftRunner: Sendable {
     /// must not contain spaces.
     public static func extraArgsFromEnvironment() -> [String] {
         guard let raw = ProcessInfo.processInfo.environment["XC_MCP_SWIFT_EXTRA_ARGS"],
-            !raw.isEmpty
-        else { return [] }
+            !raw.isEmpty else { return [] }
         return raw.split(whereSeparator: \.isWhitespace).map(String.init)
     }
 
@@ -86,16 +85,11 @@ public struct SwiftRunner: Sendable {
         timeout: Duration = Self.defaultTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> SwiftResult {
-        var guardFD: Int32?
-
-        if let workingDirectory {
-            guardFD = try await BuildGuard.acquire(
-                path: workingDirectory,
-                description: "swift \(arguments.first ?? "")",
-            )
-        }
-        do {
-            let result = try await ProcessResult.runSubprocess(
+        try await BuildGuard.withGuard(
+            path: workingDirectory,
+            description: "swift \(arguments.first ?? "")",
+        ) {
+            try await ProcessResult.runSubprocess(
                 .path("/usr/bin/swift"),
                 arguments: Arguments(arguments),
                 workingDirectory: workingDirectory.map { FilePath($0) },
@@ -103,11 +97,6 @@ public struct SwiftRunner: Sendable {
                 timeout: timeout,
                 onProgress: onProgress,
             )
-            if let guardFD { BuildGuard.release(fd: guardFD) }
-            return result
-        } catch {
-            if let guardFD { BuildGuard.release(fd: guardFD) }
-            throw error
         }
     }
 

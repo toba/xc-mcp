@@ -78,8 +78,7 @@ public enum InteractError: LocalizedError, Sendable, MCPErrorConvertible {
                  .elementNotFound,
                  .elementNotFoundByQuery,
                  .invalidKeyName,
-                 .noCache:
-                MCPError.invalidParams(errorDescription ?? "Unknown interact error")
+                 .noCache: MCPError.invalidParams(errorDescription ?? "Unknown interact error")
             case .actionFailed, .setValueFailed, .menuItemNotFound:
                 MCPError.internalError(errorDescription ?? "Unknown interact error")
         }
@@ -88,8 +87,10 @@ public enum InteractError: LocalizedError, Sendable, MCPErrorConvertible {
 
 /// Wraps `AXUIElement` for safe passage across concurrency domains.
 ///
-/// Access is serialized by `InteractSessionManager` actor.
-public struct SendableAXUIElement: @unchecked Sendable {
+/// Access is serialized by `InteractSessionManager` actor. `AXUIElement` is a CoreFoundation handle
+/// with no `Sendable` conformance, so `@unchecked` is unavoidable here — the actor provides the
+/// data-race safety the compiler can't verify. (sm:ignore flagUncheckedSendable)
+public struct SendableAXUIElement: @unchecked Sendable {  // sm:ignore flagUncheckedSendable
     public let element: AXUIElement
 
     public init(_ element: AXUIElement) { self.element = element }
@@ -197,37 +198,14 @@ public struct InteractRunner: Sendable {
         nextId: inout Int,
         results: inout [(InteractElement, SendableAXUIElement)],
     ) {
-        let info = getAttributes(from: element, id: nextId, depth: depth)
-        nextId += 1
-
-        // Get children before appending so we can set childCount
-        var children: [AXUIElement] = []
-
-        if depth < maxDepth {
-            var childrenRef: CFTypeRef?
-            let err = AXUIElementCopyAttributeValue(
-                element, kAXChildrenAttribute as CFString, &childrenRef,
-            )
-            if err == .success, let cfArray = childrenRef as? [AXUIElement] { children = cfArray }
-        }
-
-        let elementWithChildren = InteractElement(
-            id: info.id,
-            role: info.role,
-            subrole: info.subrole,
-            title: info.title,
-            value: info.value,
-            identifier: info.identifier,
-            roleDescription: info.roleDescription,
-            position: info.position,
-            size: info.size,
-            enabled: info.enabled,
-            focused: info.focused,
-            actions: info.actions,
-            depth: info.depth,
-            childCount: children.count,
+        // Fetch children once (only when we intend to descend) and reuse the count for the element,
+        // rather than letting `getAttributes` fetch them a second time just to count.
+        let children = depth < maxDepth ? children(of: element) : []
+        let info = getAttributes(
+            from: element, id: nextId, depth: depth, childCount: children.count,
         )
-        results.append((elementWithChildren, SendableAXUIElement(element)))
+        nextId += 1
+        results.append((info, SendableAXUIElement(element)))
 
         for child in children {
             traverseElement(
@@ -236,12 +214,35 @@ public struct InteractRunner: Sendable {
         }
     }
 
+    /// Returns the accessibility children of an element, or an empty array if it has none.
+    private func children(of element: AXUIElement) -> [AXUIElement] {
+        var childrenRef: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element,
+            kAXChildrenAttribute as CFString,
+            &childrenRef
+        ) == .success,
+              let arr = childrenRef as? [AXUIElement] else { return [] }
+        return arr
+    }
+
     // MARK: - Attribute Reading
 
     public func getAttributes(
         from element: AXUIElement,
         id: Int = 0,
         depth: Int = 0
+    ) -> InteractElement {
+        getAttributes(from: element, id: id, depth: depth, childCount: children(of: element).count)
+    }
+
+    /// Reads an element's attributes using a pre-computed `childCount`, avoiding a redundant
+    /// children fetch when the caller (tree traversal) already has the array in hand.
+    private func getAttributes(
+        from element: AXUIElement,
+        id: Int,
+        depth: Int,
+        childCount: Int,
     ) -> InteractElement {
         let role = getStringAttribute(element, kAXRoleAttribute)
         let subrole = getStringAttribute(element, kAXSubroleAttribute)
@@ -254,52 +255,23 @@ public struct InteractRunner: Sendable {
         let focused = getBoolAttribute(element, kAXFocusedAttribute) ?? false
 
         var position: CGPoint?
-        var positionRef: CFTypeRef?
 
-        if AXUIElementCopyAttributeValue(
-            element,
-            kAXPositionAttribute as CFString,
-            &positionRef
-        )
-            == .success
-        {
+        if let positionValue = axValueAttribute(element, kAXPositionAttribute) {
             var point = CGPoint.zero
-            // swiftlint:disable:next force_cast
-            if AXValueGetValue(positionRef as! AXValue, .cgPoint, &point) { position = point }
+            if AXValueGetValue(positionValue, .cgPoint, &point) { position = point }
         }
 
         var size: CGSize?
-        var sizeRef: CFTypeRef?
 
-        if AXUIElementCopyAttributeValue(
-            element,
-            kAXSizeAttribute as CFString,
-            &sizeRef
-        )
-            == .success
-        {
+        if let sizeValue = axValueAttribute(element, kAXSizeAttribute) {
             var sz = CGSize.zero
-            // swiftlint:disable:next force_cast
-            if AXValueGetValue(sizeRef as! AXValue, .cgSize, &sz) { size = sz }
+            if AXValueGetValue(sizeValue, .cgSize, &sz) { size = sz }
         }
 
         var actions: [String] = []
         var actionsRef: CFArray?
         if AXUIElementCopyActionNames(element, &actionsRef) == .success,
            let actionNames = actionsRef as? [String] { actions = actionNames }
-
-        var childCount = 0
-        var childrenRef: CFTypeRef?
-
-        if AXUIElementCopyAttributeValue(
-            element,
-            kAXChildrenAttribute as CFString,
-            &childrenRef
-        )
-            == .success
-        {
-            if let arr = childrenRef as? [AXUIElement] { childCount = arr.count }
-        }
 
         return .init(
             id: id,
@@ -345,6 +317,21 @@ public struct InteractRunner: Sendable {
         getAttribute(element, attribute, as: Bool.self)
     }
 
+    /// Reads an `AXValue`-typed attribute (position, size), verifying the CoreFoundation type ID at
+    /// runtime so a malformed provider returning the wrong CF type yields `nil` instead of
+    /// crashing.
+    ///
+    /// `as?` can't be used to downcast `CFTypeRef` to a concrete CF type — it bridges
+    /// unconditionally without checking the dynamic `CFTypeID` — so we gate the cast on
+    /// `CFGetTypeID` and force-cast only once the type is confirmed.
+    private func axValueAttribute(_ element: AXUIElement, _ attribute: String) -> AXValue? {
+        var ref: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, attribute as CFString, &ref) == .success,
+              let ref,
+              CFGetTypeID(ref) == AXValueGetTypeID() else { return nil }
+        return ref as! AXValue  // sm:ignore noForceUnwrap noForceCast — CFTypeID verified above
+    }
+
     // MARK: - Actions
 
     public func performAction(_ action: String, on element: AXUIElement) throws(InteractError) {
@@ -372,7 +359,7 @@ public struct InteractRunner: Sendable {
 
     // MARK: - Menu Navigation
 
-    public func navigateMenu(pid: pid_t, menuPath: [String]) throws(InteractError) {
+    public func navigateMenu(pid: pid_t, menuPath: [String]) async throws(InteractError) {
         try ensureAccessibility()
         let appElement = AXUIElementCreateApplication(pid)
 
@@ -381,11 +368,12 @@ public struct InteractRunner: Sendable {
         let err = AXUIElementCopyAttributeValue(
             appElement, kAXMenuBarAttribute as CFString, &menuBarRef,
         )
-        guard err == .success, let menuBar = menuBarRef else {
-            throw InteractError.menuItemNotFound("Cannot access menu bar")
-        }
-        // swiftlint:disable:next force_cast
-        let menuBarElement = menuBar as! AXUIElement
+        guard err == .success,
+              let menuBarRef,
+              CFGetTypeID(menuBarRef) == AXUIElementGetTypeID()
+        else { throw InteractError.menuItemNotFound("Cannot access menu bar") }
+        // CFTypeID verified above, so the force-cast is safe.
+        let menuBarElement = menuBarRef as! AXUIElement  // sm:ignore noForceUnwrap noForceCast
 
         var currentElement: AXUIElement = menuBarElement
 
@@ -400,23 +388,10 @@ public struct InteractRunner: Sendable {
             if index < menuPath.count - 1 {
                 // Open submenu
                 try performAction(kAXPressAction, on: child)
-                // Small delay to let menu open
-                Thread.sleep(forTimeInterval: 0.1)
+                // Small delay to let menu open (typed-throws: swallow cancellation, don't leak it)
+                try? await Task.sleep(for: .milliseconds(100))
                 // Navigate into the opened submenu's children
-                var submenuRef: CFTypeRef?
-
-                if AXUIElementCopyAttributeValue(
-                    child,
-                    kAXChildrenAttribute as CFString,
-                    &submenuRef,
-                ) == .success,
-                   let submenuChildren = submenuRef as? [AXUIElement],
-                   let submenu = submenuChildren.first
-                {
-                    currentElement = submenu
-                } else {
-                    currentElement = child
-                }
+                currentElement = children(of: child).first ?? child
             } else {
                 // Click final item
                 try performAction(kAXPressAction, on: child)
@@ -425,21 +400,10 @@ public struct InteractRunner: Sendable {
     }
 
     private func findChildByTitle(_ element: AXUIElement, title: String) -> AXUIElement? {
-        var childrenRef: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(
-            element,
-            kAXChildrenAttribute as CFString,
-            &childrenRef
-        )
-            == .success,
-              let children = childrenRef as? [AXUIElement]
-        else { return nil }
-
-        for child in children {
-            if let childTitle = getStringAttribute(child, kAXTitleAttribute),
-               childTitle.localizedCaseInsensitiveCompare(title) == .orderedSame { return child }
+        children(of: element).first { child in
+            getStringAttribute(child, kAXTitleAttribute)?
+                .localizedCaseInsensitiveCompare(title) == .orderedSame
         }
-        return nil
     }
 
     // MARK: - Keyboard Events
