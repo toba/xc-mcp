@@ -80,7 +80,8 @@ public struct CleanTool: Sendable {
 
             if result.succeeded || buildResult.status == "success" {
                 messages.append(
-                    "Clean succeeded for scheme '\(scheme)' (\(configuration) configuration)",
+                    "Clean succeeded for scheme '\(scheme)' "
+                        + "(\(configuration ?? "scheme default") configuration)",
                 )
 
                 // Clean derived data if requested

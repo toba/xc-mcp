@@ -16,7 +16,7 @@ public enum DerivedDataLocator {
     ///   - projectPath: Path to the .xcodeproj file.
     ///   - workspacePath: Path to the .xcworkspace file.
     ///   - scheme: The scheme to query.
-    ///   - configuration: Build configuration. Defaults to "Debug".
+    ///   - configuration: Build configuration, or `nil` to honor the scheme's own configuration.
     ///   - destination: The build destination whose platform-scoped DerivedData to resolve.
     ///     Defaults to `platform=macOS` (every current caller is a macOS build diagnostic). Must
     ///     match the destination the artifacts were built with, since DerivedData is namespaced per
@@ -28,7 +28,7 @@ public enum DerivedDataLocator {
         projectPath: String?,
         workspacePath: String?,
         scheme: String,
-        configuration: String = "Debug",
+        configuration: String? = nil,
         destination: String = XcodebuildRunner.macOSDestination,
     ) async throws -> String {
         let result = try await xcodebuildRunner.showBuildSettings(

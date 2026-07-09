@@ -110,16 +110,8 @@ public struct GetMacAppPathTool: Sendable {
             )
         }
 
-        // Get configuration
-        let configuration: String
-
-        if case let .string(value) = arguments["configuration"] {
-            configuration = value
-        } else if let sessionConfig = await sessionManager.configuration {
-            configuration = sessionConfig
-        } else {
-            configuration = "Debug"
-        }
+        // Get configuration (nil = honor the scheme's own configuration)
+        let configuration = await sessionManager.resolveConfiguration(from: arguments)
 
         // Validate we have either project or workspace
         if projectPath == nil, workspacePath == nil {

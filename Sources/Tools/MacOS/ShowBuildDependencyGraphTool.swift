@@ -114,7 +114,7 @@ public struct ShowBuildDependencyGraphTool: Sendable {
 
     private func fetchAllTargetSettings(
         projectPath: String?, workspacePath: String?,
-        scheme: String, configuration: String,
+        scheme: String, configuration: String?,
     ) async throws -> [TargetInfo] {
         var args: [String] = []
         if let workspacePath {
@@ -122,7 +122,8 @@ public struct ShowBuildDependencyGraphTool: Sendable {
         } else if let projectPath {
             args += ["-project", projectPath]
         }
-        args += ["-scheme", scheme, "-configuration", configuration]
+        args += ["-scheme", scheme]
+        if let configuration { args += ["-configuration", configuration] }
         args += ["-showBuildSettings", "-json"]
 
         let result = try await xcodebuildRunner.run(arguments: args)

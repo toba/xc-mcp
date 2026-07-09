@@ -461,16 +461,19 @@ public actor SessionManager {
 
     /// Resolves the build configuration from arguments or session defaults.
     ///
-    /// - Parameters:
-    ///   - arguments: The tool arguments dictionary.
-    ///   - defaultValue: The fallback configuration if none is set. Defaults to "Debug".
-    /// - Returns: The resolved configuration.
+    /// Returns `nil` when the caller supplies no `configuration` argument and no session default is
+    /// set. A `nil` result means "unspecified" — callers must then omit `-configuration` from the
+    /// xcodebuild invocation so xcodebuild honors the scheme's own Build/Run action configuration.
+    /// Injecting a "Debug" fallback here overrode the scheme and produced the wrong build settings
+    /// (bundle identifier, app path) for schemes whose action uses a non-Debug configuration.
+    ///
+    /// - Parameter arguments: The tool arguments dictionary.
+    /// - Returns: The resolved configuration, or `nil` when unspecified.
     public func resolveConfiguration(
         from arguments: [String: Value],
-        default defaultValue: String = "Debug",
-    ) -> String {
+    ) -> String? {
         reloadIfNeeded()
-        return arguments.getString("configuration") ?? configuration ?? defaultValue
+        return arguments.getString("configuration") ?? configuration
     }
 
     /// Resolves project and workspace paths from arguments or session defaults.

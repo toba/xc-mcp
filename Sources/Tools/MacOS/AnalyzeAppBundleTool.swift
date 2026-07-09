@@ -130,9 +130,11 @@ public struct AnalyzeAppBundleTool: Sendable {
             )
         }
 
+        // nil = honor the scheme's own configuration (matches what build_macos produces when no
+        // configuration is specified).
         let sessionConfiguration = await sessionManager.configuration
         let configuration = arguments.getString("configuration") ?? sessionConfiguration
-            ?? "Release"
+        let configurationLabel = configuration ?? "scheme default"
 
         if projectPath == nil, workspacePath == nil {
             throw MCPError.invalidParams(
@@ -151,14 +153,14 @@ public struct AnalyzeAppBundleTool: Sendable {
         guard let appPath = BuildSettingExtractor.extractAppPath(from: buildSettings.stdout) else {
             throw MCPError.internalError(
                 "Could not determine app path from build settings. Build the project first with "
-                    + "build_macos (configuration: \(configuration)).",
+                    + "build_macos (configuration: \(configurationLabel)).",
             )
         }
 
         guard FileManager.default.fileExists(atPath: appPath) else {
             throw MCPError.internalError(
                 "App not found at expected path: \(appPath). Build the project first with build_macos "
-                    + "(configuration: \(configuration)).",
+                    + "(configuration: \(configurationLabel)).",
             )
         }
 

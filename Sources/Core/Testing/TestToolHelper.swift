@@ -70,7 +70,8 @@ public enum TestToolHelper {
     ///   - workspacePath: Path to .xcworkspace (or nil).
     ///   - scheme: The scheme to test.
     ///   - destination: The xcodebuild destination string.
-    ///   - configuration: Build configuration (Debug/Release).
+    ///   - configuration: Build configuration (Debug/Release), or `nil` to honor the scheme's own
+    ///     Test action configuration.
     ///   - environment: Environment for the test run.
     ///   - context: Human-readable context for error messages (e.g. "on simulator 'X'").
     ///   - errorsOnly: When true, suppress warnings in output.
@@ -84,7 +85,7 @@ public enum TestToolHelper {
         workspacePath: String?,
         scheme: String,
         destination: String,
-        configuration: String = "Debug",
+        configuration: String? = nil,
         additionalArguments: [String] = [],
         environment: Environment = .inherit,
         context: String,

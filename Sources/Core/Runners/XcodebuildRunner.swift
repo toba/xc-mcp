@@ -348,7 +348,8 @@ public struct XcodebuildRunner: Sendable {
     ///   - workspacePath: Path to the .xcworkspace file (mutually exclusive with projectPath).
     ///   - scheme: The scheme to build.
     ///   - destination: The build destination (e.g., "platform=iOS Simulator,id=<UDID>").
-    ///   - configuration: Build configuration (Debug or Release). Defaults to Debug.
+    ///   - configuration: Build configuration (Debug or Release). When `nil`, `-configuration` is
+    ///     omitted so xcodebuild honors the scheme's Build action configuration.
     ///   - additionalArguments: Extra arguments to pass to xcodebuild.
     /// - Returns: The build result containing exit code and output.
     /// - Throws: An error if the process fails to launch.
@@ -357,7 +358,7 @@ public struct XcodebuildRunner: Sendable {
         workspacePath: String? = nil,
         scheme: String,
         destination: String,
-        configuration: String = "Debug",
+        configuration: String? = nil,
         action: String = "build",
         additionalArguments: [String] = [],
         environment: Environment = .inherit,
@@ -370,12 +371,9 @@ public struct XcodebuildRunner: Sendable {
             destination: destination, additionalArguments: additionalArguments,
         )
 
-        args += [
-            "-scheme", scheme,
-            "-destination", destination,
-            "-configuration", configuration,
-            action,
-        ]
+        args += ["-scheme", scheme, "-destination", destination]
+        if let configuration { args += ["-configuration", configuration] }
+        args += [action]
 
         args += additionalArguments
 
@@ -419,7 +417,8 @@ public struct XcodebuildRunner: Sendable {
     ///   - workspacePath: Path to the .xcworkspace file (mutually exclusive with projectPath).
     ///   - target: The target to build.
     ///   - destination: The build destination (e.g., "platform=macOS").
-    ///   - configuration: Build configuration (Debug or Release). Defaults to Debug.
+    ///   - configuration: Build configuration (Debug or Release). When `nil`, `-configuration` is
+    ///     omitted so xcodebuild honors the scheme's Build action configuration.
     ///   - additionalArguments: Extra arguments to pass to xcodebuild.
     ///   - timeout: Maximum time to wait for the build to complete.
     ///   - onProgress: Optional callback invoked with output lines as they arrive.
@@ -430,7 +429,7 @@ public struct XcodebuildRunner: Sendable {
         workspacePath: String? = nil,
         target: String,
         destination: String,
-        configuration: String = "Debug",
+        configuration: String? = nil,
         additionalArguments: [String] = [],
         environment: Environment = .inherit,
         timeout: TimeInterval = defaultTimeout,
@@ -441,12 +440,9 @@ public struct XcodebuildRunner: Sendable {
             destination: destination, additionalArguments: additionalArguments,
         )
 
-        args += [
-            "-target", target,
-            "-destination", destination,
-            "-configuration", configuration,
-            "build",
-        ]
+        args += ["-target", target, "-destination", destination]
+        if let configuration { args += ["-configuration", configuration] }
+        args += ["build"]
 
         args += additionalArguments
 
@@ -463,7 +459,8 @@ public struct XcodebuildRunner: Sendable {
     ///   - workspacePath: Path to the .xcworkspace file (mutually exclusive with projectPath).
     ///   - scheme: The scheme containing tests to run.
     ///   - destination: The test destination (e.g., "platform=iOS Simulator,id=<UDID>").
-    ///   - configuration: Build configuration (Debug or Release). Defaults to Debug.
+    ///   - configuration: Build configuration (Debug or Release). When `nil`, `-configuration` is
+    ///     omitted so xcodebuild honors the scheme's Test action configuration.
     ///   - onlyTesting: Test identifiers to run exclusively (e.g., "MyTests/testFoo").
     ///   - skipTesting: Test identifiers to skip.
     ///   - enableCodeCoverage: Whether to enable code coverage collection.
@@ -478,7 +475,7 @@ public struct XcodebuildRunner: Sendable {
         workspacePath: String? = nil,
         scheme: String,
         destination: String,
-        configuration: String = "Debug",
+        configuration: String? = nil,
         onlyTesting: [String]? = nil,
         skipTesting: [String]? = nil,
         enableCodeCoverage: Bool = false,
@@ -495,7 +492,8 @@ public struct XcodebuildRunner: Sendable {
             destination: destination, additionalArguments: additionalArguments,
         )
 
-        args += ["-scheme", scheme, "-destination", destination, "-configuration", configuration]
+        args += ["-scheme", scheme, "-destination", destination]
+        if let configuration { args += ["-configuration", configuration] }
 
         // Add test plan selection
         if let testPlan { args += ["-testPlan", testPlan] }
@@ -545,18 +543,21 @@ public struct XcodebuildRunner: Sendable {
     ///   - projectPath: Path to the .xcodeproj file (mutually exclusive with workspacePath).
     ///   - workspacePath: Path to the .xcworkspace file (mutually exclusive with projectPath).
     ///   - scheme: The scheme to clean.
-    ///   - configuration: Build configuration (Debug or Release). Defaults to Debug.
+    ///   - configuration: Build configuration (Debug or Release). When `nil`, `-configuration` is
+    ///     omitted so xcodebuild honors the scheme's configuration.
     /// - Returns: The clean result containing exit code and output.
     /// - Throws: An error if the process fails to launch.
     public func clean(
         projectPath: String? = nil,
         workspacePath: String? = nil,
         scheme: String,
-        configuration: String = "Debug",
+        configuration: String? = nil,
     ) async throws -> XcodebuildResult {
         var args = Self.projectArgs(projectPath: projectPath, workspacePath: workspacePath)
 
-        args += ["-scheme", scheme, "-configuration", configuration, "clean"]
+        args += ["-scheme", scheme]
+        if let configuration { args += ["-configuration", configuration] }
+        args += ["clean"]
 
         return try await run(arguments: args)
     }
@@ -587,14 +588,15 @@ public struct XcodebuildRunner: Sendable {
     ///   - projectPath: Path to the .xcodeproj file (mutually exclusive with workspacePath).
     ///   - workspacePath: Path to the .xcworkspace file (mutually exclusive with projectPath).
     ///   - scheme: The scheme to query.
-    ///   - configuration: Build configuration (Debug or Release). Defaults to Debug.
+    ///   - configuration: Build configuration (Debug or Release). When `nil`, `-configuration` is
+    ///     omitted so xcodebuild reports settings for the scheme's own configuration.
     /// - Returns: The result containing JSON-formatted build settings.
     /// - Throws: An error if the process fails to launch.
     public func showBuildSettings(
         projectPath: String? = nil,
         workspacePath: String? = nil,
         scheme: String,
-        configuration: String = "Debug",
+        configuration: String? = nil,
         destination: String? = nil,
     ) async throws -> XcodebuildResult {
         var args = Self.projectArgs(
@@ -602,7 +604,8 @@ public struct XcodebuildRunner: Sendable {
             destination: destination,
         )
 
-        args += ["-scheme", scheme, "-configuration", configuration]
+        args += ["-scheme", scheme]
+        if let configuration { args += ["-configuration", configuration] }
 
         if let destination { args += ["-destination", destination] }
 

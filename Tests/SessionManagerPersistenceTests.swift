@@ -198,6 +198,46 @@ struct SessionManagerPersistenceTests {
         #expect(firstScope == secondScope)
     }
 
+    // MARK: - Configuration Resolution (honor scheme when unspecified)
+
+    @Test
+    func `resolveConfiguration returns nil when no argument and no session default`() async {
+        let path = makeTempPath()
+        defer { try? FileManager.default.removeItem(at: path) }
+
+        let manager = SessionManager(filePath: path)
+        // No `-configuration Debug` may be injected here: nil tells the runner to omit the flag so
+        // xcodebuild honors the scheme's own Build/Run action configuration.
+        let resolved = await manager.resolveConfiguration(from: [:])
+        #expect(resolved == nil)
+    }
+
+    @Test
+    func `resolveConfiguration prefers the explicit argument`() async {
+        let path = makeTempPath()
+        defer { try? FileManager.default.removeItem(at: path) }
+
+        let manager = SessionManager(filePath: path)
+        await manager.setDefaults(configuration: "Release")
+
+        let resolved = await manager.resolveConfiguration(
+            from: ["configuration": .string("Beta")],
+        )
+        #expect(resolved == "Beta")
+    }
+
+    @Test
+    func `resolveConfiguration falls back to the session default`() async {
+        let path = makeTempPath()
+        defer { try? FileManager.default.removeItem(at: path) }
+
+        let manager = SessionManager(filePath: path)
+        await manager.setDefaults(configuration: "Release")
+
+        let resolved = await manager.resolveConfiguration(from: [:])
+        #expect(resolved == "Release")
+    }
+
     // MARK: - Environment Variable Tests
 
     @Test

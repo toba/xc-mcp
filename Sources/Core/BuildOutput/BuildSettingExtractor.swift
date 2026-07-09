@@ -14,13 +14,14 @@ public enum BuildSettingExtractor {
     ///   - projectPath: Path to the .xcodeproj file.
     ///   - workspacePath: Path to the .xcworkspace file.
     ///   - scheme: The scheme to check.
-    ///   - configuration: Build configuration (Debug or Release).
+    ///   - configuration: Build configuration (Debug or Release), or `nil` to honor the scheme's own
+    ///     configuration.
     public static func validateMacOSSupport(
         runner: XcodebuildRunner,
         projectPath: String?,
         workspacePath: String?,
         scheme: String,
-        configuration: String,
+        configuration: String?,
     ) async throws {
         let settings = try await runner.showBuildSettings(
             projectPath: projectPath,
