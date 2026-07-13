@@ -88,7 +88,8 @@ public struct BuildDebugMacOSTool: Sendable {
                             ),
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -112,6 +113,7 @@ public struct BuildDebugMacOSTool: Sendable {
 
         // Merge session env with per-invocation env (per-invocation wins)
         let resolvedEnv = await sessionManager.resolveEnvironment(from: arguments)
+        let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
         // Also build a plain dict for LLDBRunner which takes [String: String]
         var userEnv: [String: String] = [:]
         if let sessionEnv = await sessionManager.env { userEnv.merge(sessionEnv) { _, new in new } }
@@ -202,8 +204,7 @@ public struct BuildDebugMacOSTool: Sendable {
                     destination: destination,
                     configuration: configuration,
                     additionalArguments: arguments.continueBuildingArgs()
-                        + arguments
-                        .buildSettingOverrides(),
+                        + arguments.buildSettingOverrides() + extraArgs,
                     environment: resolvedEnv,
                     timeout: Self.buildTimeout,
                     onProgress: { line in

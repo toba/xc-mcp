@@ -67,6 +67,64 @@ struct SimctlDevicesResponse: Codable {
     let devices: [String: [SimulatorDevice]]
 }
 
+/// The Apple platform family that a simulator runtime belongs to.
+public enum SimulatorPlatform: Sendable {
+    case iOS
+    case visionOS
+    case watchOS
+    case tvOS
+
+    /// The xcodebuild `-destination platform=` name for this family.
+    public var destinationName: String {
+        switch self {
+            case .iOS: "iOS Simulator"
+            case .visionOS: "visionOS Simulator"
+            case .watchOS: "watchOS Simulator"
+            case .tvOS: "tvOS Simulator"
+        }
+    }
+
+    /// Infers the platform family from a CoreSimulator runtime identifier such as
+    /// `com.apple.CoreSimulator.SimRuntime.xrOS-2-0`. Returns `nil` for unrecognized families.
+    ///
+    /// Note the runtime token for visionOS is `xrOS`, while its destination name is `visionOS`.
+    public init?(runtimeIdentifier: String) {
+        // The family token sits between the last `SimRuntime.` segment and the first `-`.
+        guard let range = runtimeIdentifier.range(of: "SimRuntime.", options: .backwards) else {
+            return nil
+        }
+        let family = runtimeIdentifier[range.upperBound...].prefix { $0 != "-" }
+        switch family {
+            case "iOS": self = .iOS
+            case "xrOS": self = .visionOS
+            case "watchOS": self = .watchOS
+            case "tvOS": self = .tvOS
+            default: return nil
+        }
+    }
+}
+
+/// A simulator resolved to a concrete UDID plus the platform its runtime targets.
+public struct ResolvedSimulator: Sendable {
+    /// The canonical UDID (never a name).
+    public let udid: String
+
+    /// The human-readable device name.
+    public let name: String
+
+    /// The platform family inferred from the device's runtime.
+    public let platform: SimulatorPlatform
+
+    /// The full xcodebuild `-destination` value (platform + id).
+    public var destination: String { "platform=\(platform.destinationName),id=\(udid)" }
+
+    public init(udid: String, name: String, platform: SimulatorPlatform) {
+        self.udid = udid
+        self.name = name
+        self.platform = platform
+    }
+}
+
 /// Wrapper for executing simctl commands.
 ///
 /// `SimctlRunner` provides a Swift interface for invoking the iOS Simulator control tool. It
@@ -166,6 +224,43 @@ public struct SimctlRunner: Sendable {
         guard let device = devices.first(where: { $0.udid == identifier || $0.name == identifier })
         else { return .notFound }
         return device.state == "Booted" ? .booted(device) : .notBooted(device)
+    }
+
+    /// Resolves a simulator identifier to a concrete UDID and its build destination.
+    ///
+    /// Unlike the historical behaviour of hardcoding `platform=iOS Simulator`, this inspects the
+    /// selected simulator's runtime so visionOS/watchOS/tvOS simulators build against the correct
+    /// destination. It also canonicalizes a name to its UDID so `-destination id=` is always valid.
+    ///
+    /// - Parameter identifier: A simulator UDID or exact device name.
+    /// - Returns: The resolved simulator with its ``SimulatorPlatform``.
+    /// - Throws: ``SimctlError/deviceNotFound(_:)`` when nothing matches,
+    ///   ``SimctlError/platformUndetermined(_:)`` when the runtime is missing/unavailable or its
+    ///   platform family can't be recognized.
+    public func resolveForBuild(
+        matching identifier: String
+    ) async throws(SimctlError) -> ResolvedSimulator {
+        let devices = try await listDevices()
+        guard let device = devices.first(where: {
+            $0.udid == identifier || $0.name == identifier
+        }) else {
+            throw .deviceNotFound(identifier)
+        }
+        guard device.isAvailable else {
+            throw .platformUndetermined(
+                "Simulator '\(device.name)' (\(device.udid)) is unavailable — its runtime may have "
+                    + "been removed by an Xcode upgrade. Pick an available simulator with list_sims.",
+            )
+        }
+        guard let runtime = device.runtime,
+              let platform = SimulatorPlatform(runtimeIdentifier: runtime)
+        else {
+            throw .platformUndetermined(
+                "Could not determine the platform for simulator '\(device.name)' "
+                    + "(runtime: \(device.runtime ?? "unknown")).",
+            )
+        }
+        return ResolvedSimulator(udid: device.udid, name: device.name, platform: platform)
     }
 
     /// Boots a simulator.
@@ -411,17 +506,23 @@ public enum SimctlError: LocalizedError, Sendable, MCPErrorConvertible {
     /// The specified simulator device was not found.
     case deviceNotFound(String)
 
+    /// The selected simulator's build platform could not be determined (missing/unavailable
+    /// runtime, or an unrecognized platform family).
+    case platformUndetermined(String)
+
     public var errorDescription: String? {
         switch self {
             case let .commandFailed(message): "simctl command failed: \(message)"
             case .invalidOutput: "simctl returned invalid output"
             case let .deviceNotFound(udid): "Simulator device not found: \(udid)"
+            case let .platformUndetermined(message): message
         }
     }
 
     public func toMCPError() -> MCPError {
         switch self {
-            case .deviceNotFound: .invalidParams(errorDescription ?? "Simulator not found")
+            case .deviceNotFound, .platformUndetermined:
+                .invalidParams(errorDescription ?? "Simulator not found")
             case .commandFailed, .invalidOutput:
                 .internalError(errorDescription ?? "Simulator operation failed")
         }

@@ -64,7 +64,8 @@ public struct BuildRunSimTool: Sendable {
                             ),
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -81,13 +82,18 @@ public struct BuildRunSimTool: Sendable {
             from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
-        let simulator = try await sessionManager.resolveSimulator(from: arguments)
+        let simulatorInput = try await sessionManager.resolveSimulator(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let bundleId = arguments.getString("bundle_id")
 
         do {
-            let destination = "platform=iOS Simulator,id=\(simulator)"
+            // Resolve the simulator to its canonical UDID + runtime-derived destination so
+            // visionOS/watchOS/tvOS simulators don't build against an iOS destination.
+            let resolved = try await simctlRunner.resolveForBuild(matching: simulatorInput)
+            let simulator = resolved.udid
+            let destination = resolved.destination
+            let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
 
             // Step 1: Build (use longer output timeout — linking/signing
             // phases routinely produce no output for >30 seconds)
@@ -98,8 +104,7 @@ public struct BuildRunSimTool: Sendable {
                 destination: destination,
                 configuration: configuration,
                 additionalArguments: arguments.continueBuildingArgs()
-                    + arguments
-                    .buildSettingOverrides(),
+                    + arguments.buildSettingOverrides() + extraArgs,
                 environment: environment,
                 outputTimeout: XcodebuildRunner.deviceOutputTimeout,
                 onProgress: onProgress,

@@ -58,7 +58,8 @@ public struct BuildDeviceTool: Sendable {
                             ),
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -75,6 +76,7 @@ public struct BuildDeviceTool: Sendable {
         let device = try await sessionManager.resolveDevice(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
+        let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
 
         do {
             // Look up the device to get its platform — xcodebuild doesn't recognize
@@ -89,8 +91,7 @@ public struct BuildDeviceTool: Sendable {
                 destination: destination,
                 configuration: configuration,
                 additionalArguments: arguments.continueBuildingArgs()
-                    + arguments
-                    .buildSettingOverrides(),
+                    + arguments.buildSettingOverrides() + extraArgs,
                 environment: environment,
                 outputTimeout: XcodebuildRunner.deviceOutputTimeout,
             )

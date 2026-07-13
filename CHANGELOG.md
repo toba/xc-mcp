@@ -1,5 +1,15 @@
 # Changelog
 
+## Week of Jul 12 – Jul 18, 2026
+
+### ✨ Features
+
+- Add `extra_args` as a session default and per-call override for passthrough `xcodebuild` arguments; `SessionDefaults` gains an `extraArgs: [String]?` (persisted, decoded leniently so session files written before the field still load) settable via `set_session_defaults`, and a new `SessionManager.resolveExtraArgs` resolves a per-invocation `extra_args` array — presence of the key, even an empty array, replaces the session default for that one call; otherwise the persisted default is used — threaded (appended last, so it takes precedence) into all 11 `xcodebuild`-invoking tools (`build_sim`, `build_run_sim`, `test_sim`, `build_macos`, `build_run_macos`, `archive`, `test_macos`, `build_device`, `build_deploy_device`, `test_device`, `build_debug_macos`), so a flag like `-skipPackagePluginValidation` can be set once instead of on every call; inspired by `getsentry/XcodeBuildMCP#463` ([#426](https://github.com/toba/xc-mcp/issues/426))
+
+### 🐞 Fixes
+
+- Resolve the simulator build destination from the selected simulator's runtime instead of hardcoding `platform=iOS Simulator`; `build_sim` / `build_run_sim` / `test_sim` built every simulator against an iOS destination, so an iOS+visionOS (or watchOS/tvOS) app targeting a non-iOS simulator built for the wrong platform and failed — the device build tools already resolved this correctly via `DeviceCtlRunner.lookupDevice`; `SimctlRunner` gains a `SimulatorPlatform` enum whose `init?(runtimeIdentifier:)` maps a CoreSimulator runtime id to a destination (the `xrOS` token becomes `visionOS Simulator`) and a `resolveForBuild(matching:)` that resolves a UDID or name to a concrete device, canonicalizes a name to its UDID so `-destination id=` is always valid, rejects an unavailable or removed runtime with a clear `platformUndetermined` error rather than silently guessing, and composes the correct `platform=…,id=…` destination; `PreviewCaptureTool` is intentionally left on its own iOS/macOS fallback; mirrors `getsentry/XcodeBuildMCP#472` ([#425](https://github.com/toba/xc-mcp/issues/425))
+
 ## Week of Jul 5 – Jul 11, 2026
 
 ### ✨ Features

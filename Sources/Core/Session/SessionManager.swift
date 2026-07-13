@@ -22,6 +22,34 @@ public struct SessionDefaults: Sendable, Codable {
     public let configuration: String?
     /// Custom environment variables applied to all build/test/run commands
     public let env: [String: String]?
+    /// Extra passthrough arguments appended to every xcodebuild invocation.
+    ///
+    /// Decoded leniently: session files written before this field existed simply yield `nil`.
+    public let extraArgs: [String]?
+
+    /// Memberwise initializer. `extraArgs` defaults to `nil` so existing call sites that predate the
+    /// field continue to compile.
+    public init(
+        projectPath: String?,
+        workspacePath: String?,
+        packagePath: String?,
+        scheme: String?,
+        simulatorUDID: String?,
+        deviceUDID: String?,
+        configuration: String?,
+        env: [String: String]?,
+        extraArgs: [String]? = nil,
+    ) {
+        self.projectPath = projectPath
+        self.workspacePath = workspacePath
+        self.packagePath = packagePath
+        self.scheme = scheme
+        self.simulatorUDID = simulatorUDID
+        self.deviceUDID = deviceUDID
+        self.configuration = configuration
+        self.env = env
+        self.extraArgs = extraArgs
+    }
 }
 
 /// State of an in-process SwiftPM warmup task for a package.
@@ -60,6 +88,9 @@ public actor SessionManager {
 
     /// Custom environment variables applied to all build/test/run commands
     public private(set) var env: [String: String]?
+
+    /// Extra passthrough arguments appended to every xcodebuild invocation
+    public private(set) var extraArgs: [String]?
 
     /// Resolves the session file path.
     ///
@@ -141,6 +172,7 @@ public actor SessionManager {
         deviceUDID = defaults?.deviceUDID
         configuration = defaults?.configuration
         env = defaults?.env
+        extraArgs = defaults?.extraArgs
         lastKnownModDate = Self.modDate(of: resolved)
     }
 
@@ -185,6 +217,7 @@ public actor SessionManager {
             deviceUDID = defaults.deviceUDID
             configuration = defaults.configuration
             env = defaults.env
+            extraArgs = defaults.extraArgs
         }
         lastKnownModDate = currentModDate
     }
@@ -215,6 +248,7 @@ public actor SessionManager {
         deviceUDID: String? = nil,
         configuration: String? = nil,
         env: [String: String]? = nil,
+        extraArgs: [String]? = nil,
     ) {
         // Resolve to an absolute path eagerly (against the cwd at the time the user supplies it)
         // and persist the absolute form. Storing relative paths lets the DerivedData scoper hash a
@@ -242,6 +276,9 @@ public actor SessionManager {
             merged.merge(env) { _, new in new }
             self.env = merged
         }
+        // Replace (not merge): passing extra_args sets the full session list; an empty array clears
+        // it. This mirrors the "explicit replaces defaults" resolution semantics.
+        if let extraArgs { self.extraArgs = extraArgs.isEmpty ? nil : extraArgs }
         saveToDisk()
         if let active = self.packagePath { triggerWarmupIfNeeded(packagePath: active) }
     }
@@ -260,6 +297,7 @@ public actor SessionManager {
         deviceUDID = nil
         configuration = nil
         env = nil
+        extraArgs = nil
         deleteFromDisk()
     }
 
@@ -390,6 +428,12 @@ public actor SessionManager {
             lines.append("Environment: (not set)")
         }
 
+        if let extraArgs, !extraArgs.isEmpty {
+            lines.append("Extra args: \(extraArgs.joined(separator: " "))")
+        } else {
+            lines.append("Extra args: (not set)")
+        }
+
         return lines.joined(separator: "\n")
     }
 
@@ -412,6 +456,7 @@ public actor SessionManager {
             deviceUDID: deviceUDID,
             configuration: configuration,
             env: env,
+            extraArgs: extraArgs,
         )
     }
 
@@ -530,6 +575,23 @@ public actor SessionManager {
         var overrides: [Environment.Key: String?] = [:]
         for (key, value) in merged { overrides[Environment.Key(stringLiteral: key)] = value }
         return Environment.inherit.updating(overrides)
+    }
+
+    /// Resolves extra passthrough xcodebuild arguments from arguments or session defaults.
+    ///
+    /// Resolution is replace-not-merge: a per-invocation `extra_args` array (even an empty one)
+    /// replaces the session default entirely; when the caller omits the key, the session default is
+    /// used. This matches the upstream "explicit extraArgs replace defaults" semantics and keeps a
+    /// single invocation predictable rather than silently accumulating session + call args.
+    ///
+    /// - Parameter arguments: The tool arguments dictionary (may contain an `extra_args` array).
+    /// - Returns: The extra arguments to append to the xcodebuild invocation (possibly empty).
+    public func resolveExtraArgs(from arguments: [String: Value]) -> [String] {
+        reloadIfNeeded()
+        // Presence of the key — not emptiness — signals an explicit override, so an empty array can
+        // suppress the session default for a single call.
+        if case .array = arguments["extra_args"] { return arguments.getStringArray("extra_args") }
+        return extraArgs ?? []
     }
 
     /// Resolves the package path from arguments or session defaults.

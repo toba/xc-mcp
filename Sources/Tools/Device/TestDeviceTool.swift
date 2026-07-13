@@ -59,7 +59,8 @@ public struct TestDeviceTool: Sendable {
                         ]),
                     ].merging([String: Value].testSchemaProperties) { _, new in new }
                         .merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -78,6 +79,7 @@ public struct TestDeviceTool: Sendable {
         let device = try await sessionManager.resolveDevice(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
+        let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
 
         let testParams = arguments.testParameters()
         let (validated, warning) = try TestToolHelper.validateTestParams(
@@ -98,8 +100,7 @@ public struct TestDeviceTool: Sendable {
             destination: "generic/platform=\(connectedDevice.platform)",
             configuration: configuration,
             additionalArguments: arguments.continueBuildingArgs()
-                + arguments
-                .buildSettingOverrides(),
+                + arguments.buildSettingOverrides() + extraArgs,
             environment: environment,
             context: "scheme '\(scheme)' on device '\(device)'",
             captureCrashLog: true,

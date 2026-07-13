@@ -81,7 +81,8 @@ public struct BuildMacOSTool: Sendable {
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].enableSanitizersSchemaProperty) { _, new in new }
-                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -97,6 +98,7 @@ public struct BuildMacOSTool: Sendable {
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
+        let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
         let arch = arguments.getString("arch")
         let errorsOnly = arguments.getBool("errors_only")
         let showWarnings = arguments.getBool("show_warnings")
@@ -137,8 +139,8 @@ public struct BuildMacOSTool: Sendable {
                 configuration: configuration,
                 action: action,
                 additionalArguments: arguments.continueBuildingArgs()
-                    + arguments
-                    .enableSanitizersArgs() + arguments.buildSettingOverrides(),
+                    + arguments.enableSanitizersArgs() + arguments.buildSettingOverrides()
+                    + extraArgs,
                 environment: environment,
                 timeout: timeout,
                 outputTimeout: hasExplicitTimeout ? nil : XcodebuildRunner.outputTimeout,

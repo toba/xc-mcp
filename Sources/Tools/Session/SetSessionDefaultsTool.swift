@@ -58,6 +58,13 @@ public struct SetSessionDefaultsTool: Sendable {
                             "Custom environment variables applied to all build/test/run commands. Keys are merged with existing env (new keys add, existing keys update).",
                         ),
                     ]),
+                    "extra_args": .object([
+                        "type": .string("array"),
+                        "items": .object(["type": .string("string")]),
+                        "description": .string(
+                            "Extra arguments appended verbatim to every xcodebuild invocation (e.g. [\"-skipPackagePluginValidation\"]). Replaces the current list; pass an empty array to clear it.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -95,6 +102,13 @@ public struct SetSessionDefaultsTool: Sendable {
             }
         }
 
+        // Parse extra_args. Presence of the key (even as an empty array) is an explicit set:
+        // an empty array clears the persisted list.
+        var extraArgs: [String]?
+        if case .array = arguments["extra_args"] {
+            extraArgs = arguments.getStringArray("extra_args")
+        }
+
         // Validate configuration if provided
         if let config = configuration {
             let validConfigs = ["Debug", "Release"]
@@ -114,6 +128,7 @@ public struct SetSessionDefaultsTool: Sendable {
             deviceUDID: deviceUDID,
             configuration: configuration,
             env: env,
+            extraArgs: extraArgs,
         )
 
         let summary = await sessionManager.summary()

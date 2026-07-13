@@ -64,7 +64,8 @@ public struct TestMacOSTool: Sendable {
                         ]),
                     ].merging([String: Value].testSchemaProperties) { _, new in new }
                         .merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -82,6 +83,7 @@ public struct TestMacOSTool: Sendable {
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
+        let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
         let arch = arguments.getString("arch")
         let errorsOnly = arguments.getBool("errors_only")
 
@@ -113,8 +115,7 @@ public struct TestMacOSTool: Sendable {
             destination: destination,
             configuration: configuration,
             additionalArguments: arguments.continueBuildingArgs()
-                + arguments
-                .buildSettingOverrides(),
+                + arguments.buildSettingOverrides() + extraArgs,
             environment: environment,
             context: "scheme '\(scheme)' on macOS",
             errorsOnly: errorsOnly,

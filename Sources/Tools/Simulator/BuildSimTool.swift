@@ -9,17 +9,22 @@ import Subprocess
 /// Supports session defaults for project, scheme, simulator, and configuration.
 public struct BuildSimTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
+    private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
     /// Creates a new BuildSimTool instance.
     ///
     /// - Parameters:
     ///   - xcodebuildRunner: Runner for executing xcodebuild commands.
+    ///   - simctlRunner: Runner for resolving simulator devices and runtimes.
     ///   - sessionManager: Manager for session state and defaults.
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager,
+        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        simctlRunner: SimctlRunner = SimctlRunner(),
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
+        self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
@@ -64,7 +69,8 @@ public struct BuildSimTool: Sendable {
                             ),
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -86,12 +92,17 @@ public struct BuildSimTool: Sendable {
             from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
-        let simulator = try await sessionManager.resolveSimulator(from: arguments)
+        let simulatorInput = try await sessionManager.resolveSimulator(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
 
         do {
-            let destination = "platform=iOS Simulator,id=\(simulator)"
+            // Resolve the simulator to its canonical UDID + runtime-derived destination so
+            // visionOS/watchOS/tvOS simulators don't build against an iOS destination.
+            let resolved = try await simctlRunner.resolveForBuild(matching: simulatorInput)
+            let simulator = resolved.udid
+            let destination = resolved.destination
+            let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
 
             let result = try await xcodebuildRunner.build(
                 projectPath: projectPath,
@@ -100,8 +111,7 @@ public struct BuildSimTool: Sendable {
                 destination: destination,
                 configuration: configuration,
                 additionalArguments: arguments.continueBuildingArgs()
-                    + arguments
-                    .buildSettingOverrides(),
+                    + arguments.buildSettingOverrides() + extraArgs,
                 environment: environment,
                 outputTimeout: XcodebuildRunner.deviceOutputTimeout,
                 onProgress: onProgress,

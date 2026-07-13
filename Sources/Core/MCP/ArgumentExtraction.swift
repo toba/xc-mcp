@@ -269,6 +269,25 @@ extension [String: Value] {
         ]
     }
 
+    /// Schema property for extra passthrough xcodebuild arguments.
+    ///
+    /// Returns the `extra_args` property used across build and test tools. When provided, it
+    /// replaces (does not append to) the session default set via `set_session_defaults` .
+    public static var extraArgsSchemaProperty: [String: Value] {
+        [
+            "extra_args": .object([
+                "type": .string("array"),
+                "items": .object(["type": .string("string")]),
+                "description": .string(
+                    "Extra arguments appended verbatim to the xcodebuild invocation "
+                        + "(e.g. [\"-skipPackagePluginValidation\"]). Each element is passed as a "
+                        + "separate argument. Overrides any extra_args session default for this "
+                        + "call; use set_session_defaults to persist them across calls.",
+                ),
+            ])
+        ]
+    }
+
     /// Schema properties for test selection and coverage parameters.
     ///
     /// Returns the common `only_testing` , `skip_testing` , `enable_code_coverage` , and

@@ -121,7 +121,8 @@ public struct ArchiveTool: Sendable {
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].enableSanitizersSchemaProperty) { _, new in new }
-                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([.string("archive_path")]),
             ]),
@@ -135,6 +136,7 @@ public struct ArchiveTool: Sendable {
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
+        let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
         let configuration = arguments.getString("configuration") ?? "Release"
         let platform = arguments.getString("platform") ?? "macOS"
         guard let archivePath = arguments.getString("archive_path") else {
@@ -194,7 +196,8 @@ public struct ArchiveTool: Sendable {
                 additionalArguments: extra
                     + arguments.continueBuildingArgs()
                     + arguments.enableSanitizersArgs()
-                    + arguments.buildSettingOverrides(),
+                    + arguments.buildSettingOverrides()
+                    + extraArgs,
                 environment: environment,
                 timeout: timeout,
                 outputTimeout: hasExplicitTimeout ? nil : XcodebuildRunner.outputTimeout,

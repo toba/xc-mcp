@@ -5,12 +5,16 @@ import Subprocess
 
 public struct TestSimTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
+    private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager,
+        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        simctlRunner: SimctlRunner = SimctlRunner(),
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
+        self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
@@ -55,7 +59,8 @@ public struct TestSimTool: Sendable {
                         ]),
                     ].merging([String: Value].testSchemaProperties) { _, new in new }
                         .merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new },
+                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
                 ),
                 "required": .array([]),
             ]),
@@ -71,9 +76,16 @@ public struct TestSimTool: Sendable {
             from: arguments,
         )
         let scheme = try await sessionManager.resolveScheme(from: arguments)
-        let simulator = try await sessionManager.resolveSimulator(from: arguments)
+        let simulatorInput = try await sessionManager.resolveSimulator(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
+
+        // Resolve the simulator to its canonical UDID + runtime-derived destination so
+        // visionOS/watchOS/tvOS simulators don't test against an iOS destination.
+        let resolved = try await simctlRunner.resolveForBuild(matching: simulatorInput)
+        let simulator = resolved.udid
+        let destination = resolved.destination
+        let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
 
         let testParams = arguments.testParameters()
         let (validated, warning) = try TestToolHelper.validateTestParams(
@@ -87,11 +99,10 @@ public struct TestSimTool: Sendable {
             projectPath: projectPath,
             workspacePath: workspacePath,
             scheme: scheme,
-            destination: "platform=iOS Simulator,id=\(simulator)",
+            destination: destination,
             configuration: configuration,
             additionalArguments: arguments.continueBuildingArgs()
-                + arguments
-                .buildSettingOverrides(),
+                + arguments.buildSettingOverrides() + extraArgs,
             environment: environment,
             context: "scheme '\(scheme)' on simulator '\(simulator)'",
             captureCrashLog: true,
