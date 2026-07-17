@@ -99,6 +99,10 @@ public struct DiscoverProjectsTool: Sendable {
 
                 let fullPath = "\(path)/\(item)"
 
+                // Keep the scan inside the sandbox: a symlink can resolve outside the base path even
+                // though its lexical location is within, which would let discovery walk out of bounds.
+                guard pathUtility.isWithinSandbox(fullPath) else { continue }
+
                 if item.hasSuffix(".xcworkspace"), includeWorkspaces {
                     // Skip Pods workspace and workspace inside .xcodeproj
                     if !item.hasPrefix("Pods"), !path.hasSuffix(".xcodeproj") {

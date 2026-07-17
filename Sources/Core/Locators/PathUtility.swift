@@ -113,6 +113,23 @@ public struct PathUtility: Sendable {
         return resolvedURL
     }
 
+    /// Reports whether `path`'s real (symlink-resolved) location is within the sandbox base.
+    ///
+    /// Unlike ``resolvePath(from:)``, which validates a user-supplied path lexically, this resolves
+    /// symlinks before comparing — so a symlink pointing outside the base is rejected even though its
+    /// lexical location is inside. Callers that walk the filesystem (e.g. recursive discovery) use
+    /// this to keep the traversal from escaping the sandbox through a symlink. Always `true` when
+    /// sandboxing is disabled.
+    ///
+    /// - Parameter path: The path to test.
+    /// - Returns: `true` if sandboxing is disabled or the resolved path is the base or a descendant.
+    public func isWithinSandbox(_ path: String) -> Bool {
+        guard sandboxEnabled else { return true }
+        let resolvedBase = URL(fileURLWithPath: basePath).resolvingSymlinksInPath().standardized.path
+        let resolved = URL(fileURLWithPath: path).resolvingSymlinksInPath().standardized.path
+        return Self.isPath(resolved, within: resolvedBase)
+    }
+
     /// Reports whether `path` is the base path itself or a descendant of it.
     ///
     /// A raw `hasPrefix` check is unsafe here: `/a/b` is a prefix of the sibling `/a/bcd`, which

@@ -79,6 +79,33 @@ struct PathUtilityTests {
 
         #expect(resolved == basePath)
     }
+
+    @Test func `isWithinSandbox rejects symlink escaping base`() throws {
+        // Lay out: <root>/base and <root>/outside; base/link -> outside.
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sandbox-symlink-\(UUID().uuidString)")
+        let base = root.appendingPathComponent("base")
+        let outside = root.appendingPathComponent("outside")
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let link = base.appendingPathComponent("link")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: outside)
+
+        let pathUtility = PathUtility(basePath: base.path)
+        // A real subdirectory of base stays within; the symlink resolves outside and is rejected.
+        try FileManager.default.createDirectory(
+            at: base.appendingPathComponent("real"), withIntermediateDirectories: true,
+        )
+        #expect(pathUtility.isWithinSandbox(base.appendingPathComponent("real").path))
+        #expect(!pathUtility.isWithinSandbox(link.path))
+    }
+
+    @Test func `isWithinSandbox allows everything when sandbox disabled`() throws {
+        let pathUtility = PathUtility(basePath: "/workspace", sandboxEnabled: false)
+        #expect(pathUtility.isWithinSandbox("/etc/passwd"))
+    }
 }
 
 struct PathUtilityAncestorSearchTests {
