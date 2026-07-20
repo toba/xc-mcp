@@ -466,6 +466,9 @@ public struct XcodebuildRunner: Sendable {
     ///   - enableCodeCoverage: Whether to enable code coverage collection.
     ///   - resultBundlePath: Path to store the .xcresult bundle.
     ///   - additionalArguments: Extra arguments to pass to xcodebuild.
+    ///   - withoutBuilding: When true, runs the `test-without-building` action instead of `test`,
+    ///     reusing test bundles already compiled into the scoped DerivedData by a prior build or
+    ///     test run. Skips the build phase entirely — no source is recompiled.
     ///   - onProgress: Optional callback invoked with output lines as they arrive, so callers can
     ///     surface build/test progress during long cold runs.
     /// - Returns: The test result containing exit code and output.
@@ -481,13 +484,69 @@ public struct XcodebuildRunner: Sendable {
         enableCodeCoverage: Bool = false,
         resultBundlePath: String? = nil,
         testPlan: String? = nil,
+        withoutBuilding: Bool = false,
         additionalArguments: [String] = [],
         environment: Environment = .inherit,
         timeout: TimeInterval = defaultTimeout,
         outputTimeout: Duration? = defaultTestOutputTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> XcodebuildResult {
-        var args = Self.projectArgs(
+        let args = Self.testArgs(
+            projectPath: projectPath, workspacePath: workspacePath,
+            scheme: scheme, destination: destination, configuration: configuration,
+            onlyTesting: onlyTesting, skipTesting: skipTesting,
+            enableCodeCoverage: enableCodeCoverage, resultBundlePath: resultBundlePath,
+            testPlan: testPlan, withoutBuilding: withoutBuilding,
+            additionalArguments: additionalArguments,
+        )
+        let action = withoutBuilding ? "test-without-building" : "test"
+
+        // See `build` — capture raw output for `show_last_build_raw` on both the normal (nonzero
+        // exit) and timeout/stuck paths.
+        do {
+            let result = try await run(
+                arguments: args, environment: environment,
+                timeout: timeout, outputTimeout: outputTimeout,
+                onProgress: onProgress,
+            )
+            RawBuildLog.store(
+                rawOutput: result.output, action: action, destination: destination,
+                succeeded: result.succeeded,
+            )
+            return result
+        } catch let error as XcodebuildError {
+            RawBuildLog.store(
+                rawOutput: error.partialOutput, action: action, destination: destination,
+                succeeded: false,
+            )
+            throw error
+        }
+    }
+
+    /// Assembles the xcodebuild argument list for a `test` / `test-without-building` action.
+    ///
+    /// Extracted from ``test(projectPath:workspacePath:scheme:destination:configuration:onlyTesting:skipTesting:enableCodeCoverage:resultBundlePath:testPlan:withoutBuilding:additionalArguments:environment:timeout:outputTimeout:onProgress:)``
+    /// so the flag/selector wiring can be unit-tested without spawning a process.
+    ///
+    /// The scoped `-derivedDataPath` injected by ``projectArgs(projectPath:workspacePath:destination:additionalArguments:includeDerivedData:)``
+    /// is what lets `test-without-building` locate the products a prior run compiled — the
+    /// destination and `-only-testing`/`-skip-testing` selectors are preserved into that phase so a
+    /// re-run can target the same subset of tests.
+    static func testArgs(
+        projectPath: String?,
+        workspacePath: String?,
+        scheme: String,
+        destination: String,
+        configuration: String?,
+        onlyTesting: [String]?,
+        skipTesting: [String]?,
+        enableCodeCoverage: Bool,
+        resultBundlePath: String?,
+        testPlan: String?,
+        withoutBuilding: Bool,
+        additionalArguments: [String],
+    ) -> [String] {
+        var args = projectArgs(
             projectPath: projectPath, workspacePath: workspacePath,
             destination: destination, additionalArguments: additionalArguments,
         )
@@ -512,29 +571,10 @@ public struct XcodebuildRunner: Sendable {
 
         if let resultBundlePath { args += ["-resultBundlePath", resultBundlePath] }
 
-        args += ["test"]
+        args += [withoutBuilding ? "test-without-building" : "test"]
         args += additionalArguments
 
-        // See `build` — capture raw output for `show_last_build_raw` on both the normal (nonzero
-        // exit) and timeout/stuck paths.
-        do {
-            let result = try await run(
-                arguments: args, environment: environment,
-                timeout: timeout, outputTimeout: outputTimeout,
-                onProgress: onProgress,
-            )
-            RawBuildLog.store(
-                rawOutput: result.output, action: "test", destination: destination,
-                succeeded: result.succeeded,
-            )
-            return result
-        } catch let error as XcodebuildError {
-            RawBuildLog.store(
-                rawOutput: error.partialOutput, action: "test", destination: destination,
-                succeeded: false,
-            )
-            throw error
-        }
+        return args
     }
 
     /// Cleans build artifacts for a scheme.

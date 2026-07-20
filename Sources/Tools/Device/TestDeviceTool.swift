@@ -58,6 +58,7 @@ public struct TestDeviceTool: Sendable {
                             ),
                         ]),
                     ].merging([String: Value].testSchemaProperties) { _, new in new }
+                        .merging([String: Value].withoutBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
                         .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
@@ -99,6 +100,7 @@ public struct TestDeviceTool: Sendable {
             scheme: scheme,
             destination: "generic/platform=\(connectedDevice.platform)",
             configuration: configuration,
+            withoutBuilding: arguments.getBool("without_building"),
             additionalArguments: arguments.continueBuildingArgs()
                 + arguments.buildSettingOverrides() + extraArgs,
             environment: environment,

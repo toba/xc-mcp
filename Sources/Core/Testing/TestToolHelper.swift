@@ -72,6 +72,8 @@ public enum TestToolHelper {
     ///   - destination: The xcodebuild destination string.
     ///   - configuration: Build configuration (Debug/Release), or `nil` to honor the scheme's own
     ///     Test action configuration.
+    ///   - withoutBuilding: When true, runs `test-without-building` to reuse artifacts a prior run
+    ///     compiled into the scoped DerivedData instead of rebuilding.
     ///   - environment: Environment for the test run.
     ///   - context: Human-readable context for error messages (e.g. "on simulator 'X'").
     ///   - errorsOnly: When true, suppress warnings in output.
@@ -86,6 +88,7 @@ public enum TestToolHelper {
         scheme: String,
         destination: String,
         configuration: String? = nil,
+        withoutBuilding: Bool = false,
         additionalArguments: [String] = [],
         environment: Environment = .inherit,
         context: String,
@@ -116,6 +119,7 @@ public enum TestToolHelper {
                 enableCodeCoverage: testParams.enableCodeCoverage,
                 resultBundlePath: resultBundlePath,
                 testPlan: testParams.testPlan,
+                withoutBuilding: withoutBuilding,
                 additionalArguments: additionalArguments,
                 environment: environment,
                 timeout: TimeInterval(testParams.timeout ?? 300),

@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Jul 19 – Jul 25, 2026
+
+### ✨ Features
+
+- Add a `without_building` option to `test_macos`, `test_sim`, and `test_device` that runs `xcodebuild test-without-building` to reuse the test bundle a prior run already compiled into the scoped DerivedData, skipping the build/planning phase on repeated runs; `XcodebuildRunner.test` gains a `withoutBuilding` flag (the test-arg assembly extracted into a testable static `testArgs`) that preserves the `-destination` and `-only-testing`/`-skip-testing`/`-testPlan` selectors into the without-building phase and records the actual action in `RawBuildLog`; a shared `withoutBuildingSchemaProperty` is merged into all three tools and threaded through `TestToolHelper.runAndFormat`; `swift_package_test` is intentionally left unchanged since SwiftPM's `swift test` has no build/test split; inspired by `getsentry/XcodeBuildMCP#475` ([#430](https://github.com/toba/xc-mcp/issues/430))
+
 ## Week of Jul 12 – Jul 18, 2026
 
 ### ✨ Features

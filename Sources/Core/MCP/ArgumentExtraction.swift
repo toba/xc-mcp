@@ -288,6 +288,25 @@ extension [String: Value] {
         ]
     }
 
+    /// Schema property for the without-building (reuse-prepared-artifacts) option.
+    ///
+    /// Maps to xcodebuild's `test-without-building` action.
+    public static var withoutBuildingSchemaProperty: [String: Value] {
+        [
+            "without_building": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "When true, skip the build phase and run the test bundle already compiled "
+                        + "by a prior build or test run (xcodebuild 'test-without-building'). "
+                        + "Reuses artifacts from the same project's scoped DerivedData, so run a "
+                        + "normal test (or build_macos with for_testing) at least once first. "
+                        + "Speeds up repeated runs by skipping build planning and compilation; "
+                        + "fails if no compiled products exist yet. Defaults to false.",
+                ),
+            ])
+        ]
+    }
+
     /// Schema properties for test selection and coverage parameters.
     ///
     /// Returns the common `only_testing` , `skip_testing` , `enable_code_coverage` , and
