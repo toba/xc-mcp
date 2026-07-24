@@ -6,6 +6,10 @@
 
 - Add a `without_building` option to `test_macos`, `test_sim`, and `test_device` that runs `xcodebuild test-without-building` to reuse the test bundle a prior run already compiled into the scoped DerivedData, skipping the build/planning phase on repeated runs; `XcodebuildRunner.test` gains a `withoutBuilding` flag (the test-arg assembly extracted into a testable static `testArgs`) that preserves the `-destination` and `-only-testing`/`-skip-testing`/`-testPlan` selectors into the without-building phase and records the actual action in `RawBuildLog`; a shared `withoutBuildingSchemaProperty` is merged into all three tools and threaded through `TestToolHelper.runAndFormat`; `swift_package_test` is intentionally left unchanged since SwiftPM's `swift test` has no build/test split; inspired by `getsentry/XcodeBuildMCP#475` ([#430](https://github.com/toba/xc-mcp/issues/430))
 
+### 🐞 Fixes
+
+- Harden `stop_mac_app` against terminating unrelated processes; the tool matched targets with `pkill -f`/`pgrep -f`, which matches the entire command line as a regex, so an unrelated process carrying the app name anywhere in its arguments (e.g. `tail -f /var/log/MyApp.log`) would be killed, and it did no input validation — an empty `app_name` produced `pkill -f ""` (matching every process) and a `pid` was cast with `Int32(...)` (trapping on overflow) with `kill -9 0`/`kill -9 -1` broadcasting to process groups; it now resolves a bundle id / app name to exact PIDs via `NSRunningApplication`, a new exact-match `PIDResolver.findPIDs(forAppName:)` (NSWorkspace), and any active LLDB session, then signals only those PIDs, and rejects empty/whitespace names and unsafe PIDs (≤ 1 or out of range) at the execution boundary regardless of the tool schema; mirrors `getsentry/XcodeBuildMCP#484` ([#432](https://github.com/toba/xc-mcp/issues/432))
+
 ## Week of Jul 12 – Jul 18, 2026
 
 ### ✨ Features

@@ -16,6 +16,40 @@ public enum PIDResolver {
             .first?.processIdentifier
     }
 
+    /// Finds the PIDs of running apps whose name exactly matches `name`.
+    ///
+    /// Matches the app's localized name, executable basename, or bundle name (minus the `.app`
+    /// extension) via exact equality — never a substring or command-line search. This avoids the
+    /// `pkill -f` footgun where an unrelated process carrying the name anywhere in its arguments
+    /// would be selected (and killed).
+    ///
+    /// - Parameter name: The app's display or executable name (e.g., "MyApp").
+    /// - Returns: The PIDs of all matching running apps (empty if none).
+    @MainActor
+    public static func findPIDs(forAppName name: String) -> [Int32] {
+        NSWorkspace.shared.runningApplications.compactMap { app in
+            appNameMatches(
+                name,
+                localizedName: app.localizedName,
+                executableName: app.executableURL?.lastPathComponent,
+                bundleName: app.bundleURL?.deletingPathExtension().lastPathComponent,
+            ) ? app.processIdentifier : nil
+        }
+    }
+
+    /// Exact-match predicate for resolving an app name against a running application's identifiers.
+    ///
+    /// Extracted as a pure function so the matching contract (exact equality, never substring) is
+    /// unit-testable without launching real apps.
+    static func appNameMatches(
+        _ name: String,
+        localizedName: String?,
+        executableName: String?,
+        bundleName: String?,
+    ) -> Bool {
+        name == localizedName || name == executableName || name == bundleName
+    }
+
     /// Finds the PID of a running process matching the given pattern.
     ///
     /// Uses `pgrep -f <pattern>` to search command-line text. Returns the first matching PID. For

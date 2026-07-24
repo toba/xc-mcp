@@ -49,9 +49,11 @@ public struct StopMacAppTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let bundleId = arguments.getString("bundle_id")
-        let appName = arguments.getString("app_name")
-        let pid = arguments.getInt("pid").map { Int32($0) }
+        // Validate identifiers at the execution boundary — reject empty/whitespace names before
+        // they reach any process-selection command, even if a caller bypasses the tool schema.
+        let bundleId = try Self.normalizedIdentifier(arguments.getString("bundle_id"))
+        let appName = try Self.normalizedIdentifier(arguments.getString("app_name"))
+        let pid = try Self.validatedTargetPID(arguments.getInt("pid"))
 
         if bundleId == nil, appName == nil, pid == nil {
             throw MCPError.invalidParams(
@@ -63,38 +65,91 @@ public struct StopMacAppTool: Sendable {
         let identifier = bundleId ?? appName ?? pid.map { "PID \($0)" } ?? "unknown"
 
         do {
-            // If we have a PID (or can resolve one from bundle_id via LLDB session), use signal-based kill
-            let resolvedPID: Int32?
+            // Resolve to a concrete set of PIDs using exact matching (NSRunningApplication /
+            // NSWorkspace / LLDB session). Never fall back to `pkill -f`, which matches the full
+            // command line as a regex and can terminate unrelated processes.
+            let pids: [Int32]
             if let pid {
-                resolvedPID = pid
+                pids = [pid]
             } else {
-                resolvedPID = await resolvePID(bundleId: bundleId)
+                pids = await resolvePIDs(bundleId: bundleId, appName: appName)
+            }
+
+            if pids.isEmpty {
+                return Self.notRunning(identifier)
             }
 
             if force {
-                return try await forceKill(
-                    pid: resolvedPID, bundleId: bundleId, appName: appName,
-                    identifier: identifier,
-                )
+                return try await forceKill(pids: pids, identifier: identifier)
             }
 
-            // Graceful quit with timeout, then fallback to SIGTERM/SIGKILL
-            if let resolvedPID {
-                return try await gracefulKillByPID(pid: resolvedPID, identifier: identifier)
-            } else {
-                return try await gracefulQuitByName(
-                    bundleId: bundleId, appName: appName, identifier: identifier,
+            // For GUI apps addressed by bundle id / name, prefer a polite quit (preserves unsaved
+            // state) before escalating to signals. A bare PID has no app to "quit", so signal it.
+            if bundleId != nil || appName != nil {
+                return try await gracefulQuit(
+                    bundleId: bundleId, appName: appName, pids: pids, identifier: identifier,
                 )
             }
+            return try await gracefulKillByPID(pid: pids[0], identifier: identifier)
         } catch {
             throw try error.asMCPError()
         }
     }
 
-    /// Resolves a PID from a bundle ID via an active LLDB session.
-    private func resolvePID(bundleId: String?) async -> Int32? {
-        guard let bundleId else { return nil }
-        return await LLDBSessionManager.shared.getPID(bundleId: bundleId)
+    /// Trims an optional identifier, rejecting present-but-empty values.
+    ///
+    /// An empty pattern is the most dangerous input: `pkill -f ""` (or an empty `killall` name)
+    /// matches every process. Returns `nil` when the key was absent, the trimmed value when present.
+    static func normalizedIdentifier(_ raw: String?) throws(MCPError) -> String? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw .invalidParams("bundle_id and app_name must not be empty or whitespace.")
+        }
+        return trimmed
+    }
+
+    /// Validates an optional target PID, rejecting values that would broadcast a signal.
+    ///
+    /// `kill(2)` treats PID `0` as "every process in the caller's group", negative PIDs as a target
+    /// process group, and PID `1` as `launchd`. None of those are legitimate app targets, so we
+    /// reject anything ≤ 1 (and out-of-range integers) before constructing a `kill` command.
+    static func validatedTargetPID(_ raw: Int?) throws(MCPError) -> Int32? {
+        guard let raw else { return nil }
+        guard let pid = Int32(exactly: raw) else {
+            throw .invalidParams("pid \(raw) is out of range for a process identifier.")
+        }
+        guard pid > 1 else {
+            throw .invalidParams(
+                "Refusing to signal PID \(pid): values ≤ 1 address process groups or system processes.",
+            )
+        }
+        return pid
+    }
+
+    /// Resolves a bundle id / app name to exact PIDs via NSRunningApplication, NSWorkspace, and any
+    /// active LLDB session. Returns the de-duplicated set of matching PIDs (empty if none running).
+    private func resolvePIDs(bundleId: String?, appName: String?) async -> [Int32] {
+        var pids = Set<Int32>()
+        if let bundleId {
+            if let pid = await PIDResolver.findPID(forBundleID: bundleId) { pids.insert(pid) }
+            if let pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId) {
+                pids.insert(pid)
+            }
+        }
+        if let appName {
+            for pid in await PIDResolver.findPIDs(forAppName: appName) { pids.insert(pid) }
+        }
+        return Array(pids)
+    }
+
+    /// Builds the standard "not running" result for the given identifier.
+    static func notRunning(_ identifier: String) -> CallTool.Result {
+        CallTool.Result(content: [.text(
+            text: "App '\(identifier)' was not running",
+            annotations: nil,
+            _meta: nil,
+        )])
     }
 
     /// Detaches LLDB from a process if it has an active debug session.
@@ -109,63 +164,26 @@ public struct StopMacAppTool: Sendable {
         }
     }
 
-    /// Force-kills by PID or pkill pattern.
+    /// Force-kills every resolved PID with SIGKILL.
     private func forceKill(
-        pid: Int32?,
-        bundleId: String?,
-        appName: String?,
+        pids: [Int32],
         identifier: String,
     ) async throws -> CallTool.Result {
-        if let pid {
+        var killedAny = false
+        for pid in pids {
             await detachDebuggerIfNeeded(pid: pid)
-            let result = try await ProcessResult.run(
-                "/bin/kill", arguments: ["-9", "\(pid)"],
-            )
-            if result.succeeded {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Successfully stopped '\(identifier)' (forced)",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
-            }
-            // Process may already be gone
+            let result = try await ProcessResult.run("/bin/kill", arguments: ["-9", "\(pid)"])
+            killedAny = killedAny || result.succeeded
+        }
+        if killedAny {
             return CallTool.Result(content: [.text(
-                text: "App '\(identifier)' was not running",
+                text: "Successfully stopped '\(identifier)' (forced)",
                 annotations: nil,
                 _meta: nil,
             )])
         }
-
-        // Fall back to pkill
-        let pattern: String
-        if let bundleId {
-            pattern = bundleId
-        } else if let appName {
-            pattern = appName
-        } else {
-            throw MCPError.invalidParams("Cannot force kill without pid, bundle_id, or app_name")
-        }
-
-        let result = try await ProcessResult.run(
-            "/usr/bin/pkill",
-            arguments: ["-9", "-f", pattern],
-        )
-        if result.succeeded {
-            return CallTool.Result(
-                content: [.text(
-                    text: "Successfully stopped '\(identifier)' (forced)",
-                    annotations: nil,
-                    _meta: nil,
-                )],
-            )
-        }
-        return CallTool.Result(content: [.text(
-            text: "App '\(identifier)' was not running",
-            annotations: nil,
-            _meta: nil,
-        )])
+        // Every PID was already gone
+        return Self.notRunning(identifier)
     }
 
     /// Graceful kill when we have a PID: SIGTERM with timeout, then SIGKILL.
@@ -213,10 +231,15 @@ public struct StopMacAppTool: Sendable {
         )
     }
 
-    /// Graceful quit via osascript with a 5-second timeout, falling back to SIGTERM/SIGKILL.
-    private func gracefulQuitByName(
+    /// Graceful quit via osascript with a 5-second timeout, escalating to SIGKILL on the resolved
+    /// PIDs (never a `pkill -f` pattern) for any survivors.
+    ///
+    /// `pids` were already resolved by exact match, so the app is known to be running and we target
+    /// those exact processes when escalating.
+    private func gracefulQuit(
         bundleId: String?,
         appName: String?,
+        pids: [Int32],
         identifier: String,
     ) async throws -> CallTool.Result {
         let script: String
@@ -228,77 +251,44 @@ public struct StopMacAppTool: Sendable {
             throw MCPError.invalidParams("Either bundle_id or app_name is required")
         }
 
-        // Pre-check: verify the app is actually running before attempting osascript quit.
-        // osascript can return success even for non-existent apps on some macOS versions.
-        let pattern = bundleId ?? appName!
-        let pgrepResult = try await ProcessResult.run(
-            "/usr/bin/pgrep", arguments: ["-f", pattern],
-        )
-        if !pgrepResult.succeeded {
+        // Dispatch the Apple Event quit (best effort). If osascript hangs — app is stuck or under a
+        // debugger — the timeout fires and we escalate to signals below.
+        var quitTimedOut = false
+        do {
+            _ = try await ProcessResult.run(
+                "/usr/bin/osascript",
+                arguments: ["-e", script],
+                timeout: .seconds(5),
+            )
+        } catch is ProcessError {
+            quitTimedOut = true
+        }
+
+        // Wait for each resolved PID to exit; collect any that ignored the quit.
+        var survivors: [Int32] = []
+        for pid in pids where !(await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(5))) {
+            survivors.append(pid)
+        }
+
+        if survivors.isEmpty {
+            let suffix = quitTimedOut ? " (graceful quit timed out)" : ""
             return CallTool.Result(content: [.text(
-                text: "App '\(identifier)' was not running",
+                text: "Successfully stopped '\(identifier)'\(suffix)",
                 annotations: nil,
                 _meta: nil,
             )])
         }
 
-        do {
-            let result = try await ProcessResult.run(
-                "/usr/bin/osascript",
-                arguments: ["-e", script],
-                timeout: .seconds(5),
-            )
-            if result.succeeded {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Successfully stopped '\(identifier)'",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
-            }
-            // App wasn't running
-            if result.stdout.isEmpty || result.exitCode == 1 {
-                return CallTool.Result(content: [.text(
-                    text: "App '\(identifier)' was not running",
-                    annotations: nil,
-                    _meta: nil,
-                )])
-            }
-            throw MCPError.internalError("Failed to stop app: \(result.stdout)")
-        } catch is ProcessError {
-            // osascript timed out — app is hung/crashed/under debugger
-            // Detach LLDB if active — traced processes ignore signals
-            if let bundleId,
-               let debugPID = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
-            {
-                await detachDebuggerIfNeeded(pid: debugPID)
-            }
-            // Fall back to pkill
-            let pattern = bundleId ?? appName!
-            let termResult = try await ProcessResult.run(
-                "/usr/bin/pkill", arguments: ["-TERM", "-f", pattern],
-            )
-            if !termResult.succeeded {
-                return CallTool.Result(content: [.text(
-                    text: "App '\(identifier)' was not running",
-                    annotations: nil,
-                    _meta: nil,
-                )])
-            }
-
-            // Give it a moment, then SIGKILL if needed
-            try await Task.sleep(for: .seconds(2))
-            _ = try await ProcessResult.run(
-                "/usr/bin/pkill", arguments: ["-9", "-f", pattern],
-            )
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully stopped '\(identifier)' (graceful quit timed out, used SIGTERM/SIGKILL)",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+        // Escalate to SIGKILL on the exact survivors. Detach LLDB first — traced processes (TX
+        // state) intercept signals.
+        for pid in survivors {
+            await detachDebuggerIfNeeded(pid: pid)
+            _ = try await ProcessResult.run("/bin/kill", arguments: ["-9", "\(pid)"])
         }
+        return CallTool.Result(content: [.text(
+            text: "Successfully stopped '\(identifier)' (graceful quit timed out, used SIGKILL)",
+            annotations: nil,
+            _meta: nil,
+        )])
     }
 }

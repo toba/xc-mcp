@@ -157,4 +157,92 @@ struct StopMacAppToolTests {
         }
         #expect(message.contains("not running"))
     }
+
+    // MARK: - Input validation (prevents unrelated-process termination)
+
+    @Test
+    func `Empty or whitespace app_name is rejected`() async throws {
+        let tool = StopMacAppTool(sessionManager: sessionManager)
+        for empty in ["", "   ", "\t\n"] {
+            await #expect(throws: MCPError.self) {
+                try await tool.execute(arguments: ["app_name": .string(empty)])
+            }
+        }
+    }
+
+    @Test
+    func `Empty or whitespace bundle_id is rejected`() async throws {
+        let tool = StopMacAppTool(sessionManager: sessionManager)
+        await #expect(throws: MCPError.self) {
+            try await tool.execute(arguments: ["bundle_id": .string("   ")])
+        }
+    }
+
+    @Test
+    func `Unsafe PIDs that broadcast signals are rejected`() throws {
+        // 0 targets the caller's process group; negatives target a process group; 1 is launchd.
+        for unsafe in [0, -1, -1000, 1] {
+            #expect(throws: MCPError.self) {
+                try StopMacAppTool.validatedTargetPID(unsafe)
+            }
+        }
+    }
+
+    @Test
+    func `Out-of-range PID is rejected`() throws {
+        #expect(throws: MCPError.self) {
+            try StopMacAppTool.validatedTargetPID(Int(Int32.max) + 1)
+        }
+    }
+
+    @Test
+    func `Valid PID passes validation unchanged`() throws {
+        #expect(try StopMacAppTool.validatedTargetPID(4242) == 4242)
+        #expect(try StopMacAppTool.validatedTargetPID(nil) == nil)
+    }
+
+    @Test
+    func `Unsafe pid argument is rejected at the boundary`() async throws {
+        let tool = StopMacAppTool(sessionManager: sessionManager)
+        await #expect(throws: MCPError.self) {
+            try await tool.execute(arguments: ["pid": .int(0)])
+        }
+        await #expect(throws: MCPError.self) {
+            try await tool.execute(arguments: ["pid": .int(-1)])
+        }
+    }
+
+    // MARK: - Exact app-name matching (no substring / command-line footgun)
+
+    @Test
+    func `App-name matching is exact, never substring`() {
+        // Exact match on any identifier succeeds.
+        #expect(PIDResolver.appNameMatches(
+            "MyApp", localizedName: "MyApp", executableName: nil, bundleName: nil))
+        #expect(PIDResolver.appNameMatches(
+            "MyApp", localizedName: nil, executableName: "MyApp", bundleName: nil))
+        #expect(PIDResolver.appNameMatches(
+            "MyApp", localizedName: nil, executableName: nil, bundleName: "MyApp"))
+
+        // A name that only appears as a substring (or in another process's arguments) must NOT
+        // match — this is the `pkill -f` footgun the fix removes.
+        #expect(!PIDResolver.appNameMatches(
+            "My", localizedName: "MyApp", executableName: "MyApp", bundleName: "MyApp"))
+        #expect(!PIDResolver.appNameMatches(
+            "App", localizedName: "MyApp", executableName: "MyApp", bundleName: "MyApp"))
+        #expect(!PIDResolver.appNameMatches(
+            "MyApp", localizedName: "tail -f /var/log/MyApp.log", executableName: "tail",
+            bundleName: nil))
+    }
+
+    @Test
+    func `Long app names match exactly without truncation`() {
+        // pkill's process-name matching truncates to the kernel comm length (~15 chars); exact
+        // NSWorkspace matching handles arbitrarily long names.
+        let long = "AVeryLongApplicationNameThatExceedsCommLength"
+        #expect(PIDResolver.appNameMatches(
+            long, localizedName: long, executableName: nil, bundleName: nil))
+        #expect(!PIDResolver.appNameMatches(
+            "AVeryLongApplic", localizedName: long, executableName: nil, bundleName: nil))
+    }
 }
