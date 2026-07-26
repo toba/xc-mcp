@@ -94,6 +94,13 @@ public struct RemoveCopyFilesPhase: Sendable {
                 )
             }
 
+            // Drop any synchronized-folder build-phase-membership routing exception sets that route
+            // files into this phase. Without this, the phase object is gone but the routing set's
+            // buildPhase reference dangles and the write-time reference audit rejects the save.
+            let droppedRoutingSets = removeRoutingExceptionSets(
+                for: copyFilesPhase, target: target, xcodeproj: xcodeproj,
+            )
+
             // Remove build files from the phase
             if let buildFiles = copyFilesPhase.files {
                 for buildFile in buildFiles {
@@ -110,10 +117,13 @@ public struct RemoveCopyFilesPhase: Sendable {
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
             let label = phaseName ?? copyFilesPhase.name ?? ("dstPath=" + (dstPath ?? ""))
+            let routingNote = droppedRoutingSets > 0
+                ? " (also removed \(droppedRoutingSets) synchronized-folder routing exception set\(droppedRoutingSets == 1 ? "" : "s"))"
+                : ""
             return CallTool.Result(
                 content: [
                     .text(text:
-                        "Successfully removed Copy Files phase '\(label)' from target '\(targetName)'",
+                        "Successfully removed Copy Files phase '\(label)' from target '\(targetName)'\(routingNote)",
                         annotations: nil, _meta: nil),
                 ],
             )
@@ -123,6 +133,70 @@ public struct RemoveCopyFilesPhase: Sendable {
             throw MCPError.internalError(
                 "Failed to remove copy files phase: \(error.localizedDescription)",
             )
+        }
+    }
+
+    /// Removes every `PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet` that routes a
+    /// synchronized folder's files into `phase`, detaching each from its sync group and deleting the
+    /// object. Returns the number of routing sets dropped.
+    private func removeRoutingExceptionSets(
+        for phase: PBXCopyFilesBuildPhase,
+        target: PBXNativeTarget,
+        xcodeproj: XcodeProj,
+    ) -> Int {
+        var dropped = 0
+        for syncGroup in collectSyncGroups(for: target, in: xcodeproj) {
+            guard let exceptions = syncGroup.exceptions, !exceptions.isEmpty else { continue }
+            var kept: [PBXFileSystemSynchronizedExceptionSet] = []
+            var toDelete: [PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet] = []
+            for exception in exceptions {
+                if let membership =
+                    exception as? PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet,
+                    membership.buildPhase?.uuid == phase.uuid {
+                    toDelete.append(membership)
+                } else {
+                    kept.append(exception)
+                }
+            }
+            guard !toDelete.isEmpty else { continue }
+            syncGroup.exceptions = kept.isEmpty ? nil : kept
+            for membership in toDelete {
+                xcodeproj.pbxproj.delete(object: membership)
+                dropped += 1
+            }
+        }
+        return dropped
+    }
+
+    /// Collects the synchronized root groups visible to `target` — those attached directly to the
+    /// target plus any reachable by walking the project's group tree — deduplicated by UUID.
+    private func collectSyncGroups(
+        for target: PBXNativeTarget,
+        in xcodeproj: XcodeProj,
+    ) -> [PBXFileSystemSynchronizedRootGroup] {
+        var byUUID: [String: PBXFileSystemSynchronizedRootGroup] = [:]
+
+        for group in target.fileSystemSynchronizedGroups ?? [] {
+            byUUID[group.uuid] = group
+        }
+
+        if let mainGroup = try? xcodeproj.pbxproj.rootProject()?.mainGroup {
+            collectSyncGroups(from: mainGroup, into: &byUUID)
+        }
+
+        return Array(byUUID.values)
+    }
+
+    private func collectSyncGroups(
+        from group: PBXGroup,
+        into byUUID: inout [String: PBXFileSystemSynchronizedRootGroup],
+    ) {
+        for child in group.children {
+            if let sync = child as? PBXFileSystemSynchronizedRootGroup {
+                byUUID[sync.uuid] = sync
+            } else if let subgroup = child as? PBXGroup {
+                collectSyncGroups(from: subgroup, into: &byUUID)
+            }
         }
     }
 }

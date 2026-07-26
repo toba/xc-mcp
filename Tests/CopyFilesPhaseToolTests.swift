@@ -796,4 +796,72 @@ struct RemoveCopyFilesPhaseTests {
             .filter { $0.name == "Copy Configs" }
         #expect(copyPhases.isEmpty)
     }
+
+    @Test
+    func `Removes phase fed by a synchronized-folder routing exception set`() throws {
+        let projectPath = Path(tempDir) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        // Build a sync folder that routes files into a Copy Files phase via a
+        // build-phase-membership exception set (the shape add_synchronized_folder_phase_membership
+        // produces). Removing the phase must drop the dangling routing set too.
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(
+            sourceTree: .group, path: "DefaultStyles", name: "DefaultStyles",
+        )
+        xcodeproj.pbxproj.add(object: syncGroup)
+        if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
+            mainGroup.children.append(syncGroup)
+        }
+        target.fileSystemSynchronizedGroups = [syncGroup]
+
+        let copyPhase = PBXCopyFilesBuildPhase(
+            dstPath: "docx",
+            dstSubfolderSpec: .resources,
+            name: "Bundle Templates",
+        )
+        xcodeproj.pbxproj.add(object: copyPhase)
+        target.buildPhases.append(copyPhase)
+
+        let exceptionSet = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet(
+            buildPhase: copyPhase,
+            membershipExceptions: ["word-16.xml"],
+            attributesByRelativePath: nil,
+        )
+        xcodeproj.pbxproj.add(object: exceptionSet)
+        syncGroup.exceptions = [exceptionSet]
+        try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
+
+        let tool = RemoveCopyFilesPhase(pathUtility: pathUtility)
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "target_name": .string("App"),
+            "phase_name": .string("Bundle Templates"),
+        ])
+
+        if case let .text(message, _, _) = result.content.first {
+            #expect(message.contains("Successfully removed"))
+            #expect(message.contains("routing exception set"))
+        } else {
+            Issue.record("Expected text result")
+        }
+
+        // The phase, the routing set, and the sync group's reference to it are all gone.
+        let updated = try XcodeProj(path: projectPath)
+        let updatedTarget = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
+        #expect(
+            updatedTarget.buildPhases
+                .compactMap { $0 as? PBXCopyFilesBuildPhase }
+                .allSatisfy { $0.name != "Bundle Templates" },
+        )
+        #expect(updated.pbxproj.fileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet.isEmpty)
+        let updatedSync = try #require(
+            updated.pbxproj.fileSystemSynchronizedRootGroups.first { $0.path == "DefaultStyles" },
+        )
+        #expect(updatedSync.exceptions?.isEmpty ?? true)
+    }
 }

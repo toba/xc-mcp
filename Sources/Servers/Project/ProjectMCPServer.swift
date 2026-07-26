@@ -74,6 +74,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case removeCopyFilesPhase = "remove_copy_files_phase"
     case setCopyFilesPhaseSubpath = "set_copy_files_phase_subpath"
     case removeRunScriptPhase = "remove_run_script_phase"
+    case setRunScriptPhaseIO = "set_run_script_phase_io"
     case listDocumentTypes = "list_document_types"
     case manageDocumentType = "manage_document_type"
     case listTypeIdentifiers = "list_type_identifiers"
@@ -232,6 +233,7 @@ public struct ProjectMCPServer: Sendable {
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
         let setCopyFilesPhaseSubpath = SetCopyFilesPhaseSubpath(pathUtility: pathUtility)
         let removeRunScriptPhase = RemoveRunScriptPhase(pathUtility: pathUtility)
+        let setRunScriptPhaseIOTool = SetRunScriptPhaseIOTool(pathUtility: pathUtility)
         let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
         let repairProjectTool = RepairProjectTool(pathUtility: pathUtility)
         let scaffoldModuleTool = ScaffoldModuleTool(pathUtility: pathUtility)
@@ -318,6 +320,7 @@ public struct ProjectMCPServer: Sendable {
                 removeCopyFilesPhase.tool(),
                 setCopyFilesPhaseSubpath.tool(),
                 removeRunScriptPhase.tool(),
+                setRunScriptPhaseIOTool.tool(),
                 validateProjectTool.tool(),
                 repairProjectTool.tool(),
                 scaffoldModuleTool.tool(),
@@ -459,6 +462,8 @@ public struct ProjectMCPServer: Sendable {
                     return try setCopyFilesPhaseSubpath.execute(arguments: arguments)
                 case .removeRunScriptPhase:
                     return try removeRunScriptPhase.execute(arguments: arguments)
+                case .setRunScriptPhaseIO:
+                    return try setRunScriptPhaseIOTool.execute(arguments: arguments)
                 case .validateProject: return try validateProjectTool.execute(arguments: arguments)
                 case .repairProject: return try repairProjectTool.execute(arguments: arguments)
                 case .scaffoldModule: return try scaffoldModuleTool.execute(arguments: arguments)

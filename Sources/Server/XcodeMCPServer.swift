@@ -78,6 +78,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case removeCopyFilesPhase = "remove_copy_files_phase"
     case setCopyFilesPhaseSubpath = "set_copy_files_phase_subpath"
     case removeRunScriptPhase = "remove_run_script_phase"
+    case setRunScriptPhaseIO = "set_run_script_phase_io"
     case validateProject = "validate_project"
     case repairProject = "repair_project"
     case scaffoldModule = "scaffold_module"
@@ -340,6 +341,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .removeCopyFilesPhase,
                  .setCopyFilesPhaseSubpath,
                  .removeRunScriptPhase,
+                 .setRunScriptPhaseIO,
                  .validateProject,
                  .repairProject,
                  .scaffoldModule,
@@ -655,6 +657,7 @@ public struct XcodeMCPServer: Sendable {
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
         let setCopyFilesPhaseSubpath = SetCopyFilesPhaseSubpath(pathUtility: pathUtility)
         let removeRunScriptPhase = RemoveRunScriptPhase(pathUtility: pathUtility)
+        let setRunScriptPhaseIOTool = SetRunScriptPhaseIOTool(pathUtility: pathUtility)
         let validateProjectTool = ValidateProjectTool(pathUtility: pathUtility)
         let repairProjectTool = RepairProjectTool(pathUtility: pathUtility)
         let scaffoldModuleTool = ScaffoldModuleTool(pathUtility: pathUtility)
@@ -1054,6 +1057,7 @@ public struct XcodeMCPServer: Sendable {
             (.removeCopyFilesPhase, removeCopyFilesPhase.tool()),
             (.setCopyFilesPhaseSubpath, setCopyFilesPhaseSubpath.tool()),
             (.removeRunScriptPhase, removeRunScriptPhase.tool()),
+            (.setRunScriptPhaseIO, setRunScriptPhaseIOTool.tool()),
             (.validateProject, validateProjectTool.tool()),
             (.repairProject, repairProjectTool.tool()),
             (.scaffoldModule, scaffoldModuleTool.tool()),
@@ -1369,6 +1373,8 @@ public struct XcodeMCPServer: Sendable {
                     return try setCopyFilesPhaseSubpath.execute(arguments: arguments)
                 case .removeRunScriptPhase:
                     return try removeRunScriptPhase.execute(arguments: arguments)
+                case .setRunScriptPhaseIO:
+                    return try setRunScriptPhaseIOTool.execute(arguments: arguments)
                 case .validateProject: return try validateProjectTool.execute(arguments: arguments)
                 case .repairProject: return try repairProjectTool.execute(arguments: arguments)
                 case .scaffoldModule: return try scaffoldModuleTool.execute(arguments: arguments)
