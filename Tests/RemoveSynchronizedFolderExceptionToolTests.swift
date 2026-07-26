@@ -330,4 +330,161 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         let updated = try XcodeProj(path: projectPath)
         #expect(updated.pbxproj.fileSystemSynchronizedBuildFileExceptionSets.isEmpty)
     }
+
+    // MARK: - Build-phase routing exception sets (dst_path / phase_name mode)
+
+    /// Builds a project whose target has a sync folder routing files into a Copy Files phase via a
+    /// `PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet`.
+    private func makeProjectWithRoutingSet(
+        dstPath: String? = "docx",
+        phaseName: String? = nil,
+        membership: [String] = ["word-16.xml", "word-16-custom.xml"],
+    ) throws -> Path {
+        let projectPath = Path(tempDir) + "RoutingProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "RoutingProject", targetName: "AppTarget", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" }!
+
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(
+            sourceTree: .group, path: "DefaultStyles", name: "DefaultStyles",
+        )
+        xcodeproj.pbxproj.add(object: syncGroup)
+        if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
+            mainGroup.children.append(syncGroup)
+        }
+        target.fileSystemSynchronizedGroups = [syncGroup]
+
+        let copyPhase = PBXCopyFilesBuildPhase(
+            dstPath: dstPath,
+            dstSubfolderSpec: .resources,
+            name: phaseName,
+        )
+        xcodeproj.pbxproj.add(object: copyPhase)
+        target.buildPhases.append(copyPhase)
+
+        let routingSet = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet(
+            buildPhase: copyPhase,
+            membershipExceptions: membership,
+            attributesByRelativePath: nil,
+        )
+        xcodeproj.pbxproj.add(object: routingSet)
+        syncGroup.exceptions = [routingSet]
+
+        try xcodeproj.write(path: projectPath)
+        return projectPath
+    }
+
+    @Test
+    func `Schema advertises phase_name and dst_path`() {
+        let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+        let schema = tool.tool().inputSchema
+        if case let .object(schemaDict) = schema,
+           case let .object(props) = schemaDict["properties"] {
+            #expect(props["phase_name"] != nil)
+            #expect(props["dst_path"] != nil)
+        } else {
+            Issue.record("Expected object schema with properties")
+        }
+    }
+
+    @Test
+    func `Removes entire routing set located by dst_path`() throws {
+        let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+        let projectPath = try makeProjectWithRoutingSet(dstPath: "docx")
+
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("DefaultStyles"),
+            "target_name": .string("AppTarget"),
+            "dst_path": .string("docx"),
+        ])
+
+        if case let .text(message, _, _) = result.content.first {
+            #expect(message.contains("Removed routing exception set"))
+        } else {
+            Issue.record("Expected text result")
+        }
+
+        let updated = try XcodeProj(path: projectPath)
+        #expect(
+            updated.pbxproj.fileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet.isEmpty,
+        )
+        let syncGroup = try #require(
+            updated.pbxproj.fileSystemSynchronizedRootGroups.first { $0.path == "DefaultStyles" },
+        )
+        #expect(syncGroup.exceptions?.isEmpty ?? true)
+    }
+
+    @Test
+    func `Removes single file from routing set located by phase_name`() throws {
+        let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+        let projectPath = try makeProjectWithRoutingSet(
+            dstPath: nil, phaseName: "Bundle Templates",
+        )
+
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("DefaultStyles"),
+            "target_name": .string("AppTarget"),
+            "phase_name": .string("Bundle Templates"),
+            "file_name": .string("word-16.xml"),
+        ])
+
+        if case let .text(message, _, _) = result.content.first {
+            #expect(message.contains("Removed 'word-16.xml'"))
+            #expect(message.contains("routing exception set"))
+        } else {
+            Issue.record("Expected text result")
+        }
+
+        let updated = try XcodeProj(path: projectPath)
+        let sets = updated.pbxproj.fileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet
+        #expect(sets.count == 1)
+        #expect(sets.first?.membershipExceptions == ["word-16-custom.xml"])
+    }
+
+    @Test
+    func `Removes routing set when last membership file removed`() throws {
+        let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+        let projectPath = try makeProjectWithRoutingSet(
+            dstPath: "docx", membership: ["only.xml"],
+        )
+
+        let result = try tool.execute(arguments: [
+            "project_path": .string(projectPath.string),
+            "folder_path": .string("DefaultStyles"),
+            "target_name": .string("AppTarget"),
+            "dst_path": .string("docx"),
+            "file_name": .string("only.xml"),
+        ])
+
+        if case let .text(message, _, _) = result.content.first {
+            #expect(message.contains("Exception set was empty and has been removed"))
+        } else {
+            Issue.record("Expected text result")
+        }
+
+        let updated = try XcodeProj(path: projectPath)
+        #expect(
+            updated.pbxproj.fileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet.isEmpty,
+        )
+    }
+
+    @Test
+    func `Fails when no routing set matches the phase`() throws {
+        let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
+        let projectPath = try makeProjectWithRoutingSet(dstPath: "docx")
+
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": .string(projectPath.string),
+                "folder_path": .string("DefaultStyles"),
+                "target_name": .string("AppTarget"),
+                "dst_path": .string("elsewhere"),
+            ])
+        }
+    }
 }
