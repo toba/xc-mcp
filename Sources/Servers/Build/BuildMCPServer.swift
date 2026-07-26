@@ -58,6 +58,9 @@ public enum BuildToolName: String, CaseIterable, Sendable {
     case readSerializedDiagnostics = "read_serialized_diagnostics"
     case diffBuildSettings = "diff_build_settings"
     case showBuildDependencyGraph = "show_build_dependency_graph"
+    case benchmarkBuild = "benchmark_build"
+    case findCompileHotspots = "find_compile_hotspots"
+    case auditBuildSettings = "audit_build_settings"
 
     // Performance tools
     case getPerformanceMetrics = "get_performance_metrics"
@@ -218,6 +221,16 @@ public struct BuildMCPServer: Sendable {
         let showBuildDependencyGraphTool = ShowBuildDependencyGraphTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let benchmarkBuildTool = BenchmarkBuildTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let findCompileHotspotsTool = FindCompileHotspotsTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let auditBuildSettingsTool = AuditBuildSettingsTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+            pathUtility: pathUtility,
+        )
 
         // Create performance tools
         let getPerformanceMetricsTool = GetPerformanceMetricsTool()
@@ -297,6 +310,9 @@ public struct BuildMCPServer: Sendable {
                 readSerializedDiagnosticsTool.tool(),
                 diffBuildSettingsTool.tool(),
                 showBuildDependencyGraphTool.tool(),
+                benchmarkBuildTool.tool(),
+                findCompileHotspotsTool.tool(),
+                auditBuildSettingsTool.tool(),
                 // Performance tools
                 getPerformanceMetricsTool.tool(),
                 setPerformanceBaselineTool.tool(),
@@ -431,6 +447,12 @@ public struct BuildMCPServer: Sendable {
                     return try await diffBuildSettingsTool.execute(arguments: arguments)
                 case .showBuildDependencyGraph:
                     return try await showBuildDependencyGraphTool.execute(arguments: arguments)
+                case .benchmarkBuild:
+                    return try await benchmarkBuildTool.execute(arguments: arguments)
+                case .findCompileHotspots:
+                    return try await findCompileHotspotsTool.execute(arguments: arguments)
+                case .auditBuildSettings:
+                    return try await auditBuildSettingsTool.execute(arguments: arguments)
                 // Performance tools
                 case .getPerformanceMetrics:
                     return try await getPerformanceMetricsTool.execute(arguments: arguments)

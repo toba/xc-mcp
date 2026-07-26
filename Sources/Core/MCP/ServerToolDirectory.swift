@@ -38,6 +38,7 @@ public enum ServerToolDirectory {
         "clean", "doctor", "scaffold_ios_project", "scaffold_macos_project",
         "search_crash_reports", "export_icon", "diagnostics",
         "sample_mac_app", "profile_app_launch",
+        "benchmark_build", "find_compile_hotspots", "audit_build_settings",
         "version_management", "notarize", "validate_asset_catalog", "open_in_xcode",
     ]
 

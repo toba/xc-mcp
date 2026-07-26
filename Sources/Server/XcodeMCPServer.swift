@@ -260,6 +260,9 @@ public enum ToolName: String, CaseIterable, Sendable {
     case readSerializedDiagnostics = "read_serialized_diagnostics"
     case diffBuildSettings = "diff_build_settings"
     case showBuildDependencyGraph = "show_build_dependency_graph"
+    case benchmarkBuild = "benchmark_build"
+    case findCompileHotspots = "find_compile_hotspots"
+    case auditBuildSettings = "audit_build_settings"
 
     case versionManagement = "version_management"
     case notarize
@@ -498,6 +501,9 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .readSerializedDiagnostics,
                  .diffBuildSettings,
                  .showBuildDependencyGraph,
+                 .benchmarkBuild,
+                 .findCompileHotspots,
+                 .auditBuildSettings,
                  .versionManagement,
                  .notarize,
                  .validateAssetCatalog,
@@ -959,6 +965,16 @@ public struct XcodeMCPServer: Sendable {
         let showBuildDependencyGraphTool = ShowBuildDependencyGraphTool(
             xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
         )
+        let benchmarkBuildTool = BenchmarkBuildTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let findCompileHotspotsTool = FindCompileHotspotsTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+        )
+        let auditBuildSettingsTool = AuditBuildSettingsTool(
+            xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager,
+            pathUtility: pathUtility,
+        )
         let versionManagementTool = VersionManagementTool()
         let notarizeTool = NotarizeTool()
         let validateAssetCatalogTool = ValidateAssetCatalogTool()
@@ -1204,6 +1220,9 @@ public struct XcodeMCPServer: Sendable {
             (.readSerializedDiagnostics, readSerializedDiagnosticsTool.tool()),
             (.diffBuildSettings, diffBuildSettingsTool.tool()),
             (.showBuildDependencyGraph, showBuildDependencyGraphTool.tool()),
+            (.benchmarkBuild, benchmarkBuildTool.tool()),
+            (.findCompileHotspots, findCompileHotspotsTool.tool()),
+            (.auditBuildSettings, auditBuildSettingsTool.tool()),
             (.versionManagement, versionManagementTool.tool()),
             (.notarize, notarizeTool.tool()),
             (.validateAssetCatalog, validateAssetCatalogTool.tool()),
@@ -1702,6 +1721,12 @@ public struct XcodeMCPServer: Sendable {
                     return try await diffBuildSettingsTool.execute(arguments: arguments)
                 case .showBuildDependencyGraph:
                     return try await showBuildDependencyGraphTool.execute(arguments: arguments)
+                case .benchmarkBuild:
+                    return try await benchmarkBuildTool.execute(arguments: arguments)
+                case .findCompileHotspots:
+                    return try await findCompileHotspotsTool.execute(arguments: arguments)
+                case .auditBuildSettings:
+                    return try await auditBuildSettingsTool.execute(arguments: arguments)
                 case .versionManagement:
                     return try await versionManagementTool.execute(arguments: arguments)
                 case .notarize: return try await notarizeTool.execute(arguments: arguments)

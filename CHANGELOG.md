@@ -1,5 +1,11 @@
 # Changelog
 
+## Week of Jul 26 – Aug 1, 2026
+
+### ✨ Features
+
+- Add three read-only build-optimization tools to `xc-build` and monolithic `xc-mcp`; `benchmark_build` times N clean + N incremental (no-change) rebuilds (default 3/3), reporting each series separately with mean/min/max/stddev plus a `-showBuildTimingSummary` phase breakdown, persisting results to a `.build-benchmark/` dir next to the project and diffing against a saved baseline — every invocation is driven through `runner.run()` with an explicit scoped `-derivedDataPath` so the clean and incremental phases hit the same DerivedData (a `runner.clean()` omits the destination and would otherwise resolve a platform-unscoped path different from the destination-scoped build); `find_compile_hotspots` injects `-warn-long-function-bodies` / `-warn-long-expression-type-checking` via an `OTHER_SWIFT_FLAGS=$(inherited) …` override (preserving project flags), cleans by default so every file recompiles, and ranks the slowest declarations and costliest files from the emitted timing warnings; `audit_build_settings` does an advisory pass over resolved settings flagging whole-module / optimization / `dwarf-with-dsym` / all-arch in Debug and explicit-modules / eager-linking when explicitly off (gated so Release configs aren't wrongly flagged), and scans `.xcodeproj` run-script phases for empty output paths that re-run every incremental build; distilled from avanderlee.com's Xcode build-optimization skill kit ([#435](https://github.com/toba/xc-mcp/issues/435))
+
 ## Week of Jul 19 – Jul 25, 2026
 
 ### ✨ Features
