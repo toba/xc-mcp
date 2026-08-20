@@ -7,12 +7,10 @@ import Foundation
 public struct MoveFileTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "move_file",
             description: "Move or rename a file within the project",
             inputSchema: .object([
@@ -51,11 +49,10 @@ public struct MoveFileTool: Sendable {
         guard case let .string(projectPath) = arguments["project_path"],
               case let .string(oldPath) = arguments["old_path"],
               case let .string(newPath) = arguments["new_path"]
-        else {
-            throw MCPError.invalidParams("project_path, old_path, and new_path are required")
-        }
+        else { throw MCPError.invalidParams("project_path, old_path, and new_path are required") }
 
         let moveOnDisk: Bool
+
         if case let .bool(move) = arguments["move_on_disk"] {
             moveOnDisk = move
         } else {
@@ -75,49 +72,61 @@ public struct MoveFileTool: Sendable {
 
             let oldFileName = URL(fileURLWithPath: resolvedOldPath).lastPathComponent
             let newFileName = URL(fileURLWithPath: resolvedNewPath).lastPathComponent
+            let projectRoot = projectURL.deletingLastPathComponent().path
 
             // Use relative paths from project for comparison and updates
-            let oldRelativePath =
-                pathUtility.makeRelativePath(from: resolvedOldPath) ?? resolvedOldPath
-            let newRelativePath =
-                pathUtility.makeRelativePath(from: resolvedNewPath) ?? resolvedNewPath
+            let oldRelativePath = pathUtility.makeRelativePath(from: resolvedOldPath)
+                ?? resolvedOldPath
+            let newRelativePath = pathUtility.makeRelativePath(from: resolvedNewPath)
+                ?? resolvedNewPath
 
             var fileMoved = false
 
             // Find and update file references
-            for fileRef in xcodeproj.pbxproj.fileReferences {
-                if fileRef.path == oldRelativePath || fileRef.path == oldPath
-                    || fileRef.name == oldFileName || fileRef.path == oldFileName
-                {
-                    // Update the file reference
-                    fileRef.path = newRelativePath
-                    fileRef.name = newFileName
-                    fileMoved = true
-                }
+            for fileRef in xcodeproj.pbxproj.fileReferences
+                where fileRef.path == oldRelativePath || fileRef.path == oldPath
+                || fileRef.name == oldFileName || fileRef.path == oldFileName
+            {
+                // A `.group` reference resolves its path against the directory of the group
+                // that owns it, so the stored path must be relative to that directory. Store
+                // the source tree the new location needs as well, because a move can carry the
+                // file out of the group directory.
+                let location = FileReferencePath.location(
+                    forResolvedPath: resolvedNewPath,
+                    groupFullPath: fileRef.owningGroupFullPath(projectRoot: projectRoot),
+                    projectRoot: projectRoot,
+                    basePath: pathUtility.basePath,
+                )
+
+                fileRef.sourceTree = location.sourceTree
+                fileRef.path = location.path
+                fileRef.name = newFileName
+                fileMoved = true
             }
 
             // Also check synchronized folder exception sets
             var exceptionsUpdated = false
+
             for exceptionSet in xcodeproj.pbxproj
                 .fileSystemSynchronizedBuildFileExceptionSets
             {
                 guard var exceptions = exceptionSet.membershipExceptions else { continue }
                 var changed = false
-                for i in exceptions.indices {
-                    if exceptions[i] == oldPath || exceptions[i] == oldRelativePath
-                        || exceptions[i] == oldFileName
-                    {
-                        // Determine the new entry: use the same style as the old entry
-                        // (filename-only stays filename-only, path stays path)
-                        if exceptions[i] == oldFileName, !oldFileName.contains("/") {
-                            exceptions[i] = newFileName
-                        } else if exceptions[i] == oldPath {
-                            exceptions[i] = newPath
-                        } else {
-                            exceptions[i] = newRelativePath
-                        }
-                        changed = true
+
+                for i in exceptions.indices
+                    where exceptions[i] == oldPath || exceptions[i] == oldRelativePath
+                    || exceptions[i] == oldFileName
+                {
+                    // Determine the new entry: use the same style as the old entry
+                    // (filename-only stays filename-only, path stays path)
+                    if exceptions[i] == oldFileName, !oldFileName.contains("/") {
+                        exceptions[i] = newFileName
+                    } else if exceptions[i] == oldPath {
+                        exceptions[i] = newPath
+                    } else {
+                        exceptions[i] = newRelativePath
                     }
+                    changed = true
                 }
                 if changed {
                     exceptionSet.membershipExceptions = exceptions
@@ -135,6 +144,7 @@ public struct MoveFileTool: Sendable {
 
                     // Create parent directory if needed
                     let newParentDir = newURL.deletingLastPathComponent()
+
                     if !FileManager.default.fileExists(atPath: newParentDir.path) {
                         try FileManager.default.createDirectory(
                             at: newParentDir, withIntermediateDirectories: true,
@@ -148,24 +158,21 @@ public struct MoveFileTool: Sendable {
                 }
 
                 var message = "Successfully moved \(oldFileName) to \(newRelativePath)"
+
                 if exceptionsUpdated {
-                    message +=
-                        " (also updated synchronized folder exception sets)"
+                    message += " (also updated synchronized folder exception sets)"
                 }
 
-                return CallTool.Result(
-                    content: [.text(text: message, annotations: nil, _meta: nil)],
+                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
                 )
             } else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "File not found in project: \(oldFileName)",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result(content: [
+                    .text(
+                        text: "File not found in project: \(oldFileName)",
+                        annotations: nil,
+                        _meta: nil,
+                    )
+                ],)
             }
         } catch {
             throw MCPError.internalError(

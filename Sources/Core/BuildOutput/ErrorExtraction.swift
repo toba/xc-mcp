@@ -251,7 +251,7 @@ public enum ErrorExtractor {
         if buildResult.status == "incomplete" {
             throw .internalError(
                 "Build incomplete: the build ended before xcodebuild reported a result "
-                    + "(no ** BUILD SUCCEEDED ** / ** BUILD FAILED ** marker). The process was "
+                    + "(no ** <PHASE> SUCCEEDED ** / ** <PHASE> FAILED ** marker). The process was "
                     + "likely killed (e.g. out of memory) or the output was truncated.\n\(errorOutput)",
             )
         }

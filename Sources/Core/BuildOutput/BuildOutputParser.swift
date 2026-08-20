@@ -18,8 +18,9 @@ public final class BuildOutputParser {
     private var seenWarnings: Set<String> = []
     private var seenErrors: Set<String> = []
     private var seenLinkerErrors: Set<String> = []
-    private var xctestExecutedCount: Int?
-    private var xctestFailedCount: Int?
+    private var xctestBundleTally = XCTestTally()
+    private var xctestOuterTally = XCTestTally()
+    private var currentSuiteName: String?
     private var swiftTestingExecutedCount: Int?
     private var swiftTestingFailedCount: Int?
     private var passedTestsCount: Int = 0
@@ -63,6 +64,31 @@ public final class BuildOutputParser {
     // Dependency graph tracking
     private var targetDependencies: [String: [String]] = [:]
     private var currentDependencyTarget: String?
+
+    /// One `Executed N tests, with M failures` line from a single XCTest suite level.
+    private struct XCTestTally {
+        var executed = 0
+        var failed = 0
+        var time: Double = 0
+        var seen = false
+    }
+
+    /// The XCTest counts for the run.
+    ///
+    /// XCTest repeats `Executed N tests` at each suite level: the nested suite, the `.xctest`
+    /// bundle, and the `Selected tests` or `All tests` wrapper. Two `.xctest` bundles hold disjoint
+    /// tests, so their counts add up. The levels around a bundle repeat the tests the bundle
+    /// already reported, so adding them counts the same tests more than once. Prefer the bundle
+    /// level, and fall back to the widest other line for output that never names a bundle.
+    private var resolvedXCTestTally: XCTestTally? {
+        xctestBundleTally.seen
+            ? xctestBundleTally
+            : xctestOuterTally.seen ? xctestOuterTally : nil
+    }
+
+    private var xctestExecutedCount: Int? { resolvedXCTestTally?.executed }
+
+    private var xctestFailedCount: Int? { resolvedXCTestTally?.failed }
 
     public init() {}
 
@@ -232,8 +258,12 @@ public final class BuildOutputParser {
 
         let flakyTests = detectFlakyTests()
 
-        let formattedTestTime: String? = testTimeAccumulator > 0
-            ? String(format: "%.3fs", testTimeAccumulator)
+        // The XCTest duration comes from the same suite level as the XCTest counts, so a repeated
+        // level never adds its seconds a second time.
+        let totalTestTime = testTimeAccumulator + (resolvedXCTestTally?.time ?? 0)
+
+        let formattedTestTime: String? = totalTestTime > 0
+            ? String(format: "%.3fs", totalTestTime)
             : nil
 
         let summary = BuildSummary(
@@ -328,8 +358,9 @@ public final class BuildOutputParser {
         buildTime = nil
         testTimeAccumulator = 0
         seenTestNames = []
-        xctestExecutedCount = nil
-        xctestFailedCount = nil
+        xctestBundleTally = XCTestTally()
+        xctestOuterTally = XCTestTally()
+        currentSuiteName = nil
         swiftTestingExecutedCount = nil
         swiftTestingFailedCount = nil
         passedTestsCount = 0
@@ -358,6 +389,17 @@ public final class BuildOutputParser {
 
     private func parseLine(_ line: String) {
         if line.isEmpty || line.count > 5000 { return }
+
+        // XCTest names the suite before the `Executed` line that reports it, so the most recent
+        // name tells us which level those counts belong to. Read it before any branch returns,
+        // because a suite result line also matches the passed-test and failed-test parsers.
+        if line.hasPrefix("Test Suite '") {
+            let afterQuote = line.dropFirst("Test Suite '".count)
+
+            if let endQuote = afterQuote.firstIndex(of: "'") {
+                currentSuiteName = String(afterQuote[..<endQuote])
+            }
+        }
 
         if parseLinkerLine(line) { return }
 
@@ -394,8 +436,9 @@ public final class BuildOutputParser {
             || line.contains("Build succeeded")
             || line.contains("Build failed") || line.contains("Executed")
             || line.contains("] Testing ")
-            || line.contains("BUILD SUCCEEDED") || line.contains("BUILD FAILED")
-            || line.contains("TEST FAILED") || line.contains("SUCCEEDED")
+            // Any `** <PHASE> SUCCEEDED **` or `** <PHASE> FAILED **` marker, fenced or rewritten
+            // by xcbeautify in title case.
+            || line.contains("SUCCEEDED") || line.contains("FAILED")
             || line.contains("Succeeded") || line.contains("Failed")
             || line.contains("Build complete!")
             || line.hasPrefix("RegisterWithLaunchServices")
@@ -1244,32 +1287,111 @@ public final class BuildOutputParser {
         return nil
     }
 
-    private func parseBuildAndTestTime(_ line: String) {
-        if line.contains("** BUILD SUCCEEDED **") || line.contains("** BUILD FAILED **") {
-            if line.contains("** BUILD SUCCEEDED **") {
-                sawTerminalSuccessMarker = true
-            } else {
+    // MARK: - Terminal Markers
+
+    /// The outcome an xcodebuild terminal marker reports.
+    private enum TerminalOutcome { case succeeded, failed }
+
+    /// A terminal marker split into the phase it closes and the outcome it reports.
+    private struct TerminalMarker {
+        let phase: String
+        let outcome: TerminalOutcome
+    }
+
+    /// The xcodebuild actions that end with a terminal marker, in the title case xcbeautify prints.
+    ///
+    /// `Test Execute` comes before `Test` so the longer phase name wins the match.
+    private static let terminalPhaseNames = [
+        "Build", "Test Execute", "Test", "Archive", "Export", "Analyze", "Install", "Clean",
+    ]
+
+    /// Every unfenced marker xcbeautify prints, paired with the marker it reports.
+    ///
+    /// The table is built once. ``parseUnfencedTerminalMarker(_:)`` runs on every line that carries
+    /// `Succeeded` or `Failed`, so building the needles per call would allocate a string per phase
+    /// on the parse hot path.
+    private static let unfencedTerminalMarkers: [(needle: String, marker: TerminalMarker)] =
+        terminalPhaseNames.flatMap { phase in
+            let name = phase.uppercased()
+            return [
+                (
+                    needle: "\(phase) Succeeded",
+                    marker: TerminalMarker(phase: name, outcome: .succeeded)
+                ),
+                (
+                    needle: "\(phase) Failed",
+                    marker: TerminalMarker(phase: name, outcome: .failed)
+                ),
+            ]
+        }
+
+    /// Reads a fenced terminal marker of the shape `** <PHASE> SUCCEEDED **` or
+    /// `** <PHASE> FAILED **`.
+    ///
+    /// xcodebuild closes every action with this shape. Matching the shape covers `ARCHIVE`,
+    /// `EXPORT`, `ANALYZE`, `INSTALL`, and `CLEAN` without one literal per phase. The phase must be
+    /// uppercase, which keeps prose that holds the same fences out of the match.
+    private static func parseFencedTerminalMarker(_ line: String) -> TerminalMarker? {
+        guard let open = line.range(of: "** "),
+              let close = line.range(of: " **", range: open.upperBound..<line.endIndex)
+        else { return nil }
+
+        let body = line[open.upperBound..<close.lowerBound]
+
+        let outcome: TerminalOutcome
+        let phase: Substring
+
+        if body.hasSuffix(" SUCCEEDED") {
+            outcome = .succeeded
+            phase = body.dropLast(" SUCCEEDED".count)
+        } else if body.hasSuffix(" FAILED") {
+            outcome = .failed
+            phase = body.dropLast(" FAILED".count)
+        } else {
+            return nil
+        }
+
+        guard !phase.isEmpty, phase.allSatisfy({ $0.isUppercase || $0 == " " }) else { return nil }
+
+        return TerminalMarker(phase: String(phase), outcome: outcome)
+    }
+
+    /// Reads an unfenced terminal marker such as `Archive Succeeded` or `Test Failed`.
+    ///
+    /// xcbeautify rewrites the xcodebuild marker in title case and drops the `**` fences. The phase
+    /// must come from ``unfencedTerminalMarkers``, because an unfenced marker has no shape that
+    /// separates it from ordinary output.
+    private static func parseUnfencedTerminalMarker(_ line: String) -> TerminalMarker? {
+        // Two scans reject the ordinary line, instead of one scan per entry in the table.
+        guard line.contains("Succeeded") || line.contains("Failed") else { return nil }
+
+        return unfencedTerminalMarkers.first { line.contains($0.needle) }?.marker
+    }
+
+    /// Records the outcome a terminal marker reports.
+    ///
+    /// Both marker shapes carry the same meaning, so both call this method.
+    private func record(_ marker: TerminalMarker) {
+        switch marker.outcome {
+            case .succeeded: sawTerminalSuccessMarker = true
+            case .failed:
                 sawTerminalFailureMarker = true
-            }
+                // A failed test action stands in for the individual failure lines a crashed run
+                // never printed. `TEST` and `TEST EXECUTE` both carry that meaning.
+                if marker.phase.hasPrefix("TEST") { testRunFailed = true }
+        }
+    }
+
+    private func parseBuildAndTestTime(_ line: String) {
+        if let marker = Self.parseFencedTerminalMarker(line) {
+            record(marker)
+
+            // Some xcodebuild versions append the elapsed time in brackets to the marker.
             if let bracketStart = line.range(of: "[", options: .backwards),
                let bracketEnd = line.range(of: "]", options: .backwards),
-               bracketStart.lowerBound < bracketEnd.lowerBound
-            {
+               bracketStart.lowerBound < bracketEnd.lowerBound {
                 buildTime = String(line[bracketStart.upperBound..<bracketEnd.lowerBound])
             }
-            return
-        }
-
-        // xcodebuild prints ** TEST SUCCEEDED ** (and ** TEST EXECUTE SUCCEEDED ** for some test
-        // actions) on a clean test run — positive evidence the run completed.
-        if line.contains("** TEST SUCCEEDED **") || line.contains("** TEST EXECUTE SUCCEEDED **") {
-            sawTerminalSuccessMarker = true
-            return
-        }
-
-        if line.contains("** TEST FAILED **") {
-            testRunFailed = true
-            sawTerminalFailureMarker = true
             return
         }
 
@@ -1311,39 +1433,32 @@ public final class BuildOutputParser {
             return
         }
 
-        // xcbeautify rewrites the test terminal markers without the `** **` fences.
-        if line.contains("Test Succeeded") {
-            sawTerminalSuccessMarker = true
+        // xcbeautify rewrites the terminal markers without the `** **` fences, for every phase.
+        if let marker = Self.parseUnfencedTerminalMarker(line) {
+            record(marker)
             return
         }
 
-        if line.contains("Test Failed") {
-            sawTerminalFailureMarker = true
-            return
-        }
-
-        // XCTest: Executed N tests, with N failures
         let trimmedLine = line.trimmingCharacters(in: .whitespaces)
 
+        // XCTest: Executed N tests, with N failures
         if trimmedLine.hasPrefix("Executed "), let withRange = trimmedLine.range(of: ", with ") {
             let afterExecuted = trimmedLine[
                 trimmedLine.index(trimmedLine.startIndex, offsetBy: 9)..<withRange.lowerBound,
             ]
             let testCountStr = afterExecuted.split(separator: " ").first
-
-            if let testCountStr, let total = Int(testCountStr) {
-                xctestExecutedCount = (xctestExecutedCount ?? 0) + total
-            }
+            let total = testCountStr.flatMap { Int($0) } ?? 0
 
             let afterWith = String(trimmedLine[withRange.upperBound...])
+            var failures = 0
 
             if let failureRange = afterWith.range(of: " failure") {
                 let beforeFailure = afterWith[..<failureRange.lowerBound]
                 let words = beforeFailure.split(separator: " ")
-                if let lastWord = words.last, let failures = Int(lastWord) {
-                    xctestFailedCount = (xctestFailedCount ?? 0) + failures
-                }
+                if let lastWord = words.last, let parsed = Int(lastWord) { failures = parsed }
             }
+
+            var time: Double = 0
 
             if let inRange = trimmedLine.range(
                 of: " in ", range: withRange.upperBound..<trimmedLine.endIndex,
@@ -1351,11 +1466,14 @@ public final class BuildOutputParser {
                 let afterIn = trimmedLine[inRange.upperBound...]
 
                 if let parenStart = afterIn.range(of: " (") {
-                    accumulateTestTime(String(afterIn[..<parenStart.lowerBound]))
+                    time = Self.parseTestTime(String(afterIn[..<parenStart.lowerBound])) ?? 0
                 } else if let secondsRange = afterIn.range(of: " seconds", options: .backwards) {
-                    accumulateTestTime(String(afterIn[..<secondsRange.lowerBound]))
+                    time = Self.parseTestTime(String(afterIn[..<secondsRange.lowerBound])) ?? 0
                 }
             }
+
+            recordXCTestTally(executed: total, failed: failures, time: time)
+            currentSuiteName = nil
             return
         }
 
@@ -1456,8 +1574,31 @@ public final class BuildOutputParser {
     }
 
     private func accumulateTestTime(_ timeString: String) {
-        let cleaned = timeString.trimmingCharacters(in: CharacterSet(charactersIn: ". \t"))
-        if let time = Double(cleaned) { testTimeAccumulator += time }
+        if let time = Self.parseTestTime(timeString) { testTimeAccumulator += time }
+    }
+
+    private static func parseTestTime(_ timeString: String) -> Double? {
+        Double(timeString.trimmingCharacters(in: CharacterSet(charactersIn: ". \t")))
+    }
+
+    /// Files one `Executed N tests` line under the suite level that produced it.
+    ///
+    /// A `.xctest` line adds to the bundle total, because two bundles hold disjoint tests. Any
+    /// other level replaces the fallback only when it reports more tests, because the levels above
+    /// a bundle repeat the tests the bundle already counted. The failure count and the duration
+    /// travel with the line that wins, so all three describe the same suite level.
+    private func recordXCTestTally(executed: Int, failed: Int, time: Double) {
+        if currentSuiteName?.hasSuffix(".xctest") == true {
+            xctestBundleTally.executed += executed
+            xctestBundleTally.failed += failed
+            xctestBundleTally.time += time
+            xctestBundleTally.seen = true
+            return
+        }
+
+        guard !xctestOuterTally.seen || executed > xctestOuterTally.executed else { return }
+
+        xctestOuterTally = XCTestTally(executed: executed, failed: failed, time: time, seen: true)
     }
 
     // MARK: - Build Phase Parsing

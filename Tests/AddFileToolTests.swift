@@ -42,9 +42,7 @@ struct AddFileToolTests {
     func `Add file with missing parameter`(_ testCase: AddFileMissingParamTestCase) throws {
         let tool = AddFileTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     @Test
@@ -55,9 +53,7 @@ struct AddFileToolTests {
             "file_path": Value.string("test.swift"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: arguments) }
     }
 
     @Test
@@ -69,6 +65,7 @@ struct AddFileToolTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+
         defer {
             try? FileManager.default.removeItem(at: tempDir)
         }
@@ -86,6 +83,7 @@ struct AddFileToolTests {
         let result = try tool.execute(arguments: arguments)
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Successfully added file 'file.swift'"))
         } else {
@@ -108,6 +106,7 @@ struct AddFileToolTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+
         defer {
             try? FileManager.default.removeItem(at: tempDir)
         }
@@ -126,6 +125,7 @@ struct AddFileToolTests {
         let result = try tool.execute(arguments: arguments)
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Successfully added file 'file.swift'"))
         } else {
@@ -148,6 +148,7 @@ struct AddFileToolTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+
         defer {
             try? FileManager.default.removeItem(at: tempDir)
         }
@@ -168,6 +169,7 @@ struct AddFileToolTests {
         let result = try tool.execute(arguments: arguments)
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Successfully added file 'file.swift' to target 'TestApp'"))
         } else {
@@ -184,8 +186,8 @@ struct AddFileToolTests {
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
         #expect(target != nil)
 
-        let sourcesBuildPhase =
-            target?.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        let sourcesBuildPhase = target?.buildPhases.first { $0 is PBXSourcesBuildPhase }
+            as? PBXSourcesBuildPhase
         #expect(sourcesBuildPhase != nil)
 
         let buildFile = sourcesBuildPhase?.files?.first { $0.file == addedFile }
@@ -203,7 +205,8 @@ struct AddFileToolTests {
             try? FileManager.default.removeItem(at: tempDir)
         }
 
-        // Create project with a group hierarchy: mainGroup -> AppGroup (path: "App") -> ModelsGroup (path: "Models")
+        // Create project with a group hierarchy: mainGroup -> AppGroup (path: "App") -> ModelsGroup
+        // (path: "Models")
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         let pbxproj = PBXProj()
 
@@ -271,10 +274,10 @@ struct AddFileToolTests {
         }
         #expect(message.contains("Successfully added file 'AppModel.swift'"))
 
-        // Verify the file reference path is relative to the group, NOT the project root.
-        // Bug was: path = "App/Models/AppModel.swift" (relative to project root)
-        // With sourceTree=group under a group at App/Models, Xcode would resolve to App/Models/App/Models/AppModel.swift
-        // Fixed: path = "AppModel.swift" (relative to the group's own location)
+        // Verify the file reference path is relative to the group, NOT the project root. Bug was:
+        // path = "App/Models/AppModel.swift" (relative to project root) With sourceTree=group under
+        // a group at App/Models, Xcode would resolve to App/Models/App/Models/AppModel.swift Fixed:
+        // path = "AppModel.swift" (relative to the group's own location)
         let reloadedProj = try XcodeProj(path: projectPath)
         let fileRef = reloadedProj.pbxproj.fileReferences.first { $0.name == "AppModel.swift" }
         #expect(fileRef != nil)
@@ -295,9 +298,9 @@ struct AddFileToolTests {
             try? FileManager.default.removeItem(at: tempDir)
         }
 
-        // Reproduce the Swiftiomatic scenario:
-        // mainGroup -> AppGroup (name only, no path) -> ViewsGroup (path: "Views")
-        // File is at AppGroup/Views/AboutTab.swift, but group fullPath resolves to just "Views"
+        // Reproduce the Swiftiomatic scenario: mainGroup -> AppGroup (name only, no path) ->
+        // ViewsGroup (path: "Views") File is at AppGroup/Views/AboutTab.swift, but group fullPath
+        // resolves to just "Views"
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         let pbxproj = PBXProj()
 
@@ -364,8 +367,8 @@ struct AddFileToolTests {
         }
         #expect(message.contains("Successfully added file 'AboutTab.swift'"))
 
-        // The file is NOT under the group's fullPath (Views/), so it should use sourceRoot
-        // to avoid Xcode resolving Views/ + SwiftiomaticApp/Views/AboutTab.swift
+        // The file is NOT under the group's fullPath (Views/), so it should use sourceRoot to avoid
+        // Xcode resolving Views/ + SwiftiomaticApp/Views/AboutTab.swift
         let reloadedProj = try XcodeProj(path: projectPath)
         let fileRef = reloadedProj.pbxproj.fileReferences.first { $0.name == "AboutTab.swift" }
         #expect(fileRef != nil)
@@ -497,10 +500,7 @@ struct AddFileToolTests {
         // Should have exactly one PBXFileReference for file.swift
         let reloadedProj = try XcodeProj(path: projectPath)
         let fileRefs = reloadedProj.pbxproj.fileReferences.filter { $0.name == "file.swift" }
-        #expect(
-            fileRefs.count == 1,
-            "Should have exactly 1 file reference, got \(fileRefs.count)",
-        )
+        #expect(fileRefs.count == 1, "Should have exactly 1 file reference, got \(fileRefs.count)")
     }
 
     @Test
@@ -596,8 +596,8 @@ struct AddFileToolTests {
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
 
         // Asset catalog should be in resources build phase, NOT sources
-        let resourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
+        let resourcesBuildPhase = target.buildPhases.first { $0 is PBXResourcesBuildPhase }
+            as? PBXResourcesBuildPhase
         #expect(resourcesBuildPhase != nil, "Resources build phase should exist")
 
         let resourceFiles = resourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
@@ -607,8 +607,8 @@ struct AddFileToolTests {
         )
 
         // Verify it's NOT in sources build phase
-        let sourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        let sourcesBuildPhase = target.buildPhases.first { $0 is PBXSourcesBuildPhase }
+            as? PBXSourcesBuildPhase
         let sourceFiles = sourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
         #expect(
             !sourceFiles.contains("Assets.xcassets"),
@@ -636,9 +636,8 @@ struct AddFileToolTests {
         // Verify files is actually nil before we run the tool
         let before = try XcodeProj(path: projectPath)
         let beforeTarget = before.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
-        let beforeResources =
-            beforeTarget.buildPhases.first { $0 is PBXResourcesBuildPhase }
-                as? PBXResourcesBuildPhase
+        let beforeResources = beforeTarget.buildPhases.first { $0 is PBXResourcesBuildPhase }
+            as? PBXResourcesBuildPhase
         #expect(beforeResources != nil, "Resources phase should exist")
         #expect(beforeResources?.files == nil, "files should be nil before fix")
 
@@ -656,8 +655,8 @@ struct AddFileToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
 
-        let resourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
+        let resourcesBuildPhase = target.buildPhases.first { $0 is PBXResourcesBuildPhase }
+            as? PBXResourcesBuildPhase
         #expect(resourcesBuildPhase != nil, "Resources build phase should exist")
 
         let resourceFiles = resourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
@@ -683,9 +682,8 @@ struct AddFileToolTests {
         // Verify files is actually nil before we run the tool
         let before = try XcodeProj(path: projectPath)
         let beforeTarget = before.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
-        let beforeSources =
-            beforeTarget.buildPhases.first { $0 is PBXSourcesBuildPhase }
-                as? PBXSourcesBuildPhase
+        let beforeSources = beforeTarget.buildPhases.first { $0 is PBXSourcesBuildPhase }
+            as? PBXSourcesBuildPhase
         #expect(beforeSources != nil, "Sources phase should exist")
         #expect(beforeSources?.files == nil, "files should be nil before fix")
 
@@ -702,8 +700,8 @@ struct AddFileToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
 
-        let sourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        let sourcesBuildPhase = target.buildPhases.first { $0 is PBXSourcesBuildPhase }
+            as? PBXSourcesBuildPhase
         #expect(sourcesBuildPhase != nil, "Sources build phase should exist")
 
         let sourceFiles = sourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
@@ -722,6 +720,7 @@ struct AddFileToolTests {
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
 
         let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+
         defer {
             try? FileManager.default.removeItem(at: tempDir)
         }
@@ -737,9 +736,7 @@ struct AddFileToolTests {
             "target_name": Value.string("NonexistentTarget"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: arguments) }
     }
 
     @Test
@@ -799,16 +796,16 @@ struct AddFileToolTests {
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
 
         // Icon should be in resources, not sources
-        let resourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
+        let resourcesBuildPhase = target.buildPhases.first { $0 is PBXResourcesBuildPhase }
+            as? PBXResourcesBuildPhase
         let resourceFiles = resourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
         #expect(
             resourceFiles.contains("AppIcon.icon"),
             "AppIcon.icon should be in resources build phase",
         )
 
-        let sourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        let sourcesBuildPhase = target.buildPhases.first { $0 is PBXSourcesBuildPhase }
+            as? PBXSourcesBuildPhase
         let sourceFiles = sourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
         #expect(
             !sourceFiles.contains("AppIcon.icon"),
@@ -869,15 +866,18 @@ struct AddFileToolTests {
     @Test
     func `relativePath helper computes correct path with parent traversal`() {
         #expect(
-            AddFileTool.relativePath(from: "/repo/Xcode", to: "/repo/AppIcon.icon")
+            FileReferencePath.relativePath(
+                from: "/repo/Xcode", to: "/repo/AppIcon.icon")
                 == "../AppIcon.icon",
         )
         #expect(
-            AddFileTool.relativePath(from: "/a/b/c", to: "/a/x/y")
+            FileReferencePath.relativePath(
+                from: "/a/b/c", to: "/a/x/y")
                 == "../../x/y",
         )
         #expect(
-            AddFileTool.relativePath(from: "/a/b", to: "/a/b/c/d")
+            FileReferencePath.relativePath(
+                from: "/a/b", to: "/a/b/c/d")
                 == "c/d",
         )
     }

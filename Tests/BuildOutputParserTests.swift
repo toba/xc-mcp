@@ -1,16 +1,16 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 
 struct BuildOutputParserTests {
     @Test
     func `Parse single error`() {
         let parser = BuildOutputParser()
         let input = """
-        main.swift:15:5: error: use of undeclared identifier 'unknown'
-        unknown = 5
-        ^
-        """
+            main.swift:15:5: error: use of undeclared identifier 'unknown'
+            unknown = 5
+            ^
+            """
 
         let result = parser.parse(input: input)
 
@@ -26,9 +26,9 @@ struct BuildOutputParserTests {
     func `Parse successful build`() {
         let parser = BuildOutputParser()
         let input = """
-        Building for debugging...
-        Build complete!
-        """
+            Building for debugging...
+            Build complete!
+            """
 
         let result = parser.parse(input: input)
 
@@ -42,9 +42,9 @@ struct BuildOutputParserTests {
     func `Parse failing test`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case 'LoginTests.testInvalidCredentials' failed (0.045 seconds).
-        XCTAssertEqual failed: Expected valid login
-        """
+            Test Case 'LoginTests.testInvalidCredentials' failed (0.045 seconds).
+            XCTAssertEqual failed: Expected valid login
+            """
 
         let result = parser.parse(input: input)
 
@@ -59,10 +59,10 @@ struct BuildOutputParserTests {
     func `Parse multiple errors`() {
         let parser = BuildOutputParser()
         let input = """
-        UserService.swift:45:12: error: cannot find 'invalidFunction' in scope
-        NetworkManager.swift:23:5: error: use of undeclared identifier 'unknownVariable'
-        AppDelegate.swift:67:8: warning: unused variable 'config'
-        """
+            UserService.swift:45:12: error: cannot find 'invalidFunction' in scope
+            NetworkManager.swift:23:5: error: use of undeclared identifier 'unknownVariable'
+            AppDelegate.swift:67:8: warning: unused variable 'config'
+            """
 
         let result = parser.parse(input: input)
 
@@ -75,9 +75,9 @@ struct BuildOutputParserTests {
     func `Parse build time extraction`() {
         let parser = BuildOutputParser()
         let input = """
-        Building for debugging...
-        Build failed after 5.7 seconds
-        """
+            Building for debugging...
+            Build failed after 5.7 seconds
+            """
 
         let result = parser.parse(input: input)
         #expect(result.summary.buildTime == "5.7 seconds")
@@ -87,10 +87,10 @@ struct BuildOutputParserTests {
     func `Parse compile error with file and line`() {
         let parser = BuildOutputParser()
         let input = """
-        UserManager.swift:42:10: error: cannot find 'undefinedVariable' in scope
-        print(undefinedVariable)
-        ^
-        """
+            UserManager.swift:42:10: error: cannot find 'undefinedVariable' in scope
+            print(undefinedVariable)
+            ^
+            """
 
         let result = parser.parse(input: input)
 
@@ -105,9 +105,9 @@ struct BuildOutputParserTests {
     func `Passed test count from Executed summary`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case 'SampleTests.testExample' passed (0.001 seconds).
-        Executed 5 tests, with 0 failures (0 unexpected) in 5.017 (5.020) seconds
-        """
+            Test Case 'SampleTests.testExample' passed (0.001 seconds).
+            Executed 5 tests, with 0 failures (0 unexpected) in 5.017 (5.020) seconds
+            """
 
         let result = parser.parse(input: input)
 
@@ -120,15 +120,15 @@ struct BuildOutputParserTests {
     func `Combined XCTest and Swift Testing counts`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
-        Test Case '-[MyPackageTests.MyXCTests testExample1]' passed (0.001 seconds).
-        Test Case '-[MyPackageTests.MyXCTests testExample2]' passed (0.001 seconds).
-        Executed 1624 tests, with 0 failures (0 unexpected) in 2.728 (2.768) seconds
-        ✓ Test "SwiftTest1" passed after 0.001 seconds.
-        ✓ Test "SwiftTest2" passed after 0.001 seconds.
-        ✓ Test "SwiftTest3" passed after 0.001 seconds.
-        Test run with 82 tests in 7 suites passed after 0.166 seconds.
-        """
+            Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
+            Test Case '-[MyPackageTests.MyXCTests testExample1]' passed (0.001 seconds).
+            Test Case '-[MyPackageTests.MyXCTests testExample2]' passed (0.001 seconds).
+            Executed 1624 tests, with 0 failures (0 unexpected) in 2.728 (2.768) seconds
+            ✓ Test "SwiftTest1" passed after 0.001 seconds.
+            ✓ Test "SwiftTest2" passed after 0.001 seconds.
+            ✓ Test "SwiftTest3" passed after 0.001 seconds.
+            Test run with 82 tests in 7 suites passed after 0.166 seconds.
+            """
 
         let result = parser.parse(input: input)
 
@@ -141,9 +141,9 @@ struct BuildOutputParserTests {
     func `Combined test time accumulation`() {
         let parser = BuildOutputParser()
         let input = """
-        Executed 100 tests, with 0 failures (0 unexpected) in 2.500 (2.600) seconds
-        Test run with 50 tests in 5 suites passed after 1.500 seconds.
-        """
+            Executed 100 tests, with 0 failures (0 unexpected) in 2.500 (2.600) seconds
+            Test run with 50 tests in 5 suites passed after 1.500 seconds.
+            """
 
         let result = parser.parse(input: input)
 
@@ -155,14 +155,14 @@ struct BuildOutputParserTests {
     func `Swift compiler visual error lines are filtered`() {
         let parser = BuildOutputParser()
         let input = """
-        /Users/test/project/Tests/TestFile.swift:16:34: error: missing argument for parameter 'fragments' in call
-         14 |             kind: "class",
-         15 |             language: "swift",
-         16 |             structuredContent: []
-            |                                  `- error: missing argument for parameter 'fragments' in call
-         17 |         )
-         18 |
-        """
+            /Users/test/project/Tests/TestFile.swift:16:34: error: missing argument for parameter 'fragments' in call
+             14 |             kind: "class",
+             15 |             language: "swift",
+             16 |             structuredContent: []
+                |                                  `- error: missing argument for parameter 'fragments' in call
+             17 |         )
+             18 |
+            """
 
         let result = parser.parse(input: input)
 
@@ -177,9 +177,9 @@ struct BuildOutputParserTests {
     func `Parse warnings`() {
         let parser = BuildOutputParser()
         let input = """
-        AppDelegate.swift:67:8: warning: unused variable 'config'
-        ** BUILD SUCCEEDED **
-        """
+            AppDelegate.swift:67:8: warning: unused variable 'config'
+            ** BUILD SUCCEEDED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -195,13 +195,13 @@ struct BuildOutputParserTests {
     @Test
     func `Truncated build without terminal marker is incomplete`() {
         let parser = BuildOutputParser()
-        // The process was killed (e.g. OOM) before xcodebuild emitted ** BUILD SUCCEEDED **.
-        // With no failure markers either, this must not read as a false green.
+        // The process was killed (e.g. OOM) before xcodebuild emitted ** BUILD SUCCEEDED **. With
+        // no failure markers either, this must not read as a false green.
         let input = """
-        Building for debugging...
-        CompileSwiftSources normal arm64 com.apple.xcode.tools.swift.compiler
-        CompileSwiftSources normal arm64 com.apple.xcode.tools.swift.compiler
-        """
+            Building for debugging...
+            CompileSwiftSources normal arm64 com.apple.xcode.tools.swift.compiler
+            CompileSwiftSources normal arm64 com.apple.xcode.tools.swift.compiler
+            """
 
         let result = parser.parse(input: input)
 
@@ -215,9 +215,9 @@ struct BuildOutputParserTests {
         let parser = BuildOutputParser()
         // A test started, the process died before any pass/fail or terminal marker.
         let input = """
-        Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
-        Test Case '-[MyTests.MyTests testExample]' started.
-        """
+            Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
+            Test Case '-[MyTests.MyTests testExample]' started.
+            """
 
         let result = parser.parse(input: input)
 
@@ -232,9 +232,9 @@ struct BuildOutputParserTests {
         // exceptions / aggregated parallel output), never as a "Test Case … failed" line. Status
         // must agree with summary.failedTests.
         let input = """
-        Test Case '-[MyTests.MyTests testA]' passed (0.001 seconds).
-        Executed 5 tests, with 1 failure in 0.500 seconds
-        """
+            Test Case '-[MyTests.MyTests testA]' passed (0.001 seconds).
+            Executed 5 tests, with 1 failure in 0.500 seconds
+            """
 
         let result = parser.parse(input: input)
 
@@ -245,12 +245,12 @@ struct BuildOutputParserTests {
     }
 
     @Test
-    func `TEST SUCCEEDED marker alone is success`() {
+    func `SUCCEEDED marker alone is success`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
-        ** TEST SUCCEEDED **
-        """
+            Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
+            ** TEST SUCCEEDED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -258,12 +258,12 @@ struct BuildOutputParserTests {
     }
 
     @Test
-    func `TEST EXECUTE SUCCEEDED marker alone is success`() {
+    func `EXECUTE SUCCEEDED marker alone is success`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
-        ** TEST EXECUTE SUCCEEDED **
-        """
+            Test Suite 'All tests' started at 2024-01-01 12:00:00.000.
+            ** TEST EXECUTE SUCCEEDED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -278,24 +278,20 @@ struct BuildOutputParserTests {
         #expect(result.status == "success")
     }
 
-    @Test(
-        .enabled(
-            if: Bundle.module.url(
-                forResource: "build", withExtension: "txt", subdirectory: "Fixtures",
-            ) != nil,
-        ),
+    @Test(.enabled(
+        if: Bundle.module.url(
+            forResource: "build", withExtension: "txt", subdirectory: "Fixtures") != nil,
+    ),
     )
     func `Real build output truncated before BUILD SUCCEEDED is incomplete`() throws {
         let parser = BuildOutputParser()
 
-        let fixtureURL = try #require(
-            Bundle.module.url(
-                forResource: "build", withExtension: "txt", subdirectory: "Fixtures",
-            ),
-        )
+        let fixtureURL = try #require(Bundle.module.url(
+            forResource: "build", withExtension: "txt", subdirectory: "Fixtures"))
         let full = try String(contentsOf: fixtureURL, encoding: .utf8)
 
-        // Drop the trailing ** BUILD SUCCEEDED ** marker, simulating an OOM kill / truncated stream.
+        // Drop the trailing ** BUILD SUCCEEDED ** marker, simulating an OOM kill / truncated
+        // stream.
         let marker = "** BUILD SUCCEEDED **"
         let markerRange = try #require(full.range(of: marker, options: .backwards))
         let truncated = String(full[..<markerRange.lowerBound])
@@ -306,14 +302,75 @@ struct BuildOutputParserTests {
         #expect(result.summary.errors == 0)
     }
 
+    @Test(arguments: ["ARCHIVE", "EXPORT", "ANALYZE", "INSTALL", "CLEAN"])
+    func `Fenced phase SUCCEEDED marker is success`(phase: String) {
+        let parser = BuildOutputParser()
+        let input = """
+            Building project
+            ** \(phase) SUCCEEDED **
+            """
+
+        let result = parser.parse(input: input)
+
+        // An unrecognized marker leaves the run "incomplete", which adds the truncated-or-killed
+        // hint to a run that finished.
+        #expect(result.status == "success")
+    }
+
+    @Test(arguments: ["ARCHIVE", "EXPORT", "ANALYZE", "INSTALL", "CLEAN"])
+    func `Fenced phase FAILED marker is failed`(phase: String) {
+        let parser = BuildOutputParser()
+        let input = """
+            Building project
+            ** \(phase) FAILED **
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+    }
+
+    @Test(arguments: ["Archive", "Export", "Analyze", "Install", "Clean"])
+    func `xcbeautify phase Succeeded marker is success`(phase: String) {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: "\(phase) Succeeded")
+
+        #expect(result.status == "success")
+    }
+
+    @Test(arguments: ["Archive", "Export", "Analyze", "Install", "Clean"])
+    func `xcbeautify phase Failed marker is failed`(phase: String) {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: "\(phase) Failed")
+
+        #expect(result.status == "failed")
+    }
+
+    @Test
+    func `Fenced ARCHIVE marker carries the bracketed time`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: "** ARCHIVE SUCCEEDED ** [12.3 sec]")
+
+        #expect(result.status == "success")
+        #expect(result.summary.buildTime == "12.3 sec")
+    }
+
+    @Test
+    func `Lowercase prose that holds the fences is not a marker`() {
+        let parser = BuildOutputParser()
+        let result = parser.parse(input: "note: ** the step SUCCEEDED **")
+
+        #expect(result.status == "incomplete")
+    }
+
     @Test
     func `Deduplicate identical errors`() {
         let parser = BuildOutputParser()
         let input = """
-        /path/to/File.swift:10:5: error: use of undeclared identifier
-        /path/to/File.swift:10:5: error: use of undeclared identifier
-        /path/to/Other.swift:20:1: error: different error
-        """
+            /path/to/File.swift:10:5: error: use of undeclared identifier
+            /path/to/File.swift:10:5: error: use of undeclared identifier
+            /path/to/Other.swift:20:1: error: different error
+            """
 
         let result = parser.parse(input: input)
 
@@ -325,11 +382,11 @@ struct BuildOutputParserTests {
     func `Swift Testing summary passed`() {
         let parser = BuildOutputParser()
         let input = """
-        ✓ Test "test1" passed after 0.022 seconds.
-        ✓ Test "test2" passed after 0.022 seconds.
-        ✓ Test "test3" passed after 0.023 seconds.
-        Test run with 23 tests in 5 suites passed after 0.031 seconds.
-        """
+            ✓ Test "test1" passed after 0.022 seconds.
+            ✓ Test "test2" passed after 0.022 seconds.
+            ✓ Test "test3" passed after 0.023 seconds.
+            Test run with 23 tests in 5 suites passed after 0.031 seconds.
+            """
 
         let result = parser.parse(input: input)
 
@@ -343,11 +400,11 @@ struct BuildOutputParserTests {
     func `Parse TEST FAILED flag`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case '-[TestProjectTests.TestProjectTests testExample]' started.
-        TestProjectTests/TestProjectTests.swift:5: Fatal error
-        Restarting after unexpected exit, crash, or test timeout
-        ** TEST FAILED **
-        """
+            Test Case '-[TestProjectTests.TestProjectTests testExample]' started.
+            TestProjectTests/TestProjectTests.swift:5: Fatal error
+            Restarting after unexpected exit, crash, or test timeout
+            ** TEST FAILED **
+            """
 
         let result = parser.parse(input: input)
         #expect(result.status == "failed")
@@ -357,13 +414,13 @@ struct BuildOutputParserTests {
     func `FAILED with passed tests is success`() {
         let parser = BuildOutputParser()
         let input = """
-        Building for testing...
-        Build complete!
-        Test Case 'MyTests.testExample' passed (0.001 seconds).
-        Test Case 'MyTests.testAnother' passed (0.002 seconds).
-        Executed 2 tests, with 0 failures in 0.003 seconds
-        ** TEST FAILED **
-        """
+            Building for testing...
+            Build complete!
+            Test Case 'MyTests.testExample' passed (0.001 seconds).
+            Test Case 'MyTests.testAnother' passed (0.002 seconds).
+            Executed 2 tests, with 0 failures in 0.003 seconds
+            ** TEST FAILED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -390,9 +447,9 @@ struct BuildOutputParserTests {
     func `Slow test detection`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case 'SampleTests.testFast' passed (0.1 seconds).
-        Test Case 'SampleTests.testSlow' passed (5.0 seconds).
-        """
+            Test Case 'SampleTests.testFast' passed (0.1 seconds).
+            Test Case 'SampleTests.testSlow' passed (5.0 seconds).
+            """
 
         let result = parser.parse(input: input, slowThreshold: 1.0)
 
@@ -405,9 +462,9 @@ struct BuildOutputParserTests {
     func `Flaky test detection`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case 'SampleTests.testFlakyTest' passed (0.1 seconds).
-        Test Case 'SampleTests.testFlakyTest' failed (0.2 seconds).
-        """
+            Test Case 'SampleTests.testFlakyTest' passed (0.1 seconds).
+            Test Case 'SampleTests.testFlakyTest' failed (0.2 seconds).
+            """
 
         let result = parser.parse(input: input)
 
@@ -420,8 +477,8 @@ struct BuildOutputParserTests {
     func `Parse executable from RegisterWithLaunchServices`() {
         let parser = BuildOutputParser()
         let input = """
-        RegisterWithLaunchServices /path/to/MyApp.app (in target 'MyApp' from project 'MyProject')
-        """
+            RegisterWithLaunchServices /path/to/MyApp.app (in target 'MyApp' from project 'MyProject')
+            """
 
         let result = parser.parse(input: input)
 
@@ -435,11 +492,11 @@ struct BuildOutputParserTests {
     func `Parse parallel test format`() {
         let parser = BuildOutputParser()
         let input = """
-        Test case 'MenuBarFeatureTests.testExample()' passed on 'My Mac - App (Dev) (51424)' (0.565 seconds)
-        Test case 'FilesChannelTests.testAnother()' passed on 'My Mac - App (Dev) (52255)' (0.002 seconds)
-        Executed 2 tests, with 0 failures in 0.567 seconds
-        ** TEST SUCCEEDED **
-        """
+            Test case 'MenuBarFeatureTests.testExample()' passed on 'My Mac - App (Dev) (51424)' (0.565 seconds)
+            Test case 'FilesChannelTests.testAnother()' passed on 'My Mac - App (Dev) (52255)' (0.002 seconds)
+            Executed 2 tests, with 0 failures in 0.567 seconds
+            ** TEST SUCCEEDED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -452,10 +509,10 @@ struct BuildOutputParserTests {
     func `Parse parallel test failure`() {
         let parser = BuildOutputParser()
         let input = """
-        Test case 'PublishingServiceTests.testProcessEntry()' failed on 'My Mac - App (Dev) (51424)' (0.070 seconds)
-        Executed 1 test, with 1 failure in 0.070 seconds
-        ** TEST FAILED **
-        """
+            Test case 'PublishingServiceTests.testProcessEntry()' failed on 'My Mac - App (Dev) (51424)' (0.070 seconds)
+            Executed 1 test, with 1 failure in 0.070 seconds
+            ** TEST FAILED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -469,9 +526,9 @@ struct BuildOutputParserTests {
     func `Swift Testing unquoted function names`() {
         let parser = BuildOutputParser()
         let input = """
-        ◇ Test functionName() recorded an issue at /path/to/File.swift:42:10: expected true
-        ✘ Test anotherFunc() failed after 1.234 seconds with 2 issues.
-        """
+            ◇ Test functionName() recorded an issue at /path/to/File.swift:42:10: expected true
+            ✘ Test anotherFunc() failed after 1.234 seconds with 2 issues.
+            """
 
         let result = parser.parse(input: input)
 
@@ -488,10 +545,10 @@ struct BuildOutputParserTests {
     func `Swift Testing non-standard symbols`() {
         let parser = BuildOutputParser()
         let input = """
-        ◇ Test "test1" passed after 0.010 seconds.
-        ▷ Test "test2" passed after 0.020 seconds.
-        Test run with 2 tests in 1 suite passed after 0.030 seconds.
-        """
+            ◇ Test "test1" passed after 0.010 seconds.
+            ▷ Test "test2" passed after 0.020 seconds.
+            Test run with 2 tests in 1 suite passed after 0.030 seconds.
+            """
 
         let result = parser.parse(input: input)
 
@@ -504,9 +561,9 @@ struct BuildOutputParserTests {
     func `Swift Testing failure summary with suites and issues`() {
         let parser = BuildOutputParser()
         let input = """
-        ✘ Test "failingTest" recorded an issue at /path/File.swift:10:5: assertion failed
-        Test run with 5 tests in 2 suites failed after 1.500 seconds with 3 issues.
-        """
+            ✘ Test "failingTest" recorded an issue at /path/File.swift:10:5: assertion failed
+            Test run with 5 tests in 2 suites failed after 1.500 seconds with 3 issues.
+            """
 
         let result = parser.parse(input: input)
 
@@ -520,8 +577,8 @@ struct BuildOutputParserTests {
     func `Swift Testing failure summary singular test and issue`() {
         let parser = BuildOutputParser()
         let input = """
-        Test run with 1 test in 1 suite failed after 0.500 seconds with 1 issue.
-        """
+            Test run with 1 test in 1 suite failed after 0.500 seconds with 1 issue.
+            """
 
         let result = parser.parse(input: input)
 
@@ -533,13 +590,13 @@ struct BuildOutputParserTests {
     func `Swift Testing mixed quoted and unquoted formats`() {
         let parser = BuildOutputParser()
         let input = """
-        􀟈  Test shouldPass() started.
-        􀟈  Test shouldFail() started.
-        􁁛  Test shouldPass() passed after 0.001 seconds.
-        􀢄  Test shouldFail() recorded an issue at xcsift_problemsTests.swift:9:5: Expectation failed: Bool(false)
-        􀢄  Test shouldFail() failed after 0.001 seconds with 1 issue.
-        􀢄  Test run with 2 tests in 0 suites failed after 0.001 seconds with 1 issue.
-        """
+            􀟈  Test shouldPass() started.
+            􀟈  Test shouldFail() started.
+            􁁛  Test shouldPass() passed after 0.001 seconds.
+            􀢄  Test shouldFail() recorded an issue at xcsift_problemsTests.swift:9:5: Expectation failed: Bool(false)
+            􀢄  Test shouldFail() failed after 0.001 seconds with 1 issue.
+            􀢄  Test run with 2 tests in 0 suites failed after 0.001 seconds with 1 issue.
+            """
 
         let result = parser.parse(input: input)
 
@@ -557,9 +614,9 @@ struct BuildOutputParserTests {
     func `Swift Testing passed with unquoted function name`() {
         let parser = BuildOutputParser()
         let input = """
-        ✓ Test myTestFunction() passed after 0.050 seconds.
-        Test run with 1 test in 1 suite passed after 0.050 seconds.
-        """
+            ✓ Test myTestFunction() passed after 0.050 seconds.
+            Test run with 1 test in 1 suite passed after 0.050 seconds.
+            """
 
         let result = parser.parse(input: input)
 
@@ -567,21 +624,19 @@ struct BuildOutputParserTests {
         #expect(result.summary.passedTests == 1)
     }
 
-    @Test(
-        .enabled(
-            if: Bundle.module.url(
-                forResource: "swift-testing-output", withExtension: "txt", subdirectory: "Fixtures",
-            )
-                != nil,
-        ),
+    @Test(.enabled(
+        if: Bundle.module.url(
+            forResource: "swift-testing-output", withExtension: "txt", subdirectory: "Fixtures",
+        )
+            != nil,
+    ),
     )
     func `Real-world Swift Testing output`() throws {
         let parser = BuildOutputParser()
 
-        let fixtureURL = try #require(
-            Bundle.module.url(
-                forResource: "swift-testing-output", withExtension: "txt", subdirectory: "Fixtures",
-            ),
+        let fixtureURL = try #require(Bundle.module.url(
+            forResource: "swift-testing-output", withExtension: "txt", subdirectory: "Fixtures",
+        ),
         )
         let input = try String(contentsOf: fixtureURL, encoding: .utf8)
 
@@ -594,21 +649,16 @@ struct BuildOutputParserTests {
         #expect(result.summary.testTime == "0.031s")
     }
 
-    @Test(
-        .enabled(
-            if: Bundle.module.url(
-                forResource: "build", withExtension: "txt", subdirectory: "Fixtures",
-            ) != nil,
-        ),
+    @Test(.enabled(
+        if: Bundle.module.url(
+            forResource: "build", withExtension: "txt", subdirectory: "Fixtures") != nil,
+    ),
     )
     func `Large real-world build output`() throws {
         let parser = BuildOutputParser()
 
-        let fixtureURL = try #require(
-            Bundle.module.url(
-                forResource: "build", withExtension: "txt", subdirectory: "Fixtures",
-            ),
-        )
+        let fixtureURL = try #require(Bundle.module.url(
+            forResource: "build", withExtension: "txt", subdirectory: "Fixtures"))
         let input = try String(contentsOf: fixtureURL, encoding: .utf8)
 
         let result = parser.parse(input: input)
@@ -624,11 +674,11 @@ struct BuildOutputParserTests {
     func `Crash with signal code associates with last started test`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case 'MyTests.testCrashingMethod' started.
-        Exited with unexpected signal code 11
-        Restarting after MyTests.testCrashingMethod
-        ** TEST FAILED **
-        """
+            Test Case 'MyTests.testCrashingMethod' started.
+            Exited with unexpected signal code 11
+            Restarting after MyTests.testCrashingMethod
+            ** TEST FAILED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -643,10 +693,10 @@ struct BuildOutputParserTests {
     func `Crash without signal code associates with last started test`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case 'MyTests.testBadAccess' started.
-        Restarting after MyTests.testBadAccess
-        ** TEST FAILED **
-        """
+            Test Case 'MyTests.testBadAccess' started.
+            Restarting after MyTests.testBadAccess
+            ** TEST FAILED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -660,13 +710,13 @@ struct BuildOutputParserTests {
     func `Passed test clears crash tracking — no false association`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case 'MyTests.testOK' started.
-        Test Case 'MyTests.testOK' passed (0.001 seconds).
-        Test Case 'MyTests.testCrasher' started.
-        Exited with unexpected signal code 6
-        Restarting after MyTests.testCrasher
-        ** TEST FAILED **
-        """
+            Test Case 'MyTests.testOK' started.
+            Test Case 'MyTests.testOK' passed (0.001 seconds).
+            Test Case 'MyTests.testCrasher' started.
+            Exited with unexpected signal code 6
+            Restarting after MyTests.testCrasher
+            ** TEST FAILED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -678,9 +728,27 @@ struct BuildOutputParserTests {
     func `Safety net catches incomplete test when test run failed`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case 'MyTests.testHangsOrCrashes' started.
-        ** TEST FAILED **
-        """
+            Test Case 'MyTests.testHangsOrCrashes' started.
+            ** TEST FAILED **
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].test == "MyTests.testHangsOrCrashes")
+        #expect(result.failedTests[0].message.contains("did not complete"))
+    }
+
+    @Test
+    func `Safety net catches incomplete test under the unfenced marker`() {
+        let parser = BuildOutputParser()
+        // xcbeautify rewrites ** TEST FAILED ** as "Test Failed". Both shapes report the same
+        // outcome, so both must record the test that started and never finished.
+        let input = """
+            Test Case 'MyTests.testHangsOrCrashes' started.
+            Test Failed
+            """
 
         let result = parser.parse(input: input)
 
@@ -694,10 +762,10 @@ struct BuildOutputParserTests {
     func `Safety net with pending signal code`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case 'MyTests.testSegfault' started.
-        Exited with unexpected signal code 11
-        ** TEST FAILED **
-        """
+            Test Case 'MyTests.testSegfault' started.
+            Exited with unexpected signal code 11
+            ** TEST FAILED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -711,10 +779,10 @@ struct BuildOutputParserTests {
     func `No false crash for normally failed test`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case 'MyTests.testAssert' started.
-        Test Case 'MyTests.testAssert' failed (0.010 seconds).
-        ** TEST FAILED **
-        """
+            Test Case 'MyTests.testAssert' started.
+            Test Case 'MyTests.testAssert' failed (0.010 seconds).
+            ** TEST FAILED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -726,11 +794,11 @@ struct BuildOutputParserTests {
     func `Swift Testing test start tracked for crash association`() {
         let parser = BuildOutputParser()
         let input = """
-        ◇ Test "validateInput()" started.
-        Exited with unexpected signal code 6
-        Restarting after validateInput
-        ** TEST FAILED **
-        """
+            ◇ Test "validateInput()" started.
+            Exited with unexpected signal code 6
+            Restarting after validateInput
+            ** TEST FAILED **
+            """
 
         let result = parser.parse(input: input)
 
@@ -746,11 +814,11 @@ struct BuildOutputParserTests {
     func `Parse XCTest measure() timing data`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case '-[PerfTests.RenderTests testRenderPerformance]' started.
-        /path/to/RenderTests.swift:25: Test Case '-[PerfTests.RenderTests testRenderPerformance]' measured [Time, seconds] average: 0.037, relative standard deviation: 112.254%, values: [0.125595, 0.033183, 0.015517, 0.016484, 0.015461]
-        Test Case '-[PerfTests.RenderTests testRenderPerformance]' passed (2.345 seconds).
-        Executed 1 test, with 0 failures (0 unexpected) in 2.345 (2.456) seconds
-        """
+            Test Case '-[PerfTests.RenderTests testRenderPerformance]' started.
+            /path/to/RenderTests.swift:25: Test Case '-[PerfTests.RenderTests testRenderPerformance]' measured [Time, seconds] average: 0.037, relative standard deviation: 112.254%, values: [0.125595, 0.033183, 0.015517, 0.016484, 0.015461]
+            Test Case '-[PerfTests.RenderTests testRenderPerformance]' passed (2.345 seconds).
+            Executed 1 test, with 0 failures (0 unexpected) in 2.345 (2.456) seconds
+            """
 
         let result = parser.parse(input: input)
 
@@ -768,12 +836,12 @@ struct BuildOutputParserTests {
     func `Parse multiple measure() metrics from same test`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Case '-[PerfTests.MemTests testMemory]' started.
-        /path/to/MemTests.swift:10: Test Case '-[PerfTests.MemTests testMemory]' measured [Time, seconds] average: 0.005, relative standard deviation: 20.0%, values: [0.006, 0.005, 0.004]
-        /path/to/MemTests.swift:10: Test Case '-[PerfTests.MemTests testMemory]' measured [Memory, kB] average: 1024.0, relative standard deviation: 5.0%, values: [1000.0, 1024.0, 1048.0]
-        Test Case '-[PerfTests.MemTests testMemory]' passed (1.0 seconds).
-        Executed 1 test, with 0 failures (0 unexpected) in 1.0 (1.1) seconds
-        """
+            Test Case '-[PerfTests.MemTests testMemory]' started.
+            /path/to/MemTests.swift:10: Test Case '-[PerfTests.MemTests testMemory]' measured [Time, seconds] average: 0.005, relative standard deviation: 20.0%, values: [0.006, 0.005, 0.004]
+            /path/to/MemTests.swift:10: Test Case '-[PerfTests.MemTests testMemory]' measured [Memory, kB] average: 1024.0, relative standard deviation: 5.0%, values: [1000.0, 1024.0, 1048.0]
+            Test Case '-[PerfTests.MemTests testMemory]' passed (1.0 seconds).
+            Executed 1 test, with 0 failures (0 unexpected) in 1.0 (1.1) seconds
+            """
 
         let result = parser.parse(input: input)
 
@@ -800,7 +868,7 @@ struct BuildOutputParserTests {
                     average: 0.037,
                     relativeStandardDeviation: 112.254,
                     values: [0.125, 0.033],
-                ),
+                )
             ],
         )
 
@@ -818,10 +886,10 @@ struct BuildOutputParserTests {
         let parser = BuildOutputParser()
         let result = parser.parse(
             input: """
-            􀢄  Test "Domain stays free" recorded an issue at File.swift:16:17: Expectation failed: !(forbiddenImports.contains(import.name))
-            􀄵  Domain must not import SwiftData
-            􀢄  Test "Domain stays free" failed after 0.986 seconds with 1 issue.
-            """,
+                􀢄  Test "Domain stays free" recorded an issue at File.swift:16:17: Expectation failed: !(forbiddenImports.contains(import.name))
+                􀄵  Domain must not import SwiftData
+                􀢄  Test "Domain stays free" failed after 0.986 seconds with 1 issue.
+                """,
         )
 
         #expect(result.failedTests.count == 1)
@@ -835,10 +903,10 @@ struct BuildOutputParserTests {
         let parser = BuildOutputParser()
         let result = parser.parse(
             input: """
-            ✘ Test "Domain stays free" recorded an issue at File.swift:16:17: Expectation failed: !(forbiddenImports.contains(import.name))
-            ↳ Domain must not import SwiftData
-            ✘ Test "Domain stays free" failed after 0.986 seconds with 1 issue.
-            """,
+                ✘ Test "Domain stays free" recorded an issue at File.swift:16:17: Expectation failed: !(forbiddenImports.contains(import.name))
+                ↳ Domain must not import SwiftData
+                ✘ Test "Domain stays free" failed after 0.986 seconds with 1 issue.
+                """,
         )
 
         #expect(result.failedTests.count == 1)
@@ -850,9 +918,9 @@ struct BuildOutputParserTests {
         let parser = BuildOutputParser()
         let result = parser.parse(
             input: """
-            􀢄  Test shouldFail() recorded an issue at File.swift:9:5: Expectation failed: Bool(false)
-            􀢄  Test shouldFail() failed after 0.001 seconds with 1 issue.
-            """,
+                􀢄  Test shouldFail() recorded an issue at File.swift:9:5: Expectation failed: Bool(false)
+                􀢄  Test shouldFail() failed after 0.001 seconds with 1 issue.
+                """,
         )
 
         #expect(result.failedTests.count == 1)
@@ -861,23 +929,23 @@ struct BuildOutputParserTests {
 
     @Test
     func `swift testing preserves multi-line Comment body`() {
-        // Real swift-testing output: only the first comment line carries the 􀄵
-        // marker; subsequent lines of a multi-line `Comment(rawValue:)` body are
-        // bare indented continuation. Regression for ghv-uep.
+        // Real swift-testing output: only the first comment line carries the 􀄵 marker; subsequent
+        // lines of a multi-line `Comment(rawValue:)` body are bare indented continuation.
+        // Regression for ghv-uep.
         let parser = BuildOutputParser()
         let result = parser.parse(
             input: """
-            􀢄  Test showsDiff() recorded an issue at Repro.swift:14:15: Issue recorded
-            􀄵  Actual differed from expected:
-               line A
-               line B
-               line C
-               vs
-               line A
-               line X
-               line C
-            􀢄  Test showsDiff() failed after 0.001 seconds with 1 issue.
-            """,
+                􀢄  Test showsDiff() recorded an issue at Repro.swift:14:15: Issue recorded
+                􀄵  Actual differed from expected:
+                   line A
+                   line B
+                   line C
+                   vs
+                   line A
+                   line X
+                   line C
+                􀢄  Test showsDiff() failed after 0.001 seconds with 1 issue.
+                """,
         )
 
         #expect(result.failedTests.count == 1)
@@ -895,11 +963,11 @@ struct BuildOutputParserTests {
         let parser = BuildOutputParser()
         let result = parser.parse(
             input: """
-            􀢄  Test "test A" recorded an issue at File.swift:10:5: Expectation failed: A
-            􀄵  Comment A
-            􀢄  Test "test B" recorded an issue at File.swift:20:5: Expectation failed: B
-            􀄵  Comment B
-            """,
+                􀢄  Test "test A" recorded an issue at File.swift:10:5: Expectation failed: A
+                􀄵  Comment A
+                􀢄  Test "test B" recorded an issue at File.swift:20:5: Expectation failed: B
+                􀄵  Comment B
+                """,
         )
 
         #expect(result.failedTests.count == 2)
@@ -913,11 +981,11 @@ struct BuildOutputParserTests {
     func `XCTest multi-bundle accumulates executed and failed counts`() {
         let parser = BuildOutputParser()
         let input = """
-        Test Suite 'UnitTests.xctest' passed at 2026-04-06 10:00:00.
-        Executed 30 tests, with 2 failures (0 unexpected) in 1.5 (1.6) seconds
-        Test Suite 'UITests.xctest' passed at 2026-04-06 10:01:00.
-        Executed 20 tests, with 1 failure (0 unexpected) in 3.0 (3.1) seconds
-        """
+            Test Suite 'UnitTests.xctest' passed at 2026-04-06 10:00:00.
+            Executed 30 tests, with 2 failures (0 unexpected) in 1.5 (1.6) seconds
+            Test Suite 'UITests.xctest' passed at 2026-04-06 10:01:00.
+            Executed 20 tests, with 1 failure (0 unexpected) in 3.0 (3.1) seconds
+            """
 
         let result = parser.parse(input: input)
 
@@ -927,12 +995,53 @@ struct BuildOutputParserTests {
     }
 
     @Test
+    func `XCTest counts each test once across nested suite levels`() {
+        let parser = BuildOutputParser()
+        // XCTest reports the same 8 tests three times: the nested suite, the .xctest bundle, and
+        // the "Selected tests" wrapper that holds the bundle.
+        let input = """
+            Test Suite 'Selected tests' started at 2026-08-18 10:00:00.000.
+            Test Suite 'MyPackageTests.xctest' started at 2026-08-18 10:00:00.000.
+            Test Suite 'PluginFilesTests' started at 2026-08-18 10:00:00.000.
+            Test Suite 'PluginFilesTests' passed at 2026-08-18 10:00:00.100.
+            Executed 8 tests, with 1 failure (0 unexpected) in 0.003 (0.004) seconds
+            Test Suite 'MyPackageTests.xctest' passed at 2026-08-18 10:00:00.200.
+            Executed 8 tests, with 1 failure (0 unexpected) in 0.003 (0.005) seconds
+            Test Suite 'Selected tests' passed at 2026-08-18 10:00:00.300.
+            Executed 8 tests, with 1 failure (0 unexpected) in 0.003 (0.006) seconds
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.summary.passedTests == 7)
+        #expect(result.summary.failedTests == 1)
+        #expect(result.summary.testTime == "0.003s")
+    }
+
+    @Test
+    func `XCTest counts each test once when no bundle level appears`() {
+        let parser = BuildOutputParser()
+        // A trimmed log keeps the wrapper and the nested suite but drops the bundle line.
+        let input = """
+            Test Suite 'PluginFilesTests' passed at 2026-08-18 10:00:00.100.
+            Executed 8 tests, with 0 failures (0 unexpected) in 0.003 (0.004) seconds
+            Test Suite 'All tests' passed at 2026-08-18 10:00:00.300.
+            Executed 12 tests, with 0 failures (0 unexpected) in 0.005 (0.006) seconds
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.summary.passedTests == 12)
+        #expect(result.summary.testTime == "0.005s")
+    }
+
+    @Test
     func `Swift Testing multi-run accumulates counts format 1`() {
         let parser = BuildOutputParser()
         let input = """
-        ✔ Test run with 2 tests failed, 18 tests passed after 0.5 seconds.
-        ✔ Test run with 1 test failed, 9 tests passed after 0.3 seconds.
-        """
+            ✔ Test run with 2 tests failed, 18 tests passed after 0.5 seconds.
+            ✔ Test run with 1 test failed, 9 tests passed after 0.3 seconds.
+            """
 
         let result = parser.parse(input: input)
 
@@ -945,9 +1054,9 @@ struct BuildOutputParserTests {
     func `Swift Testing multi-run accumulates counts passed format`() {
         let parser = BuildOutputParser()
         let input = """
-        ✔ Test run with 20 tests in 3 suites passed after 1.5 seconds.
-        ✔ Test run with 10 tests in 2 suites passed after 0.8 seconds.
-        """
+            ✔ Test run with 20 tests in 3 suites passed after 1.5 seconds.
+            ✔ Test run with 10 tests in 2 suites passed after 0.8 seconds.
+            """
 
         let result = parser.parse(input: input)
 
@@ -960,11 +1069,11 @@ struct BuildOutputParserTests {
     func `Parallel test scheduling accumulates across runs`() {
         let parser = BuildOutputParser()
         let input = """
-        [1/50] Testing ModuleA.TestClassA/testMethod1
-        [50/50] Testing ModuleA.TestClassA/testMethod50
-        [1/20] Testing ModuleB.TestClassB/testMethod1
-        [20/20] Testing ModuleB.TestClassB/testMethod20
-        """
+            [1/50] Testing ModuleA.TestClassA/testMethod1
+            [50/50] Testing ModuleA.TestClassA/testMethod50
+            [1/20] Testing ModuleB.TestClassB/testMethod1
+            [20/20] Testing ModuleB.TestClassB/testMethod20
+            """
 
         let result = parser.parse(input: input)
 
@@ -976,10 +1085,11 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing verbose aka suffix on passed`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ✔ Test "Display Name" (aka 'funcName()') passed after 0.001 seconds.
-        Test run with 1 test in 1 suite passed after 0.001 seconds.
-        """)
+        let result = parser.parse(
+            input: """
+                ✔ Test "Display Name" (aka 'funcName()') passed after 0.001 seconds.
+                Test run with 1 test in 1 suite passed after 0.001 seconds.
+                """)
 
         #expect(result.status == "success")
         #expect(result.summary.passedTests == 1)
@@ -987,11 +1097,12 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing verbose aka suffix on failed`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ✘ Test "Validates input" (aka 'validateInput()') recorded an issue at File.swift:42:10: expected true
-        ✘ Test "Validates input" (aka 'validateInput()') failed after 0.050 seconds with 1 issue.
-        Test run with 1 test in 1 suite failed after 0.050 seconds with 1 issue.
-        """)
+        let result = parser.parse(
+            input: """
+                ✘ Test "Validates input" (aka 'validateInput()') recorded an issue at File.swift:42:10: expected true
+                ✘ Test "Validates input" (aka 'validateInput()') failed after 0.050 seconds with 1 issue.
+                Test run with 1 test in 1 suite failed after 0.050 seconds with 1 issue.
+                """)
 
         #expect(result.status == "failed")
         #expect(result.failedTests.count == 1)
@@ -1003,12 +1114,13 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing verbose aka suffix on started`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ◇ Test "My Test" (aka 'myTest()') started.
-        Exited with unexpected signal code 11
-        Restarting after myTest
-        ** TEST FAILED **
-        """)
+        let result = parser.parse(
+            input: """
+                ◇ Test "My Test" (aka 'myTest()') started.
+                Exited with unexpected signal code 11
+                Restarting after myTest
+                ** TEST FAILED **
+                """)
 
         #expect(result.status == "failed")
         #expect(result.failedTests.count == 1)
@@ -1020,10 +1132,11 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing parameterized with N test cases passed`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ✔ Test "Validates all inputs" with 3 test cases passed after 0.010 seconds.
-        Test run with 3 tests in 1 suite passed after 0.010 seconds.
-        """)
+        let result = parser.parse(
+            input: """
+                ✔ Test "Validates all inputs" with 3 test cases passed after 0.010 seconds.
+                Test run with 3 tests in 1 suite passed after 0.010 seconds.
+                """)
 
         #expect(result.status == "success")
         #expect(result.summary.passedTests == 3)
@@ -1031,10 +1144,11 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing parameterized with N test cases failed`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ✘ Test "Edge cases" with 5 test cases failed after 0.100 seconds with 2 issues.
-        Test run with 5 tests in 1 suite failed after 0.100 seconds with 2 issues.
-        """)
+        let result = parser.parse(
+            input: """
+                ✘ Test "Edge cases" with 5 test cases failed after 0.100 seconds with 2 issues.
+                Test run with 5 tests in 1 suite failed after 0.100 seconds with 2 issues.
+                """)
 
         #expect(result.status == "failed")
         #expect(result.failedTests.count == 1)
@@ -1044,10 +1158,11 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing aka and parameterized combined`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ✔ Test "Roundtrip" (aka 'testRoundtrip()') with 4 test cases passed after 0.020 seconds.
-        Test run with 4 tests in 1 suite passed after 0.020 seconds.
-        """)
+        let result = parser.parse(
+            input: """
+                ✔ Test "Roundtrip" (aka 'testRoundtrip()') with 4 test cases passed after 0.020 seconds.
+                Test run with 4 tests in 1 suite passed after 0.020 seconds.
+                """)
 
         #expect(result.status == "success")
         #expect(result.summary.passedTests == 4)
@@ -1057,10 +1172,11 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing issue with argument values`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ✘ Test "Validates range" recorded an issue with 1 argument value → 0 at RangeTests.swift:10:5: expected value > 0
-        ✘ Test "Validates range" failed after 0.001 seconds with 1 issue.
-        """)
+        let result = parser.parse(
+            input: """
+                ✘ Test "Validates range" recorded an issue with 1 argument value → 0 at RangeTests.swift:10:5: expected value > 0
+                ✘ Test "Validates range" failed after 0.001 seconds with 1 issue.
+                """)
 
         #expect(result.failedTests.count == 1)
         #expect(result.failedTests[0].test == "Validates range (→ 0)")
@@ -1071,9 +1187,10 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing issue with multiple argument values`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ✘ Test "Addition" recorded an issue with 2 argument values → 3, → 5 at MathTests.swift:20:9: 3 + 5 != 7
-        """)
+        let result = parser.parse(
+            input: """
+                ✘ Test "Addition" recorded an issue with 2 argument values → 3, → 5 at MathTests.swift:20:9: 3 + 5 != 7
+                """)
 
         #expect(result.failedTests.count == 1)
         #expect(result.failedTests[0].test == "Addition (→ 3, → 5)")
@@ -1086,13 +1203,14 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing multi-line continuation captures all lines`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ✘ Test "Rule examples validate" recorded an issue at LintTestHelpers.swift:649:10: triggeringExample did not violate:
-        ↳ ```
-        ↳ let x = 1
-        ↳ ```
-        ✘ Test "Rule examples validate" failed after 1.200 seconds with 1 issue.
-        """)
+        let result = parser.parse(
+            input: """
+                ✘ Test "Rule examples validate" recorded an issue at LintTestHelpers.swift:649:10: triggeringExample did not violate:
+                ↳ ```
+                ↳ let x = 1
+                ↳ ```
+                ✘ Test "Rule examples validate" failed after 1.200 seconds with 1 issue.
+                """)
 
         #expect(result.failedTests.count == 1)
         #expect(result.failedTests[0].test == "Rule examples validate")
@@ -1103,13 +1221,14 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing multi-line continuation with argument values`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ✘ Test "Rule examples validate" recorded an issue with 1 argument value → foundation_modernization at LintTestHelpers.swift:649:10: triggeringExample did not violate:
-        ↳ ```
-        ↳ import Foundation
-        ↳ ```
-        ✘ Test "Rule examples validate" failed after 1.200 seconds with 1 issue.
-        """)
+        let result = parser.parse(
+            input: """
+                ✘ Test "Rule examples validate" recorded an issue with 1 argument value → foundation_modernization at LintTestHelpers.swift:649:10: triggeringExample did not violate:
+                ↳ ```
+                ↳ import Foundation
+                ↳ ```
+                ✘ Test "Rule examples validate" failed after 1.200 seconds with 1 issue.
+                """)
 
         #expect(result.failedTests.count == 1)
         #expect(result.failedTests[0].test == "Rule examples validate (→ foundation_modernization)")
@@ -1121,10 +1240,11 @@ struct BuildOutputParserTests {
 
     @Test func `Swift Testing issue without location`() {
         let parser = BuildOutputParser()
-        let result = parser.parse(input: """
-        ✘ Test "Network request" recorded an issue: Connection timed out
-        ✘ Test "Network request" failed after 30.0 seconds with 1 issue.
-        """)
+        let result = parser.parse(
+            input: """
+                ✘ Test "Network request" recorded an issue: Connection timed out
+                ✘ Test "Network request" failed after 30.0 seconds with 1 issue.
+                """)
 
         #expect(result.failedTests.count == 1)
         #expect(result.failedTests[0].test == "Network request")

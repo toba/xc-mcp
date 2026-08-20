@@ -30,10 +30,7 @@ struct MoveFileToolTests {
     static let missingParamCases: [MoveFileMissingParamTestCase] = [
         MoveFileMissingParamTestCase(
             "Missing project_path",
-            [
-                "old_path": Value.string("old.swift"),
-                "new_path": Value.string("new.swift"),
-            ],
+            ["old_path": Value.string("old.swift"), "new_path": Value.string("new.swift")],
         ),
         MoveFileMissingParamTestCase(
             "Missing old_path",
@@ -55,9 +52,7 @@ struct MoveFileToolTests {
     func `Move file with missing parameter`(_ testCase: MoveFileMissingParamTestCase) throws {
         let tool = MoveFileTool(pathUtility: PathUtility(basePath: "/"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     @Test
@@ -189,6 +184,128 @@ struct MoveFileToolTests {
     }
 
     @Test
+    func `Move file inside a group that carries its own path`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        // Give the project a group whose own path is `Sources`. A `.group` reference inside it
+        // resolves against that directory, so a stored project-relative path applies `Sources`
+        // twice.
+        let sourcesDir = tempDir.appendingPathComponent("Sources")
+        try FileManager.default.createDirectory(at: sourcesDir, withIntermediateDirectories: true)
+
+        do {
+            let xcodeproj = try XcodeProj(path: projectPath)
+            let sourcesGroup = PBXGroup(sourceTree: .group, path: "Sources")
+            xcodeproj.pbxproj.add(object: sourcesGroup)
+            let mainGroup = try #require(xcodeproj.pbxproj.rootProject()?.mainGroup)
+            mainGroup.children.append(sourcesGroup)
+            try xcodeproj.write(path: projectPath)
+        }
+
+        let oldFilePath = sourcesDir.appendingPathComponent("OldFile.swift").path
+        try "// Test file".write(toFile: oldFilePath, atomically: true, encoding: .utf8)
+
+        let addTool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(oldFilePath),
+            "group_name": Value.string("Sources"),
+            "target_name": Value.string("TestApp"),
+        ])
+
+        let newFilePath = sourcesDir.appendingPathComponent("NewFile.swift").path
+        let moveTool = MoveFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try moveTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "old_path": Value.string(oldFilePath),
+            "new_path": Value.string(newFilePath),
+        ])
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let fileRef = try #require(xcodeproj.pbxproj.fileReferences.first {
+            $0.name == "NewFile.swift"
+        })
+
+        // The path stays relative to the owning group, so the group path is applied once.
+        #expect(fileRef.sourceTree == .group)
+        #expect(fileRef.path == "NewFile.swift")
+        #expect(try fileRef.fullPath(sourceRoot: tempDir.path) == newFilePath)
+    }
+
+    @Test
+    func `Move file out of a group that carries its own path`() throws {
+        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+        )
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        defer {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "TestApp", at: projectPath,
+        )
+
+        let sourcesDir = tempDir.appendingPathComponent("Sources")
+        try FileManager.default.createDirectory(at: sourcesDir, withIntermediateDirectories: true)
+
+        do {
+            let xcodeproj = try XcodeProj(path: projectPath)
+            let sourcesGroup = PBXGroup(sourceTree: .group, path: "Sources")
+            xcodeproj.pbxproj.add(object: sourcesGroup)
+            let mainGroup = try #require(xcodeproj.pbxproj.rootProject()?.mainGroup)
+            mainGroup.children.append(sourcesGroup)
+            try xcodeproj.write(path: projectPath)
+        }
+
+        let oldFilePath = sourcesDir.appendingPathComponent("OldFile.swift").path
+        try "// Test file".write(toFile: oldFilePath, atomically: true, encoding: .utf8)
+
+        let addTool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(oldFilePath),
+            "group_name": Value.string("Sources"),
+        ])
+
+        // Move the file out of the group directory and into a sibling directory.
+        let otherDir = tempDir.appendingPathComponent("Other")
+        try FileManager.default.createDirectory(at: otherDir, withIntermediateDirectories: true)
+        let newFilePath = otherDir.appendingPathComponent("NewFile.swift").path
+
+        let moveTool = MoveFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try moveTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "old_path": Value.string(oldFilePath),
+            "new_path": Value.string(newFilePath),
+        ])
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let fileRef = try #require(xcodeproj.pbxproj.fileReferences.first {
+            $0.name == "NewFile.swift"
+        })
+
+        // The file left the group directory, so the reference switches to a project-relative path.
+        #expect(fileRef.sourceTree == .sourceRoot)
+        #expect(fileRef.path == "Other/NewFile.swift")
+        #expect(try fileRef.fullPath(sourceRoot: tempDir.path) == newFilePath)
+    }
+
+    @Test
     func `Move file in synchronized folder exception set`() throws {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
             UUID().uuidString,
@@ -204,21 +321,15 @@ struct MoveFileToolTests {
             name: "TestProject",
             targetName: "TestApp",
             folderPath: "TestSupport",
-            membershipExceptions: [
-                "Snapshots/Conformances/NSViewController.swift",
-            ],
+            membershipExceptions: ["Snapshots/Conformances/NSViewController.swift"],
             at: projectPath,
         )
 
         let moveTool = MoveFileTool(pathUtility: PathUtility(basePath: tempDir.path))
         let moveArgs: [String: Value] = [
             "project_path": Value.string(projectPath.string),
-            "old_path": Value.string(
-                "Snapshots/Conformances/NSViewController.swift",
-            ),
-            "new_path": Value.string(
-                "Snapshots/Conformances/NSViewController+snapshot.swift",
-            ),
+            "old_path": Value.string("Snapshots/Conformances/NSViewController.swift"),
+            "new_path": Value.string("Snapshots/Conformances/NSViewController+snapshot.swift"),
         ]
 
         let result = try moveTool.execute(arguments: moveArgs)
