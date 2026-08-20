@@ -6,6 +6,7 @@ import XCMCPCore
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct CreateSchemeToolTests {
     @Test
     func `Tool name and description are correct`() {
@@ -33,10 +34,7 @@ struct CreateSchemeToolTests {
 
     @Test
     func `Create scheme with debug_as_which_user sets attribute`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -67,10 +65,7 @@ struct CreateSchemeToolTests {
 
     @Test
     func `Create scheme without debug_as_which_user omits attribute`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(

@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct GetBuildSettingsToolTests {
     @Test func `get build settings tool creation`() {
         let tool = GetBuildSettingsTool(pathUtility: PathUtility(basePath: "/tmp"))
@@ -49,17 +50,9 @@ struct GetBuildSettingsToolTests {
     }
 
     @Test func `get build settings with nonexistent target`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = GetBuildSettingsTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project using XcodeProj
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -77,17 +70,9 @@ struct GetBuildSettingsToolTests {
     }
 
     @Test func `get build settings with valid target`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = GetBuildSettingsTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project with a target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -113,17 +98,9 @@ struct GetBuildSettingsToolTests {
     }
 
     @Test func `get build settings with specific configuration`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = GetBuildSettingsTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project with a target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"

@@ -2,19 +2,15 @@ import Testing
 import Foundation
 @testable import XCMCPCore
 
+@Suite(.temporaryDirectory)
 struct RawBuildLogTests {
     private func tempURL() -> URL {
-        FileManager.default.temporaryDirectory
-            .appendingPathComponent("xc-mcp-rawlog-test-\(UUID().uuidString).log")
+        TemporaryDirectory.url.appendingPathComponent("xc-mcp-rawlog-test.log")
     }
 
     @Test
     func `Stores and loads raw output with metadata`() throws {
         let url = tempURL()
-        defer {
-            try? FileManager.default.removeItem(at: url)
-            try? FileManager.default.removeItem(at: url.appendingPathExtension("json"))
-        }
 
         let raw = "duplicate symbol '_x' in:\n    a.o\n    b.o\nld: 1 duplicate symbol\n"
         RawBuildLog.store(
@@ -40,10 +36,6 @@ struct RawBuildLogTests {
     @Test
     func `Empty output does not clobber an existing capture`() throws {
         let url = tempURL()
-        defer {
-            try? FileManager.default.removeItem(at: url)
-            try? FileManager.default.removeItem(at: url.appendingPathExtension("json"))
-        }
 
         RawBuildLog.store(
             rawOutput: "real diagnostics", action: "build", destination: "platform=macOS",

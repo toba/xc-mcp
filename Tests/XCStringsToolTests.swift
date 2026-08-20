@@ -110,6 +110,7 @@ enum XCStringsTestHelper {
 
 // MARK: - XCStringsListKeysTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsListKeysToolTests {
     @Test func `tool creation`() {
         let tool = XCStringsListKeysTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -128,11 +129,7 @@ struct XCStringsListKeysToolTests {
     }
 
     @Test func `file not found`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = XCStringsListKeysTool(pathUtility: PathUtility(basePath: tempDir.path))
 
@@ -142,11 +139,7 @@ struct XCStringsListKeysToolTests {
     }
 
     @Test func `list keys`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -167,6 +160,7 @@ struct XCStringsListKeysToolTests {
 
 // MARK: - XCStringsListLanguagesTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsListLanguagesToolTests {
     @Test func toolCreation() {
         let tool = XCStringsListLanguagesTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -185,11 +179,7 @@ struct XCStringsListLanguagesToolTests {
     }
 
     @Test func `list languages`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -210,6 +200,7 @@ struct XCStringsListLanguagesToolTests {
 
 // MARK: - XCStringsGetSourceLanguageTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsGetSourceLanguageToolTests {
     @Test func `test tool creation`() {
         let tool = XCStringsGetSourceLanguageTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -228,11 +219,7 @@ struct XCStringsGetSourceLanguageToolTests {
     }
 
     @Test func `get source language`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath, sourceLanguage: "ja")
@@ -251,6 +238,7 @@ struct XCStringsGetSourceLanguageToolTests {
 
 // MARK: - XCStringsGetKeyTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsGetKeyToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsGetKeyTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -273,11 +261,7 @@ struct XCStringsGetKeyToolTests {
     }
 
     @Test func `get key all languages`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -299,11 +283,7 @@ struct XCStringsGetKeyToolTests {
     }
 
     @Test func `get key specific language`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -324,11 +304,7 @@ struct XCStringsGetKeyToolTests {
     }
 
     @Test func `get key not found`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -346,6 +322,7 @@ struct XCStringsGetKeyToolTests {
 
 // MARK: - XCStringsCheckKeyTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsCheckKeyToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsCheckKeyTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -368,11 +345,7 @@ struct XCStringsCheckKeyToolTests {
     }
 
     @Test func `check key exists`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -392,11 +365,7 @@ struct XCStringsCheckKeyToolTests {
     }
 
     @Test func `check key not exists`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -416,11 +385,7 @@ struct XCStringsCheckKeyToolTests {
     }
 
     @Test func `check key with language`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -451,6 +416,7 @@ struct XCStringsCheckKeyToolTests {
 
 // MARK: - XCStringsListUntranslatedTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsListUntranslatedToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsListUntranslatedTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -473,11 +439,7 @@ struct XCStringsListUntranslatedToolTests {
     }
 
     @Test func `list untranslated`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -500,6 +462,7 @@ struct XCStringsListUntranslatedToolTests {
 
 // MARK: - XCStringsStatsCoverageTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsStatsCoverageToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsStatsCoverageTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -522,11 +485,7 @@ struct XCStringsStatsCoverageToolTests {
     }
 
     @Test func `stats coverage`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -547,11 +506,7 @@ struct XCStringsStatsCoverageToolTests {
     }
 
     @Test func `stats coverage compact`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -570,6 +525,7 @@ struct XCStringsStatsCoverageToolTests {
 
 // MARK: - XCStringsStatsProgressTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsStatsProgressToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsStatsProgressTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -592,11 +548,7 @@ struct XCStringsStatsProgressToolTests {
     }
 
     @Test func `stats progress`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -618,6 +570,7 @@ struct XCStringsStatsProgressToolTests {
 
 // MARK: - XCStringsBatchStatsCoverageTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsBatchStatsCoverageToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsBatchStatsCoverageTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -636,11 +589,7 @@ struct XCStringsBatchStatsCoverageToolTests {
     }
 
     @Test func `batch stats coverage`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath1 = tempDir.path + "/Localizable1.xcstrings"
         let filePath2 = tempDir.path + "/Localizable2.xcstrings"
@@ -665,6 +614,7 @@ struct XCStringsBatchStatsCoverageToolTests {
 
 // MARK: - XCStringsCreateFileTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsCreateFileToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsCreateFileTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -686,11 +636,7 @@ struct XCStringsCreateFileToolTests {
     }
 
     @Test func `create file`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/NewLocalizable.xcstrings"
         let tool = XCStringsCreateFileTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -712,11 +658,7 @@ struct XCStringsCreateFileToolTests {
     }
 
     @Test func `create file already exists`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -729,11 +671,7 @@ struct XCStringsCreateFileToolTests {
     }
 
     @Test func `create file with overwrite`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -755,6 +693,7 @@ struct XCStringsCreateFileToolTests {
 
 // MARK: - XCStringsAddTranslationTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsAddTranslationToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsAddTranslationTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -780,11 +719,7 @@ struct XCStringsAddTranslationToolTests {
     }
 
     @Test func `add translation`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -808,6 +743,7 @@ struct XCStringsAddTranslationToolTests {
 
 // MARK: - XCStringsAddTranslationsTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsAddTranslationsToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsAddTranslationsTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -818,11 +754,7 @@ struct XCStringsAddTranslationsToolTests {
     }
 
     @Test func `missing translations`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -838,11 +770,7 @@ struct XCStringsAddTranslationsToolTests {
     }
 
     @Test func `add translations`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -869,6 +797,7 @@ struct XCStringsAddTranslationsToolTests {
 
 // MARK: - XCStringsUpdateTranslationTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsUpdateTranslationToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsUpdateTranslationTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -887,11 +816,7 @@ struct XCStringsUpdateTranslationToolTests {
     }
 
     @Test func `update translation`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -913,11 +838,7 @@ struct XCStringsUpdateTranslationToolTests {
     }
 
     @Test func `update nonexistent key`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -937,6 +858,7 @@ struct XCStringsUpdateTranslationToolTests {
 
 // MARK: - XCStringsUpdateTranslationsTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsUpdateTranslationsToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsUpdateTranslationsTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -947,11 +869,7 @@ struct XCStringsUpdateTranslationsToolTests {
     }
 
     @Test func `empty translations`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -968,11 +886,7 @@ struct XCStringsUpdateTranslationsToolTests {
     }
 
     @Test func `update translations`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -999,6 +913,7 @@ struct XCStringsUpdateTranslationsToolTests {
 
 // MARK: - XCStringsRenameKeyTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsRenameKeyToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsRenameKeyTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -1024,11 +939,7 @@ struct XCStringsRenameKeyToolTests {
     }
 
     @Test func `rename key`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1051,11 +962,7 @@ struct XCStringsRenameKeyToolTests {
     }
 
     @Test func `rename nonexistent key`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1074,6 +981,7 @@ struct XCStringsRenameKeyToolTests {
 
 // MARK: - XCStringsDeleteKeyTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsDeleteKeyToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsDeleteKeyTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -1096,11 +1004,7 @@ struct XCStringsDeleteKeyToolTests {
     }
 
     @Test func `delete key`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1120,11 +1024,7 @@ struct XCStringsDeleteKeyToolTests {
     }
 
     @Test func `delete nonexistent key`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1142,6 +1042,7 @@ struct XCStringsDeleteKeyToolTests {
 
 // MARK: - XCStringsDeleteTranslationTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsDeleteTranslationToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsDeleteTranslationTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -1167,11 +1068,7 @@ struct XCStringsDeleteTranslationToolTests {
     }
 
     @Test func `delete translation`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1192,11 +1089,7 @@ struct XCStringsDeleteTranslationToolTests {
     }
 
     @Test func `delete nonexistent translation`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1215,6 +1108,7 @@ struct XCStringsDeleteTranslationToolTests {
 
 // MARK: - XCStringsDeleteTranslationsTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsDeleteTranslationsToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsDeleteTranslationsTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -1225,11 +1119,7 @@ struct XCStringsDeleteTranslationsToolTests {
     }
 
     @Test func `empty languages array`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1246,11 +1136,7 @@ struct XCStringsDeleteTranslationsToolTests {
     }
 
     @Test func `delete translations`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1274,6 +1160,7 @@ struct XCStringsDeleteTranslationsToolTests {
 
 // MARK: - XCStringsListStaleTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsListStaleToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsListStaleTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -1284,13 +1171,7 @@ struct XCStringsListStaleToolTests {
     }
 
     @Test func `list stale keys`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "XCStringsListStaleTests-\(UUID().uuidString)",
-        ).path
-        try FileManager.default.createDirectory(
-            atPath: tempDir, withIntermediateDirectories: true,
-        )
-        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+        let tempDir = TemporaryDirectory.path
 
         let filePath = "\(tempDir)/test.xcstrings"
         try XCStringsTestHelper.createSampleWithStaleKeys(at: filePath)
@@ -1308,13 +1189,7 @@ struct XCStringsListStaleToolTests {
     }
 
     @Test func `no stale keys`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "XCStringsListStaleTests-\(UUID().uuidString)",
-        ).path
-        try FileManager.default.createDirectory(
-            atPath: tempDir, withIntermediateDirectories: true,
-        )
-        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+        let tempDir = TemporaryDirectory.path
 
         let filePath = "\(tempDir)/test.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1332,15 +1207,10 @@ struct XCStringsListStaleToolTests {
 
 // MARK: - XCStringsBatchListStaleTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsBatchListStaleToolTests {
     @Test func `batch list stale`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "XCStringsBatchListStaleTests-\(UUID().uuidString)",
-        ).path
-        try FileManager.default.createDirectory(
-            atPath: tempDir, withIntermediateDirectories: true,
-        )
-        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+        let tempDir = TemporaryDirectory.path
 
         let file1 = "\(tempDir)/test1.xcstrings"
         let file2 = "\(tempDir)/test2.xcstrings"
@@ -1371,15 +1241,10 @@ struct XCStringsBatchListStaleToolTests {
 
 // MARK: - XCStringsBatchCheckKeysTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsBatchCheckKeysToolTests {
     @Test func `batch check keys`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "XCStringsBatchCheckKeysTests-\(UUID().uuidString)",
-        ).path
-        try FileManager.default.createDirectory(
-            atPath: tempDir, withIntermediateDirectories: true,
-        )
-        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+        let tempDir = TemporaryDirectory.path
 
         let filePath = "\(tempDir)/test.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1399,13 +1264,7 @@ struct XCStringsBatchCheckKeysToolTests {
     }
 
     @Test func `batch check keys with language`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "XCStringsBatchCheckKeysTests-\(UUID().uuidString)",
-        ).path
-        try FileManager.default.createDirectory(
-            atPath: tempDir, withIntermediateDirectories: true,
-        )
-        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+        let tempDir = TemporaryDirectory.path
 
         let filePath = "\(tempDir)/test.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1440,15 +1299,10 @@ struct XCStringsBatchCheckKeysToolTests {
 
 // MARK: - XCStringsBatchAddTranslationsTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsBatchAddTranslationsToolTests {
     @Test func `batch add translations`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "XCStringsBatchAddTests-\(UUID().uuidString)",
-        ).path
-        try FileManager.default.createDirectory(
-            atPath: tempDir, withIntermediateDirectories: true,
-        )
-        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+        let tempDir = TemporaryDirectory.path
 
         let filePath = "\(tempDir)/test.xcstrings"
         try XCStringsTestHelper.createEmptyXCStringsFile(at: filePath)
@@ -1496,15 +1350,10 @@ struct XCStringsBatchAddTranslationsToolTests {
 
 // MARK: - XCStringsBatchUpdateTranslationsTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsBatchUpdateTranslationsToolTests {
     @Test func `batch update translations`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "XCStringsBatchUpdateTests-\(UUID().uuidString)",
-        ).path
-        try FileManager.default.createDirectory(
-            atPath: tempDir, withIntermediateDirectories: true,
-        )
-        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+        let tempDir = TemporaryDirectory.path
 
         let filePath = "\(tempDir)/test.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1543,6 +1392,7 @@ struct XCStringsBatchUpdateTranslationsToolTests {
 
 // MARK: - XCStringsCheckCoverageTool Tests
 
+@Suite(.temporaryDirectory)
 struct XCStringsCheckCoverageToolTests {
     @Test func testToolCreation() {
         let tool = XCStringsCheckCoverageTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -1553,13 +1403,7 @@ struct XCStringsCheckCoverageToolTests {
     }
 
     @Test func `check coverage`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "XCStringsCheckCoverageTests-\(UUID().uuidString)",
-        ).path
-        try FileManager.default.createDirectory(
-            atPath: tempDir, withIntermediateDirectories: true,
-        )
-        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+        let tempDir = TemporaryDirectory.path
 
         let filePath = "\(tempDir)/test.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
@@ -1579,13 +1423,7 @@ struct XCStringsCheckCoverageToolTests {
     }
 
     @Test func `check coverage key not found`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "XCStringsCheckCoverageTests-\(UUID().uuidString)",
-        ).path
-        try FileManager.default.createDirectory(
-            atPath: tempDir, withIntermediateDirectories: true,
-        )
-        defer { try? FileManager.default.removeItem(atPath: tempDir) }
+        let tempDir = TemporaryDirectory.path
 
         let filePath = "\(tempDir)/test.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)

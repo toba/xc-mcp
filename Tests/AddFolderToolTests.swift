@@ -18,18 +18,10 @@ struct AddFolderMissingParamTestCase {
     }
 }
 
+@Suite(.temporaryDirectory)
 struct AddFolderToolTests {
-    let tempDir: String
-    let pathUtility: PathUtility
-
-    init() {
-        tempDir =
-            FileManager.default.temporaryDirectory
-            .appendingPathComponent("AddFolderToolTests-\(UUID().uuidString)")
-            .path
-        pathUtility = PathUtility(basePath: tempDir)
-        try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
-    }
+    let tempDir = TemporaryDirectory.path
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     @Test
     func `Tool has correct properties`() {

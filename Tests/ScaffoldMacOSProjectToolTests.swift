@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct ScaffoldMacOSProjectToolTests {
     @Test
     func `Tool creation`() {
@@ -17,11 +18,7 @@ struct ScaffoldMacOSProjectToolTests {
 
     @Test
     func `Scaffold creates buildable project structure`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
         _ = try tool.execute(arguments: [
@@ -58,11 +55,7 @@ struct ScaffoldMacOSProjectToolTests {
 
     @Test
     func `Scaffold uses synchronized root group for app source folder`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
         _ = try tool.execute(arguments: [
@@ -93,11 +86,7 @@ struct ScaffoldMacOSProjectToolTests {
 
     @Test
     func `Scaffold leaves build phases empty under synchronized folder`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
         _ = try tool.execute(arguments: [
@@ -133,11 +122,7 @@ struct ScaffoldMacOSProjectToolTests {
 
     @Test
     func `Scaffold generates AppIcon Contents json with scale field`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
         _ = try tool.execute(arguments: [
@@ -172,11 +157,7 @@ struct ScaffoldMacOSProjectToolTests {
 
     @Test
     func `Scaffold writes entitlements file alongside source folder`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
         _ = try tool.execute(arguments: [

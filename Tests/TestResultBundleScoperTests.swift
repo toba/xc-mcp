@@ -2,11 +2,11 @@ import Testing
 @testable import XCMCPCore
 import Foundation
 
+@Suite(.temporaryDirectory)
 struct TestResultBundleScoperTests {
     @Test
     func `Managed path lives under the project-scoped TestResults directory`() {
-        let env: [String: String] = ["XC_MCP_TEST_RESULTS_PATH": NSTemporaryDirectory() + "xc-mcp-scoper-test-\(UUID().uuidString)"]
-        defer { try? FileManager.default.removeItem(atPath: env["XC_MCP_TEST_RESULTS_PATH"]!) }
+        let env: [String: String] = ["XC_MCP_TEST_RESULTS_PATH": TemporaryDirectory.path]
 
         let path = TestResultBundleScoper.managedPath(
             workspacePath: nil,
@@ -92,10 +92,7 @@ struct TestResultBundleScoperTests {
     @Test
     func `Pruning removes bundles older than retention but keeps fresh ones`() throws {
         let fm = FileManager.default
-        let tmp = NSTemporaryDirectory()
-            + "xc-mcp-scoper-prune-\(UUID().uuidString)"
-        try fm.createDirectory(atPath: tmp, withIntermediateDirectories: true)
-        defer { try? fm.removeItem(atPath: tmp) }
+        let tmp = TemporaryDirectory.path
 
         let oldBundle = "\(tmp)/old.xcresult"
         let freshBundle = "\(tmp)/fresh.xcresult"
@@ -129,14 +126,13 @@ struct TestResultBundleScoperTests {
     }
 }
 
+@Suite(.temporaryDirectory)
 struct ErrorExtractorResultBundleSuffixTests {
     @Test
     func `Result bundle path is appended to passing test output when bundle exists`() async throws {
         let fm = FileManager.default
-        let bundle = NSTemporaryDirectory()
-            + "xc-mcp-suffix-\(UUID().uuidString).xcresult"
+        let bundle = TemporaryDirectory.url.appendingPathComponent("run.xcresult").path
         try fm.createDirectory(atPath: bundle, withIntermediateDirectories: true)
-        defer { try? fm.removeItem(atPath: bundle) }
 
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
@@ -183,10 +179,8 @@ struct ErrorExtractorResultBundleSuffixTests {
     @Test
     func `Result bundle path is appended to failure error when bundle exists`() async throws {
         let fm = FileManager.default
-        let bundle = NSTemporaryDirectory()
-            + "xc-mcp-suffix-fail-\(UUID().uuidString).xcresult"
+        let bundle = TemporaryDirectory.url.appendingPathComponent("run.xcresult").path
         try fm.createDirectory(atPath: bundle, withIntermediateDirectories: true)
-        defer { try? fm.removeItem(atPath: bundle) }
 
         do {
             _ = try await ErrorExtractor.formatTestToolResult(

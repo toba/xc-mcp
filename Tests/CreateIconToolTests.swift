@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct CreateIconToolTests {
     @Test
     func `Tool creation`() {
@@ -37,10 +38,7 @@ struct CreateIconToolTests {
 
     @Test
     func `Output path without icon extension throws`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let pngPath = tempDir.appendingPathComponent("logo.png")
         try Data([0x89, 0x50]).write(to: pngPath)
@@ -56,10 +54,7 @@ struct CreateIconToolTests {
 
     @Test
     func `Nonexistent PNG throws`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = CreateIconTool(pathUtility: PathUtility(basePath: tempDir.path))
         #expect(throws: MCPError.self) {
@@ -72,10 +67,7 @@ struct CreateIconToolTests {
 
     @Test
     func `Creates icon bundle with correct structure`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         // Create a dummy PNG
         let pngPath = tempDir.appendingPathComponent("logo.png")
@@ -103,10 +95,7 @@ struct CreateIconToolTests {
 
     @Test
     func `Icon json is valid and contains expected fields`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let pngPath = tempDir.appendingPathComponent("glyph.png")
         try Data([0x89, 0x50, 0x4E, 0x47]).write(to: pngPath)
@@ -134,10 +123,7 @@ struct CreateIconToolTests {
 
     @Test
     func `Fill color from hex is converted to sRGB`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let pngPath = tempDir.appendingPathComponent("icon.png")
         try Data([0x89, 0x50, 0x4E, 0x47]).write(to: pngPath)
@@ -162,10 +148,7 @@ struct CreateIconToolTests {
 
     @Test
     func `Dark fill color creates specialization`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let pngPath = tempDir.appendingPathComponent("icon.png")
         try Data([0x89, 0x50, 0x4E, 0x47]).write(to: pngPath)
@@ -189,10 +172,7 @@ struct CreateIconToolTests {
 
     @Test
     func `Glyph scale creates position`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let pngPath = tempDir.appendingPathComponent("icon.png")
         try Data([0x89, 0x50, 0x4E, 0x47]).write(to: pngPath)
@@ -213,10 +193,7 @@ struct CreateIconToolTests {
 
     @Test
     func `Creates icon and adds to Xcode project`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -260,10 +237,7 @@ struct CreateIconToolTests {
 
     @Test
     func `Shadow none omits shadow from manifest`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let pngPath = tempDir.appendingPathComponent("icon.png")
         try Data([0x89, 0x50, 0x4E, 0x47]).write(to: pngPath)

@@ -86,4 +86,25 @@ struct LinkerDiagnosticsTests {
 
         #expect(extracted.contains("more diagnostic lines truncated"))
     }
+
+    @Test
+    func `Extracts the same regions from a CRLF log as from an LF log`() {
+        let lines = [
+            "Ld /DerivedData/Thesis.app/Contents/MacOS/Thesis normal (in target 'Thesis')",
+            "duplicate symbol '_relinkableLibraryClasses' in:",
+            "    /DerivedData/Build/Products/Release/FrameworkA.framework/Versions/A/FrameworkA",
+            "    /DerivedData/Build/Products/Release/FrameworkB.framework/Versions/A/FrameworkB",
+            "ld: 1 duplicate symbol for architecture arm64",
+            "clang: error: linker command failed with exit code 1 (use -v to see invocation)",
+        ]
+
+        let fromLF = LinkerDiagnostics.extract(from: lines.joined(separator: "\n"))
+        let fromCRLF = LinkerDiagnostics.extract(from: lines.joined(separator: "\r\n"))
+
+        #expect(fromCRLF == fromLF)
+        #expect(fromCRLF.contains("duplicate symbol '_relinkableLibraryClasses' in:"))
+        #expect(fromCRLF.contains("FrameworkB.framework/Versions/A/FrameworkB"))
+        #expect(fromCRLF.contains("ld: 1 duplicate symbol for architecture arm64"))
+        #expect(!fromCRLF.contains("\r"))
+    }
 }

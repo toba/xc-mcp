@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct AddStoreKitConfigToolTests {
     /// A minimal shared scheme with both a `TestAction` and a `LaunchAction`.
     private static let schemeXML = """
@@ -39,9 +40,7 @@ struct AddStoreKitConfigToolTests {
         testTarget: String = "AppTests",
         testTargetType: PBXProductType = .unitTestBundle,
     ) throws -> (base: String, project: String, scheme: String, storekit: String) {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = tempDir.appendingPathComponent("TestProject.xcodeproj")
         try TestProjectHelper.createTestProjectWithTwoTargets(

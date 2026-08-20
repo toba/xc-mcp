@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct ScaffoldModuleToolTests {
     @Test
     func `Tool creation`() {
@@ -391,20 +392,14 @@ struct ScaffoldModuleToolTests {
     // MARK: - Helpers
 
     private func createTempProject() throws -> (URL, Path) {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
         return (tempDir, projectPath)
     }
 
     private func createTempProjectWithTarget(targetName: String) throws -> (URL, Path) {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: targetName, at: projectPath,
@@ -413,10 +408,7 @@ struct ScaffoldModuleToolTests {
     }
 
     private func createTempProjectWithConfigs(_ configs: [String]) throws -> (URL, Path) {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
 
         let pbxproj = PBXProj()

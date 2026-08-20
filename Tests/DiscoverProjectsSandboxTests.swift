@@ -9,6 +9,7 @@ import Foundation
 /// A symlink inside the scanned tree can resolve to a directory outside the sandbox base. Without a
 /// per-entry boundary check the recursive scan would follow it and report bundles from outside the
 /// base — see issue whu-g1p (analogous to getsentry/XcodeBuildMCP fix 46b2cf6).
+@Suite(.temporaryDirectory)
 struct DiscoverProjectsSandboxTests {
     private func textContent(_ result: CallTool.Result) -> String {
         guard case let .text(content, _, _) = result.content.first else {
@@ -21,8 +22,7 @@ struct DiscoverProjectsSandboxTests {
     @Test func `symlink escaping base is not followed`() throws {
         // <root>/base holds Inside.xcodeproj and a symlink escape -> <root>/outside,
         // which holds Outside.xcodeproj.
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("discover-symlink-\(UUID().uuidString)")
+        let root = TemporaryDirectory.url
         let base = root.appendingPathComponent("base")
         let outside = root.appendingPathComponent("outside")
         let fm = FileManager.default
@@ -33,7 +33,6 @@ struct DiscoverProjectsSandboxTests {
             at: outside.appendingPathComponent("Outside.xcodeproj"),
             withIntermediateDirectories: true,
         )
-        defer { try? fm.removeItem(at: root) }
 
         try fm.createSymbolicLink(
             at: base.appendingPathComponent("escape"), withDestinationURL: outside,
@@ -48,14 +47,12 @@ struct DiscoverProjectsSandboxTests {
     }
 
     @Test func `normal nested discovery still works`() throws {
-        let base = FileManager.default.temporaryDirectory
-            .appendingPathComponent("discover-nested-\(UUID().uuidString)")
+        let base = TemporaryDirectory.url
         let fm = FileManager.default
         try fm.createDirectory(
             at: base.appendingPathComponent("Sub/Nested.xcodeproj"),
             withIntermediateDirectories: true,
         )
-        defer { try? fm.removeItem(at: base) }
 
         let tool = DiscoverProjectsTool(pathUtility: PathUtility(basePath: base.path))
         let result = try tool.execute(arguments: ["path": .string(base.path)])

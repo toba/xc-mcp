@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct FindBuildSettingsToolTests {
     /// Builds a project with a target, then injects a project-level build setting on both the Debug
     /// and Release project configurations. Returns the resolved project path inside `tempDir`.
@@ -54,11 +55,7 @@ struct FindBuildSettingsToolTests {
     }
 
     @Test func `find build settings reports project-level match`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         // A malformed OTHER_LDFLAGS on the project level is inherited by every target — exactly the
         // invisible-inheritance case this tool must surface.
@@ -84,11 +81,7 @@ struct FindBuildSettingsToolTests {
     }
 
     @Test func `find build settings project-level respects value filter and configuration`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = try makeProjectWithProjectLevelSetting(
             tempDir: tempDir,

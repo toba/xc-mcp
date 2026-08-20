@@ -34,6 +34,7 @@ struct AppExtensionMissingParamTestCase {
     }
 }
 
+@Suite(.temporaryDirectory)
 struct AddAppExtensionToolTests {
     @Test
     func `Tool creation`() {
@@ -117,14 +118,7 @@ struct AddAppExtensionToolTests {
 
     @Test(arguments: extensionTypeCases)
     func `Add extension type`(_ testCase: ExtensionTypeTestCase) throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -158,14 +152,7 @@ struct AddAppExtensionToolTests {
 
     @Test
     func `Add widget extension verifies embedding`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -209,14 +196,7 @@ struct AddAppExtensionToolTests {
 
     @Test
     func `Add extension with deployment target`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -255,14 +235,7 @@ struct AddAppExtensionToolTests {
     @Test
     func `Add macOS extension sets ALWAYS_SEARCH_USER_PATHS and omits TARGETED_DEVICE_FAMILY`(
     ) throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -292,14 +265,7 @@ struct AddAppExtensionToolTests {
 
     @Test
     func `Add duplicate extension`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -330,14 +296,7 @@ struct AddAppExtensionToolTests {
 
     @Test
     func `Add extension with non-existent host target`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
@@ -362,14 +321,7 @@ struct AddAppExtensionToolTests {
 
     @Test
     func `Add extension with invalid extension type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -392,14 +344,7 @@ struct AddAppExtensionToolTests {
 
     @Test
     func `Add extension to non-application target`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appending(
-            component: UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         // Create project with framework target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"

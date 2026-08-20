@@ -9,6 +9,7 @@ import Foundation
 /// Covers the StoreKit-specific validations added to `validate_scheme` for pzg-2cv: a scheme
 /// StoreKit reference whose relative path doesn't resolve, and a `.storekit` shipped in an app
 /// target's Copy Bundle Resources.
+@Suite(.temporaryDirectory)
 struct ValidateSchemeStoreKitTests {
     private static func scheme(storekitIdentifier: String?) -> String {
         let launchChild = storekitIdentifier.map {
@@ -34,9 +35,7 @@ struct ValidateSchemeStoreKitTests {
         storekitIdentifier: String?,
         writeStorekitAtRoot: Bool,
     ) throws -> (base: String, project: String) {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = tempDir.appendingPathComponent("TestProject.xcodeproj")
         try TestProjectHelper.createTestProjectWithTarget(

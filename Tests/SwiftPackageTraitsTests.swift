@@ -10,15 +10,13 @@ import Foundation
 ///
 /// Each test writes the project file and reads it back, so a trait must survive the project writer
 /// and the decoder.
+@Suite(.temporaryDirectory)
 struct SwiftPackageTraitsTests {
     /// Creates a temporary directory and an empty test project inside it.
     private func makeProject(
         targetName: String? = nil,
     ) throws -> (dir: URL, path: Path) {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
 
         if let targetName {

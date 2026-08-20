@@ -4,11 +4,12 @@ import Testing
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct SetTestPlanTargetParallelizableToolTests {
-    let pathUtility = PathUtility(basePath: NSTemporaryDirectory())
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     private func createTestPlan(_ json: [String: Any]) throws -> String {
-        let path = NSTemporaryDirectory() + "test_\(UUID().uuidString).xctestplan"
+        let path = TemporaryDirectory.url.appendingPathComponent("test.xctestplan").path
         try TestPlanFile.write(json, to: path)
         return path
     }
@@ -45,7 +46,6 @@ struct SetTestPlanTargetParallelizableToolTests {
     @Test
     func `Disable parallelization on specific target`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
         let result = try tool.execute(arguments: [
@@ -69,7 +69,6 @@ struct SetTestPlanTargetParallelizableToolTests {
     @Test
     func `Enable parallelization on specific target`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
         _ = try tool.execute(arguments: [
@@ -91,7 +90,6 @@ struct SetTestPlanTargetParallelizableToolTests {
         plan["testTargets"] = targets
 
         let path = try createTestPlan(plan)
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
         _ = try tool.execute(arguments: [
@@ -108,7 +106,6 @@ struct SetTestPlanTargetParallelizableToolTests {
     @Test
     func `Plan-level default when target_name omitted`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
         let result = try tool.execute(arguments: [
@@ -130,7 +127,6 @@ struct SetTestPlanTargetParallelizableToolTests {
     @Test
     func `Target not found throws error`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
         #expect(throws: MCPError.self) {
@@ -145,7 +141,6 @@ struct SetTestPlanTargetParallelizableToolTests {
     @Test
     func `Missing enabled throws error`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanTargetParallelizableTool(pathUtility: pathUtility)
         #expect(throws: MCPError.self) {

@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct DocumentTypeToolsTests {
     // MARK: - Helper
 
@@ -58,11 +59,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `ListDocumentTypesTool with non-existent target`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -81,11 +78,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `ListDocumentTypesTool with no document types`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -104,11 +97,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `ListDocumentTypesTool with existing document types`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -165,11 +154,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `ManageDocumentTypeTool add document type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -203,11 +188,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `ManageDocumentTypeTool add duplicate`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -236,11 +217,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `ManageDocumentTypeTool update document type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -280,11 +257,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `ManageDocumentTypeTool update non-existent`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -305,11 +278,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `ManageDocumentTypeTool remove document type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -342,11 +311,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `ManageDocumentTypeTool with additional_properties`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -372,11 +337,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `ManageDocumentTypeTool materializes Info.plist when missing`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -408,11 +369,7 @@ struct DocumentTypeToolsTests {
 
     @Test
     func `Full workflow: add, list, update, list, remove`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try createProjectWithInfoPlist(tempDir: tempDir)
         let basePath = tempDir.path

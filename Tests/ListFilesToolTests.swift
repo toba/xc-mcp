@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct ListFilesToolTests {
     @Test func `list files tool creation`() {
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: "/workspace"))
@@ -42,17 +43,9 @@ struct ListFilesToolTests {
     }
 
     @Test func `list files with empty target`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project with target using XcodeProj
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -78,17 +71,9 @@ struct ListFilesToolTests {
     }
 
     @Test func `list files with invalid target`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project with target using XcodeProj
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -108,17 +93,9 @@ struct ListFilesToolTests {
     }
 
     @Test func `list files with source files`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project with target using XcodeProj
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -168,16 +145,9 @@ struct ListFilesToolTests {
     }
 
     @Test func `list files with synchronized folder`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -213,16 +183,9 @@ struct ListFilesToolTests {
     }
 
     @Test func `list files with synchronized folder exceptions`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -272,16 +235,9 @@ struct ListFilesToolTests {
     }
 
     @Test func `list files with sync group via exception set`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(

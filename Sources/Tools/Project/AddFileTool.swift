@@ -33,7 +33,7 @@ public struct AddFileTool: Sendable {
                     "file_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the file to add (relative to project root or absolute)",
+                            "Path to the file to add. An absolute path, or a path relative to the server base directory (the directory the server runs in), which is not always the directory holding the .xcodeproj. Pass an absolute path when the two differ.",
                         ),
                     ]),
                     "group_name": .object([
@@ -174,18 +174,68 @@ public struct AddFileTool: Sendable {
             let targetInfo = targetName != nil ? " to target '\(targetName!)'" : ""
             let groupInfo = groupName != nil ? " in group '\(groupName!)'" : ""
 
-            return CallTool.Result(content: [
-                .text(
-                    text: "Successfully added file '\(fileName)'\(targetInfo)\(groupInfo)",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],)
+            var message = "Successfully added file '\(fileName)'\(targetInfo)\(groupInfo)"
+
+            if let warning = Self.missingFileWarning(
+                resolvedFilePath: resolvedFilePath,
+                requestedPath: filePath,
+                basePath: pathUtility.basePath,
+                projectRoot: projectRoot,
+            ) { message += "\n\(warning)" }
+
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch {
             throw MCPError.internalError(
                 "Failed to add file to Xcode project: \(error.localizedDescription)",
             )
         }
+    }
+
+    /// Returns a warning when `resolvedFilePath` is not on disk, or `nil` when the file exists.
+    ///
+    /// Referencing a file that does not exist yet is legitimate, so the call still succeeds. The
+    /// warning names the resolved path, because a relative `file_path` resolves against the server
+    /// base directory, which is not always the directory holding the `.xcodeproj`. A project at
+    /// `<base>/apps/ios/App.xcodeproj` with `file_path` `Sources/Greeter.swift` writes a reference
+    /// to `<base>/Sources/Greeter.swift`, and Xcode later shows that reference in red.
+    ///
+    /// When the same relative path exists under the project root, the warning names that file as
+    /// the likely intent.
+    ///
+    /// - Parameters:
+    ///   - resolvedFilePath: The absolute path the tool wrote a reference to.
+    ///   - requestedPath: The `file_path` argument as the caller passed it.
+    ///   - basePath: The server base directory a relative `requestedPath` resolves against.
+    ///   - projectRoot: The directory holding the `.xcodeproj`.
+    /// - Returns: The warning text, or `nil` when the file is on disk.
+    static func missingFileWarning(
+        resolvedFilePath: String,
+        requestedPath: String,
+        basePath: String,
+        projectRoot: String,
+    ) -> String? {
+        guard !FileManager.default.fileExists(atPath: resolvedFilePath) else { return nil }
+
+        var warning = "Warning: '\(resolvedFilePath)' does not exist on disk, so Xcode shows this "
+            + "reference in red until you create the file."
+
+        // A relative path resolves against the base directory. Point at the project-root candidate
+        // when that one exists, because it is what the caller meant.
+        let isRelative = !PathUtility.expandTilde(requestedPath).hasPrefix("/")
+
+        if isRelative, projectRoot != basePath {
+            let candidate = URL(fileURLWithPath: projectRoot)
+                .appendingPathComponent(requestedPath).standardized.path
+
+            warning += " A relative file_path resolves against the server base directory "
+                + "'\(basePath)', not the project directory '\(projectRoot)'."
+
+            if FileManager.default.fileExists(atPath: candidate) {
+                warning += " '\(candidate)' does exist. Pass that absolute path to reference it."
+            }
+        }
+
+        return warning
     }
 
     /// Finds an existing file reference resolving to `resolvedFilePath` (to avoid duplicates) or
@@ -223,7 +273,7 @@ public struct AddFileTool: Sendable {
             )
 
             let fileExtension = URL(fileURLWithPath: resolvedFilePath).pathExtension
-            let fileType = Self.fileType(forExtension: fileExtension)
+            let fileType = Xcode.filetype(extension: fileExtension)
             let newRef = PBXFileReference(
                 sourceTree: location.sourceTree,
                 name: URL(fileURLWithPath: resolvedFilePath).lastPathComponent,
@@ -240,13 +290,5 @@ public struct AddFileTool: Sendable {
         }
 
         return fileReference
-    }
-
-    /// File type overrides for extensions not in XcodeProj's `Xcode.filetype(extension:)`.
-    private static let fileTypeOverrides: [String: String] = ["icon": "folder.iconcomposer.icon"]
-
-    /// Returns the Xcode file type for a given extension, consulting local overrides first.
-    static func fileType(forExtension ext: String) -> String? {
-        fileTypeOverrides[ext] ?? Xcode.filetype(extension: ext)
     }
 }

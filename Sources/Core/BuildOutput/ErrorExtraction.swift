@@ -785,7 +785,7 @@ public enum ErrorExtractor {
 
         // Extract the crashing file from the swiftc invocation preceding the crash. The verbose
         // output shows the full command, then the crash message.
-        let lines = verboseOutput.split(separator: "\n", omittingEmptySubsequences: false)
+        let lines = BuildLogLines.split(verboseOutput)
         var crashingInvocation: String?
         var crashingFiles: [String] = []
 
@@ -796,7 +796,7 @@ public enum ErrorExtractor {
             var i = index - 1
 
             while i >= 0 {
-                let prev = String(lines[i])
+                let prev = lines[i]
 
                 if prev.contains("swiftc") || prev.contains("swift-frontend") {
                     crashingInvocation = prev
@@ -843,7 +843,7 @@ public enum ErrorExtractor {
                 || $0.contains("#0") || $0.contains("swift::") || $0.contains("llvm::")
         }
         if !stackLines.isEmpty {
-            let trace = stackLines.prefix(20).map(String.init).joined(separator: "\n")
+            let trace = stackLines.prefix(20).joined(separator: "\n")
             sections.append("Compiler backtrace:\n\(trace)")
         }
 

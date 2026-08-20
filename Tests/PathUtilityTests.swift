@@ -3,6 +3,7 @@ import XCMCPCore
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct PathUtilityTests {
     @Test func `relative path resolution`() throws {
         // Use current working directory as base path for testing
@@ -48,17 +49,9 @@ struct PathUtilityTests {
     }
 
     @Test func `dot dot path resolution`() throws {
-        // Create a temporary subdirectory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
         let basePath = tempDir.appendingPathComponent("projects").path
         try FileManager.default.createDirectory(atPath: basePath, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         let pathUtility = PathUtility(basePath: basePath)
 
@@ -82,13 +75,11 @@ struct PathUtilityTests {
 
     @Test func `isWithinSandbox rejects symlink escaping base`() throws {
         // Lay out: <root>/base and <root>/outside; base/link -> outside.
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("sandbox-symlink-\(UUID().uuidString)")
+        let root = TemporaryDirectory.url
         let base = root.appendingPathComponent("base")
         let outside = root.appendingPathComponent("outside")
         try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
 
         let link = base.appendingPathComponent("link")
         try FileManager.default.createSymbolicLink(at: link, withDestinationURL: outside)
@@ -108,13 +99,11 @@ struct PathUtilityTests {
     }
 }
 
+@Suite(.temporaryDirectory)
 struct PathUtilityAncestorSearchTests {
     @Test
     func `Finds Package.swift in starting directory`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ancestor-test-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         // Create Package.swift in the temp dir
         FileManager.default.createFile(
@@ -131,11 +120,9 @@ struct PathUtilityAncestorSearchTests {
 
     @Test
     func `Finds Package.swift in parent directory`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ancestor-test-\(UUID().uuidString)")
+        let tempDir = TemporaryDirectory.url
         let nested = tempDir.appendingPathComponent("Sources/Models")
         try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Create Package.swift at root, search from nested dir
         FileManager.default.createFile(
@@ -152,10 +139,7 @@ struct PathUtilityAncestorSearchTests {
 
     @Test
     func `Returns nil when no match found`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ancestor-test-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         // No Package.swift anywhere in temp dir
         let result = PathUtility.findAncestorDirectory(
@@ -170,11 +154,9 @@ struct PathUtilityAncestorSearchTests {
 
     @Test
     func `Finds .xcodeproj in ancestor`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ancestor-test-\(UUID().uuidString)")
+        let tempDir = TemporaryDirectory.url
         let nested = tempDir.appendingPathComponent("Sources")
         try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Create a .xcodeproj directory
         let projPath = tempDir.appendingPathComponent("MyApp.xcodeproj")

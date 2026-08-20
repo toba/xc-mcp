@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct SetFrameworkMergeAttributeToolTests {
     @Test
     func `Tool creation`() {
@@ -62,11 +63,7 @@ struct SetFrameworkMergeAttributeToolTests {
 
     @Test
     func `Set merge true adds ATTRIBUTES Merge`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try Self.makeProjectWithFramework(at: tempDir)
 
@@ -96,11 +93,7 @@ struct SetFrameworkMergeAttributeToolTests {
 
     @Test
     func `Set merge false removes Merge but keeps other attributes`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try Self.makeProjectWithFramework(at: tempDir)
 
@@ -135,11 +128,7 @@ struct SetFrameworkMergeAttributeToolTests {
 
     @Test
     func `Set merge true is no-op when already set`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try Self.makeProjectWithFramework(at: tempDir)
         do {
@@ -167,11 +156,7 @@ struct SetFrameworkMergeAttributeToolTests {
 
     @Test
     func `Set merge false is no-op when not set`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try Self.makeProjectWithFramework(at: tempDir)
 
@@ -191,11 +176,7 @@ struct SetFrameworkMergeAttributeToolTests {
 
     @Test
     func `Framework not found in phase`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try Self.makeProjectWithFramework(at: tempDir)
 
@@ -215,11 +196,7 @@ struct SetFrameworkMergeAttributeToolTests {
 
     @Test
     func `Target without frameworks phase`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -242,11 +219,7 @@ struct SetFrameworkMergeAttributeToolTests {
 
     @Test
     func `Set merge true on SPM productRef matched by productName`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -303,11 +276,7 @@ struct SetFrameworkMergeAttributeToolTests {
 
     @Test
     func `list_frameworks_phase surfaces merge=true marker`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try Self.makeProjectWithFramework(at: tempDir)
 

@@ -4,6 +4,7 @@ import Testing
 import XCMCPCore
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct DumpPIFToolTests {
     @Test
     func `Tool metadata`() {
@@ -22,7 +23,6 @@ struct DumpPIFToolTests {
     @Test
     func `Summary surfaces duplicate target guids`() throws {
         let fixture = try TestPIFCacheFixture.makeWithDuplicateCoreTarget()
-        defer { try? FileManager.default.removeItem(at: fixture.tempRoot) }
 
         let tool = DumpPIFTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
         let result = try tool.execute(arguments: [
@@ -42,7 +42,6 @@ struct DumpPIFToolTests {
     @Test
     func `Scope=target returns matching target JSON`() throws {
         let fixture = try TestPIFCacheFixture.makeWithDuplicateCoreTarget()
-        defer { try? FileManager.default.removeItem(at: fixture.tempRoot) }
 
         let tool = DumpPIFTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
         let result = try tool.execute(arguments: [
@@ -64,7 +63,6 @@ struct DumpPIFToolTests {
     @Test
     func `Unknown target name returns helpful message`() throws {
         let fixture = try TestPIFCacheFixture.makeWithDuplicateCoreTarget()
-        defer { try? FileManager.default.removeItem(at: fixture.tempRoot) }
 
         let tool = DumpPIFTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
         let result = try tool.execute(arguments: [

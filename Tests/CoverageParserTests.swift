@@ -2,6 +2,7 @@ import Testing
 import Foundation
 @testable import XCMCPCore
 
+@Suite(.temporaryDirectory)
 struct CoverageParserTests {
     @Test
     func `Coverage data structures`() {
@@ -45,15 +46,11 @@ struct CoverageParserTests {
             }
             """
 
-        let tempDir = FileManager.default.temporaryDirectory
+        let tempDir = TemporaryDirectory.url
         let testFile = tempDir.appendingPathComponent(
             "xcodebuild-coverage-\(UUID().uuidString).json",
         )
         try xcodebuildJSON.write(to: testFile, atomically: true, encoding: .utf8)
-
-        defer {
-            try? FileManager.default.removeItem(at: testFile)
-        }
 
         let parser = CoverageParser()
         let coverage = await parser.parseCoverageFromPath(testFile.path)
@@ -92,13 +89,9 @@ struct CoverageParserTests {
             }
             """
 
-        let tempDir = FileManager.default.temporaryDirectory
+        let tempDir = TemporaryDirectory.url
         let testFile = tempDir.appendingPathComponent("spm-coverage-\(UUID().uuidString).json")
         try spmJSON.write(to: testFile, atomically: true, encoding: .utf8)
-
-        defer {
-            try? FileManager.default.removeItem(at: testFile)
-        }
 
         let parser = CoverageParser()
         let coverage = await parser.parseCoverageFromPath(testFile.path)
@@ -116,13 +109,9 @@ struct CoverageParserTests {
             }
             """
 
-        let tempDir = FileManager.default.temporaryDirectory
+        let tempDir = TemporaryDirectory.url
         let testFile = tempDir.appendingPathComponent("invalid-coverage-\(UUID().uuidString).json")
         try invalidJSON.write(to: testFile, atomically: true, encoding: .utf8)
-
-        defer {
-            try? FileManager.default.removeItem(at: testFile)
-        }
 
         let parser = CoverageParser()
         let coverage = await parser.parseCoverageFromPath(testFile.path)
@@ -139,13 +128,9 @@ struct CoverageParserTests {
             }
             """
 
-        let tempDir = FileManager.default.temporaryDirectory
+        let tempDir = TemporaryDirectory.url
         let testFile = tempDir.appendingPathComponent("empty-coverage-\(UUID().uuidString).json")
         try emptyJSON.write(to: testFile, atomically: true, encoding: .utf8)
-
-        defer {
-            try? FileManager.default.removeItem(at: testFile)
-        }
 
         let parser = CoverageParser()
         let coverage = await parser.parseCoverageFromPath(testFile.path)
@@ -183,13 +168,9 @@ struct CoverageParserTests {
             }
             """
 
-        let tempDir = FileManager.default.temporaryDirectory
+        let tempDir = TemporaryDirectory.url
         let testFile = tempDir.appendingPathComponent("filtered-coverage-\(UUID().uuidString).json")
         try xcodebuildJSON.write(to: testFile, atomically: true, encoding: .utf8)
-
-        defer {
-            try? FileManager.default.removeItem(at: testFile)
-        }
 
         let parser = CoverageParser()
         let coverage = await parser.parseCoverageFromPath(testFile.path, targetFilter: "MyApp")
@@ -231,15 +212,11 @@ struct CoverageParserTests {
             }
             """
 
-        let tempDir = FileManager.default.temporaryDirectory
+        let tempDir = TemporaryDirectory.url
         let testFile = tempDir.appendingPathComponent(
             "exclude-tests-coverage-\(UUID().uuidString).json",
         )
         try xcodebuildJSON.write(to: testFile, atomically: true, encoding: .utf8)
-
-        defer {
-            try? FileManager.default.removeItem(at: testFile)
-        }
 
         let parser = CoverageParser()
         let coverage = await parser.parseCoverageFromPath(testFile.path, targetFilter: "MyModule")
@@ -465,5 +442,22 @@ struct CoverageParserTests {
 
         let ranges = CoverageParser.parseUncoveredLinesFromArchive(archiveOutput)
         #expect(ranges.isEmpty)
+    }
+
+    @Test
+    func `Parse uncovered lines from CRLF archive output`() {
+        let lines = ["   1: *", "   2: 1", "   3: 0", "   4: 0", "   5: 1", "   6: 0"]
+
+        let fromLF = CoverageParser.parseUncoveredLinesFromArchive(lines.joined(separator: "\n"))
+        let fromCRLF = CoverageParser.parseUncoveredLinesFromArchive(
+            lines.joined(separator: "\r\n"))
+
+        #expect(fromCRLF.count == 2)
+        #expect(fromCRLF[0].start == 3)
+        #expect(fromCRLF[0].end == 4)
+        #expect(fromCRLF[1].start == 6)
+        #expect(fromCRLF[1].end == 6)
+        #expect(fromCRLF.map(\.start) == fromLF.map(\.start))
+        #expect(fromCRLF.map(\.end) == fromLF.map(\.end))
     }
 }

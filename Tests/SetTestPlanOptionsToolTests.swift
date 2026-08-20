@@ -4,11 +4,12 @@ import Foundation
 @testable import XCMCPCore
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct SetTestPlanOptionsToolTests {
-    let pathUtility = PathUtility(basePath: NSTemporaryDirectory())
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     private func createTestPlan(_ json: [String: Any]) throws -> String {
-        let path = NSTemporaryDirectory() + "test_\(UUID().uuidString).xctestplan"
+        let path = TemporaryDirectory.url.appendingPathComponent("test.xctestplan").path
         try TestPlanFile.write(json, to: path)
         return path
     }
@@ -42,7 +43,6 @@ struct SetTestPlanOptionsToolTests {
     @Test
     func `Set enum and bool options on plan-level defaults`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         let result = try tool.execute(arguments: [
@@ -68,7 +68,6 @@ struct SetTestPlanOptionsToolTests {
     @Test
     func `Set options on a named configuration`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         let result = try tool.execute(arguments: [
@@ -97,7 +96,6 @@ struct SetTestPlanOptionsToolTests {
         var plan = basePlan()
         plan["defaultOptions"] = ["codeCoverage": true, "mainThreadCheckerEnabled": true]
         let path = try createTestPlan(plan)
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         _ = try tool.execute(arguments: [
@@ -117,7 +115,6 @@ struct SetTestPlanOptionsToolTests {
         var plan = basePlan()
         plan["defaultOptions"] = ["codeCoverage": true, "diagnosticCollectionPolicy": "Always"]
         let path = try createTestPlan(plan)
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         let result = try tool.execute(arguments: [
@@ -140,7 +137,6 @@ struct SetTestPlanOptionsToolTests {
     @Test
     func `Invalid enum value throws`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         #expect(throws: MCPError.self) {
@@ -154,7 +150,6 @@ struct SetTestPlanOptionsToolTests {
     @Test
     func `Unknown clear key throws`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         #expect(throws: MCPError.self) {
@@ -168,7 +163,6 @@ struct SetTestPlanOptionsToolTests {
     @Test
     func `No options provided throws`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         #expect(throws: MCPError.self) {
@@ -179,7 +173,6 @@ struct SetTestPlanOptionsToolTests {
     @Test
     func `Unknown configuration throws`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanOptionsTool(pathUtility: pathUtility)
         #expect(throws: MCPError.self) {

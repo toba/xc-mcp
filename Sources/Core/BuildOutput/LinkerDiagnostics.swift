@@ -16,7 +16,7 @@ public enum LinkerDiagnostics {
     ///   - maxLines: Cap on the total number of emitted lines. When exceeded, the output is
     ///     truncated with a trailing note.
     public static func extract(from raw: String, maxLines: Int = 500) -> String {
-        let lines = raw.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let lines = BuildLogLines.split(raw)
         guard !lines.isEmpty else { return "" }
 
         var include = Set<Int>()

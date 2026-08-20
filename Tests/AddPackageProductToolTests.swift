@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct AddPackageProductToolTests {
     @Test
     func `tool creation`() {
@@ -40,11 +41,7 @@ struct AddPackageProductToolTests {
 
     @Test
     func `add product to target`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -110,11 +107,7 @@ struct AddPackageProductToolTests {
 
     @Test
     func `duplicate product rejected`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -145,11 +138,7 @@ struct AddPackageProductToolTests {
 
     @Test
     func `plugin kind skips frameworks build phase`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -192,11 +181,7 @@ struct AddPackageProductToolTests {
 
     @Test
     func `auto-detects plugin from local Package.swift`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         // Create a sibling local package with a .plugin product
         let pkgDir = tempDir.appendingPathComponent("LocalPkg")
@@ -263,11 +248,7 @@ struct AddPackageProductToolTests {
 
     @Test
     func `package_url wires remote reference for unlinked product`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -310,11 +291,7 @@ struct AddPackageProductToolTests {
 
     @Test
     func `package_url with no matching remote reference fails`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -334,11 +311,7 @@ struct AddPackageProductToolTests {
 
     @Test
     func `discovers remote package via checkout directory`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -401,11 +374,7 @@ struct AddPackageProductToolTests {
 
     @Test
     func `target not found`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"

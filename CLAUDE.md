@@ -106,7 +106,22 @@ swift test
 - The `/commit` skill generates changelog entries from completed issues — if no issue exists, the work won't appear in the changelog.
 - **Never commit automatically** — wait for the user to say `/commit` or explicitly ask to commit.
 
-## Testing Rules
+## Build and Test Rules
+
+### NEVER build or test without asking first
+
+**Ask the user before every build and every test run. Wait for a yes.** This applies to
+every route: `swift_package_build`, `swift_package_test`, any `build_*` or `test_*` MCP
+tool, `swift build`, `swift test`, and any script that builds or tests.
+
+- Do **not** build or test to check your own work.
+- Do **not** build or test because a change "looks risky".
+- Do **not** build or test at the end of a task as a final verification.
+- Finish the code, state what you did **not** verify, then ask.
+
+The one exception: the user asks for a build or a test run in this session.
+
+### When the user approves a run
 
 - **Use `swift_package_test`** (MCP tool) for running tests — never `swift test` via bash.
 - **Filter to affected tests** when verifying a specific fix: `swift_package_test(filter: "TestClassName")`.

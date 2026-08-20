@@ -108,4 +108,21 @@ struct CompilerCrashDetectionTests {
         #expect(!details.contains("Crashing file:"))
         #expect(!details.contains("Compiler invocation:"))
     }
+
+    @Test
+    func `Extract crash details from a CRLF log`() {
+        let lines = [
+            "/usr/bin/swiftc -module-name MyModule -o /tmp/out.o /path/to/CrashingFile.swift",
+            "<unknown>:0: error: compile command failed due to signal 6 (use -v to see invocation)",
+        ]
+
+        let fromLF = ErrorExtractor.extractCrashDetails(
+            from: lines.joined(separator: "\n"), signal: 6)
+        let fromCRLF = ErrorExtractor.extractCrashDetails(
+            from: lines.joined(separator: "\r\n"), signal: 6)
+
+        #expect(fromCRLF == fromLF)
+        #expect(fromCRLF.contains("Crashing file: /path/to/CrashingFile.swift"))
+        #expect(!fromCRLF.contains("\r"))
+    }
 }

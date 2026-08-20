@@ -6,18 +6,10 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct SetRunScriptPhaseIOToolTests {
-    let tempDir: String
-    let pathUtility: PathUtility
-
-    init() {
-        tempDir =
-            FileManager.default.temporaryDirectory
-                .appendingPathComponent("SetRunScriptPhaseIOToolTests-\(UUID().uuidString)")
-                .path
-        pathUtility = PathUtility(basePath: tempDir)
-        try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
-    }
+    let tempDir = TemporaryDirectory.path
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     /// Creates a test project with a single named run-script phase and returns its path.
     private func makeProjectWithPhase(

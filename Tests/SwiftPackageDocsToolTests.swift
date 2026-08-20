@@ -4,6 +4,7 @@ import Foundation
 @testable import XCMCPCore
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct SwiftPackageDocsToolTests {
     let sessionManager = SessionManager()
 
@@ -60,9 +61,8 @@ struct SwiftPackageDocsToolTests {
 
     @Test
     func `Catalog discovery finds the catalog and skips the build directory`() throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let root = TemporaryDirectory.url
         let manager = FileManager.default
-        defer { try? manager.removeItem(at: root) }
 
         let catalog = root.appendingPathComponent("Sources/Widget/Widget.docc")
         let buildCatalog = root.appendingPathComponent(".build/checkouts/Other/Other.docc")
@@ -154,6 +154,23 @@ struct SwiftPackageDocsToolTests {
         #expect(!diagnostics[1].isUnresolvedReference)
     }
 
+    @Test
+    func `Console diagnostics parse from a CRLF log`() {
+        let lines = [
+            "/pkg/Sources/Widget/Widget.docc/Widget.md:7:5: warning: 'missing' doesn't exist",
+            "/pkg/Sources/Widget/Widget.swift:3:1: error: Parameter 'value' not found",
+        ]
+
+        let fromLF = DocCDiagnosticParser.parseConsole(lines.joined(separator: "\n"))
+        let fromCRLF = DocCDiagnosticParser.parseConsole(lines.joined(separator: "\r\n"))
+
+        #expect(fromCRLF.count == 2)
+        #expect(fromCRLF.map(\.severity) == fromLF.map(\.severity))
+        #expect(fromCRLF.map(\.summary) == fromLF.map(\.summary))
+        #expect(fromCRLF.map(\.line) == fromLF.map(\.line))
+        #expect(fromCRLF[1].summary == "Parameter 'value' not found")
+    }
+
     // MARK: - Formatting
 
     @Test
@@ -221,7 +238,6 @@ struct SwiftPackageDocsToolTests {
         async throws
     {
         let package = try FixturePackage()
-        defer { package.remove() }
 
         let tool = SwiftPackageDocsTool(sessionManager: sessionManager)
 
@@ -265,13 +281,16 @@ struct SwiftPackageDocsToolTests {
 ///
 /// The catalog links one symbol that exists, one internal symbol, and one symbol that does not
 /// exist, so a build reports a different set of unresolved links per access level.
+///
+/// The package is written into ``TemporaryDirectory/url``, so the calling suite needs the
+/// `.temporaryDirectory` trait.
 private struct FixturePackage {
     let root: URL
 
     var path: String { root.appendingPathComponent("DocsFixture").path }
 
     init() throws {
-        root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        root = TemporaryDirectory.url
         let packageRoot = root.appendingPathComponent("DocsFixture")
         let sources = packageRoot.appendingPathComponent("Sources/Widget")
         let catalog = sources.appendingPathComponent("Widget.docc")
@@ -293,8 +312,6 @@ private struct FixturePackage {
             encoding: .utf8,
         )
     }
-
-    func remove() { try? FileManager.default.removeItem(at: root) }
 
     private static let manifest = """
         // swift-tools-version: 6.0

@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import XCMCPCore
 
+@Suite(.temporaryDirectory)
 struct PIFCacheReaderTests {
     @Test
     func `extractGuid finds raw 64-char hex hash`() {
@@ -23,8 +24,7 @@ struct PIFCacheReaderTests {
 
     @Test
     func `load surfaces cacheMissing for a project that has never been built`() throws {
-        let temp = try makeTempDir()
-        defer { try? FileManager.default.removeItem(at: temp) }
+        let temp = TemporaryDirectory.url
 
         // DerivedData root with a matching directory but no PIFCache subtree.
         let derivedData = temp.appendingPathComponent("DerivedData")
@@ -49,8 +49,7 @@ struct PIFCacheReaderTests {
 
     @Test
     func `load surfaces derivedDataNotFound when no matching dir exists`() throws {
-        let temp = try makeTempDir()
-        defer { try? FileManager.default.removeItem(at: temp) }
+        let temp = TemporaryDirectory.url
         let derivedData = temp.appendingPathComponent("DerivedData")
         try FileManager.default.createDirectory(
             at: derivedData, withIntermediateDirectories: true,
@@ -74,7 +73,6 @@ struct PIFCacheReaderTests {
     @Test
     func `load indexes a synthetic PIFCache and surfaces duplicate target guids`() throws {
         let fixture = try TestPIFCacheFixture.makeWithDuplicateCoreTarget()
-        defer { try? FileManager.default.removeItem(at: fixture.tempRoot) }
 
         let index = try PIFCacheReader().load(
             projectPath: "/tmp/Thesis.xcodeproj",
@@ -98,6 +96,9 @@ struct PIFCacheReaderTests {
 }
 
 /// Synthetic on-disk PIFCache, used by both the reader tests and the tool tests.
+///
+/// The fixture writes into ``TemporaryDirectory/url``, so the calling suite needs the
+/// `.temporaryDirectory` trait.
 struct TestPIFCacheFixture {
     let tempRoot: URL
     let derivedDataRoot: String
@@ -107,7 +108,7 @@ struct TestPIFCacheFixture {
     let projectBGuid: String
 
     static func makeWithDuplicateCoreTarget() throws -> TestPIFCacheFixture {
-        let temp = try makeTempDir()
+        let temp = TemporaryDirectory.url
         let derived = temp.appendingPathComponent("Thesis-deadbeef")
         let cache = derived.appendingPathComponent(
             "Build/Intermediates.noindex/XCBuildData/PIFCache",
@@ -184,14 +185,6 @@ struct TestPIFCacheFixture {
             projectBGuid: projectBGuid,
         )
     }
-}
-
-private func makeTempDir() throws -> URL {
-    let dir = FileManager.default.temporaryDirectory.appendingPathComponent(
-        "pif-test-\(UUID().uuidString)",
-    )
-    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-    return dir
 }
 
 private func writeJSON(at url: URL, object: [String: Any]) throws {

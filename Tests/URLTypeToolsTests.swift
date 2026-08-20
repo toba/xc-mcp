@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct URLTypeToolsTests {
     // MARK: - Helper
 
@@ -58,11 +59,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `ListURLTypesTool with non-existent target`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -81,11 +78,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `ListURLTypesTool with no URL types`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -104,11 +97,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `ListURLTypesTool with existing URL types`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -162,11 +151,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `ManageURLTypeTool add URL type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -198,11 +183,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `ManageURLTypeTool add duplicate`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -231,11 +212,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `ManageURLTypeTool update URL type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -277,11 +254,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `ManageURLTypeTool update non-existent`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -302,11 +275,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `ManageURLTypeTool remove URL type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -339,11 +308,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `ManageURLTypeTool with additional_properties`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -369,11 +334,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `ManageURLTypeTool materializes Info.plist when missing`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -405,11 +366,7 @@ struct URLTypeToolsTests {
 
     @Test
     func `Full workflow: add, list, update, list, remove`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try createProjectWithInfoPlist(tempDir: tempDir)
         let basePath = tempDir.path

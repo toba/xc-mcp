@@ -3,6 +3,7 @@ import Testing
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct ExportIconToolTests {
     let tool = ExportIconTool()
 
@@ -62,9 +63,8 @@ struct ExportIconToolTests {
             return
         }
 
-        let outputPath = FileManager.default.temporaryDirectory
-            .appendingPathComponent("export-icon-test-\(UUID()).png").path
-        defer { try? FileManager.default.removeItem(atPath: outputPath) }
+        let outputPath = TemporaryDirectory.url
+            .appendingPathComponent("export-icon-test.png").path
 
         let result = try await tool.execute(arguments: [
             "icon_path": .string(iconPath),
@@ -116,14 +116,8 @@ struct ExportIconToolTests {
             return
         }
 
-        let output1x = FileManager.default.temporaryDirectory
-            .appendingPathComponent("export-icon-1x-\(UUID()).png").path
-        let output2x = FileManager.default.temporaryDirectory
-            .appendingPathComponent("export-icon-2x-\(UUID()).png").path
-        defer {
-            try? FileManager.default.removeItem(atPath: output1x)
-            try? FileManager.default.removeItem(atPath: output2x)
-        }
+        let output1x = TemporaryDirectory.url.appendingPathComponent("export-icon-1x.png").path
+        let output2x = TemporaryDirectory.url.appendingPathComponent("export-icon-2x.png").path
 
         _ = try await tool.execute(arguments: [
             "icon_path": .string(iconPath),

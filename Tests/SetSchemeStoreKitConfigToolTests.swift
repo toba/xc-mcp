@@ -5,6 +5,7 @@ import Testing
 import XCMCPCore
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct SetSchemeStoreKitConfigToolTests {
     /// A realistic shared scheme with both a `TestAction` and a `LaunchAction`, Xcode-formatted.
     private static let schemeXML = """
@@ -51,9 +52,7 @@ struct SetSchemeStoreKitConfigToolTests {
     private static func makeFixture(
         storekitName: String = "Config.storekit",
     ) throws -> (base: String, project: String, scheme: String, storekit: String) {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = tempDir.appendingPathComponent("TestProject.xcodeproj")
         let schemesDir = projectPath.appendingPathComponent("xcshareddata/xcschemes")

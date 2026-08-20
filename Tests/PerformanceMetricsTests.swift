@@ -3,6 +3,7 @@ import Testing
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct PerformanceMetricsTests {
     // MARK: - Format Metrics
 
@@ -360,13 +361,11 @@ struct PerformanceMetricsTests {
         let tool = ShowPerformanceBaselinesTool(sessionManager: sessionManager)
 
         // Create a temporary xcodeproj with no xcbaselines
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test-show-baselines-\(UUID().uuidString)")
+        let tempDir = TemporaryDirectory.url
         let projDir = tempDir.appendingPathComponent("Test.xcodeproj")
         try FileManager.default.createDirectory(
             at: projDir, withIntermediateDirectories: true,
         )
-        defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let result = try await tool.execute(arguments: [
             "project_path": .string(projDir.path),
@@ -385,8 +384,7 @@ struct PerformanceMetricsTests {
         let tool = ShowPerformanceBaselinesTool(sessionManager: sessionManager)
 
         // Create a temporary xcodeproj with xcbaselines
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test-show-baselines-\(UUID().uuidString)")
+        let tempDir = TemporaryDirectory.url
         let projDir = tempDir.appendingPathComponent("Test.xcodeproj")
         let targetUUID = "AABBCCDD00112233AABBCCDD"
         let baselineDir =
@@ -395,7 +393,6 @@ struct PerformanceMetricsTests {
         try FileManager.default.createDirectory(
             at: baselineDir, withIntermediateDirectories: true,
         )
-        defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Write a pbxproj with a target
         let pbxproj = """
@@ -476,8 +473,7 @@ struct PerformanceMetricsTests {
         let sessionManager = SessionManager()
         let tool = ShowPerformanceBaselinesTool(sessionManager: sessionManager)
 
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test-show-baselines-filter-\(UUID().uuidString)")
+        let tempDir = TemporaryDirectory.url
         let projDir = tempDir.appendingPathComponent("Test.xcodeproj")
         let uuid1 = "AABBCCDD00112233AABBCCDD"
         let uuid2 = "DDEEFF0011223344DDEEFF00"
@@ -493,7 +489,6 @@ struct PerformanceMetricsTests {
         try FileManager.default.createDirectory(
             at: baselineDir2, withIntermediateDirectories: true,
         )
-        defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let pbxproj = """
         // !$*UTF8*$!
@@ -570,14 +565,12 @@ struct PerformanceMetricsTests {
         let tool = ShowPerformanceBaselinesTool(sessionManager: sessionManager)
 
         // Set up a temp project using the real fixture
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test-show-baselines-real-\(UUID().uuidString)")
+        let tempDir = TemporaryDirectory.url
         let projDir = tempDir.appendingPathComponent("Thesis.xcodeproj")
         let baselinesDir = projDir.appendingPathComponent("xcshareddata/xcbaselines")
         try FileManager.default.createDirectory(
             at: baselinesDir, withIntermediateDirectories: true,
         )
-        defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Copy the real fixture
         let fixtureDir = URL(fileURLWithPath: #filePath)
@@ -629,8 +622,7 @@ struct PerformanceMetricsTests {
         let sessionManager = SessionManager()
         let tool = ShowPerformanceBaselinesTool(sessionManager: sessionManager)
 
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("test-show-baselines-metric-\(UUID().uuidString)")
+        let tempDir = TemporaryDirectory.url
         let projDir = tempDir.appendingPathComponent("Test.xcodeproj")
         let targetUUID = "AABBCCDD00112233AABBCCDD"
         let baselineDir =
@@ -639,7 +631,6 @@ struct PerformanceMetricsTests {
         try FileManager.default.createDirectory(
             at: baselineDir, withIntermediateDirectories: true,
         )
-        defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let pbxproj = """
         // !$*UTF8*$!

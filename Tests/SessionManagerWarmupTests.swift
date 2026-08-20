@@ -2,11 +2,10 @@ import Testing
 import Foundation
 @testable import XCMCPCore
 
-@Suite(.serialized)
+@Suite(.temporaryDirectory, .serialized)
 struct SessionManagerWarmupTests {
     private func makeTempPath() -> URL {
-        URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("xc-mcp-warmup-test-\(UUID().uuidString).json")
+        TemporaryDirectory.url.appendingPathComponent("xc-mcp-warmup-test.json")
     }
 
     /// Polls `manager.warmupState(for:)` until the warmup reports `.completed` or `timeout`
@@ -35,8 +34,7 @@ struct SessionManagerWarmupTests {
 
     /// Creates a temporary cold-cache package directory with a minimal Package.swift.
     private func makeTempPackage() throws -> URL {
-        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("xc-mcp-pkg-\(UUID().uuidString)")
+        let dir = TemporaryDirectory.url.appendingPathComponent("package")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let manifest = """
             // swift-tools-version: 6.0
@@ -50,9 +48,7 @@ struct SessionManagerWarmupTests {
     @Test
     func `Warmup runs and reports completed for cold cache`() async throws {
         let sessionPath = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: sessionPath) }
         let pkgDir = try makeTempPackage()
-        defer { try? FileManager.default.removeItem(at: pkgDir) }
 
         let manager = SessionManager(
             filePath: sessionPath,
@@ -72,9 +68,7 @@ struct SessionManagerWarmupTests {
     @Test
     func `Warmup is skipped when XC_MCP_DISABLE_WARMUP is set via init flag`() async throws {
         let sessionPath = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: sessionPath) }
         let pkgDir = try makeTempPackage()
-        defer { try? FileManager.default.removeItem(at: pkgDir) }
 
         let runCount = AsyncCounter()
         let manager = SessionManager(
@@ -92,9 +86,7 @@ struct SessionManagerWarmupTests {
     @Test
     func `Repeat setDefaults does not spawn duplicate warmups`() async throws {
         let sessionPath = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: sessionPath) }
         let pkgDir = try makeTempPackage()
-        defer { try? FileManager.default.removeItem(at: pkgDir) }
 
         let runCount = AsyncCounter()
         let manager = SessionManager(
@@ -124,9 +116,7 @@ struct SessionManagerWarmupTests {
     @Test
     func `cancelWarmupIfRunning stops the in-flight task`() async throws {
         let sessionPath = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: sessionPath) }
         let pkgDir = try makeTempPackage()
-        defer { try? FileManager.default.removeItem(at: pkgDir) }
 
         let manager = SessionManager(
             filePath: sessionPath,
@@ -156,7 +146,6 @@ struct SessionManagerWarmupTests {
     @Test
     func `cancelWarmupIfRunning is a no-op when no warmup is running`() async {
         let sessionPath = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: sessionPath) }
 
         let manager = SessionManager(
             filePath: sessionPath,
@@ -170,7 +159,6 @@ struct SessionManagerWarmupTests {
     @Test
     func `Warmup is not triggered when Package.swift is missing`() async throws {
         let sessionPath = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: sessionPath) }
 
         let runCount = AsyncCounter()
         let manager = SessionManager(
@@ -187,9 +175,7 @@ struct SessionManagerWarmupTests {
     @Test
     func `Summary includes warmup state when set`() async throws {
         let sessionPath = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: sessionPath) }
         let pkgDir = try makeTempPackage()
-        defer { try? FileManager.default.removeItem(at: pkgDir) }
 
         let manager = SessionManager(
             filePath: sessionPath,

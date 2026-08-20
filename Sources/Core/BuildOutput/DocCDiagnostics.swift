@@ -100,8 +100,8 @@ public enum DocCDiagnosticParser: Sendable {
     public static func parseConsole(_ output: String) -> [DocCDiagnostic] {
         var diagnostics: [DocCDiagnostic] = []
 
-        for line in output.split(separator: "\n", omittingEmptySubsequences: true) {
-            guard let parsed = parseConsoleLine(String(line)) else { continue }
+        for line in BuildLogLines.split(output) {
+            guard let parsed = parseConsoleLine(line) else { continue }
             diagnostics.append(parsed)
         }
         return diagnostics

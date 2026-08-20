@@ -84,6 +84,7 @@ struct LocalizableKeyNamingTests {
 
 // MARK: - Promote Literals
 
+@Suite(.temporaryDirectory)
 struct XCStringsPromoteLiteralsToolTests {
     private static func makeFile(at path: String, strings: [String: StringEntry] = [:]) throws {
         let file = XCStringsFile(sourceLanguage: "en", strings: strings, version: "1.0")
@@ -106,11 +107,7 @@ struct XCStringsPromoteLiteralsToolTests {
     }
 
     @Test func `creates manual keys and reports symbols`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try Self.makeFile(at: filePath)
@@ -137,11 +134,7 @@ struct XCStringsPromoteLiteralsToolTests {
     }
 
     @Test func `reuses existing key holding the same value`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try Self.makeFile(
@@ -169,11 +162,7 @@ struct XCStringsPromoteLiteralsToolTests {
     }
 
     @Test func `reports collision when key exists with different value`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try Self.makeFile(
@@ -200,11 +189,7 @@ struct XCStringsPromoteLiteralsToolTests {
     }
 
     @Test func `explicit key overrides derived key`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try Self.makeFile(at: filePath)
@@ -220,11 +205,7 @@ struct XCStringsPromoteLiteralsToolTests {
     }
 
     @Test func `promotes parameterized value with explicit key`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try Self.makeFile(at: filePath)
@@ -249,11 +230,7 @@ struct XCStringsPromoteLiteralsToolTests {
     }
 
     @Test func `end to end through tool returns json`() async throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let filePath = tempDir.path + "/Localizable.xcstrings"
         try Self.makeFile(at: filePath)

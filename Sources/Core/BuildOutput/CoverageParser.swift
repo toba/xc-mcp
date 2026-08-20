@@ -599,7 +599,7 @@ public struct CoverageParser: Sendable {
         var rangeStart: Int?
         var lastLineNumber: Int?
 
-        for line in output.split(separator: "\n") {
+        for line in BuildLogLines.split(output) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard let colonIndex = trimmed.firstIndex(of: ":") else { continue }
 

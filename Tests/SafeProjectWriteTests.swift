@@ -3,14 +3,13 @@ import Foundation
 @testable import XCMCPCore
 
 /// Covers the durability/atomicity/concurrency guarantees required of every project-file write.
+@Suite(.temporaryDirectory)
 struct SafeProjectWriteTests {
-    /// Creates a fresh temp directory with a seeded file; returns (dir, filePath). Caller cleans
-    /// up.
+    /// Seeds a file in the temporary directory of the test; returns (dir, filePath).
     private func makeSeededFile(
         contents: String = "{ original = true; }\n",
     ) throws -> (dir: URL, path: String) {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let dir = TemporaryDirectory.url
         let path = dir.appendingPathComponent("project.pbxproj").path
         try contents.write(toFile: path, atomically: true, encoding: .utf8)
         return (dir, path)
@@ -19,7 +18,6 @@ struct SafeProjectWriteTests {
     @Test
     func `Writes new contents atomically`() throws {
         let (dir, path) = try makeSeededFile()
-        defer { try? FileManager.default.removeItem(at: dir) }
 
         let new = "{ updated = true; }\n"
         try SafeProjectWrite.write(Data(new.utf8), to: path, lockIdentifier: dir.path)
@@ -30,7 +28,6 @@ struct SafeProjectWriteTests {
     @Test
     func `Preimage match permits the write`() throws {
         let (dir, path) = try makeSeededFile()
-        defer { try? FileManager.default.removeItem(at: dir) }
 
         let preimage = FileManager.default.contents(atPath: path)
         let new = "{ updated = true; }\n"
@@ -43,7 +40,6 @@ struct SafeProjectWriteTests {
     @Test
     func `Concurrent external edit is refused and file left intact`() throws {
         let (dir, path) = try makeSeededFile()
-        defer { try? FileManager.default.removeItem(at: dir) }
 
         // Caller's view of the file at "load" time.
         let stalefPreimage = FileManager.default.contents(atPath: path)
@@ -68,7 +64,6 @@ struct SafeProjectWriteTests {
     func `Invalid plist is rejected and original preserved`() throws {
         let original = "{ valid = plist; }\n"
         let (dir, path) = try makeSeededFile(contents: original)
-        defer { try? FileManager.default.removeItem(at: dir) }
 
         // A blatantly malformed plist that plutil -lint will reject.
         let garbage = "this is { not ] a valid (plist"
@@ -81,7 +76,6 @@ struct SafeProjectWriteTests {
     @Test
     func `Validation can be skipped for non-plist payloads`() throws {
         let (dir, path) = try makeSeededFile()
-        defer { try? FileManager.default.removeItem(at: dir) }
 
         let notAPlist = "not a plist but a deliberate write\n"
         try SafeProjectWrite.write(
@@ -93,7 +87,6 @@ struct SafeProjectWriteTests {
     @Test
     func `File permissions are preserved across the atomic swap`() throws {
         let (dir, path) = try makeSeededFile()
-        defer { try? FileManager.default.removeItem(at: dir) }
 
         try FileManager.default.setAttributes([.posixPermissions: 0o640], ofItemAtPath: path)
         try SafeProjectWrite.write(
@@ -106,7 +99,6 @@ struct SafeProjectWriteTests {
     @Test
     func `No temp files leak into the project directory`() throws {
         let (dir, path) = try makeSeededFile()
-        defer { try? FileManager.default.removeItem(at: dir) }
 
         try SafeProjectWrite.write(
             Data("{ updated = true; }\n".utf8), to: path, lockIdentifier: dir.path,
@@ -121,7 +113,6 @@ struct SafeProjectWriteTests {
     @Test
     func `Concurrent writers serialize without corruption`() async throws {
         let (dir, path) = try makeSeededFile()
-        defer { try? FileManager.default.removeItem(at: dir) }
 
         // 12 concurrent writers, each writing a distinct valid plist. The lock serializes them, so
         // the final file must be exactly one writer's full payload — never an interleaved mix.

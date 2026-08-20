@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct ListBuildConfigurationsToolTests {
     @Test func `list build configurations tool creation`() {
         let tool = ListBuildConfigurationsTool(pathUtility: PathUtility(basePath: "/tmp"))
@@ -35,17 +36,9 @@ struct ListBuildConfigurationsToolTests {
     }
 
     @Test func `list build configurations with valid project`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = ListBuildConfigurationsTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project using XcodeProj
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"

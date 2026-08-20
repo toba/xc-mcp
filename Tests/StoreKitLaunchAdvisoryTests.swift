@@ -2,6 +2,7 @@ import Testing
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct StoreKitLaunchAdvisoryTests {
     /// Builds a scheme with the given Run-action StoreKit `identifier` (or none), plus an unrelated
     /// Test-action reference to prove only the Run action drives the launch warning.
@@ -33,8 +34,7 @@ struct StoreKitLaunchAdvisoryTests {
         testIdentifier: String? = nil,
         writeStorekit: Bool = true,
     ) throws -> (project: String, base: String) {
-        let base = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
+        let base = TemporaryDirectory.url
         let schemesDir = base.appendingPathComponent("TestProject.xcodeproj/xcshareddata/xcschemes")
         try FileManager.default.createDirectory(at: schemesDir, withIntermediateDirectories: true)
         try schemeXML(launchIdentifier: launchIdentifier, testIdentifier: testIdentifier)
@@ -53,7 +53,6 @@ struct StoreKitLaunchAdvisoryTests {
     @Test
     func `Run action StoreKit reference produces a warning`() throws {
         let fixture = try Self.makeFixture(launchIdentifier: "../../../Config.storekit")
-        defer { try? FileManager.default.removeItem(atPath: fixture.base) }
 
         let warning = StoreKitLaunchAdvisory.warning(
             scheme: "App", projectPath: fixture.project, workspacePath: nil,
@@ -69,7 +68,6 @@ struct StoreKitLaunchAdvisoryTests {
     @Test
     func `No StoreKit reference yields no warning`() throws {
         let fixture = try Self.makeFixture(launchIdentifier: nil)
-        defer { try? FileManager.default.removeItem(atPath: fixture.base) }
 
         let warning = StoreKitLaunchAdvisory.warning(
             scheme: "App", projectPath: fixture.project, workspacePath: nil,
@@ -82,7 +80,6 @@ struct StoreKitLaunchAdvisoryTests {
         let fixture = try Self.makeFixture(
             launchIdentifier: nil, testIdentifier: "../../../Config.storekit",
         )
-        defer { try? FileManager.default.removeItem(atPath: fixture.base) }
 
         let warning = StoreKitLaunchAdvisory.warning(
             scheme: "App", projectPath: fixture.project, workspacePath: nil,
@@ -96,7 +93,6 @@ struct StoreKitLaunchAdvisoryTests {
         let fixture = try Self.makeFixture(
             launchIdentifier: "../../Config.storekit", writeStorekit: true,
         )
-        defer { try? FileManager.default.removeItem(atPath: fixture.base) }
 
         let warning = StoreKitLaunchAdvisory.warning(
             scheme: "App", projectPath: fixture.project, workspacePath: nil,
@@ -108,7 +104,6 @@ struct StoreKitLaunchAdvisoryTests {
     @Test
     func `Nil or unknown scheme yields no warning`() throws {
         let fixture = try Self.makeFixture(launchIdentifier: "../../../Config.storekit")
-        defer { try? FileManager.default.removeItem(atPath: fixture.base) }
 
         #expect(
             StoreKitLaunchAdvisory.warning(

@@ -6,20 +6,10 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct AddSynchronizedFolderExceptionToolTests {
-    let tempDir: String
-    let pathUtility: PathUtility
-
-    init() {
-        tempDir =
-            FileManager.default.temporaryDirectory
-                .appendingPathComponent(
-                    "AddSyncFolderExceptionToolTests-\(UUID().uuidString)",
-                )
-                .path
-        pathUtility = PathUtility(basePath: tempDir)
-        try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
-    }
+    let tempDir = TemporaryDirectory.path
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     @Test
     func `Tool has correct properties`() {

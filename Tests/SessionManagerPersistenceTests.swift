@@ -4,18 +4,15 @@ import Testing
 import Foundation
 import Subprocess
 
-@Suite(.serialized)
+@Suite(.temporaryDirectory, .serialized)
 struct SessionManagerPersistenceTests {
-    /// Each test gets its own temp file to avoid interference.
     private func makeTempPath() -> URL {
-        URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("xc-mcp-test-\(UUID().uuidString).json")
+        TemporaryDirectory.url.appendingPathComponent("xc-mcp-test.json")
     }
 
     @Test
     func `Defaults persist to disk and load in new instance`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(
@@ -36,7 +33,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `All fields persist correctly`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(
@@ -61,7 +57,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `Clear deletes shared file`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(scheme: "TestScheme")
@@ -79,7 +74,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `Corrupted file is ignored gracefully`() async throws {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         // Write garbage to the file
         try Data("not json".utf8).write(to: path)
@@ -94,7 +88,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `setDefaults merges and persists incrementally`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(scheme: "First")
@@ -109,7 +102,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `Running instance reloads when another process writes the shared file`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         // Simulate two long-running servers — both already initialized
         let server1 = SessionManager(filePath: path)
@@ -130,7 +122,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `resolveScheme picks up externally written defaults`() async throws {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let server1 = SessionManager(filePath: path)
         let server2 = SessionManager(filePath: path)
@@ -147,7 +138,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `Relative project_path is stored as an absolute path`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(projectPath: "Thesis.xcodeproj")
@@ -163,18 +153,13 @@ struct SessionManagerPersistenceTests {
     @Test
     func `resolveBuildPaths returns a stable absolute path after cwd changes`() async throws {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         // Establish a known cwd for the moment the relative default is set.
         let fm = FileManager.default
         let originalCwd = fm.currentDirectoryPath
-        let projectDir = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("xc-mcp-proj-\(UUID().uuidString)")
+        let projectDir = TemporaryDirectory.url.appendingPathComponent("project")
         try fm.createDirectory(at: projectDir, withIntermediateDirectories: true)
-        defer {
-            fm.changeCurrentDirectoryPath(originalCwd)
-            try? fm.removeItem(at: projectDir)
-        }
+        defer { fm.changeCurrentDirectoryPath(originalCwd) }
 
         #expect(fm.changeCurrentDirectoryPath(projectDir.path))
         let manager = SessionManager(filePath: path)
@@ -183,7 +168,7 @@ struct SessionManagerPersistenceTests {
         let firstResolved = try await manager.resolveBuildPaths(from: [:])
 
         // Simulate the cwd drifting (different focused server, later tool call).
-        #expect(fm.changeCurrentDirectoryPath(NSTemporaryDirectory()))
+        #expect(fm.changeCurrentDirectoryPath(TemporaryDirectory.path))
         let secondResolved = try await manager.resolveBuildPaths(from: [:])
 
         // The path resolved at set-time must not move when cwd drifts — this is the bug.
@@ -203,7 +188,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `resolveConfiguration returns nil when no argument and no session default`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         // No `-configuration Debug` may be injected here: nil tells the runner to omit the flag so
@@ -215,7 +199,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `resolveConfiguration prefers the explicit argument`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(configuration: "Release")
@@ -229,7 +212,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `resolveConfiguration falls back to the session default`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(configuration: "Release")
@@ -243,7 +225,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `Env vars persist to disk and reload`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(env: ["FOO": "bar", "BAZ": "qux"])
@@ -256,7 +237,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `Env deep-merge adds new keys and updates existing`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(env: ["A": "1", "B": "2"])
@@ -269,7 +249,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `Clear resets env to nil`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(env: ["KEY": "value"])
@@ -282,7 +261,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `resolveEnvironment merges session and per-invocation env`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(env: ["SESSION_KEY": "session", "SHARED": "from_session"])
@@ -304,7 +282,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `resolveEnvironment returns inherit when no env configured`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         let environment = await manager.resolveEnvironment(from: [:])
@@ -314,7 +291,6 @@ struct SessionManagerPersistenceTests {
     @Test
     func `Summary includes env vars`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(env: ["DYLD_PRINT_LIBRARIES": "1"])

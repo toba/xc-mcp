@@ -17,6 +17,7 @@ struct AddFileMissingParamTestCase {
     }
 }
 
+@Suite(.temporaryDirectory)
 struct AddFileToolTests {
     @Test
     func `Tool creation`() {
@@ -58,17 +59,9 @@ struct AddFileToolTests {
 
     @Test
     func `Add file to main group`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -99,17 +92,9 @@ struct AddFileToolTests {
 
     @Test
     func `Add file to group`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -141,17 +126,9 @@ struct AddFileToolTests {
 
     @Test
     func `Add file to target`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project with a target
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -196,14 +173,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add file to group with path computes relative path correctly`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         // Create project with a group hierarchy: mainGroup -> AppGroup (path: "App") -> ModelsGroup
         // (path: "Models")
@@ -289,14 +259,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add file outside group uses sourceRoot to avoid path doubling`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         // Reproduce the Swiftiomatic scenario: mainGroup -> AppGroup (name only, no path) ->
         // ViewsGroup (path: "Views") File is at AppGroup/Views/AboutTab.swift, but group fullPath
@@ -384,14 +347,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add file to slash-separated group path`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         // Create project with Components/TableView group hierarchy
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -471,14 +427,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add file does not create duplicate file references`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
@@ -505,14 +454,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add xcassets sets lastKnownFileType to folder assetcatalog`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
@@ -538,14 +480,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add swift file sets lastKnownFileType to sourcecode swift`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
@@ -570,11 +505,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add xcassets to target wires to resources build phase`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -622,11 +553,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add xcassets to target with nil-files resources phase`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithNilPhaseFiles(
@@ -668,11 +595,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add swift file to target with nil-files sources phase`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithNilPhaseFiles(
@@ -713,17 +636,9 @@ struct AddFileToolTests {
 
     @Test
     func `Add file with nonexistent target`() throws {
-        // Create a temporary directory
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
-
-        defer {
-            try? FileManager.default.removeItem(at: tempDir)
-        }
 
         // Create a test project
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -741,11 +656,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add icon file sets lastKnownFileType to folder iconcomposer icon`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
@@ -771,11 +682,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add icon file to target wires to resources build phase`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -815,11 +722,7 @@ struct AddFileToolTests {
 
     @Test
     func `Add file above xcodeproj but within repo uses sourceRoot with relative path`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         // Repo structure: tempDir/AppIcon.icon and tempDir/Xcode/Project.xcodeproj
         let xcodeDir = tempDir.appendingPathComponent("Xcode")
@@ -861,6 +764,88 @@ struct AddFileToolTests {
             fileRef?.lastKnownFileType == "folder.iconcomposer.icon",
             "lastKnownFileType should be folder.iconcomposer.icon",
         )
+    }
+
+    @Test
+    func `Add file warns when the resolved path is not on disk`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let missingPath = tempDir.appendingPathComponent("Missing.swift").path
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(missingPath),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+
+        // The call still succeeds, because referencing a file created later is legitimate.
+        #expect(message.contains("Successfully added file 'Missing.swift'"))
+        #expect(message.contains("Warning:"))
+        #expect(message.contains(missingPath))
+    }
+
+    @Test
+    func `Add file omits the warning when the file is on disk`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        let filePath = tempDir.appendingPathComponent("Present.swift")
+        try "// present".write(to: filePath, atomically: true, encoding: .utf8)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string(filePath.path),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added file 'Present.swift'"))
+        #expect(!message.contains("Warning:"))
+    }
+
+    @Test
+    func `Add file warning names the project-root candidate for a relative path`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        // The project sits below the base directory, so a relative file_path resolves against the
+        // wrong directory.
+        let appDir = tempDir.appendingPathComponent("apps/ios")
+        try FileManager.default.createDirectory(at: appDir, withIntermediateDirectories: true)
+
+        let projectPath = Path(appDir.path) + "App.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "App", at: projectPath)
+
+        // The file the caller means lives under the project directory, not the base directory.
+        let sourcesDir = appDir.appendingPathComponent("Sources")
+        try FileManager.default.createDirectory(at: sourcesDir, withIntermediateDirectories: true)
+        let candidate = sourcesDir.appendingPathComponent("Greeter.swift")
+        try "// greeter".write(to: candidate, atomically: true, encoding: .utf8)
+
+        let tool = AddFileTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "file_path": Value.string("Sources/Greeter.swift"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully added file 'Greeter.swift'"))
+        #expect(message.contains(tempDir.appendingPathComponent("Sources/Greeter.swift").path))
+        #expect(message.contains(candidate.path))
     }
 
     @Test

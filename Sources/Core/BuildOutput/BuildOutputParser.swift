@@ -101,7 +101,7 @@ public final class BuildOutputParser {
     ) -> BuildResult {
         resetState()
         shouldParseBuildInfo = parseBuildInfo
-        let lines = input.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        let lines = BuildLogLines.split(input)
 
         for (index, line) in lines.enumerated() {
             parseLine(line)

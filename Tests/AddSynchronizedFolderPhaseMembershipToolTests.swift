@@ -6,22 +6,10 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct AddSynchronizedFolderPhaseMembershipToolTests {
-    let tempDir: String
-    let pathUtility: PathUtility
-
-    init() {
-        tempDir =
-            FileManager.default.temporaryDirectory
-                .appendingPathComponent(
-                    "AddSyncFolderPhaseMembershipToolTests-\(UUID().uuidString)",
-                )
-                .path
-        pathUtility = PathUtility(basePath: tempDir)
-        try? FileManager.default.createDirectory(
-            atPath: tempDir, withIntermediateDirectories: true,
-        )
-    }
+    let tempDir = TemporaryDirectory.path
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     /// Helper: create a project with one target that has a sync folder and a Copy Files phase.
     private func makeProject(

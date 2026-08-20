@@ -5,28 +5,21 @@ import Testing
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct AddTargetToTestPlanToolTests {
     let pathUtility = PathUtility(basePath: "/")
 
-    /// Creates a temporary directory with a test project containing a test target.
-    /// Returns (projectPath, cleanup).
-    private func createTempProject() throws -> (String, @Sendable () -> Void) {
-        let tmpDir = NSTemporaryDirectory() + "testplan_\(UUID().uuidString)"
-        try FileManager.default.createDirectory(
-            atPath: tmpDir, withIntermediateDirectories: true,
-        )
-        let projectPath = Path(tmpDir) + "Test.xcodeproj"
+    /// Creates a test project with a test target in the temporary directory of the test.
+    private func createTempProject() throws -> String {
+        let projectPath = Path(TemporaryDirectory.path) + "Test.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "Test", targetName: "TestTarget", at: projectPath,
         )
-        let cleanup: @Sendable () -> Void = {
-            try? FileManager.default.removeItem(atPath: tmpDir)
-        }
-        return (projectPath.string, cleanup)
+        return projectPath.string
     }
 
     private func createTestPlan(_ json: [String: Any]) throws -> String {
-        let path = NSTemporaryDirectory() + "test_\(UUID().uuidString).xctestplan"
+        let path = TemporaryDirectory.url.appendingPathComponent("test.xctestplan").path
         try TestPlanFile.write(json, to: path)
         return path
     }
@@ -47,10 +40,8 @@ struct AddTargetToTestPlanToolTests {
     }
 
     @Test func `adds target without selectedTests`() throws {
-        let (projectPath, cleanup) = try createTempProject()
-        defer { cleanup() }
+        let projectPath = try createTempProject()
         let path = try createTestPlan(emptyPlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = AddTargetToTestPlanTool(pathUtility: pathUtility)
         let result = try tool.execute(arguments: [
@@ -72,10 +63,8 @@ struct AddTargetToTestPlanToolTests {
     }
 
     @Test func `adds target with xctest_classes`() throws {
-        let (projectPath, cleanup) = try createTempProject()
-        defer { cleanup() }
+        let projectPath = try createTempProject()
         let path = try createTestPlan(emptyPlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = AddTargetToTestPlanTool(pathUtility: pathUtility)
         let result = try tool.execute(arguments: [
@@ -119,10 +108,8 @@ struct AddTargetToTestPlanToolTests {
     }
 
     @Test func `adds target with suites`() throws {
-        let (projectPath, cleanup) = try createTempProject()
-        defer { cleanup() }
+        let projectPath = try createTempProject()
         let path = try createTestPlan(emptyPlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = AddTargetToTestPlanTool(pathUtility: pathUtility)
         let result = try tool.execute(arguments: [
@@ -165,10 +152,8 @@ struct AddTargetToTestPlanToolTests {
     }
 
     @Test func `adds target with both xctest_classes and suites`() throws {
-        let (projectPath, cleanup) = try createTempProject()
-        defer { cleanup() }
+        let projectPath = try createTempProject()
         let path = try createTestPlan(emptyPlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = AddTargetToTestPlanTool(pathUtility: pathUtility)
         _ = try tool.execute(arguments: [
@@ -195,10 +180,8 @@ struct AddTargetToTestPlanToolTests {
     }
 
     @Test func `selectedTests roundtrips through JSON`() throws {
-        let (projectPath, cleanup) = try createTempProject()
-        defer { cleanup() }
+        let projectPath = try createTempProject()
         let path = try createTestPlan(emptyPlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = AddTargetToTestPlanTool(pathUtility: pathUtility)
         _ = try tool.execute(arguments: [

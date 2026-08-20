@@ -2,6 +2,7 @@ import Testing
 import Foundation
 @testable import XCMCPCore
 
+@Suite(.temporaryDirectory)
 struct IconManifestTests {
     @Test
     func `Hex to sRGB converts correctly`() {
@@ -141,13 +142,11 @@ struct IconManifestTests {
 
     @Test
     func `Write creates icon json file`() throws {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
+        let tempDir = TemporaryDirectory.url
         let bundlePath = tempDir.appendingPathComponent("Test.icon")
         try FileManager.default.createDirectory(
             at: bundlePath, withIntermediateDirectories: true,
         )
-        defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let manifest = IconManifest(
             groups: [

@@ -4,6 +4,7 @@ import Testing
 import XCMCPCore
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct WhyTargetIdToolTests {
     @Test
     func `Tool metadata`() {
@@ -23,7 +24,6 @@ struct WhyTargetIdToolTests {
     @Test
     func `Rejects target_id without a 64-char hex hash`() throws {
         let fixture = try TestPIFCacheFixture.makeWithDuplicateCoreTarget()
-        defer { try? FileManager.default.removeItem(at: fixture.tempRoot) }
 
         let tool = WhyTargetIdTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
         #expect(throws: MCPError.self) {
@@ -38,7 +38,6 @@ struct WhyTargetIdToolTests {
     @Test
     func `Surfaces duplicate target guid and its consumer`() throws {
         let fixture = try TestPIFCacheFixture.makeWithDuplicateCoreTarget()
-        defer { try? FileManager.default.removeItem(at: fixture.tempRoot) }
 
         let tool = WhyTargetIdTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
         let result = try tool.execute(arguments: [
@@ -65,7 +64,6 @@ struct WhyTargetIdToolTests {
     @Test
     func `Reports no match when the guid is unknown`() throws {
         let fixture = try TestPIFCacheFixture.makeWithDuplicateCoreTarget()
-        defer { try? FileManager.default.removeItem(at: fixture.tempRoot) }
 
         let unknown = String(repeating: "f", count: 64)
         let tool = WhyTargetIdTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))

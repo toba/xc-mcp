@@ -2,6 +2,7 @@ import Testing
 import Foundation
 @testable import XCMCPCore
 
+@Suite(.temporaryDirectory)
 struct AppBundlePreparerTests {
     /// Creates a `.framework` bundle with a versioned binary of `byteCount` bytes and returns its
     /// path. The caller is responsible for cleanup of `root`.
@@ -24,10 +25,7 @@ struct AppBundlePreparerTests {
     }
 
     @Test func `detects mergeable reexport stub by size delta`() throws {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("abp-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        let root = TemporaryDirectory.url
 
         let embeddedDir = root.appendingPathComponent("embedded")
         let builtDir = root.appendingPathComponent("built")
@@ -42,10 +40,7 @@ struct AppBundlePreparerTests {
     }
 
     @Test func `does not flag a verbatim embedded framework`() throws {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("abp-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        let root = TemporaryDirectory.url
 
         let embeddedDir = root.appendingPathComponent("embedded")
         let builtDir = root.appendingPathComponent("built")
@@ -64,10 +59,7 @@ struct AppBundlePreparerTests {
     }
 
     @Test func `resolves versioned framework binary path`() throws {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("abp-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        let root = TemporaryDirectory.url
 
         let framework = try makeFramework(named: "Core", in: root, byteCount: 16)
         let binary = AppBundlePreparer.frameworkBinaryPath(framework)
@@ -110,10 +102,7 @@ struct AppBundlePreparerTests {
     }
 
     @Test func `resolves flat framework binary path`() throws {
-        let root = FileManager.default.temporaryDirectory
-            .appendingPathComponent("abp-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: root) }
+        let root = TemporaryDirectory.url
 
         let framework = root.appendingPathComponent("Flat.framework")
         try FileManager.default.createDirectory(at: framework, withIntermediateDirectories: true)

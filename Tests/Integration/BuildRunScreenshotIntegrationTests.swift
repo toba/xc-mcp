@@ -83,6 +83,7 @@ struct BuildIntegrationTests {
             && ProcessInfo.processInfo.environment["RUN_SLOW_TESTS"] != nil,
     ),
     .serialized,
+    .temporaryDirectory,
 )
 struct SlowIntegrationTests {
     private let sessionManager = SessionManager()
@@ -120,9 +121,8 @@ struct SlowIntegrationTests {
         try await Task.sleep(for: .seconds(3))
 
         // 4. Screenshot
-        let savePath =
-            NSTemporaryDirectory()
-                + "icecubes_screenshot_\(ProcessInfo.processInfo.globallyUniqueString).png"
+        let savePath = TemporaryDirectory.url
+            .appendingPathComponent("icecubes_screenshot.png").path
         let screenshotTool = ScreenshotTool(
             simctlRunner: simctlRunner,
             sessionManager: sessionManager,
@@ -146,8 +146,6 @@ struct SlowIntegrationTests {
         ]
         try? terminateProcess.run()
         terminateProcess.waitUntilExit()
-
-        try? FileManager.default.removeItem(atPath: savePath)
     }
 
     // MARK: - IceCubesApp — preview capture

@@ -6,16 +6,13 @@ import Foundation
 @testable import XCMCPCore
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct DetectUnusedCodeToolTests {
     let sessionManager = SessionManager()
 
     @Test
     func `Self-reference guidance names the offending entry and points to repair_project`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(

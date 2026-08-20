@@ -6,18 +6,10 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct AddCopyFilesPhaseTests {
-    let tempDir: String
-    let pathUtility: PathUtility
-
-    init() {
-        tempDir =
-            FileManager.default.temporaryDirectory
-                .appendingPathComponent("AddCopyFilesPhaseTests-\(UUID().uuidString)")
-                .path
-        pathUtility = PathUtility(basePath: tempDir)
-        try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
-    }
+    let tempDir = TemporaryDirectory.path
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     @Test
     func `Tool has correct properties`() {
@@ -197,18 +189,10 @@ struct AddCopyFilesPhaseTests {
     }
 }
 
+@Suite(.temporaryDirectory)
 struct ListCopyFilesPhasesTests {
-    let tempDir: String
-    let pathUtility: PathUtility
-
-    init() {
-        tempDir =
-            FileManager.default.temporaryDirectory
-                .appendingPathComponent("ListCopyFilesPhasesTests-\(UUID().uuidString)")
-                .path
-        pathUtility = PathUtility(basePath: tempDir)
-        try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
-    }
+    let tempDir = TemporaryDirectory.path
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     @Test
     func `tool properties`() {
@@ -312,18 +296,10 @@ struct ListCopyFilesPhasesTests {
     }
 }
 
+@Suite(.temporaryDirectory)
 struct AddToCopyFilesPhaseTests {
-    let tempDir: String
-    let pathUtility: PathUtility
-
-    init() {
-        tempDir =
-            FileManager.default.temporaryDirectory
-                .appendingPathComponent("AddToCopyFilesPhaseTests-\(UUID().uuidString)")
-                .path
-        pathUtility = PathUtility(basePath: tempDir)
-        try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
-    }
+    let tempDir = TemporaryDirectory.path
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     @Test
     func toolProperties() {
@@ -616,18 +592,10 @@ struct AddToCopyFilesPhaseTests {
     }
 }
 
+@Suite(.temporaryDirectory)
 struct RemoveCopyFilesPhaseTests {
-    let tempDir: String
-    let pathUtility: PathUtility
-
-    init() {
-        tempDir =
-            FileManager.default.temporaryDirectory
-                .appendingPathComponent("RemoveCopyFilesPhaseTests-\(UUID().uuidString)")
-                .path
-        pathUtility = PathUtility(basePath: tempDir)
-        try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
-    }
+    let tempDir = TemporaryDirectory.path
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     @Test
     func toolProperties() {

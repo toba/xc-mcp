@@ -5,22 +5,17 @@ import Testing
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct SearchTestPlansToolTests {
     let pathUtility = PathUtility(basePath: "/")
 
-    private func setup() throws -> (projectPath: String, tmpDir: String, cleanup: @Sendable () -> Void) {
-        let tmpDir = NSTemporaryDirectory() + "searchplans_\(UUID().uuidString)"
-        try FileManager.default.createDirectory(
-            atPath: tmpDir, withIntermediateDirectories: true,
-        )
+    private func setup() throws -> (projectPath: String, tmpDir: String) {
+        let tmpDir = TemporaryDirectory.path
         let projectPath = (Path(tmpDir) + "Test.xcodeproj").string
         try TestProjectHelper.createTestProjectWithTarget(
             name: "Test", targetName: "TestTarget", at: Path(projectPath),
         )
-        let cleanup: @Sendable () -> Void = {
-            try? FileManager.default.removeItem(atPath: tmpDir)
-        }
-        return (projectPath, tmpDir, cleanup)
+        return (projectPath, tmpDir)
     }
 
     private func writePlan(_ json: [String: Any], dir: String, name: String) throws -> String {
@@ -30,8 +25,7 @@ struct SearchTestPlansToolTests {
     }
 
     @Test func `matches substring inside string value`() throws {
-        let (projectPath, tmpDir, cleanup) = try setup()
-        defer { cleanup() }
+        let (projectPath, tmpDir) = try setup()
 
         let plan: [String: Any] = [
             "version": 1,
@@ -62,8 +56,7 @@ struct SearchTestPlansToolTests {
     }
 
     @Test func `reports no matches when query absent`() throws {
-        let (projectPath, tmpDir, cleanup) = try setup()
-        defer { cleanup() }
+        let (projectPath, tmpDir) = try setup()
 
         let plan: [String: Any] = [
             "version": 1,
@@ -86,8 +79,7 @@ struct SearchTestPlansToolTests {
     }
 
     @Test func `case insensitive match`() throws {
-        let (projectPath, tmpDir, cleanup) = try setup()
-        defer { cleanup() }
+        let (projectPath, tmpDir) = try setup()
 
         let plan: [String: Any] = [
             "version": 1,

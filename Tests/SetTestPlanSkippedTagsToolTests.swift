@@ -4,11 +4,12 @@ import Testing
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct SetTestPlanSkippedTagsToolTests {
-    let pathUtility = PathUtility(basePath: NSTemporaryDirectory())
+    let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
     private func createTestPlan(_ json: [String: Any]) throws -> String {
-        let path = NSTemporaryDirectory() + "test_\(UUID().uuidString).xctestplan"
+        let path = TemporaryDirectory.url.appendingPathComponent("test.xctestplan").path
         try TestPlanFile.write(json, to: path)
         return path
     }
@@ -46,7 +47,6 @@ struct SetTestPlanSkippedTagsToolTests {
     @Test
     func `Add tags to plan-level defaults`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let args: [String: Value] = [
@@ -73,7 +73,6 @@ struct SetTestPlanSkippedTagsToolTests {
     @Test
     func `Add tags to specific target`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let args: [String: Value] = [
@@ -113,7 +112,6 @@ struct SetTestPlanSkippedTagsToolTests {
         plan["testTargets"] = targets
 
         let path = try createTestPlan(plan)
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let args: [String: Value] = [
@@ -142,7 +140,6 @@ struct SetTestPlanSkippedTagsToolTests {
         plan["defaultOptions"] = defaults
 
         let path = try createTestPlan(plan)
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let args: [String: Value] = [
@@ -176,7 +173,6 @@ struct SetTestPlanSkippedTagsToolTests {
         plan["defaultOptions"] = defaults
 
         let path = try createTestPlan(plan)
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let args: [String: Value] = [
@@ -203,7 +199,6 @@ struct SetTestPlanSkippedTagsToolTests {
         plan["defaultOptions"] = defaults
 
         let path = try createTestPlan(plan)
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let args: [String: Value] = [
@@ -222,7 +217,6 @@ struct SetTestPlanSkippedTagsToolTests {
     @Test
     func `Target not found throws error`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let args: [String: Value] = [
@@ -238,7 +232,6 @@ struct SetTestPlanSkippedTagsToolTests {
     @Test
     func `Empty tags array throws error`() throws {
         let path = try createTestPlan(basePlan())
-        defer { try? FileManager.default.removeItem(atPath: path) }
 
         let tool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
         let args: [String: Value] = [

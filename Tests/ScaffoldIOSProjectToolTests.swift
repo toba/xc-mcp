@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct ScaffoldIOSProjectToolTests {
     @Test
     func `Tool creation`() {
@@ -17,11 +18,7 @@ struct ScaffoldIOSProjectToolTests {
 
     @Test
     func `Scaffold uses synchronized root group for app source folder`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = ScaffoldIOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
         _ = try tool.execute(arguments: [
@@ -51,11 +48,7 @@ struct ScaffoldIOSProjectToolTests {
 
     @Test
     func `Scaffold leaves build phases empty under synchronized folder`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = ScaffoldIOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
         _ = try tool.execute(arguments: [
@@ -87,11 +80,7 @@ struct ScaffoldIOSProjectToolTests {
 
     @Test
     func `Scaffold generates iOS AppIcon Contents json`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let tool = ScaffoldIOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
         _ = try tool.execute(arguments: [

@@ -3,11 +3,10 @@ import Testing
 @testable import XCMCPCore
 import Foundation
 
-@Suite(.serialized)
+@Suite(.temporaryDirectory, .serialized)
 struct SessionExtraArgsTests {
     private func makeTempPath() -> URL {
-        URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("xc-mcp-test-\(UUID().uuidString).json")
+        TemporaryDirectory.url.appendingPathComponent("xc-mcp-test.json")
     }
 
     private func makeManager(_ path: URL) -> SessionManager {
@@ -19,7 +18,6 @@ struct SessionExtraArgsTests {
     @Test
     func `extraArgs persist to disk and load in a new instance`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = makeManager(path)
         await manager.setDefaults(extraArgs: ["-skipPackagePluginValidation", "-quiet"])
@@ -32,7 +30,6 @@ struct SessionExtraArgsTests {
     @Test
     func `Empty extraArgs array clears the persisted list`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = makeManager(path)
         await manager.setDefaults(extraArgs: ["-quiet"])
@@ -45,7 +42,6 @@ struct SessionExtraArgsTests {
     @Test
     func `Setting other defaults leaves extraArgs untouched`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = makeManager(path)
         await manager.setDefaults(extraArgs: ["-quiet"])
@@ -59,7 +55,6 @@ struct SessionExtraArgsTests {
     @Test
     func `clear removes extraArgs`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = makeManager(path)
         await manager.setDefaults(extraArgs: ["-quiet"])
@@ -74,7 +69,6 @@ struct SessionExtraArgsTests {
     @Test
     func `resolveExtraArgs falls back to the session default when the key is absent`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = makeManager(path)
         await manager.setDefaults(extraArgs: ["-quiet"])
@@ -86,7 +80,6 @@ struct SessionExtraArgsTests {
     @Test
     func `Per-invocation extra_args replaces the session default`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = makeManager(path)
         await manager.setDefaults(extraArgs: ["-quiet"])
@@ -100,7 +93,6 @@ struct SessionExtraArgsTests {
     @Test
     func `Empty per-invocation extra_args suppresses the session default for one call`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = makeManager(path)
         await manager.setDefaults(extraArgs: ["-quiet"])
@@ -117,7 +109,6 @@ struct SessionExtraArgsTests {
     @Test
     func `resolveExtraArgs returns empty when nothing is configured`() async {
         let path = makeTempPath()
-        defer { try? FileManager.default.removeItem(at: path) }
 
         let manager = makeManager(path)
         let resolved = await manager.resolveExtraArgs(from: [:])

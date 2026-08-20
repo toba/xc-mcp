@@ -6,6 +6,7 @@ import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct TypeIdentifierToolsTests {
     // MARK: - Helper
 
@@ -55,11 +56,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ListTypeIdentifiersTool with no identifiers`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -78,11 +75,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ListTypeIdentifiersTool with exported identifiers`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -119,11 +112,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ListTypeIdentifiersTool with kind=all shows both`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -178,11 +167,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ManageTypeIdentifierTool add exported type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -219,11 +204,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ManageTypeIdentifierTool add imported type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -253,11 +234,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ManageTypeIdentifierTool add duplicate`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -287,11 +264,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ManageTypeIdentifierTool update type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -331,11 +304,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ManageTypeIdentifierTool remove type`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -368,11 +337,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ManageTypeIdentifierTool materializes Info.plist when missing`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
@@ -400,11 +365,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ManageTypeIdentifierTool update backfills identifier matched by description`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -448,11 +409,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ManageTypeIdentifierTool remove by index`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -488,11 +445,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ManageTypeIdentifierTool prune removes malformed declarations`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -527,11 +480,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `ManageTypeIdentifierTool prune reports when nothing malformed`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
@@ -574,11 +523,7 @@ struct TypeIdentifierToolsTests {
 
     @Test
     func `Full workflow: add exported, add imported, list all, remove`() throws {
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(
-            UUID().uuidString,
-        )
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
+        let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try createProjectWithInfoPlist(tempDir: tempDir)
         let basePath = tempDir.path

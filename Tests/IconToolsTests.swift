@@ -5,15 +5,14 @@ import Foundation
 @testable import XCMCPTools
 
 /// Tests for icon bundle manipulation tools (read, add layer, remove layer, fill, effects, position).
+@Suite(.temporaryDirectory)
 struct IconToolsTests {
     /// Creates a minimal .icon bundle in a temp directory and returns (tempDir, bundlePath).
     private func makeBundle(
         pngName: String = "logo.png",
         fillColor: String? = nil
     ) throws -> (URL, String) {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let tempDir = TemporaryDirectory.url
 
         let pngPath = tempDir.appendingPathComponent(pngName)
         try Data([0x89, 0x50, 0x4E, 0x47]).write(to: pngPath)

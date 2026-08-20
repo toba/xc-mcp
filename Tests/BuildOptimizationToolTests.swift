@@ -6,6 +6,7 @@ import Testing
 
 // MARK: - BenchmarkBuildTool
 
+@Suite(.temporaryDirectory)
 struct BenchmarkBuildToolTests {
     let sessionManager = SessionManager()
 
@@ -80,8 +81,7 @@ struct BenchmarkBuildToolTests {
 
     @Test
     func `baseline save and load round-trips`() throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("bench-\(UUID().uuidString)")
+        let dir = TemporaryDirectory.url
         let url = dir.appendingPathComponent("baseline.json")
         let record = BenchmarkBuildTool.BenchmarkRecord(
             scheme: "App", configuration: "Debug",

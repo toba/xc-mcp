@@ -2,14 +2,14 @@ import Testing
 @testable import XCMCPCore
 import Foundation
 
+@Suite(.temporaryDirectory)
 struct SchemeSuggestionTests {
     /// Creates a temporary directory with an `.xcodeproj` containing scheme files.
     /// Returns `(projectRoot, projectPath)`.
     private func createFixture(
         schemes: [String: String],
     ) throws -> (projectRoot: String, projectPath: String) {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("scheme-suggestion-\(UUID().uuidString)")
+        let tempDir = TemporaryDirectory.url
         let projectPath = tempDir.appendingPathComponent("App.xcodeproj").path
         let schemesDir = "\(projectPath)/xcshareddata/xcschemes"
 
@@ -23,10 +23,6 @@ struct SchemeSuggestionTests {
         }
 
         return (tempDir.path, projectPath)
-    }
-
-    private func cleanup(_ path: String) {
-        try? FileManager.default.removeItem(atPath: path)
     }
 
     private func schemeXML(testTargets: [String]) -> String {
@@ -65,7 +61,6 @@ struct SchemeSuggestionTests {
             "Standard": schemeXML(testTargets: []),
             "TestApp": schemeXML(testTargets: ["TestAppUITests"]),
         ])
-        defer { cleanup(root) }
 
         let output = """
         Testing failed:
@@ -94,7 +89,6 @@ struct SchemeSuggestionTests {
             "Standard": schemeXML(testTargets: []),
             "OtherScheme": schemeXML(testTargets: ["OtherTests"]),
         ])
-        defer { cleanup(root) }
 
         let output = """
         Testing failed:
@@ -122,7 +116,6 @@ struct SchemeSuggestionTests {
             "Alpha": schemeXML(testTargets: ["SharedTests"]),
             "Beta": schemeXML(testTargets: ["SharedTests", "BetaTests"]),
         ])
-        defer { cleanup(root) }
 
         let output = """
         Testing failed:
@@ -150,7 +143,6 @@ struct SchemeSuggestionTests {
         let (root, projectPath) = try createFixture(schemes: [
             "TestScheme": schemeXML(testTargets: ["MyUITests"]),
         ])
-        defer { cleanup(root) }
 
         let output = """
         Testing failed:
@@ -177,7 +169,6 @@ struct SchemeSuggestionTests {
         let (root, projectPath) = try createFixture(schemes: [
             "Standard": schemeXML(testTargets: ["ThesisTests", "ThesisUITests"]),
         ])
-        defer { cleanup(root) }
 
         let output = """
         Testing failed:
@@ -210,7 +201,6 @@ struct SchemeSuggestionTests {
             "Standard": schemeXML(testTargets: []),
             "Testing": schemeXML(testTargets: ["AppTests", "UITests"]),
         ])
-        defer { cleanup(root) }
 
         let output = """
         Testing failed:
@@ -239,7 +229,6 @@ struct SchemeSuggestionTests {
         let (root, projectPath) = try createFixture(schemes: [
             "TestScheme": schemeXML(testTargets: ["MyTests"]),
         ])
-        defer { cleanup(root) }
 
         let output = """
         Testing failed:

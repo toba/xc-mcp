@@ -1251,4 +1251,59 @@ struct BuildOutputParserTests {
         #expect(result.failedTests[0].message == "Connection timed out")
         #expect(result.failedTests[0].file == nil)
     }
+
+    // MARK: - CRLF line endings
+
+    @Test func `Split CRLF log into one line per source line`() {
+        let lines = BuildLogLines.split("first\r\nsecond\r\n\r\nfourth")
+
+        #expect(lines == ["first", "second", "", "fourth"])
+    }
+
+    @Test func `Split LF log into one line per source line`() {
+        let lines = BuildLogLines.split("first\nsecond\n\nfourth")
+
+        #expect(lines == ["first", "second", "", "fourth"])
+    }
+
+    @Test func `Parse diagnostics in a CRLF log`() {
+        let parser = BuildOutputParser()
+        let input = [
+            "main.swift:15:5: error: use of undeclared identifier 'unknown'",
+            "Helper.swift:3:1: warning: unused variable 'temp'",
+            "** BUILD FAILED **",
+        ].joined(separator: "\r\n")
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.summary.errors == 1)
+        #expect(result.errors[0].file == "main.swift")
+        #expect(result.errors[0].line == 15)
+        #expect(result.errors[0].message == "use of undeclared identifier 'unknown'")
+        #expect(result.summary.warnings == 1)
+        #expect(result.warnings[0].file == "Helper.swift")
+        #expect(result.warnings[0].message == "unused variable 'temp'")
+    }
+
+    @Test func `Parse a CRLF log the same as an LF log`() {
+        let lfInput = """
+            main.swift:15:5: error: use of undeclared identifier 'unknown'
+            Helper.swift:3:1: warning: unused variable 'temp'
+            Test Case 'LoginTests.testInvalidCredentials' failed (0.045 seconds).
+            ** BUILD FAILED **
+            """
+        let crlfInput = BuildLogLines.split(lfInput).joined(separator: "\r\n")
+
+        let lfResult = BuildOutputParser().parse(input: lfInput)
+        let crlfResult = BuildOutputParser().parse(input: crlfInput)
+
+        #expect(crlfResult.status == lfResult.status)
+        #expect(crlfResult.summary.errors == lfResult.summary.errors)
+        #expect(crlfResult.summary.warnings == lfResult.summary.warnings)
+        #expect(crlfResult.summary.failedTests == lfResult.summary.failedTests)
+        #expect(crlfResult.errors.map(\.message) == lfResult.errors.map(\.message))
+        #expect(crlfResult.warnings.map(\.message) == lfResult.warnings.map(\.message))
+        #expect(crlfResult.failedTests.map(\.test) == lfResult.failedTests.map(\.test))
+    }
 }
