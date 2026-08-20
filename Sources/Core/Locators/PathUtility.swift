@@ -116,16 +116,18 @@ public struct PathUtility: Sendable {
     /// Reports whether `path`'s real (symlink-resolved) location is within the sandbox base.
     ///
     /// Unlike ``resolvePath(from:)``, which validates a user-supplied path lexically, this resolves
-    /// symlinks before comparing — so a symlink pointing outside the base is rejected even though its
-    /// lexical location is inside. Callers that walk the filesystem (e.g. recursive discovery) use
-    /// this to keep the traversal from escaping the sandbox through a symlink. Always `true` when
-    /// sandboxing is disabled.
+    /// symlinks before comparing — so a symlink pointing outside the base is rejected even though
+    /// its lexical location is inside. Callers that walk the filesystem (e.g. recursive discovery)
+    /// use this to keep the traversal from escaping the sandbox through a symlink. Always `true`
+    /// when sandboxing is disabled.
     ///
     /// - Parameter path: The path to test.
-    /// - Returns: `true` if sandboxing is disabled or the resolved path is the base or a descendant.
+    /// - Returns: `true` if sandboxing is disabled or the resolved path is the base or a
+    ///   descendant.
     public func isWithinSandbox(_ path: String) -> Bool {
         guard sandboxEnabled else { return true }
-        let resolvedBase = URL(fileURLWithPath: basePath).resolvingSymlinksInPath().standardized.path
+        let resolvedBase = URL(fileURLWithPath: basePath).resolvingSymlinksInPath().standardized
+            .path
         let resolved = URL(fileURLWithPath: path).resolvingSymlinksInPath().standardized.path
         return Self.isPath(resolved, within: resolvedBase)
     }
@@ -138,8 +140,23 @@ public struct PathUtility: Sendable {
     private static func isPath(_ path: String, within basePath: String) -> Bool {
         // The filesystem root contains every absolute path. Special-casing it avoids computing the
         // separator prefix "//", which no real path matches and would reject everything.
-        if basePath == "/" { return path.hasPrefix("/") }
-        return path == basePath || path.hasPrefix(basePath + "/")
+        basePath == "/"
+            ? path.hasPrefix("/")
+            : path == basePath || path.hasPrefix(basePath + "/")
+    }
+
+    /// Trims a directory prefix so a path reads relative to that directory.
+    ///
+    /// Unlike the instance method ``makeRelativePath(from:)``, this performs no base-path
+    /// validation and returns the input unchanged when it lies outside the directory.
+    ///
+    /// - Parameters:
+    ///   - path: The absolute path to shorten.
+    ///   - directory: The directory the result reads relative to.
+    /// - Returns: The path without the directory prefix, or the input path unchanged.
+    public static func relativePath(_ path: String, from directory: String) -> String {
+        let base = directory.hasSuffix("/") ? directory : directory + "/"
+        return path.hasPrefix(base) ? String(path.dropFirst(base.count)) : path
     }
 
     /// Converts an absolute path to a relative path from the base path.
@@ -268,7 +285,7 @@ public struct PathUtility: Sendable {
     /// - Returns: The resolved URL.
     /// - Note: This method does not validate paths against a base directory. Prefer the instance
     ///   method ``resolvePathURL(from:)`` for secure path handling.
-    static func resolvePathURL(from path: String) -> URL {
+    public static func resolvePathURL(from path: String) -> URL {
         let expanded = expandTilde(path)
         let url = URL(fileURLWithPath: expanded)
 
@@ -301,5 +318,5 @@ public struct PathUtility: Sendable {
     /// - Returns: The resolved absolute path as a string.
     /// - Note: This method does not validate paths against a base directory. Prefer the instance
     ///   method ``resolvePath(from:)`` for secure path handling.
-    static func resolvePath(from path: String) -> String { resolvePathURL(from: path).path }
+    public static func resolvePath(from path: String) -> String { resolvePathURL(from: path).path }
 }

@@ -31,7 +31,7 @@ xc-mcp/
 │   │   ├── Project/                 # xc-project (40 tools)
 │   │   ├── Simulator/               # xc-simulator (29 tools)
 │   │   ├── Strings/                 # xc-strings (24 tools)
-│   │   └── Swift/                   # xc-swift (12 tools)
+│   │   └── Swift/                   # xc-swift (13 tools)
 │   ├── Core/                        # Shared utilities (69 files), grouped by concern
 │   │   ├── Runners/                 # Subprocess wrappers (xcodebuild, simctl, devicectl, lldb, swift, interact, xctrace) + ProcessResult
 │   │   ├── BuildOutput/             # Build/test/coverage/crash output parsing & formatting
@@ -44,7 +44,7 @@ xc-mcp/
 │   │   ├── AppBundle/               # App-bundle staging & inspection (preparer, codesign, icon manifest)
 │   │   ├── XCStrings/               # String-catalog parsing/encoding (+ Models/)
 │   │   └── *.swift                  # Cross-cutting singletons (XCMCPCore, ElapsedFormatting, MachineMetadata, BreakpointConditionAdvisor, PackageResolvedParser)
-│   ├── Tools/                       # 168 tools across 14 categories
+│   ├── Tools/                       # 169 tools across 14 categories
 │   │   ├── Project/                 # 44 project manipulation tools
 │   │   ├── XCStrings/               # 24 localization/string catalog tools
 │   │   ├── Simulator/               # 18 simulator tools
@@ -53,14 +53,14 @@ xc-mcp/
 │   │   ├── Interact/                # 8 macOS UI automation (accessibility)
 │   │   ├── UIAutomation/            # 8 simulator UI automation tools
 │   │   ├── Device/                  # 7 device tools
-│   │   ├── SwiftPackage/            # 9 Swift Package Manager tools
+│   │   ├── SwiftPackage/            # 10 Swift Package Manager tools
 │   │   ├── Discovery/               # 5 project discovery tools
 │   │   ├── Session/                 # 5 session management tools
 │   │   ├── Logging/                 # 4 log capture tools
 │   │   ├── Utility/                 # 4 utility tools
 │   │   └── Instruments/             # 3 Xcode Instruments tools
 │   └── Documentation.docc/          # DocC documentation
-├── Tests/                           # 506 tests (swift-testing)
+├── Tests/                           # 1582 tests (swift-testing)
 ├── fixtures/                        # Test fixtures (open source repos)
 ├── scripts/                         # Build/utility scripts
 └── CLAUDE.md
@@ -72,13 +72,13 @@ The project builds 8 executables — one monolithic server and 7 focused servers
 
 | Executable | Tools | Use case |
 |------------|-------|----------|
-| `xc-mcp` | 149 | Full server (~50K tokens) |
+| `xc-mcp` | 150 | Full server (~50K tokens) |
 | `xc-project` | 42 | Project file manipulation |
 | `xc-simulator` | 29 | Simulator + UI automation |
 | `xc-debug` | 31 | LLDB debugging + macOS UI automation |
 | `xc-build` | 22 | Build, test, run |
 | `xc-device` | 12 | Physical device management |
-| `xc-swift` | 12 | SPM + Swift operations |
+| `xc-swift` | 13 | SPM + Swift operations |
 | `xc-strings` | 24 | Localization/string catalogs |
 
 Focused servers reduce token overhead for clients that only need specific capabilities.
@@ -154,7 +154,7 @@ Xcode build system knowledge for injected targets (via XcodeProj). Reference fil
 - Tools follow a consistent pattern with `tool()` and `execute()` methods
 - XcodeProj library handles .xcodeproj file manipulation
 - Runner utilities in `Sources/Core/Runners/` wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift, xctrace, accessibility)
-- **Testing**: swift-testing framework (506 tests)
+- **Testing**: swift-testing framework (1582 tests)
 - **Swift 6.2**: Strict concurrency enabled (`swift-tools-version: 6.2`)
 - **Formatting**: `sm` (swiftiomatic from `../swiftiomatic`) before committing
 

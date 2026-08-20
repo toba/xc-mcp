@@ -200,6 +200,52 @@ public struct SwiftRunner: Sendable {
         try await run(arguments: ["package", "clean"], workingDirectory: packagePath)
     }
 
+    /// Emits a symbol graph for every target in a Swift package.
+    ///
+    /// SwiftPM writes the files into `.build/<triple>/symbolgraph` and prints that directory on the
+    /// last line of stdout. The command builds the package first.
+    ///
+    /// - Parameters:
+    ///   - packagePath: Path to the Swift package directory.
+    ///   - minimumAccessLevel: Lowest access level to include: `private`, `fileprivate`,
+    ///     `internal`, `package`, `public`, or `open`.
+    ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
+    ///   - onProgress: Optional callback for streamed output.
+    /// - Returns: The command result containing exit code and output.
+    public func dumpSymbolGraph(
+        packagePath: String,
+        minimumAccessLevel: String = "public",
+        timeout: Duration = Self.defaultTimeout,
+        onProgress: (@Sendable (String) -> Void)? = nil,
+    ) async throws -> SwiftResult {
+        try await run(
+            arguments: [
+                "package", "dump-symbol-graph",
+                "--minimum-access-level", minimumAccessLevel,
+            ],
+            workingDirectory: packagePath,
+            timeout: timeout,
+            onProgress: onProgress,
+        )
+    }
+
+    /// Dumps the package manifest as JSON.
+    ///
+    /// - Parameters:
+    ///   - packagePath: Path to the Swift package directory.
+    ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
+    /// - Returns: The result whose stdout holds the manifest JSON.
+    public func dumpPackage(
+        packagePath: String,
+        timeout: Duration = Self.defaultTimeout,
+    ) async throws -> SwiftResult {
+        try await run(
+            arguments: ["package", "dump-package"],
+            workingDirectory: packagePath,
+            timeout: timeout,
+        )
+    }
+
     /// Shows package dependencies.
     ///
     /// - Parameters:

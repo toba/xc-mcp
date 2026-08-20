@@ -7,12 +7,10 @@ import Foundation
 public struct ListSwiftPackagesTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_swift_packages",
             description: "List all Swift Package dependencies in an Xcode project",
             inputSchema: .object([
@@ -23,7 +21,7 @@ public struct ListSwiftPackagesTool: Sendable {
                         "description": .string(
                             "Path to the .xcodeproj file (relative to current directory)",
                         ),
-                    ]),
+                    ])
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
@@ -55,36 +53,36 @@ public struct ListSwiftPackagesTool: Sendable {
                     remotePackage.versionRequirement ?? .exact("unknown"),
                 )
                 let url = remotePackage.repositoryURL ?? "unknown"
-                packages.append("📦 \(url) (\(requirement))")
+                packages.append(
+                    "📦 \(url) (\(requirement))\(SwiftPackageTraits.format(remotePackage.traits))",
+                )
             }
 
             // List local packages
             for localPackage in project.localPackages {
-                packages.append("📁 \(localPackage.relativePath) (local)")
-            }
-
-            if packages.isEmpty {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "No Swift Package dependencies found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
+                packages.append(
+                    "📁 \(localPackage.relativePath) (local)\(SwiftPackageTraits.format(localPackage.traits))",
                 )
             }
 
-            let packageList = packages.joined(separator: "\n")
-            return CallTool.Result(
-                content: [
+            if packages.isEmpty {
+                return CallTool.Result(content: [
                     .text(
-                        text: "Swift Package dependencies:\n\(packageList)",
+                        text: "No Swift Package dependencies found in project",
                         annotations: nil,
                         _meta: nil,
-                    ),
-                ],
-            )
+                    )
+                ],)
+            }
+
+            let packageList = packages.joined(separator: "\n")
+            return CallTool.Result(content: [
+                .text(
+                    text: "Swift Package dependencies:\n\(packageList)",
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ],)
         } catch {
             throw MCPError.internalError(
                 "Failed to list Swift Packages in Xcode project: \(error.localizedDescription)",
@@ -94,22 +92,14 @@ public struct ListSwiftPackagesTool: Sendable {
 
     private func formatVersionRequirement(
         _ requirement: XCRemoteSwiftPackageReference.VersionRequirement,
-    )
-        -> String
-    {
+    ) -> String {
         switch requirement {
-            case let .exact(version):
-                return "exact: \(version)"
-            case let .upToNextMajorVersion(version):
-                return "from: \(version)"
-            case let .upToNextMinorVersion(version):
-                return "upToNextMinor: \(version)"
-            case let .range(from, to):
-                return "range: \(from) - \(to)"
-            case let .branch(branch):
-                return "branch: \(branch)"
-            case let .revision(revision):
-                return "revision: \(revision)"
+            case let .exact(version): "exact: \(version)"
+            case let .upToNextMajorVersion(version): "from: \(version)"
+            case let .upToNextMinorVersion(version): "upToNextMinor: \(version)"
+            case let .range(from, to): "range: \(from) - \(to)"
+            case let .branch(branch): "branch: \(branch)"
+            case let .revision(revision): "revision: \(revision)"
         }
     }
 }

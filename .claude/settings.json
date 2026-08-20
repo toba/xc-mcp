@@ -12,6 +12,27 @@
         "matcher": "Edit|Write"
       }
     ],
-    "PreToolUse": []
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "jig prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "jig prime",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
+      }
+    ]
   }
 }

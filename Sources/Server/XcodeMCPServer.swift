@@ -220,6 +220,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case swiftFormat = "swift_format"
     case swiftLint = "swift_lint"
     case swiftDiagnostics = "swift_diagnostics"
+    case swiftPackageDocs = "swift_package_docs"
     case detectUnusedCode = "detect_unused_code"
 
     // Instruments tools
@@ -474,6 +475,7 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .swiftFormat,
                  .swiftLint,
                  .swiftDiagnostics,
+                 .swiftPackageDocs,
                  .detectUnusedCode: .swiftPackage
             // Instruments
             case .xctraceRecord,
@@ -903,6 +905,9 @@ public struct XcodeMCPServer: Sendable {
         let swiftDiagnosticsTool = SwiftDiagnosticsTool(
             swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
+        let swiftPackageDocsTool = SwiftPackageDocsTool(
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
+        )
         let detectUnusedCodeTool = DetectUnusedCodeTool(sessionManager: sessionManager)
 
         // Create interact tools
@@ -1186,6 +1191,7 @@ public struct XcodeMCPServer: Sendable {
             (.swiftFormat, swiftFormatTool.tool()),
             (.swiftLint, swiftLintTool.tool()),
             (.swiftDiagnostics, swiftDiagnosticsTool.tool()),
+            (.swiftPackageDocs, swiftPackageDocsTool.tool()),
             (.detectUnusedCode, detectUnusedCodeTool.tool()),
             // Interact tools
             (.interactUITree, interactUITreeTool.tool()),
@@ -1671,6 +1677,8 @@ public struct XcodeMCPServer: Sendable {
                 case .swiftLint: return try await swiftLintTool.execute(arguments: arguments)
                 case .swiftDiagnostics:
                     return try await swiftDiagnosticsTool.execute(arguments: arguments)
+                case .swiftPackageDocs:
+                    return try await swiftPackageDocsTool.execute(arguments: arguments)
                 case .detectUnusedCode:
                     return try await detectUnusedCodeTool.execute(arguments: arguments)
                 // Interact tools

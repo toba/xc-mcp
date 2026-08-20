@@ -113,7 +113,7 @@ public enum ServerToolDirectory {
     private static let swiftTools: [String] = [
         "swift_package_build", "swift_package_test", "swift_package_run",
         "swift_package_clean", "swift_package_list", "swift_package_stop",
-        "swift_diagnostics", "swift_format", "swift_lint",
+        "swift_diagnostics", "swift_package_docs", "swift_format", "swift_lint",
         "detect_unused_code", "swift_symbols",
         "get_coverage_report", "get_file_coverage",
     ]

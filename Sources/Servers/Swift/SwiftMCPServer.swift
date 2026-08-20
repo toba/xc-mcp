@@ -15,6 +15,7 @@ public enum SwiftToolName: String, CaseIterable, Sendable {
     case swiftFormat = "swift_format"
     case swiftLint = "swift_lint"
     case swiftDiagnostics = "swift_diagnostics"
+    case swiftPackageDocs = "swift_package_docs"
     case detectUnusedCode = "detect_unused_code"
     case swiftSymbols = "swift_symbols"
 
@@ -30,14 +31,13 @@ public enum SwiftToolName: String, CaseIterable, Sendable {
 
 /// MCP server for Swift Package Manager operations.
 ///
-/// This focused server provides tools for building, testing, and running
-/// Swift packages using the Swift CLI.
+/// This focused server provides tools for building, testing, and running Swift packages using the
+/// Swift CLI.
 ///
 /// ## Token Efficiency
 ///
-/// This server exposes 6 tools with approximately 1.5K token overhead, compared to
-/// ~50K for the full monolithic xc-mcp server. Use this server when you only need
-/// Swift package capabilities.
+/// This server exposes 6 tools with approximately 1.5K token overhead, compared to ~50K for the
+/// full monolithic xc-mcp server. Use this server when you only need Swift package capabilities.
 ///
 /// ## Tools
 ///
@@ -63,11 +63,7 @@ public struct SwiftMCPServer: Sendable {
 
     /// Starts the MCP server and begins processing requests.
     public func run() async throws {
-        let server = Server(
-            name: "xc-swift",
-            version: "1.0.0",
-            capabilities: .init(tools: .init()),
-        )
+        let server = Server(name: "xc-swift", version: "1.0.0", capabilities: .init(tools: .init()))
 
         // Create utilities
         let swiftRunner = SwiftRunner()
@@ -95,6 +91,9 @@ public struct SwiftMCPServer: Sendable {
         let swiftDiagnosticsTool = SwiftDiagnosticsTool(
             swiftRunner: swiftRunner, sessionManager: sessionManager,
         )
+        let swiftPackageDocsTool = SwiftPackageDocsTool(
+            swiftRunner: swiftRunner, sessionManager: sessionManager,
+        )
         let detectUnusedCodeTool = DetectUnusedCodeTool(sessionManager: sessionManager)
         let swiftSymbolsTool = SwiftSymbolsTool()
 
@@ -119,6 +118,7 @@ public struct SwiftMCPServer: Sendable {
                 swiftFormatTool.tool(),
                 swiftLintTool.tool(),
                 swiftDiagnosticsTool.tool(),
+                swiftPackageDocsTool.tool(),
                 detectUnusedCodeTool.tool(),
                 swiftSymbolsTool.tool(),
                 // Coverage tools
@@ -135,9 +135,8 @@ public struct SwiftMCPServer: Sendable {
         await server.withMethodHandler(CallTool.self) { params in
             guard let toolName = SwiftToolName(rawValue: params.name) else {
                 let hint = ServerToolDirectory.hint(for: params.name, currentServer: "xc-swift")
-                let message =
-                    hint.map { "Unknown tool: \(params.name). \($0)" }
-                        ?? "Unknown tool: \(params.name)"
+                let message = hint.map { "Unknown tool: \(params.name). \($0)" }
+                    ?? "Unknown tool: \(params.name)"
                 throw MCPError.methodNotFound(message)
             }
 
@@ -176,16 +175,25 @@ public struct SwiftMCPServer: Sendable {
                     return try await swiftPackageListTool.execute(arguments: arguments)
                 case .swiftPackageStop:
                     return try await swiftPackageStopTool.execute(arguments: arguments)
-                case .swiftFormat:
-                    return try await swiftFormatTool.execute(arguments: arguments)
-                case .swiftLint:
-                    return try await swiftLintTool.execute(arguments: arguments)
+                case .swiftFormat: return try await swiftFormatTool.execute(arguments: arguments)
+                case .swiftLint: return try await swiftLintTool.execute(arguments: arguments)
                 case .swiftDiagnostics:
                     return try await swiftDiagnosticsTool.execute(arguments: arguments)
+                case .swiftPackageDocs:
+                    if let token = params._meta?.progressToken {
+                        let reporter = ProgressReporter(token: token) { msg in
+                            try await server.notify(msg)
+                        }
+                        return try await reporter.stream {
+                            try await swiftPackageDocsTool.execute(
+                                arguments: arguments, onProgress: reporter.onProgress,
+                            )
+                        }
+                    }
+                    return try await swiftPackageDocsTool.execute(arguments: arguments)
                 case .detectUnusedCode:
                     return try await detectUnusedCodeTool.execute(arguments: arguments)
-                case .swiftSymbols:
-                    return try await swiftSymbolsTool.execute(arguments: arguments)
+                case .swiftSymbols: return try await swiftSymbolsTool.execute(arguments: arguments)
                 // Coverage tools
                 case .getCoverageReport:
                     return try await getCoverageReportTool.execute(arguments: arguments)

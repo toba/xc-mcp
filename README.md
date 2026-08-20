@@ -101,7 +101,7 @@ Run a single server with all tools, or use focused servers to reduce token overh
 | `xc-simulator` | 29 | ~5K | Simulator + UI automation + simulator logs |
 | `xc-debug` | 37 | ~5K | LLDB, memory diagnostics, crash symbolication, screenshots, macOS UI automation (`interact_*`) |
 | `xc-strings` | 24 | ~3K | .xcstrings localization |
-| `xc-swift` | 15 | ~3K | SPM, swiftformat, swiftlint, diagnostics, coverage |
+| `xc-swift` | 16 | ~3K | SPM, swiftformat, swiftlint, diagnostics, coverage |
 | `xc-device` | 14 | ~3K | Physical iOS devices |
 
 <details>
@@ -512,6 +512,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 | `swift_format` | Run swiftformat — supports dry_run |
 | `swift_lint` | Run swiftlint — supports fix mode |
 | `swift_diagnostics` | Clean-build and collect all compiler warnings and lint violations |
+| `swift_package_docs` | Build a DocC catalog and report documentation diagnostics grouped by article |
 | `detect_unused_code` | Find unused code via [Periphery](https://github.com/peripheryapp/periphery) — summary, detail, or checklist format |
 | `get_coverage_report` | Per-target coverage from `.xcresult` |
 | `get_file_coverage` | Per-function coverage drill-down |
