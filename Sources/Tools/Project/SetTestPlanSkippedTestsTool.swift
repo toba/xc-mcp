@@ -5,17 +5,18 @@ import Foundation
 public struct SetTestPlanSkippedTestsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_test_plan_skipped_tests",
             description:
-            "Add or remove entries in a .xctestplan's skippedTests exclusion list (\"run everything EXCEPT these\"). "
+                "Add or remove entries in a .xctestplan's skippedTests exclusion list (\"run everything EXCEPT these\"). "
                 + "Unlike skippedTags, this catches XCTest classes/methods which have no tags. "
-                + "Can apply to plan-level defaults or a specific test target.",
+                + "Can apply to plan-level defaults or a specific test target. "
+                + "Handles both shapes Xcode writes: the flat array of identifiers, and the "
+                + "nested dictionary of 'suites' and 'xctestClasses'. Only the named entry "
+                + "changes, and the reply states the entry count before and after.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -28,8 +29,9 @@ public struct SetTestPlanSkippedTestsTool: Sendable {
                         "items": .object(["type": .string("string")]),
                         "description": .string(
                             "Test identifiers to add or remove — a class/suite name "
-                                + "(e.g. 'XMLDecoderPerformanceTests') or a specific method "
-                                + "(e.g. 'XMLDecoderPerformanceTests/testDecode()').",
+                                + "(e.g. 'XMLDecoderPerformanceTests'), a specific method "
+                                + "(e.g. 'XMLDecoderPerformanceTests/testDecode()'), or a "
+                                + "nested suite path (e.g. 'ParentSuite/ChildSuite').",
                         ),
                     ]),
                     "action": .object([
@@ -52,17 +54,31 @@ public struct SetTestPlanSkippedTestsTool: Sendable {
         )
     }
 
+    /// The change the caller asks for.
+    private enum Action: String {
+        case add
+        case remove
+
+        /// The past-tense verb that opens the reply.
+        var verb: String {
+            switch self {
+                case .add: "Added"
+                case .remove: "Removed"
+            }
+        }
+    }
+
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         let testPlanPath = try arguments.getRequiredString("test_plan_path")
         let tests = arguments.getStringArray("tests")
-        let action = arguments.getString("action") ?? "add"
         let targetName = arguments.getString("target_name")
 
-        guard action == "add" || action == "remove" else {
+        guard let action = Action(rawValue: arguments.getString("action") ?? "add") else {
             throw MCPError.invalidParams("action must be 'add' or 'remove'")
         }
-        guard !tests.isEmpty else {
-            throw MCPError.invalidParams("tests array must not be empty")
+        guard !tests.isEmpty else { throw MCPError.invalidParams("tests array must not be empty") }
+        guard tests.allSatisfy({ !$0.isEmpty }) else {
+            throw MCPError.invalidParams("tests must not contain an empty identifier")
         }
 
         let resolvedPath = try pathUtility.resolvePath(from: testPlanPath)
@@ -70,33 +86,27 @@ public struct SetTestPlanSkippedTestsTool: Sendable {
         do {
             var json = try TestPlanFile.read(from: resolvedPath)
 
-            let resultTests: [String]
+            let outcome: TestPlanSkipList.Outcome
+
             if let targetName {
-                resultTests = try applyToTarget(
+                outcome = try applyToTarget(
                     &json, targetName: targetName, tests: tests, action: action,
                 )
             } else {
-                resultTests = applyToDefaults(&json, tests: tests, action: action)
+                outcome = applyToDefaults(&json, tests: tests, action: action)
             }
 
             try TestPlanFile.write(json, to: resolvedPath)
 
             let scope = targetName.map { "target '\($0)'" } ?? "plan-level defaults"
-            let verb = action == "add" ? "Added" : "Removed"
             let testList = tests.map { "'\($0)'" }.joined(separator: ", ")
-            let remaining =
-                resultTests.isEmpty
-                    ? " (no skipped tests remaining)"
-                    : " — skipped tests: \(resultTests.joined(separator: ", "))"
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "\(verb) \(testList) in \(scope)\(remaining)",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
+            return CallTool.Result(content: [
+                .text(
+                    text: "\(action.verb) \(testList) in \(scope)\(Self.report(outcome))",
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ],)
         } catch let error as MCPError {
             throw error
         } catch {
@@ -106,40 +116,70 @@ public struct SetTestPlanSkippedTestsTool: Sendable {
         }
     }
 
-    /// Adds or removes tests from an existing list, preserving insertion order.
-    private func applyTestChanges(
-        existing: [String],
-        tests: [String],
-        action: String,
-    ) -> [String] {
-        if action == "add" {
-            let existingSet = Set(existing)
-            return existing + tests.filter { !existingSet.contains($0) }
-        } else {
-            let removeSet = Set(tests)
-            return existing.filter { !removeSet.contains($0) }
+    /// Builds the part of the reply that describes what the plan now holds.
+    ///
+    /// The reply always states the entry count before the change and after it. That count lets the
+    /// caller see at once when a change removed more than it named.
+    private static func report(_ outcome: TestPlanSkipList.Outcome) -> String {
+        var parts: [String] = []
+
+        switch outcome.shape {
+            case .absent: parts.append("no skipped tests remaining")
+            case let .flat(names): parts.append("skipped tests: \(names.joined(separator: ", "))")
+            case let .structured(suiteCount, classCount):
+                var scopeCounts: [String] = []
+                if suiteCount > 0 { scopeCounts.append("\(suiteCount) suite(s)") }
+                if classCount > 0 { scopeCounts.append("\(classCount) XCTest class(es)") }
+                parts.append("skipped tests in \(scopeCounts.joined(separator: " and "))")
         }
+
+        parts.append("entries: \(outcome.entriesBefore) → \(outcome.entriesAfter)")
+
+        if !outcome.unmatched.isEmpty {
+            let list = outcome.unmatched.map { "'\($0)'" }.joined(separator: ", ")
+            parts.append("no matching entry for \(list)")
+        }
+        if !outcome.alreadyPresent.isEmpty {
+            let list = outcome.alreadyPresent.map { "'\($0)'" }.joined(separator: ", ")
+            parts.append("already skipped: \(list)")
+        }
+
+        return " — " + parts.joined(separator: "; ")
+    }
+
+    /// Applies an action to the `skippedTests` value of one scope and writes the result back.
+    ///
+    /// The key drops when the change leaves no entries, because Xcode omits an empty list.
+    private static func apply(
+        _ action: Action,
+        tests: [String],
+        in scope: inout [String: Any],
+    ) -> TestPlanSkipList.Outcome {
+        let value = scope["skippedTests"]
+        let outcome =
+            switch action {
+                case .add: TestPlanSkipList.adding(tests, to: value)
+                case .remove: TestPlanSkipList.removing(tests, from: value)
+            }
+
+        if let newValue = outcome.value {
+            scope["skippedTests"] = newValue
+        } else {
+            scope.removeValue(forKey: "skippedTests")
+        }
+        return outcome
     }
 
     /// Applies changes to plan-level `defaultOptions.skippedTests`.
     private func applyToDefaults(
         _ json: inout [String: Any],
         tests: [String],
-        action: String,
-    ) -> [String] {
+        action: Action,
+    ) -> TestPlanSkipList.Outcome {
         var defaults = json["defaultOptions"] as? [String: Any] ?? [:]
-        let existing = defaults["skippedTests"] as? [String] ?? []
-
-        let result = applyTestChanges(existing: existing, tests: tests, action: action)
-
-        if result.isEmpty {
-            defaults.removeValue(forKey: "skippedTests")
-        } else {
-            defaults["skippedTests"] = result
-        }
-
+        let outcome = Self.apply(action, tests: tests, in: &defaults)
         json["defaultOptions"] = defaults
-        return result
+        return outcome
     }
 
     /// Applies changes to a specific target's `skippedTests`.
@@ -147,33 +187,20 @@ public struct SetTestPlanSkippedTestsTool: Sendable {
         _ json: inout [String: Any],
         targetName: String,
         tests: [String],
-        action: String,
-    ) throws(MCPError) -> [String] {
+        action: Action,
+    ) throws(MCPError) -> TestPlanSkipList.Outcome {
         guard var testTargets = json["testTargets"] as? [[String: Any]] else {
             throw MCPError.invalidParams("Test plan has no test targets")
         }
 
-        guard
-            let index = testTargets.firstIndex(where: {
-                ($0["target"] as? [String: Any])?["name"] as? String == targetName
-            })
-        else {
-            throw MCPError.invalidParams("Target '\(targetName)' not found in test plan")
-        }
+        guard let index = testTargets.firstIndex(where: {
+            ($0["target"] as? [String: Any])?["name"] as? String == targetName
+        }) else { throw MCPError.invalidParams("Target '\(targetName)' not found in test plan") }
 
         var entry = testTargets[index]
-        let existing = entry["skippedTests"] as? [String] ?? []
-
-        let result = applyTestChanges(existing: existing, tests: tests, action: action)
-
-        if result.isEmpty {
-            entry.removeValue(forKey: "skippedTests")
-        } else {
-            entry["skippedTests"] = result
-        }
-
+        let outcome = Self.apply(action, tests: tests, in: &entry)
         testTargets[index] = entry
         json["testTargets"] = testTargets
-        return result
+        return outcome
     }
 }
