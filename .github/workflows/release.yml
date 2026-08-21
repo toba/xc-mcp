@@ -3,7 +3,9 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      # Accept a version tag with or without a leading v.
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+      - '[0-9]+.[0-9]+.[0-9]+*'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -14,6 +16,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        # The release notes step reads every tag and the log between two of them.
+        # The default shallow clone carries one commit and one tag, so fetch it all.
+        fetch-depth: 0
 
     - name: Select Xcode version
       run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
@@ -37,8 +43,16 @@ jobs:
     - name: Generate release notes
       id: release_notes
       run: |
-        # Get the previous tag
-        PREV_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed -n '2p')
+        # Find the previous release tag. Tags carry either form, "1.2.3" or "v1.2.3",
+        # so sort on the version alone and keep the original name in a second field.
+        # Skip every tag whose version equals the current one. That drops the other
+        # prefix form of this same release.
+        CURRENT_VERSION="${GITHUB_REF_NAME#v}"
+        PREV_TAG=$(git tag --list \
+          | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' \
+          | sed -E 's/^v?(.*)$/\1\t&/' \
+          | sort -Vr \
+          | awk -F'\t' -v cur="$CURRENT_VERSION" '$1 != cur { print $2; exit }')
         if [ -z "$PREV_TAG" ]; then
           # First release, get all commits
           NOTES=$(git log --pretty=format:"- %s" HEAD)
