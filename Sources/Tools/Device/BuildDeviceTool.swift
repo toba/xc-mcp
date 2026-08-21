@@ -9,8 +9,8 @@ public struct BuildDeviceTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        deviceCtlRunner: DeviceCtlRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -19,10 +19,10 @@ public struct BuildDeviceTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "build_device",
             description:
-            "Build an Xcode project or workspace for a connected iOS/tvOS/watchOS device.",
+                "Build an Xcode project or workspace for a connected iOS/tvOS/watchOS device.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -59,7 +59,13 @@ public struct BuildDeviceTool: Sendable {
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
-                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new }
+                        .merging([String: Value].timeoutSchemaProperty(defaultSeconds: 300)) {
+                            _, new in new
+                        }
+                        .merging([String: Value].outputTimeoutSchemaProperty(defaultSeconds: 120)) {
+                            _, new in new
+                        },
                 ),
                 "required": .array([]),
             ]),
@@ -77,12 +83,24 @@ public struct BuildDeviceTool: Sendable {
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
+        let timeout = arguments.resolveTimeout(default: XcodebuildRunner.defaultTimeout)
+        let outputTimeout = arguments.resolveOutputTimeout(
+            default: XcodebuildRunner.deviceOutputTimeout,
+        )
 
         do {
-            // Look up the device to get its platform — xcodebuild doesn't recognize
-            // CoreDevice UDIDs, so we build with a generic platform destination instead
+            // Look up the device to get its platform — xcodebuild doesn't recognize CoreDevice
+            // UDIDs, so we build with a generic platform destination instead
             let connectedDevice = try await deviceCtlRunner.lookupDevice(udid: device)
             let destination = "generic/platform=\(connectedDevice.platform)"
+            let additionalArguments = arguments.continueBuildingArgs()
+                + arguments.buildSettingOverrides() + extraArgs
+            let derivedDataNote = DerivedDataScoper.note(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
 
             let result = try await xcodebuildRunner.build(
                 projectPath: projectPath,
@@ -90,13 +108,15 @@ public struct BuildDeviceTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                additionalArguments: arguments.continueBuildingArgs()
-                    + arguments.buildSettingOverrides() + extraArgs,
+                additionalArguments: additionalArguments,
                 environment: environment,
-                outputTimeout: XcodebuildRunner.deviceOutputTimeout,
+                timeout: timeout,
+                outputTimeout: outputTimeout,
             )
 
-            try ErrorExtractor.checkBuildSuccess(result, projectRoot: nil)
+            try ErrorExtractor.checkBuildSuccess(
+                result, projectRoot: nil, derivedDataNote: derivedDataNote,
+            )
 
             // Extract the built .app path from build settings
             var appPathLine = ""
@@ -106,20 +126,20 @@ public struct BuildDeviceTool: Sendable {
                 scheme: scheme,
                 configuration: configuration,
                 destination: destination,
+                outputTimeout: outputTimeout,
             )
             if let buildSettings,
-               let appPath = BuildSettingExtractor.extractAppPath(from: buildSettings.stdout)
-            {
+               let appPath = BuildSettingExtractor.extractAppPath(from: buildSettings.stdout) {
                 appPathLine = "\nApp path: \(appPath)"
             }
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Build succeeded for scheme '\(scheme)' on device '\(device)'\(appPathLine)",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result(content: [
+                .text(
+                    text:
+                        "Build succeeded for scheme '\(scheme)' on device '\(device)'\(appPathLine)"
+                        + "\n\n" + derivedDataNote,
+                    annotations: nil, _meta: nil)
+            ],)
         } catch {
             throw try error.asMCPError()
         }

@@ -103,6 +103,13 @@ public enum TestToolHelper {
                 projectPath: projectPath,
             )
 
+        let derivedDataNote = DerivedDataScoper.note(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+            destination: destination,
+            additionalArguments: additionalArguments,
+        )
+
         do {
             let outputTimeout = resolveOutputTimeout(testParams)
 
@@ -131,7 +138,7 @@ public enum TestToolHelper {
 
             let projectRoot = projectRoot(workspacePath: workspacePath, projectPath: projectPath)
 
-            var toolResult = try await ErrorExtractor.formatTestToolResult(
+            let toolResult = try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: context,
                 xcresultPath: resultBundlePath,
@@ -146,18 +153,24 @@ public enum TestToolHelper {
                 crashSimulatorUDID: crashSimulatorUDID,
             )
 
+            // Warning first, then the formatted result, then the DerivedData root. Naming the tree
+            // matters because test artifacts, build logs and resolved package checkouts all live
+            // under it, and it is not Xcode's default location.
+            var content: [Tool.Content] = []
+            content.reserveCapacity(toolResult.content.count + 2)
             if let validationWarning {
-                toolResult = CallTool.Result(
-                    content: [.text(text: validationWarning, annotations: nil, _meta: nil)]
-                        + toolResult.content,
-                    isError: toolResult.isError,
-                )
+                content.append(.text(text: validationWarning, annotations: nil, _meta: nil))
             }
+            content += toolResult.content
+            content.append(.text(text: derivedDataNote, annotations: nil, _meta: nil))
 
-            return toolResult
+            return CallTool.Result(content: content, isError: toolResult.isError)
         } catch let error as XcodebuildError {
             let projectRoot = projectRoot(workspacePath: workspacePath, projectPath: projectPath)
-            return error.formatPartialDiagnostics(projectRoot: projectRoot, errorsOnly: errorsOnly)
+            return error.formatPartialDiagnostics(
+                projectRoot: projectRoot, errorsOnly: errorsOnly,
+                derivedDataNote: derivedDataNote,
+            )
         } catch {
             throw try error.asMCPError()
         }

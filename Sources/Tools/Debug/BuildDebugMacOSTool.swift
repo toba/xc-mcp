@@ -89,7 +89,13 @@ public struct BuildDebugMacOSTool: Sendable {
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
-                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new }
+                        .merging([String: Value].timeoutSchemaProperty(defaultSeconds: 600)) {
+                            _, new in new
+                        }
+                        .merging([String: Value].outputTimeoutSchemaProperty(defaultSeconds: 30)) {
+                            _, new in new
+                        },
                 ),
                 "required": .array([]),
             ]),
@@ -110,6 +116,8 @@ public struct BuildDebugMacOSTool: Sendable {
         let launchArgs = arguments.getStringArray("args")
         let stopAtEntry = arguments.getBool("stop_at_entry")
         let skipBuild = arguments.getBool("skip_build")
+        let timeout = arguments.resolveTimeout(default: Self.buildTimeout)
+        let outputTimeout = arguments.resolveOutputTimeout(default: XcodebuildRunner.outputTimeout)
 
         // Merge session env with per-invocation env (per-invocation wins)
         let resolvedEnv = await sessionManager.resolveEnvironment(from: arguments)
@@ -139,6 +147,7 @@ public struct BuildDebugMacOSTool: Sendable {
                 scheme: scheme,
                 configuration: configuration,
                 destination: destination,
+                outputTimeout: outputTimeout,
             )
 
             // An iOS-only scheme can't resolve `-destination platform=macOS`, so the fast pass
@@ -160,6 +169,7 @@ public struct BuildDebugMacOSTool: Sendable {
                     workspacePath: workspacePath,
                     scheme: scheme,
                     configuration: configuration,
+                    outputTimeout: outputTimeout,
                 )
             }
 
@@ -194,6 +204,15 @@ public struct BuildDebugMacOSTool: Sendable {
 
             // Step 2: Build (incremental — fast if nothing changed). Skipped when the caller only
             // wants to relaunch the already-built product with new env/args.
+            let additionalArguments = arguments.continueBuildingArgs()
+                + arguments.buildSettingOverrides() + extraArgs
+            let derivedDataNote = DerivedDataScoper.note(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
+
             if skipBuild {
                 onProgress?("Skipping build (skip_build); relaunching existing product")
             } else {
@@ -203,22 +222,23 @@ public struct BuildDebugMacOSTool: Sendable {
                     scheme: scheme,
                     destination: destination,
                     configuration: configuration,
-                    additionalArguments: arguments.continueBuildingArgs()
-                        + arguments.buildSettingOverrides() + extraArgs,
+                    additionalArguments: additionalArguments,
                     environment: resolvedEnv,
-                    timeout: Self.buildTimeout,
+                    timeout: timeout,
+                    outputTimeout: outputTimeout,
                     onProgress: { line in
                         Self.logger.info("\(line)")
                         onProgress?(line)
                     },
                 )
 
-                let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)
-
-                if !buildResult.succeeded, parsedBuild.status != "success" {
-                    let errorOutput = BuildResultFormatter.formatBuildResult(parsedBuild)
-                    throw MCPError.internalError("Build failed:\n\(errorOutput)")
-                }
+                try ErrorExtractor.checkBuildSuccess(
+                    buildResult,
+                    projectRoot: ErrorExtractor.projectRoot(
+                        projectPath: projectPath, workspacePath: workspacePath,
+                    ),
+                    derivedDataNote: derivedDataNote,
+                )
             }
 
             // Step 3: Extract paths from build settings
@@ -324,6 +344,8 @@ public struct BuildDebugMacOSTool: Sendable {
                 ) { message += "\n\n" + storekitWarning }
                 message += "\n\n" + launchResult.output
             }
+
+            message += "\n\n" + derivedDataNote
 
             return CallTool.Result(
                 content: [.text(text: message, annotations: nil, _meta: nil)],

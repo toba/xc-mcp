@@ -43,6 +43,16 @@ public struct XcodebuildRunner: Sendable {
     /// threshold.
     public static let deviceOutputTimeout: Duration = .seconds(120)
 
+    /// No-output budget that applies while a command sits in the Swift package resolution phase
+    /// (600 seconds).
+    ///
+    /// Resolution clones repositories over the network and prints nothing while it runs. A package
+    /// whose repository carries a large git submodule takes minutes to fetch, and killing the
+    /// command mid-clone leaves the checkout unrecorded, so the next run starts the same clone from
+    /// zero. The standard silence budget therefore makes such a project unbuildable. This budget is
+    /// a floor: it is wide enough that the overall `timeout` governs the resolution phase. (1ec1)
+    public static let packageResolutionOutputTimeout: Duration = .seconds(600)
+
     /// The xcodebuild `-destination` value for a native macOS build. Centralized so the macOS
     /// diagnostic/read-back tools all resolve the same platform-scoped DerivedData as the build.
     public static let macOSDestination = "platform=macOS"
@@ -138,6 +148,7 @@ public struct XcodebuildRunner: Sendable {
     ) async throws -> XcodebuildResult {
         let outputCollector = OutputCollector()
         let lastOutputTime = LastOutputTime()
+        let resolutionPhase = PackageResolutionPhase()
         let startTime = ContinuousClock.now
         let timeoutDuration = Duration.seconds(timeout)
 
@@ -185,6 +196,7 @@ public struct XcodebuildRunner: Sendable {
                                     outputCollector.appendStdout(data)
                                     lastOutputTime.update()
                                     if let text = String(data: data, encoding: .utf8) {
+                                        resolutionPhase.update(from: text)
                                         onProgress?(text)
                                     }
                                 }
@@ -199,6 +211,7 @@ public struct XcodebuildRunner: Sendable {
                                     outputCollector.appendStderr(data)
                                     lastOutputTime.update()
                                     if let text = String(data: data, encoding: .utf8) {
+                                        resolutionPhase.update(from: text)
                                         onProgress?(text)
                                     }
                                 }
@@ -225,8 +238,13 @@ public struct XcodebuildRunner: Sendable {
 
                                 if let outputTimeout {
                                     let timeSinceLastOutput = lastOutputTime.timeSinceLastOutput()
+                                    // Package resolution is silent by nature, so it gets the wider
+                                    // floor instead of the caller's budget. (1ec1)
+                                    let budget = resolutionPhase.isActive
+                                        ? max(outputTimeout, Self.packageResolutionOutputTimeout)
+                                        : outputTimeout
 
-                                    if timeSinceLastOutput > outputTimeout {
+                                    if timeSinceLastOutput > budget {
                                         let (stdout, stderr) = outputCollector.getOutput()
                                         // SIGKILL the whole group so grandchildren release the
                                         // pipes and the stream readers see EOF. (ycq-rdc)
@@ -373,14 +391,15 @@ public struct XcodebuildRunner: Sendable {
 
         args += ["-scheme", scheme, "-destination", destination]
         if let configuration { args += ["-configuration", configuration] }
+        args += MacroValidation.args(additionalArguments: additionalArguments)
         args += [action]
 
         args += additionalArguments
 
         // Capture the raw combined output so `show_last_build_raw` can recover the verbatim linker
-        // diagnostic even when the parsed summary truncates it or Xcode leaves a 0-byte activity log.
-        // `run` returns normally for a BUILD FAILED (nonzero exit); it only throws on timeout/stuck,
-        // where the partial output still holds any diagnostics collected so far.
+        // diagnostic even when the parsed summary truncates it or Xcode leaves a 0-byte activity
+        // log. `run` returns normally for a BUILD FAILED (nonzero exit); it only throws on
+        // timeout/stuck, where the partial output still holds any diagnostics collected so far.
         do {
             let result = try await run(
                 arguments: args, environment: environment,
@@ -442,6 +461,7 @@ public struct XcodebuildRunner: Sendable {
 
         args += ["-target", target, "-destination", destination]
         if let configuration { args += ["-configuration", configuration] }
+        args += MacroValidation.args(additionalArguments: additionalArguments)
         args += ["build"]
 
         args += additionalArguments
@@ -525,10 +545,12 @@ public struct XcodebuildRunner: Sendable {
 
     /// Assembles the xcodebuild argument list for a `test` / `test-without-building` action.
     ///
-    /// Extracted from ``test(projectPath:workspacePath:scheme:destination:configuration:onlyTesting:skipTesting:enableCodeCoverage:resultBundlePath:testPlan:withoutBuilding:additionalArguments:environment:timeout:outputTimeout:onProgress:)``
+    /// Extracted from
+    /// ``test(projectPath:workspacePath:scheme:destination:configuration:onlyTesting:skipTesting:enableCodeCoverage:resultBundlePath:testPlan:withoutBuilding:additionalArguments:environment:timeout:outputTimeout:onProgress:)``
     /// so the flag/selector wiring can be unit-tested without spawning a process.
     ///
-    /// The scoped `-derivedDataPath` injected by ``projectArgs(projectPath:workspacePath:destination:additionalArguments:includeDerivedData:)``
+    /// The scoped `-derivedDataPath` injected by
+    /// ``projectArgs(projectPath:workspacePath:destination:additionalArguments:includeDerivedData:)``
     /// is what lets `test-without-building` locate the products a prior run compiled — the
     /// destination and `-only-testing`/`-skip-testing` selectors are preserved into that phase so a
     /// re-run can target the same subset of tests.
@@ -571,6 +593,7 @@ public struct XcodebuildRunner: Sendable {
 
         if let resultBundlePath { args += ["-resultBundlePath", resultBundlePath] }
 
+        args += MacroValidation.args(additionalArguments: additionalArguments)
         args += [withoutBuilding ? "test-without-building" : "test"]
         args += additionalArguments
 
@@ -585,6 +608,9 @@ public struct XcodebuildRunner: Sendable {
     ///   - scheme: The scheme to clean.
     ///   - configuration: Build configuration (Debug or Release). When `nil`, `-configuration` is
     ///     omitted so xcodebuild honors the scheme's configuration.
+    ///   - timeout: Maximum time to wait for the clean to complete.
+    ///   - outputTimeout: Silence budget before the command counts as stuck. `nil` disables the
+    ///     check.
     /// - Returns: The clean result containing exit code and output.
     /// - Throws: An error if the process fails to launch.
     public func clean(
@@ -592,6 +618,8 @@ public struct XcodebuildRunner: Sendable {
         workspacePath: String? = nil,
         scheme: String,
         configuration: String? = nil,
+        timeout: TimeInterval = defaultTimeout,
+        outputTimeout: Duration? = outputTimeout,
     ) async throws -> XcodebuildResult {
         var args = Self.projectArgs(projectPath: projectPath, workspacePath: workspacePath)
 
@@ -599,7 +627,52 @@ public struct XcodebuildRunner: Sendable {
         if let configuration { args += ["-configuration", configuration] }
         args += ["clean"]
 
-        return try await run(arguments: args)
+        return try await run(
+            arguments: args, timeout: timeout,
+            outputTimeout: outputTimeout, onProgress: nil,
+        )
+    }
+
+    /// Resolves Swift Package dependencies without building.
+    ///
+    /// Resolution honors the pins in `Package.resolved`. To move a pin, drop it from that file
+    /// first — SwiftPM then picks the newest version the project's requirement allows.
+    ///
+    /// - Parameters:
+    ///   - projectPath: Path to the .xcodeproj file (mutually exclusive with workspacePath).
+    ///   - workspacePath: Path to the .xcworkspace file (mutually exclusive with projectPath).
+    ///   - scheme: Scheme to resolve for, or `nil` to resolve the whole project.
+    ///   - destination: Destination used to namespace the scoped DerivedData the checkouts land in.
+    ///   - additionalArguments: Extra arguments to pass to xcodebuild.
+    ///   - timeout: Maximum time to wait for resolution to finish.
+    ///   - outputTimeout: Silence budget before the command counts as stuck. `nil` disables the
+    ///     check.
+    /// - Returns: The result containing exit code and output.
+    /// - Throws: An error if the process fails to launch.
+    public func resolvePackageDependencies(
+        projectPath: String? = nil,
+        workspacePath: String? = nil,
+        scheme: String? = nil,
+        destination: String? = nil,
+        additionalArguments: [String] = [],
+        timeout: TimeInterval = defaultTimeout,
+        outputTimeout: Duration? = deviceOutputTimeout,
+        onProgress: (@Sendable (String) -> Void)? = nil,
+    ) async throws -> XcodebuildResult {
+        var args = Self.projectArgs(
+            projectPath: projectPath, workspacePath: workspacePath,
+            destination: destination, additionalArguments: additionalArguments,
+        )
+
+        if let scheme { args += ["-scheme", scheme] }
+        args += MacroValidation.args(additionalArguments: additionalArguments)
+        args += ["-resolvePackageDependencies"]
+        args += additionalArguments
+
+        return try await run(
+            arguments: args, timeout: timeout,
+            outputTimeout: outputTimeout, onProgress: onProgress,
+        )
     }
 
     /// Lists all schemes in a project or workspace.
@@ -607,11 +680,16 @@ public struct XcodebuildRunner: Sendable {
     /// - Parameters:
     ///   - projectPath: Path to the .xcodeproj file (mutually exclusive with workspacePath).
     ///   - workspacePath: Path to the .xcworkspace file (mutually exclusive with projectPath).
+    ///   - timeout: Maximum time to wait for the query to complete.
+    ///   - outputTimeout: Silence budget before the command counts as stuck. `nil` disables the
+    ///     check. A project with unresolved packages prints nothing until resolution finishes.
     /// - Returns: The result containing JSON-formatted scheme list.
     /// - Throws: An error if the process fails to launch.
     public func listSchemes(
         projectPath: String? = nil,
         workspacePath: String? = nil,
+        timeout: TimeInterval = defaultTimeout,
+        outputTimeout: Duration? = outputTimeout,
     ) async throws -> XcodebuildResult {
         var args: [String] = ["-list", "-json"]
         args += Self.projectArgs(
@@ -619,7 +697,10 @@ public struct XcodebuildRunner: Sendable {
             includeDerivedData: false,
         )
 
-        return try await run(arguments: args)
+        return try await run(
+            arguments: args, timeout: timeout,
+            outputTimeout: outputTimeout, onProgress: nil,
+        )
     }
 
     /// Shows build settings for a scheme.
@@ -630,6 +711,10 @@ public struct XcodebuildRunner: Sendable {
     ///   - scheme: The scheme to query.
     ///   - configuration: Build configuration (Debug or Release). When `nil`, `-configuration` is
     ///     omitted so xcodebuild reports settings for the scheme's own configuration.
+    ///   - destination: Destination that narrows the settings to one platform.
+    ///   - timeout: Maximum time to wait for the query to complete.
+    ///   - outputTimeout: Silence budget before the command counts as stuck. `nil` disables the
+    ///     check. A project with unresolved packages prints nothing until resolution finishes.
     /// - Returns: The result containing JSON-formatted build settings.
     /// - Throws: An error if the process fails to launch.
     public func showBuildSettings(
@@ -638,6 +723,8 @@ public struct XcodebuildRunner: Sendable {
         scheme: String,
         configuration: String? = nil,
         destination: String? = nil,
+        timeout: TimeInterval = defaultTimeout,
+        outputTimeout: Duration? = outputTimeout,
     ) async throws -> XcodebuildResult {
         var args = Self.projectArgs(
             projectPath: projectPath, workspacePath: workspacePath,
@@ -651,7 +738,10 @@ public struct XcodebuildRunner: Sendable {
 
         args += ["-showBuildSettings", "-json"]
 
-        return try await run(arguments: args)
+        return try await run(
+            arguments: args, timeout: timeout,
+            outputTimeout: outputTimeout, onProgress: nil,
+        )
     }
 }
 
@@ -705,6 +795,7 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
         projectRoot: String?,
         errorsOnly: Bool = false,
         showWarnings: Bool = false,
+        derivedDataNote: String? = nil,
     ) -> CallTool.Result {
         let parsed = ErrorExtractor.parseBuildOutput(partialOutput)
         let header = errorDescription ?? "Build timed out"
@@ -723,6 +814,8 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
             let progressSummary = Self.extractBuildProgress(from: partialOutput)
             if !progressSummary.isEmpty { text += "\n\n" + progressSummary }
         }
+
+        if let derivedDataNote { text += "\n\n" + derivedDataNote }
 
         return CallTool.Result(
             content: [.text(text: text, annotations: nil, _meta: nil)],
@@ -820,6 +913,53 @@ private final class OutputCollector: Sendable {
         let err = stderrData.withLock { String(data: $0, encoding: .utf8) ?? "" }
         return (out, err)
     }
+}
+
+/// Thread-safe tracker for whether a command is inside the Swift package resolution phase.
+///
+/// Resolution fetches and checks out package repositories and prints nothing while it runs. The
+/// stuck-process watchdog widens its silence budget for that phase, so it needs to know when the
+/// phase is active. The last line of output decides: a resolution marker enters the phase, and any
+/// other line leaves it.
+final class PackageResolutionPhase: Sendable {
+    /// True until output proves the command has left the resolution phase. The phase starts active
+    /// because xcodebuild resolves the package graph before it prints its first line. A `-list` or
+    /// `-showBuildSettings` query on an unresolved project prints nothing at all until resolution
+    /// finishes. (1ec1)
+    private let active = Mutex(true)
+
+    /// Whether the most recent output puts the command in the resolution phase.
+    var isActive: Bool { active.withLock { $0 } }
+
+    /// Updates the phase from a chunk of output.
+    ///
+    /// The last non-empty line in the chunk decides the phase. Only that line is matched against
+    /// the markers, and the lock is taken once. Both stream readers call this for every chunk of
+    /// every build, so matching each line in turn would repeat work the next line discards.
+    func update(from text: String) {
+        guard let last = text.split(separator: "\n")
+            .last(where: { !$0.allSatisfy(\.isWhitespace) })
+        else { return }
+        let trimmed = last.drop(while: \.isWhitespace)
+        let entering = Self.markers.contains { trimmed.hasPrefix($0) }
+        active.withLock { $0 = entering }
+    }
+
+    /// Line prefixes xcodebuild prints as it enters a phase that resolves, fetches, or checks out
+    /// package dependencies, plus the dependency-graph pass that follows resolution. Each of these
+    /// lines is followed by silence on a cold checkout.
+    private static let markers = [
+        "Resolve Package Graph",
+        "Resolving package graph",
+        "Fetching from ",
+        "Fetching https://",
+        "Cloning ",
+        "Checking out ",
+        "Updating from ",
+        "Prepare packages",
+        "Resolved source packages:",
+        "Computing target dependency graph",
+    ]
 }
 
 /// Thread-safe tracker for the last time output was received.

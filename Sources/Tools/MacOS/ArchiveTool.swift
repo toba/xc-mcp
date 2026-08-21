@@ -12,21 +12,114 @@ import Subprocess
 ///   codesign + dSYM extraction, and the embedded-frameworks copy phase.
 /// - Archive resolves the explicit-module-build dependency graph against
 ///   `ArchiveIntermediates/<scheme>/...` instead of `Build/Intermediates.noindex/...`, so
-///   structural archive bugs (mergeable-library duplicate symbols, cross-platform module
-///   leakage) only reproduce here.
+///   structural archive bugs (mergeable-library duplicate symbols, cross-platform module leakage)
+///   only reproduce here.
 public struct ArchiveTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager,
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        // Hoisted out of the `Tool` literal below. The property list is long enough that inlining
+        // it puts the whole initializer past the type-checker's budget.
+        let properties: [String: Value] = [
+            "project_path": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Path to the .xcodeproj file. Uses session default if not specified.",
+                ),
+            ]),
+            "workspace_path": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Path to the .xcworkspace file. Uses session default if not specified.",
+                ),
+            ]),
+            "scheme": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "The scheme to archive. Uses session default if not specified.",
+                ),
+            ]),
+            "configuration": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Build configuration. Defaults to Release (matches Xcode Cloud).",
+                ),
+            ]),
+            "platform": .object([
+                "type": .string("string"),
+                "enum": .array([.string("macOS"), .string("iOS")]),
+                "description": .string(
+                    "Target platform. Sets destination to 'generic/platform=macOS' "
+                        + "or 'generic/platform=iOS'. Defaults to 'macOS'.",
+                ),
+            ]),
+            "archive_path": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Path where the .xcarchive bundle will be written. Required.",
+                ),
+            ]),
+            "code_signing_allowed": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "When false (default), passes CODE_SIGNING_ALLOWED=NO and "
+                        + "CODE_SIGNING_REQUIRED=NO so the archive runs without provisioning "
+                        + "profiles — matches the XCC pre-archive flags used for CI repro. "
+                        + "Set to true when you need a real signed archive for export.",
+                ),
+            ]),
+            "skip_macro_validation": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "When true, passes -skipMacroValidation. Mirrors XCC pre-archive flags.",
+                ),
+            ]),
+            "skip_package_plugin_validation": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "When true, passes -skipPackagePluginValidation. Mirrors XCC "
+                        + "pre-archive flags.",
+                ),
+            ]),
+            "errors_only": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "When true, only show compiler errors, linker errors, and the "
+                        + "build summary — all warnings are suppressed.",
+                ),
+            ]),
+            "show_warnings": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "When true, include detailed compiler warnings in the output.",
+                ),
+            ]),
+            "timeout": .object([
+                "type": .string("integer"),
+                "description": .string(
+                    "Maximum time in seconds for the archive. Defaults to 600 "
+                        + "(10 minutes — archives are slower than builds due to the "
+                        + "Install action, dSYM extraction, and mergeable-library link).",
+                ),
+            ]),
+        ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
+            .merging([String: Value].enableSanitizersSchemaProperty) { _, new in new }
+            .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
+            .merging([String: Value].extraArgsSchemaProperty) { _, new in new }
+            .merging([String: Value].outputTimeoutSchemaProperty(defaultSeconds: 30)) { _, new in
+                new
+            }
+
+        return .init(
             name: "archive",
             description:
                 "Build an .xcarchive for macOS or iOS via `xcodebuild archive`. Reproduces "
@@ -36,94 +129,7 @@ public struct ArchiveTool: Sendable {
                 + "failures that `build_macos` and `build_sim` miss.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object(
-                    [
-                        "project_path": .object([
-                            "type": .string("string"),
-                            "description": .string(
-                                "Path to the .xcodeproj file. Uses session default if not specified.",
-                            ),
-                        ]),
-                        "workspace_path": .object([
-                            "type": .string("string"),
-                            "description": .string(
-                                "Path to the .xcworkspace file. Uses session default if not specified.",
-                            ),
-                        ]),
-                        "scheme": .object([
-                            "type": .string("string"),
-                            "description": .string(
-                                "The scheme to archive. Uses session default if not specified.",
-                            ),
-                        ]),
-                        "configuration": .object([
-                            "type": .string("string"),
-                            "description": .string(
-                                "Build configuration. Defaults to Release (matches Xcode Cloud).",
-                            ),
-                        ]),
-                        "platform": .object([
-                            "type": .string("string"),
-                            "enum": .array([.string("macOS"), .string("iOS")]),
-                            "description": .string(
-                                "Target platform. Sets destination to 'generic/platform=macOS' "
-                                + "or 'generic/platform=iOS'. Defaults to 'macOS'.",
-                            ),
-                        ]),
-                        "archive_path": .object([
-                            "type": .string("string"),
-                            "description": .string(
-                                "Path where the .xcarchive bundle will be written. Required.",
-                            ),
-                        ]),
-                        "code_signing_allowed": .object([
-                            "type": .string("boolean"),
-                            "description": .string(
-                                "When false (default), passes CODE_SIGNING_ALLOWED=NO and "
-                                + "CODE_SIGNING_REQUIRED=NO so the archive runs without provisioning "
-                                + "profiles — matches the XCC pre-archive flags used for CI repro. "
-                                + "Set to true when you need a real signed archive for export.",
-                            ),
-                        ]),
-                        "skip_macro_validation": .object([
-                            "type": .string("boolean"),
-                            "description": .string(
-                                "When true, passes -skipMacroValidation. Mirrors XCC pre-archive flags.",
-                            ),
-                        ]),
-                        "skip_package_plugin_validation": .object([
-                            "type": .string("boolean"),
-                            "description": .string(
-                                "When true, passes -skipPackagePluginValidation. Mirrors XCC "
-                                + "pre-archive flags.",
-                            ),
-                        ]),
-                        "errors_only": .object([
-                            "type": .string("boolean"),
-                            "description": .string(
-                                "When true, only show compiler errors, linker errors, and the "
-                                + "build summary — all warnings are suppressed.",
-                            ),
-                        ]),
-                        "show_warnings": .object([
-                            "type": .string("boolean"),
-                            "description": .string(
-                                "When true, include detailed compiler warnings in the output.",
-                            ),
-                        ]),
-                        "timeout": .object([
-                            "type": .string("integer"),
-                            "description": .string(
-                                "Maximum time in seconds for the archive. Defaults to 600 "
-                                + "(10 minutes — archives are slower than builds due to the "
-                                + "Install action, dSYM extraction, and mergeable-library link).",
-                            ),
-                        ]),
-                    ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
-                        .merging([String: Value].enableSanitizersSchemaProperty) { _, new in new }
-                        .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
-                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
-                ),
+                "properties": .object(properties),
                 "required": .array([.string("archive_path")]),
             ]),
             annotations: .mutation,
@@ -147,13 +153,11 @@ public struct ArchiveTool: Sendable {
         let skipPackagePluginValidation = arguments.getBool("skip_package_plugin_validation")
         let errorsOnly = arguments.getBool("errors_only")
         let showWarnings = arguments.getBool("show_warnings")
-        let timeout =
-            arguments.getInt("timeout").map { TimeInterval($0) } ?? 600
+        let timeout = arguments.resolveTimeout(default: 600)
+        let outputTimeout = arguments.resolveOutputTimeout(default: XcodebuildRunner.outputTimeout)
 
         guard platform == "macOS" || platform == "iOS" else {
-            throw MCPError.invalidParams(
-                "platform must be 'macOS' or 'iOS' (got '\(platform)')",
-            )
+            throw MCPError.invalidParams("platform must be 'macOS' or 'iOS' (got '\(platform)')")
         }
 
         let projectRoot = ErrorExtractor.projectRoot(
@@ -168,6 +172,7 @@ public struct ArchiveTool: Sendable {
                     workspacePath: workspacePath,
                     scheme: scheme,
                     configuration: configuration,
+                    outputTimeout: outputTimeout,
                 )
             }
 
@@ -176,6 +181,7 @@ public struct ArchiveTool: Sendable {
             var extra: [String] = ["-archivePath", archivePath]
             if skipMacroValidation { extra.append("-skipMacroValidation") }
             if skipPackagePluginValidation { extra.append("-skipPackagePluginValidation") }
+
             if !codeSigningAllowed {
                 extra += [
                     "CODE_SIGNING_ALLOWED=NO",
@@ -185,7 +191,6 @@ public struct ArchiveTool: Sendable {
                 ]
             }
 
-            let hasExplicitTimeout = arguments["timeout"] != nil
             let result = try await xcodebuildRunner.build(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
@@ -200,25 +205,25 @@ public struct ArchiveTool: Sendable {
                     + extraArgs,
                 environment: environment,
                 timeout: timeout,
-                outputTimeout: hasExplicitTimeout ? nil : XcodebuildRunner.outputTimeout,
+                outputTimeout: outputTimeout,
             )
 
             try ErrorExtractor.checkBuildSuccess(
                 result, projectRoot: projectRoot, errorsOnly: errorsOnly,
             )
 
-            // Defense in depth: xcodebuild can report success without writing the .xcarchive
-            // bundle — for example when the output-stuck watchdog short-circuits during the
-            // install/codesign phase after the build phase printed a terminal marker. Verify
-            // the bundle actually exists so callers don't get a misleading "succeeded" message
-            // and then fail to find the archive on disk. (y04-t3c)
+            // Defense in depth: xcodebuild can report success without writing the .xcarchive bundle
+            // — for example when the output-stuck watchdog short-circuits during the
+            // install/codesign phase after the build phase printed a terminal marker. Verify the
+            // bundle actually exists so callers don't get a misleading "succeeded" message and then
+            // fail to find the archive on disk. (y04-t3c)
             if !FileManager.default.fileExists(atPath: archivePath) {
                 throw MCPError.internalError(
                     "xcodebuild reported archive success for scheme '\(scheme)' (\(platform)), "
-                    + "but no .xcarchive bundle was created at \(archivePath). "
-                    + "The build phase likely completed while the install/codesign phase was "
-                    + "still running. Retry with a larger `timeout`, or inspect the build log "
-                    + "via show_build_log.",
+                        + "but no .xcarchive bundle was created at \(archivePath). "
+                        + "The build phase likely completed while the install/codesign phase was "
+                        + "still running. Retry with a larger `timeout`, or inspect the build log "
+                        + "via show_build_log.",
                 )
             }
 
@@ -226,14 +231,9 @@ public struct ArchiveTool: Sendable {
                 from: result.output, projectRoot: projectRoot, errorsOnly: errorsOnly,
                 showWarnings: showWarnings,
             )
-            var text =
-                "Archive succeeded for scheme '\(scheme)' (\(platform)) at \(archivePath)"
-            if !summary.isEmpty, summary != "Build succeeded" {
-                text += "\n\n" + summary
-            }
-            return CallTool.Result(
-                content: [.text(text: text, annotations: nil, _meta: nil)],
-            )
+            var text = "Archive succeeded for scheme '\(scheme)' (\(platform)) at \(archivePath)"
+            if !summary.isEmpty, summary != "Build succeeded" { text += "\n\n" + summary }
+            return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
         } catch let error as XcodebuildError {
             return error.formatPartialDiagnostics(
                 projectRoot: projectRoot, errorsOnly: errorsOnly, showWarnings: showWarnings,

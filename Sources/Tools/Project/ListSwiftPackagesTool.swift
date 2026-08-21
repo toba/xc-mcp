@@ -49,7 +49,7 @@ public struct ListSwiftPackagesTool: Sendable {
 
             // List remote packages
             for remotePackage in project.remotePackages {
-                let requirement = formatVersionRequirement(
+                let requirement = PackageRequirement.format(
                     remotePackage.versionRequirement ?? .exact("unknown"),
                 )
                 let url = remotePackage.repositoryURL ?? "unknown"
@@ -90,16 +90,4 @@ public struct ListSwiftPackagesTool: Sendable {
         }
     }
 
-    private func formatVersionRequirement(
-        _ requirement: XCRemoteSwiftPackageReference.VersionRequirement,
-    ) -> String {
-        switch requirement {
-            case let .exact(version): "exact: \(version)"
-            case let .upToNextMajorVersion(version): "from: \(version)"
-            case let .upToNextMinorVersion(version): "upToNextMinor: \(version)"
-            case let .range(from, to): "range: \(from) - \(to)"
-            case let .branch(branch): "branch: \(branch)"
-            case let .revision(revision): "revision: \(revision)"
-        }
-    }
 }

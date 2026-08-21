@@ -420,6 +420,12 @@ public actor SessionManager {
         lines.append("Configuration: \(configuration ?? "(not set)")")
         lines.append("Simulator: \(simulatorUDID ?? "(not set)")")
         lines.append("Device: \(deviceUDID ?? "(not set)")")
+        lines.append(
+            "DerivedData: "
+                + DerivedDataScoper.sessionNote(
+                    workspacePath: workspacePath, projectPath: projectPath,
+                ),
+        )
 
         if let env, !env.isEmpty {
             lines.append("Environment:")

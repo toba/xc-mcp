@@ -7,16 +7,16 @@ public struct SwiftPackageBuildTool: Sendable {
     private let swiftRunner: SwiftRunner
     private let sessionManager: SessionManager
 
-    public init(swiftRunner: SwiftRunner = SwiftRunner(), sessionManager: SessionManager) {
+    public init(swiftRunner: SwiftRunner = .init(), sessionManager: SessionManager) {
         self.swiftRunner = swiftRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "swift_package_build",
             description:
-            "Build a Swift package. Supports building specific products and configurations.",
+                "Build a Swift package. Supports building specific products and configurations.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -41,9 +41,7 @@ public struct SwiftPackageBuildTool: Sendable {
                     ]),
                     "build_tests": .object([
                         "type": .string("boolean"),
-                        "description": .string(
-                            "Also build test targets. Defaults to false.",
-                        ),
+                        "description": .string("Also build test targets. Defaults to false."),
                     ]),
                     "timeout": .object([
                         "type": .string("integer"),
@@ -67,7 +65,7 @@ public struct SwiftPackageBuildTool: Sendable {
         let product = arguments.getString("product")
         let buildTests = arguments.getBool("build_tests")
         let environment = await sessionManager.resolveEnvironment(from: arguments)
-        let explicitTimeout = arguments.getInt("timeout").map { Duration.seconds($0) }
+        let explicitTimeout = arguments.explicitTimeout()
         let isCold = SwiftRunner.isColdCache(packagePath: packagePath)
         let timeout = explicitTimeout
             ?? (isCold ? SwiftRunner.coldCacheTimeout : SwiftRunner.defaultTimeout)
@@ -85,6 +83,7 @@ public struct SwiftPackageBuildTool: Sendable {
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
         let buildStart = ContinuousClock.now
+
         do {
             let result = try await swiftRunner.build(
                 packagePath: packagePath,
@@ -101,13 +100,10 @@ public struct SwiftPackageBuildTool: Sendable {
             if result.succeeded || buildResult.status == "success" {
                 let elapsed = buildStart.duration(to: .now).elapsedDescription
                 var message = "Build succeeded"
-                if let product {
-                    message += " for product '\(product)'"
-                }
+                if let product { message += " for product '\(product)'" }
                 message += " (\(configuration) configuration, \(elapsed))"
 
-                return CallTool.Result(
-                    content: [.text(text: message, annotations: nil, _meta: nil)],
+                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
                 )
             }
 
@@ -132,8 +128,8 @@ public struct SwiftPackageBuildTool: Sendable {
             let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
             throw MCPError.internalError("Build failed:\n\(errorOutput)")
         } catch let ProcessError.timeout(duration) {
-            var message =
-                "swift build timed out after \(duration) (package: \(packagePath))."
+            var message = "swift build timed out after \(duration) (package: \(packagePath))."
+
             if explicitTimeout == nil, isCold {
                 message +=
                     " Detected a cold SwiftPM cache; the cold-cache timeout (\(SwiftRunner.coldCacheTimeout)) was used."

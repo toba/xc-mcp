@@ -70,7 +70,10 @@ public struct BuildRunMacOSTool: Sendable {
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].enableSanitizersSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
-                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new }
+                        .merging([String: Value].outputTimeoutSchemaProperty(defaultSeconds: 30)) {
+                            _, new in new
+                        },
                 ),
                 "required": .array([]),
             ]),
@@ -88,8 +91,8 @@ public struct BuildRunMacOSTool: Sendable {
         let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
         let arch = arguments.getString("arch")
         let launchArgs = arguments.getStringArray("args")
-        let timeout = arguments.getInt("timeout").map { TimeInterval($0) }
-            ?? XcodebuildRunner.defaultTimeout
+        let timeout = arguments.resolveTimeout(default: XcodebuildRunner.defaultTimeout)
+        let outputTimeout = arguments.resolveOutputTimeout(default: XcodebuildRunner.outputTimeout)
 
         let projectRoot = ErrorExtractor.projectRoot(
             projectPath: projectPath, workspacePath: workspacePath,
@@ -102,33 +105,37 @@ public struct BuildRunMacOSTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 configuration: configuration,
+                outputTimeout: outputTimeout,
             )
 
             var destination = XcodebuildRunner.macOSDestination
             if let arch { destination += ",arch=\(arch)" }
 
+            let additionalArguments = arguments.continueBuildingArgs()
+                + arguments.enableSanitizersArgs() + arguments.buildSettingOverrides() + extraArgs
+            let derivedDataNote = DerivedDataScoper.note(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
+
             // Step 1: Build
-            let hasExplicitTimeout = arguments["timeout"] != nil
             let buildResult = try await xcodebuildRunner.build(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                additionalArguments: arguments.continueBuildingArgs()
-                    + arguments.enableSanitizersArgs() + arguments.buildSettingOverrides()
-                    + extraArgs,
+                additionalArguments: additionalArguments,
                 environment: environment,
                 timeout: timeout,
-                outputTimeout: hasExplicitTimeout ? nil : XcodebuildRunner.outputTimeout,
+                outputTimeout: outputTimeout,
             )
 
-            let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)
-
-            if !buildResult.succeeded, parsedBuild.status != "success" {
-                let errorOutput = BuildResultFormatter.formatBuildResult(parsedBuild)
-                throw MCPError.internalError("Build failed:\n\(errorOutput)")
-            }
+            try ErrorExtractor.checkBuildSuccess(
+                buildResult, projectRoot: projectRoot, derivedDataNote: derivedDataNote,
+            )
 
             // Step 2: Get app path from build settings (same destination as the build, so the
             // platform-scoped DerivedData resolves to the slice we just produced)
@@ -138,6 +145,7 @@ public struct BuildRunMacOSTool: Sendable {
                 scheme: scheme,
                 configuration: configuration,
                 destination: destination,
+                outputTimeout: outputTimeout,
             )
 
             guard let appPath = extractAppPath(from: buildSettings.stdout) else {
@@ -185,13 +193,22 @@ public struct BuildRunMacOSTool: Sendable {
                     }
                 }
 
+                message += "\n\n" + derivedDataNote
+
                 return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
                 )
             } else {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }
         } catch let error as XcodebuildError {
-            return error.formatPartialDiagnostics(projectRoot: projectRoot)
+            return error.formatPartialDiagnostics(
+                projectRoot: projectRoot,
+                derivedDataNote: DerivedDataScoper.note(
+                    workspacePath: workspacePath,
+                    projectPath: projectPath,
+                    destination: XcodebuildRunner.macOSDestination,
+                ),
+            )
         } catch {
             throw try error.asMCPError()
         }

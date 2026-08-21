@@ -187,4 +187,66 @@ struct DerivedDataScoperTests {
         )
         #expect(path?.hasSuffix("-iphonesimulator") == true)
     }
+
+    // MARK: - Result notes
+
+    @Test func `note names the scoped path a build writes to`() {
+        let note = DerivedDataScoper.note(
+            workspacePath: nil,
+            projectPath: "/Users/me/Developer/MyApp.xcodeproj",
+            destination: "platform=macOS",
+            environment: [:],
+        )
+        #expect(note.hasPrefix("DerivedData: "))
+        #expect(note.contains("/Library/Caches/xc-mcp/DerivedData/MyApp-"))
+        #expect(note.hasSuffix("-macosx"))
+    }
+
+    @Test func `note reports the caller-supplied path`() {
+        let note = DerivedDataScoper.note(
+            workspacePath: nil,
+            projectPath: "/Users/me/Developer/MyApp.xcodeproj",
+            destination: "platform=macOS",
+            additionalArguments: ["-derivedDataPath", "/tmp/custom"],
+            environment: [:],
+        )
+        #expect(note == "DerivedData: /tmp/custom (from -derivedDataPath)")
+    }
+
+    @Test func `note reports Xcode default when scoping is off`() {
+        let note = DerivedDataScoper.note(
+            workspacePath: nil,
+            projectPath: "/Users/me/Developer/MyApp.xcodeproj",
+            destination: "platform=macOS",
+            environment: ["XC_MCP_DISABLE_DERIVED_DATA_SCOPING": "1"],
+        )
+        #expect(note.contains("Xcode default"))
+        #expect(note.contains("/Library/Developer/Xcode/DerivedData"))
+    }
+
+    @Test func `note reports the environment override`() {
+        let note = DerivedDataScoper.note(
+            workspacePath: nil,
+            projectPath: "/Users/me/Developer/MyApp.xcodeproj",
+            environment: ["XC_MCP_DERIVED_DATA_PATH": "/tmp/forced"],
+        )
+        #expect(note == "DerivedData: /tmp/forced")
+    }
+
+    @Test func `sessionNote shows a platform placeholder`() {
+        let note = DerivedDataScoper.sessionNote(
+            workspacePath: nil,
+            projectPath: "/Users/me/Developer/MyApp.xcodeproj",
+            environment: [:],
+        )
+        #expect(note.contains("/MyApp-"))
+        #expect(note.hasSuffix("-<platform>"))
+    }
+
+    @Test func `sessionNote reports when no project is set`() {
+        let note = DerivedDataScoper.sessionNote(
+            workspacePath: nil, projectPath: nil, environment: [:],
+        )
+        #expect(note == "(no project or workspace set)")
+    }
 }

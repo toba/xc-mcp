@@ -9,8 +9,8 @@ public struct BuildDeployDeviceTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        deviceCtlRunner: DeviceCtlRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -19,10 +19,10 @@ public struct BuildDeployDeviceTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "build_deploy_device",
             description:
-            "Build, install, and launch an app on a connected device in one step. Builds for the device platform, stops any running instance, installs the .app, and launches it.",
+                "Build, install, and launch an app on a connected device in one step. Builds for the device platform, stops any running instance, installs the .app, and launches it.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -59,7 +59,13 @@ public struct BuildDeployDeviceTool: Sendable {
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
-                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new }
+                        .merging([String: Value].timeoutSchemaProperty(defaultSeconds: 300)) {
+                            _, new in new
+                        }
+                        .merging([String: Value].outputTimeoutSchemaProperty(defaultSeconds: 120)) {
+                            _, new in new
+                        },
                 ),
                 "required": .array([]),
             ]),
@@ -76,6 +82,10 @@ public struct BuildDeployDeviceTool: Sendable {
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
+        let timeout = arguments.resolveTimeout(default: XcodebuildRunner.defaultTimeout)
+        let outputTimeout = arguments.resolveOutputTimeout(
+            default: XcodebuildRunner.deviceOutputTimeout,
+        )
 
         var steps: [String] = []
 
@@ -83,6 +93,14 @@ public struct BuildDeployDeviceTool: Sendable {
             // Step 1: Look up device platform for generic destination
             let connectedDevice = try await deviceCtlRunner.lookupDevice(udid: device)
             let destination = "generic/platform=\(connectedDevice.platform)"
+            let additionalArguments = arguments.continueBuildingArgs()
+                + arguments.buildSettingOverrides() + extraArgs
+            let derivedDataNote = DerivedDataScoper.note(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
 
             // Step 2: Build
             let buildResult = try await xcodebuildRunner.build(
@@ -91,12 +109,14 @@ public struct BuildDeployDeviceTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                additionalArguments: arguments.continueBuildingArgs()
-                    + arguments.buildSettingOverrides() + extraArgs,
+                additionalArguments: additionalArguments,
                 environment: environment,
-                outputTimeout: XcodebuildRunner.deviceOutputTimeout,
+                timeout: timeout,
+                outputTimeout: outputTimeout,
             )
-            try ErrorExtractor.checkBuildSuccess(buildResult, projectRoot: nil)
+            try ErrorExtractor.checkBuildSuccess(
+                buildResult, projectRoot: nil, derivedDataNote: derivedDataNote,
+            )
             steps.append("✓ Build succeeded")
 
             // Step 3: Extract app path and bundle ID from build settings
@@ -106,22 +126,17 @@ public struct BuildDeployDeviceTool: Sendable {
                 scheme: scheme,
                 configuration: configuration,
                 destination: destination,
+                outputTimeout: outputTimeout,
             )
 
-            guard
-                let appPath = BuildSettingExtractor.extractAppPath(
-                    from: buildSettings.stdout,
-                )
+            guard let appPath = BuildSettingExtractor.extractAppPath(from: buildSettings.stdout)
             else {
                 throw MCPError.internalError(
                     "Build succeeded but could not determine .app path from build settings.",
                 )
             }
 
-            guard
-                let bundleId = BuildSettingExtractor.extractBundleId(
-                    from: buildSettings.stdout,
-                )
+            guard let bundleId = BuildSettingExtractor.extractBundleId(from: buildSettings.stdout)
             else {
                 throw MCPError.internalError(
                     "Build succeeded but could not determine bundle identifier from build settings.",
@@ -136,41 +151,32 @@ public struct BuildDeployDeviceTool: Sendable {
                 switch error {
                     case .processNotFound:
                         steps.append("– No running instance of '\(bundleId)' to stop")
-                    default:
-                        steps.append("⚠ Could not stop app: \(error.localizedDescription)")
+                    default: steps.append("⚠ Could not stop app: \(error.localizedDescription)")
                 }
             }
 
             // Step 5: Install
-            let installResult = try await deviceCtlRunner.install(
-                udid: device, appPath: appPath,
-            )
+            let installResult = try await deviceCtlRunner.install(udid: device, appPath: appPath)
             guard installResult.succeeded else {
-                throw MCPError.internalError(
-                    "Install failed: \(installResult.errorOutput)",
-                )
+                throw MCPError.internalError("Install failed: \(installResult.errorOutput)")
             }
             steps.append("✓ Installed '\(appPath)'")
 
             // Step 6: Launch
-            let launchResult = try await deviceCtlRunner.launch(
-                udid: device, bundleId: bundleId,
-            )
+            let launchResult = try await deviceCtlRunner.launch(udid: device, bundleId: bundleId)
             guard launchResult.succeeded else {
-                throw MCPError.internalError(
-                    "Launch failed: \(launchResult.errorOutput)",
-                )
+                throw MCPError.internalError("Launch failed: \(launchResult.errorOutput)")
             }
             steps.append("✓ Launched '\(bundleId)'")
 
             let summary = steps.joined(separator: "\n")
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Build and deploy succeeded for scheme '\(scheme)' on device '\(device)'\n\n\(summary)",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result(content: [
+                .text(
+                    text:
+                        "Build and deploy succeeded for scheme '\(scheme)' on device '\(device)'\n\n\(summary)"
+                        + "\n\n" + derivedDataNote,
+                    annotations: nil, _meta: nil)
+            ],)
         } catch {
             let progress = steps.isEmpty ? "" : "\n\nProgress:\n\(steps.joined(separator: "\n"))"
             throw MCPError.internalError(

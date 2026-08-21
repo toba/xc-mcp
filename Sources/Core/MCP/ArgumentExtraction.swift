@@ -1,4 +1,5 @@
 import MCP
+import Foundation
 
 /// Holds extracted test selection and coverage parameters.
 public struct TestParameters: Sendable {
@@ -195,6 +196,112 @@ extension [String: Value] {
         "isolated", "nonisolated", "macro",
     ]
 
+    /// Resolves the no-output ("stuck process") budget for a build or query tool.
+    ///
+    /// The precedence is:
+    /// 1. An explicit `output_timeout` wins. Any value at or below `0` disables the check. A
+    ///    negative budget would otherwise fire on the first watchdog tick and report a stuck build
+    ///    that never stalled.
+    /// 2. An explicit `timeout` with no `output_timeout` disables the check. A caller who sets an
+    ///    overall budget has already bounded the run, so the silence heuristic only adds a way to
+    ///    kill a build that is still making progress.
+    /// 3. Otherwise the supplied default applies.
+    ///
+    /// The Swift package resolution phase gets a wider floor inside the runner regardless of this
+    /// value. See ``XcodebuildRunner/packageResolutionOutputTimeout``.
+    ///
+    /// - Parameter defaultTimeout: The budget to use when the caller supplies neither parameter.
+    /// - Returns: The budget, or `nil` when the silence check is off.
+    public func resolveOutputTimeout(default defaultTimeout: Duration) -> Duration? {
+        if let seconds = getInt("output_timeout") { return seconds <= 0 ? nil : .seconds(seconds) }
+        return self["timeout"] != nil ? nil : defaultTimeout
+    }
+
+    /// Extracts the caller's `timeout` argument as a `Duration`, or `nil` when they omit it.
+    ///
+    /// A tool that picks its fallback from context, such as a cold build cache, has to tell an
+    /// explicit value from an absent one. Those tools take the optional and branch on it. Every
+    /// other tool takes ``resolveTimeout(default:)-(Duration)`` instead.
+    public func explicitTimeout() -> Duration? { getInt("timeout").map { Duration.seconds($0) } }
+
+    /// Resolves the overall run budget as a `Duration`, the unit ``SwiftRunner`` takes.
+    ///
+    /// - Parameter defaultTimeout: The budget to use when the caller omits `timeout`.
+    public func resolveTimeout(default defaultTimeout: Duration) -> Duration {
+        explicitTimeout() ?? defaultTimeout
+    }
+
+    /// Resolves the overall run budget as a `TimeInterval`, the unit ``XcodebuildRunner`` takes.
+    ///
+    /// - Parameter defaultTimeout: The budget to use when the caller omits `timeout`.
+    public func resolveTimeout(default defaultTimeout: TimeInterval) -> TimeInterval {
+        getInt("timeout").map(TimeInterval.init) ?? defaultTimeout
+    }
+
+    /// Schema property for the overall run budget.
+    ///
+    /// - Parameters:
+    ///   - defaultSeconds: The budget the tool applies when the caller omits the parameter.
+    ///   - subject: The noun the description uses for the run, such as "build" or "archive".
+    public static func timeoutSchemaProperty(
+        defaultSeconds: Int,
+        subject: String = "build",
+    ) -> [String: Value] {
+        [
+            "timeout": .object([
+                "type": .string("integer"),
+                "description": .string(
+                    "Maximum time in seconds for the \(subject). "
+                        + "Defaults to \(defaultSeconds). "
+                        + "Setting it also turns off the no-output check unless output_timeout "
+                        + "is given. When the \(subject) times out, partial diagnostics collected "
+                        + "so far are returned instead of an empty error.",
+                ),
+            ])
+        ]
+    }
+
+    /// Schema property for the no-output ("stuck process") budget.
+    ///
+    /// Every build and query tool exposes this property with the same meaning the test tools give
+    /// it. Pair it with ``resolveOutputTimeout(default:)`` to read the value.
+    ///
+    /// - Parameters:
+    ///   - defaultSeconds: The budget the tool applies when the caller omits the parameter.
+    ///   - note: An extra sentence appended to the description.
+    public static func outputTimeoutSchemaProperty(
+        defaultSeconds: Int,
+        note: String = "",
+    ) -> [String: Value] {
+        // Read the resolution floor from the runner constant. A hardcoded count would leave this
+        // sentence wrong in every tool at once the moment the constant moves.
+        let resolutionSeconds = XcodebuildRunner.packageResolutionOutputTimeout.components.seconds
+        var description =
+            "Maximum seconds to wait without output before assuming the process is stuck. "
+            + "Defaults to \(defaultSeconds). Set to 0 to disable. "
+            + "Swift package resolution is silent by design, so that phase always gets at least "
+            + "\(resolutionSeconds) seconds and the overall timeout governs it."
+        if !note.isEmpty { description += " " + note }
+        return [
+            "output_timeout": .object([
+                "type": .string("integer"),
+                "description": .string(description),
+            ])
+        ]
+    }
+
+    /// Schema property for the no-output budget on a tool that queries a project.
+    ///
+    /// Shared by `list_schemes`, `show_build_settings` and `list_test_plan_targets`. All three hit
+    /// the same wall: the query prints nothing until package resolution finishes, so the caller
+    /// needs the same guidance in all three descriptions.
+    public static var queryOutputTimeoutSchemaProperty: [String: Value] {
+        outputTimeoutSchemaProperty(
+            defaultSeconds: 30,
+            note: "A project with unresolved packages prints nothing until resolution finishes.",
+        )
+    }
+
     /// Returns the `-IDEBuildingContinueBuildingAfterErrors=YES` flag if requested.
     ///
     /// xcodebuild stops on the first build error by default. When this parameter is true, the IDE
@@ -351,13 +458,10 @@ extension [String: Value] {
                     "Maximum time in seconds for the test run. Defaults to 300 (5 minutes).",
                 ),
             ]),
-            "output_timeout": .object([
-                "type": .string("integer"),
-                "description": .string(
-                    "Maximum seconds to wait without output before assuming the process is stuck. Defaults to 120 for test commands. Set to 0 to disable. XCUI and performance tests may need higher values.",
-                ),
-            ]),
-        ]
+        ].merging(outputTimeoutSchemaProperty(
+            defaultSeconds: 120, note: "XCUI and performance tests may need higher values.",
+        ),
+        ) { _, new in new }
     }
 
     /// Resolves a target PID from arguments, checking `pid` first, then falling back to `bundle_id`
@@ -411,6 +515,7 @@ extension [String: Value] {
 
         var entries: [BatchTranslationEntry] = []
         entries.reserveCapacity(entriesArray.count)
+
         for entryValue in entriesArray {
             guard case let .object(entry) = entryValue,
                   case let .string(key) = entry["key"],

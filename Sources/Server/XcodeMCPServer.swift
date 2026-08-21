@@ -59,9 +59,12 @@ public enum ToolName: String, CaseIterable, Sendable {
     case addBuildPhase = "add_build_phase"
     case duplicateTarget = "duplicate_target"
     case addSwiftPackage = "add_swift_package"
+    case updateSwiftPackage = "update_swift_package"
     case addPackageProduct = "add_package_product"
     case listSwiftPackages = "list_swift_packages"
     case auditSwiftPackages = "audit_swift_packages"
+    case resolvePackages = "resolve_packages"
+    case showPackageResolution = "show_package_resolution"
     case removeSwiftPackage = "remove_swift_package"
     case removePackageProduct = "remove_package_product"
     case listPackageProducts = "list_package_products"
@@ -323,9 +326,12 @@ public enum ToolName: String, CaseIterable, Sendable {
                  .addBuildPhase,
                  .duplicateTarget,
                  .addSwiftPackage,
+                 .updateSwiftPackage,
                  .addPackageProduct,
                  .listSwiftPackages,
                  .auditSwiftPackages,
+                 .resolvePackages,
+                 .showPackageResolution,
                  .removeSwiftPackage,
                  .removePackageProduct,
                  .listPackageProducts,
@@ -634,9 +640,12 @@ public struct XcodeMCPServer: Sendable {
         let addBuildPhaseTool = AddBuildPhaseTool(pathUtility: pathUtility)
         let duplicateTargetTool = DuplicateTargetTool(pathUtility: pathUtility)
         let addSwiftPackageTool = AddSwiftPackageTool(pathUtility: pathUtility)
+        let updateSwiftPackageTool = UpdateSwiftPackageTool(pathUtility: pathUtility)
         let addPackageProductTool = AddPackageProductTool(pathUtility: pathUtility)
         let listSwiftPackagesTool = ListSwiftPackagesTool(pathUtility: pathUtility)
         let auditSwiftPackagesTool = AuditSwiftPackagesTool(pathUtility: pathUtility)
+        let resolvePackagesTool = ResolvePackagesTool(pathUtility: pathUtility)
+        let showPackageResolutionTool = ShowPackageResolutionTool(pathUtility: pathUtility)
         let removeSwiftPackageTool = RemoveSwiftPackageTool(pathUtility: pathUtility)
         let removePackageProductTool = RemovePackageProductTool(pathUtility: pathUtility)
         let listPackageProductsTool = ListPackageProductsTool(pathUtility: pathUtility)
@@ -1040,9 +1049,12 @@ public struct XcodeMCPServer: Sendable {
             (.addBuildPhase, addBuildPhaseTool.tool()),
             (.duplicateTarget, duplicateTargetTool.tool()),
             (.addSwiftPackage, addSwiftPackageTool.tool()),
+            (.updateSwiftPackage, updateSwiftPackageTool.tool()),
             (.addPackageProduct, addPackageProductTool.tool()),
             (.listSwiftPackages, listSwiftPackagesTool.tool()),
             (.auditSwiftPackages, auditSwiftPackagesTool.tool()),
+            (.resolvePackages, resolvePackagesTool.tool()),
+            (.showPackageResolution, showPackageResolutionTool.tool()),
             (.removeSwiftPackage, removeSwiftPackageTool.tool()),
             (.removePackageProduct, removePackageProductTool.tool()),
             (.listPackageProducts, listPackageProductsTool.tool()),
@@ -1342,12 +1354,18 @@ public struct XcodeMCPServer: Sendable {
                 case .addBuildPhase: return try addBuildPhaseTool.execute(arguments: arguments)
                 case .duplicateTarget: return try duplicateTargetTool.execute(arguments: arguments)
                 case .addSwiftPackage: return try addSwiftPackageTool.execute(arguments: arguments)
+                case .updateSwiftPackage:
+                    return try updateSwiftPackageTool.execute(arguments: arguments)
                 case .addPackageProduct:
                     return try addPackageProductTool.execute(arguments: arguments)
                 case .listSwiftPackages:
                     return try listSwiftPackagesTool.execute(arguments: arguments)
                 case .auditSwiftPackages:
                     return try auditSwiftPackagesTool.execute(arguments: arguments)
+                case .resolvePackages:
+                    return try await resolvePackagesTool.execute(arguments: arguments)
+                case .showPackageResolution:
+                    return try await showPackageResolutionTool.execute(arguments: arguments)
                 case .removeSwiftPackage:
                     return try removeSwiftPackageTool.execute(arguments: arguments)
                 case .removePackageProduct:

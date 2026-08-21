@@ -8,20 +8,21 @@ public struct TestMacOSTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager,
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "test_macos",
             description:
-            "Run tests for an Xcode project or workspace on macOS. When a test process crashes "
-            + "(signal trap / uncaught exception), the fatal-error message and backtrace are "
-            + "recovered automatically from the test-host stderr and the unified log and included "
-            + "in the failure result.",
+                "Run tests for an Xcode project or workspace on macOS. When a test process crashes "
+                + "(signal trap / uncaught exception), the fatal-error message and backtrace are "
+                + "recovered automatically from the test-host stderr and the unified log and included "
+                + "in the failure result.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -99,12 +100,11 @@ public struct TestMacOSTool: Sendable {
             workspacePath: workspacePath,
             scheme: scheme,
             configuration: configuration,
+            outputTimeout: TestToolHelper.resolveOutputTimeout(validated),
         )
 
         var destination = XcodebuildRunner.macOSDestination
-        if let arch {
-            destination += ",arch=\(arch)"
-        }
+        if let arch { destination += ",arch=\(arch)" }
 
         return try await TestToolHelper.runAndFormat(
             runner: xcodebuildRunner,

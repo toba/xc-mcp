@@ -87,7 +87,7 @@ public struct SwiftPackageDocsTool: Sendable {
         let explicitOutput = arguments.getString("output_path").map {
             PathUtility.resolvePath(from: $0)
         }
-        let explicitTimeout = arguments.getInt("timeout").map { Duration.seconds($0) }
+        let explicitTimeout = arguments.explicitTimeout()
         let timeout = explicitTimeout
             ?? (SwiftRunner.isColdCache(packagePath: packagePath)
                 ? SwiftRunner.coldCacheTimeout

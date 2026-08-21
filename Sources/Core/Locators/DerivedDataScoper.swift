@@ -31,6 +31,83 @@ import Foundation
 /// - Set `XC_MCP_DISABLE_DERIVED_DATA_SCOPING=1` to fall back to Xcode's default location.
 /// - If the caller already added `-derivedDataPath` via `additionalArguments`, scoping is skipped.
 public enum DerivedDataScoper {
+    /// Xcode's own DerivedData location. Builds land here when scoping is off.
+    public static var xcodeDefaultPath: String {
+        NSHomeDirectory() + "/Library/Developer/Xcode/DerivedData"
+    }
+
+    /// Returns a one-line note naming the DerivedData root an xcodebuild invocation writes to.
+    ///
+    /// Build and test results carry this line so a caller never has to guess which tree holds the
+    /// build log, the resolved package checkouts, or the compiled products. The scoped root differs
+    /// from Xcode's default, and reading the wrong tree costs a full diagnosis cycle.
+    ///
+    /// - Parameters:
+    ///   - workspacePath: Absolute `.xcworkspace` path, if known.
+    ///   - projectPath: Absolute `.xcodeproj` path, if known.
+    ///   - destination: The xcodebuild `-destination` value the invocation uses.
+    ///   - additionalArguments: Args the caller passes to xcodebuild.
+    ///   - environment: Process environment (for testing). Defaults to the live env.
+    public static func note(
+        workspacePath: String?,
+        projectPath: String?,
+        destination: String? = nil,
+        additionalArguments: [String] = [],
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+    ) -> String {
+        if let caller = callerSuppliedPath(in: additionalArguments) {
+            return "DerivedData: \(caller) (from -derivedDataPath)"
+        }
+
+        if let path = effectivePath(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+            destination: destination,
+            additionalArguments: additionalArguments,
+            environment: environment,
+        ) { return "DerivedData: \(path)" }
+
+        return "DerivedData: \(xcodeDefaultPath)/<ProjectName>-<hash> (Xcode default, scoping off)"
+    }
+
+    /// Returns a DerivedData note for a context that has no build destination yet, such as the
+    /// session defaults. The platform suffix reads as a literal placeholder because the platform
+    /// only becomes known when a build names its destination.
+    public static func sessionNote(
+        workspacePath: String?,
+        projectPath: String?,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+    ) -> String {
+        if let override = environment["XC_MCP_DERIVED_DATA_PATH"], !override.isEmpty {
+            return "\(override) (XC_MCP_DERIVED_DATA_PATH)"
+        }
+
+        if scopingIsDisabled(environment: environment) {
+            return "\(xcodeDefaultPath)/<ProjectName>-<hash> (Xcode default, scoping off)"
+        }
+
+        guard let base = scopedPath(workspacePath: workspacePath, projectPath: projectPath) else {
+            return "(no project or workspace set)"
+        }
+        return "\(base)-<platform>"
+    }
+
+    /// Returns the value the caller already passed for `-derivedDataPath`, or `nil` when the flag is
+    /// absent or has no value after it.
+    static func callerSuppliedPath(in arguments: [String]) -> String? {
+        guard let index = arguments.firstIndex(of: "-derivedDataPath"),
+              index + 1 < arguments.count else { return nil }
+        return arguments[index + 1]
+    }
+
+    /// Reports whether `XC_MCP_DISABLE_DERIVED_DATA_SCOPING` turns scoping off.
+    static func scopingIsDisabled(environment: [String: String]) -> Bool {
+        guard let disable = environment["XC_MCP_DISABLE_DERIVED_DATA_SCOPING"], !disable.isEmpty
+        else { return false }
+        let lowered = disable.lowercased()
+        return lowered != "0" && lowered != "false"
+    }
+
     /// Returns the `-derivedDataPath` value to inject for an xcodebuild invocation, or `nil` if
     /// scoping should be skipped (env disabled, caller-supplied, no project path).
     ///
@@ -50,10 +127,7 @@ public enum DerivedDataScoper {
         environment: [String: String] = ProcessInfo.processInfo.environment,
     ) -> String? {
         if additionalArguments.contains("-derivedDataPath") { return nil }
-        if let disable = environment["XC_MCP_DISABLE_DERIVED_DATA_SCOPING"],
-           !disable.isEmpty,
-           disable.lowercased() != "0",
-           disable.lowercased() != "false" { return nil }
+        if scopingIsDisabled(environment: environment) { return nil }
         if let override = environment["XC_MCP_DERIVED_DATA_PATH"], !override.isEmpty {
             return override
         }

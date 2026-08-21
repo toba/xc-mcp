@@ -7,16 +7,16 @@ public struct SwiftPackageRunTool: Sendable {
     private let swiftRunner: SwiftRunner
     private let sessionManager: SessionManager
 
-    public init(swiftRunner: SwiftRunner = SwiftRunner(), sessionManager: SessionManager) {
+    public init(swiftRunner: SwiftRunner = .init(), sessionManager: SessionManager) {
         self.swiftRunner = swiftRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "swift_package_run",
             description:
-            "Run an executable from a Swift package. Builds the package if needed and runs the specified executable.",
+                "Run an executable from a Swift package. Builds the package if needed and runs the specified executable.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -53,6 +53,7 @@ public struct SwiftPackageRunTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Get package path
         let packagePath: String
+
         if case let .string(value) = arguments["package_path"] {
             packagePath = value
         } else if let sessionPackagePath = await sessionManager.packagePath {
@@ -69,9 +70,7 @@ public struct SwiftPackageRunTool: Sendable {
         // Get arguments if specified
         let execArgs = arguments.getStringArray("arguments")
         let environment = await sessionManager.resolveEnvironment(from: arguments)
-        let timeout =
-            arguments.getInt("timeout").map { Duration.seconds($0) }
-                ?? SwiftRunner.defaultTimeout
+        let timeout = arguments.resolveTimeout(default: SwiftRunner.defaultTimeout)
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
@@ -96,17 +95,12 @@ public struct SwiftPackageRunTool: Sendable {
 
             if result.succeeded {
                 var message = "Executable"
-                if let executable {
-                    message += " '\(executable)'"
-                }
+                if let executable { message += " '\(executable)'" }
                 message += " completed successfully"
 
-                if !result.stdout.isEmpty {
-                    message += "\n\nOutput:\n\(result.stdout)"
-                }
+                if !result.stdout.isEmpty { message += "\n\nOutput:\n\(result.stdout)" }
 
-                return CallTool.Result(
-                    content: [.text(text: message, annotations: nil, _meta: nil)],
+                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
                 )
             } else {
                 throw MCPError.internalError(

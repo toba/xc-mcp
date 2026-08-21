@@ -8,17 +8,17 @@ public struct BuildMacOSTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(), sessionManager: SessionManager,
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "build_macos",
-            description:
-            "Build an Xcode project or workspace for macOS.",
+            description: "Build an Xcode project or workspace for macOS.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -82,7 +82,10 @@ public struct BuildMacOSTool: Sendable {
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].enableSanitizersSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
-                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new }
+                        .merging([String: Value].outputTimeoutSchemaProperty(defaultSeconds: 30)) {
+                            _, new in new
+                        },
                 ),
                 "required": .array([]),
             ]),
@@ -103,12 +106,24 @@ public struct BuildMacOSTool: Sendable {
         let errorsOnly = arguments.getBool("errors_only")
         let showWarnings = arguments.getBool("show_warnings")
         let forTesting = arguments.getBool("for_testing")
-        let timeout =
-            arguments.getInt("timeout").map { TimeInterval($0) }
-                ?? XcodebuildRunner.defaultTimeout
+        let timeout = arguments.resolveTimeout(default: XcodebuildRunner.defaultTimeout)
+
+        let outputTimeout = arguments.resolveOutputTimeout(default: XcodebuildRunner.outputTimeout)
 
         let projectRoot = ErrorExtractor.projectRoot(
             projectPath: projectPath, workspacePath: workspacePath,
+        )
+
+        var destination = XcodebuildRunner.macOSDestination
+        if let arch { destination += ",arch=\(arch)" }
+
+        let additionalArguments = arguments.continueBuildingArgs()
+            + arguments.enableSanitizersArgs() + arguments.buildSettingOverrides() + extraArgs
+        let derivedDataNote = DerivedDataScoper.note(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+            destination: destination,
+            additionalArguments: additionalArguments,
         )
 
         do {
@@ -118,19 +133,11 @@ public struct BuildMacOSTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 configuration: configuration,
+                outputTimeout: outputTimeout,
             )
-
-            var destination = XcodebuildRunner.macOSDestination
-            if let arch {
-                destination += ",arch=\(arch)"
-            }
 
             let action = forTesting ? "build-for-testing" : "build"
 
-            // When the user sets an explicit timeout, disable the no-output timeout.
-            // Large targets can compile silently for minutes — the overall timeout
-            // is sufficient, and the no-output heuristic would kill the build prematurely.
-            let hasExplicitTimeout = arguments["timeout"] != nil
             let result = try await xcodebuildRunner.build(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
@@ -138,16 +145,15 @@ public struct BuildMacOSTool: Sendable {
                 destination: destination,
                 configuration: configuration,
                 action: action,
-                additionalArguments: arguments.continueBuildingArgs()
-                    + arguments.enableSanitizersArgs() + arguments.buildSettingOverrides()
-                    + extraArgs,
+                additionalArguments: additionalArguments,
                 environment: environment,
                 timeout: timeout,
-                outputTimeout: hasExplicitTimeout ? nil : XcodebuildRunner.outputTimeout,
+                outputTimeout: outputTimeout,
             )
 
             try ErrorExtractor.checkBuildSuccess(
                 result, projectRoot: projectRoot, errorsOnly: errorsOnly,
+                derivedDataNote: derivedDataNote,
             )
 
             let label = forTesting ? "Build-for-testing" : "Build"
@@ -156,15 +162,13 @@ public struct BuildMacOSTool: Sendable {
                 showWarnings: showWarnings,
             )
             var text = "\(label) succeeded for scheme '\(scheme)' on macOS"
-            if !summary.isEmpty, summary != "Build succeeded" {
-                text += "\n\n" + summary
-            }
-            return CallTool.Result(
-                content: [.text(text: text, annotations: nil, _meta: nil)],
-            )
+            if !summary.isEmpty, summary != "Build succeeded" { text += "\n\n" + summary }
+            text += "\n\n" + derivedDataNote
+            return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
         } catch let error as XcodebuildError {
             return error.formatPartialDiagnostics(
                 projectRoot: projectRoot, errorsOnly: errorsOnly, showWarnings: showWarnings,
+                derivedDataNote: derivedDataNote,
             )
         } catch {
             throw try error.asMCPError()

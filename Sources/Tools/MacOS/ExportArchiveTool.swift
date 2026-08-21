@@ -3,24 +3,23 @@ import XCMCPCore
 import Foundation
 import Subprocess
 
-/// Exports a built `.xcarchive` into a distributable `.pkg` / `.ipa` (and optionally uploads it
-/// to App Store Connect) via `xcodebuild -exportArchive`.
+/// Exports a built `.xcarchive` into a distributable `.pkg` / `.ipa` (and optionally uploads it to
+/// App Store Connect) via `xcodebuild -exportArchive`.
 ///
-/// Companion to ``ArchiveTool``: the archive tool produces an `.xcarchive` bundle on disk and
-/// stops there. Without this tool the agentic loop has to bounce to Xcode Organizer or
-/// Transporter to actually ship the build. With it, archive → export → upload is one chain of
-/// tool calls.
+/// Companion to ``ArchiveTool``: the archive tool produces an `.xcarchive` bundle on disk and stops
+/// there. Without this tool the agentic loop has to bounce to Xcode Organizer or Transporter to
+/// actually ship the build. With it, archive → export → upload is one chain of tool calls.
 ///
 /// Notes on `-exportArchive` quirks:
 ///
 /// - The build system rejects the deprecated pre-Xcode-16 method names (`app-store`, `ad-hoc`,
-///   `development`). This tool accepts only the current spellings and surfaces the typo back to
-///   the caller before invoking xcodebuild.
+///   `development`). This tool accepts only the current spellings and surfaces the typo back to the
+///   caller before invoking xcodebuild.
 /// - `-allowProvisioningUpdates` is always passed. Without it the build system won't regenerate
-///   missing distribution profiles, which is what trips up most "works in Xcode UI, fails from
-///   the CLI" reports.
-/// - The synthesized `ExportOptions.plist` is written next to the export output so the caller
-///   can inspect what was actually sent to xcodebuild.
+///   missing distribution profiles, which is what trips up most "works in Xcode UI, fails from the
+///   CLI" reports.
+/// - The synthesized `ExportOptions.plist` is written next to the export output so the caller can
+///   inspect what was actually sent to xcodebuild.
 public struct ExportArchiveTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
 
@@ -40,15 +39,14 @@ public struct ExportArchiveTool: Sendable {
         "development": "debugging",
     ]
 
-    public init(xcodebuildRunner: XcodebuildRunner = XcodebuildRunner()) {
+    public init(xcodebuildRunner: XcodebuildRunner = .init()) {
         self.xcodebuildRunner = xcodebuildRunner
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "export_archive",
-            description:
-                "Export a built .xcarchive into a distributable .pkg/.ipa via "
+            description: "Export a built .xcarchive into a distributable .pkg/.ipa via "
                 + "`xcodebuild -exportArchive`, or upload it directly to App Store Connect. "
                 + "Synthesizes ExportOptions.plist from the supplied parameters and passes "
                 + "-allowProvisioningUpdates so missing distribution profiles get regenerated "
@@ -61,15 +59,15 @@ public struct ExportArchiveTool: Sendable {
                         "type": .string("string"),
                         "description": .string(
                             "Path to an existing .xcarchive bundle (produced by the `archive` "
-                            + "tool or Xcode). Required.",
+                                + "tool or Xcode). Required.",
                         ),
                     ]),
                     "export_path": .object([
                         "type": .string("string"),
                         "description": .string(
                             "Directory where the exported .pkg/.ipa and the synthesized "
-                            + "ExportOptions.plist are written. Created if it doesn't exist. "
-                            + "Required.",
+                                + "ExportOptions.plist are written. Created if it doesn't exist. "
+                                + "Required.",
                         ),
                     ]),
                     "method": .object([
@@ -77,16 +75,16 @@ public struct ExportArchiveTool: Sendable {
                         "enum": .array(Self.validMethods.sorted().map { .string($0) }),
                         "description": .string(
                             "Distribution method. Xcode 16+ spellings only — "
-                            + "`app-store-connect`, `release-testing`, `debugging`, `enterprise`, "
-                            + "`developer-id`, `mac-application`. The deprecated pre-16 names "
-                            + "(`app-store`, `ad-hoc`, `development`) are rejected with a hint.",
+                                + "`app-store-connect`, `release-testing`, `debugging`, `enterprise`, "
+                                + "`developer-id`, `mac-application`. The deprecated pre-16 names "
+                                + "(`app-store`, `ad-hoc`, `development`) are rejected with a hint.",
                         ),
                     ]),
                     "team_id": .object([
                         "type": .string("string"),
                         "description": .string(
                             "Apple Developer team ID (`teamID` in ExportOptions.plist). "
-                            + "Defaults to the project's DEVELOPMENT_TEAM if omitted.",
+                                + "Defaults to the project's DEVELOPMENT_TEAM if omitted.",
                         ),
                     ]),
                     "signing_style": .object([
@@ -94,8 +92,8 @@ public struct ExportArchiveTool: Sendable {
                         "enum": .array([.string("automatic"), .string("manual")]),
                         "description": .string(
                             "`automatic` (default) lets Xcode pick/generate profiles. "
-                            + "`manual` requires `provisioning_profiles` to map each bundle ID "
-                            + "to a profile name.",
+                                + "`manual` requires `provisioning_profiles` to map each bundle ID "
+                                + "to a profile name.",
                         ),
                     ]),
                     "provisioning_profiles": .object([
@@ -103,7 +101,7 @@ public struct ExportArchiveTool: Sendable {
                         "additionalProperties": .object(["type": .string("string")]),
                         "description": .string(
                             "Map of bundle identifier → provisioning profile name (or UUID). "
-                            + "Only used when `signing_style` is `manual`.",
+                                + "Only used when `signing_style` is `manual`.",
                         ),
                     ]),
                     "destination": .object([
@@ -111,8 +109,8 @@ public struct ExportArchiveTool: Sendable {
                         "enum": .array([.string("export"), .string("upload")]),
                         "description": .string(
                             "`export` (default) writes artifacts to `export_path`. `upload` "
-                            + "delivers the build straight to App Store Connect — requires the "
-                            + "`api_key_*` parameters.",
+                                + "delivers the build straight to App Store Connect — requires the "
+                                + "`api_key_*` parameters.",
                         ),
                     ]),
                     "api_key_id": .object([
@@ -125,7 +123,7 @@ public struct ExportArchiveTool: Sendable {
                         "type": .string("string"),
                         "description": .string(
                             "App Store Connect API key issuer ID. Required when "
-                            + "`destination=upload`.",
+                                + "`destination=upload`.",
                         ),
                     ]),
                     "api_key_path": .object([
@@ -158,12 +156,10 @@ public struct ExportArchiveTool: Sendable {
         let teamID = arguments.getString("team_id")
         let signingStyle = arguments.getString("signing_style") ?? "automatic"
         let destination = arguments.getString("destination") ?? "export"
-        let timeout = arguments.getInt("timeout").map { TimeInterval($0) } ?? 600
+        let timeout = arguments.resolveTimeout(default: 600)
 
         guard FileManager.default.fileExists(atPath: archivePath) else {
-            throw MCPError.invalidParams(
-                "archive_path does not exist: \(archivePath)",
-            )
+            throw MCPError.invalidParams("archive_path does not exist: \(archivePath)")
         }
 
         let method = try validateMethod(methodRaw)
@@ -175,10 +171,11 @@ public struct ExportArchiveTool: Sendable {
         }
 
         let provisioningProfiles = arguments.getStringDictionary("provisioning_profiles")
+
         if signingStyle == "manual", provisioningProfiles.isEmpty {
             throw MCPError.invalidParams(
                 "signing_style=manual requires provisioning_profiles "
-                + "(map of bundle ID → profile name)",
+                    + "(map of bundle ID → profile name)",
             )
         }
 
@@ -191,6 +188,7 @@ public struct ExportArchiveTool: Sendable {
         let apiKeyID = arguments.getString("api_key_id")
         let apiKeyIssuerID = arguments.getString("api_key_issuer_id")
         let apiKeyPath = arguments.getString("api_key_path")
+
         if destination == "upload" {
             guard apiKeyID != nil, apiKeyIssuerID != nil, apiKeyPath != nil else {
                 throw MCPError.invalidParams(
@@ -222,7 +220,10 @@ public struct ExportArchiveTool: Sendable {
         ]
 
         if destination == "upload",
-           let apiKeyID, let apiKeyIssuerID, let apiKeyPath {
+           let apiKeyID,
+           let apiKeyIssuerID,
+           let apiKeyPath
+        {
             args += [
                 "-authenticationKeyID", apiKeyID,
                 "-authenticationKeyIssuerID", apiKeyIssuerID,
@@ -247,12 +248,14 @@ public struct ExportArchiveTool: Sendable {
             let submissionID = extractSubmissionID(from: result.output)
 
             var text: String
+
             if destination == "upload" {
                 text = "Upload to App Store Connect succeeded."
                 if let submissionID { text += " Submission ID: \(submissionID)." }
                 text += "\nExportOptions.plist: \(plistPath)"
             } else {
                 text = "Export succeeded."
+
                 if exported.isEmpty {
                     text += " (No .pkg/.ipa found in \(exportPath) — check the build log.)"
                 } else {
@@ -271,10 +274,11 @@ public struct ExportArchiveTool: Sendable {
 
     private func validateMethod(_ method: String) throws -> String {
         if Self.validMethods.contains(method) { return method }
+
         if let modern = Self.deprecatedMethodMap[method] {
             throw MCPError.invalidParams(
                 "method '\(method)' is the pre-Xcode-16 spelling and is no longer accepted by "
-                + "`xcodebuild -exportArchive`. Use '\(modern)' instead.",
+                    + "`xcodebuild -exportArchive`. Use '\(modern)' instead.",
             )
         }
         let valid = Self.validMethods.sorted().joined(separator: ", ")
@@ -297,9 +301,7 @@ public struct ExportArchiveTool: Sendable {
             "signingStyle": signingStyle,
         ]
         if let teamID { plist["teamID"] = teamID }
-        if !provisioningProfiles.isEmpty {
-            plist["provisioningProfiles"] = provisioningProfiles
-        }
+        if !provisioningProfiles.isEmpty { plist["provisioningProfiles"] = provisioningProfiles }
 
         let data = try PropertyListSerialization.data(
             fromPropertyList: plist, format: .xml, options: 0,
@@ -320,10 +322,9 @@ public struct ExportArchiveTool: Sendable {
     private func extractSubmissionID(from output: String) -> String? {
         for line in output.split(separator: "\n") {
             let lower = line.lowercased()
+
             if lower.contains("submission id") || lower.contains("submissionid") {
-                if let range = line.range(
-                    of: "[0-9a-fA-F-]{36}", options: .regularExpression,
-                ) {
+                if let range = line.range(of: "[0-9a-fA-F-]{36}", options: .regularExpression) {
                     return String(line[range])
                 }
             }

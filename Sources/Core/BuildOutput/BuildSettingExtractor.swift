@@ -14,20 +14,25 @@ public enum BuildSettingExtractor {
     ///   - projectPath: Path to the .xcodeproj file.
     ///   - workspacePath: Path to the .xcworkspace file.
     ///   - scheme: The scheme to check.
-    ///   - configuration: Build configuration (Debug or Release), or `nil` to honor the scheme's own
-    ///     configuration.
+    ///   - configuration: Build configuration (Debug or Release), or `nil` to honor the scheme's
+    ///     own configuration.
+    ///   - outputTimeout: Silence budget for the query. It matches the budget the caller uses for
+    ///     the build that follows, so an unresolved package graph does not abort this pre-pass at a
+    ///     shorter limit than the build itself. `nil` disables the check.
     public static func validateMacOSSupport(
         runner: XcodebuildRunner,
         projectPath: String?,
         workspacePath: String?,
         scheme: String,
         configuration: String?,
+        outputTimeout: Duration? = XcodebuildRunner.outputTimeout,
     ) async throws {
         let settings = try await runner.showBuildSettings(
             projectPath: projectPath,
             workspacePath: workspacePath,
             scheme: scheme,
             configuration: configuration,
+            outputTimeout: outputTimeout,
         )
 
         guard let platforms = extractSetting("SUPPORTED_PLATFORMS", from: settings.stdout) else {

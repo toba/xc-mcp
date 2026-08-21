@@ -5,8 +5,8 @@ import Subprocess
 
 /// MCP tool for building Xcode projects for the iOS/tvOS/watchOS Simulator.
 ///
-/// Builds the specified scheme using xcodebuild with the simulator destination.
-/// Supports session defaults for project, scheme, simulator, and configuration.
+/// Builds the specified scheme using xcodebuild with the simulator destination. Supports session
+/// defaults for project, scheme, simulator, and configuration.
 public struct BuildSimTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let simctlRunner: SimctlRunner
@@ -19,8 +19,8 @@ public struct BuildSimTool: Sendable {
     ///   - simctlRunner: Runner for resolving simulator devices and runtimes.
     ///   - sessionManager: Manager for session state and defaults.
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        simctlRunner: SimctlRunner = SimctlRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        simctlRunner: SimctlRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -30,10 +30,9 @@ public struct BuildSimTool: Sendable {
 
     /// Returns the MCP tool definition.
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "build_sim",
-            description:
-            "Build an Xcode project or workspace for the iOS/tvOS/watchOS Simulator.",
+            description: "Build an Xcode project or workspace for the iOS/tvOS/watchOS Simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -70,7 +69,13 @@ public struct BuildSimTool: Sendable {
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
-                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new }
+                        .merging([String: Value].timeoutSchemaProperty(defaultSeconds: 300)) {
+                            _, new in new
+                        }
+                        .merging([String: Value].outputTimeoutSchemaProperty(defaultSeconds: 120)) {
+                            _, new in new
+                        },
                 ),
                 "required": .array([]),
             ]),
@@ -80,7 +85,8 @@ public struct BuildSimTool: Sendable {
 
     /// Executes the build with the given arguments.
     ///
-    /// - Parameter arguments: Dictionary containing optional project_path, workspace_path, scheme, simulator, and configuration.
+    /// - Parameter arguments: Dictionary containing optional project_path, workspace_path, scheme,
+    ///   simulator, and configuration.
     /// - Returns: The result containing build success or error information.
     /// - Throws: MCPError if required parameters are missing or build fails.
     public func execute(
@@ -95,6 +101,10 @@ public struct BuildSimTool: Sendable {
         let simulatorInput = try await sessionManager.resolveSimulator(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
+        let timeout = arguments.resolveTimeout(default: XcodebuildRunner.defaultTimeout)
+        let outputTimeout = arguments.resolveOutputTimeout(
+            default: XcodebuildRunner.deviceOutputTimeout,
+        )
 
         do {
             // Resolve the simulator to its canonical UDID + runtime-derived destination so
@@ -103,6 +113,14 @@ public struct BuildSimTool: Sendable {
             let simulator = resolved.udid
             let destination = resolved.destination
             let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
+            let additionalArguments = arguments.continueBuildingArgs()
+                + arguments.buildSettingOverrides() + extraArgs
+            let derivedDataNote = DerivedDataScoper.note(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
 
             let result = try await xcodebuildRunner.build(
                 projectPath: projectPath,
@@ -110,27 +128,28 @@ public struct BuildSimTool: Sendable {
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                additionalArguments: arguments.continueBuildingArgs()
-                    + arguments.buildSettingOverrides() + extraArgs,
+                additionalArguments: additionalArguments,
                 environment: environment,
-                outputTimeout: XcodebuildRunner.deviceOutputTimeout,
+                timeout: timeout,
+                outputTimeout: outputTimeout,
                 onProgress: onProgress,
             )
 
             let projectRoot = ErrorExtractor.projectRoot(
                 projectPath: projectPath, workspacePath: workspacePath,
             )
-            try ErrorExtractor.checkBuildSuccess(result, projectRoot: projectRoot)
-
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Build succeeded for scheme '\(scheme)' on simulator '\(simulator)'",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
+            try ErrorExtractor.checkBuildSuccess(
+                result, projectRoot: projectRoot, derivedDataNote: derivedDataNote,
             )
+
+            return CallTool.Result(content: [
+                .text(
+                    text: "Build succeeded for scheme '\(scheme)' on simulator '\(simulator)'"
+                        + "\n\n" + derivedDataNote,
+                    annotations: nil,
+                    _meta: nil,
+                )
+            ],)
         } catch {
             throw try error.asMCPError()
         }

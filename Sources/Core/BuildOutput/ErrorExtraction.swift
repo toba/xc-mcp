@@ -231,19 +231,28 @@ public enum ErrorExtractor {
     /// - Parameters:
     ///   - result: The xcodebuild result.
     ///   - projectRoot: Optional project root for path relativization in error output.
+    ///   - derivedDataNote: One-line DerivedData root note appended to the failure message. A failed
+    ///     build is the case where the caller most needs to know which tree to inspect.
     /// - Throws: ``MCPError/internalError(_:)`` with formatted build errors if the build failed.
     public static func checkBuildSuccess(
         _ result: ProcessResult,
         projectRoot: String?,
         errorsOnly: Bool = false,
+        derivedDataNote: String? = nil,
     ) throws(MCPError) {
         let buildResult = parseBuildOutput(result.output)
 
         if result.succeeded || buildResult.status == "success" { return }
 
-        let errorOutput = BuildResultFormatter.formatBuildResult(
+        var errorOutput = BuildResultFormatter.formatBuildResult(
             buildResult, projectRoot: projectRoot, errorsOnly: errorsOnly,
         )
+
+        if let advice = MacroApprovalAdvice.advice(for: result.output) {
+            errorOutput += "\n\n" + advice
+        }
+
+        if let derivedDataNote { errorOutput += "\n\n" + derivedDataNote }
 
         // An "incomplete" status means the output ended before any terminal marker — the build was
         // truncated or the process was killed (commonly OOM `Killed: 9`) — so there are usually no

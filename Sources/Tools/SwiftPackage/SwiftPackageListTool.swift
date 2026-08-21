@@ -6,16 +6,16 @@ public struct SwiftPackageListTool: Sendable {
     private let swiftRunner: SwiftRunner
     private let sessionManager: SessionManager
 
-    public init(swiftRunner: SwiftRunner = SwiftRunner(), sessionManager: SessionManager) {
+    public init(swiftRunner: SwiftRunner = .init(), sessionManager: SessionManager) {
         self.swiftRunner = swiftRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "swift_package_list",
             description:
-            "List dependencies for a Swift package. Shows the dependency tree including resolved versions.",
+                "List dependencies for a Swift package. Shows the dependency tree including resolved versions.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -41,6 +41,7 @@ public struct SwiftPackageListTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Get package path
         let packagePath: String
+
         if case let .string(value) = arguments["package_path"] {
             packagePath = value
         } else if let sessionPackagePath = await sessionManager.packagePath {
@@ -51,9 +52,7 @@ public struct SwiftPackageListTool: Sendable {
             )
         }
 
-        let timeout =
-            arguments.getInt("timeout").map { Duration.seconds($0) }
-                ?? SwiftRunner.defaultTimeout
+        let timeout = arguments.resolveTimeout(default: SwiftRunner.defaultTimeout)
 
         // Verify Package.swift exists
         let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
@@ -73,14 +72,14 @@ public struct SwiftPackageListTool: Sendable {
 
             if result.succeeded {
                 var message = "Package dependencies:\n"
+
                 if result.stdout.isEmpty {
                     message += "(No dependencies)"
                 } else {
                     message += result.stdout
                 }
 
-                return CallTool.Result(
-                    content: [.text(text: message, annotations: nil, _meta: nil)],
+                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
                 )
             } else {
                 throw MCPError.internalError("Failed to list dependencies:\n\(result.output)")

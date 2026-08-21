@@ -18,7 +18,7 @@ public struct BenchmarkBuildTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -29,7 +29,7 @@ public struct BenchmarkBuildTool: Sendable {
     static let maxRunsPerSeries = 10
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "benchmark_build",
             description:
                 "Benchmark build wall-clock time by running repeated clean and incremental builds. "
@@ -122,9 +122,7 @@ public struct BenchmarkBuildTool: Sendable {
         let configuration = await sessionManager.resolveConfiguration(from: arguments) ?? "Debug"
         let arch = arguments.getString("arch")
 
-        let cleanRuns = min(
-            max(arguments.getInt("clean_runs") ?? 3, 0), Self.maxRunsPerSeries,
-        )
+        let cleanRuns = min(max(arguments.getInt("clean_runs") ?? 3, 0), Self.maxRunsPerSeries)
         let incrementalRuns = min(
             max(arguments.getInt("incremental_runs") ?? 3, 0), Self.maxRunsPerSeries,
         )
@@ -133,7 +131,7 @@ public struct BenchmarkBuildTool: Sendable {
                 "At least one of clean_runs or incremental_runs must be greater than 0.",
             )
         }
-        let timeout = TimeInterval(arguments.getInt("timeout") ?? 600)
+        let timeout = arguments.resolveTimeout(default: 600)
         let saveBaseline = arguments.getBool("save_baseline")
         let compareBaseline = arguments.getBool("compare_baseline")
 
@@ -156,9 +154,9 @@ public struct BenchmarkBuildTool: Sendable {
         let baselineURL = anchorPath.map {
             Self.baselineURL(anchorPath: $0, scheme: scheme, configuration: configuration)
         }
-        let priorBaseline: BenchmarkRecord? =
-            (compareBaseline && baselineURL != nil)
-                ? Self.loadBaseline(at: baselineURL!) : nil
+        let priorBaseline: BenchmarkRecord? = (compareBaseline && baselineURL != nil)
+            ? Self.loadBaseline(at: baselineURL!)
+            : nil
 
         var cleanSeconds: [Double] = []
         cleanSeconds.reserveCapacity(cleanRuns)
@@ -168,7 +166,7 @@ public struct BenchmarkBuildTool: Sendable {
 
         // Clean builds: a single `clean build` invocation each so cleaning and building share the
         // scoped DerivedData and the timing reflects a true cold build.
-        for _ in 0 ..< cleanRuns {
+        for _ in 0..<cleanRuns {
             let args = xcodebuildArgs(
                 projectPath: projectPath, workspacePath: workspacePath, scheme: scheme,
                 configuration: configuration, destination: destination,
@@ -194,7 +192,7 @@ public struct BenchmarkBuildTool: Sendable {
                 try ensureSucceeded(warm, projectRoot: projectRoot, phase: "warm-up build")
             }
 
-            for _ in 0 ..< incrementalRuns {
+            for _ in 0..<incrementalRuns {
                 let args = xcodebuildArgs(
                     projectPath: projectPath, workspacePath: workspacePath, scheme: scheme,
                     configuration: configuration, destination: destination,
@@ -208,6 +206,7 @@ public struct BenchmarkBuildTool: Sendable {
 
         // Persist baseline if requested.
         var savedTo: String?
+
         if saveBaseline, let baselineURL {
             let record = BenchmarkRecord(
                 scheme: scheme, configuration: configuration,
@@ -230,19 +229,20 @@ public struct BenchmarkBuildTool: Sendable {
     // MARK: - Build invocation
 
     private func xcodebuildArgs(
-        projectPath: String?, workspacePath: String?, scheme: String,
-        configuration: String, destination: String,
-        scopedDerivedData: String?, actions: [String],
+        projectPath: String?,
+        workspacePath: String?,
+        scheme: String,
+        configuration: String,
+        destination: String,
+        scopedDerivedData: String?,
+        actions: [String],
     ) -> [String] {
         var args: [String] = []
+
         if let workspacePath {
             args += ["-workspace", workspacePath]
-        } else if let projectPath {
-            args += ["-project", projectPath]
-        }
-        if let scopedDerivedData {
-            args += ["-derivedDataPath", scopedDerivedData]
-        }
+        } else if let projectPath { args += ["-project", projectPath] }
+        if let scopedDerivedData { args += ["-derivedDataPath", scopedDerivedData] }
         args += ["-scheme", scheme, "-destination", destination]
         args += ["-configuration", configuration]
         args += actions
@@ -251,7 +251,8 @@ public struct BenchmarkBuildTool: Sendable {
     }
 
     private func timedRun(
-        arguments: [String], timeout: TimeInterval,
+        arguments: [String],
+        timeout: TimeInterval,
     ) async throws -> (seconds: Double, result: XcodebuildResult) {
         let start = ContinuousClock.now
         let result = try await xcodebuildRunner.run(
@@ -264,7 +265,9 @@ public struct BenchmarkBuildTool: Sendable {
     }
 
     private func ensureSucceeded(
-        _ result: XcodebuildResult, projectRoot: String?, phase: String,
+        _ result: XcodebuildResult,
+        projectRoot: String?,
+        phase: String,
     ) throws {
         guard !result.succeeded else { return }
         let errors = ErrorExtractor.extractBuildErrors(
@@ -289,13 +292,18 @@ public struct BenchmarkBuildTool: Sendable {
     }
 
     static func baselineURL(
-        anchorPath: String, scheme: String, configuration: String,
+        anchorPath: String,
+        scheme: String,
+        configuration: String,
     ) -> URL {
         let dir = URL(fileURLWithPath: anchorPath)
             .deletingLastPathComponent()
             .appendingPathComponent(".build-benchmark")
         let slug = "\(scheme)_\(configuration)"
-            .components(separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_")).inverted)
+            .components(
+                separatedBy: CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+                    .inverted
+            )
             .joined(separator: "-")
         return dir.appendingPathComponent("\(slug).json")
     }
@@ -309,6 +317,7 @@ public struct BenchmarkBuildTool: Sendable {
     static func saveBaseline(_ record: BenchmarkRecord, to url: URL) -> String? {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+
         do {
             try FileManager.default.createDirectory(
                 at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
@@ -350,31 +359,32 @@ public struct BenchmarkBuildTool: Sendable {
         let seconds: Double
     }
 
-    /// Parses `-showBuildTimingSummary` lines, e.g. `CompileSwiftSources (12 tasks) | 34.5 seconds`.
+    /// Parses `-showBuildTimingSummary` lines, e.g.
+    /// `CompileSwiftSources (12 tasks) | 34.5 seconds`.
     static func parseTimingSummary(_ output: String) -> [TimingPhase] {
         let pattern = #/^\s*(\S.*?)\s+\((\d+)\s+tasks?\)\s*\|\s*([\d.]+)\s*seconds\s*$/#
         var phases: [TimingPhase] = []
+
         for line in output.split(separator: "\n", omittingEmptySubsequences: true) {
             guard let match = String(line).firstMatch(of: pattern),
-                  let tasks = Int(match.2), let seconds = Double(match.3)
-            else { continue }
-            phases.append(
-                TimingPhase(phase: String(match.1), tasks: tasks, seconds: seconds),
-            )
+                  let tasks = Int(match.2),
+                  let seconds = Double(match.3) else { continue }
+            phases.append(TimingPhase(phase: String(match.1), tasks: tasks, seconds: seconds))
         }
         return phases.sorted { $0.seconds > $1.seconds }
     }
 
     // MARK: - Formatting
 
-    static func formatSeconds(_ value: Double) -> String {
-        String(format: "%.2fs", value)
-    }
+    static func formatSeconds(_ value: Double) -> String { .init(format: "%.2fs", value) }
 
     static func formatReport(
-        scheme: String, configuration: String,
-        cleanSeconds: [Double], incrementalSeconds: [Double],
-        timingSummary: [TimingPhase], priorBaseline: BenchmarkRecord?,
+        scheme: String,
+        configuration: String,
+        cleanSeconds: [Double],
+        incrementalSeconds: [Double],
+        timingSummary: [TimingPhase],
+        priorBaseline: BenchmarkRecord?,
         savedTo: String?,
     ) -> String {
         var text = "## Build Benchmark\n\n"
@@ -391,8 +401,10 @@ public struct BenchmarkBuildTool: Sendable {
 
         if !timingSummary.isEmpty {
             text += "\n### Slowest phases (last clean build)\n\n"
+
             for phase in timingSummary.prefix(8) {
-                text += "  \(formatSeconds(phase.seconds).padding(toLength: 9, withPad: " ", startingAt: 0))"
+                text +=
+                    "  \(formatSeconds(phase.seconds).padding(toLength: 9, withPad: " ", startingAt: 0))"
                 text += "\(phase.phase) (\(phase.tasks) task\(phase.tasks == 1 ? "" : "s"))\n"
             }
         }
@@ -402,14 +414,14 @@ public struct BenchmarkBuildTool: Sendable {
             if !priorBaseline.machine.isEmpty { text += " on \(priorBaseline.machine)" }
             text += "._\n"
         }
-        if let savedTo {
-            text += "\nBaseline saved to `\(savedTo)`.\n"
-        }
+        if let savedTo { text += "\nBaseline saved to `\(savedTo)`.\n" }
         return text
     }
 
     private static func formatSeries(
-        title: String, samples: [Double], baseline: [Double]?,
+        title: String,
+        samples: [Double],
+        baseline: [Double]?,
     ) -> String {
         guard let series = stats(samples) else { return "" }
         var text = "### \(title)\n\n"

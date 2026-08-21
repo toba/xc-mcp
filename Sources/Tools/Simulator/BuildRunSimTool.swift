@@ -9,8 +9,8 @@ public struct BuildRunSimTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        simctlRunner: SimctlRunner = SimctlRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        simctlRunner: SimctlRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -19,10 +19,10 @@ public struct BuildRunSimTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "build_run_sim",
             description:
-            "Build and run an Xcode project or workspace on the iOS/tvOS/watchOS Simulator. This combines build_sim, install_app_sim, and launch_app_sim into a single operation.",
+                "Build and run an Xcode project or workspace on the iOS/tvOS/watchOS Simulator. This combines build_sim, install_app_sim, and launch_app_sim into a single operation.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -65,7 +65,13 @@ public struct BuildRunSimTool: Sendable {
                         ]),
                     ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
-                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new },
+                        .merging([String: Value].extraArgsSchemaProperty) { _, new in new }
+                        .merging([String: Value].timeoutSchemaProperty(defaultSeconds: 300)) {
+                            _, new in new
+                        }
+                        .merging([String: Value].outputTimeoutSchemaProperty(defaultSeconds: 120)) {
+                            _, new in new
+                        },
                 ),
                 "required": .array([]),
             ]),
@@ -86,6 +92,10 @@ public struct BuildRunSimTool: Sendable {
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let bundleId = arguments.getString("bundle_id")
+        let timeout = arguments.resolveTimeout(default: XcodebuildRunner.defaultTimeout)
+        let outputTimeout = arguments.resolveOutputTimeout(
+            default: XcodebuildRunner.deviceOutputTimeout,
+        )
 
         do {
             // Resolve the simulator to its canonical UDID + runtime-derived destination so
@@ -94,26 +104,37 @@ public struct BuildRunSimTool: Sendable {
             let simulator = resolved.udid
             let destination = resolved.destination
             let extraArgs = await sessionManager.resolveExtraArgs(from: arguments)
+            let additionalArguments = arguments.continueBuildingArgs()
+                + arguments.buildSettingOverrides() + extraArgs
+            let derivedDataNote = DerivedDataScoper.note(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
 
-            // Step 1: Build (use longer output timeout — linking/signing
-            // phases routinely produce no output for >30 seconds)
+            // Step 1: Build (use longer output timeout — linking/signing phases routinely produce
+            // no output for >30 seconds)
             let buildResult = try await xcodebuildRunner.build(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
                 scheme: scheme,
                 destination: destination,
                 configuration: configuration,
-                additionalArguments: arguments.continueBuildingArgs()
-                    + arguments.buildSettingOverrides() + extraArgs,
+                additionalArguments: additionalArguments,
                 environment: environment,
-                outputTimeout: XcodebuildRunner.deviceOutputTimeout,
+                timeout: timeout,
+                outputTimeout: outputTimeout,
                 onProgress: onProgress,
             )
 
-            if !buildResult.succeeded {
-                let errorOutput = ErrorExtractor.extractBuildErrors(from: buildResult.output)
-                throw MCPError.internalError("Build failed:\n\(errorOutput)")
-            }
+            try ErrorExtractor.checkBuildSuccess(
+                buildResult,
+                projectRoot: ErrorExtractor.projectRoot(
+                    projectPath: projectPath, workspacePath: workspacePath,
+                ),
+                derivedDataNote: derivedDataNote,
+            )
 
             // Step 2: Get bundle ID and app path from build settings
             let buildSettings = try await xcodebuildRunner.showBuildSettings(
@@ -122,6 +143,7 @@ public struct BuildRunSimTool: Sendable {
                 scheme: scheme,
                 configuration: configuration,
                 destination: destination,
+                outputTimeout: outputTimeout,
             )
 
             let resolvedBundleId: String
@@ -143,16 +165,14 @@ public struct BuildRunSimTool: Sendable {
             // Step 3: Boot simulator if needed
             let devices = try await simctlRunner.listDevices()
             if let device = devices.first(where: { $0.udid == simulator }),
-               device.state != "Booted"
-            {
-                _ = try await simctlRunner.boot(udid: simulator)
-            }
+               device.state != "Booted" { _ = try await simctlRunner.boot(udid: simulator) }
 
             // Step 4: Install app
             if !appPath.isEmpty {
                 let installResult = try await simctlRunner.install(
                     udid: simulator, appPath: appPath,
                 )
+
                 if !installResult.succeeded {
                     throw MCPError.internalError(
                         "Failed to install app: \(installResult.errorOutput)",
@@ -169,16 +189,12 @@ public struct BuildRunSimTool: Sendable {
             if launchResult.succeeded {
                 var message =
                     "Successfully built and launched '\(resolvedBundleId)' on simulator '\(simulator)'"
-                if let pid = launchResult.launchedPID {
-                    message += "\nProcess ID: \(pid)"
-                }
-                return CallTool.Result(content: [
-                    .text(text: message, annotations: nil, _meta: nil),
-                ])
-            } else {
-                throw MCPError.internalError(
-                    "Failed to launch app: \(launchResult.errorOutput)",
+                if let pid = launchResult.launchedPID { message += "\nProcess ID: \(pid)" }
+                message += "\n\n" + derivedDataNote
+                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
                 )
+            } else {
+                throw MCPError.internalError("Failed to launch app: \(launchResult.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

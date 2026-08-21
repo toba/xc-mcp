@@ -29,6 +29,16 @@ public struct ResolvedPin: Sendable, Equatable {
         self.branch = branch
         self.revision = revision
     }
+
+    /// Renders the resolved state in one short token, for a report line.
+    ///
+    /// A version-based pin reads as the bare version. A branch pin names the branch and the short
+    /// revision it currently sits on. A revision-only pin reads as the short revision.
+    public var stateDescription: String {
+        if let version { return version }
+        if let branch { return "branch \(branch)@\(revision?.prefix(7).description ?? "?")" }
+        return revision.map { "revision \($0.prefix(7))" } ?? "(unresolved)"
+    }
 }
 
 /// Reads and normalizes `Package.resolved` pin files.

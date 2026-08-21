@@ -7,16 +7,15 @@ public struct SwiftPackageTestTool: Sendable {
     private let swiftRunner: SwiftRunner
     private let sessionManager: SessionManager
 
-    public init(swiftRunner: SwiftRunner = SwiftRunner(), sessionManager: SessionManager) {
+    public init(swiftRunner: SwiftRunner = .init(), sessionManager: SessionManager) {
         self.swiftRunner = swiftRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "swift_package_test",
-            description:
-            "Run tests for a Swift package. Supports filtering to run specific tests.",
+            description: "Run tests for a Swift package. Supports filtering to run specific tests.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -71,9 +70,9 @@ public struct SwiftPackageTestTool: Sendable {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let filter = arguments.getString("filter")
         let skip = arguments.getString("skip")
-        let parallel: Bool? = if case let .bool(value) = arguments["parallel"] { value }
-        else { nil }
-        let explicitTimeout = arguments.getInt("timeout").map { Duration.seconds($0) }
+        let parallel: Bool? =
+            if case let .bool(value) = arguments["parallel"] { value } else { nil }
+        let explicitTimeout = arguments.explicitTimeout()
         let isCold = SwiftRunner.isColdCache(packagePath: packagePath)
         let timeout = explicitTimeout
             ?? (isCold ? SwiftRunner.coldCacheTimeout : SwiftRunner.defaultTimeout)
@@ -91,11 +90,12 @@ public struct SwiftPackageTestTool: Sendable {
             )
         }
 
-        // Stop any in-flight warmup so it doesn't race the user's invocation
-        // on `.build/` (and so the BuildGuard flock is released promptly).
+        // Stop any in-flight warmup so it doesn't race the user's invocation on `.build/` (and so
+        // the BuildGuard flock is released promptly).
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
         let testStart = ContinuousClock.now
+
         do {
             let result = try await swiftRunner.test(
                 packagePath: packagePath,
@@ -108,12 +108,8 @@ public struct SwiftPackageTestTool: Sendable {
             )
 
             var context = "swift package"
-            if let filter {
-                context += " (filter: '\(filter)')"
-            }
-            if let skip {
-                context += " (skip: '\(skip)')"
-            }
+            if let filter { context += " (filter: '\(filter)')" }
+            if let skip { context += " (skip: '\(skip)')" }
             return try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: context,
@@ -121,8 +117,8 @@ public struct SwiftPackageTestTool: Sendable {
                 wallClock: testStart.duration(to: .now),
             )
         } catch let ProcessError.timeout(duration) {
-            var message =
-                "swift test timed out after \(duration) (package: \(packagePath))."
+            var message = "swift test timed out after \(duration) (package: \(packagePath))."
+
             if explicitTimeout == nil, isCold {
                 message +=
                     " Detected a cold SwiftPM cache; the cold-cache timeout (\(SwiftRunner.coldCacheTimeout)) was used."

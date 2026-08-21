@@ -7,7 +7,7 @@ public struct ListSchemesTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -15,33 +15,35 @@ public struct ListSchemesTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_schemes",
-            description:
-            "List all schemes available in an Xcode project or workspace.",
+            description: "List all schemes available in an Xcode project or workspace.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "project_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "workspace_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "format": .object([
-                        "type": .string("string"),
-                        "enum": .array([.string("text"), .string("json")]),
-                        "description": .string(
-                            "Output format: 'text' (default) or 'json'.",
-                        ),
-                    ]),
-                ]),
+                "properties": .object(
+                    [
+                        "project_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcodeproj file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "workspace_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcworkspace file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "format": .object([
+                            "type": .string("string"),
+                            "enum": .array([.string("text"), .string("json")]),
+                            "description": .string("Output format: 'text' (default) or 'json'."),
+                        ]),
+                    ].merging([String: Value].timeoutSchemaProperty(
+                        defaultSeconds: 300, subject: "query"),
+                    ) { _, new in new }
+                        .merging([String: Value].queryOutputTimeoutSchemaProperty) { _, new in new }
+                ),
                 "required": .array([]),
             ]),
             annotations: .readOnly,
@@ -54,25 +56,26 @@ public struct ListSchemesTool: Sendable {
             from: arguments,
         )
         let format = arguments.getString("format") ?? "text"
+        let timeout = arguments.resolveTimeout(default: XcodebuildRunner.defaultTimeout)
 
         do {
             let result = try await xcodebuildRunner.listSchemes(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
+                timeout: timeout,
+                outputTimeout: arguments.resolveOutputTimeout(
+                    default: XcodebuildRunner.outputTimeout,
+                ),
             )
 
             if result.succeeded {
                 let output: String
-                if format == "json" {
-                    output = formatSchemesJSON(from: result.stdout)
-                } else {
-                    output = parseSchemeList(from: result.stdout)
-                }
+                output = format == "json"
+                    ? formatSchemesJSON(from: result.stdout)
+                    : parseSchemeList(from: result.stdout)
                 return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
             } else {
-                throw MCPError.internalError(
-                    "Failed to list schemes: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to list schemes: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()
@@ -85,17 +88,13 @@ public struct ListSchemesTool: Sendable {
               let outputData = try? JSONSerialization.data(
                   withJSONObject: parsed, options: [.prettyPrinted, .sortedKeys],
               ),
-              let outputString = String(data: outputData, encoding: .utf8)
-        else {
-            return json
-        }
+              let outputString = String(data: outputData, encoding: .utf8) else { return json }
         return outputString
     }
 
     private func parseSchemeList(from json: String) -> String {
         let data = Data(json.utf8)
-        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else {
+        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             // If not JSON, return raw output
             return json
         }
@@ -104,50 +103,34 @@ public struct ListSchemesTool: Sendable {
 
         // Handle workspace format
         if let workspace = parsed["workspace"] as? [String: Any] {
-            if let name = workspace["name"] as? String {
-                output += "Workspace: \(name)\n\n"
-            }
+            if let name = workspace["name"] as? String { output += "Workspace: \(name)\n\n" }
 
             if let schemes = workspace["schemes"] as? [String] {
                 output += "Schemes (\(schemes.count)):\n"
-                for scheme in schemes.sorted() {
-                    output += "  - \(scheme)\n"
-                }
+                for scheme in schemes.sorted() { output += "  - \(scheme)\n" }
             }
         }
 
         // Handle project format
         if let project = parsed["project"] as? [String: Any] {
-            if let name = project["name"] as? String {
-                output += "Project: \(name)\n\n"
-            }
+            if let name = project["name"] as? String { output += "Project: \(name)\n\n" }
 
             if let schemes = project["schemes"] as? [String] {
                 output += "Schemes (\(schemes.count)):\n"
-                for scheme in schemes.sorted() {
-                    output += "  - \(scheme)\n"
-                }
+                for scheme in schemes.sorted() { output += "  - \(scheme)\n" }
             }
 
             if let targets = project["targets"] as? [String] {
                 output += "\nTargets (\(targets.count)):\n"
-                for target in targets.sorted() {
-                    output += "  - \(target)\n"
-                }
+                for target in targets.sorted() { output += "  - \(target)\n" }
             }
 
             if let configurations = project["configurations"] as? [String] {
                 output += "\nConfigurations (\(configurations.count)):\n"
-                for config in configurations {
-                    output += "  - \(config)\n"
-                }
+                for config in configurations { output += "  - \(config)\n" }
             }
         }
 
-        if output.isEmpty {
-            return json
-        }
-
-        return output
+        return output.isEmpty ? json : output
     }
 }

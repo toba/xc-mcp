@@ -202,7 +202,7 @@ public struct AddSwiftPackageTool: Sendable {
         // Create Swift Package reference
         let packageRef = XCRemoteSwiftPackageReference(
             repositoryURL: packageURL,
-            versionRequirement: parseRequirement(requirementStr),
+            versionRequirement: PackageRequirement.parse(requirementStr),
             traits: SwiftPackageTraits.stored(traits),
         )
         xcodeproj.pbxproj.add(object: packageRef)
@@ -369,45 +369,5 @@ public struct AddSwiftPackageTool: Sendable {
         }
 
         frameworksBuildPhase.files?.append(buildFile)
-    }
-
-    private func parseRequirement(
-        _ requirement: String
-    ) -> XCRemoteSwiftPackageReference.VersionRequirement {
-        let trimmed = requirement.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        if trimmed.hasPrefix("from:") {
-            let version = String(trimmed.dropFirst(5)).trimmingCharacters(
-                in: .whitespacesAndNewlines,
-            )
-            return .upToNextMajorVersion(version)
-        } else if trimmed.hasPrefix("upToNextMajor:") {
-            let version = String(trimmed.dropFirst(14)).trimmingCharacters(
-                in: .whitespacesAndNewlines,
-            )
-            return .upToNextMajorVersion(version)
-        } else if trimmed.hasPrefix("upToNextMinor:") {
-            let version = String(trimmed.dropFirst(14)).trimmingCharacters(
-                in: .whitespacesAndNewlines,
-            )
-            return .upToNextMinorVersion(version)
-        } else if trimmed.hasPrefix("branch:") {
-            let branch = String(trimmed.dropFirst(7)).trimmingCharacters(
-                in: .whitespacesAndNewlines,
-            )
-            return .branch(branch)
-        } else if trimmed.hasPrefix("revision:") {
-            let revision = String(trimmed.dropFirst(9)).trimmingCharacters(
-                in: .whitespacesAndNewlines,
-            )
-            return .revision(revision)
-        } else if trimmed.hasPrefix("exact:") {
-            let version = String(trimmed.dropFirst(6)).trimmingCharacters(
-                in: .whitespacesAndNewlines,
-            )
-            return .exact(version)
-        } else {
-            return .exact(trimmed)
-        }
     }
 }

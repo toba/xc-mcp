@@ -7,7 +7,7 @@ public struct ShowBuildSettingsTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -15,58 +15,61 @@ public struct ShowBuildSettingsTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "show_build_settings",
             description:
-            "Show build settings for a scheme. Supports filtering and field selection.",
+                "Show build settings for a scheme. Supports filtering and field selection.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "project_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcodeproj file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "workspace_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcworkspace file. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "scheme": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "The scheme to get build settings for. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "configuration": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Build configuration (Debug or Release). Defaults to Debug.",
-                        ),
-                    ]),
-                    "filter": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Optional filter to show only settings containing this string (case-insensitive).",
-                        ),
-                    ]),
-                    "fields": .object([
-                        "type": .string("array"),
-                        "items": .object(["type": .string("string")]),
-                        "description": .string(
-                            "Exact build setting key names to return (e.g., [\"PRODUCT_NAME\", \"SWIFT_VERSION\"]). Takes precedence over filter.",
-                        ),
-                    ]),
-                    "format": .object([
-                        "type": .string("string"),
-                        "enum": .array([.string("text"), .string("json")]),
-                        "description": .string(
-                            "Output format: 'text' (default) or 'json'.",
-                        ),
-                    ]),
-                ]),
+                "properties": .object(
+                    [
+                        "project_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcodeproj file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "workspace_path": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Path to the .xcworkspace file. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "scheme": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "The scheme to get build settings for. Uses session default if not specified.",
+                            ),
+                        ]),
+                        "configuration": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Build configuration (Debug or Release). Defaults to Debug.",
+                            ),
+                        ]),
+                        "filter": .object([
+                            "type": .string("string"),
+                            "description": .string(
+                                "Optional filter to show only settings containing this string (case-insensitive).",
+                            ),
+                        ]),
+                        "fields": .object([
+                            "type": .string("array"),
+                            "items": .object(["type": .string("string")]),
+                            "description": .string(
+                                "Exact build setting key names to return (e.g., [\"PRODUCT_NAME\", \"SWIFT_VERSION\"]). Takes precedence over filter.",
+                            ),
+                        ]),
+                        "format": .object([
+                            "type": .string("string"),
+                            "enum": .array([.string("text"), .string("json")]),
+                            "description": .string("Output format: 'text' (default) or 'json'."),
+                        ]),
+                    ].merging([String: Value].timeoutSchemaProperty(
+                        defaultSeconds: 300, subject: "query"),
+                    ) { _, new in new }
+                        .merging([String: Value].queryOutputTimeoutSchemaProperty) { _, new in new }
+                ),
                 "required": .array([]),
             ]),
             annotations: .readOnly,
@@ -83,6 +86,7 @@ public struct ShowBuildSettingsTool: Sendable {
         let filter = arguments.getString("filter")?.lowercased()
         let fieldSet = Set(arguments.getStringArray("fields"))
         let format = arguments.getString("format") ?? "text"
+        let timeout = arguments.resolveTimeout(default: XcodebuildRunner.defaultTimeout)
 
         do {
             let result = try await xcodebuildRunner.showBuildSettings(
@@ -90,28 +94,20 @@ public struct ShowBuildSettingsTool: Sendable {
                 workspacePath: workspacePath,
                 scheme: scheme,
                 configuration: configuration,
+                timeout: timeout,
+                outputTimeout: arguments.resolveOutputTimeout(
+                    default: XcodebuildRunner.outputTimeout,
+                ),
             )
 
             if result.succeeded {
                 let output: String
-                if format == "json" {
-                    output = formatBuildSettingsJSON(
-                        from: result.stdout,
-                        fields: fieldSet,
-                        filter: filter,
-                    )
-                } else {
-                    output = formatBuildSettings(
-                        from: result.stdout,
-                        fields: fieldSet,
-                        filter: filter,
-                    )
-                }
+                output = format == "json"
+                    ? formatBuildSettingsJSON(from: result.stdout, fields: fieldSet, filter: filter)
+                    : formatBuildSettings(from: result.stdout, fields: fieldSet, filter: filter)
                 return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
             } else {
-                throw MCPError.internalError(
-                    "Failed to get build settings: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to get build settings: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()
@@ -124,8 +120,7 @@ public struct ShowBuildSettingsTool: Sendable {
         filter: String?,
     ) -> String {
         let data = Data(json.utf8)
-        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        else {
+        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
             // If not JSON, return raw output (possibly filtered)
             if let filter {
                 let lines = json.components(separatedBy: .newlines)
@@ -139,10 +134,7 @@ public struct ShowBuildSettingsTool: Sendable {
 
         for targetSettings in parsed {
             guard let target = targetSettings["target"] as? String,
-                  let settings = targetSettings["buildSettings"] as? [String: Any]
-            else {
-                continue
-            }
+                  let settings = targetSettings["buildSettings"] as? [String: Any] else { continue }
 
             output += "Target: \(target)\n"
             output += String(repeating: "=", count: 60) + "\n\n"
@@ -159,9 +151,7 @@ public struct ShowBuildSettingsTool: Sendable {
                 } else if let filter {
                     let keyLower = key.lowercased()
                     let valueLower = String(describing: value).lowercased()
-                    if !keyLower.contains(filter), !valueLower.contains(filter) {
-                        continue
-                    }
+                    if !keyLower.contains(filter), !valueLower.contains(filter) { continue }
                 }
 
                 let valueStr = String(describing: value)
@@ -173,11 +163,10 @@ public struct ShowBuildSettingsTool: Sendable {
 
         if output.isEmpty {
             if !fields.isEmpty {
-                return "No build settings found for fields: \(fields.sorted().joined(separator: ", "))"
+                return
+                    "No build settings found for fields: \(fields.sorted().joined(separator: ", "))"
             }
-            if let filter {
-                return "No build settings found matching filter '\(filter)'"
-            }
+            if let filter { return "No build settings found matching filter '\(filter)'" }
             return "No build settings found"
         }
 
@@ -190,8 +179,7 @@ public struct ShowBuildSettingsTool: Sendable {
         filter: String?,
     ) -> String {
         let data = Data(json.utf8)
-        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        else {
+        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
             return json
         }
 
@@ -199,9 +187,7 @@ public struct ShowBuildSettingsTool: Sendable {
         let filtered: [[String: Any]] = parsed.compactMap { targetSettings in
             guard let target = targetSettings["target"] as? String,
                   let settings = targetSettings["buildSettings"] as? [String: Any]
-            else {
-                return nil
-            }
+            else { return nil }
 
             let filteredSettings: [String: Any]
             if !fields.isEmpty {
@@ -215,19 +201,13 @@ public struct ShowBuildSettingsTool: Sendable {
                 filteredSettings = settings
             }
 
-            return [
-                "target": target,
-                "buildSettings": filteredSettings,
-            ]
+            return ["target": target, "buildSettings": filteredSettings]
         }
 
-        guard
-            let outputData = try? JSONSerialization.data(
-                withJSONObject: filtered, options: [.prettyPrinted, .sortedKeys],
-            ), let outputString = String(data: outputData, encoding: .utf8)
-        else {
-            return json
-        }
+        guard let outputData = try? JSONSerialization.data(
+            withJSONObject: filtered, options: [.prettyPrinted, .sortedKeys],
+        ),
+              let outputString = String(data: outputData, encoding: .utf8) else { return json }
 
         return outputString
     }
