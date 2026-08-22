@@ -66,6 +66,52 @@ public struct SwiftRunner: Sendable {
         return true
     }
 
+    /// Returns true when the next build must compile the whole dependency graph.
+    ///
+    /// A cross-compile writes into its own `.build/<triple>` tree, so a warm host cache buys it
+    /// nothing. Any non-host destination therefore counts as cold.
+    ///
+    /// - Parameters:
+    ///   - packagePath: Path to the Swift package directory.
+    ///   - destination: The destination the caller asked for.
+    public static func isColdCache(
+        packagePath: String,
+        destination: SwiftBuildDestination,
+    ) -> Bool {
+        !destination.isHost || isColdCache(packagePath: packagePath)
+    }
+
+    /// Builds the error text for a `swift` command that exceeded its deadline.
+    ///
+    /// - Parameters:
+    ///   - command: The command that timed out, such as `swift build`.
+    ///   - duration: The deadline the command exceeded.
+    ///   - packagePath: Path to the Swift package directory.
+    ///   - destination: The resolved destination, or `nil` for the host.
+    ///   - usedColdCacheTimeout: True when the tool picked ``coldCacheTimeout`` on its own.
+    ///   - advice: The closing sentence telling the caller what to do next.
+    public static func timeoutMessage(
+        command: String,
+        duration: Duration,
+        packagePath: String,
+        destination: ResolvedSwiftDestination?,
+        usedColdCacheTimeout: Bool,
+        advice: String,
+    ) -> String {
+        let label = SwiftBuildDestination.label(for: destination)
+        var message = "\(command) timed out after \(duration) (package: \(packagePath), \(label))."
+
+        if usedColdCacheTimeout {
+            let reason = destination == nil
+                ? "Detected a cold SwiftPM cache"
+                : "A cross-compile builds the whole dependency graph again"
+            message += " \(reason); the cold-cache timeout (\(coldCacheTimeout)) was used."
+        }
+        message +=
+            " Heavy dependency graphs (e.g. swift-syntax) can take longer than the default on a first build. \(advice)"
+        return message
+    }
+
     /// Creates a new Swift runner.
     public init() {}
 
@@ -107,6 +153,7 @@ public struct SwiftRunner: Sendable {
     ///   - configuration: Build configuration ("debug" or "release"). Defaults to "debug".
     ///   - product: Optional specific product to build.
     ///   - buildTests: When true, also builds test targets.
+    ///   - destination: A resolved cross-compilation destination, or `nil` to build for the host.
     ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
     /// - Returns: The build result containing exit code and output.
     public func build(
@@ -115,6 +162,7 @@ public struct SwiftRunner: Sendable {
         product: String? = nil,
         buildTests: Bool = false,
         verbose: Bool = false,
+        destination: ResolvedSwiftDestination? = nil,
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
@@ -123,6 +171,7 @@ public struct SwiftRunner: Sendable {
         if verbose { args.append("-v") }
         if let product { args.append(contentsOf: ["--product", product]) }
         if buildTests { args.append("--build-tests") }
+        args.append(contentsOf: destination?.arguments ?? [])
         args.append(contentsOf: Self.extraArgsFromEnvironment())
         return try await run(
             arguments: args, workingDirectory: packagePath,

@@ -16,7 +16,7 @@ public struct SwiftPackageBuildTool: Sendable {
         .init(
             name: "swift_package_build",
             description:
-                "Build a Swift package. Supports building specific products and configurations.",
+                "Build a Swift package. Supports building specific products and configurations. Pass `destination` to cross-compile for another Apple platform, which is the only way to compile source behind `#if os(iOS)` or `#if canImport(UIKit)`.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -43,6 +43,15 @@ public struct SwiftPackageBuildTool: Sendable {
                         "type": .string("boolean"),
                         "description": .string("Also build test targets. Defaults to false."),
                     ]),
+                    "destination": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Platform to compile for. Defaults to 'macos', the host. A simulator destination needs no booted simulator, and it is the way to compile iOS-conditional source in a cross-platform package.",
+                        ),
+                        "enum": .array(
+                            SwiftBuildDestination.acceptedValues.map { Value.string($0) },
+                        ),
+                    ]),
                     "timeout": .object([
                         "type": .string("integer"),
                         "description": .string(
@@ -64,9 +73,12 @@ public struct SwiftPackageBuildTool: Sendable {
         let configuration = arguments.getString("configuration") ?? "debug"
         let product = arguments.getString("product")
         let buildTests = arguments.getBool("build_tests")
+        let requestedDestination = try SwiftBuildDestination.parse(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let explicitTimeout = arguments.explicitTimeout()
-        let isCold = SwiftRunner.isColdCache(packagePath: packagePath)
+        let isCold = SwiftRunner.isColdCache(
+            packagePath: packagePath, destination: requestedDestination,
+        )
         let timeout = explicitTimeout
             ?? (isCold ? SwiftRunner.coldCacheTimeout : SwiftRunner.defaultTimeout)
 
@@ -82,6 +94,8 @@ public struct SwiftPackageBuildTool: Sendable {
 
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
+        let destination = try await requestedDestination.resolve()
+        let destinationLabel = SwiftBuildDestination.label(for: destination)
         let buildStart = ContinuousClock.now
 
         do {
@@ -90,6 +104,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 configuration: configuration,
                 product: product,
                 buildTests: buildTests,
+                destination: destination,
                 environment: environment,
                 timeout: timeout,
                 onProgress: onProgress,
@@ -101,7 +116,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 let elapsed = buildStart.duration(to: .now).elapsedDescription
                 var message = "Build succeeded"
                 if let product { message += " for product '\(product)'" }
-                message += " (\(configuration) configuration, \(elapsed))"
+                message += " (\(configuration) configuration, \(destinationLabel), \(elapsed))"
 
                 return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
                 )
@@ -115,6 +130,7 @@ public struct SwiftPackageBuildTool: Sendable {
                     product: product,
                     buildTests: buildTests,
                     verbose: true,
+                    destination: destination,
                     environment: environment,
                     timeout: timeout,
                 )
@@ -122,21 +138,24 @@ public struct SwiftPackageBuildTool: Sendable {
                     from: verboseResult.output, signal: signal,
                 )
                 let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
-                throw MCPError.internalError("Build failed:\n\(errorOutput)\n\n\(crashDetails)")
+                throw MCPError.internalError(
+                    "Build failed for \(destinationLabel):\n\(errorOutput)\n\n\(crashDetails)",
+                )
             }
 
             let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
-            throw MCPError.internalError("Build failed:\n\(errorOutput)")
+            throw MCPError.internalError("Build failed for \(destinationLabel):\n\(errorOutput)")
         } catch let ProcessError.timeout(duration) {
-            var message = "swift build timed out after \(duration) (package: \(packagePath))."
-
-            if explicitTimeout == nil, isCold {
-                message +=
-                    " Detected a cold SwiftPM cache; the cold-cache timeout (\(SwiftRunner.coldCacheTimeout)) was used."
-            }
-            message +=
-                " Heavy dependency graphs (e.g. swift-syntax) can take longer than the default on a first build. Pass an explicit `timeout` (seconds) and retry."
-            throw MCPError.internalError(message)
+            throw MCPError.internalError(
+                SwiftRunner.timeoutMessage(
+                    command: "swift build",
+                    duration: duration,
+                    packagePath: packagePath,
+                    destination: destination,
+                    usedColdCacheTimeout: explicitTimeout == nil && isCold,
+                    advice: "Pass an explicit `timeout` (seconds) and retry.",
+                ),
+            )
         } catch {
             throw try error.asMCPError()
         }

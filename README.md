@@ -503,8 +503,8 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 | Tool | Description |
 |------|-------------|
-| `swift_package_build` | Build a Swift package |
-| `swift_package_test` | Run tests |
+| `swift_package_build` | Build a Swift package — `destination` cross-compiles for iOS, tvOS, watchOS or visionOS |
+| `swift_package_test` | Run tests — `destination` compiles the test targets for another platform instead |
 | `swift_package_run` | Run executable |
 | `swift_package_clean` | Clean build artifacts |
 | `swift_package_list` | List dependencies |

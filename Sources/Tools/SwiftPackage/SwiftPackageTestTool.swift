@@ -15,7 +15,8 @@ public struct SwiftPackageTestTool: Sendable {
     public func tool() -> Tool {
         .init(
             name: "swift_package_test",
-            description: "Run tests for a Swift package. Supports filtering to run specific tests.",
+            description:
+                "Run tests for a Swift package. Supports filtering to run specific tests. Pass `destination` to compile the test targets for another Apple platform instead; SwiftPM cannot execute a cross-compiled test bundle, so that mode is a compile check.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -50,6 +51,15 @@ public struct SwiftPackageTestTool: Sendable {
                         ),
                         "additionalProperties": .object(["type": .string("string")]),
                     ]),
+                    "destination": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Platform to compile the test targets for. Defaults to 'macos', which runs the tests on the host. Any other value builds the test targets for that platform and runs nothing, because SwiftPM cannot execute a cross-compiled test bundle. A simulator destination needs no booted simulator.",
+                        ),
+                        "enum": .array(
+                            SwiftBuildDestination.acceptedValues.map { Value.string($0) },
+                        ),
+                    ]),
                     "timeout": .object([
                         "type": .string("integer"),
                         "description": .string(
@@ -72,8 +82,11 @@ public struct SwiftPackageTestTool: Sendable {
         let skip = arguments.getString("skip")
         let parallel: Bool? =
             if case let .bool(value) = arguments["parallel"] { value } else { nil }
+        let requestedDestination = try SwiftBuildDestination.parse(from: arguments)
         let explicitTimeout = arguments.explicitTimeout()
-        let isCold = SwiftRunner.isColdCache(packagePath: packagePath)
+        let isCold = SwiftRunner.isColdCache(
+            packagePath: packagePath, destination: requestedDestination,
+        )
         let timeout = explicitTimeout
             ?? (isCold ? SwiftRunner.coldCacheTimeout : SwiftRunner.defaultTimeout)
 
@@ -96,6 +109,22 @@ public struct SwiftPackageTestTool: Sendable {
 
         let testStart = ContinuousClock.now
 
+        // SwiftPM builds a cross-compiled test bundle but cannot execute it on the host, so a
+        // non-host destination becomes a `--build-tests` compile check.
+        if let destination = try await requestedDestination.resolve() {
+            return try await buildTestsOnly(
+                packagePath: packagePath,
+                destination: destination,
+                filter: filter,
+                skip: skip,
+                environment: environment,
+                explicitTimeout: explicitTimeout,
+                timeout: timeout,
+                start: testStart,
+                onProgress: onProgress,
+            )
+        }
+
         do {
             let result = try await swiftRunner.test(
                 packagePath: packagePath,
@@ -107,7 +136,7 @@ public struct SwiftPackageTestTool: Sendable {
                 onProgress: onProgress,
             )
 
-            var context = "swift package"
+            var context = "swift package (\(SwiftBuildDestination.hostLabel))"
             if let filter { context += " (filter: '\(filter)')" }
             if let skip { context += " (skip: '\(skip)')" }
             return try await ErrorExtractor.formatTestToolResult(
@@ -117,17 +146,81 @@ public struct SwiftPackageTestTool: Sendable {
                 wallClock: testStart.duration(to: .now),
             )
         } catch let ProcessError.timeout(duration) {
-            var message = "swift test timed out after \(duration) (package: \(packagePath))."
-
-            if explicitTimeout == nil, isCold {
-                message +=
-                    " Detected a cold SwiftPM cache; the cold-cache timeout (\(SwiftRunner.coldCacheTimeout)) was used."
-            }
-            message +=
-                " Heavy dependency graphs (e.g. swift-syntax) can take longer than the default on a first build. Pass an explicit `timeout` (seconds) or run `swift_package_build` first to warm the cache."
-            throw MCPError.internalError(message)
+            throw MCPError.internalError(
+                SwiftRunner.timeoutMessage(
+                    command: "swift test",
+                    duration: duration,
+                    packagePath: packagePath,
+                    destination: nil,
+                    usedColdCacheTimeout: explicitTimeout == nil && isCold,
+                    advice: Self.timeoutAdvice,
+                ),
+            )
         } catch {
             throw try error.asMCPError()
         }
     }
+
+    /// Compiles the test targets for a cross-compilation destination without running them.
+    ///
+    /// SwiftPM produces a test bundle for the target platform, and the host cannot execute it. The
+    /// build is still the check a cross-platform library needs, because it is the only thing that
+    /// compiles test code guarded by `#if os(iOS)`.
+    private func buildTestsOnly(
+        packagePath: String,
+        destination: ResolvedSwiftDestination,
+        filter: String?,
+        skip: String?,
+        environment: Environment,
+        explicitTimeout: Duration?,
+        timeout: Duration,
+        start: ContinuousClock.Instant,
+        onProgress: (@Sendable (String) -> Void)?,
+    ) async throws -> CallTool.Result {
+        do {
+            let result = try await swiftRunner.build(
+                packagePath: packagePath,
+                buildTests: true,
+                destination: destination,
+                environment: environment,
+                timeout: timeout,
+                onProgress: onProgress,
+            )
+
+            let buildResult = ErrorExtractor.parseBuildOutput(result.output)
+            guard result.succeeded || buildResult.status == "success" else {
+                let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
+                throw MCPError.internalError(
+                    "Test targets failed to build for \(destination.label):\n\(errorOutput)",
+                )
+            }
+
+            let elapsed = start.duration(to: .now).elapsedDescription
+            var message = "Test targets built for \(destination.label) (\(elapsed)). "
+            message +=
+                "No test ran: SwiftPM cannot execute a test bundle built for another platform. "
+            message += "Omit `destination` to run the tests on the host."
+            if filter != nil || skip != nil {
+                message += " `filter` and `skip` select tests to run, so they had no effect here."
+            }
+            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+        } catch let ProcessError.timeout(duration) {
+            throw MCPError.internalError(
+                SwiftRunner.timeoutMessage(
+                    command: "swift build --build-tests",
+                    duration: duration,
+                    packagePath: packagePath,
+                    destination: destination,
+                    usedColdCacheTimeout: explicitTimeout == nil,
+                    advice: Self.timeoutAdvice,
+                ),
+            )
+        } catch {
+            throw try error.asMCPError()
+        }
+    }
+
+    /// The closing sentence of every timeout error this tool reports.
+    private static let timeoutAdvice =
+        "Pass an explicit `timeout` (seconds) or run `swift_package_build` first to warm the cache."
 }
