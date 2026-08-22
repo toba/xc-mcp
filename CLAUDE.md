@@ -28,7 +28,7 @@ xc-mcp/
 │   │   ├── Build/                   # xc-build (22 tools)
 │   │   ├── Debug/                   # xc-debug (31 tools)
 │   │   ├── Device/                  # xc-device (12 tools)
-│   │   ├── Project/                 # xc-project (40 tools)
+│   │   ├── Project/                 # xc-project (42 tools)
 │   │   ├── Simulator/               # xc-simulator (29 tools)
 │   │   ├── Strings/                 # xc-strings (24 tools)
 │   │   └── Swift/                   # xc-swift (13 tools)
@@ -44,8 +44,8 @@ xc-mcp/
 │   │   ├── AppBundle/               # App-bundle staging & inspection (preparer, codesign, icon manifest)
 │   │   ├── XCStrings/               # String-catalog parsing/encoding (+ Models/)
 │   │   └── *.swift                  # Cross-cutting singletons (XCMCPCore, ElapsedFormatting, MachineMetadata, BreakpointConditionAdvisor, PackageResolvedParser)
-│   ├── Tools/                       # 169 tools across 14 categories
-│   │   ├── Project/                 # 44 project manipulation tools
+│   ├── Tools/                       # 171 tools across 14 categories
+│   │   ├── Project/                 # 46 project manipulation tools
 │   │   ├── XCStrings/               # 24 localization/string catalog tools
 │   │   ├── Simulator/               # 18 simulator tools
 │   │   ├── Debug/                   # 19 LLDB debug tools
@@ -72,8 +72,8 @@ The project builds 8 executables — one monolithic server and 7 focused servers
 
 | Executable | Tools | Use case |
 |------------|-------|----------|
-| `xc-mcp` | 150 | Full server (~50K tokens) |
-| `xc-project` | 42 | Project file manipulation |
+| `xc-mcp` | 152 | Full server (~50K tokens) |
+| `xc-project` | 44 | Project file manipulation |
 | `xc-simulator` | 29 | Simulator + UI automation |
 | `xc-debug` | 31 | LLDB debugging + macOS UI automation |
 | `xc-build` | 22 | Build, test, run |

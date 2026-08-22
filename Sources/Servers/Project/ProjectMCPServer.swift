@@ -46,6 +46,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case removeBuildSetting = "remove_build_setting"
     case addFramework = "add_framework"
     case removeFramework = "remove_framework"
+    case removeSubproject = "remove_subproject"
     case listFrameworksPhase = "list_frameworks_phase"
     case setFrameworkMergeAttribute = "set_framework_merge_attribute"
     case addBuildPhase = "add_build_phase"
@@ -74,6 +75,7 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
     case listCopyFilesPhases = "list_copy_files_phases"
     case addCopyFilesPhase = "add_copy_files_phase"
     case addToCopyFilesPhase = "add_to_copy_files_phase"
+    case removeFromCopyFilesPhase = "remove_from_copy_files_phase"
     case removeCopyFilesPhase = "remove_copy_files_phase"
     case setCopyFilesPhaseSubpath = "set_copy_files_phase_subpath"
     case removeRunScriptPhase = "remove_run_script_phase"
@@ -113,9 +115,10 @@ public enum ProjectToolName: String, CaseIterable, Sendable {
 ///   `add_target_to_synchronized_folder`, `add_synchronized_folder_exception`,
 ///   `remove_synchronized_folder_exception`, `list_synchronized_folder_exceptions`
 /// - Build settings: `get_build_settings`, `set_build_setting`, `list_build_configurations`
-/// - Dependencies: `add_dependency`, `add_framework`, `add_build_phase`, `remove_run_script_phase`
+/// - Dependencies: `add_dependency`, `add_framework`, `add_build_phase`, `remove_run_script_phase`,
+///   `remove_subproject`
 /// - Copy files phases: `list_copy_files_phases`, `add_copy_files_phase`,
-///   `add_to_copy_files_phase`, `remove_copy_files_phase`
+///   `add_to_copy_files_phase`, `remove_from_copy_files_phase`, `remove_copy_files_phase`
 /// - Swift packages: `add_swift_package`, `update_swift_package`, `list_swift_packages`,
 ///   `resolve_packages`, `show_package_resolution`, `remove_swift_package`
 /// - App extensions: `add_app_extension`, `remove_app_extension`
@@ -190,6 +193,7 @@ public struct ProjectMCPServer: Sendable {
         let removeBuildSettingTool = RemoveBuildSettingTool(pathUtility: pathUtility)
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
         let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
+        let removeSubprojectTool = RemoveSubprojectTool(pathUtility: pathUtility)
         let listFrameworksPhaseTool = ListFrameworksPhaseTool(pathUtility: pathUtility)
         let setFrameworkMergeAttributeTool = SetFrameworkMergeAttributeTool(
             pathUtility: pathUtility)
@@ -237,6 +241,7 @@ public struct ProjectMCPServer: Sendable {
         let listCopyFilesPhases = ListCopyFilesPhases(pathUtility: pathUtility)
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
+        let removeFromCopyFilesPhase = RemoveFromCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
         let setCopyFilesPhaseSubpath = SetCopyFilesPhaseSubpath(pathUtility: pathUtility)
         let removeRunScriptPhase = RemoveRunScriptPhase(pathUtility: pathUtility)
@@ -293,6 +298,7 @@ public struct ProjectMCPServer: Sendable {
                 removeBuildSettingTool.tool(),
                 addFrameworkTool.tool(),
                 removeFrameworkTool.tool(),
+                removeSubprojectTool.tool(),
                 listFrameworksPhaseTool.tool(),
                 setFrameworkMergeAttributeTool.tool(),
                 addBuildPhaseTool.tool(),
@@ -327,6 +333,7 @@ public struct ProjectMCPServer: Sendable {
                 listCopyFilesPhases.tool(),
                 addCopyFilesPhase.tool(),
                 addToCopyFilesPhase.tool(),
+                removeFromCopyFilesPhase.tool(),
                 removeCopyFilesPhase.tool(),
                 setCopyFilesPhaseSubpath.tool(),
                 removeRunScriptPhase.tool(),
@@ -411,6 +418,8 @@ public struct ProjectMCPServer: Sendable {
                     return try removeBuildSettingTool.execute(arguments: arguments)
                 case .addFramework: return try addFrameworkTool.execute(arguments: arguments)
                 case .removeFramework: return try removeFrameworkTool.execute(arguments: arguments)
+                case .removeSubproject:
+                    return try removeSubprojectTool.execute(arguments: arguments)
                 case .listFrameworksPhase:
                     return try listFrameworksPhaseTool.execute(arguments: arguments)
                 case .setFrameworkMergeAttribute:
@@ -472,6 +481,8 @@ public struct ProjectMCPServer: Sendable {
                 case .addCopyFilesPhase: return try addCopyFilesPhase.execute(arguments: arguments)
                 case .addToCopyFilesPhase:
                     return try addToCopyFilesPhase.execute(arguments: arguments)
+                case .removeFromCopyFilesPhase:
+                    return try removeFromCopyFilesPhase.execute(arguments: arguments)
                 case .removeCopyFilesPhase:
                     return try removeCopyFilesPhase.execute(arguments: arguments)
                 case .setCopyFilesPhaseSubpath:

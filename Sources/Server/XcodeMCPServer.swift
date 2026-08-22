@@ -49,6 +49,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case removeBuildSetting = "remove_build_setting"
     case addFramework = "add_framework"
     case removeFramework = "remove_framework"
+    case removeSubproject = "remove_subproject"
     case listFrameworksPhase = "list_frameworks_phase"
     case setFrameworkMergeAttribute = "set_framework_merge_attribute"
     case dumpPIF = "dump_pif"
@@ -78,6 +79,7 @@ public enum ToolName: String, CaseIterable, Sendable {
     case listCopyFilesPhases = "list_copy_files_phases"
     case addCopyFilesPhase = "add_copy_files_phase"
     case addToCopyFilesPhase = "add_to_copy_files_phase"
+    case removeFromCopyFilesPhase = "remove_from_copy_files_phase"
     case removeCopyFilesPhase = "remove_copy_files_phase"
     case setCopyFilesPhaseSubpath = "set_copy_files_phase_subpath"
     case removeRunScriptPhase = "remove_run_script_phase"
@@ -629,6 +631,7 @@ public struct XcodeMCPServer: Sendable {
         let removeBuildSettingTool = RemoveBuildSettingTool(pathUtility: pathUtility)
         let addFrameworkTool = AddFrameworkTool(pathUtility: pathUtility)
         let removeFrameworkTool = RemoveFrameworkTool(pathUtility: pathUtility)
+        let removeSubprojectTool = RemoveSubprojectTool(pathUtility: pathUtility)
         let listFrameworksPhaseTool = ListFrameworksPhaseTool(pathUtility: pathUtility)
         let setFrameworkMergeAttributeTool = SetFrameworkMergeAttributeTool(
             pathUtility: pathUtility)
@@ -665,6 +668,7 @@ public struct XcodeMCPServer: Sendable {
         let listCopyFilesPhases = ListCopyFilesPhases(pathUtility: pathUtility)
         let addCopyFilesPhase = AddCopyFilesPhase(pathUtility: pathUtility)
         let addToCopyFilesPhase = AddToCopyFilesPhase(pathUtility: pathUtility)
+        let removeFromCopyFilesPhase = RemoveFromCopyFilesPhase(pathUtility: pathUtility)
         let removeCopyFilesPhase = RemoveCopyFilesPhase(pathUtility: pathUtility)
         let setCopyFilesPhaseSubpath = SetCopyFilesPhaseSubpath(pathUtility: pathUtility)
         let removeRunScriptPhase = RemoveRunScriptPhase(pathUtility: pathUtility)
@@ -1039,6 +1043,7 @@ public struct XcodeMCPServer: Sendable {
             (.removeBuildSetting, removeBuildSettingTool.tool()),
             (.addFramework, addFrameworkTool.tool()),
             (.removeFramework, removeFrameworkTool.tool()),
+            (.removeSubproject, removeSubprojectTool.tool()),
             (.listFrameworksPhase, listFrameworksPhaseTool.tool()),
             (.setFrameworkMergeAttribute, setFrameworkMergeAttributeTool.tool()),
             (.dumpPIF, dumpPIFTool.tool()),
@@ -1071,6 +1076,7 @@ public struct XcodeMCPServer: Sendable {
             (.listCopyFilesPhases, listCopyFilesPhases.tool()),
             (.addCopyFilesPhase, addCopyFilesPhase.tool()),
             (.addToCopyFilesPhase, addToCopyFilesPhase.tool()),
+            (.removeFromCopyFilesPhase, removeFromCopyFilesPhase.tool()),
             (.removeCopyFilesPhase, removeCopyFilesPhase.tool()),
             (.setCopyFilesPhaseSubpath, setCopyFilesPhaseSubpath.tool()),
             (.removeRunScriptPhase, removeRunScriptPhase.tool()),
@@ -1340,6 +1346,8 @@ public struct XcodeMCPServer: Sendable {
                     return try removeBuildSettingTool.execute(arguments: arguments)
                 case .addFramework: return try addFrameworkTool.execute(arguments: arguments)
                 case .removeFramework: return try removeFrameworkTool.execute(arguments: arguments)
+                case .removeSubproject:
+                    return try removeSubprojectTool.execute(arguments: arguments)
                 case .listFrameworksPhase:
                     return try listFrameworksPhaseTool.execute(arguments: arguments)
                 case .setFrameworkMergeAttribute:
@@ -1391,6 +1399,8 @@ public struct XcodeMCPServer: Sendable {
                 case .addCopyFilesPhase: return try addCopyFilesPhase.execute(arguments: arguments)
                 case .addToCopyFilesPhase:
                     return try addToCopyFilesPhase.execute(arguments: arguments)
+                case .removeFromCopyFilesPhase:
+                    return try removeFromCopyFilesPhase.execute(arguments: arguments)
                 case .removeCopyFilesPhase:
                     return try removeCopyFilesPhase.execute(arguments: arguments)
                 case .setCopyFilesPhaseSubpath:
