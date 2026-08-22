@@ -24,6 +24,27 @@ jobs:
     - name: Select Xcode version
       run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
 
+    # The four toba packages are private. SwiftPM clones them over https with
+    # no credential, so the rewrite supplies one. Each rewrite names one
+    # repository, which keeps the credential off every other toba URL.
+    - name: Authenticate to the private toba repositories
+      env:
+        TOBA_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      run: |
+        for repo in toba-core toba-concurrency toba-hash toba-testing; do
+          git config --global \
+            url."https://x-access-token:${TOBA_TOKEN}@github.com/toba/${repo}".insteadOf \
+            "https://github.com/toba/${repo}"
+        done
+
+    # The cap turns a stalled artifact download into a fast failure. A stall
+    # otherwise holds the runner for the full six hour job limit. The two
+    # flags stop SwiftPM from consulting the keychain and netrc, because that
+    # lookup blocks on a headless runner.
+    - name: Resolve dependencies
+      timeout-minutes: 10
+      run: swift package resolve --disable-keychain --disable-netrc
+
     - name: Build release binaries
       run: swift build -c release --disable-sandbox
 
