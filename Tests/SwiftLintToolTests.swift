@@ -1,10 +1,18 @@
 import MCP
 import Testing
+import Foundation
 @testable import XCMCPCore
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct SwiftLintToolTests {
     let sessionManager = SessionManager()
+
+    /// Source that trips two `sm lint` naming rules.
+    static let violatingSource = """
+        let Bad_Name = 1
+        struct s {}
+        """
 
     @Test
     func `Tool schema has correct name and description`() {
@@ -101,5 +109,63 @@ struct SwiftLintToolTests {
         #expect(output.contains("/path/to/Foo.swift"))
         #expect(output.contains("trailingWhitespace"))
         #expect(output.contains("forceCast"))
+    }
+
+    @Test(.enabled(if: InstalledSm.isAvailable))
+    func `Reports a failure when sm cannot read the paths`() async throws {
+        let tool = SwiftLintTool(sessionManager: sessionManager)
+        let arguments: [String: Value] = [
+            "package_path": .string(TemporaryDirectory.path),
+            "paths": .array([.string("DoesNotExistAnywhere")]),
+        ]
+
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: arguments) }
+    }
+
+    @Test(.enabled(if: InstalledSm.isAvailable))
+    func `Reports a clean verdict for a directory with no violations`() async throws {
+        let file = TemporaryDirectory.url.appendingPathComponent("Clean.swift")
+        try "let value = 1\n".write(to: file, atomically: true, encoding: .utf8)
+
+        let tool = SwiftLintTool(sessionManager: sessionManager)
+        let result = try await tool.execute(arguments: [
+            "package_path": .string(TemporaryDirectory.path)
+        ])
+
+        guard case let .text(text, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(text.contains("Code is clean!"))
+    }
+
+    @Test(.enabled(if: InstalledSm.isAvailable))
+    func `lintSection names the failure when the root does not exist`() async {
+        let missing = TemporaryDirectory.url.appendingPathComponent("Missing").path
+        let section = await SwiftLintTool.lintSection(forRoot: missing)
+
+        #expect(section?.hasPrefix("## Lint Failed") == true)
+        #expect(section?.contains("exit 64") == true)
+    }
+
+    @Test(.enabled(if: InstalledSm.isAvailable))
+    func `lintSection returns nil for a clean root`() async throws {
+        let file = TemporaryDirectory.url.appendingPathComponent("Clean.swift")
+        try "let value = 1\n".write(to: file, atomically: true, encoding: .utf8)
+
+        let section = await SwiftLintTool.lintSection(forRoot: TemporaryDirectory.path)
+
+        #expect(section == nil)
+    }
+
+    @Test(.enabled(if: InstalledSm.isAvailable))
+    func `lintSection reports violations under its own heading`() async throws {
+        let file = TemporaryDirectory.url.appendingPathComponent("Violations.swift")
+        try Self.violatingSource.write(to: file, atomically: true, encoding: .utf8)
+
+        let section = await SwiftLintTool.lintSection(forRoot: TemporaryDirectory.path)
+
+        #expect(section?.hasPrefix("## Lint Violations") == true)
+        #expect(section?.contains("Bad_Name") == true)
     }
 }

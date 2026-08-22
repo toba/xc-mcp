@@ -122,7 +122,9 @@ public struct DiagnosticsTool: Sendable {
 
             // Step 4: Optionally run sm lint
             var lintSection: String?
-            if runLint, let root = projectRoot { lintSection = await runSm(projectRoot: root) }
+            if runLint, let root = projectRoot {
+                lintSection = await SwiftLintTool.lintSection(forRoot: root)
+            }
 
             // Step 5: Format combined output
             var output = formatDiagnostics(
@@ -165,26 +167,12 @@ public struct DiagnosticsTool: Sendable {
             sections.append("## Build Diagnostics\n\n\(header)")
         }
 
-        // Lint section
-        if let lintSection { sections.append("## Lint Violations\n\n\(lintSection)") }
+        // Lint section. The text carries its own heading, because the heading states whether sm
+        // reported violations, failed, or never ran.
+        if let lintSection { sections.append(lintSection) }
 
         return sections.isEmpty
             ? "No build warnings or lint violations found. Code is clean!"
             : sections.joined(separator: "\n\n")
-    }
-
-    private func runSm(projectRoot: String) async -> String? {
-        guard let executablePath = try? await BinaryLocator.find("sm") else { return nil }
-
-        let args: [String] = [
-            "lint", "--reporter", "json", "--parallel", "--recursive", projectRoot,
-        ]
-
-        guard let result = try? await ProcessResult.run(
-            executablePath, arguments: args, mergeStderr: false,
-        ) else { return nil }
-
-        let violations = SwiftLintTool.parseJSONOutput(result.stdout)
-        return violations.isEmpty ? nil : SwiftLintTool.formatViolations(violations)
     }
 }

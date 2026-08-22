@@ -113,6 +113,33 @@ public struct PathUtility: Sendable {
         return resolvedURL
     }
 
+    /// Resolves each entry against the base path and refuses one that lands outside it.
+    ///
+    /// A relative entry joins the base path. An absolute entry must name the base path or a
+    /// descendant of it. The lexical check in ``resolvePath(from:)`` runs first. An entry that
+    /// fails it still passes when its symlink-resolved location is inside the symlink-resolved
+    /// base, which is what lets a macOS `/tmp` path match a `/private/tmp` base.
+    ///
+    /// - Parameter paths: The paths to resolve.
+    /// - Returns: The resolved absolute paths, in the input order.
+    /// - Throws: ``PathError/pathOutsideBasePath(path:basePath:)`` for the first entry that lands
+    ///   outside the base directory.
+    public func resolvePaths(from paths: [String]) throws(PathError) -> [String] {
+        var resolved: [String] = []
+        resolved.reserveCapacity(paths.count)
+
+        for path in paths {
+            do {
+                resolved.append(try resolvePath(from: path))
+            } catch {
+                let expanded = URL(fileURLWithPath: Self.expandTilde(path)).standardized.path
+                guard isWithinSandbox(expanded) else { throw error }
+                resolved.append(expanded)
+            }
+        }
+        return resolved
+    }
+
     /// Reports whether `path`'s real (symlink-resolved) location is within the sandbox base.
     ///
     /// Unlike ``resolvePath(from:)``, which validates a user-supplied path lexically, this resolves

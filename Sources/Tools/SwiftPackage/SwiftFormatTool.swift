@@ -19,7 +19,7 @@ public struct SwiftFormatTool: Sendable {
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
                         "description": .string(
-                            "Specific file or directory paths to format. If not specified, formats the package root.",
+                            "Specific file or directory paths to format. A relative path resolves against package_path. A path outside package_path is rejected. If not specified, formats the package root.",
                         ),
                     ]),
                     "package_path": .object([
@@ -45,12 +45,32 @@ public struct SwiftFormatTool: Sendable {
             "format", "--in-place", "--recursive", "--parallel",
             "--reporter", "json",
         ]
-        if paths.isEmpty { args.append(packagePath) } else { args.append(contentsOf: paths) }
-
         do {
+            // sm format takes paths alone and has no package root option, so it resolves a
+            // relative path against the server working directory. That directory is unrelated to
+            // package_path, and this formatter writes in place, so an unresolved path rewrites
+            // another repository.
+            if paths.isEmpty {
+                args.append(packagePath)
+            } else {
+                args.append(
+                    contentsOf: try PathUtility(basePath: packagePath).resolvePaths(from: paths),
+                )
+            }
+
             let result = try await ProcessResult.run(
                 executablePath, arguments: args, mergeStderr: false,
             )
+
+            // sm format exits 0 for a run that changed files and for a run that changed none. A
+            // nonzero exit means sm never read the paths, so an empty changed list is not proof
+            // that the files are formatted.
+            guard result.succeeded else {
+                throw MCPError.internalError(
+                    "sm format failed (exit \(result.exitCode)):\n\(result.errorOutput)",
+                )
+            }
+
             let summary = Self.parseJSONOutput(result.stdout)
 
             if summary.changed.isEmpty {

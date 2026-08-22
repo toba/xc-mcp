@@ -1,8 +1,10 @@
 import MCP
 import Testing
+import Foundation
 @testable import XCMCPCore
 @testable import XCMCPTools
 
+@Suite(.temporaryDirectory)
 struct SwiftFormatToolTests {
     let sessionManager = SessionManager()
 
@@ -82,5 +84,48 @@ struct SwiftFormatToolTests {
     func `Handles invalid JSON gracefully`() {
         let summary = SwiftFormatTool.parseJSONOutput("not json")
         #expect(summary.changed.isEmpty)
+    }
+
+    @Test
+    func `Rejects a path in another repository`() async {
+        let tool = SwiftFormatTool(sessionManager: sessionManager)
+        let arguments: [String: Value] = [
+            "package_path": .string(TemporaryDirectory.path),
+            "paths": .array([.string("/Users/dev/another-repo/Sources")]),
+        ]
+
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: arguments) }
+    }
+
+    @Test(.enabled(if: InstalledSm.isAvailable))
+    func `Reports a failure when sm cannot read the paths`() async {
+        let tool = SwiftFormatTool(sessionManager: sessionManager)
+        let arguments: [String: Value] = [
+            "package_path": .string(TemporaryDirectory.path),
+            "paths": .array([.string("DoesNotExistAnywhere")]),
+        ]
+
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: arguments) }
+    }
+
+    @Test(.enabled(if: InstalledSm.isAvailable))
+    func `Formats a file named by a relative path inside the package`() async throws {
+        let file = TemporaryDirectory.url.appendingPathComponent("Messy.swift")
+        try "let x  =  1\n".write(to: file, atomically: true, encoding: .utf8)
+
+        let tool = SwiftFormatTool(sessionManager: sessionManager)
+        let result = try await tool.execute(arguments: [
+            "package_path": .string(TemporaryDirectory.path),
+            "paths": .array([.string("Messy.swift")]),
+        ])
+
+        guard case let .text(text, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(text.contains("Messy.swift"))
+
+        let formatted = try String(contentsOf: file, encoding: .utf8)
+        #expect(formatted == "let x = 1\n")
     }
 }

@@ -19,7 +19,7 @@ public struct SwiftLintTool: Sendable {
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
                         "description": .string(
-                            "Specific file or directory paths to lint. If not specified, lints the package root.",
+                            "Specific file or directory paths to lint. A relative path resolves against package_path. A path outside package_path is rejected. If not specified, lints the package root.",
                         ),
                     ]),
                     "package_path": .object([
@@ -43,12 +43,30 @@ public struct SwiftLintTool: Sendable {
 
         var args: [String] = ["lint", "--reporter", "json", "--parallel", "--recursive"]
 
-        if paths.isEmpty { args.append(packagePath) } else { args.append(contentsOf: paths) }
-
         do {
+            // sm lint takes paths alone and has no package root option, so it resolves a relative
+            // path against the server working directory. That directory is unrelated to
+            // package_path, so an unresolved path reports on another repository.
+            if paths.isEmpty {
+                args.append(packagePath)
+            } else {
+                args.append(
+                    contentsOf: try PathUtility(basePath: packagePath).resolvePaths(from: paths),
+                )
+            }
+
             let result = try await ProcessResult.run(
                 executablePath, arguments: args, mergeStderr: false,
             )
+
+            // sm lint exits 0 for a clean run and for a run that reports violations. A nonzero
+            // exit means sm never inspected the code, so an empty violation list is not a clean
+            // verdict. Reporting one there tells the caller to stop looking.
+            guard result.succeeded else {
+                throw MCPError.internalError(
+                    "sm lint failed (exit \(result.exitCode)):\n\(result.errorOutput)",
+                )
+            }
 
             let violations = Self.parseJSONOutput(result.stdout)
 
@@ -77,6 +95,36 @@ public struct SwiftLintTool: Sendable {
         let severity: String
         let rule: String
         let message: String
+    }
+
+    /// Runs `sm lint` over a directory and returns the section a diagnostics report embeds.
+    ///
+    /// The result carries its own `##` heading, because the heading states the outcome. A clean
+    /// run returns `nil`, so the caller adds no section. Every other outcome returns text. A
+    /// silent `nil` for a lint run that never inspected the code lets the report read "Code is
+    /// clean!" for code no linter read.
+    ///
+    /// - Parameter root: The directory to lint.
+    /// - Returns: The section text, or `nil` when the lint run found nothing to report.
+    static func lintSection(forRoot root: String) async -> String? {
+        guard let executablePath = try? await BinaryLocator.find("sm") else {
+            return "## Lint Skipped\n\nsm (swiftiomatic) is not installed, so no style check ran."
+        }
+
+        let args: [String] = [
+            "lint", "--reporter", "json", "--parallel", "--recursive", root,
+        ]
+
+        guard let result = try? await ProcessResult.run(
+            executablePath, arguments: args, mergeStderr: false,
+        ) else { return "## Lint Failed\n\nsm lint did not run to completion." }
+
+        guard result.succeeded else {
+            return "## Lint Failed\n\nsm lint exited \(result.exitCode):\n\n\(result.errorOutput)"
+        }
+
+        let violations = parseJSONOutput(result.stdout)
+        return violations.isEmpty ? nil : "## Lint Violations\n\n\(formatViolations(violations))"
     }
 
     /// Parses sm lint JSON reporter output into structured violations.

@@ -196,6 +196,68 @@ struct PathUtilityAncestorSearchTests {
         #expect(resolved == "\(NSHomeDirectory())/Developer/MyApp.xcodeproj")
     }
 
+    @Test func `resolvePaths joins each relative entry onto the base path`() throws {
+        let pathUtility = PathUtility(basePath: "/Users/dev/toba-web")
+        let resolved = try pathUtility.resolvePaths(from: ["Tests", "Sources", "Package.swift"])
+
+        #expect(
+            resolved == [
+                "/Users/dev/toba-web/Tests",
+                "/Users/dev/toba-web/Sources",
+                "/Users/dev/toba-web/Package.swift",
+            ],
+        )
+    }
+
+    @Test func `resolvePaths keeps an absolute entry inside the base path`() throws {
+        let pathUtility = PathUtility(basePath: "/Users/dev/toba-web")
+        let resolved = try pathUtility.resolvePaths(from: ["/Users/dev/toba-web/Sources"])
+
+        #expect(resolved == ["/Users/dev/toba-web/Sources"])
+    }
+
+    @Test func `resolvePaths rejects an absolute entry in another repository`() {
+        let pathUtility = PathUtility(basePath: "/Users/dev/toba-web")
+
+        #expect(throws: PathError.self) {
+            try pathUtility.resolvePaths(from: ["Sources", "/Users/dev/toba-core/Sources"])
+        }
+    }
+
+    @Test func `resolvePaths rejects an entry that climbs out of the base path`() {
+        let pathUtility = PathUtility(basePath: "/Users/dev/toba-web")
+
+        #expect(throws: PathError.self) {
+            try pathUtility.resolvePaths(from: ["../toba-core/Sources"])
+        }
+    }
+
+    @Test func `resolvePaths accepts a real path that reaches the base through a symlink`() throws {
+        let base = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(
+            "resolvePathsSymlink",
+        )
+        let sources = base.appendingPathComponent("Sources")
+        try FileManager.default.createDirectory(at: sources, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: base) }
+
+        // NSTemporaryDirectory reports /var/..., which is a symlink to /private/var. The lexical
+        // check fails on that pair, so the symlink-resolved fallback is what accepts the entry.
+        let pathUtility = PathUtility(basePath: base.path)
+        let resolved = try pathUtility.resolvePaths(
+            from: [base.resolvingSymlinksInPath().appendingPathComponent("Sources").path],
+        )
+
+        #expect(resolved.count == 1)
+        #expect(resolved[0].hasSuffix("Sources"))
+    }
+
+    @Test func `resolvePaths allows any entry when sandboxing is disabled`() throws {
+        let pathUtility = PathUtility(basePath: "/Users/dev/toba-web", sandboxEnabled: false)
+        let resolved = try pathUtility.resolvePaths(from: ["/Users/dev/toba-core/Sources"])
+
+        #expect(resolved == ["/Users/dev/toba-core/Sources"])
+    }
+
     @Test
     func `findPackageRoot returns path for xc-mcp repo`() {
         // Use this source file's location instead of cwd, since the test
