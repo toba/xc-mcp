@@ -151,6 +151,7 @@ public enum TestToolHelper {
                 errorsOnly: errorsOnly,
                 crashLogWindow: captureCrashLog ? (start: runStart, end: runEnd) : nil,
                 crashSimulatorUDID: crashSimulatorUDID,
+                termination: result.termination,
             )
 
             // Warning first, then the formatted result, then the DerivedData root. Naming the tree

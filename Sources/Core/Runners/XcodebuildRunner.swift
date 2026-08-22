@@ -294,13 +294,15 @@ public struct XcodebuildRunner: Sendable {
             }
 
             let (stdout, stderr) = outputCollector.getOutput()
-            let exitCode: Int32 =
+            // Keep the signal apart from an exit status. The exit code alone reports the signal
+            // number, which reads as a status the tool chose. (74fa1d59)
+            let termination: ProcessResult.Termination =
                 switch executionResult.terminationStatus {
-                    case let .exited(code): code
-                    case let .signaled(code): code
+                    case let .exited(code): .exited(code)
+                    case let .signaled(signal): .signaled(signal)
                 }
 
-            return XcodebuildResult(exitCode: exitCode, stdout: stdout, stderr: stderr)
+            return XcodebuildResult(termination: termination, stdout: stdout, stderr: stderr)
         } catch let error as XcodebuildError {
             // The build reported a terminal result but its pipes were held open by grandchild
             // daemons. Return the completed output as a normal result so the caller (e.g.

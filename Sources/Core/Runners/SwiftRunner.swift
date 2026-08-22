@@ -122,6 +122,7 @@ public struct SwiftRunner: Sendable {
     ///   - workingDirectory: Optional working directory for the command.
     ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
     ///   - timeout: Maximum time to wait for the command. Defaults to ``defaultTimeout``.
+    ///   - settle: Optional policy that bounds the wait after the command finishes its work.
     /// - Returns: The result containing exit code and output.
     /// - Throws: ``ProcessError/timeout(duration:)`` if the command exceeds the timeout.
     public func run(
@@ -129,6 +130,7 @@ public struct SwiftRunner: Sendable {
         workingDirectory: String? = nil,
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
+        settle: CompletionSettle? = nil,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> SwiftResult {
         try await BuildGuard.withGuard(
@@ -141,6 +143,7 @@ public struct SwiftRunner: Sendable {
                 workingDirectory: workingDirectory.map { FilePath($0) },
                 environment: environment,
                 timeout: timeout,
+                settle: settle,
                 onProgress: onProgress,
             )
         }
@@ -209,8 +212,20 @@ public struct SwiftRunner: Sendable {
             workingDirectory: packagePath,
             environment: environment,
             timeout: timeout,
+            settle: Self.testSettle,
             onProgress: onProgress,
         )
+    }
+
+    /// Bounds the wait after `swift test` prints its summary.
+    ///
+    /// `swift-test` reads the test binary's output pipe. A process the tests spawned that inherited
+    /// that pipe and outlived them holds it open, so `swift-test` sits idle for minutes after the
+    /// results are complete. The grace period is long enough that no healthy run reaches it: a test
+    /// binary prints its summary immediately before it exits, and any further SwiftPM output
+    /// restarts the clock. (74fa1d59)
+    public static let testSettle = CompletionSettle(grace: .seconds(20)) { tail in
+        ErrorExtractor.indicatesTestRunFinished(tail)
     }
 
     /// Runs a Swift package executable.

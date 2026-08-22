@@ -56,8 +56,7 @@ public struct SwiftPackageTestTool: Sendable {
                         "description": .string(
                             "Platform to compile the test targets for. Defaults to 'macos', which runs the tests on the host. Any other value builds the test targets for that platform and runs nothing, because SwiftPM cannot execute a cross-compiled test bundle. A simulator destination needs no booted simulator.",
                         ),
-                        "enum": .array(
-                            SwiftBuildDestination.acceptedValues.map { Value.string($0) },
+                        "enum": .array(SwiftBuildDestination.acceptedValues.map { Value.string($0) }
                         ),
                     ]),
                     "timeout": .object([
@@ -144,18 +143,15 @@ public struct SwiftPackageTestTool: Sendable {
                 context: context,
                 projectRoot: packagePath,
                 wallClock: testStart.duration(to: .now),
+                termination: result.termination,
+                settledAfterCompletion: result.settledAfterCompletion,
             )
         } catch let ProcessError.timeout(duration) {
-            throw MCPError.internalError(
-                SwiftRunner.timeoutMessage(
-                    command: "swift test",
-                    duration: duration,
-                    packagePath: packagePath,
-                    destination: nil,
-                    usedColdCacheTimeout: explicitTimeout == nil && isCold,
-                    advice: Self.timeoutAdvice,
-                ),
-            )
+            throw MCPError.internalError(SwiftRunner.timeoutMessage(
+                command: "swift test", duration: duration, packagePath: packagePath,
+                destination: nil, usedColdCacheTimeout: explicitTimeout == nil && isCold,
+                advice: Self.timeoutAdvice,
+            ))
         } catch {
             throw try error.asMCPError()
         }
@@ -205,16 +201,11 @@ public struct SwiftPackageTestTool: Sendable {
             }
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch let ProcessError.timeout(duration) {
-            throw MCPError.internalError(
-                SwiftRunner.timeoutMessage(
-                    command: "swift build --build-tests",
-                    duration: duration,
-                    packagePath: packagePath,
-                    destination: destination,
-                    usedColdCacheTimeout: explicitTimeout == nil,
-                    advice: Self.timeoutAdvice,
-                ),
-            )
+            throw MCPError.internalError(SwiftRunner.timeoutMessage(
+                command: "swift build --build-tests", duration: duration, packagePath: packagePath,
+                destination: destination, usedColdCacheTimeout: explicitTimeout == nil,
+                advice: Self.timeoutAdvice,
+            ))
         } catch {
             throw try error.asMCPError()
         }

@@ -145,7 +145,7 @@ struct SwiftLintToolTests {
         let section = await SwiftLintTool.lintSection(forRoot: missing)
 
         #expect(section?.hasPrefix("## Lint Failed") == true)
-        #expect(section?.contains("exit 64") == true)
+        #expect(section?.contains("exited 64") == true)
     }
 
     @Test(.enabled(if: InstalledSm.isAvailable))

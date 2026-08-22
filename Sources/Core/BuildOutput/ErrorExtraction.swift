@@ -37,6 +37,27 @@ public enum ErrorExtractor {
         return BuildResultFormatter.formatTestResult(result, errorsOnly: errorsOnly)
     }
 
+    /// Returns true when the text holds a line that ends a test run.
+    ///
+    /// Recognizes the swift-testing summary (`Test run with N tests ... passed after X seconds`)
+    /// and the XCTest summary (`Executed N tests, with M failures ...`). A runner uses this as the
+    /// completion marker of a ``CompletionSettle`` policy, so it must match a line the test binary
+    /// prints immediately before it exits. XCTest repeats its line once per suite level, which is
+    /// harmless: the settle only fires after the output goes quiet as well. (74fa1d59)
+    ///
+    /// - Parameter text: A tail of recent test output.
+    public static func indicatesTestRunFinished(_ text: String) -> Bool {
+        for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
+            if line.contains("Test run with "),
+               line.contains(" passed after ") || line.contains(" failed after ") { return true }
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("Executed "),
+               trimmed.contains(" test"),
+               trimmed.contains(", with ") { return true }
+        }
+        return false
+    }
+
     /// Formats test output into a `CallTool.Result`, throwing on failure.
     ///
     /// - Parameters:
@@ -48,6 +69,10 @@ public enum ErrorExtractor {
     ///   - stderr: Optional stderr output for detecting infrastructure issues.
     ///   - onlyTesting: The `only_testing` filters that were passed to xcodebuild, if any.
     ///   - scheme: The scheme name used for the test run, for enhanced error messages.
+    ///   - termination: How the test process ended, when the caller knows. Named in the output when
+    ///     a signal ended it, because the exit code cannot say so on its own.
+    ///   - settledAfterCompletion: True when the runner killed the test process after it reported
+    ///     its results and stopped exiting.
     /// - Returns: A successful `CallTool.Result` if tests passed.
     /// - Throws: `MCPError.internalError` if tests failed.
     public static func formatTestToolResult(
@@ -66,6 +91,8 @@ public enum ErrorExtractor {
         crashLogWindow: (start: Date, end: Date)? = nil,
         crashProcessName: String? = nil,
         crashSimulatorUDID: String? = nil,
+        termination: ProcessResult.Termination? = nil,
+        settledAfterCompletion: Bool = false,
     ) async throws -> CallTool.Result {
         var succeeded = inputSucceeded
         var testResult: String
@@ -158,6 +185,22 @@ public enum ErrorExtractor {
                     + "Note: method-level filtering may not work for XCUI test targets — "
                     + "use class-level filtering instead (e.g. \"TargetName/TestClassName\").",
             )
+        }
+
+        // Say that the runner ended the process. The results above are complete, but the exit code
+        // is the kill, so a reader must not treat it as the test outcome. (74fa1d59)
+        if settledAfterCompletion {
+            testResult += "\n\nThe test run reported these results and then stopped exiting. "
+                + "xc-mcp ended the process group once the output went quiet, so the exit code "
+                + "is the kill and not the test outcome. A process the tests spawned outlived "
+                + "them and holds the output pipe open."
+        }
+
+        // Name a signal. The exit code alone cannot: it carries the signal number, which reads as
+        // an exit status the test process chose. A plain non-zero status stays unreported, because
+        // the failures above already explain it. (74fa1d59)
+        if !succeeded, !settledAfterCompletion, let termination, termination.isAbnormal {
+            testResult += "\n\nThe test process ended on \(termination.description)."
         }
 
         // When the test *process* crashed (signal trap / uncaught exception) rather than failing an

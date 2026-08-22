@@ -29,14 +29,74 @@ public enum ProcessError: Error, Sendable, LocalizedError, MCPErrorConvertible {
 /// Contains the exit code and captured output from running any command-line process. Used as the
 /// common result type for all runner utilities.
 public struct ProcessResult: Sendable {
-    /// The process exit code (0 indicates success).
-    public let exitCode: Int32
+    /// How the process ended.
+    ///
+    /// A bare exit code cannot tell a status of 11 from a `SIGSEGV`, because
+    /// ``ProcessResult/exitCode`` reports the signal number in the signalled case. Callers that
+    /// must name the cause in their output read this instead. (74fa1d59)
+    public enum Termination: Sendable, Equatable, CustomStringConvertible {
+        /// The process called `exit` with this status.
+        case exited(Int32)
+
+        /// This signal killed the process.
+        case signaled(Int32)
+
+        /// A short phrase naming the status or the signal, for tool output.
+        public var description: String {
+            switch self {
+                case let .exited(code): "exit status \(code)"
+                case let .signaled(signal):
+                    if let name = strsignal(signal) {
+                        "signal \(signal) (\(String(cString: name)))"
+                    } else {
+                        "signal \(signal)"
+                    }
+            }
+        }
+
+        /// True when the process ended in a way its own code did not choose.
+        ///
+        /// A non-zero exit status is a normal way for a test command to report a failure, so only a
+        /// signal counts here.
+        public var isAbnormal: Bool { if case .signaled = self { true } else { false } }
+
+        /// Converts a Subprocess termination status.
+        init(_ status: TerminationStatus) {
+            switch status {
+                case let .exited(code): self = .exited(code)
+                case let .signaled(signal): self = .signaled(signal)
+            }
+        }
+    }
+
+    /// How the process ended.
+    public let termination: Termination
 
     /// Standard output captured from the process.
     public let stdout: String
 
     /// Standard error captured from the process.
     public let stderr: String
+
+    /// True when
+    /// ``runSubprocess(_:arguments:workingDirectory:mergeStderr:outputLimit:errorLimit:environment:timeout:settle:onProgress:)``
+    /// killed the process group because the child printed its completion marker and then stopped
+    /// exiting.
+    ///
+    /// The captured output is complete when this is true. The exit code is not, because the kill
+    /// produced it. (74fa1d59)
+    public let settledAfterCompletion: Bool
+
+    /// The process exit code (0 indicates success).
+    ///
+    /// Reports the signal number when a signal killed the process. Read ``termination`` to tell the
+    /// two apart.
+    public var exitCode: Int32 {
+        switch termination {
+            case let .exited(code): code
+            case let .signaled(signal): signal
+        }
+    }
 
     /// Creates a new process result.
     ///
@@ -45,13 +105,31 @@ public struct ProcessResult: Sendable {
     ///   - stdout: Standard output captured from the process.
     ///   - stderr: Standard error captured from the process.
     public init(exitCode: Int32, stdout: String, stderr: String) {
-        self.exitCode = exitCode
+        self.init(termination: .exited(exitCode), stdout: stdout, stderr: stderr)
+    }
+
+    /// Creates a new process result from a termination reason.
+    ///
+    /// - Parameters:
+    ///   - termination: How the process ended.
+    ///   - stdout: Standard output captured from the process.
+    ///   - stderr: Standard error captured from the process.
+    ///   - settledAfterCompletion: True when the runner killed the process group after its
+    ///     completion marker.
+    public init(
+        termination: Termination,
+        stdout: String,
+        stderr: String,
+        settledAfterCompletion: Bool = false,
+    ) {
+        self.termination = termination
         self.stdout = stdout
         self.stderr = stderr
+        self.settledAfterCompletion = settledAfterCompletion
     }
 
     /// Whether the command completed successfully (exit code 0).
-    public var succeeded: Bool { exitCode == 0 }
+    public var succeeded: Bool { termination == .exited(0) }
 
     /// Combined output from stdout and stderr.
     public var output: String {
@@ -78,6 +156,155 @@ private final class TimeoutFlag: Sendable {
     private let raised = Mutex(false)
     func raise() { raised(set: true) }
     var isRaised: Bool { raised.withLock { $0 } }
+}
+
+/// Holds the spawned child's pid so a canceller can signal its whole process group.
+///
+/// A reference type so both the spawn closure and the cancellation handler reach one box. A bare
+/// `~Copyable` `Mutex` cannot cross a `sending` boundary, which is why ``TimeoutFlag`` is one too.
+private final class ProcessGroupBox: Sendable {
+    private let pid = Mutex<pid_t>(0)
+
+    /// Records the process group leader, which is the child itself.
+    func set(_ value: pid_t) { pid(set: value) }
+
+    /// Sends `SIGKILL` to every process in the child's group, including its grandchildren.
+    func killGroup() {
+        let value = pid.withLock { $0 }
+        if value > 0 { _ = kill(-value, SIGKILL) }
+    }
+}
+
+/// The spawn inputs both reader paths of ``ProcessResult/runSubprocess`` share.
+private struct SubprocessPlan: Sendable {
+    let executable: Subprocess.Executable
+    let arguments: Subprocess.Arguments
+    let workingDirectory: FilePath?
+    let environment: Environment
+    let platformOptions: PlatformOptions
+    let mergeStderr: Bool
+    let outputLimit: Int
+    let errorLimit: Int
+
+    /// How many bytes of stderr to keep. A merged stream shares the stdout budget.
+    var stderrLimit: Int { mergeStderr ? outputLimit : errorLimit }
+
+    /// Builds the result both reader paths return, applying the merge and the truncation note.
+    func assemble(
+        termination: ProcessResult.Termination,
+        stdout: (String, Bool),
+        stderr: (String, Bool),
+        settled: Bool,
+    ) -> ProcessResult {
+        var stdoutText = stdout.0
+        let wasTruncated = stdout.1 || (mergeStderr && stderr.1)
+        if mergeStderr, !stderr.0.isEmpty { stdoutText += "\n" + stderr.0 }
+
+        if wasTruncated {
+            stdoutText = "[output truncated — showing last \(outputLimit / 1_048_576)MB]\n"
+                + stdoutText
+        }
+        return .init(
+            termination: termination,
+            stdout: stdoutText,
+            stderr: mergeStderr ? "" : stderr.0,
+            settledAfterCompletion: settled,
+        )
+    }
+}
+
+// MARK: - Completion Settle
+
+/// Bounds the wait for a child that finishes its work but does not exit.
+///
+/// `swift test` blocks reading the test binary's output pipe. A grandchild that inherited that pipe
+/// and outlived the test binary holds the pipe open, so the parent sits idle long after the results
+/// are complete and its child is a zombie. The runner cannot repair SwiftPM, so it watches the
+/// output for a marker that says the work is done and kills the process group once the output goes
+/// quiet. (74fa1d59)
+public struct CompletionSettle: Sendable {
+    /// Returns true when the collected output shows the child finished its work.
+    ///
+    /// The runner calls this with a rolling tail of recent output, so a marker split across two
+    /// chunks still matches.
+    public let isComplete: @Sendable (String) -> Bool
+
+    /// How long to wait for a clean exit after the last output that followed the marker.
+    public let grace: Duration
+
+    /// Creates a settle policy.
+    ///
+    /// - Parameters:
+    ///   - grace: How long to wait for a clean exit once the output goes quiet.
+    ///   - isComplete: Returns true when a tail of the output shows the work is done.
+    public init(grace: Duration = .seconds(15), isComplete: @escaping @Sendable (String) -> Bool) {
+        self.grace = grace
+        self.isComplete = isComplete
+    }
+}
+
+/// Tracks whether a child printed its completion marker and when it last wrote output.
+///
+/// A reference type so the output callback and the watchdog task can share it across the task
+/// group's `sending` boundary, for the reason ``TimeoutFlag`` is one.
+///
+/// Internal rather than private so a test can drive the marker and the grace period without a
+/// subprocess.
+final class SettleMonitor: Sendable {
+    /// How much recent output to keep, so a marker split across two chunks still matches.
+    static let tailLimit = 4096
+
+    private struct State {
+        var tail = ""
+        var isComplete = false
+        var lastOutput = ContinuousClock.now
+        var didSettle = false
+        var pollCount = 0
+    }
+
+    private let policy: CompletionSettle
+    private let state = Mutex(State())
+
+    init(_ policy: CompletionSettle) { self.policy = policy }
+
+    /// Records one chunk of child output and re-tests the completion marker.
+    func observe(_ chunk: String) {
+        guard !chunk.isEmpty else { return }
+        let tail: String = state.withLock { state in
+            state.lastOutput = .now
+            guard !state.isComplete else { return "" }
+            state.tail += chunk
+            if state.tail.count > Self.tailLimit {
+                state.tail = String(state.tail.suffix(Self.tailLimit))
+            }
+            return state.tail
+        }
+        guard !tail.isEmpty, policy.isComplete(tail) else { return }
+        state.withLock { state in
+            state.isComplete = true
+            state.tail = ""
+        }
+    }
+
+    /// True when the child printed its marker and then wrote nothing for the grace period.
+    ///
+    /// Counts the call. A settle that never fires is either a watchdog that never polls or a marker
+    /// that never arrives, and ``pollCount`` is what tells the two apart.
+    func checkSettled() -> Bool {
+        state.withLock { state in
+            state.pollCount += 1
+            return state.isComplete && state.lastOutput.duration(to: .now) >= policy.grace
+        }
+    }
+
+    /// How many times the watchdog asked whether the child settled.
+    var pollCount: Int { state.withLock { $0.pollCount } }
+
+    /// Records that the watchdog killed the process group.
+    func markSettled() { state.withLock { $0.didSettle = true } }
+
+    /// True when the watchdog killed the process group.
+    var didSettle: Bool { state.withLock { $0.didSettle } }
 }
 
 // MARK: - Run
@@ -115,6 +342,9 @@ extension ProcessResult {
     ///   - outputLimit: Maximum bytes to capture from stdout. Defaults to 2MB.
     ///   - errorLimit: Maximum bytes to capture from stderr. Defaults to 2MB.
     ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
+    ///   - settle: Optional policy that kills the process group once the child prints a completion
+    ///     marker and then goes quiet. Use it for a command that can finish its work and still
+    ///     block on an inherited pipe.
     ///   - onProgress: Optional callback invoked with each chunk of stdout/stderr as it arrives
     ///     (decoded as UTF-8). Useful for streaming progress updates back to MCP clients during
     ///     long-running commands.
@@ -128,6 +358,7 @@ extension ProcessResult {
         errorLimit: Int = 2_097_152,
         environment: Environment = .inherit,
         timeout: Duration? = nil,
+        settle: CompletionSettle? = nil,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> ProcessResult {
         // Spawn the child in its own process group so we can kill the entire tree on cancellation.
@@ -143,59 +374,228 @@ extension ProcessResult {
 
         // Tracks the spawned process group leader pid so the cancellation handler can SIGKILL the
         // whole group.
-        let pgidBox = Mutex<pid_t>(0)
+        let pgidBox = ProcessGroupBox()
 
-        // Use streaming collection that keeps the tail on overflow instead of throwing
-        // SubprocessError.outputLimitExceeded. Build errors appear at the end of output, so
-        // discarding the head preserves what matters.
-        let run: @Sendable () async throws -> ProcessResult = {
-            let outcome = try await Subprocess.run(
-                executable,
-                arguments: arguments,
-                environment: environment,
-                workingDirectory: workingDirectory,
-                platformOptions: platformOptions,
-            ) { execution, inputWriter, outputSequence, errorSequence in
-                pgidBox(set: execution.processIdentifier.value)
-                try await inputWriter.finish()
-                // Always drain both sequences to prevent the child from blocking on a full pipe
-                // buffer.
-                async let stdout = collectTail(
-                    from: outputSequence, limit: outputLimit, onProgress: onProgress,
-                )
-                async let stderr = collectTail(
-                    from: errorSequence,
-                    limit: mergeStderr ? outputLimit : errorLimit,
-                    onProgress: onProgress,
-                )
-                return try await (stdout, stderr)
+        // Feeds the settle watchdog every chunk of output before the caller sees it.
+        let monitor = settle.map(SettleMonitor.init)
+        let observer: (@Sendable (String) -> Void)?
+
+        if let monitor {
+            observer = { chunk in
+                monitor.observe(chunk)
+                onProgress?(chunk)
             }
-            let exitCode: Int32 =
-                switch outcome.terminationStatus {
-                    case let .exited(code): code
-                    case let .signaled(code): code
-                }
-            let (stdoutResult, stderrResult) = outcome.value
-            var stdoutText = stdoutResult.0
-            let wasTruncated = stdoutResult.1 || (mergeStderr && stderrResult.1)
-            if mergeStderr, !stderrResult.0.isEmpty { stdoutText += "\n" + stderrResult.0 }
-            if wasTruncated {
-                stdoutText = "[output truncated — showing last \(outputLimit / 1_048_576)MB]\n"
-                    + stdoutText
-            }
-            return ProcessResult(
-                exitCode: exitCode,
-                stdout: stdoutText,
-                stderr: mergeStderr ? "" : stderrResult.0,
-            )
+        } else {
+            observer = onProgress
         }
-        let killGroup: @Sendable () -> Void = {
-            let pid = pgidBox.withLock { $0 }
-            if pid > 0 { _ = kill(-pid, SIGKILL) }
+
+        let plan = SubprocessPlan(
+            executable: executable,
+            arguments: arguments,
+            workingDirectory: workingDirectory,
+            environment: environment,
+            platformOptions: platformOptions,
+            mergeStderr: mergeStderr,
+            outputLimit: outputLimit,
+            errorLimit: errorLimit,
+        )
+        let run: @Sendable () async throws -> ProcessResult = {
+            // A settle policy needs the tail of the output while the child still holds the pipe,
+            // and only the pipe reader delivers that. Every other caller keeps the Subprocess
+            // sequences, whose page-sized reads cost less per byte. (74fa1d59)
+            monitor == nil
+                ? try await runReadingSequences(
+                    plan, group: pgidBox, monitor: monitor, observer: observer,
+                )
+                : try await runReadingOwnPipes(
+                    plan, group: pgidBox, monitor: monitor, observer: observer,
+                )
+        }
+        let killGroup: @Sendable () -> Void = { pgidBox.killGroup() }
+        let guardedRun: @Sendable () async throws -> ProcessResult = {
+            guard let monitor else { return try await run() }
+            return try await watchForSettle(monitor, run: run, onSettle: killGroup)
         }
         return try await withTaskCancellationHandler {
-            try await raceTimeout(timeout, run: run, onTimeout: killGroup)
+            try await raceTimeout(timeout, run: guardedRun, onTimeout: killGroup)
         } onCancel: { killGroup() }
+    }
+
+    /// Reads the child through Subprocess's own `AsyncBufferSequence`s.
+    ///
+    /// Keeps the tail on overflow instead of throwing `SubprocessError.outputLimitExceeded`. Build
+    /// errors appear at the end of output, so discarding the head preserves what matters.
+    private static func runReadingSequences(
+        _ plan: SubprocessPlan,
+        group: ProcessGroupBox,
+        monitor: SettleMonitor?,
+        observer: (@Sendable (String) -> Void)?,
+    ) async throws -> ProcessResult {
+        let outcome = try await Subprocess.run(
+            plan.executable,
+            arguments: plan.arguments,
+            environment: plan.environment,
+            workingDirectory: plan.workingDirectory,
+            platformOptions: plan.platformOptions,
+        ) { execution, inputWriter, outputSequence, errorSequence in
+            group.set(execution.processIdentifier.value)
+            try await inputWriter.finish()
+            // Always drain both sequences to prevent the child from blocking on a full pipe buffer.
+            async let stdout = collectTail(
+                from: outputSequence, limit: plan.outputLimit, onProgress: observer,
+            )
+            async let stderr = collectTail(
+                from: errorSequence,
+                limit: plan.stderrLimit,
+                onProgress: observer,
+            )
+            return try await (stdout, stderr)
+        }
+        return plan.assemble(
+            termination: Termination(outcome.terminationStatus),
+            stdout: outcome.value.0,
+            stderr: outcome.value.1,
+            settled: monitor?.didSettle ?? false,
+        )
+    }
+
+    /// Reads the child through pipes this runner owns and drains with `read(2)`.
+    ///
+    /// Subprocess reads with `DispatchIO.read(offset:length:queue:)` and resumes its continuation
+    /// only when the requested length arrives or the pipe reaches EOF. The length is one page, so
+    /// the trailing partial page of a child's output stays invisible for as long as anything holds
+    /// the pipe open. That tail is exactly the summary a ``CompletionSettle`` marker looks for.
+    /// `read(2)` returns whatever is available, so the marker arrives while it can still matter.
+    /// (74fa1d59)
+    private static func runReadingOwnPipes(
+        _ plan: SubprocessPlan,
+        group: ProcessGroupBox,
+        monitor: SettleMonitor?,
+        observer: (@Sendable (String) -> Void)?,
+    ) async throws -> ProcessResult {
+        let outPipe = Pipe()
+        let errPipe = Pipe()
+        let outWrite = outPipe.fileHandleForWriting
+        let errWrite = errPipe.fileHandleForWriting
+        let outRead = outPipe.fileHandleForReading.fileDescriptor
+        let errRead = errPipe.fileHandleForReading.fileDescriptor
+
+        defer {
+            try? outPipe.fileHandleForReading.close()
+            try? errPipe.fileHandleForReading.close()
+        }
+
+        let outcome = try await Subprocess.run(
+            plan.executable,
+            arguments: plan.arguments,
+            environment: plan.environment,
+            workingDirectory: plan.workingDirectory,
+            platformOptions: plan.platformOptions,
+            input: .none,
+            output: .fileDescriptor(
+                FileDescriptor(rawValue: outWrite.fileDescriptor),
+                closeAfterSpawningProcess: false,
+            ),
+            error: .fileDescriptor(
+                FileDescriptor(rawValue: errWrite.fileDescriptor),
+                closeAfterSpawningProcess: false,
+            ),
+        ) { execution in
+            group.set(execution.processIdentifier.value)
+            // Close this side's write ends. The child holds its own duplicates, so a reader sees
+            // EOF once every one of those closes and not before.
+            try? outWrite.close()
+            try? errWrite.close()
+            async let stdout = drainToEnd(fd: outRead, limit: plan.outputLimit, onChunk: observer)
+            async let stderr = drainToEnd(fd: errRead, limit: plan.stderrLimit, onChunk: observer)
+            return await (stdout, stderr)
+        }
+        return plan.assemble(
+            termination: Termination(outcome.terminationStatus),
+            stdout: outcome.value.0,
+            stderr: outcome.value.1,
+            settled: monitor?.didSettle ?? false,
+        )
+    }
+
+    /// Reads `fd` to EOF on its own thread, keeping the last `limit` bytes.
+    ///
+    /// Runs off the cooperative pool because `read(2)` blocks. Each call hands `onChunk` whatever
+    /// the kernel had, which is what makes a partial line visible before EOF. (74fa1d59)
+    ///
+    /// - Returns: The collected text and whether the limit discarded any of it.
+    private static func drainToEnd(
+        fd: Int32,
+        limit: Int,
+        onChunk: (@Sendable (String) -> Void)?,
+    ) async -> (String, Bool) {
+        await withCheckedContinuation {
+            (continuation: CheckedContinuation<(String, Bool), Never>) in
+            Thread.detachNewThread {
+                var data = Data()
+                var truncated = false
+                var buffer = [UInt8](repeating: 0, count: 65_536)
+
+                while true {
+                    let count = buffer.withUnsafeMutableBytes { read(fd, $0.baseAddress, $0.count) }
+                    // A signal interrupts the read without ending the stream.
+                    if count < 0, errno == EINTR { continue }
+                    guard count > 0 else { break }
+                    let chunk = Data(buffer[0..<count])
+                    data.append(chunk)
+
+                    if data.count > limit {
+                        data = Data(data.suffix(limit))
+                        truncated = true
+                    }
+                    onChunk?(String(decoding: chunk, as: UTF8.self))  // sm:ignore useFailableStringInit
+                }
+                continuation.resume(
+                    returning: (String(decoding: data, as: UTF8.self), truncated),  // sm:ignore useFailableStringInit
+                )
+            }
+        }
+    }
+
+    /// How often the settle watchdog re-checks the monitor.
+    private static let settlePollInterval: Duration = .milliseconds(500)
+
+    /// Runs `run` with a watchdog that kills the process group once the child settles.
+    ///
+    /// The kill is what lets the collection tasks finally see EOF on the pipes, so `run` returns
+    /// its collected output right after. The result carries a signalled termination, which the
+    /// `settledAfterCompletion` flag tells the caller to disregard. (74fa1d59)
+    ///
+    /// `run` goes in a child task rather than in the group body, and the group waits for its value.
+    /// That is the shape ``raceTimeout(_:run:onTimeout:)`` uses. The watchdog yields the sentinel
+    /// `nil`, so a non-nil element is always `run`'s result.
+    ///
+    /// Internal rather than private so a test can drive it with a stand-in `run`.
+    static func watchForSettle<T: Sendable>(
+        _ monitor: SettleMonitor,
+        run: @escaping @Sendable () async throws -> T,
+        onSettle: @escaping @Sendable () -> Void,
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T?.self) { group in
+            group.addTask(name: "subprocess-run") { try await run() }
+            group.addTask(name: "subprocess-settle") {
+                while true {
+                    // A cancelled sleep ends the watchdog. It never throws out of the group.
+                    do { try await Task.sleep(for: settlePollInterval) } catch { return nil }
+                    guard monitor.checkSettled() else { continue }
+                    monitor.markSettled()
+                    onSettle()
+                    return nil
+                }
+            }
+            while let next = try await group.next() {
+                guard let value = next else { continue }
+                group.cancelAll()
+                return value
+            }
+            // Unreachable while the run task is alive: it is the only task that yields a value.
+            throw CancellationError()
+        }
     }
 
     /// Collects output from an async buffer sequence, keeping only the last `limit` bytes when the
