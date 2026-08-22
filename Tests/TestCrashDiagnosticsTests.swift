@@ -14,7 +14,8 @@ struct TestCrashDiagnosticsTests {
     func `Detect restart-after-crash banner`() {
         #expect(TestCrashDiagnostics.detectCrash(
             in: "Restarting after unexpected exit, crash, or test timeout",
-        ), )
+        ),
+        )
     }
 
     @Test

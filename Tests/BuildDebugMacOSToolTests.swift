@@ -1,7 +1,7 @@
 import MCP
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 @testable import XCMCPTools
 
 struct BuildDebugMacOSToolTests {

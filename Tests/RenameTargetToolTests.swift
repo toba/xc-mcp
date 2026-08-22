@@ -87,9 +87,7 @@ struct RenameTargetToolTests {
         #expect(buildConfig?.buildSettings["PRODUCT_NAME"]?.stringValue == "NewApp")
 
         // Verify BUNDLE_IDENTIFIER preserved (not changed)
-        #expect(
-            buildConfig?.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.example.App",
-        )
+        #expect(buildConfig?.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.example.App")
     }
 
     @Test
@@ -268,17 +266,17 @@ struct RenameTargetToolTests {
 
         // Verify bundle identifiers updated
         let xcodeproj = try XcodeProj(path: projectPath)
-        let renamedTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "NewApp" },
-        )
+        let renamedTarget = try #require(xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "NewApp"
+        })
+
         for config in renamedTarget.buildConfigurationList?.buildConfigurations ?? [] {
             #expect(
-                config.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"]?.stringValue
+                config.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"]?
+                    .stringValue
                     == "com.example.NewApp",
             )
-            #expect(
-                config.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.example.NewApp",
-            )
+            #expect(config.buildSettings["BUNDLE_IDENTIFIER"]?.stringValue == "com.example.NewApp")
         }
     }
 
@@ -314,14 +312,13 @@ struct RenameTargetToolTests {
 
         // Verify entitlements path updated
         let updatedProj = try XcodeProj(path: projectPath)
-        let renamedTarget = try #require(
-            updatedProj.pbxproj.nativeTargets.first { $0.name == "NewApp" },
-        )
-        let config = try #require(
-            renamedTarget.buildConfigurationList?.buildConfigurations.first,
-        )
+        let renamedTarget = try #require(updatedProj.pbxproj.nativeTargets.first {
+            $0.name == "NewApp"
+        })
+        let config = try #require(renamedTarget.buildConfigurationList?.buildConfigurations.first)
         #expect(
-            config.buildSettings["CODE_SIGN_ENTITLEMENTS"]?.stringValue
+            config.buildSettings["CODE_SIGN_ENTITLEMENTS"]?
+                .stringValue
                 == "NewApp/NewApp.entitlements",
         )
     }
@@ -346,9 +343,10 @@ struct RenameTargetToolTests {
 
         // Set TEST_TARGET_NAME and TEST_HOST on the test target
         let xcodeproj = try XcodeProj(path: projectPath)
-        let testTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTests" },
-        )
+        let testTarget = try #require(xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "AppTests"
+        })
+
         for config in testTarget.buildConfigurationList?.buildConfigurations ?? [] {
             config.buildSettings["TEST_TARGET_NAME"] = .string("App")
             config.buildSettings["TEST_HOST"] = .string(
@@ -373,15 +371,16 @@ struct RenameTargetToolTests {
 
         // Verify test target settings updated
         let updatedProj = try XcodeProj(path: projectPath)
-        let updatedTestTarget = try #require(
-            updatedProj.pbxproj.nativeTargets.first { $0.name == "AppTests" },
-        )
+        let updatedTestTarget = try #require(updatedProj.pbxproj.nativeTargets.first {
+            $0.name == "AppTests"
+        })
         let config = try #require(
             updatedTestTarget.buildConfigurationList?.buildConfigurations.first,
         )
         #expect(config.buildSettings["TEST_TARGET_NAME"]?.stringValue == "NewApp")
         #expect(
-            config.buildSettings["TEST_HOST"]?.stringValue
+            config.buildSettings["TEST_HOST"]?
+                .stringValue
                 == "$(BUILT_PRODUCTS_DIR)/NewApp.app/Contents/MacOS/NewApp",
         )
     }
@@ -401,17 +400,17 @@ struct RenameTargetToolTests {
             atPath: schemesDir, withIntermediateDirectories: true,
         )
         let schemeContent = """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <Scheme>
-           <BuildableReference
-              BuildableIdentifier = "primary"
-              BlueprintIdentifier = "ABC123"
-              BuildableName = "App.app"
-              BlueprintName = "App"
-              ReferencedContainer = "container:TestProject.xcodeproj">
-           </BuildableReference>
-        </Scheme>
-        """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Scheme>
+               <BuildableReference
+                  BuildableIdentifier = "primary"
+                  BlueprintIdentifier = "ABC123"
+                  BuildableName = "App.app"
+                  BlueprintName = "App"
+                  ReferencedContainer = "container:TestProject.xcodeproj">
+               </BuildableReference>
+            </Scheme>
+            """
         try schemeContent.write(
             toFile: "\(schemesDir)/App.xcscheme", atomically: true, encoding: .utf8,
         )
@@ -453,6 +452,7 @@ struct RenameTargetToolTests {
         // Set search paths that reference the target name
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+
         for config in target.buildConfigurationList?.buildConfigurations ?? [] {
             config.buildSettings["LD_RUNPATH_SEARCH_PATHS"] = .array([
                 "$(inherited)",
@@ -480,12 +480,10 @@ struct RenameTargetToolTests {
 
         // Verify search paths updated
         let updatedProj = try XcodeProj(path: projectPath)
-        let renamedTarget = try #require(
-            updatedProj.pbxproj.nativeTargets.first { $0.name == "NewApp" },
-        )
-        let config = try #require(
-            renamedTarget.buildConfigurationList?.buildConfigurations.first,
-        )
+        let renamedTarget = try #require(updatedProj.pbxproj.nativeTargets.first {
+            $0.name == "NewApp"
+        })
+        let config = try #require(renamedTarget.buildConfigurationList?.buildConfigurations.first)
 
         // LD_RUNPATH_SEARCH_PATHS (array value)
         if case let .array(ldPaths) = config.buildSettings["LD_RUNPATH_SEARCH_PATHS"] {
@@ -497,7 +495,8 @@ struct RenameTargetToolTests {
 
         // FRAMEWORK_SEARCH_PATHS (string value)
         #expect(
-            config.buildSettings["FRAMEWORK_SEARCH_PATHS"]?.stringValue
+            config.buildSettings["FRAMEWORK_SEARCH_PATHS"]?
+                .stringValue
                 == "$(BUILT_PRODUCTS_DIR)/NewApp/Frameworks",
         )
     }

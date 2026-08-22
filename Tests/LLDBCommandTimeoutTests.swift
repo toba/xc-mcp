@@ -1,5 +1,5 @@
-import Foundation
 import Testing
+import Foundation
 @testable import XCMCPCore
 
 /// Tests for the interactive per-command timeout that prevents inspection commands from appearing
@@ -19,7 +19,9 @@ struct LLDBCommandTimeoutTests {
     }
 
     @Test
-    func `a wedged command times out within the lowered window and poisons the session`() async throws {
+    func `a wedged command times out within the lowered window and poisons the session`()
+        async throws
+    {
         try #require(Self.lldbAvailable, "lldb not installed")
 
         // Start LLDB with a generous launch-style window, then lower it to interactive, mirroring
@@ -46,48 +48,50 @@ struct LLDBCommandTimeoutTests {
     /// Regression test for t57-a7q.
     ///
     /// Prior to the fix, a `readUntilPrompt` timeout left the GCD reader thread blocked in
-    /// `FileHandle.availableData` past the function's return — so when the next caller spawned
-    /// its own reader, the leaked reader would steal the next command's bytes the moment they
-    /// arrived, then exit on its stale `finished` flag and discard them. The next caller's
-    /// reader was left with no data until its own timeout fired.
+    /// `FileHandle.availableData` past the function's return — so when the next caller spawned its
+    /// own reader, the leaked reader would steal the next command's bytes the moment they arrived,
+    /// then exit on its stale `finished` flag and discard them. The next caller's reader was left
+    /// with no data until its own timeout fired.
     ///
-    /// Symptoms: a "(no output received)" timeout on the very first user command after a
-    /// no-op drain that timed out (e.g. `drainPendingOutput` / `checkForEarlyCrash`).
-    /// Regression test for t57-a7q.
+    /// Symptoms: a "(no output received)" timeout on the very first user command after a no-op
+    /// drain that timed out (e.g. `drainPendingOutput` / `checkForEarlyCrash`). Regression test for
+    /// t57-a7q.
     ///
     /// `drainPendingOutput` / `checkForEarlyCrash` issue tolerated `readUntilPrompt` calls with
-    /// `poisonOnFailure: false`. Before the fix, those timeouts left the GCD reader thread
-    /// blocked in `FileHandle.availableData` past the function's return — so the very next
-    /// `sendCommand`'s reader raced the leaked one for bytes on the shared PTY fd. The leaked
-    /// reader could consume the response and discard it on its stale `finished` check,
-    /// leaving the new reader to time out with "no output received".
+    /// `poisonOnFailure: false`. Before the fix, those timeouts left the GCD reader thread blocked
+    /// in `FileHandle.availableData` past the function's return — so the very next `sendCommand`'s
+    /// reader raced the leaked one for bytes on the shared PTY fd. The leaked reader could consume
+    /// the response and discard it on its stale `finished` check, leaving the new reader to time
+    /// out with "no output received".
     ///
     /// This test triggers a tolerated timeout against an idle session and verifies the next
     /// command's response arrives correlated to its caller, not silently swallowed.
     @Test
-    func `a tolerated short timeout does not leak the reader and the next command succeeds`() async throws {
+    func `a tolerated short timeout does not leak the reader and the next command succeeds`()
+        async throws
+    {
         try #require(Self.lldbAvailable, "lldb not installed")
 
         // Generous per-command timeout absorbs cooperative-pool starvation in the full parallel
-        // test run on CI; the leak-detection signal is "did the next sendCommand return", not
-        // "how fast did it return".
+        // test run on CI; the leak-detection signal is "did the next sendCommand return", not "how
+        // fast did it return".
         let session = try LLDBSession(pid: 0, commandTimeout: 30)
         defer { Task { await session.terminate() } }
         _ = try await session.readUntilPrompt()
 
         // Simulate `drainPendingOutput`'s tight, non-poisoning read against an idle PTY — no
-        // command was sent, so no prompt will arrive, and the read must time out cleanly. With
-        // the fix the GCD reader is fully torn down before the continuation resumes; before
-        // the fix it stayed blocked in `availableData` until the next command's bytes arrived.
+        // command was sent, so no prompt will arrive, and the read must time out cleanly. With the
+        // fix the GCD reader is fully torn down before the continuation resumes; before the fix it
+        // stayed blocked in `availableData` until the next command's bytes arrived.
         await #expect(throws: LLDBError.self) {
             _ = try await session.readUntilPrompt(timeout: 0.2, poisonOnFailure: false)
         }
 
         // The session must remain usable: `poisonOnFailure: false` callers expect the next
-        // `sendCommand` to behave normally and the response to be correlated to *this* call.
-        // A leaked reader would silently swallow the response and force this call to time out
-        // against the session's full commandTimeout (30s), so a wide-but-bounded budget still
-        // catches the regression without flaking on a loaded CI runner.
+        // `sendCommand` to behave normally and the response to be correlated to *this* call. A
+        // leaked reader would silently swallow the response and force this call to time out against
+        // the session's full commandTimeout (30s), so a wide-but-bounded budget still catches the
+        // regression without flaking on a loaded CI runner.
         let start = ContinuousClock.now
         let output = try await session.sendCommand("version")
         let elapsed = ContinuousClock.now - start
@@ -100,7 +104,9 @@ struct LLDBCommandTimeoutTests {
     }
 
     @Test
-    func `a flood of output aborts within the byte cap instead of running to the timeout`() async throws {
+    func `a flood of output aborts within the byte cap instead of running to the timeout`()
+        async throws
+    {
         try #require(Self.lldbAvailable, "lldb not installed")
 
         // A long timeout proves the abort is driven by the byte cap, not the time cap: a hot

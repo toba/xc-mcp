@@ -19,20 +19,16 @@ struct ListBuildConfigurationsToolTests {
     @Test func `list build configurations with missing project path`() throws {
         let tool = ListBuildConfigurationsTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [:])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: [:]) }
     }
 
     @Test func `list build configurations with invalid project path`() throws {
         let tool = ListBuildConfigurationsTool(pathUtility: PathUtility(basePath: "/tmp"))
         let arguments: [String: Value] = [
-            "project_path": Value.string("/nonexistent/path.xcodeproj"),
+            "project_path": Value.string("/nonexistent/path.xcodeproj")
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: arguments) }
     }
 
     @Test func `list build configurations with valid project`() throws {
@@ -45,13 +41,12 @@ struct ListBuildConfigurationsToolTests {
         try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
         // List build configurations in the created project
-        let listArguments: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-        ]
+        let listArguments: [String: Value] = ["project_path": Value.string(projectPath.string)]
 
         let result = try tool.execute(arguments: listArguments)
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("TestProject.xcodeproj"))
             #expect(content.contains("Debug") || content.contains("Release"))

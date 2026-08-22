@@ -5,9 +5,8 @@ import Foundation
 /// A test that shells out to `sm` carries `.enabled(if: InstalledSm.isAvailable)`, so the suite
 /// still passes on a machine without the tool.
 enum InstalledSm {
-    static let isAvailable = FileManager.default.isExecutableFile(
-        atPath: "/opt/homebrew/bin/sm",
-    ) || which("sm")
+    static let isAvailable = FileManager.default.isExecutableFile(atPath: "/opt/homebrew/bin/sm")
+        || which("sm")
 
     /// Returns true when `which` reports a path for the named binary.
     private static func which(_ name: String) -> Bool {

@@ -18,6 +18,7 @@ struct AddSynchronizedFolderExceptionToolTests {
         #expect(tool.tool().name == "add_synchronized_folder_exception")
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .object(props) = schemaDict["properties"] {
                 #expect(props["project_path"] != nil)
@@ -26,9 +27,7 @@ struct AddSynchronizedFolderExceptionToolTests {
                 #expect(props["files"] != nil)
             }
 
-            if case let .array(required) = schemaDict["required"] {
-                #expect(required.count == 4)
-            }
+            if case let .array(required) = schemaDict["required"] { #expect(required.count == 4) }
         }
     }
 

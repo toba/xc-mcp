@@ -1,6 +1,6 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 @testable import XCMCPTools
 
 struct GetCoverageReportToolTests {
@@ -23,7 +23,7 @@ struct GetCoverageReportToolTests {
                             lineCoverage: 90.0,
                             coveredLines: 900,
                             executableLines: 1000,
-                        ),
+                        )
                     ],
                 ),
                 TargetCoverage(
@@ -38,7 +38,7 @@ struct GetCoverageReportToolTests {
                             lineCoverage: 45.2,
                             coveredLines: 300,
                             executableLines: 664,
-                        ),
+                        )
                     ],
                 ),
             ],
@@ -82,7 +82,7 @@ struct GetCoverageReportToolTests {
                             executableLines: 50,
                         ),
                     ],
-                ),
+                )
             ],
         )
 
@@ -114,9 +114,9 @@ struct GetCoverageReportToolTests {
                             lineCoverage: 100.0,
                             coveredLines: 50,
                             executableLines: 50,
-                        ),
+                        )
                     ],
-                ),
+                )
             ],
         )
 
@@ -128,9 +128,10 @@ struct GetCoverageReportToolTests {
     @Test
     func `Execute with non-existent bundle path throws`() async {
         let tool = GetCoverageReportTool()
+
         do {
             _ = try await tool.execute(arguments: [
-                "result_bundle_path": .string("/nonexistent/path.xcresult"),
+                "result_bundle_path": .string("/nonexistent/path.xcresult")
             ])
             Issue.record("Expected MCPError to be thrown")
         } catch {
@@ -141,6 +142,7 @@ struct GetCoverageReportToolTests {
     @Test
     func `Execute with missing required param throws`() async {
         let tool = GetCoverageReportTool()
+
         do {
             _ = try await tool.execute(arguments: [:])
             Issue.record("Expected MCPError to be thrown")

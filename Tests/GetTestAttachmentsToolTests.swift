@@ -49,9 +49,7 @@ struct GetTestAttachmentsToolTests {
     @Test
     func `Execute with missing result_bundle_path throws invalidParams`() async {
         let tool = GetTestAttachmentsTool()
-        await #expect(throws: MCPError.self) {
-            _ = try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { _ = try await tool.execute(arguments: [:]) }
     }
 
     @Test
@@ -59,7 +57,7 @@ struct GetTestAttachmentsToolTests {
         let tool = GetTestAttachmentsTool()
         await #expect(throws: MCPError.self) {
             _ = try await tool.execute(arguments: [
-                "result_bundle_path": .string("/nonexistent/path.xcresult"),
+                "result_bundle_path": .string("/nonexistent/path.xcresult")
             ])
         }
     }
@@ -83,7 +81,7 @@ struct GetTestAttachmentsToolTests {
                         "timestamp": 1_740_529_201.0,
                     ],
                 ] as [[String: Any]],
-            ],
+            ]
         ]
 
         let attachments = GetTestAttachmentsTool.flattenManifest(manifest)
@@ -110,7 +108,7 @@ struct GetTestAttachmentsToolTests {
                     "suggestedHumanReadableName": "Response Body",
                     "isAssociatedWithFailure": false,
                 ] as [String: Any],
-            ],
+            ]
         ]
 
         let attachments = GetTestAttachmentsTool.flattenManifest(manifest)
@@ -125,12 +123,9 @@ struct GetTestAttachmentsToolTests {
         let manifest: [[String: Any]] = [
             [
                 "testIdentifier": "Tests/MyTest/testBar()",
-                "attachments": [
-                    [
-                        "exportedFileName": "auto-screenshot.png",
-                    ] as [String: Any],
-                ] as [[String: Any]],
-            ],
+                "attachments": [["exportedFileName": "auto-screenshot.png"] as [String: Any]]
+                    as [[String: Any]],
+            ]
         ]
 
         let attachments = GetTestAttachmentsTool.flattenManifest(manifest)
@@ -141,9 +136,7 @@ struct GetTestAttachmentsToolTests {
 
     @Test
     func `flattenManifest skips entries without attachments`() {
-        let manifest: [[String: Any]] = [
-            ["testIdentifier": "Tests/MyTest/testEmpty()"],
-        ]
+        let manifest: [[String: Any]] = [["testIdentifier": "Tests/MyTest/testEmpty()"]]
 
         let attachments = GetTestAttachmentsTool.flattenManifest(manifest)
         #expect(attachments.isEmpty)
@@ -158,7 +151,7 @@ struct GetTestAttachmentsToolTests {
                 name: "My Screenshot",
                 isAssociatedWithFailure: false,
                 timestamp: nil,
-            ),
+            )
         ]
 
         let output = GetTestAttachmentsTool.formatAttachments(attachments, exportDir: "/tmp/export")
@@ -177,7 +170,7 @@ struct GetTestAttachmentsToolTests {
                 name: "Binary Data",
                 isAssociatedWithFailure: true,
                 timestamp: 1_740_529_200.0,
-            ),
+            )
         ]
 
         let output = GetTestAttachmentsTool.formatAttachments(attachments, exportDir: nil)

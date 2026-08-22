@@ -76,7 +76,8 @@ struct BreakpointConditionAdvisorTests {
     @Test
     func `extracts quoted and unquoted conditions`() {
         #expect(
-            BreakpointConditionAdvisor.extractCondition(from: "breakpoint set -n f -c 'a == b'")
+            BreakpointConditionAdvisor.extractCondition(
+                from: "breakpoint set -n f -c 'a == b'")
                 == "a == b",
         )
         #expect(
@@ -84,8 +85,6 @@ struct BreakpointConditionAdvisorTests {
                 from: "breakpoint set -n f --condition \"x > 0\"",
             ) == "x > 0",
         )
-        #expect(
-            BreakpointConditionAdvisor.extractCondition(from: "breakpoint set -n f") == nil,
-        )
+        #expect(BreakpointConditionAdvisor.extractCondition(from: "breakpoint set -n f") == nil)
     }
 }

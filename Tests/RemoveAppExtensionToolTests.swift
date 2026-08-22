@@ -16,8 +16,7 @@ struct RemoveAppExtensionToolTests {
         #expect(toolDefinition.name == "remove_app_extension")
         #expect(
             toolDefinition.description
-                ==
-                "Remove an App Extension target from the project and its embedding from the host app",
+                == "Remove an App Extension target from the project and its embedding from the host app",
         )
     }
 
@@ -27,16 +26,13 @@ struct RemoveAppExtensionToolTests {
 
         // Missing project_path
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "extension_name": Value.string("MyWidget"),
-            ])
+            try tool.execute(arguments: ["extension_name": Value.string("MyWidget")])
         }
 
         // Missing extension_name
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "project_path": Value.string("/path/to/project.xcodeproj"),
-            ])
+            try tool.execute(arguments: ["project_path": Value.string("/path/to/project.xcodeproj")]
+            )
         }
     }
 
@@ -163,9 +159,7 @@ struct RemoveAppExtensionToolTests {
             .first { $0.name == "Embed App Extensions" }
 
         // Either the phase should be removed or it should have no files
-        if let embedPhase {
-            #expect(embedPhase.files?.isEmpty == true)
-        }
+        if let embedPhase { #expect(embedPhase.files?.isEmpty == true) }
     }
 
     @Test

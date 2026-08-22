@@ -1,51 +1,51 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
+import Foundation
 @testable import XCMCPTools
 
 @Suite(.temporaryDirectory)
 struct SetSchemeStoreKitConfigToolTests {
     /// A realistic shared scheme with both a `TestAction` and a `LaunchAction`, Xcode-formatted.
     private static let schemeXML = """
-    <?xml version="1.0" encoding="UTF-8"?>
-    <Scheme
-       LastUpgradeVersion = "2600"
-       version = "1.7">
-       <BuildAction
-          parallelizeBuildables = "YES"
-          buildImplicitDependencies = "YES">
-       </BuildAction>
-       <TestAction
-          buildConfiguration = "Debug"
-          selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
-          selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-          shouldUseLaunchSchemeArgsEnv = "YES">
-          <TestPlans>
-             <TestPlanReference
-                reference = "container:UnitTests.xctestplan"
-                default = "YES">
-             </TestPlanReference>
-          </TestPlans>
-       </TestAction>
-       <LaunchAction
-          buildConfiguration = "Debug"
-          selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
-          selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-          launchStyle = "0"
-          useCustomWorkingDirectory = "NO"
-          ignoresPersistentStateOnLaunch = "NO"
-          debugDocumentVersioning = "YES"
-          debugServiceExtension = "internal"
-          allowLocationSimulation = "YES">
-          <BuildableProductRunnable
-             runnableDebuggingMode = "0">
-          </BuildableProductRunnable>
-       </LaunchAction>
-    </Scheme>
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Scheme
+           LastUpgradeVersion = "2600"
+           version = "1.7">
+           <BuildAction
+              parallelizeBuildables = "YES"
+              buildImplicitDependencies = "YES">
+           </BuildAction>
+           <TestAction
+              buildConfiguration = "Debug"
+              selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+              selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+              shouldUseLaunchSchemeArgsEnv = "YES">
+              <TestPlans>
+                 <TestPlanReference
+                    reference = "container:UnitTests.xctestplan"
+                    default = "YES">
+                 </TestPlanReference>
+              </TestPlans>
+           </TestAction>
+           <LaunchAction
+              buildConfiguration = "Debug"
+              selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+              selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+              launchStyle = "0"
+              useCustomWorkingDirectory = "NO"
+              ignoresPersistentStateOnLaunch = "NO"
+              debugDocumentVersioning = "YES"
+              debugServiceExtension = "internal"
+              allowLocationSimulation = "YES">
+              <BuildableProductRunnable
+                 runnableDebuggingMode = "0">
+              </BuildableProductRunnable>
+           </LaunchAction>
+        </Scheme>
 
-    """
+        """
 
     /// Creates a temp project directory containing the scheme and a repo-root `.storekit` file.
     /// Returns (basePath, projectPath, schemePath, storekitPath).
@@ -92,17 +92,18 @@ struct SetSchemeStoreKitConfigToolTests {
         let fixture = try Self.makeFixture()
         defer { try? FileManager.default.removeItem(atPath: fixture.base) }
 
-        let message = try runTool(base: fixture.base, arguments: [
-            "project_path": .string(fixture.project),
-            "scheme_name": .string("App"),
-            "storekit_path": .string(fixture.storekit),
-        ])
+        let message = try runTool(
+            base: fixture.base,
+            arguments: [
+                "project_path": .string(fixture.project),
+                "scheme_name": .string("App"),
+                "storekit_path": .string(fixture.storekit),
+            ])
         #expect(message.contains("../../../Config.storekit"))
 
         let written = try String(contentsOfFile: fixture.scheme, encoding: .utf8)
-        let refCount = written.components(
-            separatedBy: "<StoreKitConfigurationFileReference",
-        ).count - 1
+        let refCount = written.components(separatedBy: "<StoreKitConfigurationFileReference").count
+            - 1
         #expect(refCount == 2, "Expected a reference under both actions, got \(refCount)")
         #expect(written.contains("identifier = \"../../../Config.storekit\""))
 
@@ -127,9 +128,8 @@ struct SetSchemeStoreKitConfigToolTests {
         _ = try runTool(base: fixture.base, arguments: args)
 
         let written = try String(contentsOfFile: fixture.scheme, encoding: .utf8)
-        let refCount = written.components(
-            separatedBy: "<StoreKitConfigurationFileReference",
-        ).count - 1
+        let refCount = written.components(separatedBy: "<StoreKitConfigurationFileReference").count
+            - 1
         #expect(refCount == 2, "Repeat calls must not duplicate references, got \(refCount)")
     }
 
@@ -139,22 +139,26 @@ struct SetSchemeStoreKitConfigToolTests {
         defer { try? FileManager.default.removeItem(atPath: fixture.base) }
 
         // Seed both actions, then re-target only launch with a different config.
-        _ = try runTool(base: fixture.base, arguments: [
-            "project_path": .string(fixture.project),
-            "scheme_name": .string("App"),
-            "storekit_path": .string(fixture.storekit),
-        ])
+        _ = try runTool(
+            base: fixture.base,
+            arguments: [
+                "project_path": .string(fixture.project),
+                "scheme_name": .string("App"),
+                "storekit_path": .string(fixture.storekit),
+            ])
 
         let otherStorekit = (fixture.base as NSString)
             .appendingPathComponent("Other.storekit")
         try "{}".write(toFile: otherStorekit, atomically: true, encoding: .utf8)
 
-        _ = try runTool(base: fixture.base, arguments: [
-            "project_path": .string(fixture.project),
-            "scheme_name": .string("App"),
-            "storekit_path": .string(otherStorekit),
-            "target_actions": .string("launch"),
-        ])
+        _ = try runTool(
+            base: fixture.base,
+            arguments: [
+                "project_path": .string(fixture.project),
+                "scheme_name": .string("App"),
+                "storekit_path": .string(otherStorekit),
+                "target_actions": .string("launch"),
+            ])
 
         let written = try String(contentsOfFile: fixture.scheme, encoding: .utf8)
         let testBlock = try #require(Self.actionBlock("TestAction", in: written))
@@ -169,17 +173,21 @@ struct SetSchemeStoreKitConfigToolTests {
         let fixture = try Self.makeFixture()
         defer { try? FileManager.default.removeItem(atPath: fixture.base) }
 
-        _ = try runTool(base: fixture.base, arguments: [
-            "project_path": .string(fixture.project),
-            "scheme_name": .string("App"),
-            "storekit_path": .string(fixture.storekit),
-        ])
+        _ = try runTool(
+            base: fixture.base,
+            arguments: [
+                "project_path": .string(fixture.project),
+                "scheme_name": .string("App"),
+                "storekit_path": .string(fixture.storekit),
+            ])
 
-        let message = try runTool(base: fixture.base, arguments: [
-            "project_path": .string(fixture.project),
-            "scheme_name": .string("App"),
-            "action": .string("remove"),
-        ])
+        let message = try runTool(
+            base: fixture.base,
+            arguments: [
+                "project_path": .string(fixture.project),
+                "scheme_name": .string("App"),
+                "action": .string("remove"),
+            ])
         #expect(message.contains("Removed"))
 
         let written = try String(contentsOfFile: fixture.scheme, encoding: .utf8)
@@ -194,11 +202,13 @@ struct SetSchemeStoreKitConfigToolTests {
         let fixture = try Self.makeFixture()
         defer { try? FileManager.default.removeItem(atPath: fixture.base) }
 
-        let message = try runTool(base: fixture.base, arguments: [
-            "project_path": .string(fixture.project),
-            "scheme_name": .string("App"),
-            "action": .string("remove"),
-        ])
+        let message = try runTool(
+            base: fixture.base,
+            arguments: [
+                "project_path": .string(fixture.project),
+                "scheme_name": .string("App"),
+                "action": .string("remove"),
+            ])
         #expect(message.contains("No StoreKit reference"))
     }
 
@@ -221,11 +231,13 @@ struct SetSchemeStoreKitConfigToolTests {
         let fixture = try Self.makeFixture()
         defer { try? FileManager.default.removeItem(atPath: fixture.base) }
 
-        let message = try runTool(base: fixture.base, arguments: [
-            "project_path": .string(fixture.project),
-            "scheme_name": .string("DoesNotExist"),
-            "storekit_path": .string(fixture.storekit),
-        ])
+        let message = try runTool(
+            base: fixture.base,
+            arguments: [
+                "project_path": .string(fixture.project),
+                "scheme_name": .string("DoesNotExist"),
+                "storekit_path": .string(fixture.storekit),
+            ])
         #expect(message.contains("not found"))
     }
 
@@ -233,9 +245,8 @@ struct SetSchemeStoreKitConfigToolTests {
     private static func actionBlock(_ name: String, in content: String) -> String? {
         guard let open = content.range(of: "<\(name)"),
               let close = content.range(
-                  of: "</\(name)>", range: open.upperBound ..< content.endIndex,
-              )
-        else { return nil }
-        return String(content[open.lowerBound ..< close.upperBound])
+                  of: "</\(name)>", range: open.upperBound..<content.endIndex,
+              ) else { return nil }
+        return String(content[open.lowerBound..<close.upperBound])
     }
 }

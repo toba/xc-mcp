@@ -69,12 +69,12 @@ struct AddSwiftPackageToolTests {
     ]
 
     @Test(arguments: missingParamCases)
-    func `Add package with missing parameters`(_ testCase: SwiftPackageMissingParamTestCase) throws {
+    func `Add package with missing parameters`(
+        _ testCase: SwiftPackageMissingParamTestCase
+    ) throws {
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     static let requirementCases: [PackageRequirementTestCase] = [
@@ -120,9 +120,7 @@ struct AddSwiftPackageToolTests {
         // Verify package was added
         let xcodeproj = try XcodeProj(path: projectPath)
         let project = try xcodeproj.pbxproj.rootProject()
-        let packageRef = project?.remotePackages.first {
-            $0.repositoryURL == testCase.packageUrl
-        }
+        let packageRef = project?.remotePackages.first { $0.repositoryURL == testCase.packageUrl }
         #expect(packageRef != nil)
 
         // Verify the requirement matches expected description
@@ -226,9 +224,7 @@ struct AddSwiftPackageToolTests {
         // Verify package was added
         let xcodeproj = try XcodeProj(path: projectPath)
         let project = try xcodeproj.pbxproj.rootProject()
-        let localRef = project?.localPackages.first {
-            $0.relativePath == "../MyLocalPackage"
-        }
+        let localRef = project?.localPackages.first { $0.relativePath == "../MyLocalPackage" }
         #expect(localRef != nil)
     }
 
@@ -311,15 +307,15 @@ struct AddSwiftPackageToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
 
-        // Verify a Frameworks build phase was created with a build file referencing the package product
-        let frameworkPhase =
-            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        // Verify a Frameworks build phase was created with a build file referencing the package
+        // product
+        let frameworkPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
         #expect(frameworkPhase != nil, "Target should have a Frameworks build phase")
 
-        let hasPackageBuildFile =
-            frameworkPhase?.files?.contains { buildFile in
-                buildFile.product?.productName == "SharedKit"
-            } ?? false
+        let hasPackageBuildFile = frameworkPhase?.files?.contains { buildFile in
+            buildFile.product?.productName == "SharedKit"
+        } ?? false
         #expect(
             hasPackageBuildFile,
             "Frameworks build phase should contain a build file for the package product",
@@ -474,9 +470,7 @@ struct AddSwiftPackageToolTests {
         // Verify both targets have the product dependency
         let xcodeproj = try XcodeProj(path: projectPath)
         let appTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "SwiftiomaticApp" }
-        let extTarget = xcodeproj.pbxproj.nativeTargets.first {
-            $0.name == "SwiftiomaticExtension"
-        }
+        let extTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "SwiftiomaticExtension" }
         #expect(appTarget?.packageProductDependencies?.count == 1)
         #expect(extTarget?.packageProductDependencies?.count == 1)
 
@@ -488,13 +482,13 @@ struct AddSwiftPackageToolTests {
         // Verify both targets have a Frameworks build phase with the product
         for targetName in ["SwiftiomaticApp", "SwiftiomaticExtension"] {
             let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == targetName }
-            let fwPhase =
-                target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
-                    as? PBXFrameworksBuildPhase
+            let fwPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+                as? PBXFrameworksBuildPhase
             #expect(fwPhase != nil, "\(targetName) should have a Frameworks build phase")
-            let hasBuildFile =
-                fwPhase?.files?.contains { $0.product?.productName == "SwiftiomaticLib" }
-                    ?? false
+            let hasBuildFile = fwPhase?.files?.contains {
+                $0.product?.productName == "SwiftiomaticLib"
+            }
+                ?? false
             #expect(hasBuildFile, "\(targetName) Frameworks phase should reference SwiftiomaticLib")
         }
     }
@@ -521,9 +515,7 @@ struct AddSwiftPackageToolTests {
         _ = try tool.execute(arguments: args)
 
         // Try to link same product to same target again
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 
     @Test
@@ -536,21 +528,15 @@ struct AddSwiftPackageToolTests {
             "requirement": Value.string("1.0.0"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 
     @Test
     func `Add package fails with neither URL nor path`() throws {
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
-        let args: [String: Value] = [
-            "project_path": Value.string("/path/to/project.xcodeproj"),
-        ]
+        let args: [String: Value] = ["project_path": Value.string("/path/to/project.xcodeproj")]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 
     /// Reproducer for issue 2fi-f1h: add_swift_package crashes with SIGTRAP when the project
@@ -587,23 +573,20 @@ struct AddSwiftPackageToolTests {
                 productName: pkg.product, package: pkgRef,
             )
             xcodeproj.pbxproj.add(object: productDep)
-            if target.packageProductDependencies == nil {
-                target.packageProductDependencies = []
-            }
+            if target.packageProductDependencies == nil { target.packageProductDependencies = [] }
             target.packageProductDependencies?.append(productDep)
 
             let buildFile = PBXBuildFile(product: productDep)
             xcodeproj.pbxproj.add(object: buildFile)
 
-            let fwPhase =
-                target.buildPhases.first { $0 is PBXFrameworksBuildPhase }
-                    as? PBXFrameworksBuildPhase
-                    ?? {
-                        let phase = PBXFrameworksBuildPhase()
-                        xcodeproj.pbxproj.add(object: phase)
-                        target.buildPhases.append(phase)
-                        return phase
-                    }()
+            let fwPhase = target.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+                as? PBXFrameworksBuildPhase
+                ?? {
+                    let phase = PBXFrameworksBuildPhase()
+                    xcodeproj.pbxproj.add(object: phase)
+                    target.buildPhases.append(phase)
+                    return phase
+                }()
             fwPhase.files?.append(buildFile)
         }
 
@@ -649,8 +632,8 @@ struct AddSwiftPackageToolTests {
         #expect(depCount == 4, "Should have 3 existing + 1 new product dependency, got \(depCount)")
     }
 
-    /// Regression test for the PBXProjWriter workaround (issue 2fi-f1h): projects with sub-project references
-    /// where the PBXFileReference has only `path` (no `name`) would crash in
+    /// Regression test for the PBXProjWriter workaround (issue 2fi-f1h): projects with sub-project
+    /// references where the PBXFileReference has only `path` (no `name`) would crash in
     /// PBXProjEncoder.sortProjectReferences due to a force-unwrap of `name`.
     @Test
     func `Write project with nameless project reference`() throws {
@@ -665,10 +648,7 @@ struct AddSwiftPackageToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let project = try #require(try xcodeproj.pbxproj.rootProject())
 
-        let subProjectRef = PBXFileReference(
-            sourceTree: .group,
-            path: "Vendor/Sub.xcodeproj",
-        )
+        let subProjectRef = PBXFileReference(sourceTree: .group, path: "Vendor/Sub.xcodeproj")
         // name is intentionally nil — this is the crash scenario
         #expect(subProjectRef.name == nil)
         xcodeproj.pbxproj.add(object: subProjectRef)
@@ -676,12 +656,7 @@ struct AddSwiftPackageToolTests {
         let productsGroup = PBXGroup(children: [], sourceTree: .group, name: "Products")
         xcodeproj.pbxproj.add(object: productsGroup)
 
-        project.projects = [
-            [
-                "ProjectRef": subProjectRef,
-                "ProductGroup": productsGroup,
-            ],
-        ]
+        project.projects = [["ProjectRef": subProjectRef, "ProductGroup": productsGroup]]
 
         // Without the PBXProjWriter workaround this crashes with SIGTRAP in release mode
         try PBXProjWriter.write(xcodeproj, to: projectPath)
@@ -705,8 +680,6 @@ struct AddSwiftPackageToolTests {
             "target_name": Value.string("NonExistentTarget"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 }

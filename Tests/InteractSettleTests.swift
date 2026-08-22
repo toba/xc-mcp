@@ -13,7 +13,7 @@ struct InteractSettleTests {
         depth: Int = 0,
         childCount: Int = 0,
     ) -> InteractElement {
-        InteractElement(
+        .init(
             id: id,
             role: role,
             subrole: nil,

@@ -1,6 +1,6 @@
-import Foundation
 import Testing
 import XCMCPCore
+import Foundation
 
 struct PBXProjReferenceAuditTests {
     /// A minimal pbxproj-shaped plist whose `objects` table defines `obj` and references whatever
@@ -8,20 +8,21 @@ struct PBXProjReferenceAuditTests {
     private func pbxproj(defining defined: [String], referencing references: [String]) -> Data {
         let refList = references.map { "\t\t\t\t\($0)," }.joined(separator: "\n")
         var objectsBody = ""
+
         for uuid in defined {
             objectsBody += "\t\t\(uuid) = {isa = PBXGroup; children = (\n\(refList)\n\t\t\t);};\n"
         }
         let text = """
-        // !$*UTF8*$!
-        {
-        \tarchiveVersion = 1;
-        \tclasses = {};
-        \tobjectVersion = 77;
-        \tobjects = {
-        \(objectsBody)\t};
-        \trootObject = \(defined.first ?? "");
-        }
-        """
+            // !$*UTF8*$!
+            {
+            \tarchiveVersion = 1;
+            \tclasses = {};
+            \tobjectVersion = 77;
+            \tobjects = {
+            \(objectsBody)\t};
+            \trootObject = \(defined.first ?? "");
+            }
+            """
         return Data(text.utf8)
     }
 
@@ -49,9 +50,11 @@ struct PBXProjReferenceAuditTests {
         let candidate = pbxproj(defining: [real], referencing: [real, preexisting, introduced])
 
         // Absolute audit sees both danglers; the baseline diff isolates only the new one.
-        #expect(PBXProjReferenceAudit.danglingReferences(in: candidate) == [preexisting, introduced])
         #expect(
-            PBXProjReferenceAudit.newDanglingReferences(candidate: candidate, baseline: baseline)
+            PBXProjReferenceAudit.danglingReferences(in: candidate) == [preexisting, introduced])
+        #expect(
+            PBXProjReferenceAudit.newDanglingReferences(
+                candidate: candidate, baseline: baseline)
                 == [introduced])
     }
 

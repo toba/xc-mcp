@@ -1,6 +1,5 @@
 import MCP
 import PathKit
-import CryptoKit
 import XCMCPCore
 import XcodeProj
 import Foundation
@@ -301,7 +300,7 @@ public struct DetectUnusedCodeTool: Sendable {
         }
         let schemes = arguments.getStringArray("schemes")
         let hashInput = "\(packagePath)|\(project ?? "")|\(schemes.joined(separator: ","))"
-        let hash = Self.shortHash(hashInput)
+        let hash = ShortHash.hex(of: hashInput)
         return "/tmp/periphery-\(hash).json"
     }
 
@@ -432,7 +431,7 @@ public struct DetectUnusedCodeTool: Sendable {
 
         // Cache raw JSON to disk, removing any stale checklist from a prior scan
         let hashInput = "\(packagePath)|\(project ?? "")|\(schemes.joined(separator: ","))"
-        let hash = Self.shortHash(hashInput)
+        let hash = ShortHash.hex(of: hashInput)
         let cacheFile = "/tmp/periphery-\(hash).json"
         let oldChecklist = Self.checklistPath(forCache: cacheFile)
         try? FileManager.default.removeItem(atPath: oldChecklist)
@@ -468,12 +467,6 @@ public struct DetectUnusedCodeTool: Sendable {
             Periphery output:
             \(peripheryDetail)
             """
-    }
-
-    static func shortHash(_ input: String) -> String {
-        let data = Data(input.utf8)
-        let digest = SHA256.hash(data: data)
-        return digest.prefix(6).map { String(format: "%02x", $0) }.joined()
     }
 
     // MARK: - Filtering

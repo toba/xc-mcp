@@ -11,7 +11,9 @@ struct DocumentTypeToolsTests {
     // MARK: - Helper
 
     /// Creates a test project with an Info.plist that has INFOPLIST_FILE set.
-    private func createProjectWithInfoPlist(tempDir: URL) throws -> (
+    private func createProjectWithInfoPlist(
+        tempDir: URL
+    ) throws -> (
         projectPath: Path, plistPath: String,
     ) {
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -110,8 +112,8 @@ struct DocumentTypeToolsTests {
                     "CFBundleTypeRole": "Editor",
                     "LSHandlerRank": "Owner",
                     "NSDocumentClass": "$(PRODUCT_MODULE_NAME).Document",
-                ] as [String: Any],
-            ] as [[String: Any]],
+                ] as [String: Any]
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -194,9 +196,8 @@ struct DocumentTypeToolsTests {
 
         // Pre-populate
         let plist: [String: Any] = [
-            "CFBundleDocumentTypes": [
-                ["CFBundleTypeName": "Test Document"] as [String: Any],
-            ] as [[String: Any]],
+            "CFBundleDocumentTypes": [["CFBundleTypeName": "Test Document"] as [String: Any]]
+                as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -224,11 +225,8 @@ struct DocumentTypeToolsTests {
         // Pre-populate
         let plist: [String: Any] = [
             "CFBundleDocumentTypes": [
-                [
-                    "CFBundleTypeName": "Test Document",
-                    "CFBundleTypeRole": "Viewer",
-                ] as [String: Any],
-            ] as [[String: Any]],
+                ["CFBundleTypeName": "Test Document", "CFBundleTypeRole": "Viewer"] as [String: Any]
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -284,9 +282,8 @@ struct DocumentTypeToolsTests {
 
         // Pre-populate
         let plist: [String: Any] = [
-            "CFBundleDocumentTypes": [
-                ["CFBundleTypeName": "Test Document"] as [String: Any],
-            ] as [[String: Any]],
+            "CFBundleDocumentTypes": [["CFBundleTypeName": "Test Document"] as [String: Any]]
+                as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 

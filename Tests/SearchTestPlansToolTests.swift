@@ -1,8 +1,8 @@
 import MCP
 import PathKit
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 @testable import XCMCPTools
 
 @Suite(.temporaryDirectory)
@@ -34,7 +34,7 @@ struct SearchTestPlansToolTests {
                     "id": "DEFAULT",
                     "name": "Default",
                     "options": ["targetForVariableExpansion": "com.thesisapp.editor"],
-                ] as [String: Any],
+                ] as [String: Any]
             ],
             "testTargets": [] as [[String: Any]],
         ]
@@ -83,9 +83,7 @@ struct SearchTestPlansToolTests {
 
         let plan: [String: Any] = [
             "version": 1,
-            "testTargets": [
-                ["target": ["name": "MyAppTests"] as [String: Any]] as [String: Any],
-            ],
+            "testTargets": [["target": ["name": "MyAppTests"] as [String: Any]] as [String: Any]],
         ]
         _ = try writePlan(plan, dir: tmpDir, name: "Plan")
 

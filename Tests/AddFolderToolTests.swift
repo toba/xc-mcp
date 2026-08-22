@@ -1,10 +1,9 @@
-import Foundation
 import MCP
 import PathKit
 import Testing
 import XCMCPCore
 import XcodeProj
-
+import Foundation
 @testable import XCMCPTools
 
 /// Test case for missing parameter validation
@@ -33,15 +32,16 @@ struct AddFolderToolTests {
         )
 
         let schema = tool.tool().inputSchema
-        if case .object(let schemaDict) = schema {
-            if case .object(let props) = schemaDict["properties"] {
+
+        if case let .object(schemaDict) = schema {
+            if case let .object(props) = schemaDict["properties"] {
                 #expect(props["project_path"] != nil)
                 #expect(props["folder_path"] != nil)
                 #expect(props["group_name"] != nil)
                 #expect(props["target_name"] != nil)
             }
 
-            if case .array(let required) = schemaDict["required"] {
+            if case let .array(required) = schemaDict["required"] {
                 #expect(required.count == 2)
                 #expect(required.contains(.string("project_path")))
                 #expect(required.contains(.string("folder_path")))
@@ -64,9 +64,7 @@ struct AddFolderToolTests {
     func `Validates required parameter`(_ testCase: AddFolderMissingParamTestCase) throws {
         let tool = AddFolderTool(pathUtility: pathUtility)
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     @Test
@@ -117,10 +115,9 @@ struct AddFolderToolTests {
 
     @Test
     func `Adds folder under group with path strips redundant prefix`() throws {
-        // Reproduction for issue bhc-8co: when the parent group has `path = Sync`
-        // and the folder lives at `Sync/Sources` on disk, the stored `path`
-        // attribute on the synchronized root group should be just `Sources`
-        // (relative to its parent), not `Sync/Sources`.
+        // Reproduction for issue bhc-8co: when the parent group has `path = Sync` and the folder
+        // lives at `Sync/Sources` on disk, the stored `path` attribute on the synchronized root
+        // group should be just `Sources` (relative to its parent), not `Sync/Sources`.
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -148,9 +145,9 @@ struct AddFolderToolTests {
         ])
 
         let reloaded = try XcodeProj(path: projectPath)
-        let syncRoot = try #require(
-            reloaded.pbxproj.fileSystemSynchronizedRootGroups.first { $0.name == "Sources" },
-        )
+        let syncRoot = try #require(reloaded.pbxproj.fileSystemSynchronizedRootGroups.first {
+            $0.name == "Sources"
+        })
         #expect(syncRoot.path == "Sources")
     }
 
@@ -182,17 +179,17 @@ struct AddFolderToolTests {
         ])
 
         let reloaded = try XcodeProj(path: projectPath)
-        let syncRoot = try #require(
-            reloaded.pbxproj.fileSystemSynchronizedRootGroups.first { $0.name == "Sources" },
-        )
+        let syncRoot = try #require(reloaded.pbxproj.fileSystemSynchronizedRootGroups.first {
+            $0.name == "Sources"
+        })
         #expect(syncRoot.path == "Sources")
     }
 
     @Test
     func `Adds folder under virtual group (name only no path) keeps full path`() throws {
-        // A "virtual" group has only `name`, no `path` -- it does NOT add a path
-        // component to its children. The synchronized folder's path must remain
-        // project-root-relative so files resolve correctly.
+        // A "virtual" group has only `name`, no `path` -- it does NOT add a path component to its
+        // children. The synchronized folder's path must remain project-root-relative so files
+        // resolve correctly.
         let tool = AddFolderTool(pathUtility: pathUtility)
 
         let projectPath = Path(tempDir) + "TestProject.xcodeproj"
@@ -218,9 +215,9 @@ struct AddFolderToolTests {
         ])
 
         let reloaded = try XcodeProj(path: projectPath)
-        let syncRoot = try #require(
-            reloaded.pbxproj.fileSystemSynchronizedRootGroups.first { $0.name == "Sources" },
-        )
+        let syncRoot = try #require(reloaded.pbxproj.fileSystemSynchronizedRootGroups.first {
+            $0.name == "Sources"
+        })
         // Parent has no on-disk path, so folder path stays relative to project root.
         #expect(syncRoot.path == "Sync/Sources")
     }
@@ -394,9 +391,9 @@ struct AddFolderToolTests {
             Issue.record("Expected text result")
         }
 
-        // Verify the folder was added with the correct relative path
-        // Since the folder is inside DOM group (which has path = "DOM"),
-        // the synchronized folder should have path = "Sources" (not "DOM/Sources")
+        // Verify the folder was added with the correct relative path Since the folder is inside DOM
+        // group (which has path = "DOM"), the synchronized folder should have path = "Sources" (not
+        // "DOM/Sources")
         let updatedProject = try XcodeProj(path: projectPath)
         let folderReferences = updatedProject.pbxproj.fileSystemSynchronizedRootGroups
         #expect(folderReferences.count == 1)
@@ -410,4 +407,3 @@ struct AddFolderToolTests {
         )
     }
 }
-

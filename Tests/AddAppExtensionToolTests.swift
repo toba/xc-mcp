@@ -44,8 +44,7 @@ struct AddAppExtensionToolTests {
         #expect(toolDefinition.name == "add_app_extension")
         #expect(
             toolDefinition.description
-                ==
-                "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, Xcode Source Editor, and other extension types.",
+                == "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, Xcode Source Editor, and other extension types.",
         )
     }
 
@@ -103,9 +102,7 @@ struct AddAppExtensionToolTests {
     ) throws {
         let tool = AddAppExtensionTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     static let extensionTypeCases: [ExtensionTypeTestCase] = [
@@ -227,14 +224,13 @@ struct AddAppExtensionToolTests {
         let buildConfig = extensionTarget?.buildConfigurationList?.buildConfigurations.first {
             $0.name == "Debug"
         }
-        #expect(
-            buildConfig?.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"]?.stringValue == "17.0",
-        )
+        #expect(buildConfig?.buildSettings["IPHONEOS_DEPLOYMENT_TARGET"]?.stringValue == "17.0")
     }
 
     @Test
-    func `Add macOS extension sets ALWAYS_SEARCH_USER_PATHS and omits TARGETED_DEVICE_FAMILY`(
-    ) throws {
+    func `Add macOS extension sets ALWAYS_SEARCH_USER_PATHS and omits TARGETED_DEVICE_FAMILY`()
+        throws
+    {
         let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -337,9 +333,7 @@ struct AddAppExtensionToolTests {
             "bundle_identifier": Value.string("com.example.TestApp.MyExtension"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 
     @Test

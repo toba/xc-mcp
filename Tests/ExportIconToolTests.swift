@@ -21,18 +21,14 @@ struct ExportIconToolTests {
     @Test
     func `Missing icon_path throws invalidParams`() async {
         await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [
-                "output_path": .string("/tmp/out.png"),
-            ])
+            try await tool.execute(arguments: ["output_path": .string("/tmp/out.png")])
         }
     }
 
     @Test
     func `Missing output_path throws invalidParams`() async {
         await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [
-                "icon_path": .string("/tmp/test.icon"),
-            ])
+            try await tool.execute(arguments: ["icon_path": .string("/tmp/test.icon")])
         }
     }
 
@@ -50,11 +46,9 @@ struct ExportIconToolTests {
 
     // MARK: - Integration test (requires Icon Composer installed)
 
-    @Test(
-        .enabled(
-            if: FileManager.default
-                .fileExists(atPath: "/Applications/Icon Composer.app/Contents/Executables/ictool"),
-        ),
+    @Test(.enabled(if: FileManager.default
+            .fileExists(atPath: "/Applications/Icon Composer.app/Contents/Executables/ictool"),
+    ),
     )
     func `Export thesis icon to PNG`() async throws {
         let iconPath = "/Users/jason/Developer/toba/thesis/AppIcon.icon"
@@ -79,14 +73,17 @@ struct ExportIconToolTests {
         // First content item should be inline base64 image
         #expect(result.content.count == 2)
         let imageContent = try #require(result.content.first)
-        if case let .image(data: base64, mimeType: mimeType, annotations: _, _meta: _) = imageContent {
+
+        if case let .image(data: base64, mimeType: mimeType, annotations: _, _meta: _) =
+            imageContent
+        {
             #expect(mimeType == "image/png")
             let decoded = try #require(Data(base64Encoded: base64))
             #expect(decoded.count > 8)
             #expect(decoded[0] == 0x89)
-            #expect(decoded[1] == 0x50) // P
-            #expect(decoded[2] == 0x4E) // N
-            #expect(decoded[3] == 0x47) // G
+            #expect(decoded[1] == 0x50)  // P
+            #expect(decoded[2] == 0x4E)  // N
+            #expect(decoded[3] == 0x47)  // G
         } else {
             Issue.record("Expected .image content, got \(imageContent)")
         }
@@ -103,11 +100,9 @@ struct ExportIconToolTests {
         #expect(FileManager.default.fileExists(atPath: outputPath))
     }
 
-    @Test(
-        .enabled(
-            if: FileManager.default
-                .fileExists(atPath: "/Applications/Icon Composer.app/Contents/Executables/ictool"),
-        ),
+    @Test(.enabled(if: FileManager.default
+            .fileExists(atPath: "/Applications/Icon Composer.app/Contents/Executables/ictool"),
+    ),
     )
     func `Export at 2x scale produces larger file`() async throws {
         let iconPath = "/Users/jason/Developer/toba/thesis/AppIcon.icon"

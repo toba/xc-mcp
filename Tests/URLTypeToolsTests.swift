@@ -11,7 +11,9 @@ struct URLTypeToolsTests {
     // MARK: - Helper
 
     /// Creates a test project with an Info.plist that has INFOPLIST_FILE set.
-    private func createProjectWithInfoPlist(tempDir: URL) throws -> (
+    private func createProjectWithInfoPlist(
+        tempDir: URL
+    ) throws -> (
         projectPath: Path, plistPath: String,
     ) {
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -108,8 +110,8 @@ struct URLTypeToolsTests {
                     "CFBundleURLName": "app.toba.ThesisApp",
                     "CFBundleURLSchemes": ["thesisapp"],
                     "CFBundleTypeRole": "Editor",
-                ] as [String: Any],
-            ] as [[String: Any]],
+                ] as [String: Any]
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -189,9 +191,8 @@ struct URLTypeToolsTests {
 
         // Pre-populate
         let plist: [String: Any] = [
-            "CFBundleURLTypes": [
-                ["CFBundleURLName": "com.example.myapp"] as [String: Any],
-            ] as [[String: Any]],
+            "CFBundleURLTypes": [["CFBundleURLName": "com.example.myapp"] as [String: Any]]
+                as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -223,8 +224,8 @@ struct URLTypeToolsTests {
                     "CFBundleURLName": "com.example.myapp",
                     "CFBundleTypeRole": "Viewer",
                     "CFBundleURLSchemes": ["myapp"],
-                ] as [String: Any],
-            ] as [[String: Any]],
+                ] as [String: Any]
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -281,9 +282,8 @@ struct URLTypeToolsTests {
 
         // Pre-populate
         let plist: [String: Any] = [
-            "CFBundleURLTypes": [
-                ["CFBundleURLName": "com.example.myapp"] as [String: Any],
-            ] as [[String: Any]],
+            "CFBundleURLTypes": [["CFBundleURLName": "com.example.myapp"] as [String: Any]]
+                as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 

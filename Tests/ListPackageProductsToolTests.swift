@@ -30,9 +30,7 @@ struct ListPackageProductsToolTests {
         )
 
         let tool = ListPackageProductsTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": Value.string(projectPath.string)])
 
         guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")
@@ -101,14 +99,10 @@ struct ListPackageProductsToolTests {
         xcodeproj.pbxproj.add(object: frameworksPhase)
         testTarget.buildPhases.append(frameworksPhase)
         xcodeproj.pbxproj.add(object: testTarget)
-        if let project = try xcodeproj.pbxproj.rootProject() {
-            project.targets.append(testTarget)
-        }
+        if let project = try xcodeproj.pbxproj.rootProject() { project.targets.append(testTarget) }
         try PBXProjWriter.write(xcodeproj, to: projectPath)
 
-        let addProductTool = AddPackageProductTool(
-            pathUtility: PathUtility(basePath: tempDir.path),
-        )
+        let addProductTool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
         _ = try addProductTool.execute(arguments: [
             "project_path": Value.string(projectPath.string),
             "target_name": Value.string("Tests"),
@@ -116,9 +110,7 @@ struct ListPackageProductsToolTests {
         ])
 
         let tool = ListPackageProductsTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": Value.string(projectPath.string)])
 
         guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text result")

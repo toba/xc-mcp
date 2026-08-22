@@ -35,8 +35,6 @@ struct ScreenshotMacWindowToolTests {
     func `Execute with no arguments throws invalidParams`() async throws {
         let tool = ScreenshotMacWindowTool()
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 }

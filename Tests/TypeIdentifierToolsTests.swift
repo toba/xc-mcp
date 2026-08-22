@@ -10,7 +10,9 @@ import Foundation
 struct TypeIdentifierToolsTests {
     // MARK: - Helper
 
-    private func createProjectWithInfoPlist(tempDir: URL) throws -> (
+    private func createProjectWithInfoPlist(
+        tempDir: URL
+    ) throws -> (
         projectPath: Path, plistPath: String,
     ) {
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -85,11 +87,9 @@ struct TypeIdentifierToolsTests {
                     "UTTypeIdentifier": "app.toba.thesis.project",
                     "UTTypeDescription": "Thesis Document",
                     "UTTypeConformsTo": ["com.apple.package"],
-                    "UTTypeTagSpecification": [
-                        "public.filename-extension": ["thesis.project"],
-                    ],
-                ] as [String: Any],
-            ] as [[String: Any]],
+                    "UTTypeTagSpecification": ["public.filename-extension": ["thesis.project"]],
+                ] as [String: Any]
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -118,10 +118,10 @@ struct TypeIdentifierToolsTests {
 
         let plist: [String: Any] = [
             "UTExportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.exported"] as [String: Any],
+                ["UTTypeIdentifier": "com.example.exported"] as [String: Any]
             ] as [[String: Any]],
             "UTImportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.imported"] as [String: Any],
+                ["UTTypeIdentifier": "com.example.imported"] as [String: Any]
             ] as [[String: Any]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
@@ -240,9 +240,8 @@ struct TypeIdentifierToolsTests {
 
         // Pre-populate
         let plist: [String: Any] = [
-            "UTExportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.dup"] as [String: Any],
-            ] as [[String: Any]],
+            "UTExportedTypeDeclarations": [["UTTypeIdentifier": "com.example.dup"] as [String: Any]]
+                as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -271,11 +270,9 @@ struct TypeIdentifierToolsTests {
         // Pre-populate
         let plist: [String: Any] = [
             "UTExportedTypeDeclarations": [
-                [
-                    "UTTypeIdentifier": "com.example.type",
-                    "UTTypeDescription": "Old Description",
-                ] as [String: Any],
-            ] as [[String: Any]],
+                ["UTTypeIdentifier": "com.example.type", "UTTypeDescription": "Old Description"]
+                    as [String: Any]
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -311,8 +308,8 @@ struct TypeIdentifierToolsTests {
         // Pre-populate
         let plist: [String: Any] = [
             "UTExportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.remove"] as [String: Any],
-            ] as [[String: Any]],
+                ["UTTypeIdentifier": "com.example.remove"] as [String: Any]
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -374,11 +371,9 @@ struct TypeIdentifierToolsTests {
             "UTImportedTypeDeclarations": [
                 [
                     "UTTypeDescription": "BibTeX Document",
-                    "UTTypeTagSpecification": [
-                        "public.filename-extension": ["bib"],
-                    ],
-                ] as [String: Any],
-            ] as [[String: Any]],
+                    "UTTypeTagSpecification": ["public.filename-extension": ["bib"]],
+                ] as [String: Any]
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -418,7 +413,7 @@ struct TypeIdentifierToolsTests {
                 ["UTTypeIdentifier": "com.example.first"] as [String: Any],
                 // Malformed: no identifier, can only be addressed by index.
                 ["UTTypeDescription": "Citation Style Language"] as [String: Any],
-            ] as [[String: Any]],
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -454,7 +449,7 @@ struct TypeIdentifierToolsTests {
                 ["UTTypeIdentifier": "com.example.valid"] as [String: Any],
                 ["UTTypeDescription": "BibTeX Document"] as [String: Any],
                 ["UTTypeDescription": "Research Information Systems"] as [String: Any],
-            ] as [[String: Any]],
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -486,8 +481,8 @@ struct TypeIdentifierToolsTests {
 
         let plist: [String: Any] = [
             "UTImportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.valid"] as [String: Any],
-            ] as [[String: Any]],
+                ["UTTypeIdentifier": "com.example.valid"] as [String: Any]
+            ] as [[String: Any]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 

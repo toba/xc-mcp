@@ -1,6 +1,6 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 
 struct CrashReportParserTests {
     @Test
@@ -9,10 +9,7 @@ struct CrashReportParserTests {
             "procName": "ThesisApp",
             "captureTime": "2026-02-22 18:17:24.2324 -0700",
             "bundleInfo": ["CFBundleIdentifier": "com.toba.thesis"] as [String: Any],
-            "exception": [
-                "type": "EXC_CRASH",
-                "signal": "SIGABRT",
-            ] as [String: Any],
+            "exception": ["type": "EXC_CRASH", "signal": "SIGABRT"] as [String: Any],
             "termination": [
                 "namespace": "DYLD",
                 "indicator": "Symbol missing",
@@ -20,9 +17,7 @@ struct CrashReportParserTests {
                     "Symbol not found: _$s4Core10DiagnosticCN",
                     "Referenced from: /path/to/ThesisApp",
                 ],
-                "details": [
-                    "(terminated at launch; ignore backtrace)",
-                ],
+                "details": ["(terminated at launch; ignore backtrace)"],
             ] as [String: Any],
             "fatalDyldError": 1,
         ]
@@ -49,9 +44,7 @@ struct CrashReportParserTests {
 
     @Test
     func `Parses minimal JSON with only process name`() {
-        let json: [String: Any] = [
-            "procName": "MyApp",
-        ]
+        let json: [String: Any] = ["procName": "MyApp"]
 
         let summary = CrashReportParser.parseJSON(json)
         #expect(summary.processName == "MyApp")
@@ -73,10 +66,7 @@ struct CrashReportParserTests {
 
     @Test
     func `fatalDyldError adds hint when no DYLD in termination`() {
-        let json: [String: Any] = [
-            "procName": "CrashApp",
-            "fatalDyldError": 1,
-        ]
+        let json: [String: Any] = ["procName": "CrashApp", "fatalDyldError": 1]
 
         let summary = CrashReportParser.parseJSON(json)
         #expect(summary.isFatalDyldError)
@@ -89,10 +79,7 @@ struct CrashReportParserTests {
         let json: [String: Any] = [
             "procName": "CrashApp",
             "fatalDyldError": 1,
-            "termination": [
-                "namespace": "DYLD",
-                "indicator": "Symbol missing",
-            ] as [String: Any],
+            "termination": ["namespace": "DYLD", "indicator": "Symbol missing"] as [String: Any],
         ]
 
         let summary = CrashReportParser.parseJSON(json)
@@ -106,38 +93,27 @@ struct CrashReportParserTests {
         let json: [String: Any] = [
             "procName": "CrashApp",
             "faultingThread": 2,
-            "exception": [
-                "type": "EXC_BREAKPOINT",
-                "signal": "SIGTRAP",
-            ] as [String: Any],
-            "usedImages": [
-                ["name": "CrashApp"],
-                ["name": "Swift"],
-                ["name": "CoreFoundation"],
-            ] as [[String: Any]],
+            "exception": ["type": "EXC_BREAKPOINT", "signal": "SIGTRAP"] as [String: Any],
+            "usedImages": [["name": "CrashApp"], ["name": "Swift"], ["name": "CoreFoundation"]]
+                as [[String: Any]],
             "threads": [
                 ["frames": []] as [String: Any],
                 ["frames": []] as [String: Any],
                 [
                     "frames": [
-                        [
-                            "imageIndex": 1,
-                            "symbol": "_assertionFailure",
-                            "symbolLocation": 100,
-                        ] as [String: Any],
+                        ["imageIndex": 1, "symbol": "_assertionFailure", "symbolLocation": 100]
+                            as [String: Any],
                         [
                             "imageIndex": 0,
-                            "symbol": "Diagnostic.log(_:for:file:method:line:showInConsole:fail:as:)",
+                            "symbol":
+                                "Diagnostic.log(_:for:file:method:line:showInConsole:fail:as:)",
                             "symbolLocation": 356,
                             "sourceFile": "Diagnostic.swift",
                             "sourceLine": 152,
                         ] as [String: Any],
-                        [
-                            "imageIndex": 2,
-                            "symbol": "CFRunLoopRun",
-                            "symbolLocation": 42,
-                        ] as [String: Any],
-                    ],
+                        ["imageIndex": 2, "symbol": "CFRunLoopRun", "symbolLocation": 42]
+                            as [String: Any],
+                    ]
                 ] as [String: Any],
             ] as [[String: Any]],
         ]
@@ -164,9 +140,7 @@ struct CrashReportParserTests {
 
     @Test
     func `No crashing thread when faultingThread missing`() {
-        let json: [String: Any] = [
-            "procName": "NoCrashApp",
-        ]
+        let json: [String: Any] = ["procName": "NoCrashApp"]
         let summary = CrashReportParser.parseJSON(json)
         #expect(summary.crashingThread == nil)
         #expect(summary.crashingThreadFrames.isEmpty)

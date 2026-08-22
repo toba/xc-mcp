@@ -1,8 +1,8 @@
 import MCP
 import PathKit
 import Testing
-import XcodeProj
 import XCMCPCore
+import XcodeProj
 import Foundation
 @testable import XCMCPTools
 
@@ -21,14 +21,10 @@ struct CreateSchemeToolTests {
         let tool = CreateSchemeTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "scheme_name": .string("App"),
-            ])
+            try tool.execute(arguments: ["scheme_name": .string("App")])
         }
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "project_path": .string("/path/to/project.xcodeproj"),
-            ])
+            try tool.execute(arguments: ["project_path": .string("/path/to/project.xcodeproj")])
         }
     }
 
@@ -56,9 +52,7 @@ struct CreateSchemeToolTests {
         #expect(message.contains("Created scheme 'AppScheme'"))
 
         // Read back the scheme and verify debugAsWhichUser
-        let schemePath = Path(
-            "\(projectPath.string)/xcshareddata/xcschemes/AppScheme.xcscheme",
-        )
+        let schemePath = Path("\(projectPath.string)/xcshareddata/xcschemes/AppScheme.xcscheme")
         let scheme = try XCScheme(path: schemePath)
         #expect(scheme.launchAction?.debugAsWhichUser == "root")
     }
@@ -79,9 +73,7 @@ struct CreateSchemeToolTests {
             "build_target": .string("App"),
         ])
 
-        let schemePath = Path(
-            "\(projectPath.string)/xcshareddata/xcschemes/AppScheme.xcscheme",
-        )
+        let schemePath = Path("\(projectPath.string)/xcshareddata/xcschemes/AppScheme.xcscheme")
         let scheme = try XCScheme(path: schemePath)
         #expect(scheme.launchAction?.debugAsWhichUser == nil)
     }

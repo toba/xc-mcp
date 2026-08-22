@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 /// Computes a workspace-scoped `.xcresult` bundle path for `xcodebuild test` invocations.
@@ -50,7 +49,7 @@ public enum TestResultBundleScoper {
         guard let source = workspacePath ?? projectPath, !source.isEmpty else { return nil }
         let absolute = URL(fileURLWithPath: source).standardized.path
         let projectName = URL(fileURLWithPath: absolute).deletingPathExtension().lastPathComponent
-        let hash = shortHash(of: absolute)
+        let hash = ShortHash.hex(of: absolute)
         return "\(defaultBase(environment: environment))/\(projectName)-\(hash)"
     }
 
@@ -92,12 +91,5 @@ public enum TestResultBundleScoper {
     private static func tmpFallback() -> String {
         let tempDir = FileManager.default.temporaryDirectory.path
         return "\(tempDir)/xc-mcp-test-\(UUID().uuidString).xcresult"
-    }
-
-    /// 12-character hex prefix of SHA-256(path). Matches `DerivedDataScoper`'s naming convention so
-    /// callers see consistent project hashes across both caches.
-    private static func shortHash(of value: String) -> String {
-        let digest = SHA256.hash(data: Data(value.utf8))
-        return digest.prefix(6).map { String(format: "%02x", $0) }.joined()
     }
 }

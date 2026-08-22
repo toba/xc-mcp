@@ -66,9 +66,7 @@ struct InfoPlistUtilityTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
         let configs = target.buildConfigurationList?.buildConfigurations ?? []
-        for config in configs {
-            config.buildSettings["INFOPLIST_FILE"] = "App/Info.plist"
-        }
+        for config in configs { config.buildSettings["INFOPLIST_FILE"] = "App/Info.plist" }
         try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
 
         let reloaded = try XcodeProj(path: projectPath)
@@ -111,7 +109,7 @@ struct InfoPlistUtilityTests {
         let testPlist: [String: Any] = [
             "CFBundleName": "TestApp",
             "CFBundleDocumentTypes": [
-                ["CFBundleTypeName": "Test Document", "CFBundleTypeRole": "Editor"],
+                ["CFBundleTypeName": "Test Document", "CFBundleTypeRole": "Editor"]
             ] as [[String: Any]],
         ]
 

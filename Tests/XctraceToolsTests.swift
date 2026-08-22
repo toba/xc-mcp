@@ -41,9 +41,7 @@ struct XctraceRecordToolTests {
     func `Execute with no action throws invalidParams`() async throws {
         let tool = XctraceRecordTool(sessionManager: SessionManager())
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     @Test
@@ -128,9 +126,7 @@ struct XctraceListToolTests {
     func `Execute with no kind throws invalidParams`() async throws {
         let tool = XctraceListTool()
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     @Test
@@ -187,9 +183,7 @@ struct XctraceExportToolTests {
     func `Execute with no input_path throws invalidParams`() async throws {
         let tool = XctraceExportTool()
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     @Test
@@ -197,9 +191,7 @@ struct XctraceExportToolTests {
         let tool = XctraceExportTool()
 
         await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [
-                "input_path": .string("/nonexistent/path.trace"),
-            ])
+            try await tool.execute(arguments: ["input_path": .string("/nonexistent/path.trace")])
         }
     }
 }
@@ -237,9 +229,7 @@ struct SampleMacAppToolTests {
     func `Execute with no pid or bundle_id throws invalidParams`() async throws {
         let tool = SampleMacAppTool()
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     @Test
@@ -247,9 +237,7 @@ struct SampleMacAppToolTests {
         let tool = SampleMacAppTool()
 
         await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [
-                "bundle_id": .string("com.nonexistent.app.12345"),
-            ])
+            try await tool.execute(arguments: ["bundle_id": .string("com.nonexistent.app.12345")])
         }
     }
 }
@@ -265,7 +253,7 @@ struct ProfileAppLaunchToolTests {
         #expect(
             schema.description?.contains("profile") == true
                 || schema.description?
-                .contains("Profile") == true,
+                    .contains("Profile") == true,
         )
     }
 

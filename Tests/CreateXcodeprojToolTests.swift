@@ -13,6 +13,7 @@ func `CreateXcodeprojTool has correct properties`() {
 
     #expect(tool.name == "create_xcodeproj")
     #expect(tool.description == "Create a new Xcode project file (.xcodeproj)")
+
     if case .object = tool.inputSchema {
     } else {
         Issue.record("Expected inputSchema to be an object")
@@ -23,8 +24,8 @@ func `CreateXcodeprojTool has correct properties`() {
 func `CreateXcodeprojTool can be executed`() {
     let createTool = CreateXcodeprojTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-    // This test just verifies the tool can be instantiated and has the right interface
-    // We don't test actual file creation here to avoid side effects
+    // This test just verifies the tool can be instantiated and has the right interface We don't
+    // test actual file creation here to avoid side effects
     #expect(createTool.tool().name == "create_xcodeproj")
 }
 

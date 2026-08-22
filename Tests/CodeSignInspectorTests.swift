@@ -5,13 +5,13 @@ import Foundation
 struct CodeSignInspectorTests {
     @Test func `parses Team ID and authority from codesign output`() {
         let output = """
-        Executable=/Applications/MyApp.app/Contents/MacOS/MyApp
-        Identifier=com.example.MyApp
-        Authority=Apple Development: Jane Doe (ABC123XYZ)
-        Authority=Apple Worldwide Developer Relations Certification Authority
-        TeamIdentifier=TEAM123456
-        Sealed Resources version=2
-        """
+            Executable=/Applications/MyApp.app/Contents/MacOS/MyApp
+            Identifier=com.example.MyApp
+            Authority=Apple Development: Jane Doe (ABC123XYZ)
+            Authority=Apple Worldwide Developer Relations Certification Authority
+            TeamIdentifier=TEAM123456
+            Sealed Resources version=2
+            """
         let info = CodeSignInspector.parse(output, path: "/Applications/MyApp.app")
         #expect(info.teamIdentifier == "TEAM123456")
         #expect(info.authority == "Apple Development: Jane Doe (ABC123XYZ)")
@@ -20,9 +20,9 @@ struct CodeSignInspectorTests {
 
     @Test func `treats not set Team ID as ad-hoc`() {
         let output = """
-        Identifier=ZIPFoundation
-        TeamIdentifier=not set
-        """
+            Identifier=ZIPFoundation
+            TeamIdentifier=not set
+            """
         let info = CodeSignInspector.parse(output, path: "/x/ZIPFoundation.framework")
         #expect(info.teamIdentifier == nil)
         #expect(info.isAdHoc)
@@ -76,8 +76,10 @@ struct CodeSignInspectorTests {
             path: "App.app", teamIdentifier: "TEAM_A", authority: nil,
         )
         let frameworks = [
-            CodeSignInspector.SigningInfo(path: "Ok.framework", teamIdentifier: "TEAM_A", authority: nil),
-            CodeSignInspector.SigningInfo(path: "Bad.framework", teamIdentifier: "TEAM_B", authority: nil),
+            CodeSignInspector.SigningInfo(
+                path: "Ok.framework", teamIdentifier: "TEAM_A", authority: nil),
+            CodeSignInspector.SigningInfo(
+                path: "Bad.framework", teamIdentifier: "TEAM_B", authority: nil),
         ]
         let result = CodeSignInspector.evaluateConsistency(app: app, frameworks: frameworks)
         #expect(result.mismatches.map(\.path) == ["Bad.framework"])

@@ -174,12 +174,11 @@ struct AddStoreKitConfigToolTests {
         // The config must NOT be bundled into the non-test (application) target's resources —
         // that's the antipattern the warning is about.
         let xcodeproj = try XcodeProj(path: Path(fixture.project))
-        let target = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTests" },
-        )
-        #expect(!resources(of: target).contains {
-            ($0.file as? PBXFileReference)?.name == "Config.storekit"
-        })
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTests" })
+        #expect(
+            !resources(of: target).contains {
+                ($0.file as? PBXFileReference)?.name == "Config.storekit"
+            })
     }
 
     @Test

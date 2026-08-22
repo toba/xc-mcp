@@ -5,7 +5,7 @@ struct XctraceRunnerTests {
     @Test
     func `Runner initializes successfully`() {
         let runner = XctraceRunner()
-        _ = runner // Verify it compiles and initializes
+        _ = runner  // Verify it compiles and initializes
     }
 
     @Test

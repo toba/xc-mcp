@@ -91,6 +91,7 @@ struct PackageRequirementTests {
 
     @Test func `a branch or revision admits no version`() {
         #expect(!PackageRequirement.allows(SemanticVersion("1.0.0")!, requirement: .branch("main")))
-        #expect(!PackageRequirement.allows(SemanticVersion("1.0.0")!, requirement: .revision("abc")))
+        #expect(
+            !PackageRequirement.allows(SemanticVersion("1.0.0")!, requirement: .revision("abc")))
     }
 }

@@ -103,29 +103,32 @@ struct DerivedDataScoperTests {
             DerivedDataScoper.platformSlug(forDestination: "platform=macOS,arch=arm64") == "macosx",
         )
         #expect(
-            DerivedDataScoper.platformSlug(forDestination: "platform=iOS Simulator,id=ABC")
+            DerivedDataScoper.platformSlug(
+                forDestination: "platform=iOS Simulator,id=ABC")
                 == "iphonesimulator",
         )
-        #expect(
-            DerivedDataScoper.platformSlug(forDestination: "platform=iOS,id=ABC") == "iphoneos",
-        )
+        #expect(DerivedDataScoper.platformSlug(forDestination: "platform=iOS,id=ABC") == "iphoneos")
         #expect(
             DerivedDataScoper.platformSlug(forDestination: "generic/platform=iOS") == "iphoneos",
         )
         #expect(
-            DerivedDataScoper.platformSlug(forDestination: "platform=tvOS Simulator,id=X")
+            DerivedDataScoper.platformSlug(
+                forDestination: "platform=tvOS Simulator,id=X")
                 == "appletvsimulator",
         )
         #expect(
-            DerivedDataScoper.platformSlug(forDestination: "platform=watchOS Simulator,id=X")
+            DerivedDataScoper.platformSlug(
+                forDestination: "platform=watchOS Simulator,id=X")
                 == "watchsimulator",
         )
         #expect(
-            DerivedDataScoper.platformSlug(forDestination: "platform=visionOS Simulator,id=X")
+            DerivedDataScoper.platformSlug(
+                forDestination: "platform=visionOS Simulator,id=X")
                 == "xrsimulator",
         )
         #expect(
-            DerivedDataScoper.platformSlug(forDestination: "platform=macOS,variant=Mac Catalyst")
+            DerivedDataScoper.platformSlug(
+                forDestination: "platform=macOS,variant=Mac Catalyst")
                 == "maccatalyst",
         )
     }

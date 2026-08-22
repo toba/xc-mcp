@@ -15,25 +15,22 @@ enum XCStringsTestHelper {
                 "active_key": StringEntry(
                     extractionState: "manual",
                     localizations: [
-                        "en": Localization(
-                            stringUnit: StringUnit(state: "translated", value: "Active"),
-                        ),
+                        "en": Localization(stringUnit: StringUnit(
+                            state: "translated", value: "Active"))
                     ],
                 ),
                 "stale_key_1": StringEntry(
                     extractionState: "stale",
                     localizations: [
-                        "en": Localization(
-                            stringUnit: StringUnit(state: "translated", value: "Stale 1"),
-                        ),
+                        "en": Localization(stringUnit: StringUnit(
+                            state: "translated", value: "Stale 1"))
                     ],
                 ),
                 "stale_key_2": StringEntry(
                     extractionState: "stale",
                     localizations: [
-                        "en": Localization(
-                            stringUnit: StringUnit(state: "translated", value: "Stale 2"),
-                        ),
+                        "en": Localization(stringUnit: StringUnit(
+                            state: "translated", value: "Stale 2"))
                     ],
                 ),
             ],
@@ -55,36 +52,30 @@ enum XCStringsTestHelper {
                     comment: "Greeting message",
                     extractionState: "manual",
                     localizations: [
-                        "en": Localization(
-                            stringUnit: StringUnit(state: "translated", value: "Hello"),
-                        ),
-                        "ja": Localization(
-                            stringUnit: StringUnit(state: "translated", value: "こんにちは"),
-                        ),
-                        "fr": Localization(
-                            stringUnit: StringUnit(state: "translated", value: "Bonjour"),
-                        ),
+                        "en": Localization(stringUnit: StringUnit(
+                            state: "translated", value: "Hello")),
+                        "ja": Localization(stringUnit: StringUnit(
+                            state: "translated", value: "こんにちは")),
+                        "fr": Localization(stringUnit: StringUnit(
+                            state: "translated", value: "Bonjour")),
                     ],
                 ),
                 "goodbye": StringEntry(
                     comment: "Farewell message",
                     extractionState: "manual",
                     localizations: [
-                        "en": Localization(
-                            stringUnit: StringUnit(state: "translated", value: "Goodbye"),
-                        ),
-                        "ja": Localization(
-                            stringUnit: StringUnit(state: "translated", value: "さようなら"),
-                        ),
+                        "en": Localization(stringUnit: StringUnit(
+                            state: "translated", value: "Goodbye")),
+                        "ja": Localization(stringUnit: StringUnit(
+                            state: "translated", value: "さようなら")),
                     ],
                 ),
                 "untranslated_key": StringEntry(
                     comment: "Key without French translation",
                     extractionState: "manual",
                     localizations: [
-                        "en": Localization(
-                            stringUnit: StringUnit(state: "translated", value: "Untranslated"),
-                        ),
+                        "en": Localization(stringUnit: StringUnit(
+                            state: "translated", value: "Untranslated"))
                     ],
                 ),
             ],
@@ -123,9 +114,7 @@ struct XCStringsListKeysToolTests {
     @Test func `missing file parameter`() async throws {
         let tool = XCStringsListKeysTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     @Test func `file not found`() async throws {
@@ -148,6 +137,7 @@ struct XCStringsListKeysToolTests {
         let result = try await tool.execute(arguments: ["file": .string(filePath)])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("hello"))
             #expect(content.contains("goodbye"))
@@ -173,9 +163,7 @@ struct XCStringsListLanguagesToolTests {
     @Test func missingFileParameter() async throws {
         let tool = XCStringsListLanguagesTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     @Test func `list languages`() async throws {
@@ -188,6 +176,7 @@ struct XCStringsListLanguagesToolTests {
         let result = try await tool.execute(arguments: ["file": .string(filePath)])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("en"))
             #expect(content.contains("ja"))
@@ -202,7 +191,7 @@ struct XCStringsListLanguagesToolTests {
 
 @Suite(.temporaryDirectory)
 struct XCStringsGetSourceLanguageToolTests {
-    @Test func `test tool creation`() {
+    @Test func `tool creation`() {
         let tool = XCStringsGetSourceLanguageTool(pathUtility: PathUtility(basePath: "/workspace"))
         let toolDefinition = tool.tool()
 
@@ -210,12 +199,10 @@ struct XCStringsGetSourceLanguageToolTests {
         #expect(toolDefinition.description == "Get the source language of the xcstrings file")
     }
 
-    @Test func `test missing file parameter`() async throws {
+    @Test func `missing file parameter`() async throws {
         let tool = XCStringsGetSourceLanguageTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     @Test func `get source language`() async throws {
@@ -228,6 +215,7 @@ struct XCStringsGetSourceLanguageToolTests {
         let result = try await tool.execute(arguments: ["file": .string(filePath)])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content == "ja")
         } else {
@@ -251,9 +239,7 @@ struct XCStringsGetKeyToolTests {
     @Test func `missing parameters`() async throws {
         let tool = XCStringsGetKeyTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
 
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: ["file": .string("test.xcstrings")])
@@ -273,6 +259,7 @@ struct XCStringsGetKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Hello"))
             #expect(content.contains("こんにちは"))
@@ -296,6 +283,7 @@ struct XCStringsGetKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("こんにちは"))
         } else {
@@ -335,9 +323,7 @@ struct XCStringsCheckKeyToolTests {
     @Test func missingParameters() async throws {
         let tool = XCStringsCheckKeyTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
 
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: ["file": .string("test.xcstrings")])
@@ -357,6 +343,7 @@ struct XCStringsCheckKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content == "true")
         } else {
@@ -377,6 +364,7 @@ struct XCStringsCheckKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content == "false")
         } else {
@@ -398,9 +386,7 @@ struct XCStringsCheckKeyToolTests {
             "key": .string("hello"),
             "language": .string("ja"),
         ])
-        if case let .text(content, _, _) = resultExists.content[0] {
-            #expect(content == "true")
-        }
+        if case let .text(content, _, _) = resultExists.content[0] { #expect(content == "true") }
 
         // Check key with missing language
         let resultMissing = try await tool.execute(arguments: [
@@ -408,9 +394,7 @@ struct XCStringsCheckKeyToolTests {
             "key": .string("untranslated_key"),
             "language": .string("fr"),
         ])
-        if case let .text(content, _, _) = resultMissing.content[0] {
-            #expect(content == "false")
-        }
+        if case let .text(content, _, _) = resultMissing.content[0] { #expect(content == "false") }
     }
 }
 
@@ -426,12 +410,10 @@ struct XCStringsListUntranslatedToolTests {
         #expect(toolDefinition.description == "List untranslated keys for a specific language")
     }
 
-    @Test func `test missing parameters`() async throws {
+    @Test func `missing parameters`() async throws {
         let tool = XCStringsListUntranslatedTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
 
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: ["file": .string("test.xcstrings")])
@@ -451,6 +433,7 @@ struct XCStringsListUntranslatedToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             // "goodbye" and "untranslated_key" don't have French translations
             #expect(content.contains("goodbye") || content.contains("untranslated_key"))
@@ -471,17 +454,14 @@ struct XCStringsStatsCoverageToolTests {
         #expect(toolDefinition.name == "xcstrings_stats_coverage")
         #expect(
             toolDefinition.description
-                ==
-                "Get overall translation statistics. Use compact mode to only show languages under 100%.",
+                == "Get overall translation statistics. Use compact mode to only show languages under 100%.",
         )
     }
 
     @Test func testMissingFileParameter() async throws {
         let tool = XCStringsStatsCoverageTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     @Test func `stats coverage`() async throws {
@@ -497,6 +477,7 @@ struct XCStringsStatsCoverageToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("totalKeys"))
             #expect(content.contains("sourceLanguage"))
@@ -515,6 +496,7 @@ struct XCStringsStatsCoverageToolTests {
         let result = try await tool.execute(arguments: ["file": .string(filePath)])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("totalKeys"))
         } else {
@@ -538,9 +520,7 @@ struct XCStringsStatsProgressToolTests {
     @Test func testMissingParameters() async throws {
         let tool = XCStringsStatsProgressTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
 
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: ["file": .string("test.xcstrings")])
@@ -560,6 +540,7 @@ struct XCStringsStatsProgressToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("translated") || content.contains("coveragePercent"))
         } else {
@@ -583,9 +564,7 @@ struct XCStringsBatchStatsCoverageToolTests {
     @Test func `empty files array`() throws {
         let tool = XCStringsBatchStatsCoverageTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: ["files": .array([])])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: ["files": .array([])]) }
     }
 
     @Test func `batch stats coverage`() throws {
@@ -603,6 +582,7 @@ struct XCStringsBatchStatsCoverageToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("files"))
             #expect(content.contains("aggregated"))
@@ -630,9 +610,7 @@ struct XCStringsCreateFileToolTests {
     @Test func testMissingFileParameter() throws {
         let tool = XCStringsCreateFileTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [:])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: [:]) }
     }
 
     @Test func `create file`() throws {
@@ -646,6 +624,7 @@ struct XCStringsCreateFileToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Created xcstrings file"))
             #expect(content.contains("ja"))
@@ -665,9 +644,7 @@ struct XCStringsCreateFileToolTests {
 
         let tool = XCStringsCreateFileTool(pathUtility: PathUtility(basePath: tempDir.path))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: ["file": .string(filePath)])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: ["file": .string(filePath)]) }
     }
 
     @Test func `create file with overwrite`() throws {
@@ -683,6 +660,7 @@ struct XCStringsCreateFileToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Created xcstrings file"))
         } else {
@@ -706,9 +684,7 @@ struct XCStringsAddTranslationToolTests {
     @Test func testMissingParameters() async throws {
         let tool = XCStringsAddTranslationTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
 
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: [
@@ -733,6 +709,7 @@ struct XCStringsAddTranslationToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translation added successfully"))
         } else {
@@ -779,13 +756,11 @@ struct XCStringsAddTranslationsToolTests {
         let result = try await tool.execute(arguments: [
             "file": .string(filePath),
             "key": .string("new_key"),
-            "translations": .object([
-                "de": .string("Hallo"),
-                "es": .string("Hola"),
-            ]),
+            "translations": .object(["de": .string("Hallo"), "es": .string("Hola")]),
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translations added successfully"))
             #expect(content.contains("2 languages"))
@@ -810,9 +785,7 @@ struct XCStringsUpdateTranslationToolTests {
     @Test func testMissingParameters() async throws {
         let tool = XCStringsUpdateTranslationTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     @Test func `update translation`() async throws {
@@ -830,6 +803,7 @@ struct XCStringsUpdateTranslationToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translation updated successfully"))
         } else {
@@ -895,13 +869,11 @@ struct XCStringsUpdateTranslationsToolTests {
         let result = try await tool.execute(arguments: [
             "file": .string(filePath),
             "key": .string("hello"),
-            "translations": .object([
-                "en": .string("Hi!"),
-                "ja": .string("やあ！"),
-            ]),
+            "translations": .object(["en": .string("Hi!"), "ja": .string("やあ！")]),
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translations updated successfully"))
             #expect(content.contains("2 languages"))
@@ -926,9 +898,7 @@ struct XCStringsRenameKeyToolTests {
     @Test func testMissingParameters() async throws {
         let tool = XCStringsRenameKeyTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
 
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: [
@@ -952,6 +922,7 @@ struct XCStringsRenameKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Key renamed"))
             #expect(content.contains("hello"))
@@ -994,9 +965,7 @@ struct XCStringsDeleteKeyToolTests {
     @Test func testMissingParameters() async throws {
         let tool = XCStringsDeleteKeyTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
 
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: ["file": .string("test.xcstrings")])
@@ -1016,6 +985,7 @@ struct XCStringsDeleteKeyToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Key deleted successfully"))
         } else {
@@ -1055,9 +1025,7 @@ struct XCStringsDeleteTranslationToolTests {
     @Test func testMissingParameters() async throws {
         let tool = XCStringsDeleteTranslationTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
 
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: [
@@ -1081,6 +1049,7 @@ struct XCStringsDeleteTranslationToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translation for 'fr' deleted successfully"))
         } else {
@@ -1149,6 +1118,7 @@ struct XCStringsDeleteTranslationsToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Translations deleted successfully"))
             #expect(content.contains("2 languages"))
@@ -1219,7 +1189,7 @@ struct XCStringsBatchListStaleToolTests {
 
         let tool = XCStringsBatchListStaleTool(pathUtility: PathUtility(basePath: tempDir))
         let result = try tool.execute(arguments: [
-            "files": .array([.string(file1), .string(file2)]),
+            "files": .array([.string(file1), .string(file2)])
         ])
 
         if case let .text(json, _, _) = result.content[0] {
@@ -1233,9 +1203,7 @@ struct XCStringsBatchListStaleToolTests {
     @Test func emptyFilesArray() throws {
         let tool = XCStringsBatchListStaleTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: ["files": .array([])])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: ["files": .array([])]) }
     }
 }
 
@@ -1313,16 +1281,10 @@ struct XCStringsBatchAddTranslationsToolTests {
             "entries": .array([
                 .object([
                     "key": .string("greeting"),
-                    "translations": .object([
-                        "en": .string("Hello"),
-                        "fr": .string("Bonjour"),
-                    ]),
+                    "translations": .object(["en": .string("Hello"), "fr": .string("Bonjour")]),
                 ]),
                 .object([
-                    "key": .string("farewell"),
-                    "translations": .object([
-                        "en": .string("Bye"),
-                    ]),
+                    "key": .string("farewell"), "translations": .object(["en": .string("Bye")]),
                 ]),
             ]),
         ])
@@ -1335,9 +1297,8 @@ struct XCStringsBatchAddTranslationsToolTests {
     }
 
     @Test func `empty entries`() async throws {
-        let tool = XCStringsBatchAddTranslationsTool(
-            pathUtility: PathUtility(basePath: "/workspace"),
-        )
+        let tool = XCStringsBatchAddTranslationsTool(pathUtility: PathUtility(
+            basePath: "/workspace"))
 
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: [
@@ -1358,23 +1319,15 @@ struct XCStringsBatchUpdateTranslationsToolTests {
         let filePath = "\(tempDir)/test.xcstrings"
         try XCStringsTestHelper.createSampleXCStringsFile(at: filePath)
 
-        let tool = XCStringsBatchUpdateTranslationsTool(
-            pathUtility: PathUtility(basePath: tempDir),
-        )
+        let tool = XCStringsBatchUpdateTranslationsTool(pathUtility: PathUtility(basePath: tempDir))
         let result = try await tool.execute(arguments: [
             "file": .string(filePath),
             "entries": .array([
                 .object([
-                    "key": .string("hello"),
-                    "translations": .object([
-                        "en": .string("Hi there"),
-                    ]),
+                    "key": .string("hello"), "translations": .object(["en": .string("Hi there")]),
                 ]),
                 .object([
-                    "key": .string("nonexistent"),
-                    "translations": .object([
-                        "en": .string("Nope"),
-                    ]),
+                    "key": .string("nonexistent"), "translations": .object(["en": .string("Nope")]),
                 ]),
             ]),
         ])

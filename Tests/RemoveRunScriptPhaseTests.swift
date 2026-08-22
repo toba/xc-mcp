@@ -18,6 +18,7 @@ struct RemoveRunScriptPhaseTests {
         #expect(tool.tool().name == "remove_run_script_phase")
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .array(required) = schemaDict["required"] {
                 #expect(required.count == 3)
@@ -49,10 +50,7 @@ struct RemoveRunScriptPhaseTests {
 
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
-        let shellPhase = PBXShellScriptBuildPhase(
-            name: "SwiftLint",
-            shellScript: "swiftlint",
-        )
+        let shellPhase = PBXShellScriptBuildPhase(name: "SwiftLint", shellScript: "swiftlint")
         xcodeproj.pbxproj.add(object: shellPhase)
         target.buildPhases.append(shellPhase)
         try xcodeproj.writePBXProj(path: projectPath, outputSettings: PBXOutputSettings())
@@ -160,6 +158,7 @@ struct RemoveRunScriptPhaseTests {
 
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+
         for _ in 0..<2 {
             let phase = PBXShellScriptBuildPhase(name: "Dup", shellScript: "true")
             xcodeproj.pbxproj.add(object: phase)

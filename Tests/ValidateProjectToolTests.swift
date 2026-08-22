@@ -658,8 +658,8 @@ struct ValidateProjectToolTests {
             "dependency_name": .string("Framework"),
         ])
 
-        // Inject a second PBXTargetDependency by hand so we get the duplicate edge that the
-        // checker is meant to catch (add_dependency itself refuses to re-add).
+        // Inject a second PBXTargetDependency by hand so we get the duplicate edge that the checker
+        // is meant to catch (add_dependency itself refuses to re-add).
         let xcodeproj = try XcodeProj(path: projectPath)
         let app = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }!
         let framework = xcodeproj.pbxproj.nativeTargets.first { $0.name == "Framework" }!
@@ -670,11 +670,7 @@ struct ValidateProjectToolTests {
             remoteInfo: "Framework",
         )
         xcodeproj.pbxproj.add(object: proxy)
-        let dupDep = PBXTargetDependency(
-            name: "Framework",
-            target: framework,
-            targetProxy: proxy,
-        )
+        let dupDep = PBXTargetDependency(name: "Framework", target: framework, targetProxy: proxy)
         xcodeproj.pbxproj.add(object: dupDep)
         app.dependencies.append(dupDep)
         try xcodeproj.write(path: projectPath)
@@ -724,15 +720,16 @@ struct ValidateProjectToolTests {
             "dependency_name": .string("Core"),
         ])
 
-        // Simulate "Core was renamed but consumer proxies still cache the old name" by mutating
-        // one of the two PBXContainerItemProxy entries that point at Core.
+        // Simulate "Core was renamed but consumer proxies still cache the old name" by mutating one
+        // of the two PBXContainerItemProxy entries that point at Core.
         let xcodeproj = try XcodeProj(path: projectPath)
         let core = xcodeproj.pbxproj.nativeTargets.first { $0.name == "Core" }!
         var mutated = false
+
         for proxy in xcodeproj.pbxproj.containerItemProxies {
-            guard case let .object(obj)? = proxy.remoteGlobalID, obj.uuid == core.uuid else {
-                continue
-            }
+            guard case let .object(obj)? = proxy.remoteGlobalID, obj.uuid == core.uuid
+            else { continue }
+
             if !mutated {
                 proxy.remoteInfo = "LegacyCoreName"
                 mutated = true

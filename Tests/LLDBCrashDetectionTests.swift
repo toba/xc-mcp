@@ -5,10 +5,10 @@ struct LLDBCrashDetectionTests {
     @Test
     func `Detects SIGABRT crash`() {
         let output = """
-        Process 12345 stopped
-        * thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGABRT
-          frame #0: 0x00007fff abort
-        """
+            Process 12345 stopped
+            * thread #1, queue = 'com.apple.main-thread', stop reason = signal SIGABRT
+              frame #0: 0x00007fff abort
+            """
         #expect(LLDBSession.outputIndicatesCrash(output))
     }
 
@@ -51,18 +51,18 @@ struct LLDBCrashDetectionTests {
     @Test
     func `Ignores library load noise`() {
         let output = """
-        2 locations added to breakpoint 1
-        Process 12345 resuming
-        """
+            2 locations added to breakpoint 1
+            Process 12345 resuming
+            """
         #expect(!LLDBSession.outputIndicatesCrash(output))
     }
 
     @Test
     func `Ignores attach noise`() {
         let output = """
-        Executable module set to "/Applications/MyApp.app/Contents/MacOS/MyApp".
-        Architecture set to: arm64-apple-macosx-.
-        """
+            Executable module set to "/Applications/MyApp.app/Contents/MacOS/MyApp".
+            Architecture set to: arm64-apple-macosx-.
+            """
         #expect(!LLDBSession.outputIndicatesCrash(output))
     }
 
@@ -73,7 +73,5 @@ struct LLDBCrashDetectionTests {
     }
 
     @Test
-    func `Ignores empty output`() {
-        #expect(!LLDBSession.outputIndicatesCrash(""))
-    }
+    func `Ignores empty output`() { #expect(!LLDBSession.outputIndicatesCrash("")) }
 }

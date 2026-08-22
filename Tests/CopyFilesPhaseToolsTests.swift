@@ -678,6 +678,7 @@ struct CopyFilesPhaseToolsTests {
 
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+
         for _ in 0..<2 {
             let phase = PBXCopyFilesBuildPhase(
                 dstPath: "docx",

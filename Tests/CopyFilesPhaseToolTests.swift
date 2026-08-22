@@ -18,6 +18,7 @@ struct AddCopyFilesPhaseTests {
         #expect(tool.tool().name == "add_copy_files_phase")
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .object(props) = schemaDict["properties"] {
                 #expect(props["project_path"] != nil)
@@ -201,6 +202,7 @@ struct ListCopyFilesPhasesTests {
         #expect(tool.tool().name == "list_copy_files_phases")
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .array(required) = schemaDict["required"] {
                 #expect(required.count == 2)
@@ -215,9 +217,7 @@ struct ListCopyFilesPhasesTests {
         let tool = ListCopyFilesPhases(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "project_path": .string("test.xcodeproj"),
-            ])
+            try tool.execute(arguments: ["project_path": .string("test.xcodeproj")])
         }
     }
 
@@ -308,6 +308,7 @@ struct AddToCopyFilesPhaseTests {
         #expect(tool.tool().name == "add_to_copy_files_phase")
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .object(props) = schemaDict["properties"] {
                 #expect(props["project_path"] != nil)
@@ -316,9 +317,7 @@ struct AddToCopyFilesPhaseTests {
                 #expect(props["files"] != nil)
             }
 
-            if case let .array(required) = schemaDict["required"] {
-                #expect(required.count == 4)
-            }
+            if case let .array(required) = schemaDict["required"] { #expect(required.count == 4) }
         }
     }
 
@@ -344,9 +343,7 @@ struct AddToCopyFilesPhaseTests {
 
         // Add a file to the project
         let testFilePath = Path(tempDir) + "config.plist"
-        try "<plist></plist>".write(
-            toFile: testFilePath.string, atomically: true, encoding: .utf8,
-        )
+        try "<plist></plist>".write(toFile: testFilePath.string, atomically: true, encoding: .utf8)
 
         let addFileTool = AddFileTool(pathUtility: pathUtility)
         _ = try addFileTool.execute(arguments: [
@@ -604,6 +601,7 @@ struct RemoveCopyFilesPhaseTests {
         #expect(tool.tool().name == "remove_copy_files_phase")
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .array(required) = schemaDict["required"] {
                 #expect(required.count == 2)
@@ -713,9 +711,7 @@ struct RemoveCopyFilesPhaseTests {
 
         // Add a file to the project
         let testFilePath = Path(tempDir) + "config.plist"
-        try "<plist></plist>".write(
-            toFile: testFilePath.string, atomically: true, encoding: .utf8,
-        )
+        try "<plist></plist>".write(toFile: testFilePath.string, atomically: true, encoding: .utf8)
 
         let addFileTool = AddFileTool(pathUtility: pathUtility)
         _ = try addFileTool.execute(arguments: [
@@ -726,9 +722,9 @@ struct RemoveCopyFilesPhaseTests {
         // Add a copy files phase with a build file
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
-        let fileRef = try #require(
-            xcodeproj.pbxproj.fileReferences.first { $0.path == "config.plist" },
-        )
+        let fileRef = try #require(xcodeproj.pbxproj.fileReferences.first {
+            $0.path == "config.plist"
+        })
         let buildFile = PBXBuildFile(file: fileRef)
         xcodeproj.pbxproj.add(object: buildFile)
 
@@ -827,9 +823,9 @@ struct RemoveCopyFilesPhaseTests {
                 .allSatisfy { $0.name != "Bundle Templates" },
         )
         #expect(updated.pbxproj.fileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet.isEmpty)
-        let updatedSync = try #require(
-            updated.pbxproj.fileSystemSynchronizedRootGroups.first { $0.path == "DefaultStyles" },
-        )
+        let updatedSync = try #require(updated.pbxproj.fileSystemSynchronizedRootGroups.first {
+            $0.path == "DefaultStyles"
+        })
         #expect(updatedSync.exceptions?.isEmpty ?? true)
     }
 }

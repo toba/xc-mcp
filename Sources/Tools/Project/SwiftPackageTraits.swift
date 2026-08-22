@@ -1,4 +1,5 @@
 import MCP
+import TobaCore
 import XCMCPCore
 import XcodeProj
 
@@ -30,8 +31,7 @@ enum SwiftPackageTraits {
     ///   means the caller wants to clear the traits.
     static func parse(from arguments: [String: Value]) -> [String]? {
         guard case .array = arguments["traits"] else { return nil }
-        var seen: Set<String> = []
-        return arguments.getStringArray("traits").filter { seen.insert($0).inserted }
+        return arguments.getStringArray("traits").uniqued()
     }
 
     /// Converts parsed traits to the value stored on a package reference.

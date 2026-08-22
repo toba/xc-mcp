@@ -426,22 +426,24 @@ struct DetectUnusedCodeToolTests {
 
     @Test
     func `Short hash produces 12 char hex string`() throws {
-        let hash = DetectUnusedCodeTool.shortHash("test input")
+        let hash = ShortHash.hex(of: "test input")
         #expect(hash.count == 12)  // 6 bytes * 2 hex chars
         #expect(try hash.allSatisfy(\.isHexDigit))
+        // The key names a cache directory, so it must stay lower case across the whole codebase.
+        #expect(hash == hash.lowercased())
     }
 
     @Test
     func `Short hash is deterministic`() {
-        let hash1 = DetectUnusedCodeTool.shortHash("same input")
-        let hash2 = DetectUnusedCodeTool.shortHash("same input")
+        let hash1 = ShortHash.hex(of: "same input")
+        let hash2 = ShortHash.hex(of: "same input")
         #expect(hash1 == hash2)
     }
 
     @Test
     func `Short hash differs for different inputs`() {
-        let hash1 = DetectUnusedCodeTool.shortHash("input A")
-        let hash2 = DetectUnusedCodeTool.shortHash("input B")
+        let hash1 = ShortHash.hex(of: "input A")
+        let hash2 = ShortHash.hex(of: "input B")
         #expect(hash1 != hash2)
     }
 

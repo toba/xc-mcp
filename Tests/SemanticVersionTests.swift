@@ -16,9 +16,7 @@ struct SemanticVersionTests {
         #expect(SemanticVersion("2.1")?.description == "2.1.0")
     }
 
-    @Test func `strips a leading v`() {
-        #expect(SemanticVersion("v3.4.5")?.description == "3.4.5")
-    }
+    @Test func `strips a leading v`() { #expect(SemanticVersion("v3.4.5")?.description == "3.4.5") }
 
     @Test func `parses prerelease and build metadata`() {
         let version = SemanticVersion("1.0.0-beta.2+sha.abc")

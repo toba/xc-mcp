@@ -1,6 +1,6 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 
 struct BuildResultFormatterTests {
     @Test
@@ -35,12 +35,7 @@ struct BuildResultFormatterTests {
                 BuildError(file: "Bar.swift", line: 15, message: "missing return", column: 5),
             ],
             warnings: [
-                BuildWarning(
-                    file: "Baz.swift",
-                    line: 88,
-                    message: "unused variable 'x'",
-                    column: 3,
-                ),
+                BuildWarning(file: "Baz.swift", line: 88, message: "unused variable 'x'", column: 3)
             ],
             failedTests: [],
         )
@@ -116,11 +111,7 @@ struct BuildResultFormatterTests {
             warnings: [],
             failedTests: [],
             linkerErrors: [
-                LinkerError(
-                    symbol: "_MissingFunc",
-                    architecture: "arm64",
-                    referencedFrom: "main.o",
-                ),
+                LinkerError(symbol: "_MissingFunc", architecture: "arm64", referencedFrom: "main.o")
             ],
         )
 
@@ -151,11 +142,11 @@ struct BuildResultFormatterTests {
     @Test
     func `ErrorExtractor.extractBuildErrors integration`() {
         let output = """
-        Building for debugging...
-        main.swift:10:5: error: cannot find 'x' in scope
-        main.swift:20:3: warning: unused variable 'y'
-        Build failed after 1.2 seconds
-        """
+            Building for debugging...
+            main.swift:10:5: error: cannot find 'x' in scope
+            main.swift:20:3: warning: unused variable 'y'
+            Build failed after 1.2 seconds
+            """
 
         let formatted = ErrorExtractor.extractBuildErrors(from: output)
         #expect(formatted.contains("Build failed"))
@@ -176,7 +167,7 @@ struct BuildResultFormatterTests {
                 BuildError(
                     file: "/Users/dev/MyApp/Sources/App.swift", line: 10,
                     message: "missing import", column: 1,
-                ),
+                )
             ],
             warnings: [
                 BuildWarning(
@@ -221,10 +212,7 @@ struct BuildResultFormatterTests {
                     file: "/Users/dev/MyApp/Sources/Foo.swift", line: 1,
                     message: "unused var",
                 ),
-                BuildWarning(
-                    file: "/external/Lib/Bar.swift", line: 2,
-                    message: "deprecated",
-                ),
+                BuildWarning(file: "/external/Lib/Bar.swift", line: 2, message: "deprecated"),
             ],
             failedTests: [],
         )
@@ -247,18 +235,10 @@ struct BuildResultFormatterTests {
             summary: BuildSummary(
                 errors: 1, warnings: 2, failedTests: 0, passedTests: nil, buildTime: nil,
             ),
-            errors: [
-                BuildError(file: "main.swift", line: 1, message: "error"),
-            ],
+            errors: [BuildError(file: "main.swift", line: 1, message: "error")],
             warnings: [
-                BuildWarning(
-                    file: "/external/Lib.swift", line: 1,
-                    message: "external warning",
-                ),
-                BuildWarning(
-                    file: "/project/Source.swift", line: 2,
-                    message: "project warning",
-                ),
+                BuildWarning(file: "/external/Lib.swift", line: 1, message: "external warning"),
+                BuildWarning(file: "/project/Source.swift", line: 2, message: "project warning"),
             ],
             failedTests: [],
         )
@@ -276,15 +256,10 @@ struct BuildResultFormatterTests {
             summary: BuildSummary(
                 errors: 1, warnings: 2, failedTests: 0, passedTests: nil, buildTime: nil,
             ),
-            errors: [
-                BuildError(file: nil, line: nil, message: "some error"),
-            ],
+            errors: [BuildError(file: nil, line: nil, message: "some error")],
             warnings: [
                 BuildWarning(file: nil, line: nil, message: "unlocalized warning"),
-                BuildWarning(
-                    file: "/external/Dep/File.swift", line: 1,
-                    message: "dep warning",
-                ),
+                BuildWarning(file: "/external/Dep/File.swift", line: 1, message: "dep warning"),
             ],
             failedTests: [],
         )
@@ -302,13 +277,11 @@ struct BuildResultFormatterTests {
     @Test
     func `ErrorExtractor.extractBuildErrors threads project root`() {
         let output = """
-        /ext/Lib.swift:1:1: warning: external warning
-        /proj/App.swift:10:5: error: missing import
-        """
+            /ext/Lib.swift:1:1: warning: external warning
+            /proj/App.swift:10:5: error: missing import
+            """
 
-        let formatted = ErrorExtractor.extractBuildErrors(
-            from: output, projectRoot: "/proj",
-        )
+        let formatted = ErrorExtractor.extractBuildErrors(from: output, projectRoot: "/proj")
         #expect(!formatted.contains("external warning"))
         #expect(formatted.contains("missing import"))
         #expect(formatted.contains("dependencies hidden"))
@@ -335,10 +308,10 @@ struct BuildResultFormatterTests {
     @Test
     func `ErrorExtractor.extractTestResults integration`() {
         let output = """
-        Test Case 'MyTests.testA' passed (0.001 seconds).
-        Test Case 'MyTests.testB' passed (0.002 seconds).
-        Executed 2 tests, with 0 failures (0 unexpected) in 0.003 (0.005) seconds
-        """
+            Test Case 'MyTests.testA' passed (0.001 seconds).
+            Test Case 'MyTests.testB' passed (0.002 seconds).
+            Executed 2 tests, with 0 failures (0 unexpected) in 0.003 (0.005) seconds
+            """
 
         let formatted = ErrorExtractor.extractTestResults(from: output)
         #expect(formatted.contains("Tests passed"))
@@ -358,7 +331,7 @@ struct BuildResultFormatterTests {
                 BuildError(
                     file: nil, line: nil,
                     message:
-                    "Error: Unknown option --srcdir Command PhaseScriptExecution failed with a nonzero exit code",
+                        "Error: Unknown option --srcdir Command PhaseScriptExecution failed with a nonzero exit code",
                 ),
                 BuildError(
                     file: "Target1.swift", line: 1,
@@ -368,10 +341,7 @@ struct BuildResultFormatterTests {
                     file: "Target2.swift", line: 1,
                     message: "Unable to find module dependency: 'GRDB'",
                 ),
-                BuildError(
-                    file: "Target3.swift", line: 1,
-                    message: "No such file or directory",
-                ),
+                BuildError(file: "Target3.swift", line: 1, message: "No such file or directory"),
             ],
             warnings: [],
             failedTests: [],
@@ -498,9 +468,7 @@ struct BuildResultFormatterTests {
             failedTests: [],
         )
 
-        let formatted = BuildResultFormatter.formatBuildResult(
-            result, statusOverride: nil,
-        )
+        let formatted = BuildResultFormatter.formatBuildResult(result, statusOverride: nil)
         #expect(formatted.contains("Build succeeded"))
     }
 
@@ -509,9 +477,9 @@ struct BuildResultFormatterTests {
         let error = XcodebuildError.timeout(
             duration: 60,
             partialOutput: """
-            /src/Foo.swift:10:5: warning: unused variable 'x'
-            Build succeeded
-            """,
+                /src/Foo.swift:10:5: warning: unused variable 'x'
+                Build succeeded
+                """,
         )
 
         let result = error.formatPartialDiagnostics(projectRoot: nil)
@@ -519,8 +487,8 @@ struct BuildResultFormatterTests {
         if case let .text(t, _, _) = result.content[0] { text = t }
         #expect(text.contains("Build timed out after 60 seconds"))
         #expect(text.contains("Build interrupted (did not complete)"))
-        // The formatted header must NOT say "Build succeeded" — only "Build interrupted"
-        // (The raw partial output is not appended when diagnostics are present)
+        // The formatted header must NOT say "Build succeeded" — only "Build interrupted" (The raw
+        // partial output is not appended when diagnostics are present)
         #expect(!text.contains("Build succeeded"))
         #expect(result.isError == true)
     }
@@ -530,9 +498,9 @@ struct BuildResultFormatterTests {
         let error = XcodebuildError.stuckProcess(
             noOutputFor: 30,
             partialOutput: """
-            /src/Bar.swift:5:1: warning: deprecated API
-            Build succeeded
-            """,
+                /src/Bar.swift:5:1: warning: deprecated API
+                Build succeeded
+                """,
         )
 
         let result = error.formatPartialDiagnostics(projectRoot: nil)
@@ -552,19 +520,19 @@ struct BuildResultFormatterTests {
         let error = XcodebuildError.timeout(
             duration: 30,
             partialOutput: """
-            CompileSwift normal arm64 /Users/dev/thesis/Sources/Views/ContentView.swift
-            CompileSwift normal arm64 /Users/dev/thesis/Sources/Models/Document.swift
-            /Users/dev/thesis/Sources/Views/ContentView.swift:45:12: warning: immutable value 'result' was never used; consider replacing with '_' or removing it
-            /Users/dev/thesis/Sources/Views/ContentView.swift:102:8: warning: expression of type 'Bool' is unused
-            /Users/dev/thesis/Sources/Models/Document.swift:23:5: warning: 'init(from:)' is deprecated
-            CompileSwift normal arm64 /Users/dev/thesis/Sources/App/ThesisApp.swift
-            /Users/dev/thesis/Sources/App/ThesisApp.swift:15:20: warning: will never be executed
-            Linking Thesis
-            GenerateDSYMFile /Users/dev/DerivedData/Build/Products/Debug/Thesis.app.dSYM /Users/dev/DerivedData/Build/Products/Debug/Thesis.app/Contents/MacOS/Thesis
-            Touch /Users/dev/DerivedData/Build/Products/Debug/Thesis.app
-            RegisterExecutionPolicyException /Users/dev/DerivedData/Build/Products/Debug/Thesis.app
-            ** BUILD SUCCEEDED **
-            """,
+                CompileSwift normal arm64 /Users/dev/thesis/Sources/Views/ContentView.swift
+                CompileSwift normal arm64 /Users/dev/thesis/Sources/Models/Document.swift
+                /Users/dev/thesis/Sources/Views/ContentView.swift:45:12: warning: immutable value 'result' was never used; consider replacing with '_' or removing it
+                /Users/dev/thesis/Sources/Views/ContentView.swift:102:8: warning: expression of type 'Bool' is unused
+                /Users/dev/thesis/Sources/Models/Document.swift:23:5: warning: 'init(from:)' is deprecated
+                CompileSwift normal arm64 /Users/dev/thesis/Sources/App/ThesisApp.swift
+                /Users/dev/thesis/Sources/App/ThesisApp.swift:15:20: warning: will never be executed
+                Linking Thesis
+                GenerateDSYMFile /Users/dev/DerivedData/Build/Products/Debug/Thesis.app.dSYM /Users/dev/DerivedData/Build/Products/Debug/Thesis.app/Contents/MacOS/Thesis
+                Touch /Users/dev/DerivedData/Build/Products/Debug/Thesis.app
+                RegisterExecutionPolicyException /Users/dev/DerivedData/Build/Products/Debug/Thesis.app
+                ** BUILD SUCCEEDED **
+                """,
         )
 
         let result = error.formatPartialDiagnostics(
@@ -590,15 +558,15 @@ struct BuildResultFormatterTests {
 
     @Test
     func `Stuck build with compilation progress shows target info`() {
-        // Simulates a build that stalls during compilation — the progress
-        // summary should show which targets are in progress
+        // Simulates a build that stalls during compilation — the progress summary should show which
+        // targets are in progress
         let error = XcodebuildError.stuckProcess(
             noOutputFor: 30,
             partialOutput: """
-            SwiftDriver GRDBCustom normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GRDBCustom' from project 'GRDBCustom')
-            SwiftDriver Core normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Core' from project 'Thesis')
-            Linking GRDB (in target 'GRDBCustom' from project 'GRDBCustom')
-            """,
+                SwiftDriver GRDBCustom normal arm64 com.apple.xcode.tools.swift.compiler (in target 'GRDBCustom' from project 'GRDBCustom')
+                SwiftDriver Core normal arm64 com.apple.xcode.tools.swift.compiler (in target 'Core' from project 'Thesis')
+                Linking GRDB (in target 'GRDBCustom' from project 'GRDBCustom')
+                """,
         )
 
         let result = error.formatPartialDiagnostics(projectRoot: "/Users/dev/thesis")

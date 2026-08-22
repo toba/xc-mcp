@@ -31,10 +31,7 @@ struct AddFrameworkToolTests {
     static let missingParamCases: [AddFrameworkMissingParamTestCase] = [
         AddFrameworkMissingParamTestCase(
             "Missing project_path",
-            [
-                "target_name": Value.string("App"),
-                "framework_name": Value.string("UIKit"),
-            ],
+            ["target_name": Value.string("App"), "framework_name": Value.string("UIKit")],
         ),
         AddFrameworkMissingParamTestCase(
             "Missing target_name",
@@ -58,9 +55,7 @@ struct AddFrameworkToolTests {
     ) throws {
         let tool = AddFrameworkTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     @Test
@@ -93,16 +88,15 @@ struct AddFrameworkToolTests {
         // Verify framework was added
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
-        let frameworkPhase =
-            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworkPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
 
-        let hasUIKit =
-            frameworkPhase?.files?.contains { buildFile in
-                if let fileRef = buildFile.file as? PBXFileReference {
-                    return fileRef.name == "UIKit.framework"
-                }
-                return false
-            } ?? false
+        let hasUIKit = frameworkPhase?.files?.contains { buildFile in
+            if let fileRef = buildFile.file as? PBXFileReference {
+                return fileRef.name == "UIKit.framework"
+            }
+            return false
+        } ?? false
 
         #expect(hasUIKit == true)
     }
@@ -170,13 +164,12 @@ struct AddFrameworkToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
 
-        let hasEmbedPhase =
-            target?.buildPhases.contains { phase in
-                if let copyPhase = phase as? PBXCopyFilesBuildPhase {
-                    return copyPhase.dstSubfolderSpec == .frameworks
-                }
-                return false
-            } ?? false
+        let hasEmbedPhase = target?.buildPhases.contains { phase in
+            if let copyPhase = phase as? PBXCopyFilesBuildPhase {
+                return copyPhase.dstSubfolderSpec == .frameworks
+            }
+            return false
+        } ?? false
 
         #expect(hasEmbedPhase == true)
     }
@@ -265,8 +258,8 @@ struct AddFrameworkToolTests {
 
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
-        let frameworkPhase =
-            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworkPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
 
         let xcodeKitRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
             .first { $0.name == "XcodeKit.framework" }
@@ -283,11 +276,12 @@ struct AddFrameworkToolTests {
     }
 
     @Test
-    func `Reuses existing BUILT_PRODUCTS_DIR file reference instead of creating duplicate`() throws {
+    func `Reuses existing BUILT_PRODUCTS_DIR file reference instead of creating duplicate`() throws
+    {
         let tempDir = TemporaryDirectory.url
 
-        // Create a test project with two targets where the second target's product
-        // creates a BUILT_PRODUCTS_DIR file reference
+        // Create a test project with two targets where the second target's product creates a
+        // BUILT_PRODUCTS_DIR file reference
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
         try TestProjectHelper.createTestProjectWithTarget(
             name: "TestProject", targetName: "App", at: projectPath,
@@ -326,12 +320,12 @@ struct AddFrameworkToolTests {
         }
         #expect(message.contains("Successfully added framework"))
 
-        // Verify: the build phase should reference the original BUILT_PRODUCTS_DIR ref,
-        // not a new group-relative one
+        // Verify: the build phase should reference the original BUILT_PRODUCTS_DIR ref, not a new
+        // group-relative one
         let updatedProj = try XcodeProj(path: projectPath)
         let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
-        let frameworkPhase =
-            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworkPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
 
         let linkedRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
             .first { $0.path == "Core.framework" }
@@ -388,8 +382,8 @@ struct AddFrameworkToolTests {
         // Verify: should reuse the existing BUILT_PRODUCTS_DIR reference
         let updatedProj = try XcodeProj(path: projectPath)
         let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
-        let frameworkPhase =
-            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworkPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
 
         let linkedRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
             .first { $0.path == "libTestSupport.a" }
@@ -433,8 +427,8 @@ struct AddFrameworkToolTests {
         // Verify: should create a BUILT_PRODUCTS_DIR reference with archive.ar type
         let updatedProj = try XcodeProj(path: projectPath)
         let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
-        let frameworkPhase =
-            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworkPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
 
         let linkedRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
             .first { $0.path == "libFoo.a" }
@@ -450,8 +444,8 @@ struct AddFrameworkToolTests {
     }
 
     @Test
-    func `Bare name finds existing BUILT_PRODUCTS_DIR product instead of creating system framework`(
-    )
+    func
+        `Bare name finds existing BUILT_PRODUCTS_DIR product instead of creating system framework`()
         throws
     {
         let tempDir = TemporaryDirectory.url
@@ -495,8 +489,8 @@ struct AddFrameworkToolTests {
         // Verify: should reuse the BUILT_PRODUCTS_DIR reference, NOT create a system framework
         let updatedProj = try XcodeProj(path: projectPath)
         let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
-        let frameworkPhase =
-            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworkPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
 
         let linkedRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
             .first { $0.path == "Core.framework" }
@@ -537,8 +531,8 @@ struct AddFrameworkToolTests {
 
         let updatedProj = try XcodeProj(path: projectPath)
         let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
-        let frameworkPhase =
-            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworkPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
 
         let linkedRef = frameworkPhase?.files?.compactMap { $0.file as? PBXFileReference }
             .first { $0.name == "CoreFoundation.framework" }
@@ -585,8 +579,8 @@ struct AddFrameworkToolTests {
         // Verify: the build file should reference the PBXReferenceProxy, not a new PBXFileReference
         let updatedProj = try XcodeProj(path: projectPath)
         let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
-        let frameworkPhase =
-            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworkPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
 
         let linkedProxy = frameworkPhase?.files?.compactMap { $0.file as? PBXReferenceProxy }
             .first { $0.path == "GRDB.framework" }
@@ -639,8 +633,8 @@ struct AddFrameworkToolTests {
         // Verify it used the reference proxy
         let updatedProj = try XcodeProj(path: projectPath)
         let target = updatedProj.pbxproj.nativeTargets.first { $0.name == "App" }
-        let frameworkPhase =
-            target?.buildPhases.first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworkPhase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
 
         let linkedProxy = frameworkPhase?.files?.compactMap { $0.file as? PBXReferenceProxy }
             .first { $0.path == "GRDB.framework" }

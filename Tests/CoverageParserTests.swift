@@ -449,8 +449,8 @@ struct CoverageParserTests {
         let lines = ["   1: *", "   2: 1", "   3: 0", "   4: 0", "   5: 1", "   6: 0"]
 
         let fromLF = CoverageParser.parseUncoveredLinesFromArchive(lines.joined(separator: "\n"))
-        let fromCRLF = CoverageParser.parseUncoveredLinesFromArchive(
-            lines.joined(separator: "\r\n"))
+        let fromCRLF = CoverageParser.parseUncoveredLinesFromArchive(lines.joined(separator: "\r\n")
+        )
 
         #expect(fromCRLF.count == 2)
         #expect(fromCRLF[0].start == 3)

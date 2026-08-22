@@ -4,7 +4,8 @@ import XCMCPCore
 import Foundation
 @testable import XCMCPTools
 
-/// Tests for icon bundle manipulation tools (read, add layer, remove layer, fill, effects, position).
+/// Tests for icon bundle manipulation tools (read, add layer, remove layer, fill, effects,
+/// position).
 @Suite(.temporaryDirectory)
 struct IconToolsTests {
     /// Creates a minimal .icon bundle in a temp directory and returns (tempDir, bundlePath).
@@ -23,9 +24,7 @@ struct IconToolsTests {
             "png_path": .string(pngPath.path),
             "output_path": .string(bundlePath),
         ]
-        if let fillColor {
-            args["fill_color"] = .string(fillColor)
-        }
+        if let fillColor { args["fill_color"] = .string(fillColor) }
         _ = try tool.execute(arguments: args)
         return (tempDir, bundlePath)
     }
@@ -38,9 +37,7 @@ struct IconToolsTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let tool = ReadIconTool()
-        let result = try tool.execute(arguments: [
-            "bundle_path": .string(bundlePath),
-        ])
+        let result = try tool.execute(arguments: ["bundle_path": .string(bundlePath)])
 
         guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text")
@@ -56,9 +53,7 @@ struct IconToolsTests {
     func `Read nonexistent bundle throws`() {
         let tool = ReadIconTool()
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "bundle_path": .string("/tmp/nonexistent-\(UUID()).icon"),
-            ])
+            try tool.execute(arguments: ["bundle_path": .string("/tmp/nonexistent-\(UUID()).icon")])
         }
     }
 
@@ -417,8 +412,9 @@ struct IconToolsTests {
             "layer_index": .int(0),
         ])
 
-        #expect(FileManager.default.fileExists(atPath: bundlePath + "/Assets/logo.png"),
-                "Asset should be preserved when still referenced by another layer")
+        #expect(
+            FileManager.default.fileExists(atPath: bundlePath + "/Assets/logo.png"),
+            "Asset should be preserved when still referenced by another layer")
         let manifest = try IconManifest.read(from: bundlePath)
         #expect(manifest.groups[0].layers.count == 1)
         #expect(manifest.groups[0].layers[0].name == "Logo Copy")
@@ -509,8 +505,8 @@ struct IconToolsTests {
     @Test
     func `Set fill missing color for solid throws`() {
         let tool = SetIconFillTool()
-        // Need a real bundle for this to get past the file check
-        // so we just test with nonexistent — the error type is the same
+        // Need a real bundle for this to get past the file check so we just test with nonexistent —
+        // the error type is the same
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
                 "bundle_path": .string("/tmp/nonexistent-\(UUID()).icon"),
@@ -525,9 +521,7 @@ struct IconToolsTests {
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let tool = ReadIconTool()
-        let result = try tool.execute(arguments: [
-            "bundle_path": .string(bundlePath),
-        ])
+        let result = try tool.execute(arguments: ["bundle_path": .string(bundlePath)])
 
         guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text")

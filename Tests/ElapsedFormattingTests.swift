@@ -1,8 +1,8 @@
 import Testing
 @testable import XCMCPCore
 
-/// Tests for the compact elapsed-duration rendering used on build/test/clean result lines
-/// (issue 5t9-9ll).
+/// Tests for the compact elapsed-duration rendering used on build/test/clean result lines (issue
+/// 5t9-9ll).
 struct ElapsedFormattingTests {
     @Test
     func `sub-minute durations render as seconds with one decimal`() {

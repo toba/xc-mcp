@@ -1,6 +1,6 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 
 @Suite(.temporaryDirectory)
 struct TestResultBundleScoperTests {
@@ -106,11 +106,7 @@ struct TestResultBundleScoperTests {
         try fm.setAttributes([.modificationDate: oldDate], ofItemAtPath: oldBundle)
         try fm.setAttributes([.modificationDate: now], ofItemAtPath: freshBundle)
 
-        TestResultBundleScoper.pruneOldBundles(
-            in: tmp,
-            retention: 7 * 24 * 60 * 60,
-            now: now,
-        )
+        TestResultBundleScoper.pruneOldBundles(in: tmp, retention: 7 * 24 * 60 * 60, now: now)
 
         #expect(!fm.fileExists(atPath: oldBundle))
         #expect(fm.fileExists(atPath: freshBundle))
@@ -120,9 +116,7 @@ struct TestResultBundleScoperTests {
     @Test
     func `Pruning is a no-op when the directory does not exist`() {
         // Should not throw or crash.
-        TestResultBundleScoper.pruneOldBundles(
-            in: "/nonexistent/path-\(UUID().uuidString)",
-        )
+        TestResultBundleScoper.pruneOldBundles(in: "/nonexistent/path-\(UUID().uuidString)")
     }
 }
 
@@ -185,9 +179,9 @@ struct ErrorExtractorResultBundleSuffixTests {
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
                 output: """
-                Test Case 'FooTests.testBar' failed (0.5 seconds)
-                Executed 1 test, with 1 failure in 0.5 seconds
-                """,
+                    Test Case 'FooTests.testBar' failed (0.5 seconds)
+                    Executed 1 test, with 1 failure in 0.5 seconds
+                    """,
                 succeeded: false,
                 context: "scheme 'Foo' on macOS",
                 xcresultPath: bundle,

@@ -80,7 +80,8 @@ struct FindBuildSettingsToolTests {
         #expect(content.contains("[project] [Release] OTHER_LDFLAGS = -Wl -no_exported_symbols"))
     }
 
-    @Test func `find build settings project-level respects value filter and configuration`() throws {
+    @Test func `find build settings project-level respects value filter and configuration`() throws
+    {
         let tempDir = TemporaryDirectory.url
 
         let projectPath = try makeProjectWithProjectLevelSetting(

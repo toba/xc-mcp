@@ -19,6 +19,7 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
         #expect(definition.name == "remove_target_from_synchronized_folder")
 
         let schema = definition.inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .object(props) = schemaDict["properties"] {
                 #expect(props["project_path"] != nil)
@@ -26,9 +27,7 @@ struct RemoveTargetFromSynchronizedFolderToolTests {
                 #expect(props["target_name"] != nil)
             }
 
-            if case let .array(required) = schemaDict["required"] {
-                #expect(required.count == 3)
-            }
+            if case let .array(required) = schemaDict["required"] { #expect(required.count == 3) }
         }
     }
 

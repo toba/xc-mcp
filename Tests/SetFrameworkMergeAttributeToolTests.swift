@@ -43,11 +43,7 @@ struct SetFrameworkMergeAttributeToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }!
 
-        let fileRef = PBXFileReference(
-            sourceTree: .group,
-            name: nil,
-            path: frameworkPath,
-        )
+        let fileRef = PBXFileReference(sourceTree: .group, name: nil, path: frameworkPath)
         xcodeproj.pbxproj.add(object: fileRef)
 
         let buildFile = PBXBuildFile(file: fileRef)
@@ -76,7 +72,8 @@ struct SetFrameworkMergeAttributeToolTests {
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
-            Issue.record("Expected text result"); return
+            Issue.record("Expected text result")
+            return
         }
         #expect(message.contains("merge=true"))
 
@@ -84,6 +81,7 @@ struct SetFrameworkMergeAttributeToolTests {
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }!
         let phase = target.buildPhases.compactMap { $0 as? PBXFrameworksBuildPhase }.first!
         let buildFile = phase.files!.first!
+
         if case let .array(attrs) = buildFile.settings?["ATTRIBUTES"] {
             #expect(attrs.contains("Merge"))
         } else {
@@ -118,6 +116,7 @@ struct SetFrameworkMergeAttributeToolTests {
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }!
         let phase = target.buildPhases.compactMap { $0 as? PBXFrameworksBuildPhase }.first!
         let buildFile = phase.files!.first!
+
         if case let .array(attrs) = buildFile.settings?["ATTRIBUTES"] {
             #expect(!attrs.contains("Merge"))
             #expect(attrs.contains("Weak"))
@@ -131,6 +130,7 @@ struct SetFrameworkMergeAttributeToolTests {
         let tempDir = TemporaryDirectory.url
 
         let (projectPath, _) = try Self.makeProjectWithFramework(at: tempDir)
+
         do {
             let xcodeproj = try XcodeProj(path: projectPath)
             let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }!
@@ -148,7 +148,8 @@ struct SetFrameworkMergeAttributeToolTests {
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
-            Issue.record("Expected text result"); return
+            Issue.record("Expected text result")
+            return
         }
         #expect(message.contains("already has merge=true"))
         #expect(message.contains("No changes made"))
@@ -169,7 +170,8 @@ struct SetFrameworkMergeAttributeToolTests {
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
-            Issue.record("Expected text result"); return
+            Issue.record("Expected text result")
+            return
         }
         #expect(message.contains("already has merge=false"))
     }
@@ -189,7 +191,8 @@ struct SetFrameworkMergeAttributeToolTests {
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
-            Issue.record("Expected text result"); return
+            Issue.record("Expected text result")
+            return
         }
         #expect(message.contains("No frameworks-phase entry matching 'NotPresent.framework'"))
     }
@@ -212,7 +215,8 @@ struct SetFrameworkMergeAttributeToolTests {
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
-            Issue.record("Expected text result"); return
+            Issue.record("Expected text result")
+            return
         }
         #expect(message.contains("has no PBXFrameworksBuildPhase"))
     }
@@ -235,9 +239,7 @@ struct SetFrameworkMergeAttributeToolTests {
                 versionRequirement: .upToNextMajorVersion("1.0.0"),
             )
             xcodeproj.pbxproj.add(object: pkg)
-            let productRef = XCSwiftPackageProductDependency(
-                productName: "MyProduct", package: pkg,
-            )
+            let productRef = XCSwiftPackageProductDependency(productName: "MyProduct", package: pkg)
             xcodeproj.pbxproj.add(object: productRef)
 
             let buildFile = PBXBuildFile(product: productRef)
@@ -259,7 +261,8 @@ struct SetFrameworkMergeAttributeToolTests {
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
-            Issue.record("Expected text result"); return
+            Issue.record("Expected text result")
+            return
         }
         #expect(message.contains("merge=true"))
 
@@ -267,6 +270,7 @@ struct SetFrameworkMergeAttributeToolTests {
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }!
         let phase = target.buildPhases.compactMap { $0 as? PBXFrameworksBuildPhase }.first!
         let buildFile = phase.files!.first!
+
         if case let .array(attrs) = buildFile.settings?["ATTRIBUTES"] {
             #expect(attrs.contains("Merge"))
         } else {
@@ -281,9 +285,8 @@ struct SetFrameworkMergeAttributeToolTests {
         let (projectPath, _) = try Self.makeProjectWithFramework(at: tempDir)
 
         // Toggle merge=true via the tool.
-        let setTool = SetFrameworkMergeAttributeTool(
-            pathUtility: PathUtility(basePath: tempDir.path),
-        )
+        let setTool = SetFrameworkMergeAttributeTool(pathUtility: PathUtility(
+            basePath: tempDir.path))
         _ = try setTool.execute(arguments: [
             "project_path": Value.string(projectPath.string),
             "target_name": Value.string("App"),
@@ -298,7 +301,8 @@ struct SetFrameworkMergeAttributeToolTests {
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
-            Issue.record("Expected text result"); return
+            Issue.record("Expected text result")
+            return
         }
         #expect(message.contains("MyLib.framework"))
         #expect(message.contains("merge=true"))

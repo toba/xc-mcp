@@ -119,8 +119,11 @@ struct ListBuildPhaseStatusToolTests {
 
         #expect(schema.name == "list_build_phase_status")
         #expect(schema.description?.contains("build phases") == true)
-        #expect(schema.description?.contains("completed") == true || schema.description?
-            .contains("skipped") == true)
+        #expect(
+            schema.description?.contains("completed") == true
+                || schema.description?
+                    .contains("skipped") == true
+        )
     }
 
     @Test
@@ -191,6 +194,7 @@ struct ReadSerializedDiagnosticsToolTests {
     @Test
     func `Tool fails without target or dia_path`() async throws {
         let tool = ReadSerializedDiagnosticsTool(sessionManager: sessionManager)
+
         do {
             _ = try await tool.execute(arguments: [:])
             Issue.record("Expected error when neither target nor dia_path provided")
@@ -203,9 +207,10 @@ struct ReadSerializedDiagnosticsToolTests {
     @Test
     func `Tool fails with nonexistent dia_path`() async throws {
         let tool = ReadSerializedDiagnosticsTool(sessionManager: sessionManager)
+
         do {
             _ = try await tool.execute(arguments: [
-                "dia_path": .string("/nonexistent/path/file.dia"),
+                "dia_path": .string("/nonexistent/path/file.dia")
             ])
             Issue.record("Expected error for nonexistent file")
         } catch {
@@ -226,8 +231,11 @@ struct DiffBuildSettingsToolTests {
         let schema = tool.tool()
 
         #expect(schema.name == "diff_build_settings")
-        #expect(schema.description?.contains("Compare") == true || schema.description?
-            .contains("diff") == true)
+        #expect(
+            schema.description?.contains("Compare") == true
+                || schema.description?
+                    .contains("diff") == true
+        )
     }
 
     @Test

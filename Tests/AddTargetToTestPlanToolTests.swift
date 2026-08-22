@@ -1,8 +1,8 @@
 import MCP
 import PathKit
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 @testable import XCMCPTools
 
 @Suite(.temporaryDirectory)
@@ -27,11 +27,8 @@ struct AddTargetToTestPlanToolTests {
     private func emptyPlan() -> [String: Any] {
         [
             "configurations": [
-                [
-                    "id": "DEFAULT",
-                    "name": "Default",
-                    "options": [:] as [String: Any],
-                ] as [String: Any],
+                ["id": "DEFAULT", "name": "Default", "options": [:] as [String: Any]]
+                    as [String: Any]
             ],
             "defaultOptions": [:] as [String: Any],
             "testTargets": [] as [[String: Any]],
@@ -72,14 +69,10 @@ struct AddTargetToTestPlanToolTests {
             "test_plan_path": .string(path),
             "target_name": .string("TestTarget"),
             "xctest_classes": .array([
-                .object([
-                    "name": .string("URLRequestTests"),
-                ]),
+                .object(["name": .string("URLRequestTests")]),
                 .object([
                     "name": .string("SessionTests"),
-                    "xctest_methods": .array([
-                        .string("testInit()"),
-                    ]),
+                    "xctest_methods": .array([.string("testInit()")]),
                 ]),
             ]),
         ])
@@ -119,14 +112,9 @@ struct AddTargetToTestPlanToolTests {
             "suites": .array([
                 .object([
                     "name": .string("NetworkTests"),
-                    "test_functions": .array([
-                        .string("fetchKeys()"),
-                        .string("keys()"),
-                    ]),
+                    "test_functions": .array([.string("fetchKeys()"), .string("keys()")]),
                 ]),
-                .object([
-                    "name": .string("CacheTests"),
-                ]),
+                .object(["name": .string("CacheTests")]),
             ]),
         ])
 
@@ -160,12 +148,8 @@ struct AddTargetToTestPlanToolTests {
             "project_path": .string(projectPath),
             "test_plan_path": .string(path),
             "target_name": .string("TestTarget"),
-            "xctest_classes": .array([
-                .object(["name": .string("PerfTests")]),
-            ]),
-            "suites": .array([
-                .object(["name": .string("APISuite")]),
-            ]),
+            "xctest_classes": .array([.object(["name": .string("PerfTests")])]),
+            "suites": .array([.object(["name": .string("APISuite")])]),
         ])
 
         let json = try TestPlanFile.read(from: path)
@@ -192,13 +176,13 @@ struct AddTargetToTestPlanToolTests {
                 .object([
                     "name": .string("DecoderTests"),
                     "xctest_methods": .array([.string("testDecode()")]),
-                ]),
+                ])
             ]),
             "suites": .array([
                 .object([
                     "name": .string("ParserTests"),
                     "test_functions": .array([.string("parse()")]),
-                ]),
+                ])
             ]),
         ])
 

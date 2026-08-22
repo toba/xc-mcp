@@ -27,14 +27,12 @@ struct ScaffoldIOSProjectToolTests {
             "include_tests": Value.bool(false),
         ])
 
-        let projectPath =
-            Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
+        let projectPath = Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
         let xcodeproj = try XcodeProj(path: projectPath)
 
         let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup
-        let syncGroup = mainGroup?.children.compactMap {
-            $0 as? PBXFileSystemSynchronizedRootGroup
-        }.first { $0.path == "TestApp" }
+        let syncGroup = mainGroup?.children.compactMap { $0 as? PBXFileSystemSynchronizedRootGroup }
+            .first { $0.path == "TestApp" }
         #expect(syncGroup != nil, "Main group should contain a synchronized root group for TestApp")
 
         let appGroup = mainGroup?.children.compactMap { $0 as? PBXGroup }.first {
@@ -57,18 +55,17 @@ struct ScaffoldIOSProjectToolTests {
             "include_tests": Value.bool(false),
         ])
 
-        let projectPath =
-            Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
+        let projectPath = Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
 
-        let sourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        let sourcesBuildPhase = target.buildPhases.first { $0 is PBXSourcesBuildPhase }
+            as? PBXSourcesBuildPhase
         #expect(sourcesBuildPhase != nil)
         #expect(sourcesBuildPhase?.files?.isEmpty ?? true)
 
-        let resourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
+        let resourcesBuildPhase = target.buildPhases.first { $0 is PBXResourcesBuildPhase }
+            as? PBXResourcesBuildPhase
         #expect(resourcesBuildPhase != nil)
         #expect(resourcesBuildPhase?.files?.isEmpty ?? true)
 

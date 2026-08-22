@@ -6,12 +6,11 @@ enum IntegrationFixtures {
     static let projectRoot: String = {
         // #filePath → …/Tests/Integration/IntegrationTestHelper.swift
         let file = URL(fileURLWithPath: #filePath)
-        return
-            file
-                .deletingLastPathComponent() // Integration/
-                .deletingLastPathComponent() // Tests/
-                .deletingLastPathComponent() // project root
-                .path
+        return file
+            .deletingLastPathComponent()  // Integration/
+            .deletingLastPathComponent()  // Tests/
+            .deletingLastPathComponent()  // project root
+            .path
     }()
 
     static let reposDir = "\(projectRoot)/fixtures/repos"
@@ -45,27 +44,25 @@ enum IntegrationFixtures {
 
     // MARK: - Simulator
 
-    /// UDID of an available iPhone simulator, resolved once via `simctl list`.
-    /// Prefers stable iOS runtimes (18.x, 19.x) over beta SDKs (26.x) to avoid
-    /// swift-frontend crashes in SILGen when building third-party code against
-    /// bleeding-edge SDKs.
+    /// UDID of an available iPhone simulator, resolved once via `simctl list`. Prefers stable iOS
+    /// runtimes (18.x, 19.x) over beta SDKs (26.x) to avoid swift-frontend crashes in SILGen when
+    /// building third-party code against bleeding-edge SDKs.
     static let simulatorUDID: String? = {
-        guard
-            let output = try? Process.run(
-                "/usr/bin/xcrun",
-                arguments: ["simctl", "list", "devices", "available", "-j"],
-            ),
-            let json = try? JSONSerialization.jsonObject(with: Data(output.utf8))
-                as? [String: Any],
-            let devices = json["devices"] as? [String: [[String: Any]]]
-        else { return nil }
+        guard let output = try? Process.run(
+            "/usr/bin/xcrun",
+            arguments: ["simctl", "list", "devices", "available", "-j"],
+        ),
+              let json = try? JSONSerialization.jsonObject(with: Data(output.utf8))
+                  as? [String: Any],
+              let devices = json["devices"] as? [String: [[String: Any]]] else { return nil }
 
-        /// Extract iOS version number from runtime key
-        /// e.g. "com.apple.CoreSimulator.SimRuntime.iOS-18-5" -> 18
+        /// Extract iOS version number from runtime key e.g.
+        /// "com.apple.CoreSimulator.SimRuntime.iOS-18-5" -> 18
         func iosMajorVersion(_ runtime: String) -> Int? {
             guard runtime.contains("iOS") else { return nil }
             // Split on "-"; the part ending with "iOS" is followed by the major version
             let parts = runtime.split(separator: "-")
+
             for (i, part) in parts.enumerated() where part.hasSuffix("iOS") {
                 if i + 1 < parts.count, let ver = Int(parts[i + 1]) { return ver }
             }
@@ -80,20 +77,18 @@ enum IntegrationFixtures {
                 let vb = iosMajorVersion(b) ?? 0
                 let aIsStable = va < 26
                 let bIsStable = vb < 26
-                if aIsStable != bIsStable { return aIsStable }
-                return va > vb
+                return aIsStable != bIsStable ? aIsStable : va > vb
             }
 
         for runtime in sortedRuntimes {
             guard let deviceList = devices[runtime] else { continue }
+
             for device in deviceList {
-                guard
-                    let name = device["name"] as? String,
-                    let udid = device["udid"] as? String,
-                    let isAvailable = device["isAvailable"] as? Bool,
-                    isAvailable,
-                    name.contains("iPhone")
-                else { continue }
+                guard let name = device["name"] as? String,
+                      let udid = device["udid"] as? String,
+                      let isAvailable = device["isAvailable"] as? Bool,
+                      isAvailable,
+                      name.contains("iPhone") else { continue }
                 return udid
             }
         }
@@ -101,16 +96,14 @@ enum IntegrationFixtures {
     }()
 
     /// `true` when fixtures are available and a simulator UDID was resolved.
-    static var simulatorAvailable: Bool {
-        available && simulatorUDID != nil
-    }
+    static var simulatorAvailable: Bool { available && simulatorUDID != nil }
 }
 
 // MARK: - Process helper
 
-extension Process {
+fileprivate extension Process {
     /// Run a command synchronously and return stdout as a String.
-    fileprivate static func run(_ path: String, arguments: [String]) throws -> String {
+    static func run(_ path: String, arguments: [String]) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = arguments

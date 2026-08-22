@@ -32,9 +32,9 @@ struct SetRunScriptPhaseIOToolTests {
 
     private func loadPhase(_ projectPath: Path, named: String) throws -> PBXShellScriptBuildPhase {
         let xcodeproj = try XcodeProj(path: projectPath)
-        return try #require(
-            xcodeproj.pbxproj.shellScriptBuildPhases.first { ($0.name ?? "ShellScript") == named },
-        )
+        return try #require(xcodeproj.pbxproj.shellScriptBuildPhases.first {
+            ($0.name ?? "ShellScript") == named
+        })
     }
 
     @Test
@@ -43,6 +43,7 @@ struct SetRunScriptPhaseIOToolTests {
         #expect(tool.tool().name == "set_run_script_phase_io")
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .array(required) = schemaDict["required"] {
                 #expect(required.count == 3)
@@ -145,9 +146,9 @@ struct SetRunScriptPhaseIOToolTests {
         ])
 
         let phase = try loadPhase(projectPath, named: "Compress")
-        #expect(phase.inputPaths == ["keep.in"])          // untouched
-        #expect(phase.outputPaths == ["new.out"])         // updated
-        #expect(phase.alwaysOutOfDate == true)            // untouched
+        #expect(phase.inputPaths == ["keep.in"])  // untouched
+        #expect(phase.outputPaths == ["new.out"])  // updated
+        #expect(phase.alwaysOutOfDate == true)  // untouched
     }
 
     @Test
@@ -198,6 +199,7 @@ struct SetRunScriptPhaseIOToolTests {
             "phase_name": .string("Nope"),
             "output_paths": .array([.string("out")]),
         ])
+
         if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("not found"))
         } else {
@@ -213,6 +215,7 @@ struct SetRunScriptPhaseIOToolTests {
         )
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+
         for _ in 0..<2 {
             let phase = PBXShellScriptBuildPhase(name: "Dup", shellScript: "true")
             xcodeproj.pbxproj.add(object: phase)
@@ -227,6 +230,7 @@ struct SetRunScriptPhaseIOToolTests {
             "phase_name": .string("Dup"),
             "output_paths": .array([.string("out")]),
         ])
+
         if case let .text(message, _, _) = result.content.first {
             #expect(message.contains("Multiple"))
         } else {

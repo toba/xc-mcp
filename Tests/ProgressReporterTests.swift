@@ -1,8 +1,9 @@
-import Testing
-@testable import XCMCPCore
-import Foundation
 import MCP
+import Testing
+import Foundation
+import TobaTesting
 import Synchronization
+@testable import XCMCPCore
 
 struct ProgressReporterTests {
     private final class Recorder: Sendable {
@@ -12,9 +13,7 @@ struct ProgressReporterTests {
             messages.withLock { $0.append(message.params) }
         }
 
-        var captured: [ProgressNotification.Parameters] {
-            messages.withLock { $0 }
-        }
+        var captured: [ProgressNotification.Parameters] { messages.withLock { $0 } }
     }
 
     @Test
@@ -76,8 +75,8 @@ struct ProgressReporterTests {
         reporter.ingest("")
         reporter.ingest("   \n\t\n")
         let emitted = await reporter.emitIfPending()
-        // Whitespace-only chunks still bump byte count via ingest, but no
-        // line is captured, so emitIfPending should still see no line.
+        // Whitespace-only chunks still bump byte count via ingest, but no line is captured, so
+        // emitIfPending should still see no line.
         #expect(emitted == nil)
         #expect(recorder.captured.isEmpty)
     }
@@ -117,7 +116,8 @@ struct ProgressReporterTests {
 
         let task = Task {
             try? await reporter.stream {
-                // Simulate a long-running process emitting a chunk every 10ms.
+                // Simulate a long-running process emitting a chunk every 10ms. This sleep is the
+                // workload under test, not a wait for a condition.
                 for _ in 0..<200 {
                     reporter.ingest("Compiling line \(UUID().uuidString)\n")
                     try await Task.sleep(for: .milliseconds(10))
@@ -125,13 +125,15 @@ struct ProgressReporterTests {
             }
         }
 
-        // Let a few progress notifications flow, then cancel.
-        try? await Task.sleep(for: .milliseconds(60))
+        // Let a progress notification flow, then cancel. The poll returns as soon as the poller
+        // emits, which proves it was running before the cancellation under test.
+        await expectEventually("the poller emits a notification") { !recorder.captured.isEmpty }
         task.cancel()
         await task.value
 
         let countAfterCancel = recorder.captured.count
-        // Give the poller more than one interval to attempt another emission.
+        // Give the poller more than one interval to attempt another emission. This asserts that
+        // nothing happens, and a poll cannot shorten a wait for an event that must never arrive.
         try? await Task.sleep(for: .milliseconds(80))
         #expect(recorder.captured.count == countAfterCancel)
     }
@@ -160,8 +162,9 @@ struct ProgressReporterTests {
 
     @Test
     func `extraArgsFromEnvironment tokenizes whitespace-separated flags`() {
-        setenv("XC_MCP_SWIFT_EXTRA_ARGS",
-               "-Xswiftc -experimental-skip-non-inlinable-function-bodies", 1)
+        setenv(
+            "XC_MCP_SWIFT_EXTRA_ARGS",
+            "-Xswiftc -experimental-skip-non-inlinable-function-bodies", 1)
         defer { unsetenv("XC_MCP_SWIFT_EXTRA_ARGS") }
         #expect(
             SwiftRunner.extraArgsFromEnvironment() == [
@@ -177,9 +180,7 @@ struct ProgressReporterTests {
         let result = try await runner.run(
             arguments: ["--version"],
             timeout: .seconds(30),
-            onProgress: { chunk in
-                chunks.withLock { $0.append(chunk) }
-            },
+            onProgress: { chunk in chunks.withLock { $0.append(chunk) } },
         )
         #expect(result.succeeded)
         let captured = chunks.withLock { $0.joined() }

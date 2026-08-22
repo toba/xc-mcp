@@ -1,6 +1,6 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 
 struct XCResultParserTests {
     @Test
@@ -14,9 +14,9 @@ struct ErrorExtractorInfrastructureTests {
     @Test
     func `Detects testmanagerd SIGSEGV crash`() async throws {
         let stderr = """
-        Testing started
-        testmanagerd received SIGSEGV: pointer authentication failure
-        """
+            Testing started
+            testmanagerd received SIGSEGV: pointer authentication failure
+            """
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run with 1 test in 1 suite passed after 0.5 seconds",
             succeeded: true,
@@ -97,9 +97,9 @@ struct ErrorExtractorInfrastructureTests {
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
                 output: """
-                Test Case 'FooTests.testBar' failed (0.5 seconds)
-                Executed 1 test, with 1 failure in 0.5 seconds
-                """,
+                    Test Case 'FooTests.testBar' failed (0.5 seconds)
+                    Executed 1 test, with 1 failure in 0.5 seconds
+                    """,
                 succeeded: false,
                 context: "scheme 'Foo' on macOS",
                 stderr: "testmanagerd received SIGSEGV",
@@ -162,7 +162,8 @@ struct ErrorExtractorZeroTestTests {
 
     @Test
     func `No error when no only_testing filter and zero tests`() async throws {
-        // Without only_testing, zero tests is not an error (could be a legitimate empty test target)
+        // Without only_testing, zero tests is not an error (could be a legitimate empty test
+        // target)
         let result = try await ErrorExtractor.formatTestToolResult(
             output: "Test run completed.",
             succeeded: true,
@@ -198,15 +199,15 @@ struct ErrorExtractorExitCodeOverrideTests {
     func `Succeeds when exit code is non-zero but parsed output shows tests passed`() async throws {
         // Reproduces the bug: swift test exits non-zero but all tests pass
         let output = """
-        Building for debugging...
-        Build complete!
-        Test Suite 'All tests' started.
-        Test Suite 'PackageTests' passed at 2026-03-01 10:00:00.
-        Executed 4535 tests, with 0 failures (0 unexpected) in 12.345 (12.567) seconds
-        """
+            Building for debugging...
+            Build complete!
+            Test Suite 'All tests' started.
+            Test Suite 'PackageTests' passed at 2026-03-01 10:00:00.
+            Executed 4535 tests, with 0 failures (0 unexpected) in 12.345 (12.567) seconds
+            """
         let result = try await ErrorExtractor.formatTestToolResult(
             output: output,
-            succeeded: false, // non-zero exit code
+            succeeded: false,  // non-zero exit code
             context: "swift package",
         )
         let text = result.content.compactMap {
@@ -219,9 +220,10 @@ struct ErrorExtractorExitCodeOverrideTests {
     @Test
     func `Still fails when exit code is non-zero and tests actually failed`() async {
         let output = """
-        Test Case 'FooTests.testBar' failed (0.5 seconds)
-        Executed 10 tests, with 2 failures (2 unexpected) in 1.234 (1.500) seconds
-        """
+            Test Case 'FooTests.testBar' failed (0.5 seconds)
+            Executed 10 tests, with 2 failures (2 unexpected) in 1.234 (1.500) seconds
+            """
+
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
                 output: output,

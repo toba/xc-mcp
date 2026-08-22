@@ -1,21 +1,20 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+import TobaTesting
+@testable import XCMCPCore
 
 /// Golden-file snapshot tests for `BuildResultFormatter`.
 ///
 /// Each test constructs a `BuildResult`, formats it, and compares the output
-/// character-for-character against a fixture file in `Tests/Fixtures/`.
-/// To update snapshots after intentional formatting changes, overwrite the
-/// fixture files and re-run.
+/// character-for-character against a fixture file in `Tests/TestData/`. To update snapshots after
+/// intentional formatting changes, overwrite the fixture files and re-run.
+///
+/// The comparison runs through `expectNoDifference`, which prints a line diff on failure. A bare
+/// `#expect(a == b)` prints both formatted reports in full and leaves the reader to spot the
+/// changed line.
 struct BuildResultFormatterSnapshotTests {
     private func loadSnapshot(_ name: String) throws -> String {
-        let url = try #require(
-            Bundle.module.url(
-                forResource: name, withExtension: "txt", subdirectory: "Fixtures",
-            ),
-        )
-        return try String(contentsOf: url, encoding: .utf8)
+        try String(contentsOf: TestFixtures.url("\(name).txt"), encoding: .utf8)
     }
 
     @Test func `Snapshot — build success`() throws {
@@ -31,7 +30,7 @@ struct BuildResultFormatterSnapshotTests {
 
         let formatted = BuildResultFormatter.formatBuildResult(result)
         let expected = try loadSnapshot("snapshot-build-success")
-        #expect(formatted == expected)
+        expectNoDifference(formatted, expected)
     }
 
     @Test func `Snapshot — build failed with errors and warnings`() throws {
@@ -48,16 +47,14 @@ struct BuildResultFormatterSnapshotTests {
                 BuildError(file: "Bar.swift", line: 15, message: "missing return", column: 5),
             ],
             warnings: [
-                BuildWarning(
-                    file: "Baz.swift", line: 88, message: "unused variable 'x'", column: 3,
-                ),
+                BuildWarning(file: "Baz.swift", line: 88, message: "unused variable 'x'", column: 3)
             ],
             failedTests: [],
         )
 
         let formatted = BuildResultFormatter.formatBuildResult(result)
         let expected = try loadSnapshot("snapshot-build-failed")
-        #expect(formatted == expected)
+        expectNoDifference(formatted, expected)
     }
 
     @Test func `Snapshot — tests passed`() throws {
@@ -74,7 +71,7 @@ struct BuildResultFormatterSnapshotTests {
 
         let formatted = BuildResultFormatter.formatTestResult(result)
         let expected = try loadSnapshot("snapshot-test-passed")
-        #expect(formatted == expected)
+        expectNoDifference(formatted, expected)
     }
 
     @Test func `Snapshot — tests failed`() throws {
@@ -100,7 +97,7 @@ struct BuildResultFormatterSnapshotTests {
 
         let formatted = BuildResultFormatter.formatTestResult(result)
         let expected = try loadSnapshot("snapshot-test-failed")
-        #expect(formatted == expected)
+        expectNoDifference(formatted, expected)
     }
 
     @Test func `Snapshot — linker errors`() throws {
@@ -114,17 +111,13 @@ struct BuildResultFormatterSnapshotTests {
             warnings: [],
             failedTests: [],
             linkerErrors: [
-                LinkerError(
-                    symbol: "_MissingFunc",
-                    architecture: "arm64",
-                    referencedFrom: "main.o",
-                ),
+                LinkerError(symbol: "_MissingFunc", architecture: "arm64", referencedFrom: "main.o")
             ],
         )
 
         let formatted = BuildResultFormatter.formatBuildResult(result)
         let expected = try loadSnapshot("snapshot-linker-errors")
-        #expect(formatted == expected)
+        expectNoDifference(formatted, expected)
     }
 
     @Test func `Snapshot — cascade errors from script phase`() throws {
@@ -137,7 +130,7 @@ struct BuildResultFormatterSnapshotTests {
                 BuildError(
                     file: nil, line: nil,
                     message:
-                    "Error: Unknown option --srcdir Command PhaseScriptExecution failed with a nonzero exit code",
+                        "Error: Unknown option --srcdir Command PhaseScriptExecution failed with a nonzero exit code",
                 ),
                 BuildError(
                     file: "Target1.swift", line: 1,
@@ -147,10 +140,7 @@ struct BuildResultFormatterSnapshotTests {
                     file: "Target2.swift", line: 1,
                     message: "Unable to find module dependency: 'GRDB'",
                 ),
-                BuildError(
-                    file: "Target3.swift", line: 1,
-                    message: "No such file or directory",
-                ),
+                BuildError(file: "Target3.swift", line: 1, message: "No such file or directory"),
             ],
             warnings: [],
             failedTests: [],
@@ -158,7 +148,7 @@ struct BuildResultFormatterSnapshotTests {
 
         let formatted = BuildResultFormatter.formatBuildResult(result)
         let expected = try loadSnapshot("snapshot-cascade-errors")
-        #expect(formatted == expected)
+        expectNoDifference(formatted, expected)
     }
 
     @Test func `Snapshot — tests with coverage`() throws {
@@ -176,6 +166,6 @@ struct BuildResultFormatterSnapshotTests {
 
         let formatted = BuildResultFormatter.formatTestResult(result)
         let expected = try loadSnapshot("snapshot-test-with-coverage")
-        #expect(formatted == expected)
+        expectNoDifference(formatted, expected)
     }
 }

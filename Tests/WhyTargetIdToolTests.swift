@@ -1,7 +1,7 @@
-import Foundation
 import MCP
 import Testing
 import XCMCPCore
+import Foundation
 @testable import XCMCPTools
 
 @Suite(.temporaryDirectory)

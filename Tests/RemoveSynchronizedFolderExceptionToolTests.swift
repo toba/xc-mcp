@@ -18,6 +18,7 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         #expect(tool.tool().name == "remove_synchronized_folder_exception")
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .object(props) = schemaDict["properties"] {
                 #expect(props["project_path"] != nil)
@@ -26,9 +27,7 @@ struct RemoveSynchronizedFolderExceptionToolTests {
                 #expect(props["file_name"] != nil)
             }
 
-            if case let .array(required) = schemaDict["required"] {
-                #expect(required.count == 3)
-            }
+            if case let .array(required) = schemaDict["required"] { #expect(required.count == 3) }
         }
     }
 
@@ -240,18 +239,15 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         let beforeLines = before.components(separatedBy: "\n")
         let afterLines = after.components(separatedBy: "\n")
 
-        // Lines removed should be: the exception set block (isa, membershipExceptions,
-        // file entry, closing paren, target, opening/closing braces) plus the reference
-        // in the sync group's exceptions array. No lines should be added.
+        // Lines removed should be: the exception set block (isa, membershipExceptions, file entry,
+        // closing paren, target, opening/closing braces) plus the reference in the sync group's
+        // exceptions array. No lines should be added.
         let added = Set(afterLines).subtracting(Set(beforeLines))
         #expect(added.isEmpty, "No lines should be added, got: \(added)")
 
         // Every line in `after` should exist in `before` (only removals, no modifications)
         for (i, line) in afterLines.enumerated() {
-            #expect(
-                beforeLines.contains(line),
-                "Line \(i) in output was not in original: \(line)",
-            )
+            #expect(beforeLines.contains(line), "Line \(i) in output was not in original: \(line)")
         }
 
         // Verify the project still loads
@@ -371,8 +367,10 @@ struct RemoveSynchronizedFolderExceptionToolTests {
     func `Schema advertises phase_name and dst_path`() {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema,
-           case let .object(props) = schemaDict["properties"] {
+           case let .object(props) = schemaDict["properties"]
+        {
             #expect(props["phase_name"] != nil)
             #expect(props["dst_path"] != nil)
         } else {
@@ -399,21 +397,17 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         }
 
         let updated = try XcodeProj(path: projectPath)
-        #expect(
-            updated.pbxproj.fileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet.isEmpty,
-        )
-        let syncGroup = try #require(
-            updated.pbxproj.fileSystemSynchronizedRootGroups.first { $0.path == "DefaultStyles" },
-        )
+        #expect(updated.pbxproj.fileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet.isEmpty)
+        let syncGroup = try #require(updated.pbxproj.fileSystemSynchronizedRootGroups.first {
+            $0.path == "DefaultStyles"
+        })
         #expect(syncGroup.exceptions?.isEmpty ?? true)
     }
 
     @Test
     func `Removes single file from routing set located by phase_name`() throws {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
-        let projectPath = try makeProjectWithRoutingSet(
-            dstPath: nil, phaseName: "Bundle Templates",
-        )
+        let projectPath = try makeProjectWithRoutingSet(dstPath: nil, phaseName: "Bundle Templates")
 
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
@@ -439,9 +433,7 @@ struct RemoveSynchronizedFolderExceptionToolTests {
     @Test
     func `Removes routing set when last membership file removed`() throws {
         let tool = RemoveSynchronizedFolderExceptionTool(pathUtility: pathUtility)
-        let projectPath = try makeProjectWithRoutingSet(
-            dstPath: "docx", membership: ["only.xml"],
-        )
+        let projectPath = try makeProjectWithRoutingSet(dstPath: "docx", membership: ["only.xml"])
 
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
@@ -458,9 +450,7 @@ struct RemoveSynchronizedFolderExceptionToolTests {
         }
 
         let updated = try XcodeProj(path: projectPath)
-        #expect(
-            updated.pbxproj.fileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet.isEmpty,
-        )
+        #expect(updated.pbxproj.fileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet.isEmpty)
     }
 
     @Test

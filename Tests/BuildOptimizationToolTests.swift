@@ -1,6 +1,6 @@
-import Foundation
 import MCP
 import Testing
+import Foundation
 @testable import XCMCPCore
 @testable import XCMCPTools
 
@@ -48,20 +48,18 @@ struct BenchmarkBuildToolTests {
     }
 
     @Test
-    func `stats returns nil for empty input`() {
-        #expect(BenchmarkBuildTool.stats([]) == nil)
-    }
+    func `stats returns nil for empty input`() { #expect(BenchmarkBuildTool.stats([]) == nil) }
 
     @Test
     func `parseTimingSummary extracts and sorts phases by cost`() {
         let output = """
-        Build Timing Summary
+            Build Timing Summary
 
-        Ld (1 task) | 0.456 seconds
-        CompileSwiftSources (12 tasks) | 34.567 seconds
-        PhaseScriptExecution (2 tasks) | 1.200 seconds
-        unrelated line that should be ignored
-        """
+            Ld (1 task) | 0.456 seconds
+            CompileSwiftSources (12 tasks) | 34.567 seconds
+            PhaseScriptExecution (2 tasks) | 1.200 seconds
+            unrelated line that should be ignored
+            """
         let phases = BenchmarkBuildTool.parseTimingSummary(output)
         #expect(phases.count == 3)
         // Sorted descending by seconds.
@@ -133,10 +131,10 @@ struct FindCompileHotspotsToolTests {
     @Test
     func `parseHotspots extracts expression and function-body warnings`() {
         let output = """
-        /proj/Sources/A.swift:12:5: warning: expression took 152ms to type-check (limit: 100ms)
-        /proj/Sources/B.swift:40:1: warning: instance method 'foo()' took 210ms to type-check (limit: 100ms)
-        /proj/Sources/A.swift:99:3: note: something unrelated
-        """
+            /proj/Sources/A.swift:12:5: warning: expression took 152ms to type-check (limit: 100ms)
+            /proj/Sources/B.swift:40:1: warning: instance method 'foo()' took 210ms to type-check (limit: 100ms)
+            /proj/Sources/A.swift:99:3: note: something unrelated
+            """
         let hotspots = FindCompileHotspotsTool.parseHotspots(output, projectRoot: "/proj")
         #expect(hotspots.count == 2)
         // Ranked slowest first.
@@ -150,9 +148,9 @@ struct FindCompileHotspotsToolTests {
     @Test
     func `parseHotspots keeps the worst duplicate per site`() {
         let output = """
-        /proj/A.swift:1:1: warning: expression took 100ms to type-check (limit: 50ms)
-        /proj/A.swift:1:1: warning: expression took 180ms to type-check (limit: 50ms)
-        """
+            /proj/A.swift:1:1: warning: expression took 100ms to type-check (limit: 50ms)
+            /proj/A.swift:1:1: warning: expression took 180ms to type-check (limit: 50ms)
+            """
         let hotspots = FindCompileHotspotsTool.parseHotspots(output, projectRoot: "/proj")
         #expect(hotspots.count == 1)
         #expect(hotspots[0].milliseconds == 180)
@@ -199,9 +197,7 @@ struct AuditBuildSettingsToolTests {
 
     @Test
     func `Tool schema has correct name and is read-only`() {
-        let tool = AuditBuildSettingsTool(
-            sessionManager: sessionManager, pathUtility: pathUtility,
-        )
+        let tool = AuditBuildSettingsTool(sessionManager: sessionManager, pathUtility: pathUtility)
         let schema = tool.tool()
         #expect(schema.name == "audit_build_settings")
         #expect(schema.annotations.readOnlyHint == true)
@@ -276,8 +272,8 @@ struct AuditBuildSettingsToolTests {
     @Test
     func `parseBuildSettings reads JSON output`() {
         let json = """
-        [{"target":"App","buildSettings":{"ONLY_ACTIVE_ARCH":"YES","PRODUCT_NAME":"App"}}]
-        """
+            [{"target":"App","buildSettings":{"ONLY_ACTIVE_ARCH":"YES","PRODUCT_NAME":"App"}}]
+            """
         let settings = AuditBuildSettingsTool.parseBuildSettings(from: json)
         #expect(settings["ONLY_ACTIVE_ARCH"] == "YES")
         #expect(settings["PRODUCT_NAME"] == "App")

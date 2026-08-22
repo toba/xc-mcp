@@ -1,7 +1,8 @@
 import MCP
 import Testing
-@testable import XCMCPCore
 import Foundation
+import TobaTesting
+@testable import XCMCPCore
 @testable import XCMCPTools
 
 struct StopMacAppToolTests {
@@ -39,9 +40,7 @@ struct StopMacAppToolTests {
     func `Execute with no arguments throws invalidParams`() async throws {
         let tool = StopMacAppTool(sessionManager: sessionManager)
 
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     @Test
@@ -57,9 +56,7 @@ struct StopMacAppToolTests {
         #expect(kill(pid, 0) == 0)
 
         let tool = StopMacAppTool(sessionManager: sessionManager)
-        let result = try await tool.execute(arguments: [
-            "pid": .int(Int(pid)),
-        ])
+        let result = try await tool.execute(arguments: ["pid": .int(Int(pid))])
 
         guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -67,9 +64,9 @@ struct StopMacAppToolTests {
         }
         #expect(message.contains("Successfully stopped"))
 
-        // Verify the process is gone (may take a moment)
-        try await Task.sleep(for: .milliseconds(200))
-        #expect(kill(pid, 0) != 0)
+        // Verify the process is gone. The poll returns the instant the process reaps, and it
+        // tolerates a slow machine up to the timeout.
+        await expectEventually("process \(pid) exits") { kill(pid, 0) != 0 }
     }
 
     @Test
@@ -81,14 +78,14 @@ struct StopMacAppToolTests {
         try process.run()
         let pid = process.processIdentifier
 
-        // Give bash time to set up the trap
+        // Give bash time to set up the trap. The installed trap is not observable from here, so a
+        // poll has nothing to test and a fixed wait is the only option.
         try await Task.sleep(for: .milliseconds(200))
         #expect(kill(pid, 0) == 0)
 
         let tool = StopMacAppTool(sessionManager: sessionManager)
         let result = try await tool.execute(arguments: [
-            "pid": .int(Int(pid)),
-            "force": .bool(true),
+            "pid": .int(Int(pid)), "force": .bool(true),
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
@@ -97,16 +94,13 @@ struct StopMacAppToolTests {
         }
         #expect(message.contains("forced"))
 
-        try await Task.sleep(for: .milliseconds(200))
-        #expect(kill(pid, 0) != 0)
+        await expectEventually("process \(pid) exits") { kill(pid, 0) != 0 }
     }
 
     @Test
     func `Stop non-existent PID reports not running`() async throws {
         let tool = StopMacAppTool(sessionManager: sessionManager)
-        let result = try await tool.execute(arguments: [
-            "pid": .int(99999),
-        ])
+        let result = try await tool.execute(arguments: ["pid": .int(99999)])
 
         guard case let .text(message, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -124,13 +118,14 @@ struct StopMacAppToolTests {
         try process.run()
         let pid = process.processIdentifier
 
-        // Give bash time to set up the trap
+        // Give bash time to set up the trap. The installed trap is not observable from here, so a
+        // poll has nothing to test and a fixed wait is the only option.
         try await Task.sleep(for: .milliseconds(200))
         #expect(kill(pid, 0) == 0)
 
         let tool = StopMacAppTool(sessionManager: sessionManager)
         let result = try await tool.execute(arguments: [
-            "pid": .int(Int(pid)),
+            "pid": .int(Int(pid))
             // force: false (default) — should try SIGTERM, timeout, then SIGKILL
         ])
 
@@ -140,15 +135,14 @@ struct StopMacAppToolTests {
         }
         #expect(message.contains("escalated to SIGKILL"))
 
-        try await Task.sleep(for: .milliseconds(200))
-        #expect(kill(pid, 0) != 0)
+        await expectEventually("process \(pid) exits") { kill(pid, 0) != 0 }
     }
 
     @Test
     func `Stop non-existent app by name reports not running`() async throws {
         let tool = StopMacAppTool(sessionManager: sessionManager)
         let result = try await tool.execute(arguments: [
-            "app_name": .string("NonExistentApp_XCMCPTest_12345"),
+            "app_name": .string("NonExistentApp_XCMCPTest_12345")
         ])
 
         guard case let .text(message, _, _) = result.content.first else {
@@ -163,6 +157,7 @@ struct StopMacAppToolTests {
     @Test
     func `Empty or whitespace app_name is rejected`() async throws {
         let tool = StopMacAppTool(sessionManager: sessionManager)
+
         for empty in ["", "   ", "\t\n"] {
             await #expect(throws: MCPError.self) {
                 try await tool.execute(arguments: ["app_name": .string(empty)])
@@ -182,17 +177,13 @@ struct StopMacAppToolTests {
     func `Unsafe PIDs that broadcast signals are rejected`() throws {
         // 0 targets the caller's process group; negatives target a process group; 1 is launchd.
         for unsafe in [0, -1, -1000, 1] {
-            #expect(throws: MCPError.self) {
-                try StopMacAppTool.validatedTargetPID(unsafe)
-            }
+            #expect(throws: MCPError.self) { try StopMacAppTool.validatedTargetPID(unsafe) }
         }
     }
 
     @Test
     func `Out-of-range PID is rejected`() throws {
-        #expect(throws: MCPError.self) {
-            try StopMacAppTool.validatedTargetPID(Int(Int32.max) + 1)
-        }
+        #expect(throws: MCPError.self) { try StopMacAppTool.validatedTargetPID(Int(Int32.max) + 1) }
     }
 
     @Test
@@ -204,9 +195,7 @@ struct StopMacAppToolTests {
     @Test
     func `Unsafe pid argument is rejected at the boundary`() async throws {
         let tool = StopMacAppTool(sessionManager: sessionManager)
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: ["pid": .int(0)])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: ["pid": .int(0)]) }
         await #expect(throws: MCPError.self) {
             try await tool.execute(arguments: ["pid": .int(-1)])
         }
@@ -226,13 +215,16 @@ struct StopMacAppToolTests {
 
         // A name that only appears as a substring (or in another process's arguments) must NOT
         // match — this is the `pkill -f` footgun the fix removes.
-        #expect(!PIDResolver.appNameMatches(
-            "My", localizedName: "MyApp", executableName: "MyApp", bundleName: "MyApp"))
-        #expect(!PIDResolver.appNameMatches(
-            "App", localizedName: "MyApp", executableName: "MyApp", bundleName: "MyApp"))
-        #expect(!PIDResolver.appNameMatches(
-            "MyApp", localizedName: "tail -f /var/log/MyApp.log", executableName: "tail",
-            bundleName: nil))
+        #expect(
+            !PIDResolver.appNameMatches(
+                "My", localizedName: "MyApp", executableName: "MyApp", bundleName: "MyApp"))
+        #expect(
+            !PIDResolver.appNameMatches(
+                "App", localizedName: "MyApp", executableName: "MyApp", bundleName: "MyApp"))
+        #expect(
+            !PIDResolver.appNameMatches(
+                "MyApp", localizedName: "tail -f /var/log/MyApp.log", executableName: "tail",
+                bundleName: nil))
     }
 
     @Test
@@ -242,7 +234,8 @@ struct StopMacAppToolTests {
         let long = "AVeryLongApplicationNameThatExceedsCommLength"
         #expect(PIDResolver.appNameMatches(
             long, localizedName: long, executableName: nil, bundleName: nil))
-        #expect(!PIDResolver.appNameMatches(
-            "AVeryLongApplic", localizedName: long, executableName: nil, bundleName: nil))
+        #expect(
+            !PIDResolver.appNameMatches(
+                "AVeryLongApplic", localizedName: long, executableName: nil, bundleName: nil))
     }
 }

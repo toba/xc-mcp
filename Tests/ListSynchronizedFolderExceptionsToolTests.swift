@@ -18,15 +18,14 @@ struct ListSynchronizedFolderExceptionsToolTests {
         #expect(tool.tool().name == "list_synchronized_folder_exceptions")
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .object(props) = schemaDict["properties"] {
                 #expect(props["project_path"] != nil)
                 #expect(props["folder_path"] != nil)
             }
 
-            if case let .array(required) = schemaDict["required"] {
-                #expect(required.count == 2)
-            }
+            if case let .array(required) = schemaDict["required"] { #expect(required.count == 2) }
         }
     }
 
@@ -35,9 +34,7 @@ struct ListSynchronizedFolderExceptionsToolTests {
         let tool = ListSynchronizedFolderExceptionsTool(pathUtility: pathUtility)
 
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "project_path": .string("test.xcodeproj"),
-            ])
+            try tool.execute(arguments: ["project_path": .string("test.xcodeproj")])
         }
     }
 
@@ -110,9 +107,7 @@ struct ListSynchronizedFolderExceptionsToolTests {
             sourceTree: .group, path: "Sources", name: "Sources",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
-        if let mainGroup = project.mainGroup {
-            mainGroup.children.append(syncGroup)
-        }
+        if let mainGroup = project.mainGroup { mainGroup.children.append(syncGroup) }
 
         let target1 = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" })
         let exception1 = PBXFileSystemSynchronizedBuildFileExceptionSet(

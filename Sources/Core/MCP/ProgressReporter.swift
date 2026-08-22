@@ -1,6 +1,7 @@
 import MCP
 import Foundation
 import Synchronization
+import TobaConcurrency
 
 /// Streams periodic last-line snapshots from a long-running process to an MCP client via
 /// `notifications/progress`.
@@ -53,16 +54,18 @@ public final class ProgressReporter: Sendable {
     private static func lastNonBlankLine(in chunk: String) -> String? {
         var segmentEnd = chunk.endIndex
         var i = chunk.endIndex
+
         while i > chunk.startIndex {
             let j = chunk.index(before: i)
+
             if chunk[j].isNewline {
-                let trimmed = chunk[i ..< segmentEnd].trimmingCharacters(in: .whitespaces)
+                let trimmed = chunk[i..<segmentEnd].trimmingCharacters(in: .whitespaces)
                 if !trimmed.isEmpty { return trimmed }
                 segmentEnd = j
             }
             i = j
         }
-        let leading = chunk[chunk.startIndex ..< segmentEnd].trimmingCharacters(in: .whitespaces)
+        let leading = chunk[chunk.startIndex..<segmentEnd].trimmingCharacters(in: .whitespaces)
         return leading.isEmpty ? nil : leading
     }
 
@@ -73,9 +76,7 @@ public final class ProgressReporter: Sendable {
     /// Sending a progress notification for a cancelled / unknown token causes the MCP client to
     /// treat it as a transport-level error and tear down the stdio pipe, which kills the entire
     /// server for the rest of the session.
-    public func retire() {
-        state.withLock { $0.retired = true }
-    }
+    public func retire() { state.withLock { $0.retired = true } }
 
     /// Drains a single notification if a new line is available.
     ///
@@ -121,7 +122,7 @@ public final class ProgressReporter: Sendable {
                     _ = await emitIfPending()
                 }
             }
-            pollTaskBox.withLock { $0 = pollTask }
+            pollTaskBox(set: pollTask)
             defer {
                 self.retire()
                 pollTask.cancel()

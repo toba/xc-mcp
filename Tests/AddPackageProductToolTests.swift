@@ -53,9 +53,7 @@ struct AddPackageProductToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let testTarget = PBXNativeTarget(name: "Tests")
         xcodeproj.pbxproj.add(object: testTarget)
-        if let project = try xcodeproj.pbxproj.rootProject() {
-            project.targets.append(testTarget)
-        }
+        if let project = try xcodeproj.pbxproj.rootProject() { project.targets.append(testTarget) }
 
         // Add a remote package with a product linked to App
         let packageRef = XCRemoteSwiftPackageReference(
@@ -67,11 +65,9 @@ struct AddPackageProductToolTests {
             project.remotePackages.append(packageRef)
         }
 
-        let appTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first(where: {
-                $0.name == "App"
-            }),
-        )
+        let appTarget = try #require(xcodeproj.pbxproj.nativeTargets.first(where: {
+            $0.name == "App"
+        }))
         let productDep = XCSwiftPackageProductDependency(
             productName: "HTTPTypes",
             package: packageRef,
@@ -96,11 +92,9 @@ struct AddPackageProductToolTests {
 
         // Verify the product was added
         let reloaded = try XcodeProj(path: projectPath)
-        let reloadedTests = try #require(
-            reloaded.pbxproj.nativeTargets.first(where: {
-                $0.name == "Tests"
-            }),
-        )
+        let reloadedTests = try #require(reloaded.pbxproj.nativeTargets.first(where: {
+            $0.name == "Tests"
+        }))
         #expect(reloadedTests.packageProductDependencies?.count == 1)
         #expect(reloadedTests.packageProductDependencies?.first?.productName == "HTTPTypes")
     }
@@ -118,10 +112,7 @@ struct AddPackageProductToolTests {
         // Add a product already linked to App
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first)
-        let productDep = XCSwiftPackageProductDependency(
-            productName: "Alamofire",
-            package: nil,
-        )
+        let productDep = XCSwiftPackageProductDependency(productName: "Alamofire", package: nil)
         xcodeproj.pbxproj.add(object: productDep)
         target.packageProductDependencies = [productDep]
         try xcodeproj.write(path: projectPath)
@@ -163,16 +154,12 @@ struct AddPackageProductToolTests {
         let reloaded = try XcodeProj(path: projectPath)
         let appTarget = try #require(reloaded.pbxproj.nativeTargets.first)
         #expect(appTarget.packageProductDependencies?.count == 1)
-        #expect(
-            appTarget.packageProductDependencies?.first?.productName == "MyBuildToolPlugin",
-        )
+        #expect(appTarget.packageProductDependencies?.first?.productName == "MyBuildToolPlugin")
 
         // No PBXBuildFile referencing the plugin should exist in any frameworks phase.
         let frameworksFiles =
-            (
-                appTarget.buildPhases.first(where: { $0 is PBXFrameworksBuildPhase })
-                    as? PBXFrameworksBuildPhase
-            )?.files ?? []
+            (appTarget.buildPhases.first(where: { $0 is PBXFrameworksBuildPhase })
+            as? PBXFrameworksBuildPhase)?.files ?? []
         let hasPluginInFrameworks = frameworksFiles.contains { file in
             file.product?.productName == "MyBuildToolPlugin"
         }
@@ -187,18 +174,18 @@ struct AddPackageProductToolTests {
         let pkgDir = tempDir.appendingPathComponent("LocalPkg")
         try FileManager.default.createDirectory(at: pkgDir, withIntermediateDirectories: true)
         let packageSwift = """
-        // swift-tools-version: 5.9
-        import PackageDescription
-        let package = Package(
-            name: "LocalPkg",
-            products: [
-                .plugin(name: "MyPlugin", targets: ["MyPlugin"]),
-            ],
-            targets: [
-                .plugin(name: "MyPlugin", capability: .buildTool()),
-            ]
-        )
-        """
+            // swift-tools-version: 5.9
+            import PackageDescription
+            let package = Package(
+                name: "LocalPkg",
+                products: [
+                    .plugin(name: "MyPlugin", targets: ["MyPlugin"]),
+                ],
+                targets: [
+                    .plugin(name: "MyPlugin", capability: .buildTool()),
+                ]
+            )
+            """
         try packageSwift.write(
             to: pkgDir.appendingPathComponent("Package.swift"),
             atomically: true,
@@ -236,10 +223,8 @@ struct AddPackageProductToolTests {
         let reloaded = try XcodeProj(path: projectPath)
         let appTarget = try #require(reloaded.pbxproj.nativeTargets.first)
         let frameworksFiles =
-            (
-                appTarget.buildPhases.first(where: { $0 is PBXFrameworksBuildPhase })
-                    as? PBXFrameworksBuildPhase
-            )?.files ?? []
+            (appTarget.buildPhases.first(where: { $0 is PBXFrameworksBuildPhase })
+            as? PBXFrameworksBuildPhase)?.files ?? []
         let hasPluginInFrameworks = frameworksFiles.contains { file in
             file.product?.productName == "MyPlugin"
         }
@@ -318,24 +303,24 @@ struct AddPackageProductToolTests {
             name: "TestProject", targetName: "App", at: projectPath,
         )
 
-        // Stage a checkout under SourcePackages/checkouts/<name> so the
-        // discovery path can match by directory basename.
+        // Stage a checkout under SourcePackages/checkouts/<name> so the discovery path can match by
+        // directory basename.
         let checkoutsRoot = tempDir.appendingPathComponent("SourcePackages/checkouts")
         let pkgDir = checkoutsRoot.appendingPathComponent("swiftiomatic-plugins")
         try FileManager.default.createDirectory(at: pkgDir, withIntermediateDirectories: true)
         let packageSwift = """
-        // swift-tools-version: 5.9
-        import PackageDescription
-        let package = Package(
-            name: "swiftiomatic-plugins",
-            products: [
-                .plugin(name: "SwiftiomaticBuildToolPlugin", targets: ["SwiftiomaticBuildToolPlugin"]),
-            ],
-            targets: [
-                .plugin(name: "SwiftiomaticBuildToolPlugin", capability: .buildTool()),
-            ]
-        )
-        """
+            // swift-tools-version: 5.9
+            import PackageDescription
+            let package = Package(
+                name: "swiftiomatic-plugins",
+                products: [
+                    .plugin(name: "SwiftiomaticBuildToolPlugin", targets: ["SwiftiomaticBuildToolPlugin"]),
+                ],
+                targets: [
+                    .plugin(name: "SwiftiomaticBuildToolPlugin", capability: .buildTool()),
+                ]
+            )
+            """
         try packageSwift.write(
             to: pkgDir.appendingPathComponent("Package.swift"),
             atomically: true, encoding: .utf8,

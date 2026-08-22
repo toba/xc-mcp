@@ -13,32 +13,27 @@ struct ListTargetsToolTests {
         let toolDefinition = tool.tool()
 
         #expect(toolDefinition.name == "list_targets")
-        #expect(toolDefinition.description?.contains("List all targets in an Xcode project") == true)
+        #expect(
+            toolDefinition.description?.contains("List all targets in an Xcode project") == true)
     }
 
     @Test func `list targets with missing project path`() throws {
         let tool = ListTargetsTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [:])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: [:]) }
     }
 
     @Test func `list targets with invalid project path`() throws {
         let tool = ListTargetsTool(pathUtility: PathUtility(basePath: "/tmp"))
         let arguments: [String: Value] = [
-            "project_path": Value.string("/nonexistent/path.xcodeproj"),
+            "project_path": Value.string("/nonexistent/path.xcodeproj")
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: arguments) }
     }
 
     @Test func `list targets filter by product type`() throws {
-        let (tool, projectPath) = try makeTwoTargetTool(
-            target1: "AppA", target2: "AppB",
-        )
+        let (tool, projectPath) = try makeTwoTargetTool(target1: "AppA", target2: "AppB")
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
             "product_type": .string("com.apple.product-type.application"),
@@ -50,9 +45,7 @@ struct ListTargetsToolTests {
     }
 
     @Test func `list targets filter excludes by product type`() throws {
-        let (tool, projectPath) = try makeTwoTargetTool(
-            target1: "AppA", target2: "AppB",
-        )
+        let (tool, projectPath) = try makeTwoTargetTool(target1: "AppA", target2: "AppB")
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
             "product_type": .string("com.apple.product-type.framework"),
@@ -103,10 +96,7 @@ struct ListTargetsToolTests {
         // Default helper sets PRODUCT_NAME = targetName
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
-            "has_setting": .object([
-                "name": .string("PRODUCT_NAME"),
-                "value": .string("AppA"),
-            ]),
+            "has_setting": .object(["name": .string("PRODUCT_NAME"), "value": .string("AppA")]),
         ])
         let text = textContent(result)
         #expect(text.contains("- AppA ["))
@@ -125,7 +115,8 @@ struct ListTargetsToolTests {
     }
 
     private func makeTwoTargetTool(
-        target1: String, target2: String,
+        target1: String,
+        target2: String,
     ) throws -> (ListTargetsTool, Path) {
         let tempDir = TemporaryDirectory.url
         let projectPath = Path(tempDir.path) + "Two.xcodeproj"
@@ -153,13 +144,12 @@ struct ListTargetsToolTests {
         try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
         // List targets in the created project
-        let listArguments: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-        ]
+        let listArguments: [String: Value] = ["project_path": Value.string(projectPath.string)]
 
         let result = try tool.execute(arguments: listArguments)
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("TestProject.xcodeproj"))
             #expect(content.contains("No targets found"))

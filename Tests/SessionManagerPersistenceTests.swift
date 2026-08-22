@@ -1,8 +1,8 @@
 import MCP
 import Testing
-@testable import XCMCPCore
 import Foundation
 import Subprocess
+@testable import XCMCPCore
 
 @Suite(.temporaryDirectory, .serialized)
 struct SessionManagerPersistenceTests {
@@ -108,10 +108,7 @@ struct SessionManagerPersistenceTests {
         let server2 = SessionManager(filePath: path)
 
         // server1 sets defaults (writes shared file)
-        await server1.setDefaults(
-            projectPath: "/path/to/Project.xcodeproj",
-            scheme: "Standard",
-        )
+        await server1.setDefaults(projectPath: "/path/to/Project.xcodeproj", scheme: "Standard")
 
         // server2 was already running — should pick up the change on next resolve
         let defaults = await server2.getDefaults()
@@ -178,8 +175,10 @@ struct SessionManagerPersistenceTests {
         #expect(firstResolved.project == secondResolved.project)
 
         // Same logical project ⇒ same scoped DerivedData root across calls ⇒ warm cache reuse.
-        let firstScope = DerivedDataScoper.scopedPath(workspacePath: nil, projectPath: firstResolved.project)
-        let secondScope = DerivedDataScoper.scopedPath(workspacePath: nil, projectPath: secondResolved.project)
+        let firstScope = DerivedDataScoper.scopedPath(
+            workspacePath: nil, projectPath: firstResolved.project)
+        let secondScope = DerivedDataScoper.scopedPath(
+            workspacePath: nil, projectPath: secondResolved.project)
         #expect(firstScope == secondScope)
     }
 
@@ -203,9 +202,7 @@ struct SessionManagerPersistenceTests {
         let manager = SessionManager(filePath: path)
         await manager.setDefaults(configuration: "Release")
 
-        let resolved = await manager.resolveConfiguration(
-            from: ["configuration": .string("Beta")],
-        )
+        let resolved = await manager.resolveConfiguration(from: ["configuration": .string("Beta")])
         #expect(resolved == "Beta")
     }
 
@@ -267,10 +264,7 @@ struct SessionManagerPersistenceTests {
 
         // Per-invocation env overrides SHARED and adds NEW_KEY
         let arguments: [String: Value] = [
-            "env": .object([
-                "SHARED": .string("from_invocation"),
-                "NEW_KEY": .string("new"),
-            ]),
+            "env": .object(["SHARED": .string("from_invocation"), "NEW_KEY": .string("new")])
         ]
 
         let environment = await manager.resolveEnvironment(from: arguments)

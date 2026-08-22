@@ -88,8 +88,8 @@ struct ListFrameworksPhaseToolTests {
             "bundle_identifier": .string("com.test.core"),
         ])
 
-        // Hand-build a PBXReferenceProxy entry in App's frameworks phase that points at Core via
-        // a PBXContainerItemProxy — the same shape as a cross-project framework reference. Don't
+        // Hand-build a PBXReferenceProxy entry in App's frameworks phase that points at Core via a
+        // PBXContainerItemProxy — the same shape as a cross-project framework reference. Don't
         // create a PBXTargetDependency edge: that's the link-only-without-ordering case.
         let xcodeproj = try XcodeProj(path: projectPath)
         let app = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }!
@@ -112,6 +112,7 @@ struct ListFrameworksPhaseToolTests {
         let buildFile = PBXBuildFile(file: refProxy)
         xcodeproj.pbxproj.add(object: buildFile)
         let phase: PBXFrameworksBuildPhase
+
         if let existing = app.buildPhases.first(where: { $0 is PBXFrameworksBuildPhase })
             as? PBXFrameworksBuildPhase
         {
@@ -141,7 +142,7 @@ struct ListFrameworksPhaseToolTests {
         // validate_project should also catch the same asymmetry as a warning.
         let validate = ValidateProjectTool(pathUtility: pathUtility)
         let valResult = try validate.execute(arguments: [
-            "project_path": .string(projectPath.string),
+            "project_path": .string(projectPath.string)
         ])
         guard case let .text(valText, _, _) = valResult.content.first else {
             Issue.record("Expected text")

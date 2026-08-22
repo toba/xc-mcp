@@ -29,19 +29,19 @@ struct IconManifestTests {
                             name: "Logo",
                             glass: false,
                             position: IconManifest.Position(scale: 0.8)
-                        ),
+                        )
                     ],
                     shadow: IconManifest.Shadow(kind: "neutral", opacity: 0.5),
                     specular: true,
                     translucency: IconManifest.Translucency(enabled: true, value: 0.4)
-                ),
+                )
             ],
             fill: .automaticGradient("srgb:0.00000,0.53333,1.00000,1.00000"),
             fillSpecializations: [
                 IconManifest.Specialization(
                     appearance: "dark",
                     value: .solid("srgb:0.10000,0.10000,0.10000,1.00000")
-                ),
+                )
             ]
         )
 
@@ -66,6 +66,7 @@ struct IconManifestTests {
 
         #expect(decoded.fillSpecializations?.count == 1)
         #expect(decoded.fillSpecializations?[0].appearance == "dark")
+
         if case let .solid(color) = decoded.fillSpecializations?[0].value {
             #expect(color.contains("0.10000"))
         } else {
@@ -90,37 +91,37 @@ struct IconManifestTests {
     @Test
     func `Decodes swiftiomatic icon json`() throws {
         let json = """
-        {
-          "fill" : {
-            "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
-          },
-          "groups" : [
             {
-              "layers" : [
+              "fill" : {
+                "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+              },
+              "groups" : [
                 {
-                  "glass" : false,
-                  "image-name" : "logo.png",
-                  "name" : "logo"
+                  "layers" : [
+                    {
+                      "glass" : false,
+                      "image-name" : "logo.png",
+                      "name" : "logo"
+                    }
+                  ],
+                  "shadow" : {
+                    "kind" : "neutral",
+                    "opacity" : 0.5
+                  },
+                  "translucency" : {
+                    "enabled" : true,
+                    "value" : 0.5
+                  }
                 }
               ],
-              "shadow" : {
-                "kind" : "neutral",
-                "opacity" : 0.5
-              },
-              "translucency" : {
-                "enabled" : true,
-                "value" : 0.5
+              "supported-platforms" : {
+                "circles" : [
+                  "watchOS"
+                ],
+                "squares" : "shared"
               }
             }
-          ],
-          "supported-platforms" : {
-            "circles" : [
-              "watchOS"
-            ],
-            "squares" : "shared"
-          }
-        }
-        """
+            """
         let data = Data(json.utf8)
         let manifest = try JSONDecoder().decode(IconManifest.self, from: data)
 
@@ -144,17 +145,11 @@ struct IconManifestTests {
     func `Write creates icon json file`() throws {
         let tempDir = TemporaryDirectory.url
         let bundlePath = tempDir.appendingPathComponent("Test.icon")
-        try FileManager.default.createDirectory(
-            at: bundlePath, withIntermediateDirectories: true,
-        )
+        try FileManager.default.createDirectory(at: bundlePath, withIntermediateDirectories: true)
 
-        let manifest = IconManifest(
-            groups: [
-                IconManifest.Group(
-                    layers: [IconManifest.Layer(imageName: "test.png", name: "test")]
-                ),
-            ]
-        )
+        let manifest = IconManifest(groups: [
+            IconManifest.Group(layers: [IconManifest.Layer(imageName: "test.png", name: "test")])
+        ])
         try manifest.write(to: bundlePath.path)
 
         let jsonPath = bundlePath.appendingPathComponent("icon.json")

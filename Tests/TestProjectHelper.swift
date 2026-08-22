@@ -334,13 +334,12 @@ enum TestProjectHelper {
         try xcodeproj.write(path: path)
     }
 
-    /// Creates a project where every module has a synchronized folder sharing the same leaf
-    /// `path` (e.g. `Sources`), nested under a per-module parent group, and bound to that
-    /// module's target via `fileSystemSynchronizedGroups`. This reproduces the leaf-name
-    /// ambiguity from 44g-dgh.
+    /// Creates a project where every module has a synchronized folder sharing the same leaf `path`
+    /// (e.g. `Sources`), nested under a per-module parent group, and bound to that module's target
+    /// via `fileSystemSynchronizedGroups`. This reproduces the leaf-name ambiguity from 44g-dgh.
     ///
-    /// For each module name, the layout is `mainGroup → <Module> (PBXGroup) → Sources (sync)`,
-    /// so the sync folder's full path is `<Module>/<leaf>`.
+    /// For each module name, the layout is `mainGroup → <Module> (PBXGroup) → Sources (sync)`, so
+    /// the sync folder's full path is `<Module>/<leaf>`.
     static func createTestProjectWithAmbiguousSyncFolders(
         name: String,
         modules: [String],
@@ -348,9 +347,7 @@ enum TestProjectHelper {
         at path: Path,
     ) throws {
         // Seed with the first module as the initial target.
-        try createTestProjectWithTarget(
-            name: name, targetName: modules[0], at: path,
-        )
+        try createTestProjectWithTarget(name: name, targetName: modules[0], at: path)
 
         let xcodeproj = try XcodeProj(path: path)
         let pbxproj = xcodeproj.pbxproj
@@ -386,9 +383,7 @@ enum TestProjectHelper {
                 rootProject.targets.append(target)
             }
 
-            let moduleGroup = PBXGroup(
-                children: [], sourceTree: .group, path: module,
-            )
+            let moduleGroup = PBXGroup(children: [], sourceTree: .group, path: module)
             pbxproj.add(object: moduleGroup)
             mainGroup.children.append(moduleGroup)
 

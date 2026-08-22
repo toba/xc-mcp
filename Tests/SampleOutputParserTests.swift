@@ -5,47 +5,47 @@ struct SampleOutputParserTests {
     // MARK: - Section splitting
 
     static let sampleOutput = """
-    Analysis of sampling Thesis (pid 12345) every 1 millisecond
-    Process:         Thesis [12345]
-    Path:            /Users/test/Build/Thesis.app/Contents/MacOS/Thesis
-    Identifier:      com.toba.thesis
-    Code Type:       ARM64E
-    Platform:        macOS
-    ----
+        Analysis of sampling Thesis (pid 12345) every 1 millisecond
+        Process:         Thesis [12345]
+        Path:            /Users/test/Build/Thesis.app/Contents/MacOS/Thesis
+        Identifier:      com.toba.thesis
+        Code Type:       ARM64E
+        Platform:        macOS
+        ----
 
-    Call graph:
-        1000 Thread_100   DispatchQueue_1: com.apple.main-thread  (serial)
-          + 1000 start  (in dyld) + 6076  [0x195256b98]
-          +   1000 main  (in Thesis) + 100  [0x100000100]
-          +     700 SQLMigration.runSchemas  (in Thesis) + 44  [0x100001000]
-          +       500 SQLCreator.createTrigger  (in Thesis) + 103  [0x100002000]
-          +       200 NodeSchema.validate  (in Thesis) + 50  [0x100003000]
-          +     200 AppDelegate.didFinishLaunching  (in Thesis) + 80  [0x100004000]
-          +       200 NSApplicationMain  (in AppKit) + 880  [0x1995cb2dc]
-          +         200 -[NSApplication run]  (in AppKit) + 480  [0x1995f4be4]
-          +           200 CFRunLoopRunSpecific  (in CoreFoundation) + 572  [0x1956e09e8]
-          +             200 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x1955b5c34]
-          +     100 CloudKitSchema.createTriggers  (in Thesis) + 51  [0x100005000]
-          +       100 SQLCreator.createTrigger  (in Thesis) + 103  [0x100002000]
-        500 Thread_200: com.apple.NSEventThread
-          + 500 thread_start  (in libsystem_pthread.dylib) + 8  [0x1955f2b80]
-          +   500 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x1955f7bc8]
-          +     500 _NSEventThread  (in AppKit) + 140  [0x19972578c]
-          +       500 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x1955b5c34]
-        300 Thread_300
-          + 300 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x1955f2b74]
-          +   300 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x1955f3e6c]
-          +     300 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x1955b78b0]
+        Call graph:
+            1000 Thread_100   DispatchQueue_1: com.apple.main-thread  (serial)
+              + 1000 start  (in dyld) + 6076  [0x195256b98]
+              +   1000 main  (in Thesis) + 100  [0x100000100]
+              +     700 SQLMigration.runSchemas  (in Thesis) + 44  [0x100001000]
+              +       500 SQLCreator.createTrigger  (in Thesis) + 103  [0x100002000]
+              +       200 NodeSchema.validate  (in Thesis) + 50  [0x100003000]
+              +     200 AppDelegate.didFinishLaunching  (in Thesis) + 80  [0x100004000]
+              +       200 NSApplicationMain  (in AppKit) + 880  [0x1995cb2dc]
+              +         200 -[NSApplication run]  (in AppKit) + 480  [0x1995f4be4]
+              +           200 CFRunLoopRunSpecific  (in CoreFoundation) + 572  [0x1956e09e8]
+              +             200 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x1955b5c34]
+              +     100 CloudKitSchema.createTriggers  (in Thesis) + 51  [0x100005000]
+              +       100 SQLCreator.createTrigger  (in Thesis) + 103  [0x100002000]
+            500 Thread_200: com.apple.NSEventThread
+              + 500 thread_start  (in libsystem_pthread.dylib) + 8  [0x1955f2b80]
+              +   500 _pthread_start  (in libsystem_pthread.dylib) + 136  [0x1955f7bc8]
+              +     500 _NSEventThread  (in AppKit) + 140  [0x19972578c]
+              +       500 mach_msg2_trap  (in libsystem_kernel.dylib) + 8  [0x1955b5c34]
+            300 Thread_300
+              + 300 start_wqthread  (in libsystem_pthread.dylib) + 8  [0x1955f2b74]
+              +   300 _pthread_wqthread  (in libsystem_pthread.dylib) + 368  [0x1955f3e6c]
+              +     300 __workq_kernreturn  (in libsystem_kernel.dylib) + 8  [0x1955b78b0]
 
-    Total number in stack (recursive counted multiple, when >=5):
+        Total number in stack (recursive counted multiple, when >=5):
 
-    Sort by top of stack, same collapsed (when >= 5):
-            mach_msg2_trap  (in libsystem_kernel.dylib)        700
-            __workq_kernreturn  (in libsystem_kernel.dylib)        300
+        Sort by top of stack, same collapsed (when >= 5):
+                mach_msg2_trap  (in libsystem_kernel.dylib)        700
+                __workq_kernreturn  (in libsystem_kernel.dylib)        300
 
-    Binary Images:
-           0x100000000 -        0x100100000 +Thesis (1.0) <ABC123> /Users/test/Build/Thesis.app/Contents/MacOS/Thesis
-    """
+        Binary Images:
+               0x100000000 -        0x100100000 +Thesis (1.0) <ABC123> /Users/test/Build/Thesis.app/Contents/MacOS/Thesis
+        """
 
     @Test
     func `Splits sections correctly`() {
@@ -108,8 +108,7 @@ struct SampleOutputParserTests {
 
     @Test
     func `Parses ObjC frame line`() {
-        let line =
-            "    +       200 -[NSApplication run]  (in AppKit) + 480  [0x1995f4be4]"
+        let line = "    +       200 -[NSApplication run]  (in AppKit) + 480  [0x1995f4be4]"
         let parsed = SampleOutputParser.parseFrameLine(line)
 
         #expect(parsed != nil)
@@ -233,8 +232,8 @@ struct SampleOutputParserTests {
             thread: "main",
         )
 
-        // With topN=1, should only have one entry in function table
-        // Count lines in the Heaviest Functions section
+        // With topN=1, should only have one entry in function table Count lines in the Heaviest
+        // Functions section
         let lines = summary.components(separatedBy: .newlines)
         let functionTableLines = lines.filter { $0.contains("|") && !$0.contains("---") }
         // Header + 1 data row

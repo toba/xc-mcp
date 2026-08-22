@@ -1,5 +1,5 @@
-import Foundation
 import Testing
+import Foundation
 @testable import XCMCPCore
 
 @Suite(.temporaryDirectory)
@@ -32,6 +32,7 @@ struct PIFCacheReaderTests {
         try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
 
         let reader = PIFCacheReader()
+
         do {
             _ = try reader.load(
                 projectPath: "/tmp/MyApp.xcodeproj",
@@ -51,9 +52,7 @@ struct PIFCacheReaderTests {
     func `load surfaces derivedDataNotFound when no matching dir exists`() throws {
         let temp = TemporaryDirectory.url
         let derivedData = temp.appendingPathComponent("DerivedData")
-        try FileManager.default.createDirectory(
-            at: derivedData, withIntermediateDirectories: true,
-        )
+        try FileManager.default.createDirectory(at: derivedData, withIntermediateDirectories: true)
 
         do {
             _ = try PIFCacheReader().load(
@@ -88,8 +87,8 @@ struct PIFCacheReaderTests {
         #expect(duplicates[fixture.coreGuid]?.count == 2)
 
         // Each project lists exactly one target ref.
-        let projectsByCore = fixture.coreTargetCacheNames.compactMap { name -> [PIFCacheReader.Project]? in
-            index.projectsByTargetRef[name]
+        let projectsByCore = fixture.coreTargetCacheNames.compactMap {
+            name -> [PIFCacheReader.Project]? in index.projectsByTargetRef[name]
         }
         #expect(projectsByCore.count == 2)
     }
@@ -117,6 +116,7 @@ struct TestPIFCacheFixture {
         let workspace = cache.appendingPathComponent("workspace")
         let project = cache.appendingPathComponent("project")
         let target = cache.appendingPathComponent("target")
+
         for dir in [workspace, project, target] {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
@@ -133,50 +133,62 @@ struct TestPIFCacheFixture {
         let projectBGuid = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
         // Two distinct target cache files that share the same top-level guid (the duplicate).
-        try writeJSON(at: target.appendingPathComponent(coreATargetFile + "-json"), object: [
-            "guid": coreGuid,
-            "name": "Core",
-            "productTypeIdentifier": "com.apple.product-type.framework",
-            "productReference": ["name": "Core.framework"],
-            "dependencies": [],
-        ])
-        try writeJSON(at: target.appendingPathComponent(coreBTargetFile + "-json"), object: [
-            "guid": coreGuid,
-            "name": "Core",
-            "productTypeIdentifier": "com.apple.product-type.framework",
-            "productReference": ["name": "Core.framework"],
-            "dependencies": [],
-        ])
+        try writeJSON(
+            at: target.appendingPathComponent(coreATargetFile + "-json"),
+            object: [
+                "guid": coreGuid,
+                "name": "Core",
+                "productTypeIdentifier": "com.apple.product-type.framework",
+                "productReference": ["name": "Core.framework"],
+                "dependencies": [],
+            ])
+        try writeJSON(
+            at: target.appendingPathComponent(coreBTargetFile + "-json"),
+            object: [
+                "guid": coreGuid,
+                "name": "Core",
+                "productTypeIdentifier": "com.apple.product-type.framework",
+                "productReference": ["name": "Core.framework"],
+                "dependencies": [],
+            ])
         // A consumer target that depends on Core.
-        try writeJSON(at: target.appendingPathComponent(appTargetFile + "-json"), object: [
-            "guid": "1111111111111111111111111111111111111111111111111111111111111111",
-            "name": "ThesisApp",
-            "productTypeIdentifier": "com.apple.product-type.application",
-            "productReference": ["name": "ThesisApp.app"],
-            "dependencies": [["guid": coreGuid, "name": "Core"]],
-        ])
+        try writeJSON(
+            at: target.appendingPathComponent(appTargetFile + "-json"),
+            object: [
+                "guid": "1111111111111111111111111111111111111111111111111111111111111111",
+                "name": "ThesisApp",
+                "productTypeIdentifier": "com.apple.product-type.application",
+                "productReference": ["name": "ThesisApp.app"],
+                "dependencies": [["guid": coreGuid, "name": "Core"]],
+            ])
 
-        try writeJSON(at: project.appendingPathComponent(projectAFile + "-json"), object: [
-            "guid": projectAGuid,
-            "projectName": "Thesis",
-            "path": "/Users/test/Thesis.xcodeproj",
-            "targets": [coreATargetFile, appTargetFile],
-        ])
-        try writeJSON(at: project.appendingPathComponent(projectBFile + "-json"), object: [
-            "guid": projectBGuid,
-            "projectName": "ThesisOther",
-            "path": "/Users/test/ThesisOther.xcodeproj",
-            "targets": [coreBTargetFile],
-        ])
+        try writeJSON(
+            at: project.appendingPathComponent(projectAFile + "-json"),
+            object: [
+                "guid": projectAGuid,
+                "projectName": "Thesis",
+                "path": "/Users/test/Thesis.xcodeproj",
+                "targets": [coreATargetFile, appTargetFile],
+            ])
+        try writeJSON(
+            at: project.appendingPathComponent(projectBFile + "-json"),
+            object: [
+                "guid": projectBGuid,
+                "projectName": "ThesisOther",
+                "path": "/Users/test/ThesisOther.xcodeproj",
+                "targets": [coreBTargetFile],
+            ])
 
-        try writeJSON(at: workspace.appendingPathComponent(workspaceFile + "-json"), object: [
-            "guid": "ccccccccccccccccccccccccccccccccccccc",
-            "name": "Thesis",
-            "path": "/Users/test/Thesis.xcworkspace",
-            "projects": [projectAFile, projectBFile],
-        ])
+        try writeJSON(
+            at: workspace.appendingPathComponent(workspaceFile + "-json"),
+            object: [
+                "guid": "ccccccccccccccccccccccccccccccccccccc",
+                "name": "Thesis",
+                "path": "/Users/test/Thesis.xcworkspace",
+                "projects": [projectAFile, projectBFile],
+            ])
 
-        return TestPIFCacheFixture(
+        return .init(
             tempRoot: temp,
             derivedDataRoot: derived.path,
             coreGuid: coreGuid,

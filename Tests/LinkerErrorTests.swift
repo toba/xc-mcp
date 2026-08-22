@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import TobaTesting
 @testable import XCMCPCore
 
 struct LinkerErrorTests {
@@ -7,11 +8,9 @@ struct LinkerErrorTests {
     func `Parse undefined symbol linker error`() throws {
         let parser = BuildOutputParser()
 
-        let fixtureURL = try #require(Bundle.module.url(
-            forResource: "linker-error-output", withExtension: "txt", subdirectory: "Fixtures",
-        ),
+        let input = try String(
+            contentsOf: TestFixtures.url("linker-error-output.txt"), encoding: .utf8,
         )
-        let input = try String(contentsOf: fixtureURL, encoding: .utf8)
 
         let result = parser.parse(input: input)
 

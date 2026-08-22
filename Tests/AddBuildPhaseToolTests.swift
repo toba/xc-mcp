@@ -69,9 +69,7 @@ struct AddBuildPhaseToolTests {
     ) throws {
         let tool = AddBuildPhaseTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     @Test
@@ -109,13 +107,12 @@ struct AddBuildPhaseToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
 
-        let hasScriptPhase =
-            target?.buildPhases.contains { phase in
-                if let scriptPhase = phase as? PBXShellScriptBuildPhase {
-                    return scriptPhase.name == "SwiftLint"
-                }
-                return false
-            } ?? false
+        let hasScriptPhase = target?.buildPhases.contains { phase in
+            if let scriptPhase = phase as? PBXShellScriptBuildPhase {
+                return scriptPhase.name == "SwiftLint"
+            }
+            return false
+        } ?? false
 
         #expect(hasScriptPhase == true)
     }
@@ -164,14 +161,13 @@ struct AddBuildPhaseToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" }
 
-        let hasCopyPhase =
-            target?.buildPhases.contains { phase in
-                if let copyPhase = phase as? PBXCopyFilesBuildPhase {
-                    return copyPhase.name == "Copy Config Files"
-                        && copyPhase.dstSubfolderSpec == .resources
-                }
-                return false
-            } ?? false
+        let hasCopyPhase = target?.buildPhases.contains { phase in
+            if let copyPhase = phase as? PBXCopyFilesBuildPhase {
+                return copyPhase.name == "Copy Config Files"
+                    && copyPhase.dstSubfolderSpec == .resources
+            }
+            return false
+        } ?? false
 
         #expect(hasCopyPhase == true)
     }
@@ -195,9 +191,7 @@ struct AddBuildPhaseToolTests {
             // Missing script parameter
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 
     @Test
@@ -219,9 +213,7 @@ struct AddBuildPhaseToolTests {
             // Missing destination parameter
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 
     @Test
@@ -242,9 +234,7 @@ struct AddBuildPhaseToolTests {
             "phase_type": Value.string("invalid_type"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 
     @Test
@@ -276,8 +266,8 @@ struct AddBuildPhaseToolTests {
 
     @Test
     func `Copy files phase dstSubfolderSpec is preserved after other operations`() throws {
-        // This test verifies the fix for bug xc-mcp-f1y3:
-        // "MCP tools corrupt unrelated PBXCopyFilesBuildPhase sections"
+        // This test verifies the fix for bug xc-mcp-f1y3: "MCP tools corrupt unrelated
+        // PBXCopyFilesBuildPhase sections"
 
         let tempDir = TemporaryDirectory.url
 
@@ -302,9 +292,9 @@ struct AddBuildPhaseToolTests {
 
         // Verify the phase was created correctly
         let verifyProject = try XcodeProj(path: projectPath)
-        let verifyTarget = try #require(
-            verifyProject.pbxproj.nativeTargets.first { $0.name == "App" },
-        )
+        let verifyTarget = try #require(verifyProject.pbxproj.nativeTargets.first {
+            $0.name == "App"
+        })
         let verifyCopyPhase = verifyTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
             .first { $0.name == "Copy Styles" }
 
@@ -328,9 +318,9 @@ struct AddBuildPhaseToolTests {
 
         // Verify the copy files phase still has the correct dstSubfolderSpec
         let updatedProject = try XcodeProj(path: projectPath)
-        let updatedTarget = try #require(
-            updatedProject.pbxproj.nativeTargets.first { $0.name == "App" },
-        )
+        let updatedTarget = try #require(updatedProject.pbxproj.nativeTargets.first {
+            $0.name == "App"
+        })
         let updatedCopyPhase = updatedTarget.buildPhases.compactMap {
             $0 as? PBXCopyFilesBuildPhase
         }

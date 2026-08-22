@@ -1,5 +1,6 @@
 import MCP
 import PathKit
+import TobaCore
 import XCMCPCore
 import XcodeProj
 import Foundation
@@ -79,6 +80,7 @@ public struct ShowPackageResolutionTool: Sendable {
             }
 
             var packages = project.remotePackages
+
             if let wantedURL {
                 let wanted = PackageResolvedParser.identity(forURL: wantedURL)
                 packages = packages.filter {
@@ -96,15 +98,14 @@ public struct ShowPackageResolutionTool: Sendable {
                     .text(
                         text: "No remote Swift Packages declared in this project.",
                         annotations: nil, _meta: nil,
-                    ),
+                    )
                 ])
             }
 
             let pinsFile = resolvedParser.locate(for: resolvedProjectPath)
             let pins = pinsFile.flatMap { try? resolvedParser.parse(fileAt: $0) } ?? []
             let pinsByIdentity = Dictionary(
-                pins.map { ($0.identity, $0) }, uniquingKeysWith: { first, _ in first },
-            )
+                pins.map { ($0.identity, $0) }, uniquingKeysWith: { first, _ in first })
 
             let reports = await report(
                 packages: packages, pins: pinsByIdentity, checkRemote: checkRemote,
@@ -127,7 +128,7 @@ public struct ShowPackageResolutionTool: Sendable {
             }
 
             return CallTool.Result(content: [
-                .text(text: lines.joined(separator: "\n"), annotations: nil, _meta: nil),
+                .text(text: lines.joined(separator: "\n"), annotations: nil, _meta: nil)
             ])
         } catch let error as MCPError {
             throw error
@@ -164,11 +165,12 @@ public struct ShowPackageResolutionTool: Sendable {
     /// with thirty packages would otherwise spawn thirty at once and saturate the connection.
     private static let maxConcurrentTagFetches = 6
 
-    /// Reads every repository's version tags concurrently, keyed by URL. A repository that cannot be
-    /// reached yields an empty list rather than failing the whole report.
+    /// Reads every repository's version tags concurrently, keyed by URL. A repository that cannot
+    /// be reached yields an empty list rather than failing the whole report.
     private func fetchTags(urls: [String]) async -> [String: [SemanticVersion]] {
         let runner = gitRunner
-        let unique = Array(Set(urls))
+        // `uniqued` keeps the input order, so the report lists repositories the same way each run.
+        let unique = urls.uniqued()
 
         return await withTaskGroup(of: (String, [SemanticVersion]).self) { group in
             // Prime the group up to the cap, then start one more each time a fetch finishes.
@@ -227,11 +229,9 @@ public struct ShowPackageResolutionTool: Sendable {
             return parts.joined(separator: ", ")
         }
         parts.append("latest \(newest)")
-        parts.append(
-            reason(
-                pin: pin, requirement: requirement, tags: tagsByURL[url] ?? [], newest: newest,
-            ),
-        )
+        parts.append(reason(
+            pin: pin, requirement: requirement, tags: tagsByURL[url] ?? [], newest: newest,
+        ))
         return parts.joined(separator: ", ")
     }
 
@@ -250,9 +250,8 @@ public struct ShowPackageResolutionTool: Sendable {
             default: break
         }
 
-        guard let pin, let pinned = pin.version.flatMap(SemanticVersion.init) else {
-            return "not resolved — run resolve_packages"
-        }
+        guard let pin, let pinned = pin.version.flatMap(SemanticVersion.init)
+        else { return "not resolved — run resolve_packages" }
 
         // The newest tag the requirement actually admits. Prereleases stay out unless the
         // requirement names one, matching SwiftPM's own behavior.
@@ -268,13 +267,12 @@ public struct ShowPackageResolutionTool: Sendable {
                 + "\(tags.count) tag(s) and none falls inside the window, so the pin \(pinned) "
                 + "points at a tag that is gone"
         }
-        if allowed == pinned {
-            return newest > pinned
+        return allowed == pinned
+            ? newest > pinned
                 ? "up to date within the requirement — \(newest) needs a wider requirement"
                 : "up to date"
-        }
-        return allowed > pinned
-            ? "not upgraded (pinned) — \(allowed) is allowed but Package.resolved holds \(pinned)"
-            : "pin is ahead of the newest allowed tag \(allowed)"
+            : allowed > pinned
+                ? "not upgraded (pinned) — \(allowed) is allowed but Package.resolved holds \(pinned)"
+                : "pin is ahead of the newest allowed tag \(allowed)"
     }
 }

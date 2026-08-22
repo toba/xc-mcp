@@ -5,9 +5,7 @@ import Foundation
 
 @Suite(.serialized, .temporaryDirectory)
 struct ListTestPlanTargetsToolTests {
-    private func makeTool() -> ListTestPlanTargetsTool {
-        ListTestPlanTargetsTool(sessionManager: SessionManager())
-    }
+    private func makeTool() -> ListTestPlanTargetsTool { .init(sessionManager: SessionManager()) }
 
     private func createTestPlan(at directory: URL, name: String, targets: [String]) throws {
         let testTargets = targets.map { name in
@@ -16,8 +14,8 @@ struct ListTestPlanTargetsToolTests {
             """
         }
         let json = """
-        {"testTargets": [\(testTargets.joined(separator: ","))]}
-        """
+            {"testTargets": [\(testTargets.joined(separator: ","))]}
+            """
         let filePath = directory.appendingPathComponent("\(name).xctestplan")
         try json.write(to: filePath, atomically: true, encoding: .utf8)
     }
@@ -72,11 +70,11 @@ struct ListTestPlanTargetsToolTests {
 
         // Create test plan with one enabled and one disabled target
         let json = """
-        {"testTargets": [
-            {"target": {"name": "AppTests"}},
-            {"target": {"name": "UITests"}, "enabled": false}
-        ]}
-        """
+            {"testTargets": [
+                {"target": {"name": "AppTests"}},
+                {"target": {"name": "UITests"}, "enabled": false}
+            ]}
+            """
         let filePath = tempDir.appendingPathComponent("Mixed.xctestplan")
         try json.write(to: filePath, atomically: true, encoding: .utf8)
 

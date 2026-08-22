@@ -3,6 +3,7 @@ import Logging
 import Foundation
 import Subprocess
 import Synchronization
+import TobaConcurrency
 
 /// Thread-safe one-shot wrapper around a `CheckedContinuation` .
 ///
@@ -503,7 +504,7 @@ public actor LLDBSession {
                 let readerDone = Mutex(false)
 
                 let finish: @Sendable (Bool) -> Void = { resumed in
-                    if resumed { finished.withLock { $0 = true } }
+                    if resumed { finished(set: true) }
                 }
 
                 // Reader: runs on a GCD thread. Uses non-blocking read() with a short poll() wait
@@ -516,7 +517,7 @@ public actor LLDBSession {
                 // after a tight 2s drain timeout).
                 let fd = stdout.fileDescriptor
                 DispatchQueue.global().async {
-                    defer { readerDone.withLock { $0 = true } }
+                    defer { readerDone(set: true) }
                     var accumulated = ""
                     var buffer = Data()
                     var totalBytes = 0
@@ -560,7 +561,7 @@ public actor LLDBSession {
                         if let str = String(data: buffer, encoding: .utf8) {
                             buffer = Data()
                             accumulated += str
-                            partialOutput.withLock { $0 = accumulated }
+                            partialOutput(set: accumulated)
 
                             if accumulated.hasSuffix(promptMarker) {
                                 let endIndex = accumulated.index(
@@ -621,7 +622,7 @@ public actor LLDBSession {
                     // resuming the continuation. This guarantees no leaked reader survives past
                     // readUntilPrompt's return — see t57-a7q for the failure mode when a leaked
                     // reader silently steals the next command's bytes.
-                    finished.withLock { $0 = true }
+                    finished(set: true)
                     let waitDeadline = ContinuousClock.now + .milliseconds(500)
                     while !readerDone.withLock({ $0 }), ContinuousClock.now < waitDeadline {
                         try? await Task.sleep(for: .milliseconds(10))

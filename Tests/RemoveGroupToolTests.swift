@@ -31,8 +31,7 @@ struct RemoveGroupToolTests {
         let tool = RemoveGroupTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
-            try tool.execute(
-                arguments: ["project_path": Value.string("/path/to/project.xcodeproj")],
+            try tool.execute(arguments: ["project_path": Value.string("/path/to/project.xcodeproj")]
             )
         }
     }

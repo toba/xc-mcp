@@ -18,11 +18,11 @@ struct ListGroupsToolTests {
         #expect(tool.tool().name == "list_groups")
         #expect(
             tool.tool().description
-                ==
-                "List all groups, folder references, and file system synchronized groups in an Xcode project",
+                == "List all groups, folder references, and file system synchronized groups in an Xcode project",
         )
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .object(props) = schemaDict["properties"] {
                 #expect(props["project_path"] != nil)
@@ -40,15 +40,11 @@ struct ListGroupsToolTests {
         let tool = ListGroupsTool(pathUtility: pathUtility)
 
         // Missing project_path
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [:])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: [:]) }
 
         // Invalid parameter types
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "project_path": Value.bool(true),
-            ])
+            try tool.execute(arguments: ["project_path": Value.bool(true)])
         }
     }
 
@@ -61,14 +57,12 @@ struct ListGroupsToolTests {
         try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
         // Execute the tool
-        let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": Value.string(projectPath.string)])
 
         // Verify the result
         if case let .text(message, _, _) = result.content.first {
-            #expect(
-                message.contains("Groups, folder references, and synchronized groups in project:"),
+            #expect(message.contains(
+                "Groups, folder references, and synchronized groups in project:"),
             )
             // The default project should contain at least a Products group
             #expect(message.contains("Products"))
@@ -110,14 +104,12 @@ struct ListGroupsToolTests {
         try xcodeproj.write(path: projectPath)
 
         // Execute the tool
-        let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": Value.string(projectPath.string)])
 
         // Verify the result
         if case let .text(message, _, _) = result.content.first {
-            #expect(
-                message.contains("Groups, folder references, and synchronized groups in project:"),
+            #expect(message.contains(
+                "Groups, folder references, and synchronized groups in project:"),
             )
             #expect(message.contains("- TopLevel"))
             #expect(message.contains("- TopLevel/Nested"))
@@ -176,14 +168,12 @@ struct ListGroupsToolTests {
         try xcodeproj.write(path: projectPath)
 
         // Execute the tool
-        let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": Value.string(projectPath.string)])
 
         // Verify the result
         if case let .text(message, _, _) = result.content.first {
-            #expect(
-                message.contains("Groups, folder references, and synchronized groups in project:"),
+            #expect(message.contains(
+                "Groups, folder references, and synchronized groups in project:"),
             )
             #expect(message.contains("- Products"))
         } else {
@@ -198,7 +188,7 @@ struct ListGroupsToolTests {
         // Try to list groups from a non-existent project
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
-                "project_path": Value.string("/path/that/does/not/exist.xcodeproj"),
+                "project_path": Value.string("/path/that/does/not/exist.xcodeproj")
             ])
         }
     }
@@ -224,14 +214,12 @@ struct ListGroupsToolTests {
         try xcodeproj.write(path: projectPath)
 
         // Execute the tool
-        let result = try tool.execute(arguments: [
-            "project_path": Value.string(projectPath.string),
-        ])
+        let result = try tool.execute(arguments: ["project_path": Value.string(projectPath.string)])
 
         // Verify the result
         if case let .text(message, _, _) = result.content.first {
-            #expect(
-                message.contains("Groups, folder references, and synchronized groups in project:"),
+            #expect(message.contains(
+                "Groups, folder references, and synchronized groups in project:"),
             )
             #expect(message.contains("- Sources"))
         } else {

@@ -1,10 +1,10 @@
-import Foundation
 import Testing
+import Foundation
 
 /// A unique temporary directory that exists for the duration of a single test.
 ///
-/// Read the directory with ``TemporaryDirectory/url``. The value is a task local, so each test
-/// sees its own directory even when the suite runs in parallel.
+/// Read the directory with ``TemporaryDirectory/url``. The value is a task local, so each test sees
+/// its own directory even when the suite runs in parallel.
 enum TemporaryDirectory {
     @TaskLocal fileprivate static var current: URL?
 
@@ -26,8 +26,8 @@ enum TemporaryDirectory {
 
 /// Creates ``TemporaryDirectory/url`` before a test runs and removes it afterwards.
 ///
-/// Apply the trait to a suite to give every test in that suite its own directory. Tests that
-/// write to disk then stay isolated from each other, and no test leaks a directory.
+/// Apply the trait to a suite to give every test in that suite its own directory. Tests that write
+/// to disk then stay isolated from each other, and no test leaks a directory.
 ///
 /// ```swift
 /// @Suite(.temporaryDirectory)
@@ -45,15 +45,13 @@ struct TemporaryDirectoryTrait: TestTrait, SuiteTrait, TestScoping {
 
     /// Scopes each test case, never the suite.
     ///
-    /// The type conforms to both `TestTrait` and `SuiteTrait`, and those protocols supply
-    /// different defaults. The explicit implementation removes the ambiguity.
-    func scopeProvider(for test: Test, testCase: Test.Case?) -> Self? {
-        testCase == nil ? nil : self
-    }
+    /// The type conforms to both `TestTrait` and `SuiteTrait`, and those protocols supply different
+    /// defaults. The explicit implementation removes the ambiguity.
+    func scopeProvider(for _: Test, testCase: Test.Case?) -> Self? { testCase == nil ? nil : self }
 
     func provideScope(
-        for test: Test,
-        testCase: Test.Case?,
+        for _: Test,
+        testCase _: Test.Case?,
         performing function: @Sendable () async throws -> Void,
     ) async throws {
         let directory = FileManager.default.temporaryDirectory
@@ -61,13 +59,11 @@ struct TemporaryDirectoryTrait: TestTrait, SuiteTrait, TestScoping {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        try await TemporaryDirectory.$current.withValue(directory) {
-            try await function()
-        }
+        try await TemporaryDirectory.$current.withValue(directory) { try await function() }
     }
 }
 
 extension Trait where Self == TemporaryDirectoryTrait {
     /// Gives the test its own temporary directory and removes the directory afterwards.
-    static var temporaryDirectory: Self { Self() }
+    static var temporaryDirectory: Self { .init() }
 }

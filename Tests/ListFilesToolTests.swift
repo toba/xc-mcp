@@ -21,9 +21,7 @@ struct ListFilesToolTests {
     @Test func `list files with missing parameters`() throws {
         let tool = ListFilesTool(pathUtility: PathUtility(basePath: "/workspace"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [:])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: [:]) }
 
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: ["project_path": Value.string("test.xcodeproj")])
@@ -37,9 +35,7 @@ struct ListFilesToolTests {
             "target_name": Value.string("TestTarget"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: arguments) }
     }
 
     @Test func `list files with empty target`() throws {
@@ -62,6 +58,7 @@ struct ListFilesToolTests {
         let result = try tool.execute(arguments: listArguments)
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("TestProject"))
             #expect(content.contains("No files found"))
@@ -87,9 +84,7 @@ struct ListFilesToolTests {
             "target_name": Value.string("NonExistentTarget"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: listArguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: listArguments) }
     }
 
     @Test func `list files with source files`() throws {
@@ -120,10 +115,7 @@ struct ListFilesToolTests {
         xcodeproj.pbxproj.add(object: buildFile)
 
         if let sourcesBuildPhase = target.buildPhases.first(where: { $0 is PBXSourcesBuildPhase })
-            as? PBXSourcesBuildPhase
-        {
-            sourcesBuildPhase.files?.append(buildFile)
-        }
+            as? PBXSourcesBuildPhase { sourcesBuildPhase.files?.append(buildFile) }
 
         try xcodeproj.write(path: projectPath)
 
@@ -136,6 +128,7 @@ struct ListFilesToolTests {
         let result = try tool.execute(arguments: listArguments)
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("TestFile.swift"))
             #expect(content.contains("Sources:"))
@@ -159,9 +152,7 @@ struct ListFilesToolTests {
         let mainGroup = try #require(xcodeproj.pbxproj.rootObject?.mainGroup)
 
         // Add a synchronized root group
-        let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "App/Sources",
-        )
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(sourceTree: .group, path: "App/Sources")
         xcodeproj.pbxproj.add(object: syncGroup)
         mainGroup.children.append(syncGroup)
         target.fileSystemSynchronizedGroups = [syncGroup]
@@ -174,6 +165,7 @@ struct ListFilesToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Synchronized folders:"))
             #expect(content.contains("App/Sources"))
@@ -197,9 +189,7 @@ struct ListFilesToolTests {
         let mainGroup = try #require(xcodeproj.pbxproj.rootObject?.mainGroup)
 
         // Add a synchronized root group with exceptions
-        let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "App/Sources",
-        )
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(sourceTree: .group, path: "App/Sources")
         xcodeproj.pbxproj.add(object: syncGroup)
         mainGroup.children.append(syncGroup)
         target.fileSystemSynchronizedGroups = [syncGroup]
@@ -223,6 +213,7 @@ struct ListFilesToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Synchronized folders:"))
             #expect(content.contains("App/Sources"))
@@ -267,12 +258,10 @@ struct ListFilesToolTests {
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first)
         let mainGroup = try #require(xcodeproj.pbxproj.rootObject?.mainGroup)
 
-        // Add a synchronized root group NOT on target.fileSystemSynchronizedGroups
-        // but associated via an exception set referencing the target.
-        // In this case membershipExceptions lists files that ARE compiled (included).
-        let syncGroup = PBXFileSystemSynchronizedRootGroup(
-            sourceTree: .group, path: "SyncFolder",
-        )
+        // Add a synchronized root group NOT on target.fileSystemSynchronizedGroups but associated
+        // via an exception set referencing the target. In this case membershipExceptions lists
+        // files that ARE compiled (included).
+        let syncGroup = PBXFileSystemSynchronizedRootGroup(sourceTree: .group, path: "SyncFolder")
         xcodeproj.pbxproj.add(object: syncGroup)
         mainGroup.children.append(syncGroup)
         // Do NOT set target.fileSystemSynchronizedGroups — exception-only association
@@ -296,6 +285,7 @@ struct ListFilesToolTests {
         ])
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Synchronized folders:"))
             #expect(content.contains("SyncFolder"))
@@ -306,6 +296,7 @@ struct ListFilesToolTests {
             #expect(content.contains("Compiled files (via exceptions)"))
             // FileA and FileB are NOT compiled (target doesn't own the folder)
             let parts = content.components(separatedBy: "Compiled files (via exceptions)")
+
             if parts.count > 1 {
                 let fileListing = parts[1]
                 #expect(fileListing.contains("Included.swift"))

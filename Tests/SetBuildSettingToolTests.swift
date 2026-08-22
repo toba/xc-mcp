@@ -68,14 +68,14 @@ struct SetBuildSettingToolTests {
     ]
 
     @Test(arguments: missingParamCases)
-    func `Set build setting with missing parameter`(_ testCase: SetBuildSettingMissingParamTestCase)
+    func `Set build setting with missing parameter`(
+        _ testCase: SetBuildSettingMissingParamTestCase
+    )
         throws
     {
         let tool = SetBuildSettingTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     @Test
@@ -197,8 +197,8 @@ struct SetBuildSettingToolTests {
 
     @Test
     func `set_build_setting preserves dstSubfolderSpec on PBXCopyFilesBuildPhase`() throws {
-        // Regression test for xc-mcp-qem0:
-        // set_build_setting drops dstSubfolder fields from PBXCopyFilesBuildPhase sections
+        // Regression test for xc-mcp-qem0: set_build_setting drops dstSubfolder fields from
+        // PBXCopyFilesBuildPhase sections
 
         let tempDir = TemporaryDirectory.url
 
@@ -222,9 +222,9 @@ struct SetBuildSettingToolTests {
 
         // Verify the phase was created correctly
         let verifyProject = try XcodeProj(path: projectPath)
-        let verifyTarget = try #require(
-            verifyProject.pbxproj.nativeTargets.first { $0.name == "App" },
-        )
+        let verifyTarget = try #require(verifyProject.pbxproj.nativeTargets.first {
+            $0.name == "App"
+        })
         let verifyCopyPhase = verifyTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
             .first { $0.name == "Copy Styles" }
         #expect(verifyCopyPhase?.dstSubfolderSpec == .resources)
@@ -242,9 +242,9 @@ struct SetBuildSettingToolTests {
 
         // Verify the copy files phase still has the correct dstSubfolderSpec
         let updatedProject = try XcodeProj(path: projectPath)
-        let updatedTarget = try #require(
-            updatedProject.pbxproj.nativeTargets.first { $0.name == "App" },
-        )
+        let updatedTarget = try #require(updatedProject.pbxproj.nativeTargets.first {
+            $0.name == "App"
+        })
         let updatedCopyPhase = updatedTarget.buildPhases
             .compactMap { $0 as? PBXCopyFilesBuildPhase }
             .first { $0.name == "Copy Styles" }
@@ -262,9 +262,9 @@ struct SetBuildSettingToolTests {
 
     @Test
     func `set_build_setting preserves Xcode 26 string-based dstSubfolder on round-trip`() throws {
-        // Regression test for tuist/XcodeProj#1034:
-        // Xcode 26 writes `dstSubfolder = Resources;` (string) instead of
-        // `dstSubfolderSpec = 7;` (numeric). XcodeProj drops the string variant.
+        // Regression test for tuist/XcodeProj#1034: Xcode 26 writes `dstSubfolder = Resources;`
+        // (string) instead of `dstSubfolderSpec = 7;` (numeric). XcodeProj drops the string
+        // variant.
 
         let tempDir = TemporaryDirectory.url
 
@@ -278,40 +278,40 @@ struct SetBuildSettingToolTests {
         let pbxprojPath = projectPath + "project.pbxproj"
         var content = try String(contentsOfFile: pbxprojPath.string, encoding: .utf8)
 
-        // Insert a CopyFiles phase using Xcode 26 string format (dstSubfolder, not dstSubfolderSpec)
+        // Insert a CopyFiles phase using Xcode 26 string format (dstSubfolder, not
+        // dstSubfolderSpec)
         let copyPhaseID = "AABBCCDD00112233EEFF4455"
         let copyPhaseBlock = """
-        /* Begin PBXCopyFilesBuildPhase section */
-        \t\t\(copyPhaseID) /* Copy Styles */ = {
-        \t\t\tisa = PBXCopyFilesBuildPhase;
-        \t\t\tdstPath = styles;
-        \t\t\tdstSubfolder = Resources;
-        \t\t\tfiles = (
-        \t\t\t);
-        \t\t\tname = "Copy Styles";
-        \t\t};
-        /* End PBXCopyFilesBuildPhase section */
+            /* Begin PBXCopyFilesBuildPhase section */
+            \t\t\(copyPhaseID) /* Copy Styles */ = {
+            \t\t\tisa = PBXCopyFilesBuildPhase;
+            \t\t\tdstPath = styles;
+            \t\t\tdstSubfolder = Resources;
+            \t\t\tfiles = (
+            \t\t\t);
+            \t\t\tname = "Copy Styles";
+            \t\t};
+            /* End PBXCopyFilesBuildPhase section */
 
-        """
+            """
 
         // Insert the section before PBXFileReference or before PBXGroup
-        if content.contains("/* Begin PBXFileReference section */") {
-            content = content.replacingOccurrences(
+        content = content.contains("/* Begin PBXFileReference section */")
+            ? content.replacingOccurrences(
                 of: "/* Begin PBXFileReference section */",
                 with: copyPhaseBlock + "/* Begin PBXFileReference section */",
             )
-        } else {
-            content = content.replacingOccurrences(
+            : content.replacingOccurrences(
                 of: "/* Begin PBXGroup section */",
                 with: copyPhaseBlock + "/* Begin PBXGroup section */",
             )
-        }
 
         // Add the copy phase ref to buildPhases array
         if let buildPhasesRange = content.range(of: "buildPhases = (") {
             let searchStart = buildPhasesRange.upperBound
+
             if let closingRange = content.range(
-                of: "\n\t\t\t);", range: searchStart ..< content.endIndex,
+                of: "\n\t\t\t);", range: searchStart..<content.endIndex,
             ) {
                 content.insert(
                     contentsOf: "\n\t\t\t\t\(copyPhaseID) /* Copy Styles */,",
@@ -446,9 +446,8 @@ struct SetBuildSettingToolTests {
 
         // Verify both project-level configs were changed
         let xcodeproj = try XcodeProj(path: projectPath)
-        let configs =
-            xcodeproj.pbxproj.rootObject?.buildConfigurationList?
-                .buildConfigurations ?? []
+        let configs = xcodeproj.pbxproj.rootObject?.buildConfigurationList?
+            .buildConfigurations ?? []
         for config in configs {
             #expect(config.buildSettings["CLANG_ENABLE_MODULES"]?.stringValue == "YES")
         }

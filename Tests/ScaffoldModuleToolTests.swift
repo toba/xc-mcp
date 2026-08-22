@@ -67,10 +67,8 @@ struct ScaffoldModuleToolTests {
         #expect(dep?.target === fwTarget)
 
         // Verify framework product is linked in test target
-        let testFrameworksPhase =
-            testTarget?.buildPhases.first {
-                $0 is PBXFrameworksBuildPhase
-            } as? PBXFrameworksBuildPhase
+        let testFrameworksPhase = testTarget?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
         let linkedProduct = testFrameworksPhase?.files?.first?.file
         #expect(linkedProduct === fwTarget?.product)
 
@@ -79,20 +77,18 @@ struct ScaffoldModuleToolTests {
         #expect(productsGroup?.children.contains { $0 === fwTarget?.product } == true)
         #expect(productsGroup?.children.contains { $0 === testTarget?.product } == true)
 
-        // Verify directories were created
-        // Default layout is nested: NetworkKit/Sources and NetworkKit/Tests.
+        // Verify directories were created Default layout is nested: NetworkKit/Sources and
+        // NetworkKit/Tests.
         let projectDir = URL(fileURLWithPath: projectPath.string).deletingLastPathComponent().path
-        #expect(
-            FileManager.default.fileExists(
-                atPath: URL(fileURLWithPath: projectDir)
-                    .appendingPathComponent("NetworkKit/Sources").path,
-            ),
+        #expect(FileManager.default.fileExists(
+            atPath: URL(fileURLWithPath: projectDir)
+                .appendingPathComponent("NetworkKit/Sources").path,
+        ),
         )
-        #expect(
-            FileManager.default.fileExists(
-                atPath: URL(fileURLWithPath: projectDir)
-                    .appendingPathComponent("NetworkKit/Tests").path,
-            ),
+        #expect(FileManager.default.fileExists(
+            atPath: URL(fileURLWithPath: projectDir)
+                .appendingPathComponent("NetworkKit/Tests").path,
+        ),
         )
 
         // Navigator: a single NetworkKit group with Sources + Tests as children.
@@ -134,17 +130,15 @@ struct ScaffoldModuleToolTests {
 
         // Disk layout uses sibling directories.
         let projectDir = URL(fileURLWithPath: projectPath.string).deletingLastPathComponent().path
-        #expect(
-            FileManager.default.fileExists(
-                atPath: URL(fileURLWithPath: projectDir)
-                    .appendingPathComponent("LegacyKit").path,
-            ),
+        #expect(FileManager.default.fileExists(
+            atPath: URL(fileURLWithPath: projectDir)
+                .appendingPathComponent("LegacyKit").path,
+        ),
         )
-        #expect(
-            FileManager.default.fileExists(
-                atPath: URL(fileURLWithPath: projectDir)
-                    .appendingPathComponent("LegacyKitTests").path,
-            ),
+        #expect(FileManager.default.fileExists(
+            atPath: URL(fileURLWithPath: projectDir)
+                .appendingPathComponent("LegacyKitTests").path,
+        ),
         )
     }
 
@@ -235,10 +229,8 @@ struct ScaffoldModuleToolTests {
         #expect(mainApp.dependencies.contains { $0.target === featureKit })
 
         // Verify framework linked
-        let fwPhase =
-            mainApp.buildPhases.first {
-                $0 is PBXFrameworksBuildPhase
-            } as? PBXFrameworksBuildPhase
+        let fwPhase = mainApp.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
         let linkedFiles = fwPhase?.files?.compactMap(\.file) ?? []
         #expect(linkedFiles.contains { $0 === featureKit.product })
 
@@ -254,9 +246,9 @@ struct ScaffoldModuleToolTests {
 
     @Test
     func `Scaffold matches all project build configurations`() throws {
-        let (tempDir, projectPath) = try createTempProjectWithConfigs(
-            ["Debug", "Release", "Staging"],
-        )
+        let (tempDir, projectPath) = try createTempProjectWithConfigs([
+            "Debug", "Release", "Staging",
+        ],)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         let tool = ScaffoldModuleTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -269,8 +261,7 @@ struct ScaffoldModuleToolTests {
 
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "AnalyticsKit" }
-        let configNames =
-            target?.buildConfigurationList?.buildConfigurations.map(\.name) ?? []
+        let configNames = target?.buildConfigurationList?.buildConfigurations.map(\.name) ?? []
         #expect(configNames.count == 3)
         #expect(Set(configNames) == Set(["Debug", "Release", "Staging"]))
     }
@@ -418,6 +409,7 @@ struct ScaffoldModuleToolTests {
         pbxproj.add(object: productsGroup)
 
         var buildConfigs: [XCBuildConfiguration] = []
+
         for name in configs {
             let config = XCBuildConfiguration(name: name, buildSettings: [:])
             pbxproj.add(object: config)

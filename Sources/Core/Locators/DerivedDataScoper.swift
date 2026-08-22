@@ -1,4 +1,3 @@
-import CryptoKit
 import Foundation
 
 /// Computes a workspace-scoped DerivedData path for `xcodebuild` invocations.
@@ -92,8 +91,8 @@ public enum DerivedDataScoper {
         return "\(base)-<platform>"
     }
 
-    /// Returns the value the caller already passed for `-derivedDataPath`, or `nil` when the flag is
-    /// absent or has no value after it.
+    /// Returns the value the caller already passed for `-derivedDataPath`, or `nil` when the flag
+    /// is absent or has no value after it.
     static func callerSuppliedPath(in arguments: [String]) -> String? {
         guard let index = arguments.firstIndex(of: "-derivedDataPath"),
               index + 1 < arguments.count else { return nil }
@@ -152,7 +151,7 @@ public enum DerivedDataScoper {
         guard let source = workspacePath ?? projectPath, !source.isEmpty else { return nil }
         let absolute = URL(fileURLWithPath: source).standardized.path
         let projectName = URL(fileURLWithPath: absolute).deletingPathExtension().lastPathComponent
-        let hash = shortHash(of: absolute)
+        let hash = ShortHash.hex(of: absolute)
         let base = NSHomeDirectory() + "/Library/Caches/xc-mcp/DerivedData"
         if let slug = platformSlug(forDestination: destination) {
             return "\(base)/\(projectName)-\(hash)-\(slug)"
@@ -180,18 +179,12 @@ public enum DerivedDataScoper {
         if lower.contains("driverkit") { return "driverkit" }
         if lower.contains("macos") { return "macosx" }
         if lower.contains("ios") { return "iphoneos" }
-        if lower.contains("tvos") { return "appletvos" }
-        return lower.contains("watchos")
-            ? "watchos"
-            : lower.contains("visionos") || lower.contains("xros")
-                ? "xros"
-                : nil
-    }
-
-    /// 12-character hex prefix of SHA-256(path). Matches Xcode's DerivedData naming style closely
-    /// enough to look familiar without colliding with Xcode's own hashes.
-    private static func shortHash(of value: String) -> String {
-        let digest = SHA256.hash(data: Data(value.utf8))
-        return digest.prefix(6).map { String(format: "%02x", $0) }.joined()
+        return lower.contains("tvos")
+            ? "appletvos"
+            : lower.contains("watchos")
+                ? "watchos"
+                : lower.contains("visionos") || lower.contains("xros")
+                    ? "xros"
+                    : nil
     }
 }

@@ -4,9 +4,9 @@ import XCMCPCore
 import Foundation
 @testable import XCMCPTools
 
-/// Integration tests for discovery tools against real open-source repos.
-/// Exercises both XcodeProj-based discovery and xcodebuild metadata queries.
-/// Requires `scripts/fetch-fixtures.sh` to have been run first.
+/// Integration tests for discovery tools against real open-source repos. Exercises both
+/// XcodeProj-based discovery and xcodebuild metadata queries. Requires `scripts/fetch-fixtures.sh`
+/// to have been run first.
 @Suite(.enabled(if: IntegrationFixtures.available))
 struct DiscoveryIntegrationTests {
     private let sessionManager = SessionManager()
@@ -15,13 +15,11 @@ struct DiscoveryIntegrationTests {
     // MARK: - discover_projects (XcodeProj-based, no xcodebuild)
 
     @Test func `discover projects ice cubes app`() throws {
-        let tool = DiscoverProjectsTool(
-            pathUtility: PathUtility(
-                basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
-            ),
-        )
+        let tool = DiscoverProjectsTool(pathUtility: PathUtility(
+            basePath: IntegrationFixtures.iceCubesRepoDir, sandboxEnabled: false,
+        ))
         let result = try tool.execute(arguments: [
-            "path": .string(IntegrationFixtures.iceCubesRepoDir),
+            "path": .string(IntegrationFixtures.iceCubesRepoDir)
         ])
 
         let content = textContent(result)
@@ -29,13 +27,11 @@ struct DiscoveryIntegrationTests {
     }
 
     @Test func `discover projects alamofire`() throws {
-        let tool = DiscoverProjectsTool(
-            pathUtility: PathUtility(
-                basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false,
-            ),
-        )
+        let tool = DiscoverProjectsTool(pathUtility: PathUtility(
+            basePath: IntegrationFixtures.alamofireRepoDir, sandboxEnabled: false,
+        ))
         let result = try tool.execute(arguments: [
-            "path": .string(IntegrationFixtures.alamofireRepoDir),
+            "path": .string(IntegrationFixtures.alamofireRepoDir)
         ])
 
         let content = textContent(result)
@@ -43,13 +39,11 @@ struct DiscoveryIntegrationTests {
     }
 
     @Test func `discover projects swift format`() throws {
-        let tool = DiscoverProjectsTool(
-            pathUtility: PathUtility(
-                basePath: IntegrationFixtures.swiftFormatRepoDir, sandboxEnabled: false,
-            ),
-        )
+        let tool = DiscoverProjectsTool(pathUtility: PathUtility(
+            basePath: IntegrationFixtures.swiftFormatRepoDir, sandboxEnabled: false,
+        ))
         let result = try tool.execute(arguments: [
-            "path": .string(IntegrationFixtures.swiftFormatRepoDir),
+            "path": .string(IntegrationFixtures.swiftFormatRepoDir)
         ])
 
         let content = textContent(result)
@@ -65,7 +59,7 @@ struct DiscoveryIntegrationTests {
             sessionManager: sessionManager,
         )
         let result = try await tool.execute(arguments: [
-            "project_path": .string(IntegrationFixtures.iceCubesProjectPath),
+            "project_path": .string(IntegrationFixtures.iceCubesProjectPath)
         ])
 
         let content = textContent(result)
@@ -79,7 +73,7 @@ struct DiscoveryIntegrationTests {
             sessionManager: sessionManager,
         )
         let result = try await tool.execute(arguments: [
-            "project_path": .string(IntegrationFixtures.alamofireProjectPath),
+            "project_path": .string(IntegrationFixtures.alamofireProjectPath)
         ])
 
         let content = textContent(result)
@@ -118,8 +112,8 @@ struct DiscoveryIntegrationTests {
 
         let content = textContent(result)
         #expect(content.contains("PRODUCT_NAME"))
-        // Filter should reduce output — bundle identifier shouldn't appear
-        // unless it happens to contain "PRODUCT_NAME"
+        // Filter should reduce output — bundle identifier shouldn't appear unless it happens to
+        // contain "PRODUCT_NAME"
     }
 
     // MARK: - get_app_bundle_id

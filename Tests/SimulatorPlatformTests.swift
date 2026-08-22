@@ -46,8 +46,7 @@ struct SimulatorPlatformTests {
     func `unrecognized runtime family yields nil`() {
         #expect(
             SimulatorPlatform(
-                runtimeIdentifier: "com.apple.CoreSimulator.SimRuntime.fooOS-1-0",
-            ) == nil,
+                runtimeIdentifier: "com.apple.CoreSimulator.SimRuntime.fooOS-1-0") == nil,
         )
     }
 

@@ -1,9 +1,9 @@
 import Testing
 @testable import XCMCPCore
 
-/// Covers the post-build "pipes held open" recovery that keeps `build_debug_macos`
-/// from aborting a build that actually succeeded when grandchild daemons keep
-/// xcodebuild's stdout/stderr open past its terminal status. (qbz-ek1)
+/// Covers the post-build "pipes held open" recovery that keeps `build_debug_macos` from aborting a
+/// build that actually succeeded when grandchild daemons keep xcodebuild's stdout/stderr open past
+/// its terminal status. (qbz-ek1)
 struct XcodebuildCompletionDetectionTests {
     @Test
     func `Detects modern Build succeeded marker`() {
@@ -23,9 +23,10 @@ struct XcodebuildCompletionDetectionTests {
 
     @Test
     func `Does not flag in-progress output as finished`() {
-        #expect(!XcodebuildRunner.outputShowsBuildFinished(
-            "CompileSwiftSources normal arm64 (in target 'App')",
-        ))
+        #expect(
+            !XcodebuildRunner.outputShowsBuildFinished(
+                "CompileSwiftSources normal arm64 (in target 'App')",
+            ))
         #expect(!XcodebuildRunner.outputShowsBuildFinished(""))
     }
 
@@ -41,17 +42,19 @@ struct XcodebuildCompletionDetectionTests {
         #expect(XcodebuildRunner.exitCode(forFinishedOutput: "Build failed after 2.0s") == 65)
     }
 
-    // (y04-t3c) Archive action runs build then install/codesign — only archive-specific
-    // markers signal that the entire archive (including bundle write) is done.
+    // (y04-t3c) Archive action runs build then install/codesign — only archive-specific markers
+    // signal that the entire archive (including bundle write) is done.
     @Test
     func `Archive action requires archive marker as terminal`() {
         let archiveArgs = ["archive", "-archivePath", "/tmp/x.xcarchive"]
-        #expect(!XcodebuildRunner.outputShowsBuildFinished(
-            "Build succeeded in 12.3s", arguments: archiveArgs,
-        ))
-        #expect(!XcodebuildRunner.outputShowsBuildFinished(
-            "** BUILD SUCCEEDED **", arguments: archiveArgs,
-        ))
+        #expect(
+            !XcodebuildRunner.outputShowsBuildFinished(
+                "Build succeeded in 12.3s", arguments: archiveArgs,
+            ))
+        #expect(
+            !XcodebuildRunner.outputShowsBuildFinished(
+                "** BUILD SUCCEEDED **", arguments: archiveArgs,
+            ))
         #expect(XcodebuildRunner.outputShowsBuildFinished(
             "** ARCHIVE SUCCEEDED **", arguments: archiveArgs,
         ))

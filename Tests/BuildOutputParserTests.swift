@@ -1,8 +1,15 @@
 import Testing
 import Foundation
+import TobaTesting
 @testable import XCMCPCore
 
 struct BuildOutputParserTests {
+    /// Whether a fixture is present in the source tree. `build.txt` is large, so a checkout that
+    /// skips it disables the tests that read it rather than failing them.
+    private static func hasFixture(_ name: String) -> Bool {
+        FileManager.default.fileExists(atPath: TestFixtures.url(name).path)
+    }
+
     @Test
     func `Parse single error`() {
         let parser = BuildOutputParser()
@@ -278,17 +285,11 @@ struct BuildOutputParserTests {
         #expect(result.status == "success")
     }
 
-    @Test(.enabled(
-        if: Bundle.module.url(
-            forResource: "build", withExtension: "txt", subdirectory: "Fixtures") != nil,
-    ),
-    )
+    @Test(.enabled(if: hasFixture("build.txt")))
     func `Real build output truncated before BUILD SUCCEEDED is incomplete`() throws {
         let parser = BuildOutputParser()
 
-        let fixtureURL = try #require(Bundle.module.url(
-            forResource: "build", withExtension: "txt", subdirectory: "Fixtures"))
-        let full = try String(contentsOf: fixtureURL, encoding: .utf8)
+        let full = try String(contentsOf: TestFixtures.url("build.txt"), encoding: .utf8)
 
         // Drop the trailing ** BUILD SUCCEEDED ** marker, simulating an OOM kill / truncated
         // stream.
@@ -624,21 +625,13 @@ struct BuildOutputParserTests {
         #expect(result.summary.passedTests == 1)
     }
 
-    @Test(.enabled(
-        if: Bundle.module.url(
-            forResource: "swift-testing-output", withExtension: "txt", subdirectory: "Fixtures",
-        )
-            != nil,
-    ),
-    )
+    @Test(.enabled(if: hasFixture("swift-testing-output.txt")))
     func `Real-world Swift Testing output`() throws {
         let parser = BuildOutputParser()
 
-        let fixtureURL = try #require(Bundle.module.url(
-            forResource: "swift-testing-output", withExtension: "txt", subdirectory: "Fixtures",
-        ),
+        let input = try String(
+            contentsOf: TestFixtures.url("swift-testing-output.txt"), encoding: .utf8,
         )
-        let input = try String(contentsOf: fixtureURL, encoding: .utf8)
 
         let result = parser.parse(input: input)
 
@@ -649,17 +642,11 @@ struct BuildOutputParserTests {
         #expect(result.summary.testTime == "0.031s")
     }
 
-    @Test(.enabled(
-        if: Bundle.module.url(
-            forResource: "build", withExtension: "txt", subdirectory: "Fixtures") != nil,
-    ),
-    )
+    @Test(.enabled(if: hasFixture("build.txt")))
     func `Large real-world build output`() throws {
         let parser = BuildOutputParser()
 
-        let fixtureURL = try #require(Bundle.module.url(
-            forResource: "build", withExtension: "txt", subdirectory: "Fixtures"))
-        let input = try String(contentsOf: fixtureURL, encoding: .utf8)
+        let input = try String(contentsOf: TestFixtures.url("build.txt"), encoding: .utf8)
 
         let result = parser.parse(input: input)
 

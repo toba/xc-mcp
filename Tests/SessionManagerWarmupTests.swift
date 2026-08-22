@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import TobaTesting
 @testable import XCMCPCore
 
 @Suite(.temporaryDirectory, .serialized)
@@ -11,25 +12,22 @@ struct SessionManagerWarmupTests {
     /// Polls `manager.warmupState(for:)` until the warmup reports `.completed` or `timeout`
     /// elapses. Returns `true` if completion was observed, `false` on timeout.
     ///
-    /// The default is generous because the warmup task runs at `.background` priority and the
-    /// poll uses `Task.sleep` on the Swift cooperative thread pool, both of which the full
-    /// parallel test suite (1400+ tests) can starve with blocking calls in other suites —
-    /// deferring the warmup's first tick well past its actual (sub-second) completion. A 15s
-    /// budget still flaked on a saturated CI runner (warmup completed in 0.08s but wasn't
-    /// observed until ~18s), so the budget is large enough that only a genuine hang trips it.
+    /// The default is generous because the warmup task runs at `.background` priority and the poll
+    /// uses `Task.sleep` on the Swift cooperative thread pool, both of which the full parallel test
+    /// suite (1400+ tests) can starve with blocking calls in other suites — deferring the warmup's
+    /// first tick well past its actual (sub-second) completion. A 15s budget still flaked on a
+    /// saturated CI runner (warmup completed in 0.08s but wasn't observed until ~18s), so the
+    /// budget is large enough that only a genuine hang trips it.
     @discardableResult
     private func waitUntilCompleted(
         manager: SessionManager,
         packagePath: String,
         timeout: Duration = .seconds(60),
-    ) async throws -> Bool {
-        let started = ContinuousClock.now
-
-        while ContinuousClock.now - started < timeout {
+    ) async -> Bool {
+        await poll(timeout: timeout, pollInterval: .milliseconds(20)) {
             if case .completed = await manager.warmupState(for: packagePath) { return true }
-            try await Task.sleep(for: .milliseconds(20))
+            return false
         }
-        return false
     }
 
     /// Creates a temporary cold-cache package directory with a minimal Package.swift.
@@ -52,13 +50,11 @@ struct SessionManagerWarmupTests {
 
         let manager = SessionManager(
             filePath: sessionPath,
-            warmupRunner: { _ in
-                try await Task.sleep(for: .milliseconds(50))
-            },
+            warmupRunner: { _ in try await Task.sleep(for: .milliseconds(50)) },
         )
         await manager.setDefaults(packagePath: pkgDir.path)
 
-        if try await !waitUntilCompleted(manager: manager, packagePath: pkgDir.path) {
+        if await !waitUntilCompleted(manager: manager, packagePath: pkgDir.path) {
             Issue.record(
                 "Warmup did not complete within the poll budget; state=\(await String(describing: manager.warmupState(for: pkgDir.path)))"
             )
@@ -77,6 +73,8 @@ struct SessionManagerWarmupTests {
             enableWarmup: false,
         )
         await manager.setDefaults(packagePath: pkgDir.path)
+        // This asserts that no warmup ever starts. A poll cannot shorten a wait for an event that
+        // must never arrive, so the wait stays fixed.
         try await Task.sleep(for: .milliseconds(100))
 
         #expect(await runCount.value == 0)
@@ -105,9 +103,9 @@ struct SessionManagerWarmupTests {
         // enough that runCount was still 0 when the assertion fired. Use the generous default
         // budget (explicit 5s/15s overrides here both still flaked on saturated runners —
         // #264/#267).
-        try await waitUntilCompleted(manager: manager, packagePath: pkgDir.path)
+        await waitUntilCompleted(manager: manager, packagePath: pkgDir.path)
         // Brief grace period to surface any spurious duplicate warmups that would also increment
-        // runCount.
+        // runCount. This asserts an absence, which a poll cannot shorten.
         try await Task.sleep(for: .milliseconds(100))
 
         #expect(await runCount.value == 1)
@@ -121,16 +119,16 @@ struct SessionManagerWarmupTests {
         let manager = SessionManager(
             filePath: sessionPath,
             warmupRunner: { _ in
-                // Long sleep that should be cancelled.
+                // Long sleep that should be cancelled. This sleep is the stubbed work, not a wait.
                 try await Task.sleep(for: .seconds(30))
             },
         )
         await manager.setDefaults(packagePath: pkgDir.path)
-        try await Task.sleep(for: .milliseconds(20))
-        // Sanity: warmup is running.
-        if case .running = await manager.warmupState(for: pkgDir.path) {
-        } else {
-            Issue.record("Expected running state before cancel")
+        // Sanity: warmup is running. The state is the observable signal, so the poll returns as
+        // soon as the task starts rather than betting a fixed 20ms covers a background priority.
+        await expectEventually("warmup reaches the running state") {
+            if case .running = await manager.warmupState(for: pkgDir.path) { return true }
+            return false
         }
 
         await manager.cancelWarmupIfRunning(packagePath: pkgDir.path)
@@ -148,10 +146,7 @@ struct SessionManagerWarmupTests {
         let sessionPath = makeTempPath()
 
         let manager = SessionManager(
-            filePath: sessionPath,
-            warmupRunner: { _ in },
-            enableWarmup: false,
-        )
+            filePath: sessionPath, warmupRunner: { _ in }, enableWarmup: false)
         await manager.cancelWarmupIfRunning(packagePath: "/nonexistent/path")
         #expect(await manager.warmupState(for: "/nonexistent/path") == nil)
     }
@@ -162,11 +157,10 @@ struct SessionManagerWarmupTests {
 
         let runCount = AsyncCounter()
         let manager = SessionManager(
-            filePath: sessionPath,
-            warmupRunner: { _ in await runCount.increment() },
-        )
+            filePath: sessionPath, warmupRunner: { _ in await runCount.increment() })
         await manager.setDefaults(
             packagePath: "/tmp/definitely-not-a-swift-package-\(UUID().uuidString)")
+        // This asserts that no warmup ever starts, which a poll cannot shorten.
         try await Task.sleep(for: .milliseconds(50))
 
         #expect(await runCount.value == 0)
@@ -179,13 +173,11 @@ struct SessionManagerWarmupTests {
 
         let manager = SessionManager(
             filePath: sessionPath,
-            warmupRunner: { _ in
-                try await Task.sleep(for: .milliseconds(20))
-            },
+            warmupRunner: { _ in try await Task.sleep(for: .milliseconds(20)) },
         )
         await manager.setDefaults(packagePath: pkgDir.path)
 
-        try await waitUntilCompleted(manager: manager, packagePath: pkgDir.path)
+        await waitUntilCompleted(manager: manager, packagePath: pkgDir.path)
 
         let summary = await manager.summary()
         #expect(summary.contains("Warmup: warmed"))

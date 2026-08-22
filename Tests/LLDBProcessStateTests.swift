@@ -7,10 +7,10 @@ struct LLDBProcessStateTests {
     @Test
     func `Breakpoint hit parses as stopped`() {
         let output = """
-        Process 12345 stopped
-        * thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
-          frame #0: 0x0000000100001f00 MyApp`foo at File.swift:316
-        """
+            Process 12345 stopped
+            * thread #1, queue = 'com.apple.main-thread', stop reason = breakpoint 1.1
+              frame #0: 0x0000000100001f00 MyApp`foo at File.swift:316
+            """
         #expect(LLDBSession.parseProcessState(from: output) == .stopped(reason: "breakpoint 1.1"))
     }
 
@@ -21,15 +21,16 @@ struct LLDBProcessStateTests {
 
     @Test
     func `Stopped without reason parses as stopped`() {
-        #expect(LLDBSession.parseProcessState(from: "Process 12345 stopped") == .stopped(reason: nil))
+        #expect(
+            LLDBSession.parseProcessState(from: "Process 12345 stopped") == .stopped(reason: nil))
     }
 
     @Test
     func `Process exit wins over a stale stopped line`() {
         let output = """
-        Process 12345 stopped
-        Process 12345 exited with status = 0 (0x00000000)
-        """
+            Process 12345 stopped
+            Process 12345 exited with status = 0 (0x00000000)
+            """
         #expect(LLDBSession.parseProcessState(from: output) == .stopped(reason: "exited"))
     }
 
@@ -42,8 +43,8 @@ struct LLDBProcessStateTests {
     @Test
     func `Detects contended attach`() {
         let output = """
-        Process 12345 exited with status = -1 (0xffffffff) tried to attach to process already being debugged
-        """
+            Process 12345 exited with status = -1 (0xffffffff) tried to attach to process already being debugged
+            """
         #expect(LLDBSession.outputIndicatesAlreadyDebugged(output))
     }
 
@@ -71,7 +72,7 @@ struct LLDBProcessStateTests {
         "thread backtrace",
         "frame variable",
         "breakpoint set -n main",
-        "poke",      // not "po"
+        "poke",  // not "po"
         "printenv",  // not "print"
         "process status",
     ])
@@ -96,8 +97,8 @@ struct LLDBProcessStateTests {
 
     @Test
     func `expression timeout is comfortably below the read-level timeout`() {
-        // LLDB must abort and return a prompt before readUntilPrompt's timeout fires — otherwise the
-        // read wedges and poisons the session, which is exactly the regression 4ui-lsh tracks.
+        // LLDB must abort and return a prompt before readUntilPrompt's timeout fires — otherwise
+        // the read wedges and poisons the session, which is exactly the regression 4ui-lsh tracks.
         let exprTimeoutSeconds = Double(LLDBSession.expressionTimeoutMicroseconds) / 1_000_000
         #expect(exprTimeoutSeconds > 0)
         #expect(exprTimeoutSeconds < LLDBSession.interactiveCommandTimeout)

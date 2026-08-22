@@ -1,6 +1,6 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 @testable import XCMCPTools
 
 @Suite(.temporaryDirectory)
@@ -51,9 +51,9 @@ struct PerformanceMetricsTests {
                                 polarity: nil,
                             ),
                         ],
-                    ),
+                    )
                 ],
-            ),
+            )
         ]
 
         let output = GetPerformanceMetricsTool.formatMetrics(results)
@@ -77,9 +77,7 @@ struct PerformanceMetricsTests {
                         testPlanConfiguration: XCResultParser.MetricConfiguration(
                             configurationId: "c1", configurationName: "Config",
                         ),
-                        device: XCResultParser.MetricDevice(
-                            deviceId: "d1", deviceName: "Mac",
-                        ),
+                        device: XCResultParser.MetricDevice(deviceId: "d1", deviceName: "Mac"),
                         metrics: [
                             XCResultParser.PerformanceMetric(
                                 displayName: "Clock Time",
@@ -93,11 +91,11 @@ struct PerformanceMetricsTests {
                                 maxStandardDeviation: nil,
                                 maxPercentRelativeStandardDeviation: nil,
                                 polarity: nil,
-                            ),
+                            )
                         ],
-                    ),
+                    )
                 ],
-            ),
+            )
         ]
 
         let output = GetPerformanceMetricsTool.formatMetrics(results)
@@ -174,9 +172,7 @@ struct PerformanceMetricsTests {
                         testPlanConfiguration: XCResultParser.MetricConfiguration(
                             configurationId: "c1", configurationName: "Config",
                         ),
-                        device: XCResultParser.MetricDevice(
-                            deviceId: "d1", deviceName: "Mac",
-                        ),
+                        device: XCResultParser.MetricDevice(deviceId: "d1", deviceName: "Mac"),
                         metrics: [
                             XCResultParser.PerformanceMetric(
                                 displayName: "Wall Clock Time",
@@ -190,11 +186,11 @@ struct PerformanceMetricsTests {
                                 maxStandardDeviation: nil,
                                 maxPercentRelativeStandardDeviation: nil,
                                 polarity: nil,
-                            ),
+                            )
                         ],
-                    ),
+                    )
                 ],
-            ),
+            )
         ]
 
         let entries = SetPerformanceBaselineTool.entriesFromMetrics(metrics)
@@ -213,7 +209,7 @@ struct PerformanceMetricsTests {
                 "metric_identifier": .string("com.apple.dt.XCTMetric_Clock.time.monotonic"),
                 "baseline_average": .double(0.5),
                 "max_percent_regression": .double(10.0),
-            ]),
+            ])
         ]
 
         let entries = try SetPerformanceBaselineTool.entriesFromManual(manual)
@@ -229,6 +225,7 @@ struct PerformanceMetricsTests {
     @Test
     func `GetPerformanceMetricsTool with missing path throws`() async {
         let tool = GetPerformanceMetricsTool()
+
         do {
             _ = try await tool.execute(arguments: [:])
             Issue.record("Expected MCPError to be thrown")
@@ -240,9 +237,10 @@ struct PerformanceMetricsTests {
     @Test
     func `GetPerformanceMetricsTool with nonexistent path throws`() async {
         let tool = GetPerformanceMetricsTool()
+
         do {
             _ = try await tool.execute(arguments: [
-                "result_bundle_path": .string("/nonexistent/path.xcresult"),
+                "result_bundle_path": .string("/nonexistent/path.xcresult")
             ])
             Issue.record("Expected MCPError to be thrown")
         } catch {
@@ -269,7 +267,7 @@ struct PerformanceMetricsTests {
                 "cpuCount": info.coreCount,
                 "modelCode": info.modelCode,
                 "physicalRAMAmountInMegabytes": info.ramMegabytes,
-            ] as [String: Any],
+            ] as [String: Any]
         ]
 
         let data = try PropertyListSerialization.data(
@@ -279,9 +277,7 @@ struct PerformanceMetricsTests {
         )
 
         // Verify round-trip
-        let decoded = try PropertyListSerialization.propertyList(
-            from: data, format: nil,
-        )
+        let decoded = try PropertyListSerialization.propertyList(from: data, format: nil)
         let dict = try #require(decoded as? [String: Any])
         let destDict = try #require(dict[runDestUUID] as? [String: Any])
         #expect(destDict["cpuKind"] as? String == "Apple M1")
@@ -345,9 +341,10 @@ struct PerformanceMetricsTests {
     func `Show baselines with nonexistent project returns error`() async {
         let sessionManager = SessionManager()
         let tool = ShowPerformanceBaselinesTool(sessionManager: sessionManager)
+
         do {
             _ = try await tool.execute(arguments: [
-                "project_path": .string("/nonexistent/Project.xcodeproj"),
+                "project_path": .string("/nonexistent/Project.xcodeproj")
             ])
             Issue.record("Expected MCPError to be thrown")
         } catch {
@@ -363,13 +360,9 @@ struct PerformanceMetricsTests {
         // Create a temporary xcodeproj with no xcbaselines
         let tempDir = TemporaryDirectory.url
         let projDir = tempDir.appendingPathComponent("Test.xcodeproj")
-        try FileManager.default.createDirectory(
-            at: projDir, withIntermediateDirectories: true,
-        )
+        try FileManager.default.createDirectory(at: projDir, withIntermediateDirectories: true)
 
-        let result = try await tool.execute(arguments: [
-            "project_path": .string(projDir.path),
-        ])
+        let result = try await tool.execute(arguments: ["project_path": .string(projDir.path)])
 
         guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -389,23 +382,21 @@ struct PerformanceMetricsTests {
         let targetUUID = "AABBCCDD00112233AABBCCDD"
         let baselineDir =
             projDir
-                .appendingPathComponent("xcshareddata/xcbaselines/\(targetUUID).xcbaseline")
-        try FileManager.default.createDirectory(
-            at: baselineDir, withIntermediateDirectories: true,
-        )
+            .appendingPathComponent("xcshareddata/xcbaselines/\(targetUUID).xcbaseline")
+        try FileManager.default.createDirectory(at: baselineDir, withIntermediateDirectories: true)
 
         // Write a pbxproj with a target
         let pbxproj = """
-        // !$*UTF8*$!
-        {
-            objects = {
-                \(targetUUID) /* MyTests */ = {
-                    isa = PBXNativeTarget;
-                    name = MyTests;
+            // !$*UTF8*$!
+            {
+                objects = {
+                    \(targetUUID) /* MyTests */ = {
+                        isa = PBXNativeTarget;
+                        name = MyTests;
+                    };
                 };
-            };
-        }
-        """
+            }
+            """
         try pbxproj.write(
             to: projDir.appendingPathComponent("project.pbxproj"),
             atomically: true, encoding: .utf8,
@@ -419,7 +410,7 @@ struct PerformanceMetricsTests {
                 "cpuCount": 10,
                 "modelCode": "Mac13,1",
                 "physicalRAMAmountInMegabytes": 65536,
-            ] as [String: Any],
+            ] as [String: Any]
         ]
         let infoData = try PropertyListSerialization.data(
             fromPropertyList: infoPlist, format: .xml, options: 0,
@@ -439,20 +430,16 @@ struct PerformanceMetricsTests {
                             "baselineAverage": 154.0,
                             "maxPercentRegression": 10.0,
                         ] as [String: Any],
-                    ] as [String: Any],
-                ] as [String: Any],
-            ] as [String: Any],
+                    ] as [String: Any]
+                ] as [String: Any]
+            ] as [String: Any]
         ]
         let baselineData = try PropertyListSerialization.data(
             fromPropertyList: baselinePlist, format: .xml, options: 0,
         )
-        try baselineData.write(
-            to: baselineDir.appendingPathComponent("\(runDestUUID).plist"),
-        )
+        try baselineData.write(to: baselineDir.appendingPathComponent("\(runDestUUID).plist"))
 
-        let result = try await tool.execute(arguments: [
-            "project_path": .string(projDir.path),
-        ])
+        let result = try await tool.execute(arguments: ["project_path": .string(projDir.path)])
 
         guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -479,32 +466,28 @@ struct PerformanceMetricsTests {
         let uuid2 = "DDEEFF0011223344DDEEFF00"
         let baselineDir1 =
             projDir
-                .appendingPathComponent("xcshareddata/xcbaselines/\(uuid1).xcbaseline")
+            .appendingPathComponent("xcshareddata/xcbaselines/\(uuid1).xcbaseline")
         let baselineDir2 =
             projDir
-                .appendingPathComponent("xcshareddata/xcbaselines/\(uuid2).xcbaseline")
-        try FileManager.default.createDirectory(
-            at: baselineDir1, withIntermediateDirectories: true,
-        )
-        try FileManager.default.createDirectory(
-            at: baselineDir2, withIntermediateDirectories: true,
-        )
+            .appendingPathComponent("xcshareddata/xcbaselines/\(uuid2).xcbaseline")
+        try FileManager.default.createDirectory(at: baselineDir1, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: baselineDir2, withIntermediateDirectories: true)
 
         let pbxproj = """
-        // !$*UTF8*$!
-        {
-            objects = {
-                \(uuid1) /* TargetA */ = {
-                    isa = PBXNativeTarget;
-                    name = TargetA;
+            // !$*UTF8*$!
+            {
+                objects = {
+                    \(uuid1) /* TargetA */ = {
+                        isa = PBXNativeTarget;
+                        name = TargetA;
+                    };
+                    \(uuid2) /* TargetB */ = {
+                        isa = PBXNativeTarget;
+                        name = TargetB;
+                    };
                 };
-                \(uuid2) /* TargetB */ = {
-                    isa = PBXNativeTarget;
-                    name = TargetB;
-                };
-            };
-        }
-        """
+            }
+            """
         try pbxproj.write(
             to: projDir.appendingPathComponent("project.pbxproj"),
             atomically: true, encoding: .utf8,
@@ -517,19 +500,18 @@ struct PerformanceMetricsTests {
                 "cpuCount": 8,
                 "modelCode": "Mac14,7",
                 "physicalRAMAmountInMegabytes": 16384,
-            ] as [String: Any],
+            ] as [String: Any]
         ]
 
         let baselinePlist: [String: Any] = [
             "classNames": [
                 "TestClass": [
                     "testMethod()": [
-                        "com.apple.dt.XCTMetric_Clock.time.monotonic": [
-                            "baselineAverage": 1.0,
-                        ] as [String: Any],
-                    ] as [String: Any],
-                ] as [String: Any],
-            ] as [String: Any],
+                        "com.apple.dt.XCTMetric_Clock.time.monotonic": ["baselineAverage": 1.0]
+                            as [String: Any]
+                    ] as [String: Any]
+                ] as [String: Any]
+            ] as [String: Any]
         ]
 
         for dir in [baselineDir1, baselineDir2] {
@@ -540,9 +522,7 @@ struct PerformanceMetricsTests {
             let baselineData = try PropertyListSerialization.data(
                 fromPropertyList: baselinePlist, format: .xml, options: 0,
             )
-            try baselineData.write(
-                to: dir.appendingPathComponent("\(runDestUUID).plist"),
-            )
+            try baselineData.write(to: dir.appendingPathComponent("\(runDestUUID).plist"))
         }
 
         let result = try await tool.execute(arguments: [
@@ -568,9 +548,7 @@ struct PerformanceMetricsTests {
         let tempDir = TemporaryDirectory.url
         let projDir = tempDir.appendingPathComponent("Thesis.xcodeproj")
         let baselinesDir = projDir.appendingPathComponent("xcshareddata/xcbaselines")
-        try FileManager.default.createDirectory(
-            at: baselinesDir, withIntermediateDirectories: true,
-        )
+        try FileManager.default.createDirectory(at: baselinesDir, withIntermediateDirectories: true)
 
         // Copy the real fixture
         let fixtureDir = URL(fileURLWithPath: #filePath)
@@ -579,29 +557,27 @@ struct PerformanceMetricsTests {
             .appendingPathComponent("fixtures/xcbaselines/966E72D22C1A222900AADDBD.xcbaseline")
         let destDir =
             baselinesDir
-                .appendingPathComponent("966E72D22C1A222900AADDBD.xcbaseline")
+            .appendingPathComponent("966E72D22C1A222900AADDBD.xcbaseline")
         try FileManager.default.copyItem(at: fixtureDir, to: destDir)
 
         // Write a pbxproj so the UUID maps to a target name
         let pbxproj = """
-        // !$*UTF8*$!
-        {
-            objects = {
-                966E72D22C1A222900AADDBD /* ThesisTests */ = {
-                    isa = PBXNativeTarget;
-                    name = ThesisTests;
+            // !$*UTF8*$!
+            {
+                objects = {
+                    966E72D22C1A222900AADDBD /* ThesisTests */ = {
+                        isa = PBXNativeTarget;
+                        name = ThesisTests;
+                    };
                 };
-            };
-        }
-        """
+            }
+            """
         try pbxproj.write(
             to: projDir.appendingPathComponent("project.pbxproj"),
             atomically: true, encoding: .utf8,
         )
 
-        let result = try await tool.execute(arguments: [
-            "project_path": .string(projDir.path),
-        ])
+        let result = try await tool.execute(arguments: ["project_path": .string(projDir.path)])
 
         guard case let .text(text, _, _) = result.content.first else {
             Issue.record("Expected text content")
@@ -627,22 +603,20 @@ struct PerformanceMetricsTests {
         let targetUUID = "AABBCCDD00112233AABBCCDD"
         let baselineDir =
             projDir
-                .appendingPathComponent("xcshareddata/xcbaselines/\(targetUUID).xcbaseline")
-        try FileManager.default.createDirectory(
-            at: baselineDir, withIntermediateDirectories: true,
-        )
+            .appendingPathComponent("xcshareddata/xcbaselines/\(targetUUID).xcbaseline")
+        try FileManager.default.createDirectory(at: baselineDir, withIntermediateDirectories: true)
 
         let pbxproj = """
-        // !$*UTF8*$!
-        {
-            objects = {
-                \(targetUUID) /* Tests */ = {
-                    isa = PBXNativeTarget;
-                    name = Tests;
+            // !$*UTF8*$!
+            {
+                objects = {
+                    \(targetUUID) /* Tests */ = {
+                        isa = PBXNativeTarget;
+                        name = Tests;
+                    };
                 };
-            };
-        }
-        """
+            }
+            """
         try pbxproj.write(
             to: projDir.appendingPathComponent("project.pbxproj"),
             atomically: true, encoding: .utf8,
@@ -654,7 +628,7 @@ struct PerformanceMetricsTests {
                 "cpuKind": "M1", "cpuCount": 8,
                 "modelCode": "Mac14,1",
                 "physicalRAMAmountInMegabytes": 16384,
-            ] as [String: Any],
+            ] as [String: Any]
         ]
         let infoData = try PropertyListSerialization.data(
             fromPropertyList: infoPlist, format: .xml, options: 0,
@@ -665,22 +639,18 @@ struct PerformanceMetricsTests {
             "classNames": [
                 "PerfTests": [
                     "testSpeed()": [
-                        "com.apple.dt.XCTMetric_Clock.time.monotonic": [
-                            "baselineAverage": 0.5,
-                        ] as [String: Any],
-                        "com.apple.dt.XCTMetric_Memory.physical": [
-                            "baselineAverage": 1024.0,
-                        ] as [String: Any],
-                    ] as [String: Any],
-                ] as [String: Any],
-            ] as [String: Any],
+                        "com.apple.dt.XCTMetric_Clock.time.monotonic": ["baselineAverage": 0.5]
+                            as [String: Any],
+                        "com.apple.dt.XCTMetric_Memory.physical": ["baselineAverage": 1024.0]
+                            as [String: Any],
+                    ] as [String: Any]
+                ] as [String: Any]
+            ] as [String: Any]
         ]
         let baselineData = try PropertyListSerialization.data(
             fromPropertyList: baselinePlist, format: .xml, options: 0,
         )
-        try baselineData.write(
-            to: baselineDir.appendingPathComponent("\(runDestUUID).plist"),
-        )
+        try baselineData.write(to: baselineDir.appendingPathComponent("\(runDestUUID).plist"))
 
         let result = try await tool.execute(arguments: [
             "project_path": .string(projDir.path),

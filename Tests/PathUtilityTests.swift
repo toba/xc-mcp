@@ -43,9 +43,7 @@ struct PathUtilityTests {
 
         let outsidePath = "/etc/passwd"
 
-        #expect(throws: PathError.self) {
-            _ = try pathUtility.resolvePath(from: outsidePath)
-        }
+        #expect(throws: PathError.self) { _ = try pathUtility.resolvePath(from: outsidePath) }
     }
 
     @Test func `dot dot path resolution`() throws {
@@ -56,7 +54,7 @@ struct PathUtilityTests {
         let pathUtility = PathUtility(basePath: basePath)
 
         // This should resolve to basePath/MyApp.xcodeproj
-        let relativePath = "MyApp.xcodeproj" // Use simple relative path instead of ./
+        let relativePath = "MyApp.xcodeproj"  // Use simple relative path instead of ./
         let resolved = try pathUtility.resolvePath(from: relativePath)
 
         #expect(resolved == "\(basePath)/MyApp.xcodeproj")
@@ -112,9 +110,7 @@ struct PathUtilityAncestorSearchTests {
         )
 
         let result = PathUtility.findAncestorDirectory(
-            matching: { $0 == "Package.swift" },
-            startingFrom: tempDir.path,
-        )
+            matching: { $0 == "Package.swift" }, startingFrom: tempDir.path)
         #expect(result == tempDir.path)
     }
 
@@ -131,9 +127,7 @@ struct PathUtilityAncestorSearchTests {
         )
 
         let result = PathUtility.findAncestorDirectory(
-            matching: { $0 == "Package.swift" },
-            startingFrom: nested.path,
-        )
+            matching: { $0 == "Package.swift" }, startingFrom: nested.path)
         #expect(result == tempDir.path)
     }
 
@@ -143,12 +137,9 @@ struct PathUtilityAncestorSearchTests {
 
         // No Package.swift anywhere in temp dir
         let result = PathUtility.findAncestorDirectory(
-            matching: { $0 == "Package.swift" },
-            startingFrom: tempDir.path,
-        )
-        // Should be nil since /tmp won't have Package.swift
-        // (unless we're running from within a Swift package, which we are,
-        // but the temp dir tree doesn't contain one)
+            matching: { $0 == "Package.swift" }, startingFrom: tempDir.path)
+        // Should be nil since /tmp won't have Package.swift (unless we're running from within a
+        // Swift package, which we are, but the temp dir tree doesn't contain one)
         #expect(result == nil)
     }
 
@@ -175,7 +166,9 @@ struct PathUtilityAncestorSearchTests {
 
     @Test func `expandTilde expands ~ slash prefix`() {
         #expect(PathUtility.expandTilde("~/foo") == "\(NSHomeDirectory())/foo")
-        #expect(PathUtility.expandTilde("~/Developer/MyApp.xcodeproj") == "\(NSHomeDirectory())/Developer/MyApp.xcodeproj")
+        #expect(
+            PathUtility.expandTilde(
+                "~/Developer/MyApp.xcodeproj") == "\(NSHomeDirectory())/Developer/MyApp.xcodeproj")
     }
 
     @Test func `expandTilde leaves absolute paths unchanged`() {
@@ -243,9 +236,9 @@ struct PathUtilityAncestorSearchTests {
         // NSTemporaryDirectory reports /var/..., which is a symlink to /private/var. The lexical
         // check fails on that pair, so the symlink-resolved fallback is what accepts the entry.
         let pathUtility = PathUtility(basePath: base.path)
-        let resolved = try pathUtility.resolvePaths(
-            from: [base.resolvingSymlinksInPath().appendingPathComponent("Sources").path],
-        )
+        let resolved = try pathUtility.resolvePaths(from: [
+            base.resolvingSymlinksInPath().appendingPathComponent("Sources").path
+        ],)
 
         #expect(resolved.count == 1)
         #expect(resolved[0].hasSuffix("Sources"))
@@ -260,8 +253,8 @@ struct PathUtilityAncestorSearchTests {
 
     @Test
     func `findPackageRoot returns path for xc-mcp repo`() {
-        // Use this source file's location instead of cwd, since the test
-        // runner's working directory may not be inside the repo.
+        // Use this source file's location instead of cwd, since the test runner's working directory
+        // may not be inside the repo.
         let result = PathUtility.findAncestorDirectory(
             matching: { $0 == "Package.swift" },
             startingFrom: URL(fileURLWithPath: #filePath).deletingLastPathComponent().path,
@@ -269,9 +262,7 @@ struct PathUtilityAncestorSearchTests {
         #expect(result != nil)
         #expect(
             result?.hasSuffix("xc-mcp") == true
-                || FileManager.default.fileExists(
-                    atPath: "\(result ?? "")/Package.swift",
-                ),
+                || FileManager.default.fileExists(atPath: "\(result ?? "")/Package.swift"),
         )
     }
 }

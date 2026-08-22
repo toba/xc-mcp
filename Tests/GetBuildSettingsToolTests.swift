@@ -31,8 +31,7 @@ struct GetBuildSettingsToolTests {
         let tool = GetBuildSettingsTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
-            try tool.execute(
-                arguments: ["project_path": Value.string("/path/to/project.xcodeproj")],
+            try tool.execute(arguments: ["project_path": Value.string("/path/to/project.xcodeproj")]
             )
         }
     }
@@ -44,9 +43,7 @@ struct GetBuildSettingsToolTests {
             "target_name": Value.string("TestTarget"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: arguments) }
     }
 
     @Test func `get build settings with nonexistent target`() throws {
@@ -64,9 +61,7 @@ struct GetBuildSettingsToolTests {
             "target_name": Value.string("NonexistentTarget"),
         ]
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: arguments) }
     }
 
     @Test func `get build settings with valid target`() throws {
@@ -89,6 +84,7 @@ struct GetBuildSettingsToolTests {
         let result = try tool.execute(arguments: arguments)
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Build settings for target 'TestApp'"))
             #expect(content.contains("PRODUCT_NAME") || content.contains("BUNDLE_IDENTIFIER"))
@@ -118,6 +114,7 @@ struct GetBuildSettingsToolTests {
         let result = try tool.execute(arguments: arguments)
 
         #expect(result.content.count == 1)
+
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Build settings for target 'TestApp' (Release)"))
         } else {

@@ -1,6 +1,6 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 @testable import XCMCPTools
 
 struct GetFileCoverageToolTests {
@@ -54,10 +54,7 @@ struct GetFileCoverageToolTests {
 
     @Test
     func `Format uncovered ranges single and multi-line`() {
-        let ranges = [
-            UncoveredRange(start: 10, end: 10),
-            UncoveredRange(start: 25, end: 30),
-        ]
+        let ranges = [UncoveredRange(start: 10, end: 10), UncoveredRange(start: 25, end: 30)]
 
         let output = GetFileCoverageTool.formatUncoveredRanges(ranges)
 
@@ -69,6 +66,7 @@ struct GetFileCoverageToolTests {
     @Test
     func `Execute with non-existent bundle path throws`() async {
         let tool = GetFileCoverageTool()
+
         do {
             _ = try await tool.execute(arguments: [
                 "result_bundle_path": .string("/nonexistent/path.xcresult"),
@@ -83,9 +81,10 @@ struct GetFileCoverageToolTests {
     @Test
     func `Execute with missing file param throws`() async {
         let tool = GetFileCoverageTool()
+
         do {
             _ = try await tool.execute(arguments: [
-                "result_bundle_path": .string("/some/path.xcresult"),
+                "result_bundle_path": .string("/some/path.xcresult")
             ])
             Issue.record("Expected MCPError to be thrown")
         } catch {

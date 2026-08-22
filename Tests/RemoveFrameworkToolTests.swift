@@ -31,15 +31,11 @@ struct RemoveFrameworkToolTests {
     static let missingParamCases: [RemoveFrameworkMissingParamTestCase] = [
         RemoveFrameworkMissingParamTestCase(
             "Missing project_path",
-            [
-                "framework_name": Value.string("UIKit"),
-            ],
+            ["framework_name": Value.string("UIKit")],
         ),
         RemoveFrameworkMissingParamTestCase(
             "Missing framework_name",
-            [
-                "project_path": Value.string("/path/to/project.xcodeproj"),
-            ],
+            ["project_path": Value.string("/path/to/project.xcodeproj")],
         ),
     ]
 
@@ -49,9 +45,7 @@ struct RemoveFrameworkToolTests {
     ) throws {
         let tool = RemoveFrameworkTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     @Test
@@ -76,9 +70,8 @@ struct RemoveFrameworkToolTests {
         // Verify it was added
         let before = try XcodeProj(path: projectPath)
         let beforeTarget = before.pbxproj.nativeTargets.first { $0.name == "App" }
-        let beforePhase =
-            beforeTarget?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
-                as? PBXFrameworksBuildPhase
+        let beforePhase = beforeTarget?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
         #expect(beforePhase?.files?.isEmpty == false)
 
         // Remove it
@@ -98,23 +91,19 @@ struct RemoveFrameworkToolTests {
         // Verify framework phase is now empty and file ref is gone
         let after = try XcodeProj(path: projectPath)
         let afterTarget = after.pbxproj.nativeTargets.first { $0.name == "App" }
-        let afterPhase =
-            afterTarget?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
-                as? PBXFrameworksBuildPhase
+        let afterPhase = afterTarget?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
 
-        let hasUIKit =
-            afterPhase?.files?.contains { buildFile in
-                if let fileRef = buildFile.file as? PBXFileReference {
-                    return fileRef.name == "UIKit.framework"
-                }
-                return false
-            } ?? false
+        let hasUIKit = afterPhase?.files?.contains { buildFile in
+            if let fileRef = buildFile.file as? PBXFileReference {
+                return fileRef.name == "UIKit.framework"
+            }
+            return false
+        } ?? false
         #expect(hasUIKit == false)
 
         // Verify file reference was cleaned up
-        let uikitRefs = after.pbxproj.fileReferences.filter {
-            $0.name == "UIKit.framework"
-        }
+        let uikitRefs = after.pbxproj.fileReferences.filter { $0.name == "UIKit.framework" }
         #expect(uikitRefs.isEmpty)
     }
 
@@ -134,24 +123,20 @@ struct RemoveFrameworkToolTests {
         _ = try addTool.execute(arguments: [
             "project_path": Value.string(projectPath.string),
             "target_name": Value.string("App"),
-            "framework_name": Value.string(
-                tempDir.appendingPathComponent("Custom.framework").path,
-            ),
+            "framework_name": Value.string(tempDir.appendingPathComponent("Custom.framework").path),
             "embed": Value.bool(true),
         ])
 
         // Verify embed phase exists
         let before = try XcodeProj(path: projectPath)
         let beforeTarget = before.pbxproj.nativeTargets.first { $0.name == "App" }
-        let hasEmbedBefore =
-            beforeTarget?.buildPhases.contains { phase in
-                if let copyPhase = phase as? PBXCopyFilesBuildPhase,
-                   copyPhase.dstSubfolderSpec == .frameworks
-                {
-                    return copyPhase.files?.isEmpty == false
-                }
-                return false
-            } ?? false
+        let hasEmbedBefore = beforeTarget?.buildPhases.contains { phase in
+            if let copyPhase = phase as? PBXCopyFilesBuildPhase,
+               copyPhase.dstSubfolderSpec == .frameworks {
+                return copyPhase.files?.isEmpty == false
+            }
+            return false
+        } ?? false
         #expect(hasEmbedBefore == true)
 
         // Remove
@@ -171,34 +156,31 @@ struct RemoveFrameworkToolTests {
         let after = try XcodeProj(path: projectPath)
         let afterTarget = after.pbxproj.nativeTargets.first { $0.name == "App" }
 
-        let linkPhase =
-            afterTarget?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
-                as? PBXFrameworksBuildPhase
-        let hasCustomInLink =
-            linkPhase?.files?.contains { buildFile in
-                if let fileRef = buildFile.file as? PBXFileReference {
-                    return fileRef.name == "Custom.framework"
-                        || fileRef.path?.hasSuffix("Custom.framework") == true
-                }
-                return false
-            } ?? false
+        let linkPhase = afterTarget?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
+        let hasCustomInLink = linkPhase?.files?.contains { buildFile in
+            if let fileRef = buildFile.file as? PBXFileReference {
+                return fileRef.name == "Custom.framework"
+                    || fileRef.path?.hasSuffix("Custom.framework") == true
+            }
+            return false
+        } ?? false
         #expect(hasCustomInLink == false)
 
-        let hasCustomInEmbed =
-            afterTarget?.buildPhases.contains { phase in
-                if let copyPhase = phase as? PBXCopyFilesBuildPhase,
-                   copyPhase.dstSubfolderSpec == .frameworks
-                {
-                    return copyPhase.files?.contains { buildFile in
-                        if let fileRef = buildFile.file as? PBXFileReference {
-                            return fileRef.name == "Custom.framework"
-                                || fileRef.path?.hasSuffix("Custom.framework") == true
-                        }
-                        return false
-                    } ?? false
-                }
-                return false
-            } ?? false
+        let hasCustomInEmbed = afterTarget?.buildPhases.contains { phase in
+            if let copyPhase = phase as? PBXCopyFilesBuildPhase,
+               copyPhase.dstSubfolderSpec == .frameworks
+            {
+                return copyPhase.files?.contains { buildFile in
+                    if let fileRef = buildFile.file as? PBXFileReference {
+                        return fileRef.name == "Custom.framework"
+                            || fileRef.path?.hasSuffix("Custom.framework") == true
+                    }
+                    return false
+                } ?? false
+            }
+            return false
+        } ?? false
         #expect(hasCustomInEmbed == false)
     }
 
@@ -270,36 +252,30 @@ struct RemoveFrameworkToolTests {
         // Verify App no longer has UIKit
         let after = try XcodeProj(path: projectPath)
         let appTarget = after.pbxproj.nativeTargets.first { $0.name == "App" }
-        let appPhase =
-            appTarget?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
-                as? PBXFrameworksBuildPhase
-        let appHasUIKit =
-            appPhase?.files?.contains { buildFile in
-                if let fileRef = buildFile.file as? PBXFileReference {
-                    return fileRef.name == "UIKit.framework"
-                }
-                return false
-            } ?? false
+        let appPhase = appTarget?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
+        let appHasUIKit = appPhase?.files?.contains { buildFile in
+            if let fileRef = buildFile.file as? PBXFileReference {
+                return fileRef.name == "UIKit.framework"
+            }
+            return false
+        } ?? false
         #expect(appHasUIKit == false)
 
         // Verify App2 still has UIKit
         let app2Target = after.pbxproj.nativeTargets.first { $0.name == "App2" }
-        let app2Phase =
-            app2Target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
-                as? PBXFrameworksBuildPhase
-        let app2HasUIKit =
-            app2Phase?.files?.contains { buildFile in
-                if let fileRef = buildFile.file as? PBXFileReference {
-                    return fileRef.name == "UIKit.framework"
-                }
-                return false
-            } ?? false
+        let app2Phase = app2Target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+            as? PBXFrameworksBuildPhase
+        let app2HasUIKit = app2Phase?.files?.contains { buildFile in
+            if let fileRef = buildFile.file as? PBXFileReference {
+                return fileRef.name == "UIKit.framework"
+            }
+            return false
+        } ?? false
         #expect(app2HasUIKit == true)
 
         // File reference should still exist (App2 uses it)
-        let uikitRefs = after.pbxproj.fileReferences.filter {
-            $0.name == "UIKit.framework"
-        }
+        let uikitRefs = after.pbxproj.fileReferences.filter { $0.name == "UIKit.framework" }
         #expect(!uikitRefs.isEmpty)
     }
 
@@ -369,25 +345,22 @@ struct RemoveFrameworkToolTests {
 
         // Verify both targets no longer have UIKit
         let after = try XcodeProj(path: projectPath)
+
         for targetName in ["App", "App2"] {
             let target = after.pbxproj.nativeTargets.first { $0.name == targetName }
-            let phase =
-                target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
-                    as? PBXFrameworksBuildPhase
-            let hasUIKit =
-                phase?.files?.contains { buildFile in
-                    if let fileRef = buildFile.file as? PBXFileReference {
-                        return fileRef.name == "UIKit.framework"
-                    }
-                    return false
-                } ?? false
+            let phase = target?.buildPhases.first { $0 is PBXFrameworksBuildPhase }
+                as? PBXFrameworksBuildPhase
+            let hasUIKit = phase?.files?.contains { buildFile in
+                if let fileRef = buildFile.file as? PBXFileReference {
+                    return fileRef.name == "UIKit.framework"
+                }
+                return false
+            } ?? false
             #expect(hasUIKit == false)
         }
 
         // File reference should be cleaned up
-        let uikitRefs = after.pbxproj.fileReferences.filter {
-            $0.name == "UIKit.framework"
-        }
+        let uikitRefs = after.pbxproj.fileReferences.filter { $0.name == "UIKit.framework" }
         #expect(uikitRefs.isEmpty)
     }
 
@@ -470,9 +443,7 @@ struct RemoveFrameworkToolTests {
 
         // Verify it's actually gone
         let after = try XcodeProj(path: projectPath)
-        let uikitRefs = after.pbxproj.fileReferences.filter {
-            $0.name == "UIKit.framework"
-        }
+        let uikitRefs = after.pbxproj.fileReferences.filter { $0.name == "UIKit.framework" }
         #expect(uikitRefs.isEmpty)
     }
 }

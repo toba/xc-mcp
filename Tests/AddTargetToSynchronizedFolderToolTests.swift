@@ -18,6 +18,7 @@ struct AddTargetToSynchronizedFolderToolTests {
         #expect(tool.tool().name == "add_target_to_synchronized_folder")
 
         let schema = tool.tool().inputSchema
+
         if case let .object(schemaDict) = schema {
             if case let .object(props) = schemaDict["properties"] {
                 #expect(props["project_path"] != nil)
@@ -82,9 +83,9 @@ struct AddTargetToSynchronizedFolderToolTests {
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(syncGroup)
         }
-        let firstTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" },
-        )
+        let firstTarget = try #require(xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "AppTarget"
+        })
         firstTarget.fileSystemSynchronizedGroups = [syncGroup]
 
         try xcodeproj.write(path: projectPath)
@@ -105,9 +106,7 @@ struct AddTargetToSynchronizedFolderToolTests {
 
         // Verify both targets reference the same sync group
         let updated = try XcodeProj(path: projectPath)
-        let updatedSecond = updated.pbxproj.nativeTargets.first {
-            $0.name == "DiagnosticTarget"
-        }
+        let updatedSecond = updated.pbxproj.nativeTargets.first { $0.name == "DiagnosticTarget" }
         #expect(updatedSecond?.fileSystemSynchronizedGroups?.count == 1)
         #expect(updatedSecond?.fileSystemSynchronizedGroups?.first?.path == "Sources")
 

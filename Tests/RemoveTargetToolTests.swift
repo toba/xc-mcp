@@ -31,8 +31,7 @@ struct RemoveTargetToolTests {
         let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: "/tmp"))
 
         #expect(throws: MCPError.self) {
-            try tool.execute(
-                arguments: ["project_path": Value.string("/path/to/project.xcodeproj")],
+            try tool.execute(arguments: ["project_path": Value.string("/path/to/project.xcodeproj")]
             )
         }
     }
@@ -220,10 +219,12 @@ struct RemoveTargetToolTests {
         )
 
         var xcodeproj = try XcodeProj(path: projectPath)
-        let appTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" })
-        let libTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "LibTarget" })
+        let appTarget = try #require(xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "AppTarget"
+        })
+        let libTarget = try #require(xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "LibTarget"
+        })
         let proxy = try PBXContainerItemProxy(
             containerPortal: .project(#require(xcodeproj.pbxproj.rootObject)),
             remoteGlobalID: .object(libTarget),
@@ -231,7 +232,8 @@ struct RemoveTargetToolTests {
             remoteInfo: "LibTarget",
         )
         xcodeproj.pbxproj.add(object: proxy)
-        let dependency = PBXTargetDependency(name: "LibTarget", target: libTarget, targetProxy: proxy)
+        let dependency = PBXTargetDependency(
+            name: "LibTarget", target: libTarget, targetProxy: proxy)
         xcodeproj.pbxproj.add(object: dependency)
         appTarget.dependencies.append(dependency)
         try xcodeproj.write(path: projectPath)
@@ -253,7 +255,8 @@ struct RemoveTargetToolTests {
         xcodeproj = try XcodeProj(path: projectPath)
         #expect(xcodeproj.pbxproj.targetDependencies.isEmpty)
         #expect(xcodeproj.pbxproj.containerItemProxies.isEmpty)
-        let data = try Data(contentsOf: URL(fileURLWithPath: (projectPath + "project.pbxproj").string))
+        let data = try Data(contentsOf: URL(
+            fileURLWithPath: (projectPath + "project.pbxproj").string))
         #expect(PBXProjReferenceAudit.danglingReferences(in: data).isEmpty)
 
         // The depended-on target can now be removed cleanly (the regression this prevents).
@@ -282,11 +285,13 @@ struct RemoveTargetToolTests {
         let plan: [String: Any] = [
             "version": 1,
             "testTargets": [
-                ["target": [
-                    "containerPath": "container:TestProject.xcodeproj",
-                    "identifier": "ABC123",
-                    "name": "AppTargetTests",
-                ]],
+                [
+                    "target": [
+                        "containerPath": "container:TestProject.xcodeproj",
+                        "identifier": "ABC123",
+                        "name": "AppTargetTests",
+                    ]
+                ]
             ],
         ]
         try TestPlanFile.write(plan, to: planPath)
@@ -325,23 +330,23 @@ struct RemoveTargetToolTests {
         )
         let schemePath = "\(schemeDir)/AppTarget.xcscheme"
         let schemeXML = """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <Scheme LastUpgradeVersion="1600" version="1.7">
-           <TestAction buildConfiguration="Debug">
-              <Testables>
-                 <TestableReference skipped="NO">
-                    <BuildableReference
-                       BuildableIdentifier="primary"
-                       BlueprintIdentifier="ABC123"
-                       BuildableName="AppTargetTests.xctest"
-                       BlueprintName="AppTargetTests"
-                       ReferencedContainer="container:TestProject.xcodeproj">
-                    </BuildableReference>
-                 </TestableReference>
-              </Testables>
-           </TestAction>
-        </Scheme>
-        """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Scheme LastUpgradeVersion="1600" version="1.7">
+               <TestAction buildConfiguration="Debug">
+                  <Testables>
+                     <TestableReference skipped="NO">
+                        <BuildableReference
+                           BuildableIdentifier="primary"
+                           BlueprintIdentifier="ABC123"
+                           BuildableName="AppTargetTests.xctest"
+                           BlueprintName="AppTargetTests"
+                           ReferencedContainer="container:TestProject.xcodeproj">
+                        </BuildableReference>
+                     </TestableReference>
+                  </Testables>
+               </TestAction>
+            </Scheme>
+            """
         try schemeXML.write(toFile: schemePath, atomically: true, encoding: .utf8)
 
         let tool = RemoveTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -358,11 +363,12 @@ struct RemoveTargetToolTests {
         #expect(message.contains("AppTarget.xcscheme"))
 
         // No dangling reference may remain in the scheme.
-        #expect(!SchemeTargetEditor.references(
-            target: "AppTargetTests",
-            projectFilename: "TestProject.xcodeproj",
-            schemeAt: schemePath,
-        ))
+        #expect(
+            !SchemeTargetEditor.references(
+                target: "AppTargetTests",
+                projectFilename: "TestProject.xcodeproj",
+                schemeAt: schemePath,
+            ))
     }
 
     @Test
@@ -426,10 +432,12 @@ struct RemoveTargetToolTests {
 
         // Wire AppTarget -> depends on LibTarget.
         var xcodeproj = try XcodeProj(path: projectPath)
-        let appTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" })
-        let libTarget = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "LibTarget" })
+        let appTarget = try #require(xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "AppTarget"
+        })
+        let libTarget = try #require(xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "LibTarget"
+        })
         let proxy = try PBXContainerItemProxy(
             containerPortal: .project(#require(xcodeproj.pbxproj.rootObject)),
             remoteGlobalID: .object(libTarget),
@@ -437,7 +445,8 @@ struct RemoveTargetToolTests {
             remoteInfo: "LibTarget",
         )
         xcodeproj.pbxproj.add(object: proxy)
-        let dependency = PBXTargetDependency(name: "LibTarget", target: libTarget, targetProxy: proxy)
+        let dependency = PBXTargetDependency(
+            name: "LibTarget", target: libTarget, targetProxy: proxy)
         xcodeproj.pbxproj.add(object: dependency)
         appTarget.dependencies.append(dependency)
         try xcodeproj.write(path: projectPath)
@@ -474,8 +483,9 @@ struct RemoveTargetToolTests {
         // dangling references the thesis corruption left behind.
         var xcodeproj = try XcodeProj(path: projectPath)
         let project = try #require(xcodeproj.pbxproj.rootObject)
-        let tests = try #require(
-            xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTargetTests" })
+        let tests = try #require(xcodeproj.pbxproj.nativeTargets.first {
+            $0.name == "AppTargetTests"
+        })
 
         let exceptionSet = PBXFileSystemSynchronizedBuildFileExceptionSet(
             target: tests,
@@ -510,7 +520,8 @@ struct RemoveTargetToolTests {
         #expect(xcodeproj.pbxproj.fileSystemSynchronizedBuildFileExceptionSets.isEmpty)
         #expect(try #require(xcodeproj.pbxproj.rootObject).targetAttributes.isEmpty)
 
-        let data = try Data(contentsOf: URL(fileURLWithPath: (projectPath + "project.pbxproj").string))
+        let data = try Data(contentsOf: URL(
+            fileURLWithPath: (projectPath + "project.pbxproj").string))
         #expect(PBXProjReferenceAudit.danglingReferences(in: data).isEmpty)
     }
 }

@@ -1,5 +1,5 @@
 {
-  "originHash" : "be0b20dd9e00334315f8a59fe178ae9cdf843d32a9c35851e54ccfaf047913d8",
+  "originHash" : "3cc06768ea0c32004dc9721121e2dd1de55f2f01d10206c716015998c73895dd",
   "pins" : [
     {
       "identity" : "aexml",
@@ -116,6 +116,42 @@
       "state" : {
         "revision" : "4acaf67ed8107e7e83e9457e83a6526e7b25efd1",
         "version" : "3.0.9"
+      }
+    },
+    {
+      "identity" : "toba-concurrency",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/toba/toba-concurrency",
+      "state" : {
+        "revision" : "3f50379daee893512aaa8d0b37d466cbbc54e12b",
+        "version" : "1.0.2"
+      }
+    },
+    {
+      "identity" : "toba-core",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/toba/toba-core",
+      "state" : {
+        "revision" : "e9277d88cf68411c20a4bec5197db2da0335e68c",
+        "version" : "1.5.0"
+      }
+    },
+    {
+      "identity" : "toba-hash",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/toba/toba-hash",
+      "state" : {
+        "revision" : "587cc4d8339ea28c6839976f14198b140d3b2553",
+        "version" : "1.0.3"
+      }
+    },
+    {
+      "identity" : "toba-testing",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/toba/toba-testing",
+      "state" : {
+        "revision" : "23e2ee7cf530ffb57a7bad43422f5392d7baeae5",
+        "version" : "1.3.2"
       }
     },
     {

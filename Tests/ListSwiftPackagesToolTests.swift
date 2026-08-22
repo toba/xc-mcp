@@ -23,9 +23,7 @@ struct ListSwiftPackagesToolTests {
     func `List packages with missing project path`() throws {
         let tool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [:])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: [:]) }
     }
 
     @Test
@@ -36,9 +34,7 @@ struct ListSwiftPackagesToolTests {
         try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
 
         let tool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let args: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-        ]
+        let args: [String: Value] = ["project_path": Value.string(projectPath.string)]
 
         let result = try tool.execute(arguments: args)
 
@@ -82,9 +78,7 @@ struct ListSwiftPackagesToolTests {
 
         // Now list the packages
         let listTool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let args: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-        ]
+        let args: [String: Value] = ["project_path": Value.string(projectPath.string)]
 
         let result = try listTool.execute(arguments: args)
 
@@ -124,9 +118,7 @@ struct ListSwiftPackagesToolTests {
 
         // Now list the packages
         let listTool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let args: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-        ]
+        let args: [String: Value] = ["project_path": Value.string(projectPath.string)]
 
         let result = try listTool.execute(arguments: args)
 
@@ -169,9 +161,7 @@ struct ListSwiftPackagesToolTests {
 
         // Now list the packages
         let listTool = ListSwiftPackagesTool(pathUtility: PathUtility(basePath: tempDir.path))
-        let args: [String: Value] = [
-            "project_path": Value.string(projectPath.string),
-        ]
+        let args: [String: Value] = ["project_path": Value.string(projectPath.string)]
 
         let result = try listTool.execute(arguments: args)
 

@@ -15,19 +15,19 @@ struct MacroValidationTests {
     }
 
     @Test func `omits the flag when the environment requires approval`() {
-        let args = MacroValidation.args(
-            environment: ["XC_MCP_REQUIRE_MACRO_APPROVAL": "1"],
-        )
+        let args = MacroValidation.args(environment: ["XC_MCP_REQUIRE_MACRO_APPROVAL": "1"])
         #expect(args.isEmpty)
     }
 
     @Test func `treats 0 and false as not requiring approval`() {
         #expect(
-            MacroValidation.args(environment: ["XC_MCP_REQUIRE_MACRO_APPROVAL": "0"])
+            MacroValidation.args(environment: ["XC_MCP_REQUIRE_MACRO_APPROVAL": "0"]
+            )
                 == ["-skipMacroValidation"],
         )
         #expect(
-            MacroValidation.args(environment: ["XC_MCP_REQUIRE_MACRO_APPROVAL": "false"])
+            MacroValidation.args(environment: ["XC_MCP_REQUIRE_MACRO_APPROVAL": "false"]
+            )
                 == ["-skipMacroValidation"],
         )
     }

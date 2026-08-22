@@ -1,7 +1,7 @@
-import Foundation
 import MCP
 import Testing
 import XCMCPCore
+import Foundation
 @testable import XCMCPTools
 
 @Suite(.temporaryDirectory)
@@ -15,9 +15,7 @@ struct DumpPIFToolTests {
     @Test
     func `Requires project_path`() {
         let tool = DumpPIFTool(pathUtility: PathUtility(basePath: "/tmp"))
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [:])
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: [:]) }
     }
 
     @Test

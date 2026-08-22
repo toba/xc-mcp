@@ -1,11 +1,11 @@
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 
 @Suite(.temporaryDirectory)
 struct SchemeSuggestionTests {
-    /// Creates a temporary directory with an `.xcodeproj` containing scheme files.
-    /// Returns `(projectRoot, projectPath)`.
+    /// Creates a temporary directory with an `.xcodeproj` containing scheme files. Returns
+    /// `(projectRoot, projectPath)`.
     private func createFixture(
         schemes: [String: String],
     ) throws -> (projectRoot: String, projectPath: String) {
@@ -42,17 +42,17 @@ struct SchemeSuggestionTests {
         }.joined(separator: "\n")
 
         return """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <Scheme version = "1.3">
-           <BuildAction>
-           </BuildAction>
-           <TestAction buildConfiguration = "Debug">
-              <Testables>
-        \(testables)
-              </Testables>
-           </TestAction>
-        </Scheme>
-        """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Scheme version = "1.3">
+               <BuildAction>
+               </BuildAction>
+               <TestAction buildConfiguration = "Debug">
+                  <Testables>
+            \(testables)
+                  </Testables>
+               </TestAction>
+            </Scheme>
+            """
     }
 
     @Test
@@ -63,9 +63,9 @@ struct SchemeSuggestionTests {
         ])
 
         let output = """
-        Testing failed:
-            "TestAppUITests" isn't a member of the specified test plan or scheme.
-        """
+            Testing failed:
+                "TestAppUITests" isn't a member of the specified test plan or scheme.
+            """
 
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
@@ -91,9 +91,9 @@ struct SchemeSuggestionTests {
         ])
 
         let output = """
-        Testing failed:
-            "MissingTests" isn't a member of the specified test plan or scheme.
-        """
+            Testing failed:
+                "MissingTests" isn't a member of the specified test plan or scheme.
+            """
 
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
@@ -118,9 +118,9 @@ struct SchemeSuggestionTests {
         ])
 
         let output = """
-        Testing failed:
-            "SharedTests" isn't a member of the specified test plan or scheme.
-        """
+            Testing failed:
+                "SharedTests" isn't a member of the specified test plan or scheme.
+            """
 
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
@@ -141,13 +141,13 @@ struct SchemeSuggestionTests {
     @Test
     func `Handles slash-separated identifiers by extracting target name`() async throws {
         let (root, projectPath) = try createFixture(schemes: [
-            "TestScheme": schemeXML(testTargets: ["MyUITests"]),
+            "TestScheme": schemeXML(testTargets: ["MyUITests"])
         ])
 
         let output = """
-        Testing failed:
-            "MyUITests/LoginTest" isn't a member of the specified test plan or scheme.
-        """
+            Testing failed:
+                "MyUITests/LoginTest" isn't a member of the specified test plan or scheme.
+            """
 
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
@@ -167,13 +167,13 @@ struct SchemeSuggestionTests {
     @Test
     func `Shows available test targets from scheme when target name is wrong`() async throws {
         let (root, projectPath) = try createFixture(schemes: [
-            "Standard": schemeXML(testTargets: ["ThesisTests", "ThesisUITests"]),
+            "Standard": schemeXML(testTargets: ["ThesisTests", "ThesisUITests"])
         ])
 
         let output = """
-        Testing failed:
-            Tests in the target "ThesisAppTests" can't be run because "ThesisAppTests" isn't a member of the specified test plan or scheme.
-        """
+            Testing failed:
+                Tests in the target "ThesisAppTests" can't be run because "ThesisAppTests" isn't a member of the specified test plan or scheme.
+            """
 
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
@@ -196,16 +196,17 @@ struct SchemeSuggestionTests {
     }
 
     @Test
-    func `Shows available targets from all schemes when current scheme has no tests`() async throws {
+    func `Shows available targets from all schemes when current scheme has no tests`() async throws
+    {
         let (root, projectPath) = try createFixture(schemes: [
             "Standard": schemeXML(testTargets: []),
             "Testing": schemeXML(testTargets: ["AppTests", "UITests"]),
         ])
 
         let output = """
-        Testing failed:
-            "WrongTests" isn't a member of the specified test plan or scheme.
-        """
+            Testing failed:
+                "WrongTests" isn't a member of the specified test plan or scheme.
+            """
 
         do {
             _ = try await ErrorExtractor.formatTestToolResult(
@@ -227,13 +228,13 @@ struct SchemeSuggestionTests {
     @Test
     func `No enhancement when error is not about test plan membership`() async throws {
         let (root, projectPath) = try createFixture(schemes: [
-            "TestScheme": schemeXML(testTargets: ["MyTests"]),
+            "TestScheme": schemeXML(testTargets: ["MyTests"])
         ])
 
         let output = """
-        Testing failed:
-            Build input file cannot be found: 'missing.swift'
-        """
+            Testing failed:
+                Build input file cannot be found: 'missing.swift'
+            """
 
         do {
             _ = try await ErrorExtractor.formatTestToolResult(

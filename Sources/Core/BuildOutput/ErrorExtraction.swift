@@ -1,4 +1,5 @@
 import MCP
+import TobaCore
 import Foundation
 
 /// Utilities for extracting error information from build and test output.
@@ -231,8 +232,8 @@ public enum ErrorExtractor {
     /// - Parameters:
     ///   - result: The xcodebuild result.
     ///   - projectRoot: Optional project root for path relativization in error output.
-    ///   - derivedDataNote: One-line DerivedData root note appended to the failure message. A failed
-    ///     build is the case where the caller most needs to know which tree to inspect.
+    ///   - derivedDataNote: One-line DerivedData root note appended to the failure message. A
+    ///     failed build is the case where the caller most needs to know which tree to inspect.
     /// - Throws: ``MCPError/internalError(_:)`` with formatted build errors if the build failed.
     public static func checkBuildSuccess(
         _ result: ProcessResult,
@@ -587,14 +588,7 @@ public enum ErrorExtractor {
                 allTargets = currentSchemeTargets.sorted()
             } else {
                 // Fall back to all targets across all schemes
-                var seen: Set<String> = []
-
-                for targets in schemeMap.values {
-                    for target in targets where seen.insert(target).inserted {
-                        allTargets.append(target)
-                    }
-                }
-                allTargets.sort()
+                allTargets = schemeMap.values.joined().uniqued().sorted()
             }
         }
 

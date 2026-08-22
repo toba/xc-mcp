@@ -20,9 +20,7 @@ struct CreateIconToolTests {
     func `Missing png_path throws`() {
         let tool = CreateIconTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "output_path": .string("/tmp/AppIcon.icon"),
-            ])
+            try tool.execute(arguments: ["output_path": .string("/tmp/AppIcon.icon")])
         }
     }
 
@@ -30,9 +28,7 @@ struct CreateIconToolTests {
     func `Missing output_path throws`() {
         let tool = CreateIconTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) {
-            try tool.execute(arguments: [
-                "png_path": .string("/tmp/logo.png"),
-            ])
+            try tool.execute(arguments: ["png_path": .string("/tmp/logo.png")])
         }
     }
 
@@ -140,7 +136,8 @@ struct CreateIconToolTests {
         let manifest = try JSONDecoder().decode(IconManifest.self, from: data)
 
         guard case let .automaticGradient(color) = manifest.fill else {
-            Issue.record("Expected automatic-gradient fill, got \(String(describing: manifest.fill))")
+            Issue.record(
+                "Expected automatic-gradient fill, got \(String(describing: manifest.fill))")
             return
         }
         #expect(color.contains("1.00000,0.00000,0.00000"))
@@ -229,8 +226,8 @@ struct CreateIconToolTests {
 
         // Verify it's in the resources build phase
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
-        let resourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
+        let resourcesBuildPhase = target.buildPhases.first { $0 is PBXResourcesBuildPhase }
+            as? PBXResourcesBuildPhase
         let resourceFiles = resourcesBuildPhase?.files?.compactMap { $0.file?.name } ?? []
         #expect(resourceFiles.contains("AppIcon.icon"))
     }

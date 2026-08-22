@@ -73,9 +73,7 @@ struct FocusPolicyTests {
 
     @Test
     func `openSimulatorAppArgs returns nil in headless mode`() {
-        let args = FocusPolicy.openSimulatorAppArgs(
-            environment: ["XC_MCP_HEADLESS_LAUNCH": "1"],
-        )
+        let args = FocusPolicy.openSimulatorAppArgs(environment: ["XC_MCP_HEADLESS_LAUNCH": "1"])
         #expect(args == nil)
     }
 }

@@ -43,9 +43,7 @@ struct RemoveFileToolTests {
     func `Remove file with missing parameter`(_ testCase: RemoveFileMissingParamTestCase) throws {
         let tool = RemoveFileTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     @Test
@@ -90,16 +88,15 @@ struct RemoveFileToolTests {
         // Verify file was removed from project
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
-        let sourcesBuildPhase =
-            target?.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        let sourcesBuildPhase = target?.buildPhases.first { $0 is PBXSourcesBuildPhase }
+            as? PBXSourcesBuildPhase
 
-        let fileStillExists =
-            sourcesBuildPhase?.files?.contains { buildFile in
-                if let fileRef = buildFile.file as? PBXFileReference {
-                    return fileRef.path == testFilePath || fileRef.name == "file.swift"
-                }
-                return false
-            } ?? false
+        let fileStillExists = sourcesBuildPhase?.files?.contains { buildFile in
+            if let fileRef = buildFile.file as? PBXFileReference {
+                return fileRef.path == testFilePath || fileRef.name == "file.swift"
+            }
+            return false
+        } ?? false
 
         #expect(fileStillExists == false)
 
@@ -149,8 +146,9 @@ struct RemoveFileToolTests {
     }
 
     @Test
-    func `Remove file only removes the matching path, not same-named files in other targets`(
-    ) throws {
+    func `Remove file only removes the matching path, not same-named files in other targets`()
+        throws
+    {
         let tempDir = TemporaryDirectory.url
 
         let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
@@ -204,30 +202,28 @@ struct RemoveFileToolTests {
         // Verify ExtTarget still has its file
         let xcodeproj = try XcodeProj(path: projectPath)
         let extTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "ExtTarget" }
-        let extSources =
-            extTarget?.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
-        let extFileStillExists =
-            extSources?.files?.contains { buildFile in
-                if let fileRef = buildFile.file as? PBXFileReference {
-                    return fileRef.path == "SharedDefaults.swift"
-                        || fileRef.name == "SharedDefaults.swift"
-                }
-                return false
-            } ?? false
+        let extSources = extTarget?.buildPhases.first { $0 is PBXSourcesBuildPhase }
+            as? PBXSourcesBuildPhase
+        let extFileStillExists = extSources?.files?.contains { buildFile in
+            if let fileRef = buildFile.file as? PBXFileReference {
+                return fileRef.path == "SharedDefaults.swift"
+                    || fileRef.name == "SharedDefaults.swift"
+            }
+            return false
+        } ?? false
         #expect(extFileStillExists == true)
 
         // Verify AppTarget no longer has its file
         let appTarget = xcodeproj.pbxproj.nativeTargets.first { $0.name == "AppTarget" }
-        let appSources =
-            appTarget?.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
-        let appFileStillExists =
-            appSources?.files?.contains { buildFile in
-                if let fileRef = buildFile.file as? PBXFileReference {
-                    return fileRef.path == "SharedDefaults.swift"
-                        || fileRef.name == "SharedDefaults.swift"
-                }
-                return false
-            } ?? false
+        let appSources = appTarget?.buildPhases.first { $0 is PBXSourcesBuildPhase }
+            as? PBXSourcesBuildPhase
+        let appFileStillExists = appSources?.files?.contains { buildFile in
+            if let fileRef = buildFile.file as? PBXFileReference {
+                return fileRef.path == "SharedDefaults.swift"
+                    || fileRef.name == "SharedDefaults.swift"
+            }
+            return false
+        } ?? false
         #expect(appFileStillExists == false)
     }
 

@@ -4,6 +4,7 @@ import System
 import Foundation
 import Subprocess
 import Synchronization
+import TobaConcurrency
 
 /// Errors that can occur during process execution.
 public enum ProcessError: Error, Sendable, LocalizedError, MCPErrorConvertible {
@@ -75,7 +76,7 @@ public struct ProcessResult: Sendable {
 /// being read from the group body.
 private final class TimeoutFlag: Sendable {
     private let raised = Mutex(false)
-    func raise() { raised.withLock { $0 = true } }
+    func raise() { raised(set: true) }
     var isRaised: Bool { raised.withLock { $0 } }
 }
 
@@ -155,7 +156,7 @@ extension ProcessResult {
                 workingDirectory: workingDirectory,
                 platformOptions: platformOptions,
             ) { execution, inputWriter, outputSequence, errorSequence in
-                pgidBox.withLock { $0 = execution.processIdentifier.value }
+                pgidBox(set: execution.processIdentifier.value)
                 try await inputWriter.finish()
                 // Always drain both sequences to prevent the child from blocking on a full pipe
                 // buffer.
@@ -309,19 +310,14 @@ public extension ProcessResult {
         timeout: Duration = .seconds(5),
     ) async -> Bool {
         // Fast path: the process is already gone.
-        if kill(pid, 0) != 0 { return true }
-
-        // Wait on the kernel's process-exit event from a dedicated thread. Polling
-        // with `Task.sleep` on the cooperative pool made both exit detection and the
-        // timeout unreliable: under a starved pool (e.g. a full parallel test or build
-        // run) a 100ms sleep could overshoot by tens of seconds, causing this to miss
-        // an exit or blow past its deadline. A blocking `kevent` off the pool bounds
-        // both precisely.
-        return await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            Thread.detachNewThread {
-                continuation.resume(returning: blockingWaitForProcessExit(pid: pid, timeout: timeout))
+        kill(pid, 0) != 0
+            ? true
+            : await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                Thread.detachNewThread {
+                    continuation.resume(returning: blockingWaitForProcessExit(
+                        pid: pid, timeout: timeout))
+                }
             }
-        }
     }
 
     /// Blocks the calling thread until `pid` exits or `timeout` elapses, using a kqueue
@@ -342,20 +338,16 @@ public extension ProcessResult {
             data: 0,
             udata: nil,
         )
-        // Registration fails (ESRCH) if the process exited between the fast-path check
-        // and here — treat that as an exit.
+        // Registration fails (ESRCH) if the process exited between the fast-path check and here —
+        // treat that as an exit.
         if kevent(kq, &change, 1, nil, 0, nil) < 0 { return true }
 
         let (seconds, attoseconds) = timeout.components
-        var deadline = timespec(
-            tv_sec: Int(seconds),
-            tv_nsec: Int(attoseconds / 1_000_000_000),
-        )
+        var deadline = timespec(tv_sec: Int(seconds), tv_nsec: Int(attoseconds / 1_000_000_000))
         var event = kevent()
         let n = kevent(kq, nil, 0, &event, 1, &deadline)
         // n > 0: NOTE_EXIT delivered. n == 0: timed out. n < 0: error — confirm via kill.
-        if n > 0 { return true }
-        return kill(pid, 0) != 0
+        return n > 0 ? true : kill(pid, 0) != 0
     }
 }
 

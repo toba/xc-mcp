@@ -43,14 +43,14 @@ struct RemoveSwiftPackageToolTests {
     ]
 
     @Test(arguments: missingParamCases)
-    func `Remove package with missing parameter`(_ testCase: RemoveSwiftPackageMissingParamTestCase)
+    func `Remove package with missing parameter`(
+        _ testCase: RemoveSwiftPackageMissingParamTestCase
+    )
         throws
     {
         let tool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: "/tmp"))
 
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: testCase.arguments)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: testCase.arguments) }
     }
 
     @Test
@@ -170,9 +170,8 @@ struct RemoveSwiftPackageToolTests {
         #expect(updatedTarget?.packageProductDependencies?.isEmpty == true)
 
         // Verify no stale PBXBuildFile entries referencing the product remain
-        let frameworksPhase =
-            updatedTarget?.buildPhases
-                .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworksPhase = updatedTarget?.buildPhases
+            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
         let packageBuildFiles = frameworksPhase?.files?.filter { $0.product != nil } ?? []
         #expect(packageBuildFiles.isEmpty)
     }
@@ -289,9 +288,8 @@ struct RemoveSwiftPackageToolTests {
         // Verify build file was added
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
-        let frameworksPhase =
-            target?.buildPhases
-                .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworksPhase = target?.buildPhases
+            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
         let buildFilesBefore = frameworksPhase?.files?.filter { $0.product != nil } ?? []
         #expect(buildFilesBefore.count == 1)
 
@@ -305,9 +303,8 @@ struct RemoveSwiftPackageToolTests {
         // Verify build files were cleaned up
         let updatedXcodeproj = try XcodeProj(path: projectPath)
         let updatedTarget = updatedXcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }
-        let updatedPhase =
-            updatedTarget?.buildPhases
-                .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let updatedPhase = updatedTarget?.buildPhases
+            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
         let buildFilesAfter = updatedPhase?.files?.filter { $0.product != nil } ?? []
         #expect(buildFilesAfter.isEmpty)
         #expect(updatedTarget?.packageProductDependencies?.isEmpty == true)

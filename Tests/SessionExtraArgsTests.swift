@@ -1,7 +1,7 @@
 import MCP
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 
 @Suite(.temporaryDirectory, .serialized)
 struct SessionExtraArgsTests {
@@ -10,7 +10,7 @@ struct SessionExtraArgsTests {
     }
 
     private func makeManager(_ path: URL) -> SessionManager {
-        SessionManager(filePath: path, enableWarmup: false)
+        .init(filePath: path, enableWarmup: false)
     }
 
     // MARK: - Persistence

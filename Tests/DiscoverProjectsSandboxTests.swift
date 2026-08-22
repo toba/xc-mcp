@@ -20,8 +20,8 @@ struct DiscoverProjectsSandboxTests {
     }
 
     @Test func `symlink escaping base is not followed`() throws {
-        // <root>/base holds Inside.xcodeproj and a symlink escape -> <root>/outside,
-        // which holds Outside.xcodeproj.
+        // <root>/base holds Inside.xcodeproj and a symlink escape -> <root>/outside, which holds
+        // Outside.xcodeproj.
         let root = TemporaryDirectory.url
         let base = root.appendingPathComponent("base")
         let outside = root.appendingPathComponent("outside")

@@ -1,13 +1,10 @@
-import Foundation
 import Testing
+import Foundation
 @testable import XCMCPCore
 
-/// Coverage for the next-step hints helper ported from
-/// getsentry/XcodeBuildMCP PR #420.
+/// Coverage for the next-step hints helper ported from getsentry/XcodeBuildMCP PR #420.
 struct NextStepHintsTests {
-    @Test func `render returns nil for empty hints`() {
-        #expect(NextStepHints.render([]) == nil)
-    }
+    @Test func `render returns nil for empty hints`() { #expect(NextStepHints.render([]) == nil) }
 
     @Test func `render sorts by priority ascending and numbers entries`() throws {
         let hints = [

@@ -3,6 +3,7 @@ import Darwin
 import Foundation
 import Subprocess
 import Synchronization
+import TobaConcurrency
 
 /// Wrapper for executing xcodebuild commands.
 ///
@@ -186,7 +187,7 @@ public struct XcodebuildRunner: Sendable {
                         stdoutSeq: AsyncBufferSequence,
                         stderrSeq: AsyncBufferSequence,
                     ) in
-                    pgidBox.withLock { $0 = execution.processIdentifier.value }
+                    pgidBox(set: execution.processIdentifier.value)
                     return try await withThrowingTaskGroup(of: Void.self) { group in
                         // Read stdout
                         group.addTask(name: "xcodebuild-stdout-reader") {
@@ -942,7 +943,7 @@ final class PackageResolutionPhase: Sendable {
         else { return }
         let trimmed = last.drop(while: \.isWhitespace)
         let entering = Self.markers.contains { trimmed.hasPrefix($0) }
-        active.withLock { $0 = entering }
+        active(set: entering)
     }
 
     /// Line prefixes xcodebuild prints as it enters a phase that resolves, fetches, or checks out
@@ -966,7 +967,7 @@ final class PackageResolutionPhase: Sendable {
 private final class LastOutputTime: Sendable {
     private let lastTime = Mutex(ContinuousClock.now)
 
-    func update() { lastTime.withLock { $0 = .now } }
+    func update() { lastTime(set: .now) }
 
     func timeSinceLastOutput() -> Duration { lastTime.withLock { $0.duration(to: .now) } }
 }

@@ -30,7 +30,5 @@ struct GitRunnerTests {
         #expect(GitRunner.parseTags(output).map(\.description) == ["1.0.0"])
     }
 
-    @Test func `returns nothing for empty output`() {
-        #expect(GitRunner.parseTags("").isEmpty)
-    }
+    @Test func `returns nothing for empty output`() { #expect(GitRunner.parseTags("").isEmpty) }
 }

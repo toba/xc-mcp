@@ -58,6 +58,7 @@ struct PredicateFilterValidatorTests {
     func `error converts to invalidParams MCPError`() {
         let error = PredicateFilterError.invalidValue(field: "bundle_id", value: "bad\"")
         let mcpError = error.toMCPError()
+
         if case let .invalidParams(message) = mcpError {
             #expect(message?.contains("bundle_id") == true)
             #expect(message?.contains("bad\"") == true)
@@ -82,7 +83,7 @@ struct PredicateFilterValidatorTests {
         let tool = StartMacLogCapTool(sessionManager: SessionManager())
         await #expect(throws: MCPError.self) {
             _ = try await tool.execute(arguments: [
-                "subsystem": .string("com.apple\" OR process == \"loginwindow"),
+                "subsystem": .string("com.apple\" OR process == \"loginwindow")
             ])
         }
     }
@@ -92,9 +93,7 @@ struct PredicateFilterValidatorTests {
         try PredicateFilterValidator.validateStringLiteral(
             "ThesisApp (debug)", field: "process_name",
         )
-        try PredicateFilterValidator.validateStringLiteral(
-            "My App 2.0", field: "process_name",
-        )
+        try PredicateFilterValidator.validateStringLiteral("My App 2.0", field: "process_name")
     }
 
     @Test
@@ -118,6 +117,8 @@ struct PredicateFilterValidatorTests {
     @Test
     func `escapeStringLiteral doubles backslashes before quotes`() {
         #expect(PredicateFilterValidator.escapeStringLiteral("a\\b") == "a\\\\b")
-        #expect(PredicateFilterValidator.escapeStringLiteral("ThesisApp (debug)") == "ThesisApp (debug)")
+        #expect(
+            PredicateFilterValidator.escapeStringLiteral("ThesisApp (debug)") == "ThesisApp (debug)"
+        )
     }
 }

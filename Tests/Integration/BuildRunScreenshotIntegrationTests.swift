@@ -4,8 +4,8 @@ import XCMCPCore
 import Foundation
 @testable import XCMCPTools
 
-/// Integration tests that exercise build pipelines against real open-source repos.
-/// Requires `scripts/fetch-fixtures.sh` to have been run first.
+/// Integration tests that exercise build pipelines against real open-source repos. Requires
+/// `scripts/fetch-fixtures.sh` to have been run first.
 @Suite(.enabled(if: IntegrationFixtures.available), .serialized)
 struct BuildIntegrationTests {
     // MARK: - Shared infrastructure
@@ -17,10 +17,7 @@ struct BuildIntegrationTests {
 
     @Test(.enabled(if: IntegrationFixtures.simulatorAvailable), .timeLimit(.minutes(10)))
     func `build alamofire i OS`() async throws {
-        let tool = BuildSimTool(
-            xcodebuildRunner: xcodebuildRunner,
-            sessionManager: sessionManager,
-        )
+        let tool = BuildSimTool(xcodebuildRunner: xcodebuildRunner, sessionManager: sessionManager)
         let result = try await tool.execute(arguments: [
             "project_path": .string(IntegrationFixtures.alamofireProjectPath),
             "scheme": .string("Alamofire iOS"),
@@ -75,8 +72,8 @@ struct BuildIntegrationTests {
 
 // MARK: - Slow integration tests (build+run+screenshot, preview capture)
 
-/// Expensive integration tests that build, run, and screenshot full apps.
-/// Disabled by default — set `RUN_SLOW_TESTS=1` to include.
+/// Expensive integration tests that build, run, and screenshot full apps. Disabled by default — set
+/// `RUN_SLOW_TESTS=1` to include.
 @Suite(
     .enabled(
         if: IntegrationFixtures.simulatorAvailable
@@ -98,9 +95,7 @@ struct SlowIntegrationTests {
 
         // 1. Boot simulator
         let bootTool = BootSimTool(simctlRunner: simctlRunner)
-        _ = try await bootTool.execute(arguments: [
-            "simulator": .string(simulatorUDID),
-        ])
+        _ = try await bootTool.execute(arguments: ["simulator": .string(simulatorUDID)])
 
         // 2. Build and run
         let buildRunTool = BuildRunSimTool(
@@ -117,7 +112,8 @@ struct SlowIntegrationTests {
         let buildContent = textContent(buildResult)
         #expect(buildContent.contains("Successfully built and launched"))
 
-        // 3. Wait for app to render
+        // 3. Wait for app to render. "Rendered" has no observable signal from outside the
+        // simulator, so a poll has nothing to test and the wait stays fixed.
         try await Task.sleep(for: .seconds(3))
 
         // 4. Screenshot
@@ -190,11 +186,11 @@ struct SlowIntegrationTests {
 
 // MARK: - Build timeout output tests (real xcodebuild, short timeout)
 
-/// Tests that build timeout output is unambiguous — agents must never see
-/// "Build succeeded" when the build was interrupted by a timeout.
+/// Tests that build timeout output is unambiguous — agents must never see "Build succeeded" when
+/// the build was interrupted by a timeout.
 ///
-/// Builds ../thesis (sibling repo) with a 30s timeout to force a timeout/stuck error,
-/// then asserts the formatted output says "Build interrupted" not "Build succeeded".
+/// Builds ../thesis (sibling repo) with a 30s timeout to force a timeout/stuck error, then asserts
+/// the formatted output says "Build interrupted" not "Build succeeded".
 ///
 /// Disabled by default — set `RUN_SLOW_TESTS=1` to include.
 @Suite(
@@ -208,19 +204,16 @@ struct BuildTimeoutOutputTests {
     /// Path to Thesis.xcodeproj (sibling repo).
     private static let thesisProjectPath: String = {
         let file = URL(fileURLWithPath: #filePath)
-        return
-            file
-                .deletingLastPathComponent() // Integration/
-                .deletingLastPathComponent() // Tests/
-                .deletingLastPathComponent() // xc-mcp/
-                .deletingLastPathComponent() // toba/
-                .appendingPathComponent("thesis/Thesis.xcodeproj")
-                .path
+        return file
+            .deletingLastPathComponent()  // Integration/
+            .deletingLastPathComponent()  // Tests/
+            .deletingLastPathComponent()  // xc-mcp/
+            .deletingLastPathComponent()  // toba/
+            .appendingPathComponent("thesis/Thesis.xcodeproj")
+            .path
     }()
 
-    static var thesisAvailable: Bool {
-        FileManager.default.fileExists(atPath: thesisProjectPath)
-    }
+    static var thesisAvailable: Bool { FileManager.default.fileExists(atPath: thesisProjectPath) }
 
     @Test(.enabled(if: thesisAvailable), .timeLimit(.minutes(2)))
     func `Build timeout output never says Build succeeded`() async throws {
@@ -229,8 +222,8 @@ struct BuildTimeoutOutputTests {
             sessionManager: sessionManager,
         )
 
-        // Disable sanitizers — TSan massively slows compilation and prevents
-        // the build from reaching the phase where errors appear within the timeout.
+        // Disable sanitizers — TSan massively slows compilation and prevents the build from
+        // reaching the phase where errors appear within the timeout.
         let result = try await tool.execute(arguments: [
             "project_path": .string(Self.thesisProjectPath),
             "scheme": .string("Standard"),

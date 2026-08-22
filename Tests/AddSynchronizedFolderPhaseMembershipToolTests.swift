@@ -157,10 +157,7 @@ struct AddSynchronizedFolderPhaseMembershipToolTests {
     @Test
     func `Skips duplicate files`() throws {
         let tool = AddSynchronizedFolderPhaseMembershipTool(pathUtility: pathUtility)
-        let projectPath = try makeProject(
-            dstPath: "docx",
-            existingMembership: ["word-16.xml"],
-        )
+        let projectPath = try makeProject(dstPath: "docx", existingMembership: ["word-16.xml"])
 
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),
@@ -180,9 +177,7 @@ struct AddSynchronizedFolderPhaseMembershipToolTests {
     @Test
     func `Locates phase by name when phase_name is provided`() throws {
         let tool = AddSynchronizedFolderPhaseMembershipTool(pathUtility: pathUtility)
-        let projectPath = try makeProject(
-            copyPhaseName: "Bundle Templates", dstPath: "docx",
-        )
+        let projectPath = try makeProject(copyPhaseName: "Bundle Templates", dstPath: "docx")
 
         let result = try tool.execute(arguments: [
             "project_path": .string(projectPath.string),

@@ -1,3 +1,4 @@
+import TobaCore
 import Foundation
 import Subprocess
 
@@ -340,9 +341,11 @@ public enum XCResultParser {
                     // Format: "file.swift:42"
                     let parts = name.split(separator: ":", maxSplits: 1)
 
-                    if parts.count >= 1 {
-                        file = String(parts[0])
-                        if parts.count >= 2 { line = Int(parts[1]) }
+                    if let first = parts.first {
+                        file = String(first)
+                        // A reference with no line number holds one part. Read the second through
+                        // the bounds-checked subscript, and leave `line` alone when it is absent.
+                        if let lineText = parts[safe: 1] { line = Int(lineText) }
                     }
                 }
             }

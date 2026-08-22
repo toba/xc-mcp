@@ -109,9 +109,8 @@ struct RemovePackageProductToolTests {
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
         #expect(target.packageProductDependencies?.count == 1)
 
-        let frameworksPhase =
-            target.buildPhases
-                .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let frameworksPhase = target.buildPhases
+            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
         let buildFilesBefore = frameworksPhase?.files?.filter { $0.product != nil } ?? []
         #expect(buildFilesBefore.count == 1)
 
@@ -134,9 +133,8 @@ struct RemovePackageProductToolTests {
         let updatedTarget = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
         #expect(updatedTarget.packageProductDependencies?.isEmpty == true)
 
-        let updatedPhase =
-            updatedTarget.buildPhases
-                .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+        let updatedPhase = updatedTarget.buildPhases
+            .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
         let buildFilesAfter = updatedPhase?.files?.filter { $0.product != nil } ?? []
         #expect(buildFilesAfter.isEmpty)
 
@@ -164,8 +162,8 @@ struct RemovePackageProductToolTests {
             "product_name": Value.string("HTTPTypes"),
         ])
 
-        // Simulate what Xcode GUI does: add a PBXTargetDependency with productRef
-        // pointing to the XCSwiftPackageProductDependency
+        // Simulate what Xcode GUI does: add a PBXTargetDependency with productRef pointing to the
+        // XCSwiftPackageProductDependency
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
         let productDep = try #require(target.packageProductDependencies?.first)
@@ -204,8 +202,8 @@ struct RemovePackageProductToolTests {
         #expect(targetAfter.packageProductDependencies?.isEmpty == true)
         #expect(targetAfter.dependencies.isEmpty)
 
-        // Verify no dangling references in the raw pbxproj file:
-        // the deleted PBXTargetDependency's UUID should not appear
+        // Verify no dangling references in the raw pbxproj file: the deleted PBXTargetDependency's
+        // UUID should not appear
         let pbxprojPath = projectPath + "project.pbxproj"
         let rawContents = try String(
             contentsOf: URL(fileURLWithPath: pbxprojPath.string),
@@ -234,9 +232,7 @@ struct RemovePackageProductToolTests {
         ])
 
         // Add the same product to a second target
-        let addProductTool = AddPackageProductTool(
-            pathUtility: PathUtility(basePath: tempDir.path),
-        )
+        let addProductTool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
 
         // Create second target first
         let xcodeproj = try XcodeProj(path: projectPath)
@@ -245,9 +241,7 @@ struct RemovePackageProductToolTests {
         xcodeproj.pbxproj.add(object: frameworksPhase)
         testTarget.buildPhases.append(frameworksPhase)
         xcodeproj.pbxproj.add(object: testTarget)
-        if let project = try xcodeproj.pbxproj.rootProject() {
-            project.targets.append(testTarget)
-        }
+        if let project = try xcodeproj.pbxproj.rootProject() { project.targets.append(testTarget) }
         try PBXProjWriter.write(xcodeproj, to: projectPath)
 
         _ = try addProductTool.execute(arguments: [

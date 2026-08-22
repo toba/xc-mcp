@@ -41,7 +41,8 @@ struct SwiftBuildDestinationTests {
     @Test
     func `Named destination parses`() throws {
         #expect(
-            try SwiftBuildDestination.parse(from: ["destination": .string("ios-simulator")])
+            try SwiftBuildDestination.parse(from: ["destination": .string("ios-simulator")]
+            )
                 == .iOSSimulator,
         )
     }
@@ -49,7 +50,8 @@ struct SwiftBuildDestinationTests {
     @Test
     func `Destination parsing ignores case`() throws {
         #expect(
-            try SwiftBuildDestination.parse(from: ["destination": .string("iOS-Simulator")])
+            try SwiftBuildDestination.parse(from: ["destination": .string("iOS-Simulator")]
+            )
                 == .iOSSimulator,
         )
     }
@@ -87,8 +89,9 @@ struct SwiftBuildDestinationTests {
 
     @Test
     func `A simulator slice uses the host architecture`() {
-        #expect(SwiftBuildDestination.iOSSimulator.architecture
-            == SwiftBuildDestination.hostArchitecture)
+        #expect(
+            SwiftBuildDestination.iOSSimulator.architecture
+                == SwiftBuildDestination.hostArchitecture)
     }
 
     @Test
@@ -127,10 +130,11 @@ struct SwiftBuildDestinationTests {
             sdkPath: "/SDKs/iPhoneSimulator.sdk",
             triple: "arm64-apple-ios26.5-simulator",
         )
-        #expect(destination.arguments == [
-            "--sdk", "/SDKs/iPhoneSimulator.sdk",
-            "--triple", "arm64-apple-ios26.5-simulator",
-        ])
+        #expect(
+            destination.arguments == [
+                "--sdk", "/SDKs/iPhoneSimulator.sdk",
+                "--triple", "arm64-apple-ios26.5-simulator",
+            ])
         #expect(destination.label == "ios-simulator destination arm64-apple-ios26.5-simulator")
         #expect(SwiftBuildDestination.label(for: destination) == destination.label)
     }

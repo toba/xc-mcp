@@ -19,9 +19,7 @@ struct SwiftSymbolsToolTests {
 
     @Test
     func `Missing module parameter throws invalidParams`() async {
-        await #expect(throws: MCPError.self) {
-            try await tool.execute(arguments: [:])
-        }
+        await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
     // MARK: - Invalid platform
@@ -96,8 +94,6 @@ struct SwiftSymbolsToolTests {
         let lines = text.split(separator: "\n")
         for line in lines
             where line.hasPrefix("struct ") || line.hasPrefix("class ") || line.hasPrefix("enum ")
-        {
-            Issue.record("Found non-protocol symbol: \(line)")
-        }
+        { Issue.record("Found non-protocol symbol: \(line)") }
     }
 }

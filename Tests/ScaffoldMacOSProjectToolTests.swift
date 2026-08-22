@@ -30,26 +30,22 @@ struct ScaffoldMacOSProjectToolTests {
         let projectDir = tempDir.appendingPathComponent("TestApp")
 
         // Verify files exist on disk
-        #expect(
-            FileManager.default.fileExists(
-                atPath: projectDir.appendingPathComponent("TestApp.xcodeproj").path,
-            ),
+        #expect(FileManager.default.fileExists(
+            atPath: projectDir.appendingPathComponent("TestApp.xcodeproj").path,
+        ),
         )
-        #expect(
-            FileManager.default.fileExists(
-                atPath: projectDir.appendingPathComponent("TestApp/TestAppApp.swift").path,
-            ),
+        #expect(FileManager.default.fileExists(
+            atPath: projectDir.appendingPathComponent("TestApp/TestAppApp.swift").path,
+        ),
         )
-        #expect(
-            FileManager.default.fileExists(
-                atPath: projectDir.appendingPathComponent("TestApp/ContentView.swift").path,
-            ),
+        #expect(FileManager.default.fileExists(
+            atPath: projectDir.appendingPathComponent("TestApp/ContentView.swift").path,
+        ),
         )
-        #expect(
-            FileManager.default.fileExists(
-                atPath: projectDir.appendingPathComponent("TestApp/Assets.xcassets/Contents.json")
-                    .path,
-            ),
+        #expect(FileManager.default.fileExists(
+            atPath: projectDir.appendingPathComponent("TestApp/Assets.xcassets/Contents.json")
+                .path,
+        ),
         )
     }
 
@@ -64,14 +60,12 @@ struct ScaffoldMacOSProjectToolTests {
             "include_tests": Value.bool(false),
         ])
 
-        let projectPath =
-            Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
+        let projectPath = Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
         let xcodeproj = try XcodeProj(path: projectPath)
 
         let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup
-        let syncGroup = mainGroup?.children.compactMap {
-            $0 as? PBXFileSystemSynchronizedRootGroup
-        }.first { $0.path == "TestApp" }
+        let syncGroup = mainGroup?.children.compactMap { $0 as? PBXFileSystemSynchronizedRootGroup }
+            .first { $0.path == "TestApp" }
         #expect(syncGroup != nil, "Main group should contain a synchronized root group for TestApp")
 
         // No traditional PBXGroup for the app folder
@@ -95,20 +89,19 @@ struct ScaffoldMacOSProjectToolTests {
             "include_tests": Value.bool(false),
         ])
 
-        let projectPath =
-            Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
+        let projectPath = Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
 
-        // Sources/Resources phases exist but contribute no explicit files —
-        // the synchronized folder feeds them at build time.
-        let sourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXSourcesBuildPhase } as? PBXSourcesBuildPhase
+        // Sources/Resources phases exist but contribute no explicit files — the synchronized folder
+        // feeds them at build time.
+        let sourcesBuildPhase = target.buildPhases.first { $0 is PBXSourcesBuildPhase }
+            as? PBXSourcesBuildPhase
         #expect(sourcesBuildPhase != nil)
         #expect(sourcesBuildPhase?.files?.isEmpty ?? true)
 
-        let resourcesBuildPhase =
-            target.buildPhases.first { $0 is PBXResourcesBuildPhase } as? PBXResourcesBuildPhase
+        let resourcesBuildPhase = target.buildPhases.first { $0 is PBXResourcesBuildPhase }
+            as? PBXResourcesBuildPhase
         #expect(resourcesBuildPhase != nil)
         #expect(resourcesBuildPhase?.files?.isEmpty ?? true)
 
@@ -141,10 +134,7 @@ struct ScaffoldMacOSProjectToolTests {
 
         // Every image entry must have a "scale" key
         for image in images {
-            #expect(
-                image["scale"] != nil,
-                "Image entry missing 'scale': \(image)",
-            )
+            #expect(image["scale"] != nil, "Image entry missing 'scale': \(image)")
             #expect(
                 image["idiom"] == "mac",
                 "macOS icon idiom should be 'mac', got: \(image["idiom"] ?? "nil")",
@@ -166,8 +156,8 @@ struct ScaffoldMacOSProjectToolTests {
             "include_tests": Value.bool(false),
         ])
 
-        // Entitlements live on disk inside the synchronized folder; Xcode
-        // resolves them via CODE_SIGN_ENTITLEMENTS without needing a build-phase entry.
+        // Entitlements live on disk inside the synchronized folder; Xcode resolves them via
+        // CODE_SIGN_ENTITLEMENTS without needing a build-phase entry.
         let entitlementsPath = tempDir.appendingPathComponent(
             "TestApp/TestApp/TestApp.entitlements",
         )

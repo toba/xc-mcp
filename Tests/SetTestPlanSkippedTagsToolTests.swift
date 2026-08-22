@@ -1,7 +1,7 @@
 import MCP
 import Testing
-@testable import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 @testable import XCMCPTools
 
 @Suite(.temporaryDirectory)
@@ -17,11 +17,8 @@ struct SetTestPlanSkippedTagsToolTests {
     private func basePlan() -> [String: Any] {
         [
             "configurations": [
-                [
-                    "id": "DEFAULT",
-                    "name": "Default",
-                    "options": [:] as [String: Any],
-                ] as [String: Any],
+                ["id": "DEFAULT", "name": "Default", "options": [:] as [String: Any]]
+                    as [String: Any]
             ],
             "defaultOptions": [:] as [String: Any],
             "testTargets": [
@@ -30,8 +27,8 @@ struct SetTestPlanSkippedTagsToolTests {
                         "containerPath": "container:App.xcodeproj",
                         "identifier": "ABC123",
                         "name": "AppTests",
-                    ] as [String: Any],
-                ] as [String: Any],
+                    ] as [String: Any]
+                ] as [String: Any]
             ],
             "version": 1,
         ]
@@ -88,8 +85,8 @@ struct SetTestPlanSkippedTagsToolTests {
         }
         #expect(message.contains("target 'AppTests'"))
 
-        // Per-target must have "mode" — without it Xcode defaults to AND,
-        // which silently no-ops since no test has every listed tag.
+        // Per-target must have "mode" — without it Xcode defaults to AND, which silently no-ops
+        // since no test has every listed tag.
         let json = try TestPlanFile.read(from: path)
         let targets = json["testTargets"] as? [[String: Any]]
         let skipped = targets?.first?["skippedTags"] as? [String: Any]
@@ -103,11 +100,7 @@ struct SetTestPlanSkippedTagsToolTests {
         var plan = basePlan()
         var targets = try #require(plan["testTargets"] as? [[String: Any]])
         var entry = targets[0]
-        entry["skippedTags"] =
-            [
-                "mode": "or",
-                "tags": [".api"],
-            ] as [String: Any]
+        entry["skippedTags"] = ["mode": "or", "tags": [".api"]] as [String: Any]
         targets[0] = entry
         plan["testTargets"] = targets
 
@@ -132,11 +125,9 @@ struct SetTestPlanSkippedTagsToolTests {
     func `Remove tags from plan-level defaults`() throws {
         var plan = basePlan()
         var defaults = try #require(plan["defaultOptions"] as? [String: Any])
-        defaults["skippedTags"] =
-            [
-                "mode": "or",
-                "tags": [".api", ".testSuiteFile", ".slow"],
-            ] as [String: Any]
+        defaults[
+            "skippedTags"] = ["mode": "or", "tags": [".api", ".testSuiteFile", ".slow"]]
+            as [String: Any]
         plan["defaultOptions"] = defaults
 
         let path = try createTestPlan(plan)
@@ -165,11 +156,7 @@ struct SetTestPlanSkippedTagsToolTests {
     func `Remove all tags clears skippedTags key`() throws {
         var plan = basePlan()
         var defaults = try #require(plan["defaultOptions"] as? [String: Any])
-        defaults["skippedTags"] =
-            [
-                "mode": "or",
-                "tags": [".api"],
-            ] as [String: Any]
+        defaults["skippedTags"] = ["mode": "or", "tags": [".api"]] as [String: Any]
         plan["defaultOptions"] = defaults
 
         let path = try createTestPlan(plan)
@@ -191,11 +178,7 @@ struct SetTestPlanSkippedTagsToolTests {
     func `Add duplicate tags is idempotent`() throws {
         var plan = basePlan()
         var defaults = try #require(plan["defaultOptions"] as? [String: Any])
-        defaults["skippedTags"] =
-            [
-                "mode": "or",
-                "tags": [".api"],
-            ] as [String: Any]
+        defaults["skippedTags"] = ["mode": "or", "tags": [".api"]] as [String: Any]
         plan["defaultOptions"] = defaults
 
         let path = try createTestPlan(plan)
@@ -208,9 +191,9 @@ struct SetTestPlanSkippedTagsToolTests {
         _ = try tool.execute(arguments: args)
 
         let json = try TestPlanFile.read(from: path)
-        let tags =
-            ((json["defaultOptions"] as? [String: Any])?["skippedTags"] as? [String: Any])?["tags"]
-                as? [String]
+        let tags = ((json["defaultOptions"] as? [String: Any])?["skippedTags"] as? [String: Any])?[
+            "tags"]
+            as? [String]
         #expect(tags == [".api", ".slow"])
     }
 
@@ -224,9 +207,7 @@ struct SetTestPlanSkippedTagsToolTests {
             "tags": .array([.string(".api")]),
             "target_name": .string("NonExistent"),
         ]
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 
     @Test
@@ -234,12 +215,7 @@ struct SetTestPlanSkippedTagsToolTests {
         let path = try createTestPlan(basePlan())
 
         let tool = SetTestPlanSkippedTagsTool(pathUtility: pathUtility)
-        let args: [String: Value] = [
-            "test_plan_path": .string(path),
-            "tags": .array([]),
-        ]
-        #expect(throws: MCPError.self) {
-            try tool.execute(arguments: args)
-        }
+        let args: [String: Value] = ["test_plan_path": .string(path), "tags": .array([])]
+        #expect(throws: MCPError.self) { try tool.execute(arguments: args) }
     }
 }
