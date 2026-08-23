@@ -135,13 +135,10 @@ struct SlowIntegrationTests {
         #expect(FileManager.default.fileExists(atPath: savePath))
 
         // 6. Cleanup
-        let terminateProcess = Process()
-        terminateProcess.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
-        terminateProcess.arguments = [
-            "simctl", "terminate", simulatorUDID, "com.thomasricouard.IceCubesApp",
-        ]
-        try? terminateProcess.run()
-        terminateProcess.waitUntilExit()
+        _ = try? await ProcessResult.run(
+            "/usr/bin/xcrun",
+            arguments: ["simctl", "terminate", simulatorUDID, "com.thomasricouard.IceCubesApp"],
+        )
     }
 
     // MARK: - IceCubesApp — preview capture

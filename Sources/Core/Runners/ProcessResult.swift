@@ -831,6 +831,9 @@ public enum LogCapture {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
+        // The stream outlives the call, so an inherited stdin would let it steal bytes from the MCP
+        // transport.
+        process.standardInput = FileHandle.nullDevice
         process.standardOutput = fileHandle
         process.standardError = fileHandle
 
@@ -903,10 +906,16 @@ public enum LogCapture {
 // MARK: - Process Factory
 
 public extension Process {
-    /// Creates (but does not start) an `xcrun` subtool process with stderr routed to a fresh pipe.
+    /// Creates (but does not start) an `xcrun` subtool process with its stdio on the null device.
     ///
     /// Used for long-running recordings (`xctrace record`, `simctl io recordVideo`) where the
     /// caller owns the process lifecycle and stops it with SIGINT.
+    ///
+    /// The null device answers two problems that an inherited or unread descriptor creates. A
+    /// recording that inherits the caller's stdout keeps that pipe open for as long as it runs, so
+    /// a parent that exits first leaves a reader blocked on a pipe with a live writer. A recording
+    /// that writes to a pipe nobody drains blocks once the 64 KB buffer fills. No caller reads
+    /// either stream, so discarding both is the correct wiring.
     ///
     /// - Parameters:
     ///   - subtool: The xcrun subtool name (e.g. "xctrace").
@@ -916,7 +925,9 @@ public extension Process {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
         process.arguments = [subtool] + arguments
-        process.standardError = Pipe()
+        process.standardInput = FileHandle.nullDevice
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
         return process
     }
 }

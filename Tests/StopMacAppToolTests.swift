@@ -43,14 +43,18 @@ struct StopMacAppToolTests {
         await #expect(throws: MCPError.self) { try await tool.execute(arguments: [:]) }
     }
 
+    /// Command that runs for five minutes and ignores SIGTERM, so only SIGKILL ends it.
+    ///
+    /// `exec` matters. Without it bash forks the sleep and waits, and killing bash orphans a sleep
+    /// that holds the test binary's descriptors for the rest of its five minutes. An ignored signal
+    /// survives `exec`, so the exec'd sleep keeps refusing SIGTERM with no second process involved.
+    private static let ignoresSIGTERM = ["-c", "trap '' TERM; exec sleep 300"]
+
     @Test
     func `Stop process by PID with SIGTERM`() async throws {
         // Spawn a long-running sleep process to kill
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sleep")
-        process.arguments = ["300"]
-        try process.run()
-        let pid = process.processIdentifier
+        let process = try TestChildProcess.launch("/bin/sleep", ["300"])
+        let pid = process.pid
 
         // Verify the process is running
         #expect(kill(pid, 0) == 0)
@@ -72,16 +76,17 @@ struct StopMacAppToolTests {
     @Test
     func `Force stop process by PID sends SIGKILL`() async throws {
         // Spawn a process that ignores SIGTERM
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = ["-c", "trap '' TERM; sleep 300"]
-        try process.run()
-        let pid = process.processIdentifier
+        let process = try TestChildProcess.launch("/bin/bash", Self.ignoresSIGTERM)
+        let pid = process.pid
 
         // Give bash time to set up the trap. The installed trap is not observable from here, so a
         // poll has nothing to test and a fixed wait is the only option.
         try await Task.sleep(for: .milliseconds(200))
         #expect(kill(pid, 0) == 0)
+
+        // The kill below reaches this PID alone. A forked child would outlive it and hold the test
+        // binary's stdout, which wedges the whole run.
+        #expect(await TestChildProcess.descendants(of: pid).isEmpty)
 
         let tool = StopMacAppTool(sessionManager: sessionManager)
         let result = try await tool.execute(arguments: [
@@ -112,16 +117,14 @@ struct StopMacAppToolTests {
     @Test
     func `Graceful kill escalates to SIGKILL on stuck process`() async throws {
         // Spawn a process that ignores SIGTERM
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = ["-c", "trap '' TERM; sleep 300"]
-        try process.run()
-        let pid = process.processIdentifier
+        let process = try TestChildProcess.launch("/bin/bash", Self.ignoresSIGTERM)
+        let pid = process.pid
 
         // Give bash time to set up the trap. The installed trap is not observable from here, so a
         // poll has nothing to test and a fixed wait is the only option.
         try await Task.sleep(for: .milliseconds(200))
         #expect(kill(pid, 0) == 0)
+        #expect(await TestChildProcess.descendants(of: pid).isEmpty)
 
         let tool = StopMacAppTool(sessionManager: sessionManager)
         let result = try await tool.execute(arguments: [

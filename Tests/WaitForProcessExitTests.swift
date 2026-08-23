@@ -6,11 +6,9 @@ struct WaitForProcessExitTests {
     @Test
     func `Returns true for already-exited process`() async throws {
         // Launch a process and wait for it to finish before checking
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/true")
-        try process.run()
-        process.waitUntilExit()
-        let pid = process.processIdentifier
+        let process = try TestChildProcess.launch("/usr/bin/true")
+        await process.terminateTree()
+        let pid = process.pid
 
         let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .milliseconds(200))
         #expect(exited)
@@ -18,11 +16,8 @@ struct WaitForProcessExitTests {
 
     @Test
     func `Returns true when process exits within timeout`() async throws {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sleep")
-        process.arguments = ["0.1"]
-        try process.run()
-        let pid = process.processIdentifier
+        let process = try TestChildProcess.launch("/bin/sleep", ["0.1"])
+        let pid = process.pid
 
         // Generous timeout: the poll loop runs on the cooperative thread pool, which can be starved
         // by blocking calls in other suites during a full parallel test run. The child exits in
@@ -33,28 +28,20 @@ struct WaitForProcessExitTests {
 
     @Test
     func `Returns false when process outlives timeout`() async throws {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sleep")
-        process.arguments = ["60"]
-        try process.run()
-        let pid = process.processIdentifier
+        let process = try TestChildProcess.launch("/bin/sleep", ["60"])
+        let pid = process.pid
 
         let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .milliseconds(200))
         #expect(!exited)
 
-        // Cleanup
-        process.terminate()
-        process.waitUntilExit()
+        await process.terminateTree()
     }
 
     @Test
     func `Detects process killed by SIGKILL mid-wait`() async throws {
         // Launch a long-lived process, then kill it partway through the wait
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sleep")
-        process.arguments = ["60"]
-        try process.run()
-        let pid = process.processIdentifier
+        let process = try TestChildProcess.launch("/bin/sleep", ["60"])
+        let pid = process.pid
 
         // Kill it after 300ms from a detached thread. A cooperative-pool Task can be starved past
         // the wait's own timeout during a full parallel run, leaving the process alive so the wait
@@ -67,16 +54,14 @@ struct WaitForProcessExitTests {
 
         let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .seconds(15))
         #expect(exited, "Should detect process exit after SIGKILL during polling")
+        await process.terminateTree()
     }
 
     @Test
     func `Timeout is bounded`() async throws {
         // Verify the function returns without hanging when the process outlives the timeout.
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/sleep")
-        process.arguments = ["60"]
-        try process.run()
-        let pid = process.processIdentifier
+        let process = try TestChildProcess.launch("/bin/sleep", ["60"])
+        let pid = process.pid
 
         let start = ContinuousClock.now
         let exited = await ProcessResult.waitForProcessExit(pid: pid, timeout: .milliseconds(300))
@@ -91,8 +76,6 @@ struct WaitForProcessExitTests {
         // wall-clock assertion.
         #expect(elapsed >= .milliseconds(250), "Should actually wait, not return instantly")
 
-        // Cleanup
-        process.terminate()
-        process.waitUntilExit()
+        await process.terminateTree()
     }
 }

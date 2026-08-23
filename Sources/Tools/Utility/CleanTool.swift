@@ -231,6 +231,10 @@ public struct CleanTool: Sendable {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/bin/rm")
             process.arguments = ["-rf", path]
+            // An inherited stdout is the MCP stdio transport. Anything the child prints there lands
+            // mid-frame in the JSON-RPC stream.
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
 
             do {
                 try process.run()

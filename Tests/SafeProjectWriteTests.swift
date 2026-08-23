@@ -132,11 +132,7 @@ struct SafeProjectWriteTests {
         // Exactly one writer line survived intact and the file is a valid plist.
         #expect(final.hasPrefix("{ writer = "))
         #expect(final.hasSuffix("; }\n"))
-        let lintProc = Process()
-        lintProc.executableURL = URL(fileURLWithPath: "/usr/bin/plutil")
-        lintProc.arguments = ["-lint", path]
-        try lintProc.run()
-        lintProc.waitUntilExit()
-        #expect(lintProc.terminationStatus == 0)
+        let lint = try await ProcessResult.run("/usr/bin/plutil", arguments: ["-lint", path])
+        #expect(lint.succeeded)
     }
 }

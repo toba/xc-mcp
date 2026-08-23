@@ -1016,6 +1016,10 @@ public actor LLDBSessionManager {
         let pkill = Process()
         pkill.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
         pkill.arguments = ["-f", appPath]
+        // An inherited stdout is the MCP stdio transport. Anything the child prints there lands
+        // mid-frame in the JSON-RPC stream.
+        pkill.standardOutput = FileHandle.nullDevice
+        pkill.standardError = FileHandle.nullDevice
         try? pkill.run()
         pkill.waitUntilExit()
 
@@ -1028,6 +1032,9 @@ public actor LLDBSessionManager {
         var openArgs = [appPath]
         if !arguments.isEmpty { openArgs += ["--args"] + arguments }
         openProcess.arguments = openArgs
+        // Keep the child off the MCP stdio transport; only the exit code is read here.
+        openProcess.standardOutput = FileHandle.nullDevice
+        openProcess.standardError = FileHandle.nullDevice
 
         // Pass user environment variables through the open process
         if !environment.isEmpty {
