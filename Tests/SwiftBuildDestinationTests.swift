@@ -143,15 +143,47 @@ struct SwiftBuildDestinationTests {
 
     @Test
     func `A non-host destination is cold even when the host cache is warm`() throws {
-        // A populated `.build/checkouts` is what marks the host cache warm.
+        // A populated `.build/checkouts` marks the dependencies resolved, and `.build/debug` marks
+        // the debug configuration already built.
         let fm = FileManager.default
         let package = fm.temporaryDirectory.appendingPathComponent("warm-\(UUID().uuidString)")
         let checkouts = package.appendingPathComponent(".build/checkouts/dep")
         try fm.createDirectory(at: checkouts, withIntermediateDirectories: true)
+        try fm.createDirectory(
+            at: package.appendingPathComponent(".build/debug"), withIntermediateDirectories: true,
+        )
         defer { try? fm.removeItem(at: package) }
 
         #expect(!SwiftRunner.isColdCache(packagePath: package.path, destination: .macOS))
         #expect(SwiftRunner.isColdCache(packagePath: package.path, destination: .iOSSimulator))
+    }
+
+    @Test
+    func `A first release build is cold even when the debug cache is warm`() throws {
+        // A release build writes into `.build/release`, which a warm debug cache leaves empty, so
+        // it compiles the whole graph again and needs the cold-cache timeout.
+        let fm = FileManager.default
+        let package = fm.temporaryDirectory.appendingPathComponent("warm-\(UUID().uuidString)")
+        try fm.createDirectory(
+            at: package.appendingPathComponent(".build/checkouts/dep"),
+            withIntermediateDirectories: true,
+        )
+        try fm.createDirectory(
+            at: package.appendingPathComponent(".build/debug"), withIntermediateDirectories: true,
+        )
+        defer { try? fm.removeItem(at: package) }
+
+        #expect(SwiftRunner.isColdCache(
+            packagePath: package.path, destination: .macOS, configuration: "release",
+        ))
+
+        try fm.createDirectory(
+            at: package.appendingPathComponent(".build/release"), withIntermediateDirectories: true,
+        )
+        #expect(
+            !SwiftRunner.isColdCache(
+                packagePath: package.path, destination: .macOS, configuration: "release",
+            ))
     }
 
     @Test

@@ -6,26 +6,18 @@ public struct SwiftPackageCleanTool: Sendable {
     private let swiftRunner: SwiftRunner
     private let sessionManager: SessionManager
 
-    public init(swiftRunner: SwiftRunner = SwiftRunner(), sessionManager: SessionManager) {
+    public init(swiftRunner: SwiftRunner = .init(), sessionManager: SessionManager) {
         self.swiftRunner = swiftRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "swift_package_clean",
-            description:
-            "Clean build artifacts for a Swift package. Removes the .build directory.",
+            description: "Clean build artifacts for a Swift package. Removes the .build directory.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "package_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
-                        ),
-                    ]),
-                ]),
+                "properties": .object(SwiftPackageToolSchema.packagePath),
                 "required": .array([]),
             ]),
             annotations: .destructive,
@@ -35,6 +27,7 @@ public struct SwiftPackageCleanTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Get package path
         let packagePath: String
+
         if case let .string(value) = arguments["package_path"] {
             packagePath = value
         } else if let sessionPackagePath = await sessionManager.packagePath {
@@ -58,18 +51,19 @@ public struct SwiftPackageCleanTool: Sendable {
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
         let cleanStart = ContinuousClock.now
+
         do {
             let result = try await swiftRunner.clean(packagePath: packagePath)
 
             if result.succeeded {
                 let elapsed = cleanStart.duration(to: .now).elapsedDescription
-                return CallTool.Result(
-                    content: [.text(
+                return CallTool.Result(content: [
+                    .text(
                         text: "Package cleaned successfully at \(packagePath) (\(elapsed))",
                         annotations: nil,
                         _meta: nil,
-                    )],
-                )
+                    )
+                ],)
             } else {
                 throw MCPError.internalError("Clean failed:\n\(result.output)")
             }

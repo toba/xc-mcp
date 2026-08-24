@@ -13,37 +13,34 @@ public struct SwiftPackageRunTool: Sendable {
     }
 
     public func tool() -> Tool {
-        .init(
+        var properties: [String: Value] = [
+            "executable": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Name of the executable to run. If not specified, runs the default executable.",
+                ),
+            ]),
+            "arguments": .object([
+                "type": .string("array"),
+                "items": .object(["type": .string("string")]),
+                "description": .string("Arguments to pass to the executable."),
+            ]),
+            "timeout": .object([
+                "type": .string("integer"),
+                "description": .string(
+                    "Maximum time in seconds for the run. Defaults to 300 (5 minutes).",
+                ),
+            ]),
+        ]
+        properties.merge(SwiftPackageToolSchema.packagePath) { current, _ in current }
+
+        return .init(
             name: "swift_package_run",
             description:
                 "Run an executable from a Swift package. Builds the package if needed and runs the specified executable.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "package_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "executable": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Name of the executable to run. If not specified, runs the default executable.",
-                        ),
-                    ]),
-                    "arguments": .object([
-                        "type": .string("array"),
-                        "items": .object(["type": .string("string")]),
-                        "description": .string("Arguments to pass to the executable."),
-                    ]),
-                    "timeout": .object([
-                        "type": .string("integer"),
-                        "description": .string(
-                            "Maximum time in seconds for the run. Defaults to 300 (5 minutes).",
-                        ),
-                    ]),
-                ]),
+                "properties": .object(properties),
                 "required": .array([]),
             ]),
             annotations: .mutation,

@@ -69,16 +69,21 @@ public struct SwiftRunner: Sendable {
     /// Returns true when the next build must compile the whole dependency graph.
     ///
     /// A cross-compile writes into its own `.build/<triple>` tree, so a warm host cache buys it
-    /// nothing. Any non-host destination therefore counts as cold.
+    /// nothing. Any non-host destination therefore counts as cold. A release build writes into
+    /// `.build/release`, which a warm debug cache leaves empty, so a first release build counts as
+    /// cold as well.
     ///
     /// - Parameters:
     ///   - packagePath: Path to the Swift package directory.
     ///   - destination: The destination the caller asked for.
+    ///   - configuration: The build configuration the caller asked for.
     public static func isColdCache(
         packagePath: String,
         destination: SwiftBuildDestination,
+        configuration: String = "debug",
     ) -> Bool {
-        !destination.isHost || isColdCache(packagePath: packagePath)
+        guard destination.isHost, !isColdCache(packagePath: packagePath) else { return true }
+        return !FileManager.default.fileExists(atPath: "\(packagePath)/.build/\(configuration)")
     }
 
     /// Builds the error text for a `swift` command that exceeded its deadline.
@@ -149,6 +154,65 @@ public struct SwiftRunner: Sendable {
         }
     }
 
+    /// The arguments that make a build's modules importable with `@testable`.
+    ///
+    /// SwiftPM passes `-enable-testing` to a debug build alone. A release build of the test targets
+    /// then fails every `@testable import` with "module 'X' was not compiled for testing", so a
+    /// release run has to ask for testability explicitly.
+    ///
+    /// - Parameter configuration: The build configuration the caller asked for.
+    /// - Returns: The extra arguments, empty for a debug build.
+    public static func testabilityArguments(configuration: String) -> [String] {
+        configuration == "debug" ? [] : ["-Xswiftc", "-enable-testing"]
+    }
+
+    /// Expands caller-supplied compiler flags into the `-Xswiftc` pairs SwiftPM expects.
+    ///
+    /// A caller writes the flag as `swiftc` spells it, such as `-Xllvm` followed by
+    /// `-inline-threshold=0`, and each element gets its own `-Xswiftc`.
+    ///
+    /// - Parameter flags: The flags to forward to the compiler.
+    /// - Returns: The expanded argument list.
+    public static func swiftcArguments(_ flags: [String]) -> [String] {
+        flags.flatMap { ["-Xswiftc", $0] }
+    }
+
+    /// Builds the `swift build` argument list.
+    ///
+    /// - Parameters:
+    ///   - configuration: Build configuration ("debug" or "release").
+    ///   - product: Optional specific product to build.
+    ///   - buildTests: When true, also builds test targets.
+    ///   - verbose: When true, asks the driver to print each subprocess invocation.
+    ///   - saveTemps: When true, keeps the driver's temporary file lists so a crashed frontend
+    ///     invocation can be replayed against them.
+    ///   - destination: A resolved cross-compilation destination, or `nil` for the host.
+    ///   - swiftcFlags: Flags to forward to the compiler.
+    /// - Returns: The argument list, `swift` itself excluded.
+    public static func buildArguments(
+        configuration: String = "debug",
+        product: String? = nil,
+        buildTests: Bool = false,
+        verbose: Bool = false,
+        saveTemps: Bool = false,
+        destination: ResolvedSwiftDestination? = nil,
+        swiftcFlags: [String] = [],
+    ) -> [String] {
+        var args = ["build", "-c", configuration]
+        if verbose { args.append("-v") }
+        if let product { args.append(contentsOf: ["--product", product]) }
+
+        if buildTests {
+            args.append("--build-tests")
+            args.append(contentsOf: testabilityArguments(configuration: configuration))
+        }
+        args.append(contentsOf: destination?.arguments ?? [])
+        if saveTemps { args.append(contentsOf: ["-Xswiftc", "-save-temps"]) }
+        args.append(contentsOf: swiftcArguments(swiftcFlags))
+        args.append(contentsOf: extraArgsFromEnvironment())
+        return args
+    }
+
     /// Builds a Swift package.
     ///
     /// - Parameters:
@@ -157,6 +221,7 @@ public struct SwiftRunner: Sendable {
     ///   - product: Optional specific product to build.
     ///   - buildTests: When true, also builds test targets.
     ///   - destination: A resolved cross-compilation destination, or `nil` to build for the host.
+    ///   - swiftcFlags: Flags to forward to the compiler.
     ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
     /// - Returns: The build result containing exit code and output.
     public func build(
@@ -165,56 +230,163 @@ public struct SwiftRunner: Sendable {
         product: String? = nil,
         buildTests: Bool = false,
         verbose: Bool = false,
+        saveTemps: Bool = false,
         destination: ResolvedSwiftDestination? = nil,
+        swiftcFlags: [String] = [],
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> SwiftResult {
-        var args = ["build", "-c", configuration]
-        if verbose { args.append("-v") }
-        if let product { args.append(contentsOf: ["--product", product]) }
-        if buildTests { args.append("--build-tests") }
-        args.append(contentsOf: destination?.arguments ?? [])
-        args.append(contentsOf: Self.extraArgsFromEnvironment())
-        return try await run(
-            arguments: args, workingDirectory: packagePath,
+        let result = try await run(
+            arguments: Self.buildArguments(
+                configuration: configuration, product: product, buildTests: buildTests,
+                verbose: verbose, saveTemps: saveTemps, destination: destination,
+                swiftcFlags: swiftcFlags,
+            ),
+            workingDirectory: packagePath,
             environment: environment, timeout: timeout,
             onProgress: onProgress,
         )
+        RawBuildLog.store(
+            rawOutput: result.output,
+            action: buildTests ? "swift build --build-tests" : "swift build",
+            destination: SwiftBuildDestination.label(for: destination),
+            succeeded: result.succeeded,
+        )
+        return result
+    }
+
+    /// Reruns a build that crashed the compiler, then reports what the rerun recovered.
+    ///
+    /// The rerun adds `-v` for the driver's own invocation, `-save-temps` so the driver keeps the
+    /// file lists the crashed frontend job reads, and a `TMPDIR` under the crash directory so those
+    /// file lists sit next to the replay script instead of in a directory the driver empties. The
+    /// report names the replay script, the untruncated argv, and the crashing thread the OS wrote
+    /// to `~/Library/Logs/DiagnosticReports`.
+    ///
+    /// - Parameters:
+    ///   - signal: The signal the compiler died on.
+    ///   - firstAttemptOutput: Output of the build that crashed, used when the rerun compiles
+    ///     clean.
+    ///   - packagePath: Path to the Swift package directory.
+    ///   - configuration: The configuration the crashed build used.
+    ///   - product: The product the crashed build used.
+    ///   - buildTests: Whether the crashed build included the test targets.
+    ///   - destination: The destination the crashed build used.
+    ///   - swiftcFlags: The compiler flags the crashed build used.
+    ///   - environment: Environment variables for the rerun, `TMPDIR` excepted.
+    ///   - timeout: Maximum time to wait for the rerun.
+    /// - Returns: The crash report, always non-empty.
+    public func diagnoseCompilerCrash(
+        signal: Int,
+        firstAttemptOutput: String,
+        packagePath: String,
+        configuration: String = "debug",
+        product: String? = nil,
+        buildTests: Bool = false,
+        destination: ResolvedSwiftDestination? = nil,
+        swiftcFlags: [String] = [],
+        environment: Environment = .inherit,
+        timeout: Duration = Self.defaultTimeout,
+    ) async throws -> String {
+        let directory = CompilerCrashReport.defaultDirectory()
+        let temporaries = directory.appendingPathComponent("driver-temps")
+        try? FileManager.default.createDirectory(at: temporaries, withIntermediateDirectories: true)
+
+        let verbose = try await build(
+            packagePath: packagePath,
+            configuration: configuration,
+            product: product,
+            buildTests: buildTests,
+            verbose: true,
+            saveTemps: true,
+            destination: destination,
+            swiftcFlags: swiftcFlags,
+            environment: environment.updating(["TMPDIR": temporaries.path]),
+            timeout: timeout,
+        )
+
+        var sections = [ErrorExtractor.extractCrashDetails(from: verbose.output, signal: signal)]
+
+        // The rerun is the better source, because it ran with the temporaries preserved. A rerun
+        // that compiles clean (a nondeterministic crash) still leaves the first attempt's argv.
+        // Extracting once matters: a verbose release log runs to tens of megabytes.
+        let argv = ErrorExtractor.extractFrontendArguments(from: verbose.output)
+            ?? ErrorExtractor.extractFrontendArguments(from: firstAttemptOutput)
+        let report = CompilerCrashReport.write(signal: signal, argv: argv, into: directory)
+            .formatted()
+        if !report.isEmpty { sections.append(report) }
+
+        return sections.joined(separator: "\n\n")
+    }
+
+    /// Builds the `swift test` argument list.
+    ///
+    /// - Parameters:
+    ///   - configuration: Build configuration ("debug" or "release").
+    ///   - filter: Optional test filter pattern (include).
+    ///   - skip: Optional test filter pattern (exclude).
+    ///   - parallel: When non-nil, controls test parallelism.
+    ///   - swiftcFlags: Flags to forward to the compiler.
+    /// - Returns: The argument list, `swift` itself excluded.
+    public static func testArguments(
+        configuration: String = "debug",
+        filter: String? = nil,
+        skip: String? = nil,
+        parallel: Bool? = nil,
+        swiftcFlags: [String] = [],
+    ) -> [String] {
+        var args = ["test", "-c", configuration]
+        if let filter { args.append(contentsOf: ["--filter", filter]) }
+        if let skip { args.append(contentsOf: ["--skip", skip]) }
+        if let parallel { args.append(parallel ? "--parallel" : "--no-parallel") }
+        args.append(contentsOf: testabilityArguments(configuration: configuration))
+        args.append(contentsOf: swiftcArguments(swiftcFlags))
+        args.append(contentsOf: extraArgsFromEnvironment())
+        return args
     }
 
     /// Runs tests for a Swift package.
     ///
     /// - Parameters:
     ///   - packagePath: Path to the Swift package directory.
+    ///   - configuration: Build configuration ("debug" or "release"). Defaults to "debug".
     ///   - filter: Optional test filter pattern (include).
     ///   - skip: Optional test filter pattern (exclude).
     ///   - parallel: When non-nil, controls test parallelism.
+    ///   - swiftcFlags: Flags to forward to the compiler.
     ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
     ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
     /// - Returns: The test result containing exit code and output.
     public func test(
         packagePath: String,
+        configuration: String = "debug",
         filter: String? = nil,
         skip: String? = nil,
         parallel: Bool? = nil,
+        swiftcFlags: [String] = [],
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> SwiftResult {
-        var args = ["test"]
-        if let filter { args.append(contentsOf: ["--filter", filter]) }
-        if let skip { args.append(contentsOf: ["--skip", skip]) }
-        if let parallel { args.append(parallel ? "--parallel" : "--no-parallel") }
-        args.append(contentsOf: Self.extraArgsFromEnvironment())
-        return try await run(
-            arguments: args,
+        let result = try await run(
+            arguments: Self.testArguments(
+                configuration: configuration, filter: filter, skip: skip, parallel: parallel,
+                swiftcFlags: swiftcFlags,
+            ),
             workingDirectory: packagePath,
             environment: environment,
             timeout: timeout,
             settle: Self.testSettle,
             onProgress: onProgress,
         )
+        RawBuildLog.store(
+            rawOutput: result.output,
+            action: "swift test",
+            destination: SwiftBuildDestination.hostLabel,
+            succeeded: result.succeeded,
+        )
+        return result
     }
 
     /// Bounds the wait after `swift test` prints its summary.

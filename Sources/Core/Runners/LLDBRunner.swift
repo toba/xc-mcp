@@ -127,6 +127,9 @@ public actor LLDBSession {
     /// The PID of the process being debugged.
     public private(set) var targetPID: Int32
 
+    /// The PID of the `lldb` process itself, as opposed to ``targetPID``.
+    public var debuggerPID: Int32 { process.processIdentifier }
+
     /// Whether the session has been poisoned by a timeout and should be recreated.
     public private(set) var isPoisoned: Bool = false
 

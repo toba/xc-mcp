@@ -4,6 +4,59 @@ import Foundation
 
 struct CrashReportParserTests {
     @Test
+    func `A compiler crash reports the fault address and the crashing frames`() {
+        // The exception subtype carries the fault address, which is what separates a corrupt
+        // pointer from a stack overflow. The frames name the failing LLVM pass.
+        let json: [String: Any] = [
+            "procName": "swift-frontend",
+            "exception": [
+                "type": "EXC_BAD_ACCESS",
+                "subtype": "KERN_INVALID_ADDRESS at 0x00000000532a2140",
+                "signal": "SIGSEGV",
+            ] as [String: Any],
+            "faultingThread": 0,
+            "usedImages": [["name": "swift-frontend"] as [String: Any]],
+            "threads": [
+                [
+                    "frames": [
+                        [
+                            "imageIndex": 0,
+                            "symbol": "llvm::GEPOperator::accumulateConstantOffset",
+                            "symbolLocation": 84,
+                        ] as [String: Any],
+                        [
+                            "imageIndex": 0,
+                            "symbol": "llvm::PostOrderFunctionAttrsPass::run",
+                            "symbolLocation": 212,
+                        ] as [String: Any],
+                    ]
+                ] as [String: Any]
+            ],
+        ]
+
+        let summary = CrashReportParser.parseJSON(json)
+        #expect(summary.exceptionType == "EXC_BAD_ACCESS")
+        #expect(summary.exceptionSubtype == "KERN_INVALID_ADDRESS at 0x00000000532a2140")
+        #expect(summary.crashingThreadFrames.count == 2)
+
+        let formatted = summary.formatted()
+        #expect(formatted.contains("0x00000000532a2140"))
+        #expect(formatted.contains("PostOrderFunctionAttrsPass"))
+    }
+
+    @Test
+    func `A report without an exception subtype still formats`() {
+        let json: [String: Any] = [
+            "procName": "swift-frontend",
+            "exception": ["type": "EXC_BAD_ACCESS", "signal": "SIGSEGV"] as [String: Any],
+        ]
+
+        let summary = CrashReportParser.parseJSON(json)
+        #expect(summary.exceptionSubtype == nil)
+        #expect(summary.formatted().contains("EXC_BAD_ACCESS"))
+    }
+
+    @Test
     func `Parses JSON with termination reason and exception`() {
         let json: [String: Any] = [
             "procName": "ThesisApp",

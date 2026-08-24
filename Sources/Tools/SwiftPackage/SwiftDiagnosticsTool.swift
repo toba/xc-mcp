@@ -12,38 +12,35 @@ public struct SwiftDiagnosticsTool: Sendable {
     }
 
     public func tool() -> Tool {
-        .init(
+        var properties: [String: Value] = [
+            "build_tests": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "Also build test targets to collect their diagnostics. Defaults to true.",
+                ),
+            ]),
+            "run_lint": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "Run sm (swiftiomatic) lint after building to include style violations. Defaults to true.",
+                ),
+            ]),
+            "timeout": .object([
+                "type": .string("integer"),
+                "description": .string(
+                    "Maximum time in seconds for the build. Defaults to 300 (5 minutes).",
+                ),
+            ]),
+        ]
+        properties.merge(SwiftPackageToolSchema.packagePath) { current, _ in current }
+
+        return .init(
             name: "swift_diagnostics",
             description:
                 "Collect all compiler warnings, errors, and lint violations for a Swift package. Performs a clean build so all diagnostics are emitted.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "package_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "build_tests": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Also build test targets to collect their diagnostics. Defaults to true.",
-                        ),
-                    ]),
-                    "run_lint": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Run sm (swiftiomatic) lint after building to include style violations. Defaults to true.",
-                        ),
-                    ]),
-                    "timeout": .object([
-                        "type": .string("integer"),
-                        "description": .string(
-                            "Maximum time in seconds for the build. Defaults to 300 (5 minutes).",
-                        ),
-                    ]),
-                ]),
+                "properties": .object(properties),
                 "required": .array([]),
             ]),
             annotations: .readOnly,
@@ -81,14 +78,12 @@ public struct SwiftDiagnosticsTool: Sendable {
             var crashDetails: String?
 
             if let signal = ErrorExtractor.detectCompilerCrash(in: buildResult.output) {
-                let verboseResult = try await swiftRunner.build(
+                crashDetails = try await swiftRunner.diagnoseCompilerCrash(
+                    signal: signal,
+                    firstAttemptOutput: buildResult.output,
                     packagePath: packagePath,
                     buildTests: buildTests,
-                    verbose: true,
                     timeout: timeout,
-                )
-                crashDetails = ErrorExtractor.extractCrashDetails(
-                    from: verboseResult.output, signal: signal,
                 )
             }
 

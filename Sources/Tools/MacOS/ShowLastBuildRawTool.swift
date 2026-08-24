@@ -2,25 +2,27 @@ import MCP
 import XCMCPCore
 import Foundation
 
-/// Returns the complete, unparsed combined stdout/stderr of the most recent `xcodebuild` build/test
-/// run started through this server.
+/// Returns the complete, unparsed combined stdout/stderr of the most recent build or test run
+/// started through this server.
 ///
 /// Use this when a link failure's parsed summary is truncated or mislabeled and you need the raw
 /// `ld` block verbatim — the `Undefined symbols for architecture …` object list, or the
 /// `duplicate symbol '…' in:` list of colliding frameworks. That block is the actual diagnosis
 /// (which objects/frameworks collide) and can't be recovered from Xcode's `.xcactivitylog` when the
-/// failed link step leaves it empty.
+/// failed link step leaves it empty. It also recovers a compiler crash's stack dump, which the
+/// parsed summary cuts off mid-line.
 ///
 /// The raw output is captured automatically by `build_macos` / `test_macos` (and the other
-/// scheme-based build/test tools) — no flag is required at build time.
+/// scheme-based build/test tools), and by `swift_package_build` / `swift_package_test` — no flag is
+/// required at build time.
 public struct ShowLastBuildRawTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "show_last_build_raw",
             description:
-            "Return the complete, unparsed clang/ld output of the most recent build/test run. "
+                "Return the complete, unparsed clang/ld output of the most recent build/test run. "
                 + "Use this to recover the verbatim linker diagnostic (the full "
                 + "'Undefined symbols …' / 'duplicate symbol … in:' block with every source path) "
                 + "when the parsed build summary truncates or mislabels it. By default returns only "
@@ -52,9 +54,9 @@ public struct ShowLastBuildRawTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         guard let capture = RawBuildLog.load() else {
             throw MCPError.internalError(
-                "No captured build output found. Run build_macos, test_macos, or another "
-                    + "scheme-based build/test first — the raw combined output of the most recent "
-                    + "run is captured automatically.",
+                "No captured build output found. Run build_macos, test_macos, swift_package_build, "
+                    + "swift_package_test, or another build/test tool first — the raw combined "
+                    + "output of the most recent run is captured automatically.",
             )
         }
 
@@ -71,6 +73,7 @@ public struct ShowLastBuildRawTool: Sendable {
             parts.append(body(label: "Last \(tail) lines", text: slice))
         } else {
             let diagnostics = LinkerDiagnostics.extract(from: capture.rawOutput)
+
             if diagnostics.isEmpty {
                 parts.append(
                     "No compiler or linker diagnostics detected in the captured output. "
@@ -85,17 +88,15 @@ public struct ShowLastBuildRawTool: Sendable {
         // holds the complete linker invocation and can be read directly as a last resort.
         parts.append("Full raw log on disk: \(capture.path)")
 
-        return CallTool.Result(
-            content: [.text(text: parts.joined(separator: "\n\n"), annotations: nil, _meta: nil)],
-        )
+        return CallTool.Result(content: [
+            .text(text: parts.joined(separator: "\n\n"), annotations: nil, _meta: nil)
+        ],)
     }
 
     // MARK: - Formatting
 
     private func header(for capture: RawBuildLog.Capture) -> String {
-        guard let meta = capture.metadata else {
-            return "## Last build raw output"
-        }
+        guard let meta = capture.metadata else { return "## Last build raw output" }
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let status = meta.succeeded ? "succeeded" : "failed"
@@ -104,7 +105,5 @@ public struct ShowLastBuildRawTool: Sendable {
             + "Captured: \(formatter.string(from: meta.capturedAt)) — \(meta.byteCount) bytes"
     }
 
-    private func body(label: String, text: String) -> String {
-        "\(label):\n\n```\n\(text)\n```"
-    }
+    private func body(label: String, text: String) -> String { "\(label):\n\n```\n\(text)\n```" }
 }

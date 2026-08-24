@@ -19,57 +19,49 @@ public struct SwiftPackageDocsTool: Sendable {
     }
 
     public func tool() -> Tool {
-        .init(
+        var properties: [String: Value] = [
+            "catalog_path": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Path to one .docc catalog to build. Defaults to every catalog found in the package.",
+                ),
+            ]),
+            "minimum_access_level": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Lowest symbol access level to document. Use 'internal' when the articles link internal symbols. Defaults to 'public'.",
+                ),
+                "enum": .array(Self.accessLevels.map { .string($0) }),
+            ]),
+            "render": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "Keep the rendered .doccarchive. Defaults to false, which reports diagnostics only.",
+                ),
+            ]),
+            "output_path": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Where to write the .doccarchive when render is true. Defaults to .build/documentation in the package.",
+                ),
+            ]),
+            "analyze": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "Include note-level diagnostics. Defaults to false, which reports warnings and errors.",
+                ),
+            ]),
+        ]
+        properties.merge(SwiftPackageToolSchema.packagePath) { current, _ in current }
+        properties.merge(SwiftPackageToolSchema.timeout(for: "each step")) { current, _ in current }
+
+        return .init(
             name: "swift_package_docs",
             description:
                 "Build a DocC catalog for a Swift package and report the documentation diagnostics grouped by article. Emits a symbol graph with SwiftPM and runs the toolchain docc binary, so the package needs no swift-docc-plugin dependency.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "package_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "catalog_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to one .docc catalog to build. Defaults to every catalog found in the package.",
-                        ),
-                    ]),
-                    "minimum_access_level": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Lowest symbol access level to document. Use 'internal' when the articles link internal symbols. Defaults to 'public'.",
-                        ),
-                        "enum": .array(Self.accessLevels.map { .string($0) }),
-                    ]),
-                    "render": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Keep the rendered .doccarchive. Defaults to false, which reports diagnostics only.",
-                        ),
-                    ]),
-                    "output_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Where to write the .doccarchive when render is true. Defaults to .build/documentation in the package.",
-                        ),
-                    ]),
-                    "analyze": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Include note-level diagnostics. Defaults to false, which reports warnings and errors.",
-                        ),
-                    ]),
-                    "timeout": .object([
-                        "type": .string("integer"),
-                        "description": .string(
-                            "Maximum time in seconds for each step. Defaults to 300 (5 minutes), or 900 (15 minutes) on a cold build cache.",
-                        ),
-                    ]),
-                ]),
+                "properties": .object(properties),
                 "required": .array([]),
             ]),
             annotations: .mutation,

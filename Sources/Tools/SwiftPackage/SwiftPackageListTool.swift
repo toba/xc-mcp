@@ -12,26 +12,23 @@ public struct SwiftPackageListTool: Sendable {
     }
 
     public func tool() -> Tool {
-        .init(
+        var properties: [String: Value] = [
+            "timeout": .object([
+                "type": .string("integer"),
+                "description": .string(
+                    "Maximum time in seconds for listing dependencies. Defaults to 300 (5 minutes).",
+                ),
+            ])
+        ]
+        properties.merge(SwiftPackageToolSchema.packagePath) { current, _ in current }
+
+        return .init(
             name: "swift_package_list",
             description:
                 "List dependencies for a Swift package. Shows the dependency tree including resolved versions.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "package_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "timeout": .object([
-                        "type": .string("integer"),
-                        "description": .string(
-                            "Maximum time in seconds for listing dependencies. Defaults to 300 (5 minutes).",
-                        ),
-                    ]),
-                ]),
+                "properties": .object(properties),
                 "required": .array([]),
             ]),
             annotations: .readOnly,

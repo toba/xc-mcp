@@ -820,6 +820,32 @@ public enum ErrorExtractor {
         return Int(match.1)
     }
 
+    /// The line LLVM's crash handler prints ahead of the stack dump, carrying the whole argv of the
+    /// frontend job that died.
+    private static nonisolated(unsafe) let programArgumentsPattern = /Program arguments:\s*(.+)/
+
+    /// Returns the complete `swift-frontend` argv from a crash, or `nil` when the output holds no
+    /// crash handler preamble.
+    ///
+    /// This is the one copy of the invocation that is not truncated. The driver's own `-v` line is
+    /// the `swiftc` command, not the frontend job, and the parsed crash summary shortens it.
+    /// Replaying the returned argv reruns the single failing job rather than the whole package.
+    ///
+    /// The arguments are split on whitespace, because that is how the crash handler prints them. An
+    /// argument containing a space therefore splits in two, which no SwiftPM-generated invocation
+    /// does today.
+    ///
+    /// - Parameter output: Build output that may contain a compiler crash.
+    /// - Returns: The argv, executable first.
+    public static func extractFrontendArguments(from output: String) -> [String]? {
+        for line in BuildLogLines.split(output) {
+            guard let match = line.firstMatch(of: programArgumentsPattern) else { continue }
+            let tokens = String(match.1).split(whereSeparator: \.isWhitespace).map(String.init)
+            if !tokens.isEmpty { return tokens }
+        }
+        return nil
+    }
+
     /// Extracts the crashing compilation unit and compiler backtrace from verbose build output
     /// after a signal crash retry.
     ///

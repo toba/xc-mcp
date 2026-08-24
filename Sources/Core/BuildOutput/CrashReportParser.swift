@@ -35,6 +35,10 @@ public enum CrashReportParser: Sendable {
         public let bundleID: String?
         public let captureTime: String?
         public let exceptionType: String?
+        /// The exception subtype, which carries the fault address for an `EXC_BAD_ACCESS`, e.g.
+        /// `KERN_INVALID_ADDRESS at 0x00000000532a2140`. The address distinguishes a corrupt
+        /// pointer from a stack overflow.
+        public let exceptionSubtype: String?
         public let signal: String?
         public let terminationNamespace: String?
         public let terminationIndicator: String?
@@ -56,6 +60,7 @@ public enum CrashReportParser: Sendable {
             var exParts: [String] = []
             if let exceptionType { exParts.append(exceptionType) }
             if let signal { exParts.append("(\(signal))") }
+            if let exceptionSubtype { exParts.append("— \(exceptionSubtype)") }
             if !exParts.isEmpty { parts.append("Exception: \(exParts.joined(separator: " "))") }
 
             // Termination — the most actionable part
@@ -115,6 +120,7 @@ public enum CrashReportParser: Sendable {
 
     private struct ExceptionInfo: Decodable {
         let type: String?
+        let subtype: String?
         let signal: String?
     }
 
@@ -176,7 +182,7 @@ public enum CrashReportParser: Sendable {
         else {
             return CrashSummary(
                 processName: nil, bundleID: nil, captureTime: nil,
-                exceptionType: nil, signal: nil, terminationNamespace: nil,
+                exceptionType: nil, exceptionSubtype: nil, signal: nil, terminationNamespace: nil,
                 terminationIndicator: nil, terminationReasons: [], terminationDetails: [],
                 isFatalDyldError: false, crashingThread: nil, crashingThreadFrames: [],
             )
@@ -192,6 +198,7 @@ public enum CrashReportParser: Sendable {
             bundleID: body.bundleInfo?.bundleIdentifier,
             captureTime: body.captureTime,
             exceptionType: body.exception?.type,
+            exceptionSubtype: body.exception?.subtype,
             signal: body.exception?.signal,
             terminationNamespace: body.termination?.namespace,
             terminationIndicator: body.termination?.indicator,

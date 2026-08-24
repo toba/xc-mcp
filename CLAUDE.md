@@ -31,7 +31,7 @@ xc-mcp/
 │   │   ├── Project/                 # xc-project (42 tools)
 │   │   ├── Simulator/               # xc-simulator (29 tools)
 │   │   ├── Strings/                 # xc-strings (24 tools)
-│   │   └── Swift/                   # xc-swift (13 tools)
+│   │   └── Swift/                   # xc-swift (14 tools)
 │   ├── Core/                        # Shared utilities (69 files), grouped by concern
 │   │   ├── Runners/                 # Subprocess wrappers (xcodebuild, simctl, devicectl, lldb, swift, interact, xctrace) + ProcessResult
 │   │   ├── BuildOutput/             # Build/test/coverage/crash output parsing & formatting
@@ -78,7 +78,7 @@ The project builds 8 executables — one monolithic server and 7 focused servers
 | `xc-debug` | 31 | LLDB debugging + macOS UI automation |
 | `xc-build` | 22 | Build, test, run |
 | `xc-device` | 12 | Physical device management |
-| `xc-swift` | 13 | SPM + Swift operations |
+| `xc-swift` | 14 | SPM + Swift operations |
 | `xc-strings` | 24 | Localization/string catalogs |
 
 Focused servers reduce token overhead for clients that only need specific capabilities.

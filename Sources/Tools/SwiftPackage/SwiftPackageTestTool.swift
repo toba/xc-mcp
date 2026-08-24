@@ -13,59 +13,58 @@ public struct SwiftPackageTestTool: Sendable {
     }
 
     public func tool() -> Tool {
-        .init(
+        var properties: [String: Value] = [
+            "configuration": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Build configuration: 'debug' or 'release'. Defaults to 'debug'. Use 'release' to reproduce a bug that only appears under optimization; -enable-testing is passed for you, so @testable imports still resolve.",
+                ),
+                "enum": .array([.string("debug"), .string("release")]),
+            ]),
+            "filter": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Test filter pattern to run specific tests (e.g., 'MyTests' or 'MyTests/testMethod').",
+                ),
+            ]),
+            "skip": .object([
+                "type": .string("string"),
+                "description": .string("Test filter pattern to exclude tests (e.g., 'SlowTests')."),
+            ]),
+            "parallel": .object([
+                "type": .string("boolean"),
+                "description": .string(
+                    "Control test parallelism. True for --parallel, false for --no-parallel. Omit for default behavior.",
+                ),
+            ]),
+            "env": .object([
+                "type": .string("object"),
+                "description": .string(
+                    "Environment variables to set for the test run (e.g., {\"RUN_SLOW_TESTS\": \"1\"}).",
+                ),
+                "additionalProperties": .object(["type": .string("string")]),
+            ]),
+            "destination": .object([
+                "type": .string("string"),
+                "description": .string(
+                    "Platform to compile the test targets for. Defaults to 'macos', which runs the tests on the host. Any other value builds the test targets for that platform and runs nothing, because SwiftPM cannot execute a cross-compiled test bundle. A simulator destination needs no booted simulator.",
+                ),
+                "enum": .array(SwiftBuildDestination.acceptedValues.map { Value.string($0) }),
+            ]),
+        ]
+        properties.merge(SwiftPackageToolSchema.packagePath) { current, _ in current }
+        properties.merge(SwiftPackageToolSchema.timeout(for: "the test run")) { current, _ in
+            current
+        }
+        properties.merge(SwiftDiagnosticOptions.schemaProperties) { current, _ in current }
+
+        return .init(
             name: "swift_package_test",
             description:
-                "Run tests for a Swift package. Supports filtering to run specific tests. Pass `destination` to compile the test targets for another Apple platform instead; SwiftPM cannot execute a cross-compiled test bundle, so that mode is a compile check.",
+                "Run tests for a Swift package. Supports filtering to run specific tests. Pass `configuration: release` to reproduce an optimizer-only bug. Pass `destination` to compile the test targets for another Apple platform instead; SwiftPM cannot execute a cross-compiled test bundle, so that mode is a compile check.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "package_path": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Path to the Swift package directory containing Package.swift. Uses session default if not specified.",
-                        ),
-                    ]),
-                    "filter": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Test filter pattern to run specific tests (e.g., 'MyTests' or 'MyTests/testMethod').",
-                        ),
-                    ]),
-                    "skip": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Test filter pattern to exclude tests (e.g., 'SlowTests').",
-                        ),
-                    ]),
-                    "parallel": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "Control test parallelism. True for --parallel, false for --no-parallel. Omit for default behavior.",
-                        ),
-                    ]),
-                    "env": .object([
-                        "type": .string("object"),
-                        "description": .string(
-                            "Environment variables to set for the test run (e.g., {\"RUN_SLOW_TESTS\": \"1\"}).",
-                        ),
-                        "additionalProperties": .object(["type": .string("string")]),
-                    ]),
-                    "destination": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Platform to compile the test targets for. Defaults to 'macos', which runs the tests on the host. Any other value builds the test targets for that platform and runs nothing, because SwiftPM cannot execute a cross-compiled test bundle. A simulator destination needs no booted simulator.",
-                        ),
-                        "enum": .array(SwiftBuildDestination.acceptedValues.map { Value.string($0) }
-                        ),
-                    ]),
-                    "timeout": .object([
-                        "type": .string("integer"),
-                        "description": .string(
-                            "Maximum time in seconds for the test run. Defaults to 300 (5 minutes), or 900 (15 minutes) on a cold build cache.",
-                        ),
-                    ]),
-                ]),
+                "properties": .object(properties),
                 "required": .array([]),
             ]),
             annotations: .mutation,
@@ -77,14 +76,17 @@ public struct SwiftPackageTestTool: Sendable {
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> CallTool.Result {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
+        let configuration = arguments.getString("configuration") ?? "debug"
         let filter = arguments.getString("filter")
         let skip = arguments.getString("skip")
         let parallel: Bool? =
             if case let .bool(value) = arguments["parallel"] { value } else { nil }
         let requestedDestination = try SwiftBuildDestination.parse(from: arguments)
         let explicitTimeout = arguments.explicitTimeout()
+        let diagnostics = SwiftDiagnosticOptions(from: arguments)
         let isCold = SwiftRunner.isColdCache(
             packagePath: packagePath, destination: requestedDestination,
+            configuration: configuration,
         )
         let timeout = explicitTimeout
             ?? (isCold ? SwiftRunner.coldCacheTimeout : SwiftRunner.defaultTimeout)
@@ -107,37 +109,51 @@ public struct SwiftPackageTestTool: Sendable {
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
         let testStart = ContinuousClock.now
+        let sink = try diagnostics.makeSink()
+        // Pairing the close with the open covers every exit path. The destination resolution below
+        // throws outside every catch here, and it used to leave the file handle open.
+        defer { _ = sink?.finish() }
+        let progress = SwiftDiagnosticOptions.combine(onProgress, sink)
 
         // SwiftPM builds a cross-compiled test bundle but cannot execute it on the host, so a
         // non-host destination becomes a `--build-tests` compile check.
         if let destination = try await requestedDestination.resolve() {
             return try await buildTestsOnly(
                 packagePath: packagePath,
+                configuration: configuration,
                 destination: destination,
                 filter: filter,
                 skip: skip,
+                swiftcFlags: diagnostics.swiftcFlags,
                 environment: environment,
                 explicitTimeout: explicitTimeout,
                 timeout: timeout,
                 start: testStart,
-                onProgress: onProgress,
+                sink: sink,
+                onProgress: progress,
             )
         }
 
         do {
             let result = try await swiftRunner.test(
                 packagePath: packagePath,
+                configuration: configuration,
                 filter: filter,
                 skip: skip,
                 parallel: parallel,
+                swiftcFlags: diagnostics.swiftcFlags,
                 environment: environment,
                 timeout: timeout,
-                onProgress: onProgress,
+                onProgress: progress,
             )
+            let sinkSummary = sink?.finish()
 
-            var context = "swift package (\(SwiftBuildDestination.hostLabel))"
+            var context = "swift package (\(SwiftBuildDestination.hostLabel), \(configuration))"
             if let filter { context += " (filter: '\(filter)')" }
             if let skip { context += " (skip: '\(skip)')" }
+            if let sinkSummary {
+                context += " (\(sinkSummary.linesWritten) lines streamed to \(sinkSummary.path))"
+            }
             return try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: context,
@@ -164,24 +180,30 @@ public struct SwiftPackageTestTool: Sendable {
     /// compiles test code guarded by `#if os(iOS)`.
     private func buildTestsOnly(
         packagePath: String,
+        configuration: String,
         destination: ResolvedSwiftDestination,
         filter: String?,
         skip: String?,
+        swiftcFlags: [String],
         environment: Environment,
         explicitTimeout: Duration?,
         timeout: Duration,
         start: ContinuousClock.Instant,
+        sink: StreamedOutputSink?,
         onProgress: (@Sendable (String) -> Void)?,
     ) async throws -> CallTool.Result {
         do {
             let result = try await swiftRunner.build(
                 packagePath: packagePath,
+                configuration: configuration,
                 buildTests: true,
                 destination: destination,
+                swiftcFlags: swiftcFlags,
                 environment: environment,
                 timeout: timeout,
                 onProgress: onProgress,
             )
+            let sinkSummary = sink?.finish()
 
             let buildResult = ErrorExtractor.parseBuildOutput(result.output)
             guard result.succeeded || buildResult.status == "success" else {
@@ -192,13 +214,15 @@ public struct SwiftPackageTestTool: Sendable {
             }
 
             let elapsed = start.duration(to: .now).elapsedDescription
-            var message = "Test targets built for \(destination.label) (\(elapsed)). "
+            var message = "Test targets built for \(destination.label) "
+            message += "(\(configuration) configuration, \(elapsed)). "
             message +=
                 "No test ran: SwiftPM cannot execute a test bundle built for another platform. "
             message += "Omit `destination` to run the tests on the host."
             if filter != nil || skip != nil {
                 message += " `filter` and `skip` select tests to run, so they had no effect here."
             }
+            if let sinkSummary { message += "\n\n\(sinkSummary.formatted())" }
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch let ProcessError.timeout(duration) {
             throw MCPError.internalError(SwiftRunner.timeoutMessage(
