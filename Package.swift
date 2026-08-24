@@ -27,11 +27,18 @@ let package = Package(
     .package(url: "https://github.com/swiftlang/swift-subprocess", from: "0.4.0"),
     .package(url: "https://github.com/toba/swiftiomatic-plugins", from: "3.0.0"),
 
-    // 1.5.0 is the floor because it is the first release with `Data.hexString(uppercase:)`.
-    // `ShortHash` needs the lower-case form, and the property alone returns upper case.
-    .package(url: "https://github.com/toba/toba-core", from: "1.5.0"),
-    // 1.0.0 is the floor because `Mutex+support` ships in the first release and has not changed.
-    .package(url: "https://github.com/toba/toba-concurrency", from: "1.0.0"),
+    // 1.11.1 is the floor because it is the first release that ships the library dynamic under the
+    // name TobaCoreLibrary. A static product is absorbed into every image that links it, so two
+    // images in one process hold two type descriptors for each TobaCore type, and a conformance
+    // lookup that compares them returns a null metadata the Swift runtime dies on. The floor was
+    // 1.5.0, the first release with `Data.hexString(uppercase:)`. `ShortHash` needs the lower-case
+    // form, and the property alone returns upper case.
+    .package(url: "https://github.com/toba/toba-core", from: "1.11.1"),
+    // 1.0.3 is the floor because it is the first release that ships the library dynamic under the
+    // name TobaConcurrencyLibrary. A static product is absorbed into every image that links it, and
+    // two type descriptors for one type make a conformance lookup return a null metadata the Swift
+    // runtime dies on. The floor was 1.0.0, where `Mutex+support` ships unchanged.
+    .package(url: "https://github.com/toba/toba-concurrency", from: "1.0.3"),
     // 1.0.3 is the floor because it is the release where `ByteExpressible` and `StableHasher`
     // took their current shape. Earlier releases spell the `String` conformance differently.
     .package(url: "https://github.com/toba/toba-hash", from: "1.0.3"),
@@ -48,8 +55,8 @@ let package = Package(
       dependencies: [
         .product(name: "MCP", package: "swift-sdk"),
         .product(name: "Subprocess", package: "swift-subprocess"),
-        .product(name: "TobaConcurrency", package: "toba-concurrency"),
-        .product(name: "TobaCore", package: "toba-core"),
+        .product(name: "TobaConcurrencyLibrary", package: "toba-concurrency"),
+        .product(name: "TobaCoreLibrary", package: "toba-core"),
         .product(name: "TobaHash", package: "toba-hash"),
       ],
       path: "Sources/Core",
@@ -67,7 +74,7 @@ let package = Package(
         "XCMCPCore",
         .product(name: "MCP", package: "swift-sdk"),
         .product(name: "Subprocess", package: "swift-subprocess"),
-        .product(name: "TobaCore", package: "toba-core"),
+        .product(name: "TobaCoreLibrary", package: "toba-core"),
         .product(name: "XcodeProj", package: "xcodeproj"),
       ],
       path: "Sources/Tools",
