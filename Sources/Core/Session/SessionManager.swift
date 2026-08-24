@@ -27,8 +27,13 @@ public struct SessionDefaults: Sendable, Codable {
     /// Decoded leniently: session files written before this field existed simply yield `nil`.
     public let extraArgs: [String]?
 
-    /// Memberwise initializer. `extraArgs` defaults to `nil` so existing call sites that predate the
-    /// field continue to compile.
+    /// SwiftPM package traits enabled on every `swift build` and `swift test` invocation.
+    ///
+    /// Decoded leniently: session files written before this field existed simply yield `nil`.
+    public let traits: [String]?
+
+    /// Memberwise initializer. `extraArgs` and `traits` default to `nil` so existing call sites
+    /// that predate the fields continue to compile.
     public init(
         projectPath: String?,
         workspacePath: String?,
@@ -39,6 +44,7 @@ public struct SessionDefaults: Sendable, Codable {
         configuration: String?,
         env: [String: String]?,
         extraArgs: [String]? = nil,
+        traits: [String]? = nil,
     ) {
         self.projectPath = projectPath
         self.workspacePath = workspacePath
@@ -49,6 +55,7 @@ public struct SessionDefaults: Sendable, Codable {
         self.configuration = configuration
         self.env = env
         self.extraArgs = extraArgs
+        self.traits = traits
     }
 }
 
@@ -91,6 +98,9 @@ public actor SessionManager {
 
     /// Extra passthrough arguments appended to every xcodebuild invocation
     public private(set) var extraArgs: [String]?
+
+    /// SwiftPM package traits enabled on every `swift build` and `swift test` invocation
+    public private(set) var traits: [String]?
 
     /// Resolves the session file path.
     ///
@@ -173,6 +183,7 @@ public actor SessionManager {
         configuration = defaults?.configuration
         env = defaults?.env
         extraArgs = defaults?.extraArgs
+        traits = defaults?.traits
         lastKnownModDate = Self.modDate(of: resolved)
     }
 
@@ -218,6 +229,7 @@ public actor SessionManager {
             configuration = defaults.configuration
             env = defaults.env
             extraArgs = defaults.extraArgs
+            traits = defaults.traits
         }
         lastKnownModDate = currentModDate
     }
@@ -249,6 +261,7 @@ public actor SessionManager {
         configuration: String? = nil,
         env: [String: String]? = nil,
         extraArgs: [String]? = nil,
+        traits: [String]? = nil,
     ) {
         // Resolve to an absolute path eagerly (against the cwd at the time the user supplies it)
         // and persist the absolute form. Storing relative paths lets the DerivedData scoper hash a
@@ -279,6 +292,8 @@ public actor SessionManager {
         // Replace (not merge): passing extra_args sets the full session list; an empty array clears
         // it. This mirrors the "explicit replaces defaults" resolution semantics.
         if let extraArgs { self.extraArgs = extraArgs.isEmpty ? nil : extraArgs }
+        // Same replace-not-merge rule: an empty array drops back to the package default trait set.
+        if let traits { self.traits = traits.isEmpty ? nil : traits }
         saveToDisk()
         if let active = self.packagePath { triggerWarmupIfNeeded(packagePath: active) }
     }
@@ -298,6 +313,7 @@ public actor SessionManager {
         configuration = nil
         env = nil
         extraArgs = nil
+        traits = nil
         deleteFromDisk()
     }
 
@@ -440,6 +456,12 @@ public actor SessionManager {
             lines.append("Extra args: (not set)")
         }
 
+        if let traits, !traits.isEmpty {
+            lines.append("Package traits: \(traits.joined(separator: ", "))")
+        } else {
+            lines.append("Package traits: (package defaults)")
+        }
+
         return lines.joined(separator: "\n")
     }
 
@@ -463,6 +485,7 @@ public actor SessionManager {
             configuration: configuration,
             env: env,
             extraArgs: extraArgs,
+            traits: traits,
         )
     }
 
@@ -598,6 +621,24 @@ public actor SessionManager {
         // suppress the session default for a single call.
         if case .array = arguments["extra_args"] { return arguments.getStringArray("extra_args") }
         return extraArgs ?? []
+    }
+
+    /// Resolves the SwiftPM trait set from arguments or session defaults.
+    ///
+    /// Resolution is replace-not-merge, the same rule ``resolveExtraArgs(from:)`` follows. A call
+    /// that names `traits` or `enable_all_traits` replaces the session default outright, so
+    /// `traits: []` builds with the package defaults for one call.
+    ///
+    /// - Parameter arguments: The tool arguments dictionary.
+    /// - Returns: The trait set for this invocation.
+    /// - Throws: ``MCPError/invalidParams(_:)`` when the call names both trait arguments.
+    public func resolveTraits(
+        from arguments: [String: Value],
+    ) throws(MCPError) -> SwiftBuildTraits {
+        reloadIfNeeded()
+        if let explicit = try SwiftBuildTraits.parse(from: arguments) { return explicit }
+        guard let traits, !traits.isEmpty else { return .packageDefault }
+        return .named(traits)
     }
 
     /// Resolves the package path from arguments or session defaults.

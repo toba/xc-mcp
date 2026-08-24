@@ -1,5 +1,5 @@
 {
-  "originHash" : "3cc06768ea0c32004dc9721121e2dd1de55f2f01d10206c716015998c73895dd",
+  "originHash" : "505a96754b3b8daee64de67c8a4fb8deda7549c1a5d5f46404b736d5c0126f15",
   "pins" : [
     {
       "identity" : "aexml",
@@ -123,8 +123,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/toba/toba-concurrency",
       "state" : {
-        "revision" : "3f50379daee893512aaa8d0b37d466cbbc54e12b",
-        "version" : "1.0.2"
+        "revision" : "dc378943d792887dadac03b532353f4835897dca",
+        "version" : "1.1.0"
       }
     },
     {
@@ -132,8 +132,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/toba/toba-core",
       "state" : {
-        "revision" : "e9277d88cf68411c20a4bec5197db2da0335e68c",
-        "version" : "1.5.0"
+        "revision" : "a9db0d1734a16ab33d6e913d141b3c4dc8c6abb3",
+        "version" : "1.11.2"
       }
     },
     {

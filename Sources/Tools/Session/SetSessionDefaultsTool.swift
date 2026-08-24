@@ -1,19 +1,18 @@
 import MCP
+import TobaCore
 import XCMCPCore
 import Foundation
 
 public struct SetSessionDefaultsTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_session_defaults",
             description:
-            "Set default project, scheme, simulator, or device for the session.",
+                "Set default project, scheme, simulator, device, or SwiftPM package traits for the session.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -65,6 +64,13 @@ public struct SetSessionDefaultsTool: Sendable {
                             "Extra arguments appended verbatim to every xcodebuild invocation (e.g. [\"-skipPackagePluginValidation\"]). Replaces the current list; pass an empty array to clear it.",
                         ),
                     ]),
+                    "traits": .object([
+                        "type": .string("array"),
+                        "items": .object(["type": .string("string")]),
+                        "description": .string(
+                            "SwiftPM package traits enabled on every swift_package_build, swift_package_test and swift_diagnostics call (e.g. [\"defaults\", \"DataTesting\"]). A trait declared with no default is otherwise never compiled. --traits replaces the package default set, so include \"defaults\" to keep it. Replaces the current list; pass an empty array to clear it.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([]),
             ]),
@@ -90,28 +96,30 @@ public struct SetSessionDefaultsTool: Sendable {
 
         // Parse env dict
         var env: [String: String]?
+
         if case let .object(envDict) = arguments["env"] {
             var parsed: [String: String] = [:]
-            for (key, value) in envDict {
-                if case let .string(str) = value {
-                    parsed[key] = str
-                }
-            }
-            if !parsed.isEmpty {
-                env = parsed
-            }
+            for (key, value) in envDict { if case let .string(str) = value { parsed[key] = str } }
+            if !parsed.isEmpty { env = parsed }
         }
 
-        // Parse extra_args. Presence of the key (even as an empty array) is an explicit set:
-        // an empty array clears the persisted list.
+        // Parse extra_args. Presence of the key (even as an empty array) is an explicit set: an
+        // empty array clears the persisted list.
         var extraArgs: [String]?
         if case .array = arguments["extra_args"] {
             extraArgs = arguments.getStringArray("extra_args")
         }
 
+        // Same presence rule for traits: an empty array drops back to the package default set.
+        var traits: [String]?
+        if case .array = arguments["traits"] {
+            traits = arguments.getStringArray("traits").uniqued()
+        }
+
         // Validate configuration if provided
         if let config = configuration {
             let validConfigs = ["Debug", "Release"]
+
             if !validConfigs.contains(config) {
                 throw MCPError.invalidParams(
                     "Invalid configuration '\(config)'. Must be one of: \(validConfigs.joined(separator: ", "))",
@@ -129,17 +137,12 @@ public struct SetSessionDefaultsTool: Sendable {
             configuration: configuration,
             env: env,
             extraArgs: extraArgs,
+            traits: traits,
         )
 
         let summary = await sessionManager.summary()
-        return CallTool.Result(
-            content: [
-                .text(
-                    text: "Session defaults updated.\n\n\(summary)",
-                    annotations: nil,
-                    _meta: nil,
-                ),
-            ],
-        )
+        return CallTool.Result(content: [
+            .text(text: "Session defaults updated.\n\n\(summary)", annotations: nil, _meta: nil)
+        ],)
     }
 }

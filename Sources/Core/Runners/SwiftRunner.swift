@@ -187,6 +187,7 @@ public struct SwiftRunner: Sendable {
     ///   - saveTemps: When true, keeps the driver's temporary file lists so a crashed frontend
     ///     invocation can be replayed against them.
     ///   - destination: A resolved cross-compilation destination, or `nil` for the host.
+    ///   - traits: The package traits to enable.
     ///   - swiftcFlags: Flags to forward to the compiler.
     /// - Returns: The argument list, `swift` itself excluded.
     public static func buildArguments(
@@ -196,6 +197,7 @@ public struct SwiftRunner: Sendable {
         verbose: Bool = false,
         saveTemps: Bool = false,
         destination: ResolvedSwiftDestination? = nil,
+        traits: SwiftBuildTraits = .packageDefault,
         swiftcFlags: [String] = [],
     ) -> [String] {
         var args = ["build", "-c", configuration]
@@ -207,6 +209,7 @@ public struct SwiftRunner: Sendable {
             args.append(contentsOf: testabilityArguments(configuration: configuration))
         }
         args.append(contentsOf: destination?.arguments ?? [])
+        args.append(contentsOf: traits.arguments)
         if saveTemps { args.append(contentsOf: ["-Xswiftc", "-save-temps"]) }
         args.append(contentsOf: swiftcArguments(swiftcFlags))
         args.append(contentsOf: extraArgsFromEnvironment())
@@ -221,6 +224,7 @@ public struct SwiftRunner: Sendable {
     ///   - product: Optional specific product to build.
     ///   - buildTests: When true, also builds test targets.
     ///   - destination: A resolved cross-compilation destination, or `nil` to build for the host.
+    ///   - traits: The package traits to enable.
     ///   - swiftcFlags: Flags to forward to the compiler.
     ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
     /// - Returns: The build result containing exit code and output.
@@ -232,6 +236,7 @@ public struct SwiftRunner: Sendable {
         verbose: Bool = false,
         saveTemps: Bool = false,
         destination: ResolvedSwiftDestination? = nil,
+        traits: SwiftBuildTraits = .packageDefault,
         swiftcFlags: [String] = [],
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
@@ -241,7 +246,7 @@ public struct SwiftRunner: Sendable {
             arguments: Self.buildArguments(
                 configuration: configuration, product: product, buildTests: buildTests,
                 verbose: verbose, saveTemps: saveTemps, destination: destination,
-                swiftcFlags: swiftcFlags,
+                traits: traits, swiftcFlags: swiftcFlags,
             ),
             workingDirectory: packagePath,
             environment: environment, timeout: timeout,
@@ -273,6 +278,7 @@ public struct SwiftRunner: Sendable {
     ///   - product: The product the crashed build used.
     ///   - buildTests: Whether the crashed build included the test targets.
     ///   - destination: The destination the crashed build used.
+    ///   - traits: The traits the crashed build used.
     ///   - swiftcFlags: The compiler flags the crashed build used.
     ///   - environment: Environment variables for the rerun, `TMPDIR` excepted.
     ///   - timeout: Maximum time to wait for the rerun.
@@ -285,6 +291,7 @@ public struct SwiftRunner: Sendable {
         product: String? = nil,
         buildTests: Bool = false,
         destination: ResolvedSwiftDestination? = nil,
+        traits: SwiftBuildTraits = .packageDefault,
         swiftcFlags: [String] = [],
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
@@ -301,6 +308,7 @@ public struct SwiftRunner: Sendable {
             verbose: true,
             saveTemps: true,
             destination: destination,
+            traits: traits,
             swiftcFlags: swiftcFlags,
             environment: environment.updating(["TMPDIR": temporaries.path]),
             timeout: timeout,
@@ -327,6 +335,7 @@ public struct SwiftRunner: Sendable {
     ///   - filter: Optional test filter pattern (include).
     ///   - skip: Optional test filter pattern (exclude).
     ///   - parallel: When non-nil, controls test parallelism.
+    ///   - traits: The package traits to enable.
     ///   - swiftcFlags: Flags to forward to the compiler.
     /// - Returns: The argument list, `swift` itself excluded.
     public static func testArguments(
@@ -334,12 +343,14 @@ public struct SwiftRunner: Sendable {
         filter: String? = nil,
         skip: String? = nil,
         parallel: Bool? = nil,
+        traits: SwiftBuildTraits = .packageDefault,
         swiftcFlags: [String] = [],
     ) -> [String] {
         var args = ["test", "-c", configuration]
         if let filter { args.append(contentsOf: ["--filter", filter]) }
         if let skip { args.append(contentsOf: ["--skip", skip]) }
         if let parallel { args.append(parallel ? "--parallel" : "--no-parallel") }
+        args.append(contentsOf: traits.arguments)
         args.append(contentsOf: testabilityArguments(configuration: configuration))
         args.append(contentsOf: swiftcArguments(swiftcFlags))
         args.append(contentsOf: extraArgsFromEnvironment())
@@ -354,6 +365,7 @@ public struct SwiftRunner: Sendable {
     ///   - filter: Optional test filter pattern (include).
     ///   - skip: Optional test filter pattern (exclude).
     ///   - parallel: When non-nil, controls test parallelism.
+    ///   - traits: The package traits to enable.
     ///   - swiftcFlags: Flags to forward to the compiler.
     ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
     ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
@@ -364,6 +376,7 @@ public struct SwiftRunner: Sendable {
         filter: String? = nil,
         skip: String? = nil,
         parallel: Bool? = nil,
+        traits: SwiftBuildTraits = .packageDefault,
         swiftcFlags: [String] = [],
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
@@ -372,7 +385,7 @@ public struct SwiftRunner: Sendable {
         let result = try await run(
             arguments: Self.testArguments(
                 configuration: configuration, filter: filter, skip: skip, parallel: parallel,
-                swiftcFlags: swiftcFlags,
+                traits: traits, swiftcFlags: swiftcFlags,
             ),
             workingDirectory: packagePath,
             environment: environment,

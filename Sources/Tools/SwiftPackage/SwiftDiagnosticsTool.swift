@@ -33,11 +33,12 @@ public struct SwiftDiagnosticsTool: Sendable {
             ]),
         ]
         properties.merge(SwiftPackageToolSchema.packagePath) { current, _ in current }
+        properties.merge(SwiftBuildTraits.schemaProperties) { current, _ in current }
 
         return .init(
             name: "swift_diagnostics",
             description:
-                "Collect all compiler warnings, errors, and lint violations for a Swift package. Performs a clean build so all diagnostics are emitted.",
+                "Collect all compiler warnings, errors, and lint violations for a Swift package. Performs a clean build so all diagnostics are emitted. Pass `traits` to cover source behind `#if <TraitName>`, which a default build never compiles and therefore never reports on.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(properties),
@@ -51,6 +52,7 @@ public struct SwiftDiagnosticsTool: Sendable {
         let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
         let buildTests = arguments.getBool("build_tests", default: true)
         let runLint = arguments.getBool("run_lint", default: true)
+        let traits = try await sessionManager.resolveTraits(from: arguments)
         let timeout = arguments.resolveTimeout(default: SwiftRunner.defaultTimeout)
 
         // Verify Package.swift exists
@@ -71,6 +73,7 @@ public struct SwiftDiagnosticsTool: Sendable {
             let buildResult = try await swiftRunner.build(
                 packagePath: packagePath,
                 buildTests: buildTests,
+                traits: traits,
                 timeout: timeout,
             )
 
@@ -83,6 +86,7 @@ public struct SwiftDiagnosticsTool: Sendable {
                     firstAttemptOutput: buildResult.output,
                     packagePath: packagePath,
                     buildTests: buildTests,
+                    traits: traits,
                     timeout: timeout,
                 )
             }
@@ -97,7 +101,7 @@ public struct SwiftDiagnosticsTool: Sendable {
 
             // Step 6: Format combined output
             let output = formatDiagnostics(
-                parsed: parsed, buildFailed: buildFailed,
+                parsed: parsed, buildFailed: buildFailed, traits: traits,
                 crashDetails: crashDetails, lintSection: lintSection,
             )
 
@@ -109,13 +113,19 @@ public struct SwiftDiagnosticsTool: Sendable {
         }
     }
 
+    /// Builds the report text.
+    ///
+    /// The trait set leads the report. A run that names no trait compiles none of the trait-gated
+    /// source, so a bare "code is clean" line would claim coverage the build never had.
     private func formatDiagnostics(
         parsed: BuildResult,
         buildFailed: Bool,
+        traits: SwiftBuildTraits,
         crashDetails: String? = nil,
         lintSection: String?,
     ) -> String {
-        var sections: [String] = []
+        var sections = ["Built with \(traits.label)."]
+        if let warning = traits.replacedDefaultsWarning { sections[0] += " \(warning)" }
 
         // Build diagnostics section
         let hasWarnings = !parsed.warnings.isEmpty
@@ -133,8 +143,9 @@ public struct SwiftDiagnosticsTool: Sendable {
         // reported violations, failed, or never ran.
         if let lintSection { sections.append(lintSection) }
 
-        return sections.isEmpty
-            ? "No build warnings or lint violations found. Code is clean!"
-            : sections.joined(separator: "\n\n")
+        if sections.count == 1 {
+            sections.append("No build warnings or lint violations found. Code is clean!")
+        }
+        return sections.joined(separator: "\n\n")
     }
 }

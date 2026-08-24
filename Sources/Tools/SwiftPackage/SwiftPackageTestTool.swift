@@ -57,11 +57,12 @@ public struct SwiftPackageTestTool: Sendable {
             current
         }
         properties.merge(SwiftDiagnosticOptions.schemaProperties) { current, _ in current }
+        properties.merge(SwiftBuildTraits.schemaProperties) { current, _ in current }
 
         return .init(
             name: "swift_package_test",
             description:
-                "Run tests for a Swift package. Supports filtering to run specific tests. Pass `configuration: release` to reproduce an optimizer-only bug. Pass `destination` to compile the test targets for another Apple platform instead; SwiftPM cannot execute a cross-compiled test bundle, so that mode is a compile check.",
+                "Run tests for a Swift package. Supports filtering to run specific tests. Pass `configuration: release` to reproduce an optimizer-only bug. Pass `traits` to enable package traits, without which a test behind `#if <TraitName>` never compiles and never runs; `swiftc_flags` is not a substitute for it. Pass `destination` to compile the test targets for another Apple platform instead; SwiftPM cannot execute a cross-compiled test bundle, so that mode is a compile check.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(properties),
@@ -82,6 +83,7 @@ public struct SwiftPackageTestTool: Sendable {
         let parallel: Bool? =
             if case let .bool(value) = arguments["parallel"] { value } else { nil }
         let requestedDestination = try SwiftBuildDestination.parse(from: arguments)
+        let traits = try await sessionManager.resolveTraits(from: arguments)
         let explicitTimeout = arguments.explicitTimeout()
         let diagnostics = SwiftDiagnosticOptions(from: arguments)
         let isCold = SwiftRunner.isColdCache(
@@ -124,6 +126,7 @@ public struct SwiftPackageTestTool: Sendable {
                 destination: destination,
                 filter: filter,
                 skip: skip,
+                traits: traits,
                 swiftcFlags: diagnostics.swiftcFlags,
                 environment: environment,
                 explicitTimeout: explicitTimeout,
@@ -141,6 +144,7 @@ public struct SwiftPackageTestTool: Sendable {
                 filter: filter,
                 skip: skip,
                 parallel: parallel,
+                traits: traits,
                 swiftcFlags: diagnostics.swiftcFlags,
                 environment: environment,
                 timeout: timeout,
@@ -148,12 +152,14 @@ public struct SwiftPackageTestTool: Sendable {
             )
             let sinkSummary = sink?.finish()
 
-            var context = "swift package (\(SwiftBuildDestination.hostLabel), \(configuration))"
+            var context =
+                "swift package (\(SwiftBuildDestination.hostLabel), \(configuration), \(traits.label))"
             if let filter { context += " (filter: '\(filter)')" }
             if let skip { context += " (skip: '\(skip)')" }
             if let sinkSummary {
                 context += " (\(sinkSummary.linesWritten) lines streamed to \(sinkSummary.path))"
             }
+            if let warning = traits.replacedDefaultsWarning { context += " \(warning)" }
             return try await ErrorExtractor.formatTestToolResult(
                 output: result.output, succeeded: result.succeeded,
                 context: context,
@@ -184,6 +190,7 @@ public struct SwiftPackageTestTool: Sendable {
         destination: ResolvedSwiftDestination,
         filter: String?,
         skip: String?,
+        traits: SwiftBuildTraits,
         swiftcFlags: [String],
         environment: Environment,
         explicitTimeout: Duration?,
@@ -198,6 +205,7 @@ public struct SwiftPackageTestTool: Sendable {
                 configuration: configuration,
                 buildTests: true,
                 destination: destination,
+                traits: traits,
                 swiftcFlags: swiftcFlags,
                 environment: environment,
                 timeout: timeout,
@@ -209,19 +217,20 @@ public struct SwiftPackageTestTool: Sendable {
             guard result.succeeded || buildResult.status == "success" else {
                 let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
                 throw MCPError.internalError(
-                    "Test targets failed to build for \(destination.label):\n\(errorOutput)",
+                    "Test targets failed to build for \(destination.label) with \(traits.label):\n\(errorOutput)",
                 )
             }
 
             let elapsed = start.duration(to: .now).elapsedDescription
             var message = "Test targets built for \(destination.label) "
-            message += "(\(configuration) configuration, \(elapsed)). "
+            message += "(\(configuration) configuration, \(traits.label), \(elapsed)). "
             message +=
                 "No test ran: SwiftPM cannot execute a test bundle built for another platform. "
             message += "Omit `destination` to run the tests on the host."
             if filter != nil || skip != nil {
                 message += " `filter` and `skip` select tests to run, so they had no effect here."
             }
+            if let warning = traits.replacedDefaultsWarning { message += "\n\n\(warning)" }
             if let sinkSummary { message += "\n\n\(sinkSummary.formatted())" }
             return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
         } catch let ProcessError.timeout(duration) {

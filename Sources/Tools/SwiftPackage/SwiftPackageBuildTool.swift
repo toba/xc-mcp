@@ -42,11 +42,12 @@ public struct SwiftPackageBuildTool: Sendable {
         properties.merge(SwiftPackageToolSchema.packagePath) { current, _ in current }
         properties.merge(SwiftPackageToolSchema.timeout(for: "the build")) { current, _ in current }
         properties.merge(SwiftDiagnosticOptions.schemaProperties) { current, _ in current }
+        properties.merge(SwiftBuildTraits.schemaProperties) { current, _ in current }
 
         return .init(
             name: "swift_package_build",
             description:
-                "Build a Swift package. Supports building specific products and configurations. Pass `destination` to cross-compile for another Apple platform, which is the only way to compile source behind `#if os(iOS)` or `#if canImport(UIKit)`. Pass `swiftc_flags` to run a compiler probe without editing Package.swift.",
+                "Build a Swift package. Supports building specific products and configurations. Pass `destination` to cross-compile for another Apple platform, which is the only way to compile source behind `#if os(iOS)` or `#if canImport(UIKit)`. Pass `traits` to enable package traits, which is the only way to compile source behind `#if <TraitName>`; `swiftc_flags` is not a substitute for it. Pass `swiftc_flags` to run a compiler probe without editing Package.swift.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(properties),
@@ -65,6 +66,7 @@ public struct SwiftPackageBuildTool: Sendable {
         let product = arguments.getString("product")
         let buildTests = arguments.getBool("build_tests")
         let requestedDestination = try SwiftBuildDestination.parse(from: arguments)
+        let traits = try await sessionManager.resolveTraits(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let explicitTimeout = arguments.explicitTimeout()
         let diagnostics = SwiftDiagnosticOptions(from: arguments)
@@ -104,6 +106,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 product: product,
                 buildTests: buildTests,
                 destination: destination,
+                traits: traits,
                 swiftcFlags: diagnostics.swiftcFlags,
                 environment: environment,
                 timeout: timeout,
@@ -117,7 +120,9 @@ public struct SwiftPackageBuildTool: Sendable {
                 let elapsed = buildStart.duration(to: .now).elapsedDescription
                 var message = "Build succeeded"
                 if let product { message += " for product '\(product)'" }
-                message += " (\(configuration) configuration, \(destinationLabel), \(elapsed))"
+                message +=
+                    " (\(configuration) configuration, \(destinationLabel), \(traits.label), \(elapsed))"
+                if let warning = traits.replacedDefaultsWarning { message += "\n\n\(warning)" }
                 if let sinkSummary { message += "\n\n\(sinkSummary.formatted())" }
 
                 return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
@@ -134,6 +139,7 @@ public struct SwiftPackageBuildTool: Sendable {
                     product: product,
                     buildTests: buildTests,
                     destination: destination,
+                    traits: traits,
                     swiftcFlags: diagnostics.swiftcFlags,
                     environment: environment,
                     timeout: timeout,
@@ -141,13 +147,15 @@ public struct SwiftPackageBuildTool: Sendable {
                 var errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
                 if let sinkSummary { errorOutput += "\n\n\(sinkSummary.formatted())" }
                 throw MCPError.internalError(
-                    "Build failed for \(destinationLabel):\n\(errorOutput)\n\n\(crashDetails)",
+                    "Build failed for \(destinationLabel) with \(traits.label):\n\(errorOutput)\n\n\(crashDetails)",
                 )
             }
 
             var errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
             if let sinkSummary { errorOutput += "\n\n\(sinkSummary.formatted())" }
-            throw MCPError.internalError("Build failed for \(destinationLabel):\n\(errorOutput)")
+            throw MCPError.internalError(
+                "Build failed for \(destinationLabel) with \(traits.label):\n\(errorOutput)",
+            )
         } catch let ProcessError.timeout(duration) {
             throw MCPError.internalError(SwiftRunner.timeoutMessage(
                 command: "swift build", duration: duration, packagePath: packagePath,
