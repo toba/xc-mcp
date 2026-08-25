@@ -4,24 +4,24 @@ import Foundation
 
 /// MCP tool for listing connected physical iOS/tvOS/watchOS devices.
 ///
-/// Uses devicectl to enumerate all connected devices with their UDIDs,
-/// names, device types, OS versions, and connection types.
+/// Uses devicectl to enumerate all connected devices with their UDIDs, names, device types, OS
+/// versions, and connection types.
 public struct ListDevicesTool: Sendable {
     private let deviceCtlRunner: DeviceCtlRunner
 
     /// Creates a new ListDevicesTool instance.
     ///
     /// - Parameter deviceCtlRunner: Runner for executing devicectl commands.
-    public init(deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner()) {
+    public init(deviceCtlRunner: DeviceCtlRunner = .init()) {
         self.deviceCtlRunner = deviceCtlRunner
     }
 
     /// Returns the MCP tool definition.
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_devices",
             description:
-            "List all connected iOS/tvOS/watchOS devices with their UDIDs and details.",
+                "List all connected iOS/tvOS/watchOS devices with their UDIDs and details.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([:]),
@@ -41,13 +41,8 @@ public struct ListDevicesTool: Sendable {
             let devices = try await deviceCtlRunner.listDevices()
 
             if devices.isEmpty {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "No connected devices found. Make sure your device is connected and trusted.",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "No connected devices found. Make sure your device is connected and trusted.")
             }
 
             var output = "Found \(devices.count) connected device(s):\n\n"
@@ -60,9 +55,9 @@ public struct ListDevicesTool: Sendable {
                 output += "   Connection: \(device.connectionType)\n\n"
             }
 
-            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(output)
         } catch {
-            throw MCPError.internalError("Failed to list devices: \(error.localizedDescription)")
+            throw try error.asMCPError()
         }
     }
 }

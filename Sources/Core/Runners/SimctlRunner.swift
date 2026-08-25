@@ -94,6 +94,7 @@ public enum SimulatorPlatform: Sendable {
             return nil
         }
         let family = runtimeIdentifier[range.upperBound...].prefix { $0 != "-" }
+
         switch family {
             case "iOS": self = .iOS
             case "xrOS": self = .visionOS
@@ -142,7 +143,7 @@ public struct ResolvedSimulator: Sendable {
 /// try await runner.boot(udid: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX")
 ///
 /// // Launch an app
-/// try await runner.launch(udid: udid, bundleId: "com.example.app")
+/// try await runner.launch(udid: udid, bundleID: "com.example.app")
 /// ```
 public struct SimctlRunner: Sendable {
     private static let decoder = JSONDecoder()
@@ -185,6 +186,7 @@ public struct SimctlRunner: Sendable {
 
         // Flatten the devices dictionary and add runtime info
         var devices: [SimulatorDevice] = []
+        devices.reserveCapacity(response.devices.values.reduce(0) { $0 + $1.count })
 
         for (runtime, runtimeDevices) in response.devices {
             for device in runtimeDevices {
@@ -241,11 +243,8 @@ public struct SimctlRunner: Sendable {
         matching identifier: String
     ) async throws(SimctlError) -> ResolvedSimulator {
         let devices = try await listDevices()
-        guard let device = devices.first(where: {
-            $0.udid == identifier || $0.name == identifier
-        }) else {
-            throw .deviceNotFound(identifier)
-        }
+        guard let device = devices.first(where: { $0.udid == identifier || $0.name == identifier })
+        else { throw .deviceNotFound(identifier) }
         guard device.isAvailable else {
             throw .platformUndetermined(
                 "Simulator '\(device.name)' (\(device.udid)) is unavailable — its runtime may have "
@@ -260,7 +259,7 @@ public struct SimctlRunner: Sendable {
                     + "(runtime: \(device.runtime ?? "unknown")).",
             )
         }
-        return ResolvedSimulator(udid: device.udid, name: device.name, platform: platform)
+        return .init(udid: device.udid, name: device.name, platform: platform)
     }
 
     /// Boots a simulator.
@@ -308,33 +307,33 @@ public struct SimctlRunner: Sendable {
     ///
     /// - Parameters:
     ///   - udid: The UDID of the target simulator.
-    ///   - bundleId: Bundle identifier of the app to uninstall.
+    ///   - bundleID: Bundle identifier of the app to uninstall.
     /// - Returns: The result containing exit code and output.
     public func uninstall(
         udid: String,
-        bundleId: String,
+        bundleID: String,
     ) async throws(SimctlError) -> SimctlResult {
-        try await run(arguments: ["uninstall", udid, bundleId])
+        try await run(arguments: ["uninstall", udid, bundleID])
     }
 
     /// Launches an app on a simulator.
     ///
     /// - Parameters:
     ///   - udid: The UDID of the target simulator.
-    ///   - bundleId: Bundle identifier of the app to launch.
+    ///   - bundleID: Bundle identifier of the app to launch.
     ///   - waitForDebugger: If true, the app waits for a debugger to attach before starting.
     ///   - args: Additional arguments to pass to the app.
     /// - Returns: The result containing exit code and output.
     public func launch(
         udid: String,
-        bundleId: String,
+        bundleID: String,
         waitForDebugger: Bool = false,
         args: [String] = [],
     ) async throws(SimctlError) -> SimctlResult {
         var arguments = ["launch"]
         if waitForDebugger { arguments.append("-w") }
         arguments.append(udid)
-        arguments.append(bundleId)
+        arguments.append(bundleID)
         arguments.append(contentsOf: args)
         return try await run(arguments: arguments)
     }
@@ -343,29 +342,29 @@ public struct SimctlRunner: Sendable {
     ///
     /// - Parameters:
     ///   - udid: The UDID of the target simulator.
-    ///   - bundleId: Bundle identifier of the app to terminate.
+    ///   - bundleID: Bundle identifier of the app to terminate.
     /// - Returns: The result containing exit code and output.
     public func terminate(
         udid: String,
-        bundleId: String,
+        bundleID: String,
     ) async throws(SimctlError) -> SimctlResult {
-        try await run(arguments: ["terminate", udid, bundleId])
+        try await run(arguments: ["terminate", udid, bundleID])
     }
 
     /// Gets the app container path on a simulator.
     ///
     /// - Parameters:
     ///   - udid: The UDID of the target simulator.
-    ///   - bundleId: Bundle identifier of the app.
+    ///   - bundleID: Bundle identifier of the app.
     ///   - container: Container type ("app", "data", "groups"). Defaults to "app".
     /// - Returns: The path to the app container.
     /// - Throws: ``SimctlError/commandFailed(_:)`` if the command fails.
     public func getAppContainer(
         udid: String,
-        bundleId: String,
+        bundleID: String,
         container: String = "app",
     ) async throws(SimctlError) -> String {
-        let result = try await run(arguments: ["get_app_container", udid, bundleId, container])
+        let result = try await run(arguments: ["get_app_container", udid, bundleID, container])
         guard result.succeeded else { throw .commandFailed(result.stderr) }
         return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
     }

@@ -6,19 +6,17 @@ import Foundation
 
 /// Bulk/cross-target build setting query.
 ///
-/// Walks every native target in a project (one pbxproj load) and reports each requested
-/// setting's value per (target, configuration). Optionally filters to entries whose value
-/// contains one of the supplied substrings. Replaces the per-target loop pattern of calling
-/// `get_build_settings` N times when auditing a single setting across an app + N frameworks.
+/// Walks every native target in a project (one pbxproj load) and reports each requested setting's
+/// value per (target, configuration). Optionally filters to entries whose value contains one of the
+/// supplied substrings. Replaces the per-target loop pattern of calling `get_build_settings` N
+/// times when auditing a single setting across an app + N frameworks.
 public struct FindBuildSettingsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "find_build_settings",
             description:
                 "Bulk-query build settings across the project-level buildSettings and every native target in a single pass. Given one or more setting names, returns each scope+configuration pair whose pbxproj-level buildSettings dictionary contains a match; project-level matches are labelled `[project]` (these are inherited by every target and are a common source of stray flags). Use this instead of looping `get_build_settings` per target when auditing settings like MERGEABLE_LIBRARY, MERGED_BINARY_TYPE, SUPPORTED_PLATFORMS, DEVELOPMENT_TEAM, OTHER_LDFLAGS, or SWIFT upcoming-feature flags across many targets. Reads pbxproj project- and target-level values only (does not resolve xcconfig inheritance or .xcconfig overrides — for fully resolved settings use `show_build_settings`).",
@@ -59,33 +57,16 @@ public struct FindBuildSettingsTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
-        guard case let .array(settingsArray) = arguments["settings"], !settingsArray.isEmpty else {
+        let projectPath = try arguments.getRequiredString("project_path")
+        let settingNames = arguments.getStringArray("settings")
+        guard !settingNames.isEmpty else {
             throw MCPError.invalidParams("settings must be a non-empty array of strings")
         }
-        let settingNames: [String] = settingsArray.compactMap {
-            if case let .string(s) = $0 { return s } else { return nil }
-        }
-        guard !settingNames.isEmpty else {
-            throw MCPError.invalidParams("settings must contain at least one string")
-        }
 
-        let valueFilters: [String]?
-        if case let .array(valuesArray) = arguments["values"] {
-            let strings: [String] = valuesArray.compactMap {
-                if case let .string(s) = $0 { return s } else { return nil }
-            }
-            valueFilters = strings.isEmpty ? nil : strings
-        } else {
-            valueFilters = nil
-        }
+        let values = arguments.getStringArray("values")
+        let valueFilters: [String]? = values.isEmpty ? nil : values
 
-        let configFilter: String?
-        if case let .string(c) = arguments["configuration"] { configFilter = c } else {
-            configFilter = nil
-        }
+        let configFilter = arguments.getString("configuration")
 
         do {
             let resolvedPath = try pathUtility.resolvePath(from: projectPath)
@@ -102,16 +83,19 @@ public struct FindBuildSettingsTool: Sendable {
             // when they aren't.
             func scan(_ configList: XCConfigurationList?, label: String) {
                 guard let configList else { return }
+
                 for config in configList.buildConfigurations.sorted(by: { $0.name < $1.name }) {
                     if let configFilter, config.name != configFilter { continue }
+
                     for setting in settingNames {
                         guard let raw = config.buildSettings[setting] else { continue }
                         let valueString = renderSettingValue(raw)
+
                         if let valueFilters {
                             let hit = valueFilters.contains { filter in
                                 switch raw {
-                                    case let .string(s): return s.contains(filter)
-                                    case let .array(arr): return arr.contains { $0.contains(filter) }
+                                    case let .string(s): s.contains(filter)
+                                    case let .array(arr): arr.contains { $0.contains(filter) }
                                 }
                             }
                             if !hit { continue }
@@ -131,22 +115,16 @@ public struct FindBuildSettingsTool: Sendable {
                 "find_build_settings in \(projectURL.lastPathComponent) (settings=\(settingNames.joined(separator: ",")), configuration=\(configFilter ?? "*"), filter=\(valueFilters?.joined(separator: ",") ?? "<none>")): \(matchCount) match\(matchCount == 1 ? "" : "es")"
             let body = matches.isEmpty ? "  (no matches)" : matches.joined(separator: "\n")
 
-            return CallTool.Result(content: [
-                .text(text: "\(header)\n\(body)", annotations: nil, _meta: nil),
-            ])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text("\(header)\n\(body)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
     private func renderSettingValue(_ value: BuildSetting) -> String {
         switch value {
-            case let .string(str): return str
-            case let .array(arr): return "[\(arr.joined(separator: " "))]"
+            case let .string(str): str
+            case let .array(arr): "[\(arr.joined(separator: " "))]"
         }
     }
 }

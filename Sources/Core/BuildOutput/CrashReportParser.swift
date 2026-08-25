@@ -165,29 +165,17 @@ public enum CrashReportParser: Sendable {
         guard let firstNewline = content.firstIndex(of: "\n") else { return nil }
 
         let bodyString = String(content[content.index(after: firstNewline)...])
-        let bodyData = Data(bodyString.utf8)
-        guard let body = try? JSONDecoder().decode(CrashBody.self, from: bodyData) else {
-            return nil
-        }
-
-        return makeSummary(from: body)
+        return try? parse(jsonBody: Data(bodyString.utf8))
     }
 
-    /// Parses a crash report from its JSON body dictionary.
+    /// Parses a crash report from the JSON body of an `.ips` file.
     ///
-    /// Exposed for testing without needing a file on disk.
-    public static func parseJSON(_ json: [String: Any]) -> CrashSummary {
-        guard let data = try? JSONSerialization.data(withJSONObject: json),
-              let body = try? JSONDecoder().decode(CrashBody.self, from: data)
-        else {
-            return CrashSummary(
-                processName: nil, bundleID: nil, captureTime: nil,
-                exceptionType: nil, exceptionSubtype: nil, signal: nil, terminationNamespace: nil,
-                terminationIndicator: nil, terminationReasons: [], terminationDetails: [],
-                isFatalDyldError: false, crashingThread: nil, crashingThreadFrames: [],
-            )
-        }
-        return makeSummary(from: body)
+    /// Exposed for testing without needing a file on disk. Throws when the body is not the shape
+    /// the format defines, so a malformed body never reads as a crash with nothing in it.
+    ///
+    /// - Parameter jsonBody: The `.ips` body, without the header line that precedes it.
+    public static func parse(jsonBody: Data) throws -> CrashSummary {
+        try makeSummary(from: JSONDecoder().decode(CrashBody.self, from: jsonBody))
     }
 
     private static func makeSummary(from body: CrashBody) -> CrashSummary {

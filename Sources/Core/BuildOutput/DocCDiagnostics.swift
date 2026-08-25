@@ -75,8 +75,22 @@ public enum DocCDiagnosticParser: Sendable {
     /// - Parameter data: Contents of the diagnostics file.
     /// - Returns: The diagnostics in the order DocC wrote them.
     /// - Throws: A `DecodingError` when the file does not match the DocC diagnostic file format.
-    public static func parse(diagnosticsFile data: Data) throws -> [DocCDiagnostic] {
-        let file = try JSONDecoder().decode(DiagnosticFile.self, from: data)
+    public static func parse(diagnosticsFile data: Data) throws(DecodingError) -> [DocCDiagnostic] {
+        let file: DiagnosticFile
+
+        do {
+            file = try JSONDecoder().decode(DiagnosticFile.self, from: data)
+        } catch let error as DecodingError {
+            throw error
+        } catch {
+            // JSONDecoder documents DecodingError, so this arm only catches an unexpected error
+            // such as one thrown by a custom initializer.
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: [],
+                debugDescription: "Could not read the DocC diagnostics file",
+                underlyingError: error,
+            ))
+        }
         return file.diagnostics.map { entry in
             DocCDiagnostic(
                 severity: entry.severity,

@@ -43,6 +43,32 @@ public extension PBXProjParsing {
         return utf8.allSatisfy { isHexByte($0, requireUppercase: requireUppercase) }
     }
 
+    /// The first Xcode object identifier on a line, or `nil` when the line holds none
+    ///
+    /// Scans for a run of at least ``identifierLength`` hexadecimal bytes and returns its first 24
+    /// characters. The scan replaces a regular expression on a path that runs once per line of
+    /// `project.pbxproj`.
+    ///
+    /// - Parameter requireUppercase: When `true`, lowercase hex digits do not extend a run.
+    static func firstIdentifier(
+        in line: some StringProtocol,
+        requireUppercase: Bool = false,
+    ) -> String? {
+        var run: [UInt8] = []
+        run.reserveCapacity(identifierLength)
+
+        for byte in line.utf8 {
+            guard isHexByte(byte, requireUppercase: requireUppercase) else {
+                run.removeAll(keepingCapacity: true)
+                continue
+            }
+            run.append(byte)
+            // every byte in the run passed isHexByte, so the decode cannot substitute
+            if run.count == identifierLength { return String(bytes: run, encoding: .utf8) }
+        }
+        return nil
+    }
+
     /// Whether `byte` is an ASCII hexadecimal digit (`0-9`, `A-F`, and — unless `requireUppercase`
     /// — `a-f`).
     static func isHexByte(_ byte: UInt8, requireUppercase: Bool = false) -> Bool {

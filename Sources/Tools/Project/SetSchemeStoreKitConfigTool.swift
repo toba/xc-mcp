@@ -94,7 +94,7 @@ public struct SetSchemeStoreKitConfigTool: Sendable {
 
         guard let schemePath = SchemePathResolver.findScheme(
             named: schemeName, in: resolvedProjectPath,
-        ) else { return Self.message("Scheme '\(schemeName)' not found in project") }
+        ) else { return CallTool.Result.text("Scheme '\(schemeName)' not found in project") }
 
         // Compute the scheme-relative identifier only when adding a reference.
         var identifier = ""
@@ -105,7 +105,8 @@ public struct SetSchemeStoreKitConfigTool: Sendable {
             }
             let resolvedStorekitPath = try pathUtility.resolvePath(from: storekitPath)
             guard FileManager.default.fileExists(atPath: resolvedStorekitPath) else {
-                return Self.message("StoreKit configuration not found at \(resolvedStorekitPath)")
+                return CallTool.Result.text(
+                    "StoreKit configuration not found at \(resolvedStorekitPath)")
             }
             identifier = SchemePathResolver.schemeRelativeIdentifier(
                 for: resolvedStorekitPath, schemePath: schemePath,
@@ -125,7 +126,7 @@ public struct SetSchemeStoreKitConfigTool: Sendable {
                 let detail = skipped.isEmpty
                     ? (isAdd ? "" : " (no reference was present)")
                     : " (\(skipped.joined(separator: ", ")) not present in scheme)"
-                return Self.message(
+                return CallTool.Result.text(
                     "No StoreKit reference to \(verb) in scheme '\(schemeName)'\(detail)",
                 )
             }
@@ -137,13 +138,9 @@ public struct SetSchemeStoreKitConfigTool: Sendable {
             let note = skipped.isEmpty
                 ? ""
                 : " (skipped: \(skipped.map(Self.friendlyName).joined(separator: ", ")) not present)"
-            return Self.message(summary + note)
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(summary + note)
         } catch {
-            throw MCPError.internalError(
-                "Failed to edit scheme StoreKit config: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
@@ -235,10 +232,12 @@ public struct SetSchemeStoreKitConfigTool: Sendable {
 
     /// Extracts the `identifier` attribute of the first `<StoreKitConfigurationFileReference>` in
     /// an action block, unescaping XML entities, or nil if none is present.
+    private static nonisolated(unsafe) let storeKitIdentifierRegex = try? NSRegularExpression(
+        pattern: "<StoreKitConfigurationFileReference\\b[\\s\\S]*?identifier\\s*=\\s*\"([^\"]*)\"",
+    )
+
     private static func storeKitIdentifier(in blockText: String) -> String? {
-        let pattern =
-            "<StoreKitConfigurationFileReference\\b[\\s\\S]*?identifier\\s*=\\s*\"([^\"]*)\""
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        guard let regex = storeKitIdentifierRegex else { return nil }
         let range = NSRange(blockText.startIndex..<blockText.endIndex, in: blockText)
         guard let match = regex.firstMatch(in: blockText, range: range),
               let idRange = Range(match.range(at: 1), in: blockText) else { return nil }
@@ -254,9 +253,8 @@ public struct SetSchemeStoreKitConfigTool: Sendable {
         in content: String,
     ) -> Range<String.Index>? {
         guard let open = content.range(of: "<\(name)"),
-              let close = content.range(
-                  of: "</\(name)>", range: open.upperBound..<content.endIndex,
-              ) else { return nil }
+              let close = content.range(of: "</\(name)>", range: open.upperBound..<content.endIndex)
+        else { return nil }
         return open.lowerBound..<close.upperBound
     }
 
@@ -274,13 +272,16 @@ public struct SetSchemeStoreKitConfigTool: Sendable {
     /// including its leading indentation and trailing newline, from an action block.
     ///
     /// - Returns: true if a reference was present and removed.
+    private static nonisolated(unsafe) let storeKitReferenceRegex = try? NSRegularExpression(
+        pattern: "[ \\t]*<StoreKitConfigurationFileReference\\b"
+            + "(?:[^>]*?/>|[\\s\\S]*?</StoreKitConfigurationFileReference>)[ \\t]*\\n?",
+    )
+
     private static func removeStoreKitReference(
         in blockText: inout String,
         action _: String,
     ) -> Bool {
-        let pattern = "[ \\t]*<StoreKitConfigurationFileReference\\b"
-            + "(?:[^>]*?/>|[\\s\\S]*?</StoreKitConfigurationFileReference>)[ \\t]*\\n?"
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return false }
+        guard let regex = storeKitReferenceRegex else { return false }
         let range = NSRange(blockText.startIndex..<blockText.endIndex, in: blockText)
         guard regex.firstMatch(in: blockText, range: range) != nil else { return false }
         blockText = regex.stringByReplacingMatches(in: blockText, range: range, withTemplate: "")
@@ -308,10 +309,6 @@ public struct SetSchemeStoreKitConfigTool: Sendable {
     /// Maps a scheme action element name to the user-facing verb (`LaunchAction` → "launch").
     public static func friendlyName(_ elementName: String) -> String {
         elementName == "LaunchAction" ? "launch" : "test"
-    }
-
-    private static func message(_ text: String) -> CallTool.Result {
-        CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
     }
 }
 

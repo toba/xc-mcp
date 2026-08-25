@@ -5,12 +5,10 @@ import Foundation
 public struct XCStringsRenameKeyTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_rename_key",
             description: "Rename a key",
             inputSchema: .object([
@@ -40,22 +38,10 @@ public struct XCStringsRenameKeyTool: Sendable {
         let oldKey = try arguments.getRequiredString("oldKey")
         let newKey = try arguments.getRequiredString("newKey")
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
             try await parser.renameKey(from: oldKey, to: newKey)
 
-            return CallTool.Result(
-                content: [.text(
-                    text: "Key renamed from '\(oldKey)' to '\(newKey)' successfully",
-                    annotations: nil,
-                    _meta: nil,
-                )],
-            )
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text("Key renamed from '\(oldKey)' to '\(newKey)' successfully")
         }
     }
 }

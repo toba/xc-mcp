@@ -84,17 +84,11 @@ public struct XCStringsPromoteLiteralsTool: Sendable {
             throw MCPError.invalidParams("literals array is required and cannot be empty")
         }
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, resolvedPath in
             let promoted = try await parser.promoteLiterals(requests)
             let result = PromoteLiteralsResult(file: resolvedPath, promoted: promoted)
             let json = try encodePrettyJSON(result)
-            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(json)
         }
     }
 
@@ -106,14 +100,14 @@ public struct XCStringsPromoteLiteralsTool: Sendable {
         }
 
         return try items.map { item in
-            guard case let .object(obj) = item, case let .string(value) = obj["value"] else {
+            guard case let .object(obj) = item, let value = obj.getString("value") else {
                 throw MCPError.invalidParams("Each literal must have a 'value' string")
             }
-            var key: String?
-            if case let .string(k) = obj["key"], !k.isEmpty { key = k }
-            var comment: String?
-            if case let .string(c) = obj["comment"], !c.isEmpty { comment = c }
-            return PromoteLiteralRequest(value: value, key: key, comment: comment)
+            return PromoteLiteralRequest(
+                value: value,
+                key: obj.getNonEmptyString("key"),
+                comment: obj.getNonEmptyString("comment"),
+            )
         }
     }
 }

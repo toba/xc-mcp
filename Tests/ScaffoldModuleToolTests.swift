@@ -349,10 +349,10 @@ struct ScaffoldModuleToolTests {
             .deletingLastPathComponent().path
         let testPlanPath = URL(fileURLWithPath: projectDir)
             .appendingPathComponent("AllTests.xctestplan").path
-        let initialPlan: [String: Any] = [
-            "configurations": [["id": "1", "name": "Default", "options": [:]] as [String: Any]],
-            "defaultOptions": [:] as [String: Any],
-            "testTargets": [] as [[String: Any]],
+        let initialPlan: [String: AnyValue] = [
+            "configurations": [["id": "1", "name": "Default", "options": [:]]],
+            "defaultOptions": [:],
+            "testTargets": [],
             "version": 1,
         ]
         let data = try JSONSerialization.data(

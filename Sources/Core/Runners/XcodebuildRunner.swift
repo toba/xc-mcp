@@ -180,13 +180,12 @@ public struct XcodebuildRunner: Sendable {
                     arguments: Arguments(["xcodebuild"] + arguments),
                     environment: environment,
                     platformOptions: platformOptions,
-                ) {
-                    (
-                        execution: Execution,
-                        _,
-                        stdoutSeq: AsyncBufferSequence,
-                        stderrSeq: AsyncBufferSequence,
-                    ) in
+                    input: .none,
+                    output: .sequence,
+                    error: .sequence,
+                ) { execution in
+                    let stdoutSeq = execution.standardOutput
+                    let stderrSeq = execution.standardError
                     pgidBox(set: execution.processIdentifier.value)
                     return try await withThrowingTaskGroup(of: Void.self) { group in
                         // Read stdout
@@ -912,9 +911,14 @@ private final class OutputCollector: Sendable {
     func appendStderr(_ data: Data) { stderrData.withLock { $0.append(data) } }
 
     func getOutput() -> (stdout: String, stderr: String) {
-        let out = stdoutData.withLock { String(data: $0, encoding: .utf8) ?? "" }
-        let err = stderrData.withLock { String(data: $0, encoding: .utf8) ?? "" }
-        return (out, err)
+        // copy under the lock, decode outside it; a build log runs to megabytes and the readability
+        // handlers keep appending while this runs
+        let outData = stdoutData.withLock { $0 }
+        let errData = stderrData.withLock { $0 }
+        return (
+            String(data: outData, encoding: .utf8) ?? "",
+            String(data: errData, encoding: .utf8) ?? ""
+        )
     }
 }
 

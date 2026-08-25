@@ -30,9 +30,7 @@ public struct ListSwiftPackagesTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
 
         do {
             // Resolve and validate the project path
@@ -66,28 +64,13 @@ public struct ListSwiftPackagesTool: Sendable {
             }
 
             if packages.isEmpty {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "No Swift Package dependencies found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
+                return CallTool.Result.text("No Swift Package dependencies found in project")
             }
 
             let packageList = packages.joined(separator: "\n")
-            return CallTool.Result(content: [
-                .text(
-                    text: "Swift Package dependencies:\n\(packageList)",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],)
+            return CallTool.Result.text("Swift Package dependencies:\n\(packageList)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to list Swift Packages in Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
-
 }

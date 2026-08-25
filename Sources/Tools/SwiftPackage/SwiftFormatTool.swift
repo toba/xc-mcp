@@ -45,17 +45,17 @@ public struct SwiftFormatTool: Sendable {
             "format", "--in-place", "--recursive", "--parallel",
             "--reporter", "json",
         ]
+
         do {
-            // sm format takes paths alone and has no package root option, so it resolves a
-            // relative path against the server working directory. That directory is unrelated to
+            // sm format takes paths alone and has no package root option, so it resolves a relative
+            // path against the server working directory. That directory is unrelated to
             // package_path, and this formatter writes in place, so an unresolved path rewrites
             // another repository.
             if paths.isEmpty {
                 args.append(packagePath)
             } else {
-                args.append(
-                    contentsOf: try PathUtility(basePath: packagePath).resolvePaths(from: paths),
-                )
+                try args.append(
+                    contentsOf: PathUtility(basePath: packagePath).resolvePaths(from: paths))
             }
 
             let result = try await ProcessResult.run(
@@ -74,13 +74,7 @@ public struct SwiftFormatTool: Sendable {
             let summary = Self.parseJSONOutput(result.stdout)
 
             if summary.changed.isEmpty {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "All files already formatted correctly.",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ])
+                return CallTool.Result.text("All files already formatted correctly.")
             }
 
             var message = "Formatted \(summary.changed.count) file(s):\n"
@@ -91,53 +85,71 @@ public struct SwiftFormatTool: Sendable {
                 message += summary.skipped.map { "\($0.file) (\($0.reason))" }.joined(
                     separator: "\n")
             }
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }
     }
 
     /// A single changed file from the sm format JSON reporter.
-    struct ChangedFile {
+    struct ChangedFile: Decodable {
         let file: String
         let bytesBefore: Int
         let bytesAfter: Int
+
+        private enum CodingKeys: String, CodingKey { case file, bytesBefore, bytesAfter }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            file = try container.decode(String.self, forKey: .file)
+            // sm omits both byte counts when it reports names alone
+            bytesBefore = try container.decodeIfPresent(Int.self, forKey: .bytesBefore) ?? 0
+            bytesAfter = try container.decodeIfPresent(Int.self, forKey: .bytesAfter) ?? 0
+        }
     }
 
     /// A skipped file from the sm format JSON reporter.
-    struct SkippedFile {
+    struct SkippedFile: Decodable {
         let file: String
         let reason: String
+
+        private enum CodingKeys: String, CodingKey { case file, reason }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            file = try container.decode(String.self, forKey: .file)
+            reason = try container.decodeIfPresent(String.self, forKey: .reason) ?? ""
+        }
     }
 
     /// Aggregate summary parsed from the sm format JSON reporter.
-    struct Summary {
+    struct Summary: Decodable {
         let changed: [ChangedFile]
         let unchanged: [String]
         let skipped: [SkippedFile]
+
+        private enum CodingKeys: String, CodingKey { case changed, unchanged, skipped }
+
+        init() {
+            changed = []
+            unchanged = []
+            skipped = []
+        }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            // sm omits a list it has nothing for
+            changed = try container.decodeIfPresent([ChangedFile].self, forKey: .changed) ?? []
+            unchanged = try container.decodeIfPresent([String].self, forKey: .unchanged) ?? []
+            skipped = try container.decodeIfPresent([SkippedFile].self, forKey: .skipped) ?? []
+        }
     }
 
     /// Parses the sm format JSON reporter envelope.
     static func parseJSONOutput(_ output: String) -> Summary {
-        let data = Data(output.utf8)
-        guard let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return Summary(changed: [], unchanged: [], skipped: [])
-        }
-
-        let changed = (dict["changed"] as? [[String: Any]] ?? []).compactMap { e -> ChangedFile? in
-            guard let file = e["file"] as? String else { return nil }
-            return ChangedFile(
-                file: file,
-                bytesBefore: e["bytes_before"] as? Int ?? 0,
-                bytesAfter: e["bytes_after"] as? Int ?? 0,
-            )
-        }
-        let unchanged = (dict["unchanged"] as? [String]) ?? []
-        let skipped = (dict["skipped"] as? [[String: Any]] ?? []).compactMap { e -> SkippedFile? in
-            guard let file = e["file"] as? String else { return nil }
-            return SkippedFile(file: file, reason: e["reason"] as? String ?? "")
-        }
-
-        return .init(changed: changed, unchanged: unchanged, skipped: skipped)
+        let decoder = JSONDecoder()
+        // the reporter writes bytes_before and bytes_after
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return (try? decoder.decode(Summary.self, from: Data(output.utf8))) ?? Summary()
     }
 }

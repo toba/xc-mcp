@@ -5,12 +5,10 @@ import Foundation
 public struct XCStringsUpdateTranslationsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_update_translations",
             description: "Update translations for multiple languages at once",
             inputSchema: .object([
@@ -47,33 +45,18 @@ public struct XCStringsUpdateTranslationsTool: Sendable {
 
         var translations: [String: String] = [:]
         for (lang, value) in translationsValue {
-            if case let .string(stringValue) = value {
-                translations[lang] = stringValue
-            }
+            if case let .string(stringValue) = value { translations[lang] = stringValue }
         }
 
         if translations.isEmpty {
             throw MCPError.invalidParams("translations object cannot be empty")
         }
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
             try await parser.updateTranslations(key: key, translations: translations)
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Translations updated successfully for \(translations.count) languages",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(
+                "Translations updated successfully for \(translations.count) languages")
         }
     }
 }

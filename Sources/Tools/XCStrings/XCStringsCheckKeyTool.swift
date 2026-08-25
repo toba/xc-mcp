@@ -5,12 +5,10 @@ import Foundation
 public struct XCStringsCheckKeyTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_check_key",
             description: "Check if a key exists in the xcstrings file",
             inputSchema: .object([
@@ -40,16 +38,16 @@ public struct XCStringsCheckKeyTool: Sendable {
         let key = try arguments.getRequiredString("key")
         let language = arguments.getString("language")
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
             let exists = try await parser.checkKey(key, language: language)
 
             let text: String
+
             if exists {
                 text = "true"
             } else {
                 let suggestions = try await parser.suggestions(for: key)
+
                 if suggestions.isEmpty {
                     text = "false"
                 } else {
@@ -58,15 +56,7 @@ public struct XCStringsCheckKeyTool: Sendable {
                 }
             }
 
-            return CallTool.Result(content: [.text(
-                text: text,
-                annotations: nil,
-                _meta: nil,
-            )])
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(text)
         }
     }
 }

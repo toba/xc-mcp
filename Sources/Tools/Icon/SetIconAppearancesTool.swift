@@ -7,10 +7,10 @@ public struct SetIconAppearancesTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_icon_appearances",
             description:
-            "Apply dark or tinted mode overrides to a .icon bundle's fill, group, or layer. "
+                "Apply dark or tinted mode overrides to a .icon bundle's fill, group, or layer. "
                 + "Creates appearance specializations for adaptive icon rendering.",
             inputSchema: .object([
                 "type": .string("object"),
@@ -31,13 +31,12 @@ public struct SetIconAppearancesTool: Sendable {
                     ]),
                     "group_index": .object([
                         "type": .string("integer"),
-                        "description": .string("Group index (default: 0, for group/layer targets)."),
+                        "description": .string(
+                            "Group index (default: 0, for group/layer targets)."),
                     ]),
                     "layer_index": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Layer index (required when target is 'layer')."
-                        ),
+                        "description": .string("Layer index (required when target is 'layer')."),
                     ]),
                     "bg_color": .object([
                         "type": .string("string"),
@@ -73,7 +72,9 @@ public struct SetIconAppearancesTool: Sendable {
                         "description": .string("Override vertical offset."),
                     ]),
                 ]),
-                "required": .array([.string("bundle_path"), .string("target"), .string("appearance")]),
+                "required": .array([
+                    .string("bundle_path"), .string("target"), .string("appearance"),
+                ]),
             ]),
             annotations: .mutation,
         )
@@ -88,49 +89,38 @@ public struct SetIconAppearancesTool: Sendable {
             throw MCPError.invalidParams("appearance must be 'dark' or 'tinted'")
         }
 
-        guard FileManager.default.fileExists(atPath: bundlePath) else {
-            throw MCPError.invalidParams("Icon bundle not found: \(bundlePath)")
-        }
-
-        var manifest = try IconManifest.read(from: bundlePath)
-        var desc: String
+        var manifest = try IconManifest.open(bundlePath)
+        let desc: String
 
         switch target {
-        case "fill":
-            guard let bgColor = arguments.getString("bg_color") else {
-                throw MCPError.invalidParams("bg_color is required for fill appearance override")
-            }
-            let fillValue = resolveAsFill(bgColor)
-            let spec = IconManifest.Specialization(appearance: appearance, value: fillValue)
+            case "fill":
+                guard let bgColor = arguments.getString("bg_color") else {
+                    throw MCPError.invalidParams(
+                        "bg_color is required for fill appearance override")
+                }
+                let fillValue = IconManifest.resolveFill(bgColor)
+                let spec = IconManifest.Specialization(appearance: appearance, value: fillValue)
 
-            var specs = manifest.fillSpecializations ?? []
-            specs.removeAll { $0.appearance == appearance }
-            specs.append(spec)
-            manifest.fillSpecializations = specs
-            desc = "Set \(appearance) fill to \(bgColor)"
+                var specs = manifest.fillSpecializations ?? []
+                specs.removeAll { $0.appearance == appearance }
+                specs.append(spec)
+                manifest.fillSpecializations = specs
+                desc = "Set \(appearance) fill to \(bgColor)"
 
-        case "group", "layer":
-            // For now, we note this is a manifest-level operation
-            // The icon.json supports group/layer specializations but they're verbose
-            // We handle the most common case: fill specializations
-            desc = "Appearance specializations for \(target) require direct manifest editing — use read_icon + set_icon_fill/effects"
-            // Future: implement group.specular-specializations, etc.
+            case "group", "layer":
+                // group and layer specializations need direct manifest editing, so return before
+                // the write rather than rewrite an unchanged manifest
+                return CallTool.Result.text(
+                    """
+                    Appearance specializations for \(target) require direct manifest editing. \
+                    Use read_icon with set_icon_fill or set_icon_effects.
+                    """)
 
-        default:
-            throw MCPError.invalidParams("target must be 'fill', 'group', or 'layer'")
+            default: throw MCPError.invalidParams("target must be 'fill', 'group', or 'layer'")
         }
 
         try manifest.write(to: bundlePath)
 
-        return CallTool.Result(
-            content: [.text(text: desc, annotations: nil, _meta: nil)],
-        )
-    }
-
-    private func resolveAsFill(_ color: String) -> IconManifest.Fill {
-        if color.hasPrefix("#") || (color.count == 6 && color.allSatisfy(\.isHexDigit)) {
-            return .fromHex(color)
-        }
-        return .automaticGradient(color)
+        return CallTool.Result.text(desc)
     }
 }

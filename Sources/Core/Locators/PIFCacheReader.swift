@@ -141,17 +141,14 @@ public struct PIFCacheReader: Sendable {
             for ref in project.targetRefs { projectsByTargetRef[ref, default: []].append(project) }
         }
 
-        let newest =
-            ([
-                workspaces.map(\.cacheFilePath),
-                projects.map(\.cacheFilePath),
-                targets.map(\.cacheFilePath),
-            ]
-            .flatMap { $0 })
-                .compactMap { (path: String) -> Date? in
-                    try? fm.attributesOfItem(atPath: path)[.modificationDate] as? Date
-                }
-                .max()
+        // PIF entries are content-addressed, so a change writes a new file and bumps the enclosing
+        // directory. Three directory mtimes answer the same question as one stat per cache file.
+        let newest = ["workspace", "project", "target"]
+            .compactMap { (subdir: String) -> Date? in
+                let path = URL(fileURLWithPath: cacheRoot).appendingPathComponent(subdir).path
+                return try? fm.attributesOfItem(atPath: path)[.modificationDate] as? Date
+            }
+            .max()
 
         return .init(
             cacheRoot: cacheRoot,
@@ -281,9 +278,10 @@ public struct PIFCacheReader: Sendable {
         let dir = URL(fileURLWithPath: cacheRoot).appendingPathComponent(subdir)
         let fm = FileManager.default
         guard let entries = try? fm.contentsOfDirectory(atPath: dir.path) else { return [] }
-        return entries
-            .filter { $0.hasSuffix("-json") }
-            .map { dir.appendingPathComponent($0) }
+        return Array(
+            entries.lazy
+                .filter { $0.hasSuffix("-json") }
+                .map { dir.appendingPathComponent($0) })
     }
 
     // MARK: - Decodable DTOs

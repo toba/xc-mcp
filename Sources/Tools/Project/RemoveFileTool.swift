@@ -42,15 +42,13 @@ public struct RemoveFileTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(filePath) = arguments["file_path"]
-        else {
-            throw MCPError.invalidParams("project_path and file_path are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let filePath = arguments.getString("file_path")
+        else { throw MCPError.invalidParams("project_path and file_path are required") }
 
         let removeFromDisk: Bool
 
-        if case let .bool(remove) = arguments["remove_from_disk"] {
+        if let remove = arguments.getOptionalBool("remove_from_disk") {
             removeFromDisk = remove
         } else {
             removeFromDisk = false
@@ -131,13 +129,7 @@ public struct RemoveFileTool: Sendable {
             }
 
             guard !removals.isEmpty || parentGroupUUID != nil else {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "File not found in project: \(fileName)",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
+                return CallTool.Result.text("File not found in project: \(fileName)")
             }
 
             // --- Phase 2: Text-based edits ---
@@ -196,11 +188,9 @@ public struct RemoveFileTool: Sendable {
                 resultText += "unintentional."
             }
 
-            return CallTool.Result(content: [.text(text: resultText, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(resultText)
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove file from Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 

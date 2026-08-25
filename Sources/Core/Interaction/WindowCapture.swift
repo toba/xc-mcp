@@ -22,7 +22,7 @@ public enum WindowCapture {
     ///
     /// - Parameters:
     ///   - appName: Match against the window owner's application name.
-    ///   - bundleId: Match against the owning application's bundle identifier.
+    ///   - bundleID: Match against the owning application's bundle identifier.
     ///   - windowTitle: Match against the window's title.
     /// - Returns: Info about the first matching window.
     /// - Throws: ``MCPError`` if enumeration fails or no window matches.

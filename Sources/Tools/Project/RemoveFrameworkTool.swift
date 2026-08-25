@@ -42,19 +42,13 @@ public struct RemoveFrameworkTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(frameworkName) = arguments["framework_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let frameworkName = arguments.getString("framework_name")
         else {
             throw MCPError.invalidParams("project_path and framework_name are required")
         }
 
-        let targetName: String?
-
-        if case let .string(name) = arguments["target_name"] {
-            targetName = name
-        } else {
-            targetName = nil
-        }
+        let targetName = arguments.getString("target_name")
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -81,13 +75,7 @@ public struct RemoveFrameworkTool: Sendable {
                 guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
                     $0.name == targetName
                 }) else {
-                    return CallTool.Result(content: [
-                        .text(
-                            text: "Target '\(targetName)' not found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        )
-                    ],)
+                    return CallTool.Result.text("Target '\(targetName)' not found in project")
                 }
                 targets = [target]
             } else {
@@ -154,19 +142,20 @@ public struct RemoveFrameworkTool: Sendable {
                 if removedFromThisTarget { removedFromTargets.append(target.name) }
             }
 
+            // one pass over the build file table; the loop below would otherwise rescan it per
+            // reference
+            let referencedFiles = Set(xcodeproj.pbxproj.buildFiles.compactMap { buildFile in
+                buildFile.file.map { ObjectIdentifier($0) }
+            },
+            )
+
             // Clean up orphaned file references (not used by any remaining build file)
             for fileRef in orphanedFileRefs {
                 // Skip BUILT_PRODUCTS_DIR references — they belong to other targets' products
                 if fileRef.sourceTree == .buildProductsDir { continue }
-
-                let stillUsed = xcodeproj.pbxproj.buildFiles.contains { buildFile in
-                    buildFile.file === fileRef
-                }
-
-                if !stillUsed {
-                    removeFromGroups(fileRef, in: xcodeproj)
-                    xcodeproj.pbxproj.delete(object: fileRef)
-                }
+                if referencedFiles.contains(ObjectIdentifier(fileRef)) { continue }
+                removeFromGroups(fileRef, in: xcodeproj)
+                xcodeproj.pbxproj.delete(object: fileRef)
             }
 
             if removedFromTargets.isEmpty {
@@ -177,26 +166,18 @@ public struct RemoveFrameworkTool: Sendable {
                 )
                     ? " It is linked as a cross-project product (PBXReferenceProxy), so remove it with remove_subproject."
                     : ""
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Framework '\(frameworkName)' not found in \(targetName.map { "target '\($0)'" } ?? "any target").\(crossProjectHint)",
-                        annotations: nil, _meta: nil)
-                ],
+                return CallTool.Result.text(
+                    "Framework '\(frameworkName)' not found in \(targetName.map { "target '\($0)'" } ?? "any target").\(crossProjectHint)"
                 )
             }
 
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
             let targetList = removedFromTargets.joined(separator: ", ")
-            return CallTool.Result(content: [
-                .text(
-                    text: "Successfully removed framework '\(frameworkName)' from target(s): \(targetList)",
-                    annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text(
+                "Successfully removed framework '\(frameworkName)' from target(s): \(targetList)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove framework from Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 

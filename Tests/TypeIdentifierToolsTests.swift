@@ -81,15 +81,15 @@ struct TypeIdentifierToolsTests {
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
-        let plist: [String: Any] = [
+        let plist: [String: AnyValue] = [
             "UTExportedTypeDeclarations": [
                 [
                     "UTTypeIdentifier": "app.toba.thesis.project",
                     "UTTypeDescription": "Thesis Document",
                     "UTTypeConformsTo": ["com.apple.package"],
                     "UTTypeTagSpecification": ["public.filename-extension": ["thesis.project"]],
-                ] as [String: Any]
-            ] as [[String: Any]]
+                ]
+            ]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -116,13 +116,9 @@ struct TypeIdentifierToolsTests {
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
-        let plist: [String: Any] = [
-            "UTExportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.exported"] as [String: Any]
-            ] as [[String: Any]],
-            "UTImportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.imported"] as [String: Any]
-            ] as [[String: Any]],
+        let plist: [String: AnyValue] = [
+            "UTExportedTypeDeclarations": [["UTTypeIdentifier": "com.example.exported"]],
+            "UTImportedTypeDeclarations": [["UTTypeIdentifier": "com.example.imported"]],
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -192,13 +188,13 @@ struct TypeIdentifierToolsTests {
 
         // Verify plist
         let plist = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let exported = plist["UTExportedTypeDeclarations"] as? [[String: Any]]
+        let exported = plist["UTExportedTypeDeclarations"]?.dictionaryArrayValue
         #expect(exported?.count == 1)
-        #expect(exported?.first?["UTTypeIdentifier"] as? String == "app.toba.thesis.project")
-        #expect(exported?.first?["UTTypeDescription"] as? String == "Thesis Document")
+        #expect(exported?.first?["UTTypeIdentifier"]?.stringValue == "app.toba.thesis.project")
+        #expect(exported?.first?["UTTypeDescription"]?.stringValue == "Thesis Document")
 
-        let tagSpec = exported?.first?["UTTypeTagSpecification"] as? [String: Any]
-        let extensions = tagSpec?["public.filename-extension"] as? [String]
+        let tagSpec = exported?.first?["UTTypeTagSpecification"]?.dictionaryValue
+        let extensions = tagSpec?["public.filename-extension"]?.stringArrayValue
         #expect(extensions == ["thesis.project"])
     }
 
@@ -227,9 +223,9 @@ struct TypeIdentifierToolsTests {
         #expect(message.contains("imported"))
 
         let plist = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let imported = plist["UTImportedTypeDeclarations"] as? [[String: Any]]
+        let imported = plist["UTImportedTypeDeclarations"]?.dictionaryArrayValue
         #expect(imported?.count == 1)
-        #expect(imported?.first?["UTTypeIdentifier"] as? String == "org.example.format")
+        #expect(imported?.first?["UTTypeIdentifier"]?.stringValue == "org.example.format")
     }
 
     @Test
@@ -239,9 +235,8 @@ struct TypeIdentifierToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Pre-populate
-        let plist: [String: Any] = [
-            "UTExportedTypeDeclarations": [["UTTypeIdentifier": "com.example.dup"] as [String: Any]]
-                as [[String: Any]]
+        let plist: [String: AnyValue] = [
+            "UTExportedTypeDeclarations": [["UTTypeIdentifier": "com.example.dup"]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -268,11 +263,11 @@ struct TypeIdentifierToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Pre-populate
-        let plist: [String: Any] = [
+        let plist: [String: AnyValue] = [
             "UTExportedTypeDeclarations": [
                 ["UTTypeIdentifier": "com.example.type", "UTTypeDescription": "Old Description"]
-                    as [String: Any]
-            ] as [[String: Any]]
+
+            ]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -294,9 +289,9 @@ struct TypeIdentifierToolsTests {
         #expect(message.contains("Successfully updated"))
 
         let updated = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let exported = updated["UTExportedTypeDeclarations"] as? [[String: Any]]
-        #expect(exported?.first?["UTTypeDescription"] as? String == "New Description")
-        #expect(exported?.first?["UTTypeIconName"] as? String == "MyIcon")
+        let exported = updated["UTExportedTypeDeclarations"]?.dictionaryArrayValue
+        #expect(exported?.first?["UTTypeDescription"]?.stringValue == "New Description")
+        #expect(exported?.first?["UTTypeIconName"]?.stringValue == "MyIcon")
     }
 
     @Test
@@ -306,10 +301,8 @@ struct TypeIdentifierToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Pre-populate
-        let plist: [String: Any] = [
-            "UTExportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.remove"] as [String: Any]
-            ] as [[String: Any]]
+        let plist: [String: AnyValue] = [
+            "UTExportedTypeDeclarations": [["UTTypeIdentifier": "com.example.remove"]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -367,13 +360,13 @@ struct TypeIdentifierToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Malformed entry: has a description but no UTTypeIdentifier.
-        let plist: [String: Any] = [
+        let plist: [String: AnyValue] = [
             "UTImportedTypeDeclarations": [
                 [
                     "UTTypeDescription": "BibTeX Document",
                     "UTTypeTagSpecification": ["public.filename-extension": ["bib"]],
-                ] as [String: Any]
-            ] as [[String: Any]]
+                ]
+            ]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -396,10 +389,10 @@ struct TypeIdentifierToolsTests {
 
         // Still a single entry, now with a backfilled identifier.
         let updated = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let imported = updated["UTImportedTypeDeclarations"] as? [[String: Any]]
+        let imported = updated["UTImportedTypeDeclarations"]?.dictionaryArrayValue
         #expect(imported?.count == 1)
-        #expect(imported?.first?["UTTypeIdentifier"] as? String == "org.tug.tex.bibtex")
-        #expect(imported?.first?["UTTypeDescription"] as? String == "BibTeX Document")
+        #expect(imported?.first?["UTTypeIdentifier"]?.stringValue == "org.tug.tex.bibtex")
+        #expect(imported?.first?["UTTypeDescription"]?.stringValue == "BibTeX Document")
     }
 
     @Test
@@ -408,12 +401,12 @@ struct TypeIdentifierToolsTests {
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
-        let plist: [String: Any] = [
+        let plist: [String: AnyValue] = [
             "UTImportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.first"] as [String: Any],
+                ["UTTypeIdentifier": "com.example.first"],
                 // Malformed: no identifier, can only be addressed by index.
-                ["UTTypeDescription": "Citation Style Language"] as [String: Any],
-            ] as [[String: Any]]
+                ["UTTypeDescription": "Citation Style Language"],
+            ]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -433,9 +426,9 @@ struct TypeIdentifierToolsTests {
         #expect(message.contains("Successfully removed"))
 
         let updated = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let imported = updated["UTImportedTypeDeclarations"] as? [[String: Any]]
+        let imported = updated["UTImportedTypeDeclarations"]?.dictionaryArrayValue
         #expect(imported?.count == 1)
-        #expect(imported?.first?["UTTypeIdentifier"] as? String == "com.example.first")
+        #expect(imported?.first?["UTTypeIdentifier"]?.stringValue == "com.example.first")
     }
 
     @Test
@@ -444,12 +437,12 @@ struct TypeIdentifierToolsTests {
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
-        let plist: [String: Any] = [
+        let plist: [String: AnyValue] = [
             "UTImportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.valid"] as [String: Any],
-                ["UTTypeDescription": "BibTeX Document"] as [String: Any],
-                ["UTTypeDescription": "Research Information Systems"] as [String: Any],
-            ] as [[String: Any]]
+                ["UTTypeIdentifier": "com.example.valid"],
+                ["UTTypeDescription": "BibTeX Document"],
+                ["UTTypeDescription": "Research Information Systems"],
+            ]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -468,9 +461,9 @@ struct TypeIdentifierToolsTests {
         #expect(message.contains("Pruned 2"))
 
         let updated = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let imported = updated["UTImportedTypeDeclarations"] as? [[String: Any]]
+        let imported = updated["UTImportedTypeDeclarations"]?.dictionaryArrayValue
         #expect(imported?.count == 1)
-        #expect(imported?.first?["UTTypeIdentifier"] as? String == "com.example.valid")
+        #expect(imported?.first?["UTTypeIdentifier"]?.stringValue == "com.example.valid")
     }
 
     @Test
@@ -479,10 +472,8 @@ struct TypeIdentifierToolsTests {
 
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
-        let plist: [String: Any] = [
-            "UTImportedTypeDeclarations": [
-                ["UTTypeIdentifier": "com.example.valid"] as [String: Any]
-            ] as [[String: Any]]
+        let plist: [String: AnyValue] = [
+            "UTImportedTypeDeclarations": [["UTTypeIdentifier": "com.example.valid"]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 

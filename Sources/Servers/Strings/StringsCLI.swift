@@ -4,8 +4,8 @@ import ArgumentParser
 
 /// Command-line interface for the xc-strings MCP server.
 ///
-/// This focused server provides Xcode String Catalog (.xcstrings) manipulation tools
-/// with minimal token overhead (~6K tokens).
+/// This focused server provides Xcode String Catalog (.xcstrings) manipulation tools with minimal
+/// token overhead (~6K tokens).
 ///
 /// ## Usage
 ///
@@ -23,7 +23,7 @@ struct StringsServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-strings",
         abstract:
-        "MCP server for Xcode String Catalog (.xcstrings) file manipulation (18 tools, ~6K tokens)",
+            "MCP server for Xcode String Catalog (.xcstrings) file manipulation (18 tools, ~6K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")

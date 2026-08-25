@@ -4,8 +4,8 @@ import Foundation
 
 /// Samples a running macOS process to capture call stacks.
 ///
-/// Wraps the `/usr/bin/sample` command and parses the output into a structured
-/// summary with heaviest functions and call paths, filtered to app code by default.
+/// Wraps the `/usr/bin/sample` command and parses the output into a structured summary with
+/// heaviest functions and call paths, filtered to app code by default.
 ///
 /// ## Example
 ///
@@ -17,18 +17,16 @@ public struct SampleMacAppTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "sample_mac_app",
             description:
-            "Sample a running macOS app to capture call stacks for performance analysis. Returns parsed summary with heaviest functions and call paths, filtered to app code by default. Use filter='all' to include system frames.",
+                "Sample a running macOS app to capture call stacks for performance analysis. Returns parsed summary with heaviest functions and call paths, filtered to app code by default. Use filter='all' to include system frames.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID to sample. Use this or bundle_id.",
-                        ),
+                        "description": .string("Process ID to sample. Use this or bundle_id."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -38,9 +36,7 @@ public struct SampleMacAppTool: Sendable {
                     ]),
                     "duration": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Sampling duration in seconds. Default: 5.",
-                        ),
+                        "description": .string("Sampling duration in seconds. Default: 5."),
                     ]),
                     "interval": .object([
                         "type": .string("integer"),
@@ -82,16 +78,15 @@ public struct SampleMacAppTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let pid: Int
+
         if let directPID = arguments.getInt("pid") {
             pid = directPID
-        } else if let bundleId = arguments.getString("bundle_id") {
-            guard
-                let resolved = await MainActor.run(body: {
-                    PIDResolver.findPID(forBundleID: bundleId)
-                })
-            else {
+        } else if let bundleID = arguments.getString("bundle_id") {
+            guard let resolved = await MainActor.run(body: {
+                PIDResolver.findPID(forBundleID: bundleID)
+            }) else {
                 throw MCPError.invalidParams(
-                    "No running process found for bundle ID '\(bundleId)'. Is the app running?",
+                    "No running process found for bundle ID '\(bundleID)'. Is the app running?",
                 )
             }
             pid = Int(resolved)
@@ -106,9 +101,7 @@ public struct SampleMacAppTool: Sendable {
         do {
             let result = try await ProcessResult.run(
                 "/usr/bin/sample",
-                arguments: [
-                    "\(pid)", "\(duration)", "\(interval)", "-file", outputFile,
-                ],
+                arguments: ["\(pid)", "\(duration)", "\(interval)", "-file", outputFile],
                 timeout: .seconds(duration + 30),
             )
 
@@ -120,8 +113,10 @@ public struct SampleMacAppTool: Sendable {
 
             // Read sample data from the output file
             let rawOutput: String
+
             if let data = FileManager.default.contents(atPath: outputFile),
-               let text = String(data: data, encoding: .utf8), !text.isEmpty
+                let text = String(data: data, encoding: .utf8),
+                !text.isEmpty
             {
                 rawOutput = text
             } else {
@@ -133,13 +128,7 @@ public struct SampleMacAppTool: Sendable {
             try? FileManager.default.removeItem(atPath: outputFile)
 
             // Return raw output if requested
-            if arguments.getBool("raw") {
-                return CallTool.Result(content: [.text(
-                    text: rawOutput,
-                    annotations: nil,
-                    _meta: nil,
-                )])
-            }
+            if arguments.getBool("raw") { return CallTool.Result.text(rawOutput) }
 
             // Parse and summarize
             let filter = arguments.getString("filter") ?? "app"
@@ -153,13 +142,9 @@ public struct SampleMacAppTool: Sendable {
                 thread: thread,
             )
 
-            return CallTool.Result(content: [.text(text: summary, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(summary)
         } catch {
-            throw MCPError.internalError(
-                "Failed to sample process \(pid): \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

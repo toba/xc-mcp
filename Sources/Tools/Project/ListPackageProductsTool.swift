@@ -7,15 +7,13 @@ import Foundation
 public struct ListPackageProductsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_package_products",
             description:
-            "List SPM package product dependencies for a target or all targets in an Xcode project",
+                "List SPM package product dependencies for a target or all targets in an Xcode project",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -39,16 +37,9 @@ public struct ListPackageProductsTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
 
-        let targetName: String?
-        if case let .string(name) = arguments["target_name"] {
-            targetName = name
-        } else {
-            targetName = nil
-        }
+        let targetName = arguments.getString("target_name")
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -56,19 +47,12 @@ public struct ListPackageProductsTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             let targets: [PBXNativeTarget]
+
             if let targetName {
-                guard
-                    let target = xcodeproj.pbxproj.nativeTargets.first(where: {
-                        $0.name == targetName
-                    })
-                else {
-                    return CallTool.Result(
-                        content: [.text(
-                            text: "Target '\(targetName)' not found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        )],
-                    )
+                guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                    $0.name == targetName
+                }) else {
+                    return CallTool.Result.text("Target '\(targetName)' not found in project")
                 }
                 targets = [target]
             } else {
@@ -79,22 +63,18 @@ public struct ListPackageProductsTool: Sendable {
 
             for target in targets {
                 guard let dependencies = target.packageProductDependencies,
-                      !dependencies.isEmpty
-                else {
-                    continue
-                }
+                      !dependencies.isEmpty else { continue }
 
                 // Collect build file products for this target's frameworks phase
-                let frameworksPhase =
-                    target.buildPhases
-                        .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
-                let buildFileProducts = Set(
-                    frameworksPhase?.files?.compactMap(\.product) ?? [],
-                )
+                let frameworksPhase = target.buildPhases
+                    .first { $0 is PBXFrameworksBuildPhase } as? PBXFrameworksBuildPhase
+                let buildFileProducts = Set(frameworksPhase?.files?.compactMap(\.product) ?? [])
 
                 var lines = ["[\(target.name)]"]
+
                 for dep in dependencies {
                     let packageInfo: String
+
                     if let url = dep.package?.repositoryURL {
                         packageInfo = url
                     } else {
@@ -111,26 +91,12 @@ public struct ListPackageProductsTool: Sendable {
 
             if sections.isEmpty {
                 let scope = targetName.map { "target '\($0)'" } ?? "any target"
-                return CallTool.Result(
-                    content: [.text(
-                        text: "No package product dependencies found in \(scope)",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
+                return CallTool.Result.text("No package product dependencies found in \(scope)")
             }
 
-            return CallTool.Result(
-                content: [.text(
-                    text: sections.joined(separator: "\n\n"),
-                    annotations: nil,
-                    _meta: nil,
-                )],
-            )
+            return CallTool.Result.text(sections.joined(separator: "\n\n"))
         } catch {
-            throw MCPError.internalError(
-                "Failed to list package products: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

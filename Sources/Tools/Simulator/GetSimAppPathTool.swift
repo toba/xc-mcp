@@ -6,16 +6,16 @@ public struct GetSimAppPathTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "get_sim_app_path",
             description:
-            "Get the path to an app's container on a simulator. Useful for finding where the app is installed or its data directory.",
+                "Get the path to an app's container on a simulator. Useful for finding where the app is installed or its data directory.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -45,28 +45,21 @@ public struct GetSimAppPathTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let bundleId = try arguments.getRequiredString("bundle_id")
+        let bundleID = try arguments.getRequiredString("bundle_id")
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
         let container = arguments.getString("container") ?? "app"
 
         do {
             let path = try await simctlRunner.getAppContainer(
                 udid: simulator,
-                bundleId: bundleId,
+                bundleID: bundleID,
                 container: container,
             )
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "App container path for '\(bundleId)' (\(container)):\n\(path)",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result.text(
+                "App container path for '\(bundleID)' (\(container)):\n\(path)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to get app container path: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

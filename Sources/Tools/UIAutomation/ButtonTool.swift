@@ -41,17 +41,12 @@ public struct ButtonTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
-        guard case let .string(buttonName) = arguments["button_name"] else {
-            throw MCPError.invalidParams("button_name is required")
-        }
+        let buttonName = try arguments.getRequiredString("button_name")
 
         do {
             try await uiInput.pressButton(simulator: simulator, button: buttonName)
-            return CallTool.Result(content: [
-                .text(
-                    text: "Pressed button '\(buttonName)' on simulator '\(simulator)'",
-                    annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text(
+                "Pressed button '\(buttonName)' on simulator '\(simulator)'")
         } catch {
             throw try error.asMCPError()
         }

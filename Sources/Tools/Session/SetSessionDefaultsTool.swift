@@ -141,8 +141,6 @@ public struct SetSessionDefaultsTool: Sendable {
         )
 
         let summary = await sessionManager.summary()
-        return CallTool.Result(content: [
-            .text(text: "Session defaults updated.\n\n\(summary)", annotations: nil, _meta: nil)
-        ],)
+        return CallTool.Result.text("Session defaults updated.\n\n\(summary)")
     }
 }

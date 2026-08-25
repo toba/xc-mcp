@@ -94,12 +94,7 @@ public struct ShowPackageResolutionTool: Sendable {
             }
 
             guard !packages.isEmpty else {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "No remote Swift Packages declared in this project.",
-                        annotations: nil, _meta: nil,
-                    )
-                ])
+                return CallTool.Result.text("No remote Swift Packages declared in this project.")
             }
 
             let pinsFile = resolvedParser.locate(for: resolvedProjectPath)
@@ -127,15 +122,9 @@ public struct ShowPackageResolutionTool: Sendable {
                 )
             }
 
-            return CallTool.Result(content: [
-                .text(text: lines.joined(separator: "\n"), annotations: nil, _meta: nil)
-            ])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(lines.joined(separator: "\n"))
         } catch {
-            throw MCPError.internalError(
-                "Failed to report package resolution: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 

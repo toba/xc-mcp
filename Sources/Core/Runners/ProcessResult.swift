@@ -421,7 +421,7 @@ extension ProcessResult {
         } onCancel: { killGroup() }
     }
 
-    /// Reads the child through Subprocess's own `AsyncBufferSequence`s.
+    /// Reads the child through Subprocess's own `SubprocessOutputSequence`s.
     ///
     /// Keeps the tail on overflow instead of throwing `SubprocessError.outputLimitExceeded`. Build
     /// errors appear at the end of output, so discarding the head preserves what matters.
@@ -437,15 +437,18 @@ extension ProcessResult {
             environment: plan.environment,
             workingDirectory: plan.workingDirectory,
             platformOptions: plan.platformOptions,
-        ) { execution, inputWriter, outputSequence, errorSequence in
+            input: .inputWriter,
+            output: .sequence,
+            error: .sequence,
+        ) { execution in
             group.set(execution.processIdentifier.value)
-            try await inputWriter.finish()
+            try await execution.standardInputWriter.finish()
             // Always drain both sequences to prevent the child from blocking on a full pipe buffer.
             async let stdout = collectTail(
-                from: outputSequence, limit: plan.outputLimit, onProgress: observer,
+                from: execution.standardOutput, limit: plan.outputLimit, onProgress: observer,
             )
             async let stderr = collectTail(
-                from: errorSequence,
+                from: execution.standardError,
                 limit: plan.stderrLimit,
                 onProgress: observer,
             )
@@ -453,8 +456,8 @@ extension ProcessResult {
         }
         return plan.assemble(
             termination: Termination(outcome.terminationStatus),
-            stdout: outcome.value.0,
-            stderr: outcome.value.1,
+            stdout: outcome.closureResult.0,
+            stderr: outcome.closureResult.1,
             settled: monitor?.didSettle ?? false,
         )
     }
@@ -512,8 +515,8 @@ extension ProcessResult {
         }
         return plan.assemble(
             termination: Termination(outcome.terminationStatus),
-            stdout: outcome.value.0,
-            stderr: outcome.value.1,
+            stdout: outcome.closureResult.0,
+            stderr: outcome.closureResult.1,
             settled: monitor?.didSettle ?? false,
         )
     }
@@ -529,7 +532,9 @@ extension ProcessResult {
         limit: Int,
         onChunk: (@Sendable (String) -> Void)?,
     ) async -> (String, Bool) {
-        await withCheckedContinuation {
+        // the detached thread resumes this, and a non-escapable Continuation cannot cross into an
+        // escaping closure, so the checked form is the one that fits
+        await withCheckedContinuation {  // sm:ignore useContinuationNotChecked
             (continuation: CheckedContinuation<(String, Bool), Never>) in
             Thread.detachNewThread {
                 var data = Data()
@@ -544,11 +549,22 @@ extension ProcessResult {
                     let chunk = Data(buffer[0..<count])
                     data.append(chunk)
 
-                    if data.count > limit {
-                        data = Data(data.suffix(limit))
+                    // Compacting at the cap re-copies the whole retained tail on every later chunk,
+                    // which is quadratic in a large log. Letting the buffer reach twice the cap
+                    // before trimming makes the copying linear overall. The final trim below brings
+                    // it back to the cap.
+                    if data.count > limit * 2 {
+                        data.removeFirst(data.count - limit)
                         truncated = true
                     }
                     onChunk?(String(decoding: chunk, as: UTF8.self))  // sm:ignore useFailableStringInit
+                }
+                // The loop trims at twice the cap, so bring the result back to the cap exactly.
+                // Output between the cap and twice the cap only loses bytes here, so this is also
+                // where truncation gets recorded for that range.
+                if data.count > limit {
+                    data.removeFirst(data.count - limit)
+                    truncated = true
                 }
                 continuation.resume(
                     returning: (String(decoding: data, as: UTF8.self), truncated),  // sm:ignore useFailableStringInit
@@ -601,7 +617,7 @@ extension ProcessResult {
     /// Collects output from an async buffer sequence, keeping only the last `limit` bytes when the
     /// total exceeds the limit. Returns the collected string and whether truncation occurred.
     private static func collectTail(
-        from sequence: AsyncBufferSequence,
+        from sequence: SubprocessOutputSequence,
         limit: Int,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> (String, Bool) {
@@ -612,13 +628,22 @@ extension ProcessResult {
             let chunkData: Data = chunk.withUnsafeBytes { bytes in Data(bytes) }
             data.append(chunkData)
 
-            if data.count > limit {
-                data = Data(data.suffix(limit))
+            // See drainToEnd: trimming at the cap is quadratic, so trim at twice the cap and let
+            // the final trim below restore the exact limit.
+            if data.count > limit * 2 {
+                data.removeFirst(data.count - limit)
                 truncated = true
             }
             if let onProgress, !chunkData.isEmpty {
                 onProgress(String(decoding: chunkData, as: UTF8.self))  // sm:ignore useFailableStringInit
             }
+        }
+        // The loop trims at twice the cap, so bring the result back to the cap exactly. Output
+        // between the cap and twice the cap only loses bytes here, so this is also where truncation
+        // gets recorded for that range.
+        if data.count > limit {
+            data.removeFirst(data.count - limit)
+            truncated = true
         }
         return (String(decoding: data, as: UTF8.self), truncated)  // sm:ignore useFailableStringInit
     }
@@ -712,7 +737,10 @@ public extension ProcessResult {
         // Fast path: the process is already gone.
         kill(pid, 0) != 0
             ? true
-            : await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            // the detached thread resumes this, and a non-escapable Continuation cannot cross into
+            // an escaping closure, so the checked form is the one that fits
+            : await withCheckedContinuation {  // sm:ignore useContinuationNotChecked
+                (continuation: CheckedContinuation<Bool, Never>) in
                 Thread.detachNewThread {
                     continuation.resume(returning: blockingWaitForProcessExit(
                         pid: pid, timeout: timeout))
@@ -899,6 +927,37 @@ public enum LogCapture {
             }
             // Brief delay to allow signal delivery for pattern-based kills
             try? await Task.sleep(for: .milliseconds(500))
+        }
+    }
+}
+
+// MARK: - Process Waiting
+
+public extension Process {
+    /// Waits for the process to exit, leaving the cooperative pool free
+    ///
+    /// `waitUntilExit()` parks a Swift concurrency worker thread for as long as the child runs,
+    /// which is unbounded for a recording. This suspends instead.
+    ///
+    /// The `isRunning` re-check after installing the handler closes a race. A child that exits
+    /// before the handler is attached never fires it, and a caller that only waits on the handler
+    /// hangs for the whole request.
+    func waitForExit() async {
+        let resumed = Mutex(false)
+        // the termination handler escapes, and a non-escapable Continuation cannot, so the checked
+        // form is the one that fits
+        await withCheckedContinuation {  // sm:ignore useContinuationNotChecked
+            (continuation: CheckedContinuation<Void, Never>) in
+            let resumeOnce: @Sendable () -> Void = {
+                let isFirst = resumed.withLock { done in
+                    if done { return false }
+                    done = true
+                    return true
+                }
+                if isFirst { continuation.resume() }
+            }
+            terminationHandler = { _ in resumeOnce() }
+            if !isRunning { resumeOnce() }
         }
     }
 }

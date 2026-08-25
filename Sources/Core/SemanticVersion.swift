@@ -2,9 +2,9 @@ import Foundation
 
 /// A semantic version, parsed from a git tag or a SwiftPM version string.
 ///
-/// Comparison follows the semver precedence rules: major, then minor, then patch, then
-/// prerelease. A version with a prerelease identifier sorts before the same version without one.
-/// Build metadata is kept for display and ignored for comparison.
+/// Comparison follows the semver precedence rules: major, then minor, then patch, then prerelease.
+/// A version with a prerelease identifier sorts before the same version without one. Build metadata
+/// is kept for display and ignored for comparison.
 public struct SemanticVersion: Sendable, Hashable, Comparable, CustomStringConvertible {
     public let major: Int
     public let minor: Int
@@ -40,7 +40,7 @@ public struct SemanticVersion: Sendable, Hashable, Comparable, CustomStringConve
 
         if let plus = body.firstIndex(of: "+") {
             build = String(body[body.index(after: plus)...])
-            body = String(body[body.startIndex ..< plus])
+            body = String(body[body.startIndex..<plus])
         }
 
         var prerelease: [String] = []
@@ -48,11 +48,11 @@ public struct SemanticVersion: Sendable, Hashable, Comparable, CustomStringConve
         if let hyphen = body.firstIndex(of: "-") {
             prerelease = String(body[body.index(after: hyphen)...]).split(separator: ".")
                 .map(String.init)
-            body = String(body[body.startIndex ..< hyphen])
+            body = String(body[body.startIndex..<hyphen])
         }
 
         let parts = body.split(separator: ".", omittingEmptySubsequences: false)
-        guard (1 ... 3).contains(parts.count) else { return nil }
+        guard (1...3).contains(parts.count) else { return nil }
         var numbers: [Int] = []
         numbers.reserveCapacity(3)
 
@@ -85,15 +85,15 @@ public struct SemanticVersion: Sendable, Hashable, Comparable, CustomStringConve
     }
 
     public static func < (lhs: SemanticVersion, rhs: SemanticVersion) -> Bool {
-        if lhs.major != rhs.major { return lhs.major < rhs.major }
-        if lhs.minor != rhs.minor { return lhs.minor < rhs.minor }
-        if lhs.patch != rhs.patch { return lhs.patch < rhs.patch }
-
-        // A release outranks any prerelease of the same core version.
-        if lhs.prerelease.isEmpty || rhs.prerelease.isEmpty {
-            return !lhs.prerelease.isEmpty && rhs.prerelease.isEmpty
-        }
-        return comparePrerelease(lhs.prerelease, rhs.prerelease)
+        lhs.major != rhs.major
+            ? lhs.major < rhs.major
+            : lhs.minor != rhs.minor
+                ? lhs.minor < rhs.minor
+                : lhs.patch != rhs.patch
+                    ? lhs.patch < rhs.patch
+                    : lhs.prerelease.isEmpty || rhs.prerelease.isEmpty
+                        ? !lhs.prerelease.isEmpty && rhs.prerelease.isEmpty
+                        : comparePrerelease(lhs.prerelease, rhs.prerelease)
     }
 
     public static func == (lhs: SemanticVersion, rhs: SemanticVersion) -> Bool {

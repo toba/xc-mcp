@@ -4,15 +4,13 @@ import XCMCPCore
 public struct XCStringsBatchAddTranslationsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_batch_add_translations",
             description:
-            "Add translations for multiple keys at once. Each entry specifies a key and its language-value pairs.",
+                "Add translations for multiple keys at once. Each entry specifies a key and its language-value pairs.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -57,18 +55,12 @@ public struct XCStringsBatchAddTranslationsTool: Sendable {
             throw MCPError.invalidParams("entries array is required and cannot be empty")
         }
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
             let result = try await parser.addTranslationsBatch(entries: entries)
 
             let json = try encodePrettyJSON(result)
 
-            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(json)
         }
     }
 }

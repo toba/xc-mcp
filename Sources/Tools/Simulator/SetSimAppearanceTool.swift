@@ -6,16 +6,15 @@ public struct SetSimAppearanceTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_sim_appearance",
-            description:
-            "Set the appearance mode (light/dark) on a simulator.",
+            description: "Set the appearance mode (light/dark) on a simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -27,9 +26,7 @@ public struct SetSimAppearanceTool: Sendable {
                     ]),
                     "appearance": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Appearance mode: 'light' or 'dark'.",
-                        ),
+                        "description": .string("Appearance mode: 'light' or 'dark'."),
                         "enum": .array([.string("light"), .string("dark")]),
                     ]),
                 ]),
@@ -40,20 +37,10 @@ public struct SetSimAppearanceTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get simulator
-        let simulator: String
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
-            throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let simulator = try await sessionManager.resolveSimulator(from: arguments)
 
         // Get appearance
-        guard case let .string(appearance) = arguments["appearance"] else {
+        guard let appearance = arguments.getString("appearance") else {
             throw MCPError.invalidParams("appearance is required (light or dark)")
         }
 
@@ -70,17 +57,10 @@ public struct SetSimAppearanceTool: Sendable {
             )
 
             if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Successfully set appearance to '\(appearance)' on simulator '\(simulator)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Successfully set appearance to '\(appearance)' on simulator '\(simulator)'")
             } else {
-                throw MCPError.internalError(
-                    "Failed to set appearance: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to set appearance: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

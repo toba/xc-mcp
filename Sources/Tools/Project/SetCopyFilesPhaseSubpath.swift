@@ -7,15 +7,13 @@ import Foundation
 public struct SetCopyFilesPhaseSubpath: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_copy_files_phase_subpath",
             description:
-            "Rename a Copy Files build phase's dstPath (subpath) in place. Locates the phase by phase_name or current dst_path; if the target has exactly one Copy Files phase, that one is used. Preserves the phase's identity, files, name, destination, and any synchronized-folder membership exception sets — unlike remove + recreate.",
+                "Rename a Copy Files build phase's dstPath (subpath) in place. Locates the phase by phase_name or current dst_path; if the target has exactly one Copy Files phase, that one is used. Preserves the phase's identity, files, name, destination, and any synchronized-folder membership exception sets — unlike remove + recreate.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -57,19 +55,15 @@ public struct SetCopyFilesPhaseSubpath: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(newSubpath) = arguments["new_subpath"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let newSubpath = arguments.getString("new_subpath")
         else {
-            throw MCPError.invalidParams(
-                "project_path, target_name, and new_subpath are required",
-            )
+            throw MCPError.invalidParams("project_path, target_name, and new_subpath are required")
         }
 
-        let phaseName: String?
-        if case let .string(p) = arguments["phase_name"] { phaseName = p } else { phaseName = nil }
-        let dstPath: String?
-        if case let .string(d) = arguments["dst_path"] { dstPath = d } else { dstPath = nil }
+        let phaseName = arguments.getString("phase_name")
+        let dstPath = arguments.getString("dst_path")
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -77,16 +71,10 @@ public struct SetCopyFilesPhaseSubpath: Sendable {
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
-            else {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
             let phase = try CopyFilesPhaseLocator.locate(
@@ -104,13 +92,9 @@ public struct SetCopyFilesPhaseSubpath: Sendable {
             let label = phase.name ?? "(unnamed)"
             let message =
                 "Updated Copy Files phase '\(label)' on target '\(targetName)': dstPath '\(oldSubpath)' → '\(newSubpath)'"
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(message)
         } catch {
-            throw MCPError.internalError(
-                "Failed to set copy files phase subpath: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

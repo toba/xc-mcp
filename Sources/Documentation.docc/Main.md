@@ -169,7 +169,13 @@ Once defaults are set, tools will use them automatically when parameters are not
 
 - ``SimulatorDevice``
 - ``ConnectedDevice``
-- ``ToolName``
+
+### Tool Registry
+
+- ``ToolRegistration``
+- ``ToolDeps``
+- ``ToolCall``
+- ``ServerSet``
 
 ### Errors
 

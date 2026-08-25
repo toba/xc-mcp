@@ -112,15 +112,15 @@ public struct InteractRunner: Sendable {
 
     public func resolveApp(
         pid: Int? = nil,
-        bundleId: String? = nil,
+        bundleID: String? = nil,
         appName: String? = nil,
     ) throws(InteractError) -> pid_t {
         if let pid { return pid_t(pid) }
         let apps = NSWorkspace.shared.runningApplications
 
-        if let bundleId {
-            guard let app = apps.first(where: { $0.bundleIdentifier == bundleId }) else {
-                throw InteractError.appNotFound("bundle_id=\(bundleId)")
+        if let bundleID {
+            guard let app = apps.first(where: { $0.bundleIdentifier == bundleID }) else {
+                throw InteractError.appNotFound("bundle_id=\(bundleID)")
             }
             return app.processIdentifier
         }
@@ -138,9 +138,9 @@ public struct InteractRunner: Sendable {
         _ arguments: [String: Value]
     ) throws(InteractError) -> pid_t {
         let pid = arguments.getInt("pid")
-        let bundleId = arguments.getString("bundle_id")
+        let bundleID = arguments.getString("bundle_id")
         let appName = arguments.getString("app_name")
-        return try resolveApp(pid: pid, bundleId: bundleId, appName: appName)
+        return try resolveApp(pid: pid, bundleID: bundleID, appName: appName)
     }
 
     // MARK: - UI Tree Traversal
@@ -153,9 +153,9 @@ public struct InteractRunner: Sendable {
         try ensureAccessibility()
         let appElement = AXUIElementCreateApplication(pid)
         var results: [(InteractElement, SendableAXUIElement)] = []
-        var nextId = 0
+        var nextID = 0
         traverseElement(
-            appElement, depth: 0, maxDepth: maxDepth, nextId: &nextId, results: &results,
+            appElement, depth: 0, maxDepth: maxDepth, nextID: &nextID, results: &results,
         )
         return results
     }
@@ -187,29 +187,46 @@ public struct InteractRunner: Sendable {
     }
 
     /// A structural signature of a tree snapshot, used to detect when the UI has stopped changing.
-    static func fingerprint(_ elements: some Sequence<InteractElement>) -> String {
-        elements.lazy.map { $0.summary(indent: false) }.joined(separator: "\n")
+    ///
+    /// The poll compares two signatures and never reads one, so this hashes the fields the old
+    /// joined summary rendered. The value is seeded per process and means nothing across runs.
+    static func fingerprint(_ elements: some Sequence<InteractElement>) -> Int {
+        var hasher = Hasher()
+
+        for element in elements {
+            hasher.combine(element.id)
+            hasher.combine(element.role)
+            hasher.combine(element.subrole)
+            hasher.combine(element.title)
+            hasher.combine(element.identifier)
+            hasher.combine(element.value)
+            hasher.combine(element.enabled)
+            hasher.combine(element.focused)
+            hasher.combine(element.actions)
+            hasher.combine(element.childCount)
+        }
+        return hasher.finalize()
     }
 
     private func traverseElement(
         _ element: AXUIElement,
         depth: Int,
         maxDepth: Int,
-        nextId: inout Int,
+        nextID: inout Int,
         results: inout [(InteractElement, SendableAXUIElement)],
     ) {
         // Fetch children once (only when we intend to descend) and reuse the count for the element,
         // rather than letting `getAttributes` fetch them a second time just to count.
         let children = depth < maxDepth ? children(of: element) : []
         let info = getAttributes(
-            from: element, id: nextId, depth: depth, childCount: children.count,
+            from: element, id: nextID, depth: depth, childCount: children.count,
         )
-        nextId += 1
+        nextID += 1
         results.append((info, SendableAXUIElement(element)))
 
         for child in children {
             traverseElement(
-                child, depth: depth + 1, maxDepth: maxDepth, nextId: &nextId, results: &results,
+                child, depth: depth + 1, maxDepth: maxDepth, nextID: &nextID, results: &results,
             )
         }
     }
@@ -498,24 +515,22 @@ public struct InteractRunner: Sendable {
     // MARK: - App Resolution Schema Properties
 
     /// Common schema properties for app identification, used across interact tools.
-    public static var appResolutionSchemaProperties: [String: Value] {
-        [
-            "pid": .object([
-                "type": .string("integer"),
-                "description": .string("Process ID of the target application."),
-            ]),
-            "bundle_id": .object([
-                "type": .string("string"),
-                "description": .string(
-                    "Bundle identifier of the target application (e.g., 'com.apple.finder').",
-                ),
-            ]),
-            "app_name": .object([
-                "type": .string("string"),
-                "description": .string(
-                    "Name of the target application (e.g., 'Finder'). Case-insensitive substring match.",
-                ),
-            ]),
-        ]
-    }
+    public static let appResolutionSchemaProperties: [String: Value] = [
+        "pid": .object([
+            "type": .string("integer"),
+            "description": .string("Process ID of the target application."),
+        ]),
+        "bundle_id": .object([
+            "type": .string("string"),
+            "description": .string(
+                "Bundle identifier of the target application (e.g., 'com.apple.finder').",
+            ),
+        ]),
+        "app_name": .object([
+            "type": .string("string"),
+            "description": .string(
+                "Name of the target application (e.g., 'Finder'). Case-insensitive substring match.",
+            ),
+        ]),
+    ]
 }

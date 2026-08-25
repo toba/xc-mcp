@@ -48,18 +48,7 @@ public struct SwiftPackageRunTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get package path
-        let packagePath: String
-
-        if case let .string(value) = arguments["package_path"] {
-            packagePath = value
-        } else if let sessionPackagePath = await sessionManager.packagePath {
-            packagePath = sessionPackagePath
-        } else {
-            throw MCPError.invalidParams(
-                "package_path is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
 
         // Get executable name if specified
         let executable = arguments.getString("executable")
@@ -68,16 +57,6 @@ public struct SwiftPackageRunTool: Sendable {
         let execArgs = arguments.getStringArray("arguments")
         let environment = await sessionManager.resolveEnvironment(from: arguments)
         let timeout = arguments.resolveTimeout(default: SwiftRunner.defaultTimeout)
-
-        // Verify Package.swift exists
-        let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift",
-        ).path
-        guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
-            throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
-            )
-        }
 
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
@@ -97,8 +76,7 @@ public struct SwiftPackageRunTool: Sendable {
 
                 if !result.stdout.isEmpty { message += "\n\nOutput:\n\(result.stdout)" }
 
-                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
-                )
+                return CallTool.Result.text(message)
             } else {
                 throw MCPError.internalError(
                     "Execution failed (exit code \(result.exitCode)):\n\(result.output)",

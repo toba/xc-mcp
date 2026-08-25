@@ -15,7 +15,9 @@ public enum BuildLogLines {
             .split(separator: UInt8(ascii: "\n"), omittingEmptySubsequences: false)
             .map { line in
                 let body = line.last == UInt8(ascii: "\r") ? line.dropLast() : line
-                return String(decoding: body, as: UTF8.self)
+                // the result must hold one entry per source line, so the failable initializer has
+                // no answer here: a malformed line has to survive as replacement characters
+                return String(decoding: body, as: UTF8.self)  // sm:ignore useFailableStringInit
             }
     }
 }

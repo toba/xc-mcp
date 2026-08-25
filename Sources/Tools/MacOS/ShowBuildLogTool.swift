@@ -2,18 +2,18 @@ import MCP
 import XCMCPCore
 import Foundation
 
-/// Reads the most recent Xcode build log (`.xcactivitylog`) from DerivedData
-/// and extracts errors and warnings.
+/// Reads the most recent Xcode build log (`.xcactivitylog`) from DerivedData and extracts errors
+/// and warnings.
 ///
-/// When a build hangs or is killed before errors appear in `xcodebuild` output,
-/// this tool can retrieve errors from a previous Xcode build attempt stored in
-/// the build log. The log is found automatically from DerivedData.
+/// When a build hangs or is killed before errors appear in `xcodebuild` output, this tool can
+/// retrieve errors from a previous Xcode build attempt stored in the build log. The log is found
+/// automatically from DerivedData.
 public struct ShowBuildLogTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -21,10 +21,10 @@ public struct ShowBuildLogTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "show_build_log",
             description:
-            "Read errors and warnings from the most recent Xcode build log in DerivedData. "
+                "Read errors and warnings from the most recent Xcode build log in DerivedData. "
                 + "Use this when a build hangs or times out before errors appear — "
                 + "a previous Xcode build may have captured the errors you need.",
             inputSchema: .object([
@@ -74,31 +74,10 @@ public struct ShowBuildLogTool: Sendable {
         )
 
         // Step 2: Find the most recent non-empty .xcactivitylog
-        let logsDir = URL(fileURLWithPath: derivedDataPath).appendingPathComponent("Logs/Build")
-            .path
-        let fm = FileManager.default
-
-        guard let entries = try? fm.contentsOfDirectory(atPath: logsDir) else {
-            throw MCPError.internalError("No build logs found at \(logsDir)")
-        }
-
-        let logs = entries.filter { $0.hasSuffix(".xcactivitylog") }
-            .compactMap { name -> (path: String, date: Date, size: UInt64)? in
-                let path = URL(fileURLWithPath: logsDir).appendingPathComponent(name).path
-                guard let attrs = try? fm.attributesOfItem(atPath: path),
-                      let date = attrs[.modificationDate] as? Date,
-                      let size = attrs[.size] as? UInt64, size > 0
-                else { return nil }
-                return (path, date, size)
-            }
-            .sorted { $0.date > $1.date }
-
-        guard let mostRecent = logs.first else {
-            throw MCPError.internalError("No non-empty build logs found in \(logsDir)")
-        }
+        let mostRecent = try BuildLogLocator.newestLog(inProjectRoot: derivedDataPath)
 
         // Step 3: Decompress and extract errors/warnings
-        let decompressed = try await decompressLog(at: mostRecent.path)
+        let decompressed = try await BuildLogLocator.decompress(mostRecent)
 
         let errorPattern = #/(/[^\s:]+:\d+:\d+: error: [^\n]+)/#
         let warningPattern = #/(/[^\s:]+:\d+:\d+: warning: [^\n]+)/#
@@ -110,26 +89,22 @@ public struct ShowBuildLogTool: Sendable {
 
         for line in decompressed.split(separator: "\n") {
             let str = String(line)
+
             if str.contains("error:"), let match = str.firstMatch(of: errorPattern) {
                 let error = String(match.1)
-                if seenErrors.insert(error).inserted {
-                    errors.append(error)
-                }
+                if seenErrors.insert(error).inserted { errors.append(error) }
             }
-            if !errorsOnly, str.contains("warning:"),
+            if !errorsOnly,
+               str.contains("warning:"),
                let match = str.firstMatch(of: warningPattern)
             {
                 let warning = String(match.1)
-                if seenWarnings.insert(warning).inserted {
-                    warnings.append(warning)
-                }
+                if seenWarnings.insert(warning).inserted { warnings.append(warning) }
             }
         }
 
         // Step 4: Format output
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        let logDate = dateFormatter.string(from: mostRecent.date)
+        let logDate = mostRecent.formattedDate
 
         var text = "## Build Log (\(logDate))\n\n"
 
@@ -138,33 +113,27 @@ public struct ShowBuildLogTool: Sendable {
         } else {
             if !errors.isEmpty {
                 text += "**\(errors.count) error\(errors.count == 1 ? "" : "s"):**\n\n"
-                for error in errors.prefix(50) {
-                    text += "  \(error)\n"
-                }
-                if errors.count > 50 {
-                    text += "  (+\(errors.count - 50) more errors)\n"
-                }
+                for error in errors.prefix(50) { text += "  \(error)\n" }
+                if errors.count > 50 { text += "  (+\(errors.count - 50) more errors)\n" }
             }
 
             if !warnings.isEmpty {
                 if !errors.isEmpty { text += "\n" }
                 text += "**\(warnings.count) warning\(warnings.count == 1 ? "" : "s"):**\n\n"
-                for warning in warnings.prefix(30) {
-                    text += "  \(warning)\n"
-                }
-                if warnings.count > 30 {
-                    text += "  (+\(warnings.count - 30) more warnings)\n"
-                }
+                for warning in warnings.prefix(30) { text += "  \(warning)\n" }
+                if warnings.count > 30 { text += "  (+\(warnings.count - 30) more warnings)\n" }
             }
         }
 
-        return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(text)
     }
 
     // MARK: - Private
 
     private func findDerivedDataPath(
-        projectPath: String?, workspacePath: String?, scheme: String,
+        projectPath: String?,
+        workspacePath: String?,
+        scheme: String,
     ) async throws -> String {
         // Resolve BUILD_DIR through the runner so the same platform-scoped `-derivedDataPath` the
         // macOS build used is applied — otherwise this reads Xcode's default DerivedData location
@@ -175,12 +144,5 @@ public struct ShowBuildLogTool: Sendable {
             workspacePath: workspacePath,
             scheme: scheme,
         )
-    }
-
-    private func decompressLog(at path: String) async throws -> String {
-        let result = try await ProcessResult.run(
-            "/usr/bin/gunzip", arguments: ["-c", path], timeout: .seconds(30),
-        )
-        return result.stdout
     }
 }

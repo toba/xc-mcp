@@ -32,16 +32,14 @@ public struct ValidateProjectTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
 
         let resolvedPath: String
 
         do {
             resolvedPath = try pathUtility.resolvePath(from: projectPath)
         } catch {
-            throw MCPError.invalidParams("Invalid project path: \(error)")
+            throw try error.asMCPError()
         }
 
         let xcodeproj: XcodeProj
@@ -49,9 +47,7 @@ public struct ValidateProjectTool: Sendable {
         do {
             xcodeproj = try XcodeProj(path: Path(resolvedPath))
         } catch {
-            throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
 
         let targets = xcodeproj.pbxproj.nativeTargets
@@ -107,11 +103,10 @@ public struct ValidateProjectTool: Sendable {
             let matchedCount = linkedNames.intersection(embeddedNames).count
 
             if matchedCount > 0 {
-                diagnostics.append(
-                    Diagnostic(
-                        .info,
-                        "\(matchedCount) framework\(matchedCount == 1 ? "" : "s") linked and embedded correctly",
-                    ),
+                diagnostics.append(Diagnostic(
+                    .info,
+                    "\(matchedCount) framework\(matchedCount == 1 ? "" : "s") linked and embedded correctly",
+                ),
                 )
             }
 
@@ -171,13 +166,7 @@ public struct ValidateProjectTool: Sendable {
             output.append("## Summary: \(parts.joined(separator: ", "))")
         }
 
-        return CallTool.Result(content: [
-            .text(
-                text: output.joined(separator: "\n"),
-                annotations: nil,
-                _meta: nil,
-            )
-        ])
+        return CallTool.Result.text(output.joined(separator: "\n"))
     }
 
     // MARK: - Embed Phase Checks
@@ -203,9 +192,7 @@ public struct ValidateProjectTool: Sendable {
             // Empty copy-files phases
             if (phase.files ?? []).isEmpty {
                 diagnostics.append(Diagnostic(
-                    .warning,
-                    "Copy-files phase \"\(phaseName)\" has zero files"
-                ))
+                    .warning, "Copy-files phase \"\(phaseName)\" has zero files"))
             }
         }
 
@@ -221,8 +208,7 @@ public struct ValidateProjectTool: Sendable {
 
                 if let firstPhase = seenFiles[name] {
                     diagnostics.append(Diagnostic(
-                        .error,
-                        "\(name) appears in both \"\(firstPhase)\" and \"\(phaseName)\"",
+                        .error, "\(name) appears in both \"\(firstPhase)\" and \"\(phaseName)\"",
                     ))
                 } else {
                     seenFiles[name] = phaseName
@@ -249,7 +235,8 @@ public struct ValidateProjectTool: Sendable {
         var names = Set<String>()
 
         for phase in phases
-        where phase.dstSubfolderSpec == .frameworks || phase.dstSubfolder == .frameworks {
+            where phase.dstSubfolderSpec == .frameworks || phase.dstSubfolder == .frameworks
+        {
             for buildFile in phase.files ?? [] {
                 if let fileRef = buildFile.file {
                     if let name = fileRef.path ?? fileRef.name { names.insert(name) }
@@ -264,12 +251,10 @@ public struct ValidateProjectTool: Sendable {
         embedded: Set<String>,
         diagnostics: inout [Diagnostic],
     ) {
-        // Linked but not embedded (skip system frameworks)
-        for name in linked.sorted() where !embedded.contains(name) {
-            if !isSystemFramework(name) {
-                diagnostics.append(Diagnostic(.warning, "\(name) linked but not embedded"))
-            }
-        }
+        // Linked but not embedded
+        for name in linked.sorted()
+            where !embedded.contains(name) && isFrameworkBundle(name)
+        { diagnostics.append(Diagnostic(.warning, "\(name) linked but not embedded")) }
 
         // Embedded but not linked
         for name in embedded.sorted() where !linked.contains(name) {
@@ -277,13 +262,8 @@ public struct ValidateProjectTool: Sendable {
         }
     }
 
-    private func isSystemFramework(_ name: String) -> Bool {
-        // System frameworks use .sdkRoot source tree, but at the name level we can heuristic:
-        // system frameworks live under System/Library paths or are well-known SDK frameworks. For
-        // this check, we skip frameworks that don't end in .framework (e.g. .tbd, .dylib) since
-        // those are always system.
-        !name.hasSuffix(".framework") ? true : false
-    }
+    // a .tbd or a .dylib is always SDK-provided, so only a .framework bundle can need embedding
+    private func isFrameworkBundle(_ name: String) -> Bool { name.hasSuffix(".framework") }
 
     // MARK: - Copy Files References
 
@@ -295,11 +275,10 @@ public struct ValidateProjectTool: Sendable {
             let phaseName = phase.name ?? "(unnamed)"
 
             for buildFile in phase.files ?? [] where buildFile.file == nil {
-                diagnostics.append(
-                    Diagnostic(
-                        .warning,
-                        "Copy-files phase \"\(phaseName)\" contains a build file with a dangling reference",
-                    ),
+                diagnostics.append(Diagnostic(
+                    .warning,
+                    "Copy-files phase \"\(phaseName)\" contains a build file with a dangling reference",
+                ),
                 )
             }
         }
@@ -330,11 +309,10 @@ public struct ValidateProjectTool: Sendable {
             .count(where: { !referencedBuildFileIDs.contains(ObjectIdentifier($0)) })
 
         if orphanCount > 0 {
-            diagnostics.append(
-                Diagnostic(
-                    .warning,
-                    "\(orphanCount) orphaned PBXBuildFile\(orphanCount == 1 ? "" : "s") not referenced by any build phase",
-                ),
+            diagnostics.append(Diagnostic(
+                .warning,
+                "\(orphanCount) orphaned PBXBuildFile\(orphanCount == 1 ? "" : "s") not referenced by any build phase",
+            ),
             )
         }
 
@@ -346,11 +324,10 @@ public struct ValidateProjectTool: Sendable {
             .count(where: { !targetPhases.contains(ObjectIdentifier($0)) })
 
         if unreferencedCount > 0 {
-            diagnostics.append(
-                Diagnostic(
-                    .info,
-                    "\(unreferencedCount) build phase\(unreferencedCount == 1 ? "" : "s") not referenced by any target",
-                ),
+            diagnostics.append(Diagnostic(
+                .info,
+                "\(unreferencedCount) build phase\(unreferencedCount == 1 ? "" : "s") not referenced by any target",
+            ),
             )
         }
     }
@@ -383,8 +360,7 @@ public struct ValidateProjectTool: Sendable {
             if targetsWithFramework.count < appTargets.count {
                 let havingNames = targetsWithFramework.map(\.name).sorted().joined(separator: ", ")
                 diagnostics.append(Diagnostic(
-                    .info,
-                    "\(name) embedded in \(havingNames) but not all app targets",
+                    .info, "\(name) embedded in \(havingNames) but not all app targets",
                 ))
             }
         }
@@ -406,11 +382,10 @@ public struct ValidateProjectTool: Sendable {
             }
         }
         if nullCount > 0 {
-            diagnostics.append(
-                Diagnostic(
-                    .warning,
-                    "\(nullCount) build file\(nullCount == 1 ? "" : "s") with null file reference (possible Xcode migration artifact)",
-                ),
+            diagnostics.append(Diagnostic(
+                .warning,
+                "\(nullCount) build file\(nullCount == 1 ? "" : "s") with null file reference (possible Xcode migration artifact)",
+            ),
             )
         }
     }
@@ -425,15 +400,15 @@ public struct ValidateProjectTool: Sendable {
         let allSyncGroups = xcodeproj.pbxproj.fileSystemSynchronizedRootGroups
         guard !allSyncGroups.isEmpty else { return }
 
-        let linkedSyncGroupIDs = Set(targets.flatMap { $0.fileSystemSynchronizedGroups ?? [] }
+        let linkedSyncGroupIDs = Set(
+            targets.flatMap { $0.fileSystemSynchronizedGroups ?? [] }
                 .map(ObjectIdentifier.init),
         )
 
         for group in allSyncGroups where !linkedSyncGroupIDs.contains(ObjectIdentifier(group)) {
             let name = group.path ?? group.name ?? "(unknown)"
             diagnostics.append(Diagnostic(
-                .warning,
-                "Synchronized folder \"\(name)\" not linked to any target",
+                .warning, "Synchronized folder \"\(name)\" not linked to any target",
             ))
         }
     }
@@ -457,11 +432,10 @@ public struct ValidateProjectTool: Sendable {
                     let productName = productRef.productName
                     // Check if the package reference still exists
                     if productRef.package == nil {
-                        diagnostics.append(
-                            Diagnostic(
-                                .error,
-                                "Package product \"\(productName)\" in target \"\(target.name)\" has no package reference (missing or broken link)",
-                            ),
+                        diagnostics.append(Diagnostic(
+                            .error,
+                            "Package product \"\(productName)\" in target \"\(target.name)\" has no package reference (missing or broken link)",
+                        ),
                         )
                     }
                 }
@@ -479,11 +453,10 @@ public struct ValidateProjectTool: Sendable {
         let selfRefs = SelfProjectReference.detect(in: xcodeproj, projectPath: projectPath)
 
         for name in selfRefs {
-            diagnostics.append(
-                Diagnostic(
-                    .error,
-                    "Self-referencing sub-project entry \"\(name)\" (the project nested inside itself) — blocks Periphery scans; run repair_project to remove",
-                ),
+            diagnostics.append(Diagnostic(
+                .error,
+                "Self-referencing sub-project entry \"\(name)\" (the project nested inside itself) — blocks Periphery scans; run repair_project to remove",
+            ),
             )
         }
     }
@@ -529,8 +502,7 @@ public struct ValidateProjectTool: Sendable {
                !linkedProductNames.contains(productName)
             {
                 diagnostics.append(Diagnostic(
-                    .info,
-                    "Has dependency on \(depTarget.name) but does not link \(productName)",
+                    .info, "Has dependency on \(depTarget.name) but does not link \(productName)",
                 ))
             }
         }
@@ -540,20 +512,21 @@ public struct ValidateProjectTool: Sendable {
 
     /// Flags >1 PBXTargetDependency edges from `target` that resolve to the same remote target.
     /// Xcode normally collapses these into one build-graph node, but the modern explicit-modules
-    /// planner can import them as distinct nodes that collide with
-    /// "Multiple targets in the build graph have the target ID …" at archive time.
+    /// planner can import them as distinct nodes that collide with "Multiple targets in the build
+    /// graph have the target ID …" at archive time.
     private func checkDuplicateTargetDependencies(
         target: PBXNativeTarget,
         diagnostics: inout [Diagnostic],
     ) {
-        // Group dependency edges by the remote target identity. Prefer the resolved target
-        // pointer, then the proxy's remoteGlobalID uuid, then the linked target uuid. This way
-        // an edge with a dangling proxy still collides with a healthy edge to the same target.
+        // Group dependency edges by the remote target identity. Prefer the resolved target pointer,
+        // then the proxy's remoteGlobalID uuid, then the linked target uuid. This way an edge with
+        // a dangling proxy still collides with a healthy edge to the same target.
         var groups: [String: [PBXTargetDependency]] = [:]
         var nameByKey: [String: String] = [:]
 
         for dep in target.dependencies {
             let key: String
+
             if let linked = dep.target {
                 key = linked.uuid
                 nameByKey[key] = linked.name
@@ -589,12 +562,12 @@ public struct ValidateProjectTool: Sendable {
 
     // MARK: - Reference Proxy Without Dependency
 
-    /// Flags PBXFrameworksBuildPhase entries that link a `PBXReferenceProxy` (cross-project
-    /// product reference) without a matching PBXTargetDependency edge. The link still produces
-    /// a build-graph node for the remote target, so this is the asymmetry that lets a consumer
-    /// pull in a target via the frameworks phase alone — bypassing the ordering edge and, under
-    /// the explicit-modules planner, sometimes creating duplicate target-ID nodes that collide
-    /// with "Multiple targets in the build graph have the target ID …".
+    /// Flags PBXFrameworksBuildPhase entries that link a `PBXReferenceProxy` (cross-project product
+    /// reference) without a matching PBXTargetDependency edge. The link still produces a
+    /// build-graph node for the remote target, so this is the asymmetry that lets a consumer pull
+    /// in a target via the frameworks phase alone — bypassing the ordering edge and, under the
+    /// explicit-modules planner, sometimes creating duplicate target-ID nodes that collide with
+    /// "Multiple targets in the build graph have the target ID …".
     private func checkReferenceProxyWithoutDependency(
         target: PBXNativeTarget,
         diagnostics: inout [Diagnostic],
@@ -607,10 +580,10 @@ public struct ValidateProjectTool: Sendable {
         for phase in frameworksPhases {
             for buildFile in phase.files ?? [] {
                 guard let proxyRef = buildFile.file as? PBXReferenceProxy,
-                      let remote = proxyRef.remote?.remoteGlobalID
-                else { continue }
+                      let remote = proxyRef.remote?.remoteGlobalID else { continue }
 
                 let remoteUUID: String
+
                 switch remote {
                     case let .object(obj): remoteUUID = obj.uuid
                     case let .string(uuid): remoteUUID = uuid
@@ -631,9 +604,9 @@ public struct ValidateProjectTool: Sendable {
 
     /// Flags PBXContainerItemProxy objects that point at the same `remoteGlobalID` but disagree on
     /// `remoteInfo`. `remoteInfo` is the cached name of the target at proxy-creation time, so
-    /// divergent values indicate a target was renamed without refreshing its consumer proxies.
-    /// In the explicit-modules build system this can cause Xcode to import the same target as
-    /// distinct graph nodes that collide on `target-<Name>-<hash>-SDKROOT:<sdk>` IDs.
+    /// divergent values indicate a target was renamed without refreshing its consumer proxies. In
+    /// the explicit-modules build system this can cause Xcode to import the same target as distinct
+    /// graph nodes that collide on `target-<Name>-<hash>-SDKROOT:<sdk>` IDs.
     private func checkStaleRemoteInfo(
         xcodeproj: XcodeProj,
         diagnostics: inout [Diagnostic],
@@ -644,14 +617,12 @@ public struct ValidateProjectTool: Sendable {
         for proxy in xcodeproj.pbxproj.containerItemProxies {
             guard let remote = proxy.remoteGlobalID else { continue }
             let key: String
+
             switch remote {
                 case let .object(obj):
                     key = obj.uuid
-                    if resolvedName[key] == nil {
-                        resolvedName[key] = (obj as? PBXTarget)?.name
-                    }
-                case let .string(uuid):
-                    key = uuid
+                    if resolvedName[key] == nil { resolvedName[key] = (obj as? PBXTarget)?.name }
+                case let .string(uuid): key = uuid
             }
             groups[key, default: []].append(proxy)
         }

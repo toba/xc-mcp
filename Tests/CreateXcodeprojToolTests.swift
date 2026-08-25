@@ -65,8 +65,8 @@ func `CreateXcodeprojTool creates project with bundle identifier`() throws {
        let configList = target.buildConfigurationList,
        let config = configList.buildConfigurations.first
     {
-        let bundleId = config.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"]
-        #expect(bundleId == .string("com.testorg.TestApp"))
+        let bundleID = config.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"]
+        #expect(bundleID == .string("com.testorg.TestApp"))
     } else {
         Issue.record("Could not find target build configuration")
     }

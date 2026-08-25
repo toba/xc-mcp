@@ -30,10 +30,16 @@ public enum XCStringsFileEncoder {
         return Data((root.render() + "\n").utf8)
     }
 
-    private static func encodeJSONValue(_ value: some Encodable) throws -> JSONValue {
+    /// Shared because a catalog builds one JSON value per entry, and a 3000-key catalog would
+    /// otherwise construct 3000 encoders per save.
+    private static let entryEncoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        let data = try encoder.encode(value)
+        return encoder
+    }()
+
+    private static func encodeJSONValue(_ value: some Encodable) throws -> JSONValue {
+        let data = try entryEncoder.encode(value)
         let object = try JSONSerialization.jsonObject(with: data)
         return try JSONValue(jsonObject: object)
     }
@@ -105,14 +111,32 @@ private enum JSONValue {
 fileprivate extension String {
     static func spaces(_ count: Int) -> String { .init(repeating: " ", count: count) }
 
+    /// Renders the string as a JSON string literal, quotes included.
+    ///
+    /// Written out rather than delegated to a `JSONEncoder`, which the renderer would otherwise
+    /// construct once per key and once per value. A slash stays unescaped to mirror Xcode's on-disk
+    /// format: it is valid JSON either way, and the escaped form produces noisy diffs against
+    /// catalogs holding strings like "Domestic / Foreign". Only a quote, a backslash and the
+    /// control range need a substitution; everything above it goes through untouched, including
+    /// non-ASCII, which is what JSONEncoder does by default.
     func jsonEscaped() -> String {
-        // `.withoutEscapingSlashes` mirrors Xcode's on-disk format — `/` is valid JSON and never
-        // needs escaping; the default `\/` produces noisy diffs against catalogs containing strings
-        // like "Domestic / Foreign".
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.withoutEscapingSlashes]
-        let data = try? encoder.encode(self)
-        // sm:ignore useFailableStringInit — JSONEncoder always emits valid UTF-8.
-        return data.map { String(decoding: $0, as: UTF8.self) } ?? "\"\""
+        var escaped = "\""
+        escaped.reserveCapacity(count + 2)
+
+        for scalar in unicodeScalars {
+            switch scalar {
+                case "\"": escaped += #"\""#
+                case "\\": escaped += #"\\"#
+                case "\n": escaped += #"\n"#
+                case "\r": escaped += #"\r"#
+                case "\t": escaped += #"\t"#
+                case "\u{08}": escaped += #"\b"#
+                case "\u{0C}": escaped += #"\f"#
+                case _ where scalar.value < 0x20:
+                    escaped += String(format: #"\u%04x"#, scalar.value)
+                default: escaped.unicodeScalars.append(scalar)
+            }
+        }
+        return escaped + "\""
     }
 }

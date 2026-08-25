@@ -49,11 +49,7 @@ public struct SwiftDiagnosticOptions: Sendable {
 
     /// Reads the parameters out of a tool's arguments, defaulting each to absent.
     public init(from arguments: [String: Value]) {
-        if case let .array(values) = arguments["swiftc_flags"] {
-            swiftcFlags = values.compactMap { if case let .string(s) = $0 { s } else { nil } }
-        } else {
-            swiftcFlags = []
-        }
+        swiftcFlags = arguments.getStringArray("swiftc_flags")
         stderrPath = arguments.getString("stderr_path")
         stderrFilter = arguments.getString("stderr_filter")
     }

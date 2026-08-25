@@ -140,7 +140,7 @@ public struct DiagnosticsTool: Sendable {
 
             if buildFailed { throw MCPError.internalError(output) }
 
-            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(output)
         } catch {
             throw try error.asMCPError()
         }

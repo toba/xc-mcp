@@ -164,7 +164,7 @@ public struct BuildMacOSTool: Sendable {
             var text = "\(label) succeeded for scheme '\(scheme)' on macOS"
             if !summary.isEmpty, summary != "Build succeeded" { text += "\n\n" + summary }
             text += "\n\n" + derivedDataNote
-            return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(text)
         } catch let error as XcodebuildError {
             return error.formatPartialDiagnostics(
                 projectRoot: projectRoot, errorsOnly: errorsOnly, showWarnings: showWarnings,

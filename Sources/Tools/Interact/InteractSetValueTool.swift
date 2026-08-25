@@ -19,15 +19,11 @@ public struct InteractSetValueTool: Sendable {
                 "properties": .object(InteractRunner.appResolutionSchemaProperties.merging([
                     "element_id": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Element ID from interact_ui_tree.",
-                        ),
+                        "description": .string("Element ID from interact_ui_tree."),
                     ]),
                     "value": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "The value to set on the element.",
-                        ),
+                        "description": .string("The value to set on the element."),
                     ]),
                 ]) { _, new in new },
                 ),
@@ -42,14 +38,14 @@ public struct InteractSetValueTool: Sendable {
         let pid = try interactRunner.resolveAppFromArguments(arguments)
         try interactRunner.ensureAccessibility()
 
-        guard let elementId = arguments.getInt("element_id") else {
+        guard let elementID = arguments.getInt("element_id") else {
             throw MCPError.invalidParams("element_id is required")
         }
         let value = try arguments.getRequiredString("value")
 
         guard let cached = await InteractSessionManager.shared.getElement(
-            pid: pid, elementID: elementId,
-        ) else { throw InteractError.elementNotFound(elementId) }
+            pid: pid, elementID: elementID,
+        ) else { throw InteractError.elementNotFound(elementID) }
 
         try interactRunner.setValue(value, on: cached.element)
 
@@ -58,14 +54,7 @@ public struct InteractSetValueTool: Sendable {
         let snapshot = try await InteractPostAction.settledSnapshot(
             runner: interactRunner, pid: pid,
         )
-        return CallTool.Result(
-            content: [
-                .text(
-                    text: "Set value on \(desc) (id=\(elementId)) to \"\(value)\".\n\(snapshot)",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],
-        )
+        return CallTool.Result.text(
+            "Set value on \(desc) (id=\(elementID)) to \"\(value)\".\n\(snapshot)")
     }
 }

@@ -6,18 +6,16 @@ public struct GetPerformanceMetricsTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "get_performance_metrics",
             description:
-            "Extract performance metrics from an .xcresult bundle. Shows measurements from measure(metrics:) blocks including averages, standard deviations, and baselines.",
+                "Extract performance metrics from an .xcresult bundle. Shows measurements from measure(metrics:) blocks including averages, standard deviations, and baselines.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "result_bundle_path": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcresult bundle.",
-                        ),
+                        "description": .string("Path to the .xcresult bundle."),
                     ]),
                     "test_id": .object([
                         "type": .string("string"),
@@ -34,28 +32,24 @@ public struct GetPerformanceMetricsTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let resultBundlePath = try arguments.getRequiredString("result_bundle_path")
-        let testId = arguments.getString("test_id")
+        let testID = arguments.getString("test_id")
 
         guard FileManager.default.fileExists(atPath: resultBundlePath) else {
-            throw MCPError.invalidParams(
-                "Result bundle not found at: \(resultBundlePath)",
+            throw MCPError.invalidParams("Result bundle not found at: \(resultBundlePath)")
+        }
+
+        guard let results = await XCResultParser.parsePerformanceMetrics(
+            at: resultBundlePath, testID: testID,
+        ),
+              !results.isEmpty
+        else {
+            return CallTool.Result.text(
+                "No performance metrics found in the result bundle. Ensure tests use measure(metrics:) blocks."
             )
         }
 
-        guard
-            let results = await XCResultParser.parsePerformanceMetrics(
-                at: resultBundlePath, testId: testId,
-            ), !results.isEmpty
-        else {
-            return CallTool.Result(content: [
-                .text(text:
-                    "No performance metrics found in the result bundle. Ensure tests use measure(metrics:) blocks.",
-                    annotations: nil, _meta: nil),
-            ])
-        }
-
         let output = Self.formatMetrics(results)
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 
     static func formatMetrics(_ results: [XCResultParser.PerformanceMetricResult]) -> String {
@@ -73,9 +67,8 @@ public struct GetPerformanceMetricsTool: Sendable {
                     guard !measurements.isEmpty else { continue }
 
                     let avg = measurements.reduce(0, +) / Double(measurements.count)
-                    let variance =
-                        measurements.reduce(0) { $0 + ($1 - avg) * ($1 - avg) }
-                            / Double(measurements.count)
+                    let variance = measurements.reduce(0) { $0 + ($1 - avg) * ($1 - avg) }
+                        / Double(measurements.count)
                     let stdDev = variance.squareRoot()
 
                     var line = String(

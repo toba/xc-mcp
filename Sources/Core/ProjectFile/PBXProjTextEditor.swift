@@ -59,7 +59,7 @@ public enum PBXProjTextEditor {
         _ content: String,
         projectPath: String,
         expectedPreimage: Data? = nil,
-    ) throws {
+    ) throws(SafeProjectWriteError) {
         let path = PBXProjParsing.pbxprojPath(forProject: projectPath)
         try SafeProjectWrite.write(
             Data(content.utf8),
@@ -366,16 +366,19 @@ public struct PBXProjEditor {
     ) throws(EditError) -> Int {
         let (arrayStart, arrayEnd) = try findArrayField(blockUUID: blockUUID, field: field)
 
-        var toRemove: [Int] = []
+        // one shift of the tail rather than one per removed line
+        var toRemove = RangeSet<Int>()
+        var removedCount = 0
 
         for i in (arrayStart + 1)..<arrayEnd {
             if let name = Self.extractPlainEntry(lines[i]), entries.contains(name) {
-                toRemove.append(i)
+                toRemove.insert(contentsOf: i..<(i + 1))
+                removedCount += 1
             }
         }
-        for i in toRemove.reversed() { lines.remove(at: i) }
+        lines.removeSubranges(toRemove)
 
-        let newEnd = arrayEnd - toRemove.count
+        let newEnd = arrayEnd - removedCount
         var remaining = 0
         for i in (arrayStart + 1)..<newEnd where Self.extractPlainEntry(lines[i]) != nil {
             remaining += 1

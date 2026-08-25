@@ -9,8 +9,7 @@ public struct SetIconFillTool: Sendable {
     public func tool() -> Tool {
         .init(
             name: "set_icon_fill",
-            description:
-                "Set the background fill of a .icon bundle. "
+            description: "Set the background fill of a .icon bundle. "
                 + "Supports solid color, automatic gradient, linear gradient, or clearing the fill. "
                 + "Accepts hex colors (#FF8800) or Apple color notation (srgb:R,G,B,A).",
             inputSchema: .object([
@@ -60,11 +59,7 @@ public struct SetIconFillTool: Sendable {
         let color2 = arguments.getString("color2")
         let gradientAngle = arguments.getDouble("gradient_angle") ?? 0
 
-        guard FileManager.default.fileExists(atPath: bundlePath) else {
-            throw MCPError.invalidParams("Icon bundle not found: \(bundlePath)")
-        }
-
-        var manifest = try IconManifest.read(from: bundlePath)
+        var manifest = try IconManifest.open(bundlePath)
 
         switch fillType {
             case "none":
@@ -75,13 +70,13 @@ public struct SetIconFillTool: Sendable {
                 guard let color else {
                     throw MCPError.invalidParams("color is required for solid fill")
                 }
-                manifest.fill = .solid(resolveColor(color))
+                manifest.fill = .solid(IconManifest.resolveColor(color))
 
             case "automatic":
                 guard let color else {
                     throw MCPError.invalidParams("color is required for automatic fill")
                 }
-                manifest.fill = .automaticGradient(resolveColor(color))
+                manifest.fill = .automaticGradient(IconManifest.resolveColor(color))
 
             case "gradient":
                 guard let color, let color2 else {
@@ -95,7 +90,7 @@ public struct SetIconFillTool: Sendable {
                         x: 0.5 + sin(angleRad) * 0.5, y: 0.5 + cos(angleRad) * 0.5),
                 )
                 manifest.fill = .linearGradient(
-                    [resolveColor(color), resolveColor(color2)],
+                    [IconManifest.resolveColor(color), IconManifest.resolveColor(color2)],
                     orientation: orientation,
                 )
 
@@ -107,14 +102,6 @@ public struct SetIconFillTool: Sendable {
         try manifest.write(to: bundlePath)
 
         let desc = fillType == "none" ? "Cleared fill" : "Set fill to \(fillType)"
-        return CallTool.Result(
-            content: [.text(text: desc, annotations: nil, _meta: nil)],
-        )
-    }
-
-    private func resolveColor(_ color: String) -> String {
-        color.hasPrefix("#") || (color.count == 6 && color.allSatisfy(\.isHexDigit))
-            ? IconManifest.hexToSRGB(color)
-            : color
+        return CallTool.Result.text(desc)
     }
 }

@@ -5,9 +5,8 @@ import Subprocess
 
 /// Validates asset catalogs (.xcassets) for issues using `actool`.
 ///
-/// Wraps `xcrun actool` in validation mode to check for missing sizes,
-/// incorrect formats, and other configuration problems before they cause
-/// build failures.
+/// Wraps `xcrun actool` in validation mode to check for missing sizes, incorrect formats, and other
+/// configuration problems before they cause build failures.
 ///
 /// ## Example
 ///
@@ -19,18 +18,16 @@ public struct ValidateAssetCatalogTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "validate_asset_catalog",
             description:
-            "Validate an asset catalog (.xcassets) for missing sizes, incorrect formats, and configuration issues. Runs actool in validation mode to catch problems before they cause build failures.",
+                "Validate an asset catalog (.xcassets) for missing sizes, incorrect formats, and configuration issues. Runs actool in validation mode to catch problems before they cause build failures.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "path": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcassets directory to validate.",
-                        ),
+                        "description": .string("Path to the .xcassets directory to validate."),
                     ]),
                     "platform": .object([
                         "type": .string("string"),
@@ -39,9 +36,7 @@ public struct ValidateAssetCatalogTool: Sendable {
                             .string("iphonesimulator"), .string("appletvos"),
                             .string("watchos"), .string("xros"),
                         ]),
-                        "description": .string(
-                            "Target platform for validation. Default: macosx.",
-                        ),
+                        "description": .string("Target platform for validation. Default: macosx."),
                     ]),
                     "minimum_deployment_target": .object([
                         "type": .string("string"),
@@ -88,17 +83,14 @@ public struct ValidateAssetCatalogTool: Sendable {
         let output = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
 
         var message = ""
-        if !warnings.isEmpty {
-            message += "## Warnings/Errors\n\n\(warnings)\n"
-        }
+        if !warnings.isEmpty { message += "## Warnings/Errors\n\n\(warnings)\n" }
+
         if !output.isEmpty {
             if !message.isEmpty { message += "\n" }
             message += output
         }
-        if message.isEmpty {
-            message = "Asset catalog validation passed with no issues."
-        }
+        if message.isEmpty { message = "Asset catalog validation passed with no issues." }
 
-        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(message)
     }
 }

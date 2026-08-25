@@ -244,9 +244,8 @@ struct SetSchemeStoreKitConfigToolTests {
     /// Returns the substring of `content` spanning `<Name …>` … `</Name>`.
     private static func actionBlock(_ name: String, in content: String) -> String? {
         guard let open = content.range(of: "<\(name)"),
-              let close = content.range(
-                  of: "</\(name)>", range: open.upperBound..<content.endIndex,
-              ) else { return nil }
+              let close = content.range(of: "</\(name)>", range: open.upperBound..<content.endIndex)
+        else { return nil }
         return String(content[open.lowerBound..<close.upperBound])
     }
 }

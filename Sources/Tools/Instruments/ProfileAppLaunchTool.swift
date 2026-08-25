@@ -2,19 +2,19 @@ import MCP
 import XCMCPCore
 import Foundation
 
-/// One-shot app launch profiling that builds, launches with xctrace "App Launch" template,
-/// and returns the trace summary.
+/// One-shot app launch profiling that builds, launches with xctrace "App Launch" template, and
+/// returns the trace summary.
 ///
-/// Combines build → xctrace record (App Launch template) → export summary into a single
-/// tool call to answer "why is my app slow to become responsive?"
+/// Combines build → xctrace record (App Launch template) → export summary into a single tool call
+/// to answer "why is my app slow to become responsive?"
 public struct ProfileAppLaunchTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let xctraceRunner: XctraceRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        xctraceRunner: XctraceRunner = XctraceRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        xctraceRunner: XctraceRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -23,10 +23,10 @@ public struct ProfileAppLaunchTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "profile_app_launch",
             description:
-            "Build a macOS app and profile its launch using Instruments 'App Launch' template. Returns trace file path and exported summary. Single tool call to diagnose slow app startup.",
+                "Build a macOS app and profile its launch using Instruments 'App Launch' template. Returns trace file path and exported summary. Single tool call to diagnose slow app startup.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -95,12 +95,14 @@ public struct ProfileAppLaunchTool: Sendable {
             )
 
             let parsedBuild = ErrorExtractor.parseBuildOutput(buildResult.output)
+
             if !buildResult.succeeded, parsedBuild.status != "success" {
                 let errorOutput = BuildResultFormatter.formatBuildResult(parsedBuild)
                 throw MCPError.internalError("Build failed:\n\(errorOutput)")
             }
 
-            // Step 2: Get app path from build settings (macOS-scoped DerivedData, matching the build)
+            // Step 2: Get app path from build settings (macOS-scoped DerivedData, matching the
+            // build)
             let buildSettings = try await xcodebuildRunner.showBuildSettings(
                 projectPath: projectPath,
                 workspacePath: workspacePath,
@@ -109,23 +111,21 @@ public struct ProfileAppLaunchTool: Sendable {
                 destination: XcodebuildRunner.macOSDestination,
             )
 
-            guard let appPath = BuildSettingExtractor.extractAppPath(from: buildSettings.stdout)
-            else {
-                throw MCPError.internalError(
-                    "Could not determine app path from build settings.",
-                )
+            // One decode serves both lookups; the payload runs to megabytes.
+            let settings = BuildSettingSet(buildSettings.stdout)
+
+            guard let appPath = settings.appPath else {
+                throw MCPError.internalError("Could not determine app path from build settings.")
             }
 
             // Prepare app bundle
-            let builtProductsDir = BuildSettingExtractor.extractSetting(
-                "BUILT_PRODUCTS_DIR", from: buildSettings.stdout,
-            )
+            let builtProductsDir = settings.value("BUILT_PRODUCTS_DIR")
             try await AppBundlePreparer.prepare(
                 appPath: appPath, builtProductsDir: builtProductsDir,
             )
 
             // Step 3: Record with xctrace using the app launch template
-            let timestamp = ISO8601DateFormatter().string(from: Date())
+            let timestamp = TimestampFormatting.iso8601.string(from: Date())
                 .replacingOccurrences(of: ":", with: "-")
             let tracePath = "/tmp/launch_profile_\(timestamp).trace"
 
@@ -140,12 +140,12 @@ public struct ProfileAppLaunchTool: Sendable {
                 launchPath: appPath,
             )
 
-            // Wait for xctrace to finish (it auto-stops after time_limit)
-            // Use continuation to avoid blocking the cooperative thread pool.
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                process.terminationHandler = { _ in
-                    continuation.resume()
-                }
+            // Wait for xctrace to finish; it auto-stops after time_limit. Installing a bare
+            // terminationHandler here misses a process that already exited, because record()
+            // launches it before returning. waitForExit re-checks isRunning and resumes at once in
+            // that case, so a fast-failing xctrace no longer hangs the whole call.
+            await withTaskCancellationHandler { await process.waitForExit() } onCancel: {
+                process.terminate()
             }
 
             var message = "Profile complete for '\(scheme)' with template '\(template)'\n"
@@ -170,9 +170,7 @@ public struct ProfileAppLaunchTool: Sendable {
                 }
             }
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

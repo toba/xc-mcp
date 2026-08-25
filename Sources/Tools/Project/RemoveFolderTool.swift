@@ -7,15 +7,13 @@ import Foundation
 public struct RemoveFolderTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_synchronized_folder",
             description:
-            "Remove a synchronized folder reference from an Xcode project (does not delete the folder from disk)",
+                "Remove a synchronized folder reference from an Xcode project (does not delete the folder from disk)",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -39,11 +37,9 @@ public struct RemoveFolderTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(folderPath) = arguments["folder_path"]
-        else {
-            throw MCPError.invalidParams("project_path and folder_path are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let folderPath = arguments.getString("folder_path")
+        else { throw MCPError.invalidParams("project_path and folder_path are required") }
 
         do {
             // Resolve and validate the project path
@@ -54,10 +50,8 @@ public struct RemoveFolderTool: Sendable {
 
             // Get the root project and main group
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                  let mainGroup = project.mainGroup
-            else {
-                throw MCPError.internalError("Main group not found in project")
-            }
+                let mainGroup = project.mainGroup
+            else { throw MCPError.internalError("Main group not found in project") }
 
             // Find and remove the synchronized folder
             var folderRemoved = false
@@ -76,9 +70,7 @@ public struct RemoveFolderTool: Sendable {
                             return true
                         }
                     } else if let childGroup = child as? PBXGroup {
-                        if removeFromGroup(childGroup) {
-                            return true
-                        }
+                        if removeFromGroup(childGroup) { return true }
                     }
                 }
                 return false
@@ -89,33 +81,21 @@ public struct RemoveFolderTool: Sendable {
             if folderRemoved {
                 try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Successfully removed synchronized folder '\(removedPath ?? folderPath)' from project",
-                            annotations: nil, _meta: nil),
-                    ],
+                return CallTool.Result.text(
+                    "Successfully removed synchronized folder '\(removedPath ?? folderPath)' from project"
                 )
             } else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Synchronized folder not found in project: \(folderPath)",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Synchronized folder not found in project: \(folderPath)")
             }
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove synchronized folder from Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
     private func removeAssociatedObjects(
-        for syncGroup: PBXFileSystemSynchronizedRootGroup, in xcodeproj: XcodeProj,
+        for syncGroup: PBXFileSystemSynchronizedRootGroup,
+        in xcodeproj: XcodeProj,
     ) {
         // Remove any build files referencing this synchronized folder
         let buildFilesToRemove = xcodeproj.pbxproj.buildFiles.filter { buildFile in
@@ -125,9 +105,7 @@ public struct RemoveFolderTool: Sendable {
         for buildFile in buildFilesToRemove {
             // Remove from build phases
             for target in xcodeproj.pbxproj.nativeTargets {
-                for phase in target.buildPhases {
-                    phase.files?.removeAll { $0 === buildFile }
-                }
+                for phase in target.buildPhases { phase.files?.removeAll { $0 === buildFile } }
             }
             xcodeproj.pbxproj.delete(object: buildFile)
         }

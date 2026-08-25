@@ -10,10 +10,10 @@ public struct SetIconEffectsTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_icon_effects",
             description:
-            "Configure glass effects (specular, shadow, translucency, blur material, lighting) "
+                "Configure glass effects (specular, shadow, translucency, blur material, lighting) "
                 + "on a .icon bundle group. All effect parameters are optional — only specified "
                 + "values are changed.",
             inputSchema: .object([
@@ -49,7 +49,8 @@ public struct SetIconEffectsTool: Sendable {
                     ]),
                     "blur_material": .object([
                         "type": .string("number"),
-                        "description": .string("Blur material amount 0.0–1.0 (set to -1 to clear)."),
+                        "description": .string(
+                            "Blur material amount 0.0–1.0 (set to -1 to clear)."),
                     ]),
                     "lighting": .object([
                         "type": .string("string"),
@@ -76,22 +77,14 @@ public struct SetIconEffectsTool: Sendable {
         let bundlePath = try arguments.getRequiredString("bundle_path")
         let groupIndex = arguments.getInt("group_index") ?? 0
 
-        guard FileManager.default.fileExists(atPath: bundlePath) else {
-            throw MCPError.invalidParams("Icon bundle not found: \(bundlePath)")
-        }
-
-        var manifest = try IconManifest.read(from: bundlePath)
-        guard groupIndex >= 0, groupIndex < manifest.groups.count else {
-            throw MCPError.invalidParams(
-                "group_index \(groupIndex) out of range (0..<\(manifest.groups.count))"
-            )
-        }
+        var manifest = try IconManifest.open(bundlePath)
+        try manifest.validateGroupIndex(groupIndex)
 
         var changes: [String] = []
 
-        if arguments["specular"] != nil {
-            manifest.groups[groupIndex].specular = arguments.getBool("specular")
-            changes.append("specular=\(arguments.getBool("specular"))")
+        if let specular = arguments.getOptionalBool("specular") {
+            manifest.groups[groupIndex].specular = specular
+            changes.append("specular=\(specular)")
         }
 
         if let shadowKind = arguments.getString("shadow_kind") {
@@ -114,13 +107,13 @@ public struct SetIconEffectsTool: Sendable {
             changes.append("shadow_opacity=\(shadowOpacity)")
         }
 
-        if arguments["translucency_enabled"] != nil || arguments["translucency_value"] != nil {
+        let explicitTranslucency = arguments.getOptionalBool("translucency_enabled")
+        let explicitTranslucencyValue = arguments.getDouble("translucency_value")
+
+        if explicitTranslucency != nil || explicitTranslucencyValue != nil {
             let existing = manifest.groups[groupIndex].translucency
-            let enabled = arguments["translucency_enabled"] != nil
-                ? arguments.getBool("translucency_enabled")
-                : (existing?.enabled ?? true)
-            let value = arguments.getDouble("translucency_value")
-                ?? existing?.value ?? 0.5
+            let enabled = explicitTranslucency ?? existing?.enabled ?? true
+            let value = explicitTranslucencyValue ?? existing?.value ?? 0.5
             manifest.groups[groupIndex].translucency = IconManifest.Translucency(
                 enabled: enabled, value: value,
             )
@@ -152,8 +145,6 @@ public struct SetIconEffectsTool: Sendable {
         let desc = changes.isEmpty
             ? "No changes applied to group \(groupIndex)"
             : "Updated group \(groupIndex): \(changes.joined(separator: ", "))"
-        return CallTool.Result(
-            content: [.text(text: desc, annotations: nil, _meta: nil)],
-        )
+        return CallTool.Result.text(desc)
     }
 }

@@ -8,33 +8,29 @@ actor VideoRecordingManager {
 
     private var activeSessions: [String: Process] = [:]
 
-    func startRecording(sessionId: String, process: Process) {
-        activeSessions[sessionId] = process
+    func startRecording(sessionID: String, process: Process) { activeSessions[sessionID] = process }
+
+    func stopRecording(sessionID: String) -> Process? {
+        activeSessions.removeValue(forKey: sessionID)
     }
 
-    func stopRecording(sessionId: String) -> Process? {
-        activeSessions.removeValue(forKey: sessionId)
-    }
-
-    func getActiveSessionIds() -> [String] {
-        Array(activeSessions.keys)
-    }
+    func getActiveSessionIDs() -> [String] { Array(activeSessions.keys) }
 }
 
 public struct RecordSimVideoTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "record_sim_video",
             description:
-            "Start or stop video recording on a simulator. Use action 'start' to begin recording and 'stop' to end it.",
+                "Start or stop video recording on a simulator. Use action 'start' to begin recording and 'stop' to end it.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -71,17 +67,12 @@ public struct RecordSimVideoTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        guard case let .string(action) = arguments["action"] else {
-            throw MCPError.invalidParams("action is required")
-        }
+        let action = try arguments.getRequiredString("action")
 
         switch action {
-            case "start":
-                return try await startRecording(arguments: arguments)
-            case "stop":
-                return try await stopRecording(arguments: arguments)
-            case "list":
-                return await listRecordings()
+            case "start": return try await startRecording(arguments: arguments)
+            case "stop": return try await stopRecording(arguments: arguments)
+            case "list": return await listRecordings()
             default:
                 throw MCPError.invalidParams(
                     "Invalid action: \(action). Use 'start', 'stop', or 'list'.",
@@ -90,95 +81,66 @@ public struct RecordSimVideoTool: Sendable {
     }
 
     private func startRecording(arguments: [String: Value]) async throws -> CallTool.Result {
-        guard case let .string(outputPath) = arguments["output_path"] else {
+        guard let outputPath = arguments.getString("output_path") else {
             throw MCPError.invalidParams("output_path is required for 'start' action")
         }
 
-        // Get simulator
-        let simulator: String
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
-            throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let simulator = try await sessionManager.resolveSimulator(from: arguments)
 
         do {
-            let process = try simctlRunner.recordVideo(
-                udid: simulator, outputPath: outputPath,
-            )
-            let sessionId = UUID().uuidString
+            let process = try simctlRunner.recordVideo(udid: simulator, outputPath: outputPath)
+            let sessionID = UUID().uuidString
 
             await VideoRecordingManager.shared.startRecording(
-                sessionId: sessionId, process: process,
+                sessionID: sessionID, process: process,
             )
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        """
-                        Started video recording on simulator '\(simulator)'
-                        Output: \(outputPath)
-                        Session ID: \(sessionId)
+            return CallTool.Result.text(
+                """
+                Started video recording on simulator '\(simulator)'
+                Output: \(outputPath)
+                Session ID: \(sessionID)
 
-                        Use record_sim_video with action='stop' and session_id='\(
-                            sessionId
-                        )' to stop recording.
-                        """,
-                        annotations: nil, _meta: nil),
-                ],
+                Use record_sim_video with action='stop' and session_id='\(
+                sessionID
+                )' to stop recording.
+                """,
             )
         } catch {
-            throw MCPError.internalError("Failed to start recording: \(error.localizedDescription)")
+            throw try error.asMCPError()
         }
     }
 
     private func stopRecording(arguments: [String: Value]) async throws -> CallTool.Result {
-        guard case let .string(sessionId) = arguments["session_id"] else {
+        guard let sessionID = arguments.getString("session_id") else {
             throw MCPError.invalidParams("session_id is required for 'stop' action")
         }
 
-        guard let process = await VideoRecordingManager.shared.stopRecording(sessionId: sessionId)
+        guard let process = await VideoRecordingManager.shared.stopRecording(sessionID: sessionID)
         else {
             throw MCPError.invalidParams(
-                "No active recording found with session ID: \(sessionId). Use action='list' to see active recordings.",
+                "No active recording found with session ID: \(sessionID). Use action='list' to see active recordings.",
             )
         }
 
         // Send SIGINT to gracefully stop the recording
         process.interrupt()
 
-        // Wait for process to finish
-        process.waitUntilExit()
+        // Wait for process to finish. waitUntilExit would park a cooperative worker while simctl
+        // finalises the movie file.
+        await process.waitForExit()
 
-        return CallTool.Result(
-            content: [
-                .text(
-                    text: "Stopped video recording. Session ID: \(sessionId)",
-                    annotations: nil,
-                    _meta: nil,
-                ),
-            ],
-        )
+        return CallTool.Result.text("Stopped video recording. Session ID: \(sessionID)")
     }
 
     private func listRecordings() async -> CallTool.Result {
-        let sessionIds = await VideoRecordingManager.shared.getActiveSessionIds()
+        let sessionIDs = await VideoRecordingManager.shared.getActiveSessionIDs()
 
-        if sessionIds.isEmpty {
-            return CallTool.Result(
-                content: [.text(text: "No active video recordings.", annotations: nil, _meta: nil)],
-            )
-        }
+        if sessionIDs.isEmpty { return CallTool.Result.text("No active video recordings.") }
 
         var output = "Active video recordings:\n"
-        for sessionId in sessionIds {
-            output += "  - \(sessionId)\n"
-        }
+        for sessionID in sessionIDs { output += "  - \(sessionID)\n" }
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 }

@@ -143,7 +143,7 @@ public struct FindCompileHotspotsTool: Sendable {
             hotspots: hotspots, thresholdMs: thresholdMs, limit: limit,
             buildSucceeded: result.succeeded,
         )
-        return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(text)
     }
 
     // MARK: - Parsing

@@ -115,7 +115,8 @@ public struct AddStoreKitConfigTool: Sendable {
             )
         }
         guard FileManager.default.fileExists(atPath: resolvedStorekitPath) else {
-            return Self.message("StoreKit configuration not found at \(resolvedStorekitPath)")
+            return CallTool.Result.text(
+                "StoreKit configuration not found at \(resolvedStorekitPath)")
         }
 
         var steps: [String] = []
@@ -200,12 +201,8 @@ public struct AddStoreKitConfigTool: Sendable {
             }
 
             try PBXProjWriter.write(xcodeproj, to: projPath, expectedPreimage: preimage)
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to add StoreKit config to project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
 
         // --- Scheme wiring ---
@@ -249,10 +246,7 @@ public struct AddStoreKitConfigTool: Sendable {
                             .joined(separator: ", "))
                 }
             } catch {
-                throw MCPError.internalError(
-                    "Added the config to the project but failed to wire scheme "
-                        + "'\(schemeName)': \(error.localizedDescription)",
-                )
+                throw try error.asMCPError()
             }
         } else {
             warnings.append(
@@ -332,10 +326,6 @@ public struct AddStoreKitConfigTool: Sendable {
             text += "\nWarnings:\n"
             for warning in warnings { text += "  ⚠︎ \(warning)\n" }
         }
-        return message(text.trimmingCharacters(in: .whitespacesAndNewlines))
-    }
-
-    private static func message(_ text: String) -> CallTool.Result {
-        CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 }

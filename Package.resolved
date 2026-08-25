@@ -1,5 +1,5 @@
 {
-  "originHash" : "505a96754b3b8daee64de67c8a4fb8deda7549c1a5d5f46404b736d5c0126f15",
+  "originHash" : "fc55acb9dd0e1d295ca953b250ca2acc696136cc49b185298a4f6efcf1c176a1",
   "pins" : [
     {
       "identity" : "aexml",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/mattt/eventsource.git",
       "state" : {
-        "revision" : "a3a85a85214caf642abaa96ae664e4c772a59f6e",
-        "version" : "1.4.1"
+        "revision" : "86b5096ac59ab46e66bd1f6377c604bc1dab0bc2",
+        "version" : "1.5.1"
       }
     },
     {
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-argument-parser",
       "state" : {
-        "revision" : "626b5b7b2f45e1b0b1c6f4a309296d1d21d7311b",
-        "version" : "1.7.1"
+        "revision" : "6a52f3251125d74daf04fcbd5e6f08a75d074382",
+        "version" : "1.8.2"
       }
     },
     {
@@ -51,17 +51,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-atomics.git",
       "state" : {
-        "revision" : "b601256eab081c0f92f059e12818ac1d4f178ff7",
-        "version" : "1.3.0"
+        "revision" : "0442cb5a3f98ab802acb777929fdb446bda11a34",
+        "version" : "1.3.1"
       }
     },
     {
       "identity" : "swift-collections",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-collections.git",
+      "location" : "https://github.com/apple/swift-collections",
       "state" : {
-        "revision" : "6675bc0ff86e61436e615df6fc5174e043e57924",
-        "version" : "1.4.1"
+        "revision" : "a0cb0954ecb21e4e31b0070e6ed5674e8556685a",
+        "version" : "1.6.0"
       }
     },
     {
@@ -69,8 +69,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log.git",
       "state" : {
-        "revision" : "bbd81b6725ae874c69e9b8c8804d462356b55523",
-        "version" : "1.10.1"
+        "revision" : "3ffafb9722d5d918c614feb496c8789a3b59d222",
+        "version" : "1.15.0"
       }
     },
     {
@@ -78,8 +78,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio.git",
       "state" : {
-        "revision" : "bdf004b44f77c56fca752cd1cf243c802f8469c9",
-        "version" : "2.97.0"
+        "revision" : "0b18836bd8b0162e7e17a995a3fbee20ed8f3b2b",
+        "version" : "2.101.3"
       }
     },
     {
@@ -87,8 +87,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/modelcontextprotocol/swift-sdk",
       "state" : {
-        "revision" : "6132fd4b5b4217ce4717c4775e4607f5c3120129",
-        "version" : "0.12.0"
+        "revision" : "a0ae212ebf6eab5f754c3129608bc5557637e605",
+        "version" : "0.12.1"
       }
     },
     {
@@ -96,17 +96,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-subprocess",
       "state" : {
-        "revision" : "13d087685b95d64d6aac9b94500d347bbe84c39b",
-        "version" : "0.4.0"
+        "revision" : "b3937ab85dd32f6e9435914599c1519074769c1a",
+        "version" : "1.0.0"
       }
     },
     {
       "identity" : "swift-system",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-system.git",
+      "location" : "https://github.com/apple/swift-system",
       "state" : {
-        "revision" : "7c6ad0fc39d0763e0b699210e4124afd5041c5df",
-        "version" : "1.6.4"
+        "revision" : "869129b7bf4ecc57b97d0193ad29690ca2134750",
+        "version" : "1.8.1"
       }
     },
     {
@@ -114,8 +114,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/toba/swiftiomatic-plugins",
       "state" : {
-        "revision" : "4acaf67ed8107e7e83e9457e83a6526e7b25efd1",
-        "version" : "3.0.9"
+        "revision" : "4dc72fa44f6d623b54bdcca7cd23fbfe6b53c2e6",
+        "version" : "3.17.2"
       }
     },
     {
@@ -123,8 +123,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/toba/toba-concurrency",
       "state" : {
-        "revision" : "dc378943d792887dadac03b532353f4835897dca",
-        "version" : "1.1.0"
+        "revision" : "76fe9b0011207a3e260c71deeb540689f44e20cf",
+        "version" : "1.1.2"
       }
     },
     {
@@ -132,8 +132,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/toba/toba-core",
       "state" : {
-        "revision" : "a9db0d1734a16ab33d6e913d141b3c4dc8c6abb3",
-        "version" : "1.11.2"
+        "revision" : "5d094fe331d100b71e553a32c37dc592ac74ce5a",
+        "version" : "1.12.0"
       }
     },
     {
@@ -141,8 +141,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/toba/toba-hash",
       "state" : {
-        "revision" : "587cc4d8339ea28c6839976f14198b140d3b2553",
-        "version" : "1.0.3"
+        "revision" : "81148ad5db65c77a2110815beccd4b1a3955f78d",
+        "version" : "1.3.0"
       }
     },
     {
@@ -150,8 +150,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/toba/toba-testing",
       "state" : {
-        "revision" : "23e2ee7cf530ffb57a7bad43422f5392d7baeae5",
-        "version" : "1.3.2"
+        "revision" : "2338cbea200e174f4fc26b273476debf016308d2",
+        "version" : "1.3.5"
       }
     },
     {
@@ -159,8 +159,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tuist/xcodeproj",
       "state" : {
-        "revision" : "de37089f9c739bfc9fe8d76cd8755e26848aeefe",
-        "version" : "9.15.1"
+        "revision" : "cfc3234fa2a60babbd26712ac0dec0d44734c019",
+        "version" : "9.16.0"
       }
     }
   ],

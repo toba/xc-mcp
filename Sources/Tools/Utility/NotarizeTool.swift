@@ -5,9 +5,8 @@ import Subprocess
 
 /// Manages macOS app notarization using `notarytool` and `stapler`.
 ///
-/// Wraps `xcrun notarytool` and `xcrun stapler` for submitting apps to Apple's
-/// notarization service, checking submission status, retrieving logs, and
-/// stapling tickets to binaries.
+/// Wraps `xcrun notarytool` and `xcrun stapler` for submitting apps to Apple's notarization
+/// service, checking submission status, retrieving logs, and stapling tickets to binaries.
 ///
 /// ## Example
 ///
@@ -20,10 +19,10 @@ public struct NotarizeTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "notarize",
             description:
-            "Manage macOS app notarization. Submit apps/dmgs/pkgs to Apple for notarization, check submission status, retrieve notarization logs, and staple tickets. Requires a keychain profile configured via 'xcrun notarytool store-credentials'.",
+                "Manage macOS app notarization. Submit apps/dmgs/pkgs to Apple for notarization, check submission status, retrieve notarization logs, and staple tickets. Requires a keychain profile configured via 'xcrun notarytool store-credentials'.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -67,8 +66,7 @@ public struct NotarizeTool: Sendable {
                     "timeout": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Timeout in minutes for submit --wait. Default: 30.",
-                        ),
+                            "Timeout in minutes for submit --wait. Default: 30."),
                     ]),
                 ]),
                 "required": .array([.string("action")]),
@@ -81,16 +79,11 @@ public struct NotarizeTool: Sendable {
         let action = try arguments.getRequiredString("action")
 
         switch action {
-            case "submit":
-                return try await submit(arguments: arguments)
-            case "status":
-                return try await status(arguments: arguments)
-            case "log":
-                return try await log(arguments: arguments)
-            case "staple":
-                return try await staple(arguments: arguments)
-            case "history":
-                return try await history(arguments: arguments)
+            case "submit": return try await submit(arguments: arguments)
+            case "status": return try await status(arguments: arguments)
+            case "log": return try await log(arguments: arguments)
+            case "staple": return try await staple(arguments: arguments)
+            case "history": return try await history(arguments: arguments)
             default:
                 throw MCPError.invalidParams(
                     "Unknown action '\(action)'. Use submit, status, log, staple, or history.",
@@ -105,9 +98,7 @@ public struct NotarizeTool: Sendable {
         let timeoutMinutes = arguments.getInt("timeout") ?? 30
 
         var args = ["notarytool", "submit", path, "--keychain-profile", profile]
-        if wait {
-            args.append("--wait")
-        }
+        if wait { args.append("--wait") }
 
         let result = try await ProcessResult.runSubprocess(
             .name("xcrun"),
@@ -121,21 +112,17 @@ public struct NotarizeTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: result.stdout,
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text(result.stdout)
     }
 
     private func status(arguments: [String: Value]) async throws -> CallTool.Result {
-        let submissionId = try arguments.getRequiredString("submission_id")
+        let submissionID = try arguments.getRequiredString("submission_id")
         let profile = try arguments.getRequiredString("keychain_profile")
 
         let result = try await ProcessResult.runSubprocess(
             .name("xcrun"),
             arguments: Arguments([
-                "notarytool", "info", submissionId, "--keychain-profile", profile,
+                "notarytool", "info", submissionID, "--keychain-profile", profile,
             ]),
             timeout: .seconds(30),
         )
@@ -146,22 +133,17 @@ public struct NotarizeTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: result.stdout,
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text(result.stdout)
     }
 
     private func log(arguments: [String: Value]) async throws -> CallTool.Result {
-        let submissionId = try arguments.getRequiredString("submission_id")
+        let submissionID = try arguments.getRequiredString("submission_id")
         let profile = try arguments.getRequiredString("keychain_profile")
 
         let result = try await ProcessResult.runSubprocess(
             .name("xcrun"),
-            arguments: Arguments([
-                "notarytool", "log", submissionId, "--keychain-profile", profile,
-            ]),
+            arguments: Arguments(["notarytool", "log", submissionID, "--keychain-profile", profile]
+            ),
             timeout: .seconds(30),
         )
 
@@ -171,11 +153,7 @@ public struct NotarizeTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: result.stdout,
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text(result.stdout)
     }
 
     private func staple(arguments: [String: Value]) async throws -> CallTool.Result {
@@ -193,11 +171,7 @@ public struct NotarizeTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: result.stdout,
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text(result.stdout)
     }
 
     private func history(arguments: [String: Value]) async throws -> CallTool.Result {
@@ -205,9 +179,7 @@ public struct NotarizeTool: Sendable {
 
         let result = try await ProcessResult.runSubprocess(
             .name("xcrun"),
-            arguments: Arguments([
-                "notarytool", "history", "--keychain-profile", profile,
-            ]),
+            arguments: Arguments(["notarytool", "history", "--keychain-profile", profile]),
             timeout: .seconds(30),
         )
 
@@ -217,10 +189,6 @@ public struct NotarizeTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: result.stdout,
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text(result.stdout)
     }
 }

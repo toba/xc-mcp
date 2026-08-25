@@ -5,15 +5,12 @@ import Foundation
 public struct DiscoverProjectsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "discover_projs",
-            description:
-            "Discover Xcode projects and workspaces in a directory.",
+            description: "Discover Xcode projects and workspaces in a directory.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -44,9 +41,7 @@ public struct DiscoverProjectsTool: Sendable {
                     "format": .object([
                         "type": .string("string"),
                         "enum": .array([.string("text"), .string("json")]),
-                        "description": .string(
-                            "Output format: 'text' (default) or 'json'.",
-                        ),
+                        "description": .string("Output format: 'text' (default) or 'json'."),
                     ]),
                 ]),
                 "required": .array([]),
@@ -57,7 +52,8 @@ public struct DiscoverProjectsTool: Sendable {
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         let searchPath: String
-        if case let .string(value) = arguments["path"] {
+
+        if let value = arguments.getString("path") {
             searchPath = try pathUtility.resolvePath(from: value)
         } else {
             searchPath = pathUtility.basePath
@@ -85,22 +81,18 @@ public struct DiscoverProjectsTool: Sendable {
         func search(path: String, currentDepth: Int) {
             guard currentDepth <= maxDepth else { return }
 
-            guard let contents = try? fileManager.contentsOfDirectory(atPath: path) else {
-                return
-            }
+            guard let contents = try? fileManager.contentsOfDirectory(atPath: path) else { return }
 
             for item in contents {
                 // Skip hidden files and common build directories
                 if item.hasPrefix(".") || item == "DerivedData" || item == "build"
-                    || item == "Pods"
-                {
-                    continue
-                }
+                    || item == "Pods" { continue }
 
                 let fullPath = "\(path)/\(item)"
 
-                // Keep the scan inside the sandbox: a symlink can resolve outside the base path even
-                // though its lexical location is within, which would let discovery walk out of bounds.
+                // Keep the scan inside the sandbox: a symlink can resolve outside the base path
+                // even though its lexical location is within, which would let discovery walk out of
+                // bounds.
                 guard pathUtility.isWithinSandbox(fullPath) else { continue }
 
                 if item.hasSuffix(".xcworkspace"), includeWorkspaces {
@@ -112,6 +104,7 @@ public struct DiscoverProjectsTool: Sendable {
                     projects.append(fullPath)
                 } else {
                     var itemIsDir: ObjCBool = false
+
                     if fileManager.fileExists(atPath: fullPath, isDirectory: &itemIsDir),
                        itemIsDir.boolValue
                     {
@@ -141,32 +134,32 @@ public struct DiscoverProjectsTool: Sendable {
 
         if includeWorkspaces {
             output += "Workspaces (\(workspaces.count)):\n"
+
             if workspaces.isEmpty {
                 output += "  (none found)\n"
             } else {
-                for ws in workspaces {
-                    output += "  - \(ws)\n"
-                }
+                for ws in workspaces { output += "  - \(ws)\n" }
             }
             output += "\n"
         }
 
         if includeProjects {
             output += "Projects (\(projects.count)):\n"
+
             if projects.isEmpty {
                 output += "  (none found)\n"
             } else {
-                for proj in projects {
-                    output += "  - \(proj)\n"
-                }
+                for proj in projects { output += "  - \(proj)\n" }
             }
         }
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 
     private func formatDiscoveryJSON(
-        searchPath: String, workspaces: [String], projects: [String],
+        searchPath: String,
+        workspaces: [String],
+        projects: [String],
     ) throws -> CallTool.Result {
         struct DiscoveryResult: Encodable {
             let searchPath: String
@@ -178,6 +171,6 @@ public struct DiscoverProjectsTool: Sendable {
             searchPath: searchPath, workspaces: workspaces, projects: projects,
         )
         let json = try encodePrettyJSON(result)
-        return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(json)
     }
 }

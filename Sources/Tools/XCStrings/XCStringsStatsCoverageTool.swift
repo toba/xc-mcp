@@ -4,15 +4,13 @@ import XCMCPCore
 public struct XCStringsStatsCoverageTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_stats_coverage",
             description:
-            "Get overall translation statistics. Use compact mode to only show languages under 100%.",
+                "Get overall translation statistics. Use compact mode to only show languages under 100%.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -37,11 +35,10 @@ public struct XCStringsStatsCoverageTool: Sendable {
         let filePath = try arguments.getRequiredString("file")
         let compact = arguments.getBool("compact", default: true)
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
 
             let json: String
+
             if compact {
                 let stats = try await parser.getCompactStats()
                 json = try encodePrettyJSON(stats)
@@ -50,11 +47,7 @@ public struct XCStringsStatsCoverageTool: Sendable {
                 json = try encodePrettyJSON(stats)
             }
 
-            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(json)
         }
     }
 }

@@ -4,15 +4,13 @@ import XCMCPCore
 public struct XCStringsBatchStatsCoverageTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_batch_stats_coverage",
             description:
-            "Get token-efficient coverage statistics for multiple xcstrings files at once. Returns compact summary with coverage percentages per language for each file and aggregated totals. Use compact mode to only show languages under 100%.",
+                "Get token-efficient coverage statistics for multiple xcstrings files at once. Returns compact summary with coverage percentages per language for each file and aggregated totals. Use compact mode to only show languages under 100%.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -46,6 +44,7 @@ public struct XCStringsBatchStatsCoverageTool: Sendable {
             let resolvedPaths = try files.map { try pathUtility.resolvePath(from: $0) }
 
             let json: String
+
             if compact {
                 let coverage = try XCStringsParser.getCompactBatchCoverage(paths: resolvedPaths)
                 json = try encodePrettyJSON(coverage)
@@ -54,11 +53,9 @@ public struct XCStringsBatchStatsCoverageTool: Sendable {
                 json = try encodePrettyJSON(coverage)
             }
 
-            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(json)
+        } catch {
+            throw try error.asMCPError()
         }
     }
 }

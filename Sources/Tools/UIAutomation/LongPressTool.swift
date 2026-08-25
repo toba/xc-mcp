@@ -49,22 +49,15 @@ public struct LongPressTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
-        guard let x = arguments.getDouble("x") ?? arguments.getInt("x").map(Double.init) else {
-            throw MCPError.invalidParams("x coordinate is required")
-        }
-        guard let y = arguments.getDouble("y") ?? arguments.getInt("y").map(Double.init) else {
-            throw MCPError.invalidParams("y coordinate is required")
-        }
-        let duration = arguments.getDouble("duration")
-            ?? arguments.getInt("duration").map(Double.init) ?? 1.0
+        let x = try arguments.getRequiredDouble("x")
+        let y = try arguments.getRequiredDouble("y")
+        let duration = arguments.getDouble("duration") ?? 1.0
 
         do {
             try await uiInput.longPress(simulator: simulator, x: x, y: y, duration: duration)
-            return CallTool.Result(content: [
-                .text(
-                    text: "Long pressed at (\(Int(x)), \(Int(y))) for \(duration)s on simulator '\(simulator)'",
-                    annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text(
+                "Long pressed at (\(Int(x)), \(Int(y))) for \(duration)s on simulator '\(simulator)'"
+            )
         } catch {
             throw try error.asMCPError()
         }

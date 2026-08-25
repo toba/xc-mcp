@@ -7,12 +7,10 @@ import Foundation
 public struct RenameTargetTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "rename_target",
             description: "Rename an existing target in-place, updating all references",
             inputSchema: .object([
@@ -48,19 +46,14 @@ public struct RenameTargetTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(newName) = arguments["new_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let newName = arguments.getString("new_name")
         else {
             throw MCPError.invalidParams("project_path, target_name, and new_name are required")
         }
 
-        let newBundleIdentifier: String?
-        if case let .string(bundleId) = arguments["new_bundle_identifier"] {
-            newBundleIdentifier = bundleId
-        } else {
-            newBundleIdentifier = nil
-        }
+        let newBundleIdentifier = arguments.getString("new_bundle_identifier")
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -69,33 +62,15 @@ public struct RenameTargetTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the target to rename
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: {
-                    $0.name == targetName
-                })
-            else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Target '\(targetName)' not found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
             // Check new name doesn't already exist
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == newName }) {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Target '\(newName)' already exists in project",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result.text("Target '\(newName)' already exists in project")
             }
 
             // 1. Update target name and product name
@@ -128,11 +103,10 @@ public struct RenameTargetTool: Sendable {
                     // CODE_SIGN_ENTITLEMENTS — string-replace old name with new name in path
                     if let entitlements = config.buildSettings["CODE_SIGN_ENTITLEMENTS"]?
                         .stringValue,
-                        entitlements.contains(targetName)
+                       entitlements.contains(targetName)
                     {
                         config.buildSettings["CODE_SIGN_ENTITLEMENTS"] = .string(
-                            entitlements.replacingOccurrences(of: targetName, with: newName),
-                        )
+                            entitlements.replacingOccurrences(of: targetName, with: newName))
                     }
 
                     // Bundle identifier — update if new_bundle_identifier provided
@@ -148,6 +122,7 @@ public struct RenameTargetTool: Sendable {
             // 3. Cross-target build settings scan
             for otherTarget in xcodeproj.pbxproj.nativeTargets {
                 guard let configList = otherTarget.buildConfigurationList else { continue }
+
                 for config in configList.buildConfigurations {
                     // TEST_TARGET_NAME — exact match replace
                     if config.buildSettings["TEST_TARGET_NAME"]?.stringValue == targetName {
@@ -158,9 +133,8 @@ public struct RenameTargetTool: Sendable {
                     if let testHost = config.buildSettings["TEST_HOST"]?.stringValue,
                        testHost.contains(targetName)
                     {
-                        config.buildSettings["TEST_HOST"] = .string(
-                            testHost.replacingOccurrences(of: targetName, with: newName),
-                        )
+                        config.buildSettings["TEST_HOST"] = .string(testHost.replacingOccurrences(
+                            of: targetName, with: newName))
                     }
 
                     // LD_RUNPATH_SEARCH_PATHS — handle string or array
@@ -185,9 +159,7 @@ public struct RenameTargetTool: Sendable {
             for otherTarget in xcodeproj.pbxproj.nativeTargets {
                 for dependency in otherTarget.dependencies where dependency.target == target {
                     dependency.name = newName
-                    if let proxy = dependency.targetProxy {
-                        proxy.remoteInfo = newName
-                    }
+                    if let proxy = dependency.targetProxy { proxy.remoteInfo = newName }
                 }
             }
 
@@ -195,14 +167,13 @@ public struct RenameTargetTool: Sendable {
             for otherTarget in xcodeproj.pbxproj.nativeTargets {
                 for buildPhase in otherTarget.buildPhases {
                     guard let copyPhase = buildPhase as? PBXCopyFilesBuildPhase else { continue }
+
                     for buildFile in copyPhase.files ?? [] {
                         if let fileRef = buildFile.file,
                            let path = fileRef.path,
                            path.contains(targetName)
                         {
-                            fileRef.path = path.replacingOccurrences(
-                                of: targetName, with: newName,
-                            )
+                            fileRef.path = path.replacingOccurrences(of: targetName, with: newName)
                         }
                     }
                 }
@@ -220,7 +191,7 @@ public struct RenameTargetTool: Sendable {
 
             // 7. Rename target group in main group hierarchy
             if let project = try xcodeproj.pbxproj.rootProject(),
-               let mainGroup = project.mainGroup
+                let mainGroup = project.mainGroup
             {
                 func renameGroup(in group: PBXGroup) {
                     for child in group.children {
@@ -228,13 +199,9 @@ public struct RenameTargetTool: Sendable {
                            childGroup.name == targetName
                         {
                             childGroup.name = newName
-                            if childGroup.path == targetName {
-                                childGroup.path = newName
-                            }
+                            if childGroup.path == targetName { childGroup.path = newName }
                         }
-                        if let childGroup = child as? PBXGroup {
-                            renameGroup(in: childGroup)
-                        }
+                        if let childGroup = child as? PBXGroup { renameGroup(in: childGroup) }
                     }
                 }
                 renameGroup(in: mainGroup)
@@ -251,18 +218,15 @@ public struct RenameTargetTool: Sendable {
             )
 
             var message = "Successfully renamed target '\(targetName)' to '\(newName)'"
+
             if schemesUpdated > 0 {
                 message +=
                     " (updated \(schemesUpdated) scheme file\(schemesUpdated == 1 ? "" : "s"))"
             }
 
-            return CallTool.Result(
-                content: [.text(text: message, annotations: nil, _meta: nil)],
-            )
+            return CallTool.Result.text(message)
         } catch {
-            throw MCPError.internalError(
-                "Failed to rename target in Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
@@ -274,56 +238,39 @@ public struct RenameTargetTool: Sendable {
         newName: String,
     ) {
         guard let value = buildSettings[key] else { return }
+
         switch value {
             case let .string(str):
                 if str.contains(oldName) {
-                    buildSettings[key] = .string(
-                        str.replacingOccurrences(of: oldName, with: newName),
-                    )
+                    buildSettings[key] = .string(str.replacingOccurrences(
+                        of: oldName, with: newName))
                 }
             case let .array(arr):
                 let updated = arr.map { $0.replacingOccurrences(of: oldName, with: newName) }
-                if updated != arr {
-                    buildSettings[key] = .array(updated)
-                }
+                if updated != arr { buildSettings[key] = .array(updated) }
         }
     }
 
-    /// Scan scheme files and replace BuildableName/BlueprintName references.
-    /// Returns the number of scheme files updated.
+    /// Scan scheme files and replace BuildableName/BlueprintName references. Returns the number of
+    /// scheme files updated.
     private func updateSchemeFiles(
         projectPath: String,
         oldName: String,
         newName: String,
     ) -> Int {
         let fm = FileManager.default
-        var schemeDirs: [String] = []
-
-        // Shared schemes
-        let sharedDir = "\(projectPath)/xcshareddata/xcschemes"
-        if fm.fileExists(atPath: sharedDir) {
-            schemeDirs.append(sharedDir)
-        }
-
-        // User schemes
-        let userdataDir = "\(projectPath)/xcuserdata"
-        if let userDirs = try? fm.contentsOfDirectory(atPath: userdataDir) {
-            for userDir in userDirs {
-                let userSchemeDir = "\(userdataDir)/\(userDir)/xcschemes"
-                if fm.fileExists(atPath: userSchemeDir) {
-                    schemeDirs.append(userSchemeDir)
-                }
-            }
-        }
+        let schemeDirs = SchemePathResolver.schemeDirs(for: projectPath)
 
         var updatedCount = 0
 
         for schemeDir in schemeDirs {
             guard let files = try? fm.contentsOfDirectory(atPath: schemeDir) else { continue }
+
             for file in files where file.hasSuffix(".xcscheme") {
                 let schemePath = "\(schemeDir)/\(file)"
-                guard var content = try? String(contentsOfFile: schemePath, encoding: .utf8)
-                else { continue }
+                guard var content = try? String(contentsOfFile: schemePath, encoding: .utf8) else {
+                    continue
+                }
 
                 let original = content
 

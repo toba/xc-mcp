@@ -9,10 +9,9 @@ public struct ReadIconTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "read_icon",
-            description:
-            "Inspect an Icon Composer .icon bundle. "
+            description: "Inspect an Icon Composer .icon bundle. "
                 + "Returns the icon.json manifest contents, asset file list, "
                 + "and a human-readable summary of groups, layers, fill, and effects.",
             inputSchema: .object([
@@ -21,7 +20,7 @@ public struct ReadIconTool: Sendable {
                     "bundle_path": .object([
                         "type": .string("string"),
                         "description": .string("Path to the .icon bundle."),
-                    ]),
+                    ])
                 ]),
                 "required": .array([.string("bundle_path")]),
             ]),
@@ -32,11 +31,7 @@ public struct ReadIconTool: Sendable {
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         let bundlePath = try arguments.getRequiredString("bundle_path")
 
-        guard FileManager.default.fileExists(atPath: bundlePath) else {
-            throw MCPError.invalidParams("Icon bundle not found: \(bundlePath)")
-        }
-
-        let manifest = try IconManifest.read(from: bundlePath)
+        let manifest = try IconManifest.open(bundlePath)
         let assets = IconManifest.listAssets(in: bundlePath)
 
         var lines: [String] = []
@@ -45,9 +40,8 @@ public struct ReadIconTool: Sendable {
         lines.append("")
 
         // Fill
-        if let fill = manifest.fill {
-            lines.append("**Fill:** \(describeFill(fill))")
-        }
+        if let fill = manifest.fill { lines.append("**Fill:** \(describeFill(fill))") }
+
         if let specs = manifest.fillSpecializations, !specs.isEmpty {
             for spec in specs {
                 let appearance = spec.appearance ?? spec.idiom ?? "unknown"
@@ -63,25 +57,21 @@ public struct ReadIconTool: Sendable {
             if let shadow = group.shadow {
                 lines.append("  Shadow: \(shadow.kind), opacity \(shadow.opacity)")
             }
+
             if let translucency = group.translucency {
                 lines.append(
                     "  Translucency: \(translucency.enabled ? "on" : "off"), value \(translucency.value)"
                 )
             }
-            if let specular = group.specular {
-                lines.append("  Specular: \(specular)")
-            }
-            if let blur = group.blurMaterial {
-                lines.append("  Blur material: \(blur)")
-            }
-            if let lighting = group.lighting {
-                lines.append("  Lighting: \(lighting)")
-            }
+            if let specular = group.specular { lines.append("  Specular: \(specular)") }
+            if let blur = group.blurMaterial { lines.append("  Blur material: \(blur)") }
+            if let lighting = group.lighting { lines.append("  Lighting: \(lighting)") }
 
             for (li, layer) in group.layers.enumerated() {
                 var desc = "  Layer \(li): \"\(layer.name)\" → \(layer.imageName)"
                 if layer.glass == true { desc += " [glass]" }
                 if layer.hidden == true { desc += " [hidden]" }
+
                 if let pos = layer.position {
                     desc += " scale=\(pos.scale)"
                     if pos.translationInPoints != [0, 0] {
@@ -97,12 +87,12 @@ public struct ReadIconTool: Sendable {
         // Platforms
         lines.append("")
         lines.append("**Platforms:**")
+
         if let squares = manifest.supportedPlatforms.squares {
             switch squares {
-            case .shared:
-                lines.append("  Squares: shared (iOS, macOS, visionOS)")
-            case let .platforms(list):
-                lines.append("  Squares: \(list.joined(separator: ", "))")
+                case .shared: lines.append("  Squares: shared (iOS, macOS, visionOS)")
+                case let .platforms(list):
+                    lines.append("  Squares: \(list.joined(separator: ", "))")
             }
         }
         if let circles = manifest.supportedPlatforms.circles {
@@ -120,16 +110,15 @@ public struct ReadIconTool: Sendable {
         lines.append(String(data: jsonData, encoding: .utf8) ?? "{}")
         lines.append("```")
 
-        return CallTool.Result(
-            content: [.text(text: lines.joined(separator: "\n"), annotations: nil, _meta: nil)],
-        )
+        return CallTool.Result.text(lines.joined(separator: "\n"))
     }
 
     private func describeFill(_ fill: IconManifest.Fill) -> String {
         switch fill {
-        case let .solid(color): return "solid \(color)"
-        case let .automaticGradient(color): return "automatic-gradient \(color)"
-        case let .linearGradient(colors, _): return "linear-gradient \(colors.joined(separator: " → "))"
+            case let .solid(color): "solid \(color)"
+            case let .automaticGradient(color): "automatic-gradient \(color)"
+            case let .linearGradient(colors, _):
+                "linear-gradient \(colors.joined(separator: " → "))"
         }
     }
 }

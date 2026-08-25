@@ -7,17 +7,18 @@ public struct GetDeviceAppPathTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
+        deviceCtlRunner: DeviceCtlRunner = .init(),
+        sessionManager: SessionManager,
     ) {
         self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "get_device_app_path",
             description:
-            "Get information about an installed app on a connected device, including its installation path.",
+                "Get information about an installed app on a connected device, including its installation path.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -41,37 +42,18 @@ public struct GetDeviceAppPathTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        guard case let .string(bundleId) = arguments["bundle_id"] else {
-            throw MCPError.invalidParams("bundle_id is required")
-        }
+        let bundleID = try arguments.getRequiredString("bundle_id")
 
-        // Get device
-        let device: String
-        if case let .string(value) = arguments["device"] {
-            device = value
-        } else if let sessionDevice = await sessionManager.deviceUDID {
-            device = sessionDevice
-        } else {
-            throw MCPError.invalidParams(
-                "device is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let device = try await sessionManager.resolveDevice(from: arguments)
 
         do {
-            let result = try await deviceCtlRunner.getAppInfo(udid: device, bundleId: bundleId)
+            let result = try await deviceCtlRunner.getAppInfo(udid: device, bundleID: bundleID)
 
             if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "App info for '\(bundleId)' on device '\(device)':\n\n\(result.stdout)",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "App info for '\(bundleID)' on device '\(device)':\n\n\(result.stdout)")
             } else {
-                throw MCPError.internalError(
-                    "Failed to get app info: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to get app info: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

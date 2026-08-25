@@ -388,6 +388,26 @@ struct IconToolsTests {
         #expect(manifest.fillSpecializations?[0].appearance == "tinted")
     }
 
+    @Test
+    func `Group appearance target leaves the manifest file untouched`() throws {
+        let (tempDir, bundlePath) = try makeBundle(fillColor: "#FFFFFF")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let jsonPath = URL(fileURLWithPath: bundlePath).appendingPathComponent("icon.json").path
+        let before = Date(timeIntervalSince1970: 1_000_000)
+        try FileManager.default.setAttributes([.modificationDate: before], ofItemAtPath: jsonPath)
+
+        let tool = SetIconAppearancesTool()
+        _ = try tool.execute(arguments: [
+            "bundle_path": .string(bundlePath),
+            "target": .string("group"),
+            "appearance": .string("dark"),
+        ])
+
+        let after = try FileManager.default.attributesOfItem(atPath: jsonPath)[.modificationDate]
+        #expect(after as? Date == before)
+    }
+
     // MARK: - Edge cases (adapted from ethbak/icon-composer-mcp)
 
     @Test

@@ -7,25 +7,24 @@ public struct DeployDeviceTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
+        deviceCtlRunner: DeviceCtlRunner = .init(),
+        sessionManager: SessionManager,
     ) {
         self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "deploy_device",
             description:
-            "Deploy an app to a connected device: stop any running instance, install the .app bundle, and launch it. Combines stop_app_device + install_app_device + launch_app_device into a single call.",
+                "Deploy an app to a connected device: stop any running instance, install the .app bundle, and launch it. Combines stop_app_device + install_app_device + launch_app_device into a single call.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "app_path": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Path to the .app bundle to install.",
-                        ),
+                        "description": .string("Path to the .app bundle to install."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -48,7 +47,7 @@ public struct DeployDeviceTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let appPath = try arguments.getRequiredString("app_path")
-        let bundleId = try arguments.getRequiredString("bundle_id")
+        let bundleID = try arguments.getRequiredString("bundle_id")
         let device = try await sessionManager.resolveDevice(from: arguments)
 
         var steps: [String] = []
@@ -56,52 +55,36 @@ public struct DeployDeviceTool: Sendable {
         do {
             // Step 1: Stop any running instance (ignore errors — app may not be running)
             do {
-                _ = try await deviceCtlRunner.terminate(udid: device, bundleId: bundleId)
-                steps.append("✓ Stopped running instance of '\(bundleId)'")
+                _ = try await deviceCtlRunner.terminate(udid: device, bundleID: bundleID)
+                steps.append("✓ Stopped running instance of '\(bundleID)'")
             } catch {
                 switch error {
                     case .processNotFound:
-                        steps.append("– No running instance of '\(bundleId)' to stop")
-                    default:
-                        steps.append("⚠ Could not stop app: \(error.localizedDescription)")
+                        steps.append("– No running instance of '\(bundleID)' to stop")
+                    default: steps.append("⚠ Could not stop app: \(error.localizedDescription)")
                 }
             }
 
             // Step 2: Install
-            let installResult = try await deviceCtlRunner.install(
-                udid: device, appPath: appPath,
-            )
+            let installResult = try await deviceCtlRunner.install(udid: device, appPath: appPath)
             guard installResult.succeeded else {
-                throw MCPError.internalError(
-                    "Install failed: \(installResult.errorOutput)",
-                )
+                throw MCPError.internalError("Install failed: \(installResult.errorOutput)")
             }
             steps.append("✓ Installed '\(appPath)'")
 
             // Step 3: Launch
-            let launchResult = try await deviceCtlRunner.launch(
-                udid: device, bundleId: bundleId,
-            )
+            let launchResult = try await deviceCtlRunner.launch(udid: device, bundleID: bundleID)
             guard launchResult.succeeded else {
-                throw MCPError.internalError(
-                    "Launch failed: \(launchResult.errorOutput)",
-                )
+                throw MCPError.internalError("Launch failed: \(launchResult.errorOutput)")
             }
-            steps.append("✓ Launched '\(bundleId)'")
+            steps.append("✓ Launched '\(bundleID)'")
 
             let summary = steps.joined(separator: "\n")
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Deploy succeeded on device '\(device)'\n\n\(summary)",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result.text("Deploy succeeded on device '\(device)'\n\n\(summary)")
         } catch {
+            if error is CancellationError { throw error }
             let progress = steps.isEmpty ? "" : "\n\nProgress:\n\(steps.joined(separator: "\n"))"
-            throw MCPError.internalError(
-                "Deploy failed: \(error.localizedDescription)\(progress)",
-            )
+            throw MCPError.internalError("Deploy failed: \(error.localizedDescription)\(progress)")
         }
     }
 }

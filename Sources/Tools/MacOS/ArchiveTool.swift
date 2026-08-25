@@ -233,7 +233,7 @@ public struct ArchiveTool: Sendable {
             )
             var text = "Archive succeeded for scheme '\(scheme)' (\(platform)) at \(archivePath)"
             if !summary.isEmpty, summary != "Build succeeded" { text += "\n\n" + summary }
-            return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(text)
         } catch let error as XcodebuildError {
             return error.formatPartialDiagnostics(
                 projectRoot: projectRoot, errorsOnly: errorsOnly, showWarnings: showWarnings,

@@ -10,16 +10,13 @@ public struct DebugViewHierarchyTool: Sendable {
     public func tool() -> Tool {
         .init(
             name: "debug_view_hierarchy",
-            description:
-                "Dump the UI view hierarchy of a running app.",
+            description: "Dump the UI view hierarchy of a running app.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the debugged process.",
-                        ),
+                        "description": .string("Process ID of the debugged process."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -29,9 +26,7 @@ public struct DebugViewHierarchyTool: Sendable {
                     ]),
                     "platform": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Platform: 'ios' (default) or 'macos'.",
-                        ),
+                        "description": .string("Platform: 'ios' (default) or 'macos'."),
                     ]),
                     "address": .object([
                         "type": .string("string"),
@@ -71,17 +66,7 @@ public struct DebugViewHierarchyTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        var pid = arguments.getInt("pid").map(Int32.init)
-
-        if pid == nil, let bundleId = arguments.getString("bundle_id") {
-            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
-        }
-
-        guard let targetPID = pid else {
-            throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required",
-            )
-        }
+        let targetPID = try await arguments.resolveDebugPID()
 
         let platform = arguments.getString("platform") ?? "ios"
         let address = arguments.getString("address")
@@ -110,7 +95,7 @@ public struct DebugViewHierarchyTool: Sendable {
             )
 
             let message = "View hierarchy:\n\n\(result.output)"
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

@@ -48,9 +48,9 @@ public struct AddFrameworkTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(frameworkName) = arguments["framework_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let frameworkName = arguments.getString("framework_name")
         else {
             throw MCPError.invalidParams(
                 "project_path, target_name, and framework_name are required",
@@ -59,7 +59,7 @@ public struct AddFrameworkTool: Sendable {
 
         let embed: Bool
 
-        if case let .bool(shouldEmbed) = arguments["embed"] {
+        if let shouldEmbed = arguments.getOptionalBool("embed") {
             embed = shouldEmbed
         } else {
             embed = false
@@ -75,15 +75,7 @@ public struct AddFrameworkTool: Sendable {
             // Find the target
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
                 $0.name == targetName
-            }) else {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
-            }
+            }) else { return CallTool.Result.text("Target '\(targetName)' not found in project") }
 
             // Find existing frameworks build phase (may need to create one via text edit)
             let existingFrameworksPhase = target.buildPhases.first(where: {
@@ -158,12 +150,8 @@ public struct AddFrameworkTool: Sendable {
             } ?? false
 
             if frameworkExists {
-                return CallTool.Result(content: [
-                    .text(
-                        text:
-                            "Framework '\(frameworkName)' already exists in target '\(targetName)'",
-                        annotations: nil, _meta: nil)
-                ],)
+                return CallTool.Result.text(
+                    "Framework '\(frameworkName)' already exists in target '\(targetName)'")
             }
 
             let q = PBXProjTextEditor.quotePBX
@@ -355,15 +343,11 @@ public struct AddFrameworkTool: Sendable {
             let embedText = embed && (!isSystemFramework || isDeveloperFramework)
                 ? " (embedded)"
                 : ""
-            return CallTool.Result(content: [
-                .text(
-                    text: "Successfully added framework '\(frameworkName)' to target '\(targetName)'\(embedText)",
-                    annotations: nil, _meta: nil)
-            ],)
-        } catch {
-            throw MCPError.internalError(
-                "Failed to add framework to Xcode project: \(error.localizedDescription)",
+            return CallTool.Result.text(
+                "Successfully added framework '\(frameworkName)' to target '\(targetName)'\(embedText)"
             )
+        } catch {
+            throw try error.asMCPError()
         }
     }
 }

@@ -5,60 +5,24 @@ import Foundation
 public struct StartMacLogCapTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "start_mac_log_cap",
             description:
-            "Start capturing logs from a macOS app using the unified logging system. Logs are written to a file and can be stopped with stop_mac_log_cap.",
+                "Start capturing logs from a macOS app using the unified logging system. Logs are written to a file and can be stopped with stop_mac_log_cap.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "bundle_id": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Optional bundle identifier to filter logs to a specific app. Uses the last component as the executable name (e.g., 'com.example.MyApp' matches process 'MyApp').",
-                        ),
-                    ]),
-                    "process_name": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Optional process name to filter logs to a specific process. May contain spaces and parentheses (e.g., 'ThesisApp (debug)' from a build_debug_macos launch).",
-                        ),
-                    ]),
-                    "subsystem": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Optional OSLog subsystem to filter logs (e.g., 'com.apple.CloudKit').",
-                        ),
-                    ]),
-                    "predicate": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Optional custom predicate to filter logs. Overrides bundle_id, process_name, and subsystem filters.",
-                        ),
-                    ]),
-                    "level": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Log level to capture: 'default', 'info', or 'debug'. Default is 'default' which excludes info/debug messages. Use 'info' or 'debug' to capture lower-severity messages.",
-                        ),
-                        "enum": .array([
-                            .string("default"),
-                            .string("info"),
-                            .string("debug"),
-                        ]),
-                    ]),
+                "properties": .object(UnifiedLogQuery.schemaProperties.merging([
                     "output_file": .object([
                         "type": .string("string"),
                         "description": .string(
                             "Path to write logs to. Defaults to /tmp/mac_log_<identifier>.log",
                         ),
-                    ]),
-                ]),
+                    ])
+                ]) { _, new in new },
+                ),
                 "required": .array([]),
             ]),
             annotations: .mutation,
@@ -66,80 +30,13 @@ public struct StartMacLogCapTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let bundleId = arguments.getString("bundle_id")
-        let processName = arguments.getString("process_name")
-        let subsystem = arguments.getString("subsystem")
-        let customPredicate = arguments.getString("predicate")
-
-        let level = arguments.getString("level")
-        let outputFile =
-            arguments.getString("output_file")
-                ?? "/tmp/mac_log_\(bundleId ?? processName ?? "system").log"
-
         do {
-            if let bundleId {
-                try PredicateFilterValidator.validate(bundleId, field: "bundle_id")
-            }
-            if let processName {
-                try PredicateFilterValidator.validateStringLiteral(
-                    processName, field: "process_name",
-                )
-            }
-            if let subsystem {
-                try PredicateFilterValidator.validate(subsystem, field: "subsystem")
-            }
+            let query = try UnifiedLogQuery(arguments: arguments)
+            let outputFile = arguments.getString("output_file")
+                ?? "/tmp/mac_log_\(query.bundleID ?? query.processName ?? "system").log"
 
-            var args = ["stream", "--style", "compact"]
-
-            // Add log level flags
-            if let level {
-                switch level {
-                    case "debug":
-                        args.append("--debug")
-                    case "info":
-                        args.append("--info")
-                    default:
-                        break // "default" needs no flag
-                }
-            }
-
-            var predicate: String?
-
-            if let customPredicate {
-                predicate = customPredicate
-            } else {
-                var predicateParts: [String] = []
-
-                if let bundleId {
-                    // Resolve the actual executable name from the app bundle when
-                    // possible, since the last component of the bundle ID may not
-                    // match the binary name (e.g., "com.thesisapp.testapp" but
-                    // the executable is "TestApp").
-                    let appName: String
-                    if let resolved = await Self.resolveExecutableName(bundleId: bundleId) {
-                        appName = resolved
-                        predicateParts.append("process == \"\(appName)\"")
-                    } else {
-                        appName = bundleId.split(separator: ".").last.map(String.init) ?? bundleId
-                        predicateParts.append("process ==[cd] \"\(appName)\"")
-                    }
-                }
-                if let processName {
-                    let escaped = PredicateFilterValidator.escapeStringLiteral(processName)
-                    predicateParts.append("process == \"\(escaped)\"")
-                }
-                if let subsystem {
-                    predicateParts.append("subsystem == \"\(subsystem)\"")
-                }
-
-                if !predicateParts.isEmpty {
-                    predicate = predicateParts.joined(separator: " AND ")
-                }
-            }
-
-            if let predicate {
-                args.append(contentsOf: ["--predicate", predicate])
-            }
+            let predicate = await query.resolvedPredicate()
+            let args = query.commandArguments(subcommand: "stream", predicate: predicate)
 
             let pid = try LogCapture.launchStreamProcess(
                 executable: "/usr/bin/log", arguments: args, outputFile: outputFile,
@@ -151,53 +48,15 @@ public struct StartMacLogCapTool: Sendable {
             var message = "Started macOS log capture\n"
             message += "Output file: \(outputFile)\n"
             message += "Process ID: \(pid)\n"
-            if let predicate {
-                message += "Predicate: \(predicate)\n"
-            }
-            if let level, level != "default" {
-                message += "Level: \(level) (includes \(level) and above)\n"
+            if let predicate { message += "Predicate: \(predicate)\n" }
+            if let level = query.level, level != .default {
+                message += "Level: \(level.rawValue) (includes \(level.rawValue) and above)\n"
             }
             message += "\nUse stop_mac_log_cap to stop the capture."
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }
-    }
-
-    /// Resolves the actual executable name from an app bundle's Info.plist.
-    /// Uses `mdfind` to locate the app by bundle ID, then reads CFBundleExecutable.
-    static func resolveExecutableName(bundleId: String) async -> String? {
-        guard
-            let result = try? await ProcessResult.run(
-                "/usr/bin/mdfind",
-                arguments: ["kMDItemCFBundleIdentifier == '\(bundleId)'"],
-                timeout: .seconds(5),
-            ), result.succeeded
-        else {
-            return nil
-        }
-
-        guard
-            let appPath = result.stdout
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .components(separatedBy: .newlines)
-            .first(where: { $0.hasSuffix(".app") }), !appPath.isEmpty
-        else {
-            return nil
-        }
-
-        let infoPlistURL = URL(fileURLWithPath: appPath)
-            .appendingPathComponent("Contents/Info.plist")
-        guard let data = try? Data(contentsOf: infoPlistURL),
-              let plist = try? PropertyListSerialization.propertyList(
-                  from: data, format: nil,
-              ) as? [String: Any],
-              let executable = plist["CFBundleExecutable"] as? String
-        else {
-            return nil
-        }
-
-        return executable
     }
 }

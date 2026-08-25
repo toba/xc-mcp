@@ -15,21 +15,15 @@ public struct GetFileCoverageTool: Sendable {
                 "properties": .object([
                     "result_bundle_path": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcresult bundle.",
-                        ),
+                        "description": .string("Path to the .xcresult bundle."),
                     ]),
                     "file": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Source file path to get coverage for.",
-                        ),
+                        "description": .string("Source file path to get coverage for."),
                     ]),
                     "show_lines": .object([
                         "type": .string("boolean"),
-                        "description": .string(
-                            "Include uncovered line ranges. Defaults to false.",
-                        ),
+                        "description": .string("Include uncovered line ranges. Defaults to false."),
                     ]),
                 ]),
                 "required": .array([.string("result_bundle_path"), .string("file")]),
@@ -44,9 +38,7 @@ public struct GetFileCoverageTool: Sendable {
         let showLines = arguments.getBool("show_lines")
 
         guard FileManager.default.fileExists(atPath: resultBundlePath) else {
-            throw MCPError.invalidParams(
-                "Result bundle not found at: \(resultBundlePath)",
-            )
+            throw MCPError.invalidParams("Result bundle not found at: \(resultBundlePath)")
         }
 
         let parser = CoverageParser()
@@ -54,12 +46,9 @@ public struct GetFileCoverageTool: Sendable {
             xcresultPath: resultBundlePath,
             filePath: filePath,
         ) else {
-            return CallTool.Result(content: [
-                .text(
-                    text:
-                        "No coverage data found for file: \(filePath). Ensure the file is part of a target that was tested with coverage enabled.",
-                    annotations: nil, _meta: nil)
-            ])
+            return CallTool.Result.text(
+                "No coverage data found for file: \(filePath). Ensure the file is part of a target that was tested with coverage enabled."
+            )
         }
 
         var output = Self.formatFileCoverage(fileCoverage)
@@ -82,20 +71,18 @@ public struct GetFileCoverageTool: Sendable {
                 tool: "get_coverage_report",
                 params: [("result_bundle_path", .string(resultBundlePath))],
                 priority: 1,
-            ),
+            )
         ]
         output = NextStepHints.appended(to: output, hints: hints)
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 
     static func formatFileCoverage(_ coverage: FileFunctionCoverage) -> String {
         var lines: [String] = []
         lines.append("File Coverage: \(coverage.path)")
         lines.append(String(
-            format: "Coverage: %.1f%% (%d/%d lines)",
-            coverage.lineCoverage,
-            coverage.coveredLines,
+            format: "Coverage: %.1f%% (%d/%d lines)", coverage.lineCoverage, coverage.coveredLines,
             coverage.executableLines,
         ))
         lines.append("")
@@ -112,14 +99,8 @@ public struct GetFileCoverageTool: Sendable {
         for fn in sorted {
             let prefix = fn.executionCount == 0 ? "[NOT COVERED] " : ""
             lines.append(String(
-                format: "  %@L%d %@: %.1f%% (%d/%d, called %dx)",
-                prefix,
-                fn.lineNumber,
-                fn.name,
-                fn.lineCoverage,
-                fn.coveredLines,
-                fn.executableLines,
-                fn.executionCount,
+                format: "  %@L%d %@: %.1f%% (%d/%d, called %dx)", prefix, fn.lineNumber, fn.name,
+                fn.lineCoverage, fn.coveredLines, fn.executableLines, fn.executionCount,
             ))
         }
 

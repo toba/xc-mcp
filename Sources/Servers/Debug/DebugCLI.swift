@@ -4,8 +4,8 @@ import ArgumentParser
 
 /// Command-line interface for the xc-debug MCP server.
 ///
-/// This focused server provides LLDB debugging tools with minimal
-/// token overhead (~2K tokens vs ~50K for the full xc-mcp server).
+/// This focused server provides LLDB debugging tools with minimal token overhead (~2K tokens vs
+/// ~50K for the full xc-mcp server).
 ///
 /// ## Usage
 ///

@@ -48,6 +48,8 @@ public enum SampleOutputParser {
         let filterApp = filter != "all"
 
         var result = ""
+        // one line per thread in the summary, plus the per-thread detail sections below
+        result.reserveCapacity(threads.count * 128)
         result += formatHeader(header)
 
         // Per-thread summary
@@ -154,6 +156,9 @@ public enum SampleOutputParser {
 
     // MARK: - Call graph parsing
 
+    /// Matches a thread header such as `1000 Thread_100 DispatchQueue_1`
+    private static nonisolated(unsafe) let threadHeaderPattern = /^(\d+)\s+(Thread_\S+.*)$/
+
     static func parseCallGraph(_ text: String) -> [ThreadSample] {
         let lines = text.components(separatedBy: .newlines)
         var threads: [ThreadSample] = []
@@ -167,7 +172,7 @@ public enum SampleOutputParser {
             if trimmed.isEmpty { continue }
 
             // Thread header: " 1000 Thread_100 DispatchQueue_1: ..."
-            if let match = trimmed.wholeMatch(of: /^(\d+)\s+(Thread_\S+.*)$/) {
+            if let match = trimmed.wholeMatch(of: threadHeaderPattern) {
                 if !currentThreadHeader.isEmpty {
                     let nodes = buildTree(from: currentFrames)
                     threads.append(ThreadSample(
@@ -228,6 +233,9 @@ public enum SampleOutputParser {
         return max(0, col / 2)
     }
 
+    /// Matches a frame line such as `1000 doWork (in MyApp) + 42`
+    private static nonisolated(unsafe) let frameLinePattern = /(\d+)\s+(.+?)\s+\(in\s+(.+?)\).*$/
+
     static func parseFrameLine(
         _ line: String
     ) -> (function: String, library: String, samples: Int)? {
@@ -243,9 +251,7 @@ public enum SampleOutputParser {
         }
         let trimmed = line[startIndex...]
 
-        guard let match = trimmed.wholeMatch(of: /(\d+)\s+(.+?)\s+\(in\s+(.+?)\).*$/) else {
-            return nil
-        }
+        guard let match = trimmed.wholeMatch(of: frameLinePattern) else { return nil }
 
         return (
             function: String(match.2),
@@ -453,13 +459,15 @@ public enum SampleOutputParser {
     static func formatFunctionTable(_ functions: [FunctionAggregate]) -> String {
         guard !functions.isEmpty else { return "" }
 
-        let maxSamples = functions.map { String($0.samples).count }.max() ?? 5
+        let maxSamples = functions.lazy.map { String($0.samples).count }.max() ?? 5
         let samplesWidth = max(maxSamples, 7)
 
-        let maxFunc = min(functions.map(\.function.count).max() ?? 30, 60)
+        let maxFunc = min(functions.lazy.map(\.function.count).max() ?? 30, 60)
         let funcWidth = max(maxFunc, 8)
 
         var result = ""
+        // two header lines plus one row per function, each about as wide as the column widths
+        result.reserveCapacity((functions.count + 2) * (samplesWidth + funcWidth + 32))
         result +=
             "  \(pad("Samples", width: samplesWidth)) | \(pad("Function", width: -funcWidth)) | Library\n"
         result +=
@@ -487,12 +495,18 @@ public enum SampleOutputParser {
 
     // MARK: - Binary image extraction
 
+    /// Matches the `Process:` line of a sample header
+    private static nonisolated(unsafe) let processNamePattern = /Process:\s+(\S+)/
+
+    /// Matches the binary image line that carries a load-address offset
+    private static nonisolated(unsafe) let loadedImagePattern = /\+(\S+)\s+\(/
+
     static func extractAppBinary(from binaryImages: String, header: String) -> String? {
-        if let match = header.firstMatch(of: /Process:\s+(\S+)/) { return String(match.1) }
+        if let match = header.firstMatch(of: processNamePattern) { return String(match.1) }
         let lines = binaryImages.components(separatedBy: .newlines)
 
         for line in lines where line.contains("+") {
-            if let match = line.firstMatch(of: /\+(\S+)\s+\(/) { return String(match.1) }
+            if let match = line.firstMatch(of: loadedImagePattern) { return String(match.1) }
         }
         return nil
     }

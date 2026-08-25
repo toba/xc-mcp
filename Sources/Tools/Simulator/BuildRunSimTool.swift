@@ -91,7 +91,7 @@ public struct BuildRunSimTool: Sendable {
         let simulatorInput = try await sessionManager.resolveSimulator(from: arguments)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
-        let bundleId = arguments.getString("bundle_id")
+        let bundleID = arguments.getString("bundle_id")
         let timeout = arguments.resolveTimeout(default: XcodebuildRunner.defaultTimeout)
         let outputTimeout = arguments.resolveOutputTimeout(
             default: XcodebuildRunner.deviceOutputTimeout,
@@ -146,20 +146,22 @@ public struct BuildRunSimTool: Sendable {
                 outputTimeout: outputTimeout,
             )
 
-            let resolvedBundleId: String
+            // One decode serves every lookup below; the payload runs to megabytes.
+            let settings = BuildSettingSet(buildSettings.stdout)
+            let resolvedBundleID: String
             let appPath: String
 
-            if let providedBundleId = bundleId {
-                resolvedBundleId = providedBundleId
-                appPath = extractAppPath(from: buildSettings.stdout) ?? ""
+            if let providedBundleID = bundleID {
+                resolvedBundleID = providedBundleID
+                appPath = settings.appPath ?? ""
             } else {
-                guard let extractedBundleId = extractBundleId(from: buildSettings.stdout) else {
+                guard let extractedBundleID = settings.bundleID else {
                     throw MCPError.internalError(
                         "Could not determine bundle ID. Please provide bundle_id parameter.",
                     )
                 }
-                resolvedBundleId = extractedBundleId
-                appPath = extractAppPath(from: buildSettings.stdout) ?? ""
+                resolvedBundleID = extractedBundleID
+                appPath = settings.appPath ?? ""
             }
 
             // Step 3: Boot simulator if needed
@@ -183,29 +185,20 @@ public struct BuildRunSimTool: Sendable {
             // Step 5: Launch app
             let launchResult = try await simctlRunner.launch(
                 udid: simulator,
-                bundleId: resolvedBundleId,
+                bundleID: resolvedBundleID,
             )
 
             if launchResult.succeeded {
                 var message =
-                    "Successfully built and launched '\(resolvedBundleId)' on simulator '\(simulator)'"
+                    "Successfully built and launched '\(resolvedBundleID)' on simulator '\(simulator)'"
                 if let pid = launchResult.launchedPID { message += "\nProcess ID: \(pid)" }
                 message += "\n\n" + derivedDataNote
-                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
-                )
+                return CallTool.Result.text(message)
             } else {
                 throw MCPError.internalError("Failed to launch app: \(launchResult.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()
         }
-    }
-
-    private func extractBundleId(from buildSettings: String) -> String? {
-        BuildSettingExtractor.extractBundleId(from: buildSettings)
-    }
-
-    private func extractAppPath(from buildSettings: String) -> String? {
-        BuildSettingExtractor.extractAppPath(from: buildSettings)
     }
 }

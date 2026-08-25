@@ -22,73 +22,52 @@ public enum ExtensionType: String, CaseIterable, Sendable {
 
     public init?(from string: String) {
         let lowercased = string.lowercased()
+
         if let type = ExtensionType(rawValue: lowercased) {
             self = type
         } else {
             // Handle alternative naming conventions
             switch lowercased {
-                case "notificationservice":
-                    self = .notificationService
-                case "notificationcontent":
-                    self = .notificationContent
-                case "fileprovider":
-                    self = .fileProvider
-                case "intentsui":
-                    self = .intentsUI
-                case "photoediting":
-                    self = .photoEditing
-                case "documentprovider":
-                    self = .documentProvider
-                case "sourceeditor", "xcode_source_editor", "xcodesourceeditor",
-                     "xcode_extension", "xcodeextension":
-                    self = .sourceEditor
-                default:
-                    return nil
+                case "notificationservice": self = .notificationService
+                case "notificationcontent": self = .notificationContent
+                case "fileprovider": self = .fileProvider
+                case "intentsui": self = .intentsUI
+                case "photoediting": self = .photoEditing
+                case "documentprovider": self = .documentProvider
+                case "sourceeditor",
+                     "xcode_source_editor",
+                     "xcodesourceeditor",
+                     "xcode_extension",
+                     "xcodeextension": self = .sourceEditor
+                default: return nil
             }
         }
     }
 
     public var productType: PBXProductType {
         switch self {
-            case .intents:
-                return .intentsServiceExtension
-            case .sourceEditor:
-                return .xcodeExtension
-            default:
-                return .appExtension
+            case .intents: .intentsServiceExtension
+            case .sourceEditor: .xcodeExtension
+            default: .appExtension
         }
     }
 
     public var extensionPointIdentifier: String {
         switch self {
-            case .widget:
-                return "com.apple.widgetkit-extension"
-            case .notificationService:
-                return "com.apple.usernotifications.service"
-            case .notificationContent:
-                return "com.apple.usernotifications.content-extension"
-            case .share:
-                return "com.apple.share-services"
-            case .today:
-                return "com.apple.widget-extension"
-            case .action:
-                return "com.apple.ui-services"
-            case .fileProvider:
-                return "com.apple.fileprovider-nonui"
-            case .intents:
-                return "com.apple.intents-service"
-            case .intentsUI:
-                return "com.apple.intents-ui-service"
-            case .keyboard:
-                return "com.apple.keyboard-service"
-            case .photoEditing:
-                return "com.apple.photo-editing"
-            case .documentProvider:
-                return "com.apple.fileprovider-ui"
-            case .sourceEditor:
-                return "com.apple.dt.Xcode.extension.source-editor"
-            case .custom:
-                return ""
+            case .widget: "com.apple.widgetkit-extension"
+            case .notificationService: "com.apple.usernotifications.service"
+            case .notificationContent: "com.apple.usernotifications.content-extension"
+            case .share: "com.apple.share-services"
+            case .today: "com.apple.widget-extension"
+            case .action: "com.apple.ui-services"
+            case .fileProvider: "com.apple.fileprovider-nonui"
+            case .intents: "com.apple.intents-service"
+            case .intentsUI: "com.apple.intents-ui-service"
+            case .keyboard: "com.apple.keyboard-service"
+            case .photoEditing: "com.apple.photo-editing"
+            case .documentProvider: "com.apple.fileprovider-ui"
+            case .sourceEditor: "com.apple.dt.Xcode.extension.source-editor"
+            case .custom: ""
         }
     }
 }
@@ -96,15 +75,13 @@ public enum ExtensionType: String, CaseIterable, Sendable {
 public struct AddAppExtensionTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "add_app_extension",
             description:
-            "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, Xcode Source Editor, and other extension types.",
+                "Add an App Extension target to the project and embed it in a host app. Supports Widget, Push Notification, Share, Xcode Source Editor, and other extension types.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -138,8 +115,9 @@ public struct AddAppExtensionTool: Sendable {
                     ]),
                     "platform": .object([
                         "type": .string("string"),
+                        "enum": .array(ApplePlatform.allCases.map { .string($0.rawValue) }),
                         "description": .string(
-                            "Platform (iOS, macOS, tvOS, watchOS) - optional, defaults to iOS",
+                            "Platform (\(ApplePlatform.allNames)) - optional, defaults to iOS",
                         ),
                     ]),
                     "deployment_target": .object([
@@ -158,30 +136,20 @@ public struct AddAppExtensionTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(extensionName) = arguments["extension_name"],
-              case let .string(extensionTypeString) = arguments["extension_type"],
-              case let .string(hostTargetName) = arguments["host_target_name"],
-              case let .string(bundleIdentifier) = arguments["bundle_identifier"]
+        guard let projectPath = arguments.getString("project_path"),
+              let extensionName = arguments.getString("extension_name"),
+              let extensionTypeString = arguments.getString("extension_type"),
+              let hostTargetName = arguments.getString("host_target_name"),
+              let bundleIdentifier = arguments.getString("bundle_identifier")
         else {
             throw MCPError.invalidParams(
                 "project_path, extension_name, extension_type, host_target_name, and bundle_identifier are required",
             )
         }
 
-        let platform: String
-        if case let .string(plat) = arguments["platform"] {
-            platform = plat
-        } else {
-            platform = "iOS"
-        }
+        let platform = try arguments.getPlatform()
 
-        let deploymentTarget: String?
-        if case let .string(target) = arguments["deployment_target"] {
-            deploymentTarget = target
-        } else {
-            deploymentTarget = nil
-        }
+        let deploymentTarget = arguments.getString("deployment_target")
 
         // Map extension type string to ExtensionType enum
         guard let extensionType = ExtensionType(from: extensionTypeString) else {
@@ -198,42 +166,21 @@ public struct AddAppExtensionTool: Sendable {
 
             // Check if extension target already exists
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == extensionName }) {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Extension target '\(extensionName)' already exists in project",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Extension target '\(extensionName)' already exists in project")
             }
 
             // Find host app target
-            guard
-                let hostTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
-                    $0.name == hostTargetName
-                })
-            else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Host target '\(hostTargetName)' not found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+            guard let hostTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == hostTargetName
+            }) else {
+                return CallTool.Result.text("Host target '\(hostTargetName)' not found in project")
             }
 
             // Verify host target is an application
             guard hostTarget.productType == .application else {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Host target '\(hostTargetName)' is not an application. App Extensions can only be embedded in applications.",
-                            annotations: nil, _meta: nil),
-                    ],
+                return CallTool.Result.text(
+                    "Host target '\(hostTargetName)' is not an application. App Extensions can only be embedded in applications."
                 )
             }
 
@@ -268,9 +215,7 @@ public struct AddAppExtensionTool: Sendable {
                 "COPY_PHASE_STRIP": .string("NO"),
             ]
 
-            // TARGETED_DEVICE_FAMILY is only meaningful for iOS/tvOS/watchOS, not macOS
-            if platform != "macOS" {
-                let deviceFamily = platform == "iOS" ? "1,2" : "1"
+            if let deviceFamily = platform.targetedDeviceFamily {
                 debugSettings["TARGETED_DEVICE_FAMILY"] = .string(deviceFamily)
                 releaseSettings["TARGETED_DEVICE_FAMILY"] = .string(deviceFamily)
             }
@@ -287,14 +232,7 @@ public struct AddAppExtensionTool: Sendable {
 
             // Add deployment target if specified
             if let deploymentTarget {
-                let deploymentKey =
-                    switch platform {
-                        case "iOS": "IPHONEOS_DEPLOYMENT_TARGET"
-                        case "macOS": "MACOSX_DEPLOYMENT_TARGET"
-                        case "tvOS": "TVOS_DEPLOYMENT_TARGET"
-                        case "watchOS": "WATCHOS_DEPLOYMENT_TARGET"
-                        default: throw MCPError.invalidParams("Unknown platform: \(platform)")
-                    }
+                let deploymentKey = platform.deploymentTargetKey
                 extensionDebugConfig.buildSettings[deploymentKey] = .string(deploymentTarget)
                 extensionReleaseConfig.buildSettings[deploymentKey] = .string(deploymentTarget)
             }
@@ -339,22 +277,17 @@ public struct AddAppExtensionTool: Sendable {
             xcodeproj.pbxproj.add(object: productReference)
             extensionTarget.product = productReference
 
-            // Add product to Products group
-            if let project = xcodeproj.pbxproj.rootObject,
-               let productsGroup = project.productsGroup
-            {
-                productsGroup.children.append(productReference)
+            guard let project = xcodeproj.pbxproj.rootObject else {
+                throw MCPError.invalidParams("Project has no root object: \(projectPath)")
             }
 
-            // Add extension target to project
-            if let project = xcodeproj.pbxproj.rootObject {
-                project.targets.append(extensionTarget)
-            }
+            // Add product to Products group
+            project.productsGroup?.children.append(productReference)
+
+            project.targets.append(extensionTarget)
 
             // Create extension folder in main group
-            if let project = try xcodeproj.pbxproj.rootProject(),
-               let mainGroup = project.mainGroup
-            {
+            if let mainGroup = project.mainGroup {
                 let extensionGroup = PBXGroup(sourceTree: .group, name: extensionName)
                 xcodeproj.pbxproj.add(object: extensionGroup)
                 mainGroup.children.append(extensionGroup)
@@ -362,7 +295,7 @@ public struct AddAppExtensionTool: Sendable {
 
             // Create target dependency
             let containerProxy = PBXContainerItemProxy(
-                containerPortal: .project(xcodeproj.pbxproj.rootObject!),
+                containerPortal: .project(project),
                 proxyType: .nativeTarget,
                 remoteInfo: extensionName,
             )
@@ -386,40 +319,34 @@ public struct AddAppExtensionTool: Sendable {
 
             // Find or create "Embed App Extensions" copy files build phase
             let copyPhases = hostTarget.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
-            var embedPhase =
-                copyPhases
-                    .first {
-                        $0.name == "Embed App Extensions" || $0.dstSubfolderSpec == .plugins
-                            || $0
-                            .dstSubfolder == .plugins
-                    }
+            let existingPhase = copyPhases.first {
+                $0.name == "Embed App Extensions" || $0.dstSubfolderSpec == .plugins
+                    || $0.dstSubfolder == .plugins
+            }
+            let embedPhase: PBXCopyFilesBuildPhase
 
-            if embedPhase == nil {
+            if let existingPhase {
+                embedPhase = existingPhase
+            } else {
                 embedPhase = PBXCopyFilesBuildPhase(
                     dstPath: "",
                     dstSubfolderSpec: .plugins,
                     name: "Embed App Extensions",
                 )
-                xcodeproj.pbxproj.add(object: embedPhase!)
-                hostTarget.buildPhases.append(embedPhase!)
+                xcodeproj.pbxproj.add(object: embedPhase)
+                hostTarget.buildPhases.append(embedPhase)
             }
 
-            embedPhase?.files?.append(buildFile)
+            embedPhase.files?.append(buildFile)
 
             // Save project
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully created App Extension '\(extensionName)' (\(extensionTypeString)) with bundle identifier '\(bundleIdentifier)' and embedded it in '\(hostTargetName)'",
-                        annotations: nil, _meta: nil),
-                ],
+            return CallTool.Result.text(
+                "Successfully created App Extension '\(extensionName)' (\(extensionTypeString)) with bundle identifier '\(bundleIdentifier)' and embedded it in '\(hostTargetName)'"
             )
         } catch {
-            throw MCPError.internalError(
-                "Failed to create App Extension in Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

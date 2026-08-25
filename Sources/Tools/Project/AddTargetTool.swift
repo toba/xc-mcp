@@ -38,8 +38,9 @@ public struct AddTargetTool: Sendable {
                     ]),
                     "platform": .object([
                         "type": .string("string"),
+                        "enum": .array(ApplePlatform.allCases.map { .string($0.rawValue) }),
                         "description": .string(
-                            "Platform (iOS, macOS, tvOS, watchOS) - optional, defaults to iOS)",
+                            "Platform (\(ApplePlatform.allNames)) - optional, defaults to iOS",
                         ),
                     ]),
                     "deployment_target": .object([
@@ -69,39 +70,21 @@ public struct AddTargetTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(productTypeString) = arguments["product_type"],
-              case let .string(bundleIdentifier) = arguments["bundle_identifier"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let productTypeString = arguments.getString("product_type"),
+              let bundleIdentifier = arguments.getString("bundle_identifier")
         else {
             throw MCPError.invalidParams(
                 "project_path, target_name, product_type, and bundle_identifier are required",
             )
         }
 
-        let platform: String
+        let platform = try arguments.getPlatform()
 
-        if case let .string(plat) = arguments["platform"] {
-            platform = plat
-        } else {
-            platform = "iOS"
-        }
+        let deploymentTarget = arguments.getString("deployment_target")
 
-        let deploymentTarget: String?
-
-        if case let .string(target) = arguments["deployment_target"] {
-            deploymentTarget = target
-        } else {
-            deploymentTarget = nil
-        }
-
-        let parentGroupPath: String?
-
-        if case let .string(pg) = arguments["parent_group"] {
-            parentGroupPath = pg
-        } else {
-            parentGroupPath = nil
-        }
+        let parentGroupPath = arguments.getString("parent_group")
 
         let createGroup = arguments.getBool("create_group", default: true)
 
@@ -158,13 +141,7 @@ public struct AddTargetTool: Sendable {
 
             // Check if target already exists
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Target '\(targetName)' already exists in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
+                return CallTool.Result.text("Target '\(targetName)' already exists in project")
             }
 
             // Introspect project-level build configurations to match all config names
@@ -198,26 +175,12 @@ public struct AddTargetTool: Sendable {
                 baseSettings["SKIP_INSTALL"] = .string("YES")
             }
 
-            // Add deployment target if specified
-            let deploymentKey: String? =
-                if deploymentTarget != nil {
-                    platform == "iOS"
-                        ? "IPHONEOS_DEPLOYMENT_TARGET"
-                        : platform == "macOS"
-                            ? "MACOSX_DEPLOYMENT_TARGET"
-                            : platform == "tvOS"
-                                ? "TVOS_DEPLOYMENT_TARGET"
-                                : "WATCHOS_DEPLOYMENT_TARGET"
-                } else {
-                    nil
-                }
-
             var targetBuildConfigs: [XCBuildConfiguration] = []
 
             for configName in configNames {
                 var settings = baseSettings
-                if let deploymentKey, let deploymentTarget {
-                    settings[deploymentKey] = .string(deploymentTarget)
+                if let deploymentTarget {
+                    settings[platform.deploymentTargetKey] = .string(deploymentTarget)
                 }
                 let config = XCBuildConfiguration(name: configName, buildSettings: settings)
                 xcodeproj.pbxproj.add(object: config)
@@ -296,15 +259,11 @@ public struct AddTargetTool: Sendable {
             // Save project
             try PBXProjWriter.write(xcodeproj, to: projectPathKit, expectedPreimage: preimage)
 
-            return CallTool.Result(content: [
-                .text(
-                    text: "Successfully created target '\(targetName)' with product type '\(productTypeString)' and bundle identifier '\(bundleIdentifier)'",
-                    annotations: nil, _meta: nil)
-            ],)
-        } catch {
-            throw MCPError.internalError(
-                "Failed to create target in Xcode project: \(error.localizedDescription)",
+            return CallTool.Result.text(
+                "Successfully created target '\(targetName)' with product type '\(productTypeString)' and bundle identifier '\(bundleIdentifier)'"
             )
+        } catch {
+            throw try error.asMCPError()
         }
     }
 }
@@ -336,7 +295,7 @@ extension PBXProductType {
                  .intentsServiceExtension,
                  .driverExtension,
                  .systemExtension: "wrapper.app-extension"
-            case .commandLineTool: "compiled.mach-o.executable"
+            case .commandLineTool, .hostBuildTool: "compiled.mach-o.executable"
             case .xpcService: "wrapper.xpc-service"
             case .instrumentsPackage: "com.apple.instruments.instrdst"
             case .metalLibrary: "file.metallib"
@@ -369,7 +328,7 @@ extension PBXProductType {
                  .intentsServiceExtension,
                  .driverExtension,
                  .systemExtension: "appex"
-            case .commandLineTool: nil
+            case .commandLineTool, .hostBuildTool: nil
             case .xpcService: "xpc"
             case .instrumentsPackage: "instrdst"
             case .metalLibrary: "metallib"

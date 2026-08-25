@@ -60,25 +60,13 @@ public struct AddFileTool: Sendable {
     /// - Returns: The result containing success message.
     /// - Throws: MCPError if required parameters are missing or file addition fails.
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(filePath) = arguments["file_path"]
+        guard let projectPath = arguments.getString("project_path"),
+              let filePath = arguments.getString("file_path")
         else { throw MCPError.invalidParams("project_path and file_path are required") }
 
-        let groupName: String?
+        let groupName = arguments.getString("group_name")
 
-        if case let .string(group) = arguments["group_name"] {
-            groupName = group
-        } else {
-            groupName = nil
-        }
-
-        let targetName: String?
-
-        if case let .string(target) = arguments["target_name"] {
-            targetName = target
-        } else {
-            targetName = nil
-        }
+        let targetName = arguments.getString("target_name")
 
         do {
             // Resolve and validate the project path
@@ -171,8 +159,8 @@ public struct AddFileTool: Sendable {
             // Write project
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            let targetInfo = targetName != nil ? " to target '\(targetName!)'" : ""
-            let groupInfo = groupName != nil ? " in group '\(groupName!)'" : ""
+            let targetInfo = targetName.map { " to target '\($0)'" } ?? ""
+            let groupInfo = groupName.map { " in group '\($0)'" } ?? ""
 
             var message = "Successfully added file '\(fileName)'\(targetInfo)\(groupInfo)"
 
@@ -183,11 +171,9 @@ public struct AddFileTool: Sendable {
                 projectRoot: projectRoot,
             ) { message += "\n\(warning)" }
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
-            throw MCPError.internalError(
-                "Failed to add file to Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 

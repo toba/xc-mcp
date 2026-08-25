@@ -46,13 +46,13 @@ public enum DerivedDataScoper {
     ///   - projectPath: Absolute `.xcodeproj` path, if known.
     ///   - destination: The xcodebuild `-destination` value the invocation uses.
     ///   - additionalArguments: Args the caller passes to xcodebuild.
-    ///   - environment: Process environment (for testing). Defaults to the live env.
+    ///   - environment: Process environment (for testing). Defaults to the startup snapshot.
     public static func note(
         workspacePath: String?,
         projectPath: String?,
         destination: String? = nil,
         additionalArguments: [String] = [],
-        environment: [String: String] = ProcessInfo.processInfo.environment,
+        environment: [String: String] = ProcessEnvironment.current,
     ) -> String {
         if let caller = callerSuppliedPath(in: additionalArguments) {
             return "DerivedData: \(caller) (from -derivedDataPath)"
@@ -75,7 +75,7 @@ public enum DerivedDataScoper {
     public static func sessionNote(
         workspacePath: String?,
         projectPath: String?,
-        environment: [String: String] = ProcessInfo.processInfo.environment,
+        environment: [String: String] = ProcessEnvironment.current,
     ) -> String {
         if let override = environment["XC_MCP_DERIVED_DATA_PATH"], !override.isEmpty {
             return "\(override) (XC_MCP_DERIVED_DATA_PATH)"
@@ -117,13 +117,13 @@ public enum DerivedDataScoper {
     ///     `platform=iOS Simulator,id=…`), used to namespace the path by platform. `nil` yields the
     ///     base path.
     ///   - additionalArguments: Args the caller plans to pass to xcodebuild.
-    ///   - environment: Process environment (for testing). Defaults to the live env.
+    ///   - environment: Process environment (for testing). Defaults to the startup snapshot.
     public static func effectivePath(
         workspacePath: String?,
         projectPath: String?,
         destination: String? = nil,
         additionalArguments: [String] = [],
-        environment: [String: String] = ProcessInfo.processInfo.environment,
+        environment: [String: String] = ProcessEnvironment.current,
     ) -> String? {
         if additionalArguments.contains("-derivedDataPath") { return nil }
         if scopingIsDisabled(environment: environment) { return nil }
@@ -169,22 +169,29 @@ public enum DerivedDataScoper {
     public static func platformSlug(forDestination destination: String?) -> String? {
         guard let destination, !destination.isEmpty else { return nil }
         let lower = destination.lowercased()
-        if lower.contains("mac catalyst") || lower.contains("maccatalyst") { return "maccatalyst" }
-        if lower.contains("ios simulator") { return "iphonesimulator" }
-        if lower.contains("tvos simulator") { return "appletvsimulator" }
-        if lower.contains("watchos simulator") { return "watchsimulator" }
-        if lower.contains("visionos simulator") || lower.contains("xros simulator") {
-            return "xrsimulator"
-        }
-        if lower.contains("driverkit") { return "driverkit" }
-        if lower.contains("macos") { return "macosx" }
-        if lower.contains("ios") { return "iphoneos" }
-        return lower.contains("tvos")
-            ? "appletvos"
-            : lower.contains("watchos")
-                ? "watchos"
-                : lower.contains("visionos") || lower.contains("xros")
-                    ? "xros"
-                    : nil
+        return lower.contains("mac catalyst") || lower.contains("maccatalyst")
+            ? "maccatalyst"
+            : lower.contains("ios simulator")
+                ? "iphonesimulator"
+                : lower.contains("tvos simulator")
+                    ? "appletvsimulator"
+                    : lower.contains("watchos simulator")
+                        ? "watchsimulator"
+                        : lower.contains("visionos simulator") || lower.contains("xros simulator")
+                            ? "xrsimulator"
+                            : lower.contains("driverkit")
+                                ? "driverkit"
+                                : lower.contains("macos")
+                                    ? "macosx"
+                                    : lower.contains("ios")
+                                        ? "iphoneos"
+                                        : lower.contains("tvos")
+                                            ? "appletvos"
+                                            : lower.contains("watchos")
+                                                ? "watchos"
+                                                : lower.contains("visionos")
+                                                    || lower.contains("xros")
+                                                    ? "xros"
+                                                    : nil
     }
 }

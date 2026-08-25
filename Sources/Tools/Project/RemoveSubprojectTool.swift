@@ -50,8 +50,8 @@ public struct RemoveSubprojectTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(subprojectPath) = arguments["subproject_path"]
+        guard let projectPath = arguments.getString("project_path"),
+              let subprojectPath = arguments.getString("subproject_path")
         else { throw MCPError.invalidParams("project_path and subproject_path are required") }
 
         let dryRun = arguments.getBool("dry_run")
@@ -100,12 +100,8 @@ public struct RemoveSubprojectTool: Sendable {
             try PBXProjWriter.write(xcodeproj, to: projectFilePath, expectedPreimage: preimage)
 
             return .text("Removed sub-project '\(label)':\n\(removal.summary)")
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove sub-project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
@@ -304,11 +300,5 @@ public struct RemoveSubprojectTool: Sendable {
         for child in group.children {
             if let subgroup = child as? PBXGroup { detach(element, from: subgroup) }
         }
-    }
-}
-
-private extension CallTool.Result {
-    static func text(_ message: String) -> CallTool.Result {
-        CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
 }

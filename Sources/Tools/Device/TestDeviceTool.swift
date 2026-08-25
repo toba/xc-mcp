@@ -9,8 +9,8 @@ public struct TestDeviceTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        deviceCtlRunner: DeviceCtlRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -19,10 +19,10 @@ public struct TestDeviceTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "test_device",
             description:
-            "Run tests for an Xcode project or workspace on a connected iOS/tvOS/watchOS device.",
+                "Run tests for an Xcode project or workspace on a connected iOS/tvOS/watchOS device.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(
@@ -87,8 +87,8 @@ public struct TestDeviceTool: Sendable {
             testParams, projectPath: projectPath, workspacePath: workspacePath, scheme: scheme,
         )
 
-        // Look up the device to get its platform — xcodebuild doesn't recognize
-        // CoreDevice UDIDs, so we build with a generic platform destination instead
+        // Look up the device to get its platform — xcodebuild doesn't recognize CoreDevice UDIDs,
+        // so we build with a generic platform destination instead
         let connectedDevice = try await deviceCtlRunner.lookupDevice(udid: device)
 
         return try await TestToolHelper.runAndFormat(

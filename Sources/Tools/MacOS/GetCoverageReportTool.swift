@@ -15,9 +15,7 @@ public struct GetCoverageReportTool: Sendable {
                 "properties": .object([
                     "result_bundle_path": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcresult bundle.",
-                        ),
+                        "description": .string("Path to the .xcresult bundle."),
                     ]),
                     "target": .object([
                         "type": .string("string"),
@@ -44,9 +42,7 @@ public struct GetCoverageReportTool: Sendable {
         let showFiles = arguments.getBool("show_files")
 
         guard FileManager.default.fileExists(atPath: resultBundlePath) else {
-            throw MCPError.invalidParams(
-                "Result bundle not found at: \(resultBundlePath)",
-            )
+            throw MCPError.invalidParams("Result bundle not found at: \(resultBundlePath)")
         }
 
         let parser = CoverageParser()
@@ -54,12 +50,9 @@ public struct GetCoverageReportTool: Sendable {
             xcresultPath: resultBundlePath,
             targetFilter: targetFilter,
         ) else {
-            return CallTool.Result(content: [
-                .text(
-                    text:
-                        "No coverage data found in the result bundle. Ensure tests were run with code coverage enabled.",
-                    annotations: nil, _meta: nil)
-            ])
+            return CallTool.Result.text(
+                "No coverage data found in the result bundle. Ensure tests were run with code coverage enabled."
+            )
         }
 
         var output = Self.formatReport(report, showFiles: showFiles)
@@ -69,22 +62,20 @@ public struct GetCoverageReportTool: Sendable {
             .flatMap(\.files)
             .min(by: { $0.lineCoverage < $1.lineCoverage })
         var params: [(key: String, value: HintValue)] = [
-            ("result_bundle_path", .string(resultBundlePath)),
+            ("result_bundle_path", .string(resultBundlePath))
         ]
-        if let weakestFile {
-            params.append(("file", .string(weakestFile.name)))
-        }
+        if let weakestFile { params.append(("file", .string(weakestFile.name))) }
         let hints: [NextStepHint] = [
             NextStepHint(
                 label: "View function-level coverage for the weakest-covered file",
                 tool: "get_file_coverage",
                 params: params,
                 priority: 1,
-            ),
+            )
         ]
         output = NextStepHints.appended(to: output, hints: hints)
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 
     static func formatReport(_ report: CoverageReport, showFiles: Bool) -> String {
@@ -92,9 +83,7 @@ public struct GetCoverageReportTool: Sendable {
         lines.append("Code Coverage Report")
         lines.append("====================")
         lines.append(String(
-            format: "Overall: %.1f%% (%d/%d lines)",
-            report.lineCoverage,
-            report.coveredLines,
+            format: "Overall: %.1f%% (%d/%d lines)", report.lineCoverage, report.coveredLines,
             report.executableLines,
         ))
         lines.append("")
@@ -106,11 +95,8 @@ public struct GetCoverageReportTool: Sendable {
 
         for target in sorted {
             lines.append(String(
-                format: "  %@: %.1f%% (%d/%d lines)",
-                target.name,
-                target.lineCoverage,
-                target.coveredLines,
-                target.executableLines,
+                format: "  %@: %.1f%% (%d/%d lines)", target.name, target.lineCoverage,
+                target.coveredLines, target.executableLines,
             ))
 
             if showFiles {
@@ -118,11 +104,8 @@ public struct GetCoverageReportTool: Sendable {
 
                 for file in sortedFiles {
                     lines.append(String(
-                        format: "    %@: %.1f%% (%d/%d)",
-                        file.name,
-                        file.lineCoverage,
-                        file.coveredLines,
-                        file.executableLines,
+                        format: "    %@: %.1f%% (%d/%d)", file.name, file.lineCoverage,
+                        file.coveredLines, file.executableLines,
                     ))
                 }
             }

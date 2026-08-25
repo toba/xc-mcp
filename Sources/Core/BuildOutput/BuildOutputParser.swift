@@ -14,7 +14,11 @@ public final class BuildOutputParser {
     private var seenExecutablePaths: Set<String> = []
     private var buildTime: String?
     private var testTimeAccumulator: Double = 0
-    private var seenTestNames: Set<String> = []
+    /// Normalized test name to its position in ``failedTests``
+    ///
+    /// A duplicate failure line merges into the entry it repeats. The lookup is by key so the merge
+    /// does not rescan the array and normalize every name it walks.
+    private var failedTestIndexByName: [String: Int] = [:]
     private var seenWarnings: Set<String> = []
     private var seenErrors: Set<String> = []
     private var seenLinkerErrors: Set<String> = []
@@ -56,6 +60,8 @@ public final class BuildOutputParser {
 
     // Build info tracking
     private var targetPhases: [String: [String]] = [:]
+    /// Mirrors ``targetPhases`` so the per-line parse tests membership without scanning the array
+    private var targetPhaseSet: [String: Set<String>] = [:]
     private var targetDurations: [String: String] = [:]
     private var targetOrder: [String] = []
     private var targetOrderSet: Set<String> = []
@@ -63,6 +69,8 @@ public final class BuildOutputParser {
 
     // Dependency graph tracking
     private var targetDependencies: [String: [String]] = [:]
+    /// Mirrors ``targetDependencies`` for the same reason as ``targetPhaseSet``
+    private var targetDependencySet: [String: Set<String>] = [:]
     private var currentDependencyTarget: String?
 
     /// One `Executed N tests, with M failures` line from a single XCTest suite level.
@@ -201,10 +209,10 @@ public final class BuildOutputParser {
                 let message = pendingSignalCode.map {
                     "Crashed (signal \($0)): last test started before crash"
                 } ?? "Test did not complete — possible crash"
+                failedTestIndexByName[normalizedName] = failedTests.count
                 failedTests.append(FailedTest(
                     test: testName, message: message, file: nil, line: nil,
                 ))
-                seenTestNames.insert(normalizedName)
             }
             lastStartedTestName = nil
             pendingSignalCode = nil
@@ -331,7 +339,7 @@ public final class BuildOutputParser {
 
     private func detectFlakyTests() -> [String] {
         let passedNames = Set(passedTestDurations.keys)
-        let failedNames = Set(failedTests.map { normalizeTestName($0.test) })
+        let failedNames = Set(failedTestIndexByName.keys)
         return Array(passedNames.intersection(failedNames)).sorted()
     }
 
@@ -341,11 +349,12 @@ public final class BuildOutputParser {
             return Double(d.dropLast()) ?? 0
         }
 
-        let sorted = targets
-            .filter { $0.duration != nil }
-            .sorted { parseDuration($0.duration) > parseDuration($1.duration) }
+        // parse once per target, not twice per comparison
+        let sorted = targets.lazy
+            .compactMap { $0.duration == nil ? nil : ($0.name, parseDuration($0.duration)) }
+            .sorted { $0.1 > $1.1 }
 
-        return Array(sorted.prefix(limit).map(\.name))
+        return sorted.prefix(limit).map(\.0)
     }
 
     private func resetState() {
@@ -357,7 +366,7 @@ public final class BuildOutputParser {
         seenExecutablePaths = []
         buildTime = nil
         testTimeAccumulator = 0
-        seenTestNames = []
+        failedTestIndexByName = [:]
         xctestBundleTally = XCTestTally()
         xctestOuterTally = XCTestTally()
         currentSuiteName = nil
@@ -379,16 +388,20 @@ public final class BuildOutputParser {
         failedTestDurations = [:]
         performanceMeasurements = []
         targetPhases = [:]
+        targetPhaseSet = [:]
         targetDurations = [:]
         targetOrder = []
         targetOrderSet = []
         shouldParseBuildInfo = false
         targetDependencies = [:]
+        targetDependencySet = [:]
         currentDependencyTarget = nil
     }
 
     private func parseLine(_ line: String) {
-        if line.isEmpty || line.count > 5000 { return }
+        // Bytes, not characters: `count` walks the whole line to break graphemes, and this runs on
+        // every line of a log that can reach 100 MB. The cap is a sanity bound either way.
+        if line.isEmpty || line.utf8.count > 5000 { return }
 
         // XCTest names the suite before the `Executed` line that reports it, so the most recent
         // name tells us which level those counts belong to. Read it before any branch returns,
@@ -501,10 +514,10 @@ public final class BuildOutputParser {
                 let message = pendingSignalCode.map {
                     "Crashed (signal \($0)): last test started before crash"
                 } ?? "Crashed: last test started before crash"
+                failedTestIndexByName[normalizedName] = failedTests.count
                 failedTests.append(FailedTest(
                     test: testName, message: message, file: nil, line: nil,
                 ))
-                seenTestNames.insert(normalizedName)
             }
             lastStartedTestName = nil
             pendingSignalCode = nil
@@ -515,12 +528,10 @@ public final class BuildOutputParser {
             let normalizedTestName = normalizeTestName(failedTest.test)
 
             if !hasSeenSimilarTest(normalizedTestName) {
+                failedTestIndexByName[normalizedTestName] = failedTests.count
                 failedTests.append(failedTest)
-                seenTestNames.insert(normalizedTestName)
             } else {
-                if let index = failedTests.firstIndex(where: {
-                    normalizeTestName($0.test) == normalizedTestName
-                }) {
+                if let index = failedTestIndexByName[normalizedTestName] {
                     let existing = failedTests[index]
                     let mergedFile = failedTest.file ?? existing.file
                     let mergedLine = failedTest.line ?? existing.line
@@ -741,7 +752,7 @@ public final class BuildOutputParser {
     }
 
     private func hasSeenSimilarTest(_ normalizedTestName: String) -> Bool {
-        seenTestNames.contains(normalizedTestName)
+        failedTestIndexByName[normalizedTestName] != nil
     }
 
     private func appendLinkerErrorIfNew(_ error: LinkerError) {
@@ -1608,7 +1619,7 @@ public final class BuildOutputParser {
             targetPhases[target] = []
             if targetOrderSet.insert(target).inserted { targetOrder.append(target) }
         }
-        if targetPhases[target, default: []].contains(phase) == false {
+        if targetPhaseSet[target, default: []].insert(phase).inserted {
             targetPhases[target, default: []].append(phase)
         }
     }
@@ -1688,7 +1699,10 @@ public final class BuildOutputParser {
 
                 if targetOrderSet.insert(targetName).inserted { targetOrder.append(targetName) }
 
-                if trimmed.hasSuffix("(no dependencies)") { targetDependencies[targetName] = [] }
+                if trimmed.hasSuffix("(no dependencies)") {
+                    targetDependencies[targetName] = []
+                    targetDependencySet[targetName] = []
+                }
                 return true
             }
         }
@@ -1700,10 +1714,8 @@ public final class BuildOutputParser {
                 if let endQuote = afterStartQuote.range(of: "'") {
                     let dependencyName = String(afterStartQuote[..<endQuote.lowerBound])
 
-                    if targetDependencies[currentTarget, default: []].contains(
-                        dependencyName
-                    )
-                        == false
+                    if targetDependencySet[currentTarget, default: []].insert(dependencyName)
+                        .inserted
                     {
                         targetDependencies[currentTarget, default: []].append(dependencyName)
                     }

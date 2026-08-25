@@ -12,7 +12,8 @@ public struct ListTargetsTool: Sendable {
     public func tool() -> Tool {
         .init(
             name: "list_targets",
-            description: "List all targets in an Xcode project. Optional filters narrow the result to targets matching a product type, presence/absence of a PBXTargetDependency by name, or presence/absence of a build setting (with optional value substring match). When any filter is supplied, output includes each matched target's id, product type, and dependency names — use this for bulk audits (e.g. find every unit-test target lacking a dependency on ThesisApp; every framework target whose SUPPORTED_PLATFORMS is unset). Settings are read from pbxproj target-level buildSettings only — no xcconfig inheritance — and a setting is considered 'present' when any configuration defines it.",
+            description:
+                "List all targets in an Xcode project. Optional filters narrow the result to targets matching a product type, presence/absence of a PBXTargetDependency by name, or presence/absence of a build setting (with optional value substring match). When any filter is supplied, output includes each matched target's id, product type, and dependency names — use this for bulk audits (e.g. find every unit-test target lacking a dependency on ThesisApp; every framework target whose SUPPORTED_PLATFORMS is unset). Settings are read from pbxproj target-level buildSettings only — no xcconfig inheritance — and a setting is considered 'present' when any configuration defines it.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -65,22 +66,20 @@ public struct ListTargetsTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
-
-        let productTypeFilter: String? = stringArg(arguments["product_type"])
-        let hasDependency: String? = stringArg(arguments["has_dependency"])
-        let missingDependency: String? = stringArg(arguments["missing_dependency"])
-        let missingSetting: String? = stringArg(arguments["missing_setting"])
+        let projectPath = try arguments.getRequiredString("project_path")
+        let productTypeFilter = arguments.getNonEmptyString("product_type")
+        let hasDependency = arguments.getNonEmptyString("has_dependency")
+        let missingDependency = arguments.getNonEmptyString("missing_dependency")
+        let missingSetting = arguments.getNonEmptyString("missing_setting")
 
         let hasSetting: (name: String, value: String?)?
+
         if case let .object(obj) = arguments["has_setting"] {
-            guard case let .string(name) = obj["name"] else {
-                throw MCPError.invalidParams("has_setting.name is required when has_setting is provided")
+            guard let name = obj.getString("name") else {
+                throw MCPError.invalidParams(
+                    "has_setting.name is required when has_setting is provided")
             }
-            let value: String? = stringArg(obj["value"])
-            hasSetting = (name, value)
+            hasSetting = (name, obj.getNonEmptyString("value"))
         } else {
             hasSetting = nil
         }
@@ -125,6 +124,7 @@ public struct ListTargetsTool: Sendable {
                 }
 
                 matched += 1
+
                 if anyFilter {
                     let deps = depNames.isEmpty ? "<none>" : depNames.joined(separator: ", ")
                     lines.append(
@@ -136,11 +136,15 @@ public struct ListTargetsTool: Sendable {
             }
 
             let header: String
+
             if anyFilter {
                 var filters: [String] = []
                 if let productTypeFilter { filters.append("product_type=\(productTypeFilter)") }
                 if let hasDependency { filters.append("has_dependency=\(hasDependency)") }
-                if let missingDependency { filters.append("missing_dependency=\(missingDependency)") }
+                if let missingDependency {
+                    filters.append("missing_dependency=\(missingDependency)")
+                }
+
                 if let hasSetting {
                     let v = hasSetting.value.map { "~\($0)" } ?? ""
                     filters.append("has_setting=\(hasSetting.name)\(v)")
@@ -152,42 +156,31 @@ public struct ListTargetsTool: Sendable {
                 header = "Targets in \(projectURL.lastPathComponent):"
             }
 
-            let body: String
-            if lines.isEmpty {
-                body = anyFilter ? "  (no matches)" : "No targets found in the project."
-            } else {
-                body = lines.joined(separator: "\n")
-            }
+            let body = lines.isEmpty
+                ? anyFilter ? "  (no matches)" : "No targets found in the project."
+                : lines.joined(separator: "\n")
 
-            let text = anyFilter ? "\(header)\n\(body)" : "\(header)\n\(body)"
-
-            return CallTool.Result(
-                content: [.text(text: text, annotations: nil, _meta: nil)],
-            )
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text("\(header)\n\(body)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
-    private func stringArg(_ v: Value?) -> String? {
-        if case let .string(s) = v, !s.isEmpty { return s }
-        return nil
-    }
-
     private func settingPresent(
-        target: PBXNativeTarget, name: String, valueSubstring: String?,
+        target: PBXNativeTarget,
+        name: String,
+        valueSubstring: String?,
     ) -> Bool {
         guard let configList = target.buildConfigurationList else { return false }
+
         for config in configList.buildConfigurations {
             guard let raw = config.buildSettings[name] else { continue }
             guard let needle = valueSubstring else { return true }
+
             switch raw {
                 case let .string(s): if s.contains(needle) { return true }
-                case let .array(arr): if arr.contains(where: { $0.contains(needle) }) { return true }
+                case let .array(arr):
+                    if arr.contains(where: { $0.contains(needle) }) { return true }
             }
         }
         return false

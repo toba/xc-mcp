@@ -45,20 +45,13 @@ public struct TapTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
-        guard let x = arguments.getDouble("x") ?? arguments.getInt("x").map(Double.init) else {
-            throw MCPError.invalidParams("x coordinate is required")
-        }
-        guard let y = arguments.getDouble("y") ?? arguments.getInt("y").map(Double.init) else {
-            throw MCPError.invalidParams("y coordinate is required")
-        }
+        let x = try arguments.getRequiredDouble("x")
+        let y = try arguments.getRequiredDouble("y")
 
         do {
             try await uiInput.tap(simulator: simulator, x: x, y: y)
-            return CallTool.Result(content: [
-                .text(
-                    text: "Tapped at (\(Int(x)), \(Int(y))) on simulator '\(simulator)'",
-                    annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text(
+                "Tapped at (\(Int(x)), \(Int(y))) on simulator '\(simulator)'")
         } catch {
             throw try error.asMCPError()
         }

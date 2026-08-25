@@ -8,27 +8,24 @@ import Foundation
 struct SetTestPlanSkippedTagsToolTests {
     let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
-    private func createTestPlan(_ json: [String: Any]) throws -> String {
+    private func createTestPlan(_ json: [String: AnyValue]) throws -> String {
         let path = TemporaryDirectory.url.appendingPathComponent("test.xctestplan").path
         try TestPlanFile.write(json, to: path)
         return path
     }
 
-    private func basePlan() -> [String: Any] {
+    private func basePlan() -> [String: AnyValue] {
         [
-            "configurations": [
-                ["id": "DEFAULT", "name": "Default", "options": [:] as [String: Any]]
-                    as [String: Any]
-            ],
-            "defaultOptions": [:] as [String: Any],
+            "configurations": [["id": "DEFAULT", "name": "Default", "options": [:]]],
+            "defaultOptions": [:],
             "testTargets": [
                 [
                     "target": [
                         "containerPath": "container:App.xcodeproj",
                         "identifier": "ABC123",
                         "name": "AppTests",
-                    ] as [String: Any]
-                ] as [String: Any]
+                    ]
+                ]
             ],
             "version": 1,
         ]
@@ -60,11 +57,11 @@ struct SetTestPlanSkippedTagsToolTests {
         #expect(message.contains("plan-level defaults"))
 
         let json = try TestPlanFile.read(from: path)
-        let defaults = json["defaultOptions"] as? [String: Any]
-        let skipped = defaults?["skippedTags"] as? [String: Any]
-        let tags = skipped?["tags"] as? [String]
+        let defaults = json["defaultOptions"]?.dictionaryValue
+        let skipped = defaults?["skippedTags"]?.dictionaryValue
+        let tags = skipped?["tags"]?.stringArrayValue
         #expect(tags == [".api", ".testSuiteFile"])
-        #expect(skipped?["mode"] as? String == "or")
+        #expect(skipped?["mode"]?.stringValue == "or")
     }
 
     @Test
@@ -88,21 +85,21 @@ struct SetTestPlanSkippedTagsToolTests {
         // Per-target must have "mode" — without it Xcode defaults to AND, which silently no-ops
         // since no test has every listed tag.
         let json = try TestPlanFile.read(from: path)
-        let targets = json["testTargets"] as? [[String: Any]]
-        let skipped = targets?.first?["skippedTags"] as? [String: Any]
-        let tags = skipped?["tags"] as? [String]
+        let targets = json["testTargets"]?.dictionaryArrayValue
+        let skipped = targets?.first?["skippedTags"]?.dictionaryValue
+        let tags = skipped?["tags"]?.stringArrayValue
         #expect(tags == [".api"])
-        #expect(skipped?["mode"] as? String == "or")
+        #expect(skipped?["mode"]?.stringValue == "or")
     }
 
     @Test
     func `Adding to existing per-target block preserves mode`() throws {
         var plan = basePlan()
-        var targets = try #require(plan["testTargets"] as? [[String: Any]])
+        var targets = try #require(plan["testTargets"]?.dictionaryArrayValue)
         var entry = targets[0]
-        entry["skippedTags"] = ["mode": "or", "tags": [".api"]] as [String: Any]
+        entry["skippedTags"] = ["mode": "or", "tags": [".api"]]
         targets[0] = entry
-        plan["testTargets"] = targets
+        plan["testTargets"] = .dictionaries(targets)
 
         let path = try createTestPlan(plan)
 
@@ -115,20 +112,18 @@ struct SetTestPlanSkippedTagsToolTests {
         _ = try tool.execute(arguments: args)
 
         let json = try TestPlanFile.read(from: path)
-        let resultTargets = json["testTargets"] as? [[String: Any]]
-        let skipped = resultTargets?.first?["skippedTags"] as? [String: Any]
-        #expect(skipped?["tags"] as? [String] == [".api", ".cloudKit"])
-        #expect(skipped?["mode"] as? String == "or")
+        let resultTargets = json["testTargets"]?.dictionaryArrayValue
+        let skipped = resultTargets?.first?["skippedTags"]?.dictionaryValue
+        #expect(skipped?["tags"]?.stringArrayValue == [".api", ".cloudKit"])
+        #expect(skipped?["mode"]?.stringValue == "or")
     }
 
     @Test
     func `Remove tags from plan-level defaults`() throws {
         var plan = basePlan()
-        var defaults = try #require(plan["defaultOptions"] as? [String: Any])
-        defaults[
-            "skippedTags"] = ["mode": "or", "tags": [".api", ".testSuiteFile", ".slow"]]
-            as [String: Any]
-        plan["defaultOptions"] = defaults
+        var defaults = try #require(plan["defaultOptions"]?.dictionaryValue)
+        defaults["skippedTags"] = ["mode": "or", "tags": [".api", ".testSuiteFile", ".slow"]]
+        plan["defaultOptions"] = .dictionary(defaults)
 
         let path = try createTestPlan(plan)
 
@@ -147,17 +142,17 @@ struct SetTestPlanSkippedTagsToolTests {
         #expect(message.contains("Removed"))
 
         let json = try TestPlanFile.read(from: path)
-        let skipped = (json["defaultOptions"] as? [String: Any])?["skippedTags"] as? [String: Any]
-        let tags = skipped?["tags"] as? [String]
+        let skipped = (json["defaultOptions"]?.dictionaryValue)?["skippedTags"]?.dictionaryValue
+        let tags = skipped?["tags"]?.stringArrayValue
         #expect(tags == [".slow"])
     }
 
     @Test
     func `Remove all tags clears skippedTags key`() throws {
         var plan = basePlan()
-        var defaults = try #require(plan["defaultOptions"] as? [String: Any])
-        defaults["skippedTags"] = ["mode": "or", "tags": [".api"]] as [String: Any]
-        plan["defaultOptions"] = defaults
+        var defaults = try #require(plan["defaultOptions"]?.dictionaryValue)
+        defaults["skippedTags"] = ["mode": "or", "tags": [".api"]]
+        plan["defaultOptions"] = .dictionary(defaults)
 
         let path = try createTestPlan(plan)
 
@@ -170,16 +165,16 @@ struct SetTestPlanSkippedTagsToolTests {
         _ = try tool.execute(arguments: args)
 
         let json = try TestPlanFile.read(from: path)
-        let skipped = (json["defaultOptions"] as? [String: Any])?["skippedTags"]
+        let skipped = (json["defaultOptions"]?.dictionaryValue)?["skippedTags"]
         #expect(skipped == nil)
     }
 
     @Test
     func `Add duplicate tags is idempotent`() throws {
         var plan = basePlan()
-        var defaults = try #require(plan["defaultOptions"] as? [String: Any])
-        defaults["skippedTags"] = ["mode": "or", "tags": [".api"]] as [String: Any]
-        plan["defaultOptions"] = defaults
+        var defaults = try #require(plan["defaultOptions"]?.dictionaryValue)
+        defaults["skippedTags"] = ["mode": "or", "tags": [".api"]]
+        plan["defaultOptions"] = .dictionary(defaults)
 
         let path = try createTestPlan(plan)
 
@@ -191,9 +186,8 @@ struct SetTestPlanSkippedTagsToolTests {
         _ = try tool.execute(arguments: args)
 
         let json = try TestPlanFile.read(from: path)
-        let tags = ((json["defaultOptions"] as? [String: Any])?["skippedTags"] as? [String: Any])?[
-            "tags"]
-            as? [String]
+        let tags = json["defaultOptions"]?.dictionaryValue?["skippedTags"]?
+            .dictionaryValue?["tags"]?.stringArrayValue
         #expect(tags == [".api", ".slow"])
     }
 

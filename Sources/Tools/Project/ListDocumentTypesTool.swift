@@ -1,21 +1,17 @@
 import MCP
-import PathKit
 import XCMCPCore
-import XcodeProj
 import Foundation
 
 public struct ListDocumentTypesTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_document_types",
             description:
-            "List all document types (CFBundleDocumentTypes) declared in a target's Info.plist",
+                "List all document types (CFBundleDocumentTypes) declared in a target's Info.plist",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -37,83 +33,52 @@ public struct ListDocumentTypesTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"]
-        else {
-            throw MCPError.invalidParams("project_path and target_name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name")
+        else { throw MCPError.invalidParams("project_path and target_name are required") }
 
         do {
-            let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
-            let projectURL = URL(fileURLWithPath: resolvedProjectPath)
-            let projectDir = projectURL.deletingLastPathComponent().path
+            let plist: [String: AnyValue]
 
-            let xcodeproj = try XcodeProj(path: Path(projectURL.path))
-
-            guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
+            switch try InfoPlistUtility.readInfoPlist(
+                projectPath: projectPath, targetName: targetName, pathUtility: pathUtility,
+            ) {
+                case let .message(text): return CallTool.Result.text(text)
+                case let .plist(contents): plist = contents
             }
 
-            guard
-                let plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
-                )
-            else {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "No Info.plist found for target '\(targetName)'. The target may use a generated Info.plist with no physical file.",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
-            }
-
-            let plist = try InfoPlistUtility.readInfoPlist(path: plistPath)
-
-            guard let documentTypes = plist["CFBundleDocumentTypes"] as? [[String: Any]],
+            guard let documentTypes = plist["CFBundleDocumentTypes"]?.arrayValue?
+                .compactMap(\.dictionaryValue),
                   !documentTypes.isEmpty
             else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "No document types (CFBundleDocumentTypes) found in '\(targetName)'",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "No document types (CFBundleDocumentTypes) found in '\(targetName)'")
             }
 
             var output = "Document Types in target '\(targetName)':\n"
 
             for (index, docType) in documentTypes.enumerated() {
-                let name = docType["CFBundleTypeName"] as? String ?? "(unnamed)"
+                let name = docType["CFBundleTypeName"]?.stringValue ?? "(unnamed)"
                 output += "\n\(index + 1). \(name)\n"
 
-                if let contentTypes = docType["LSItemContentTypes"] as? [String],
+                if let contentTypes = docType["LSItemContentTypes"]?.stringArrayValue,
                    !contentTypes.isEmpty
                 {
                     output += "   Content Types: \(contentTypes.joined(separator: ", "))\n"
                 }
-                if let role = docType["CFBundleTypeRole"] as? String {
+                if let role = docType["CFBundleTypeRole"]?.stringValue {
                     output += "   Role: \(role)\n"
                 }
-                if let rank = docType["LSHandlerRank"] as? String {
+                if let rank = docType["LSHandlerRank"]?.stringValue {
                     output += "   Handler Rank: \(rank)\n"
                 }
-                if let docClass = docType["NSDocumentClass"] as? String {
+                if let docClass = docType["NSDocumentClass"]?.stringValue {
                     output += "   Document Class: \(docClass)\n"
                 }
-                if let iconFile = docType["CFBundleTypeIconFile"] as? String {
+                if let iconFile = docType["CFBundleTypeIconFile"]?.stringValue {
                     output += "   Icon File: \(iconFile)\n"
                 }
-                if let isPackage = docType["LSTypeIsPackage"] as? Bool {
+                if let isPackage = docType["LSTypeIsPackage"]?.boolValue {
                     output += "   Is Package: \(isPackage)\n"
                 }
 
@@ -123,25 +88,16 @@ public struct ListDocumentTypesTool: Sendable {
                     "LSHandlerRank", "NSDocumentClass", "CFBundleTypeIconFile",
                     "LSTypeIsPackage",
                 ]
-                let additionalKeys = docType.keys.filter { !knownKeys.contains($0) }.sorted()
-                for key in additionalKeys {
-                    output += "   \(key): \(docType[key]!)\n"
-                }
+                for (
+                    key, value
+                ) in docType.sorted(by: { $0.key < $1.key })
+                    where !knownKeys.contains(key)
+                { output += "   \(key): \(value.displayText)\n" }
             }
 
-            return CallTool.Result(content: [
-                .text(
-                    text: output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    annotations: nil,
-                    _meta: nil,
-                ),
-            ])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(output.trimmingCharacters(in: .whitespacesAndNewlines))
         } catch {
-            throw MCPError.internalError(
-                "Failed to list document types: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

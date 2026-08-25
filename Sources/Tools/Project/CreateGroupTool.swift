@@ -46,22 +46,13 @@ public struct CreateGroupTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(groupName) = arguments["group_name"]
-        else {
-            throw MCPError.invalidParams("project_path and group_name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let groupName = arguments.getString("group_name")
+        else { throw MCPError.invalidParams("project_path and group_name are required") }
 
-        let parentGroupName: String?
+        let parentGroupName = arguments.getString("parent_group")
 
-        if case let .string(parent) = arguments["parent_group"] {
-            parentGroupName = parent
-        } else {
-            parentGroupName = nil
-        }
-
-        let groupPath: String?
-        if case let .string(path) = arguments["path"] { groupPath = path } else { groupPath = nil }
+        let groupPath = arguments.getString("path")
 
         do {
             // Resolve and validate the project path
@@ -72,13 +63,7 @@ public struct CreateGroupTool: Sendable {
 
             // Check if group already exists
             if xcodeproj.pbxproj.groups.contains(where: { $0.name == groupName }) {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Group '\(groupName)' already exists in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
+                return CallTool.Result.text("Group '\(groupName)' already exists in project")
             }
 
             // Create new group
@@ -132,11 +117,9 @@ public struct CreateGroupTool: Sendable {
             var message =
                 "Successfully created group '\(groupName)' in \(parentGroupName ?? "main group")"
             if let warning { message += "\n\(warning)" }
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
-            throw MCPError.internalError(
-                "Failed to create group in Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

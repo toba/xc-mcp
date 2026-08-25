@@ -5,15 +5,13 @@ import Foundation
 public struct DoctorTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "doctor",
             description:
-            "Diagnose the Xcode development environment. Checks Xcode installation, command line tools, simulators, LLDB, SDKs, session state, and other dependencies.",
+                "Diagnose the Xcode development environment. Checks Xcode installation, command line tools, simulators, LLDB, SDKs, session state, and other dependencies.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([:]),
@@ -85,12 +83,11 @@ public struct DoctorTool: Sendable {
         // Active debug sessions
         let debugSessions = await LLDBSessionManager.shared.getAllSessions()
         diagnostics.append("\n## Active Debug Sessions")
+
         if debugSessions.isEmpty {
             diagnostics.append("No active debug sessions")
         } else {
-            for (bundleId, pid) in debugSessions {
-                diagnostics.append("  \(bundleId): PID \(pid)")
-            }
+            for (bundleID, pid) in debugSessions { diagnostics.append("  \(bundleID): PID \(pid)") }
         }
 
         let derivedData = await derivedDataCheck
@@ -99,12 +96,11 @@ public struct DoctorTool: Sendable {
 
         // Summary
         diagnostics.append("\n## Summary")
-        let allPassed =
-            xcode.allSatisfy { !$0.contains("[FAIL]") }
-                && clt.allSatisfy { !$0.contains("[FAIL]") }
-                && xcodebuild.allSatisfy { !$0.contains("[FAIL]") }
-                && simctl.allSatisfy { !$0.contains("[FAIL]") }
-                && swift.allSatisfy { !$0.contains("[FAIL]") }
+        let allPassed = xcode.allSatisfy { !$0.contains("[FAIL]") }
+            && clt.allSatisfy { !$0.contains("[FAIL]") }
+            && xcodebuild.allSatisfy { !$0.contains("[FAIL]") }
+            && simctl.allSatisfy { !$0.contains("[FAIL]") }
+            && swift.allSatisfy { !$0.contains("[FAIL]") }
 
         if allPassed {
             diagnostics.append("[OK] All checks passed. Your environment is ready for development.")
@@ -114,11 +110,7 @@ public struct DoctorTool: Sendable {
             )
         }
 
-        return CallTool.Result(
-            content: [
-                .text(text: diagnostics.joined(separator: "\n"), annotations: nil, _meta: nil),
-            ],
-        )
+        return CallTool.Result.text(diagnostics.joined(separator: "\n"))
     }
 
     private func checkXcode() async -> [String] {
@@ -126,18 +118,17 @@ public struct DoctorTool: Sendable {
 
         // Check xcode-select path
         let selectResult = await runCommand("/usr/bin/xcode-select", arguments: ["-p"])
+
         if selectResult.exitCode == 0 {
             let path = selectResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
             results.append("[OK] Xcode selected: \(path)")
 
             // Get Xcode version
-            let versionResult = await runCommand(
-                "/usr/bin/xcodebuild", arguments: ["-version"],
-            )
+            let versionResult = await runCommand("/usr/bin/xcodebuild", arguments: ["-version"])
+
             if versionResult.exitCode == 0 {
-                let version =
-                    versionResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-                        .components(separatedBy: .newlines).first ?? "Unknown"
+                let version = versionResult.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .components(separatedBy: .newlines).first ?? "Unknown"
                 results.append("[OK] \(version)")
             }
         } else {
@@ -153,16 +144,16 @@ public struct DoctorTool: Sendable {
         var results: [String] = []
 
         let cltPath = "/Library/Developer/CommandLineTools"
+
         if FileManager.default.fileExists(atPath: cltPath) {
             results.append("[OK] Command Line Tools installed at \(cltPath)")
         } else {
             let xcodeDevPath = "/Applications/Xcode.app/Contents/Developer"
+
             if FileManager.default.fileExists(atPath: xcodeDevPath) {
                 results.append("[OK] Using Xcode's built-in developer tools")
             } else {
-                results.append(
-                    "[FAIL] Command Line Tools not found. Run: xcode-select --install",
-                )
+                results.append("[FAIL] Command Line Tools not found. Run: xcode-select --install")
             }
         }
 
@@ -173,6 +164,7 @@ public struct DoctorTool: Sendable {
         var results: [String] = []
 
         let result = await runCommand("/usr/bin/which", arguments: ["xcodebuild"])
+
         if result.exitCode == 0 {
             let path = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
             results.append("[OK] xcodebuild found: \(path)")
@@ -181,6 +173,7 @@ public struct DoctorTool: Sendable {
             let licenseCheck = await runCommand(
                 "/usr/bin/xcodebuild", arguments: ["-checkFirstLaunchStatus"],
             )
+
             if licenseCheck.exitCode == 0 {
                 results.append("[OK] Xcode license accepted")
             } else if licenseCheck.stderr.contains("license") {
@@ -199,6 +192,7 @@ public struct DoctorTool: Sendable {
         var results: [String] = []
 
         let result = await runCommand("/usr/bin/xcrun", arguments: ["simctl", "help"])
+
         if result.exitCode == 0 {
             results.append("[OK] simctl available")
 
@@ -206,10 +200,10 @@ public struct DoctorTool: Sendable {
             let listResult = await runCommand(
                 "/usr/bin/xcrun", arguments: ["simctl", "list", "devices", "-j"],
             )
+
             if listResult.exitCode == 0 {
                 // Count devices from JSON
-                let deviceCount =
-                    listResult.stdout.components(separatedBy: "\"udid\"").count - 1
+                let deviceCount = listResult.stdout.components(separatedBy: "\"udid\"").count - 1
                 results.append("[OK] \(max(0, deviceCount)) simulators available")
             }
         } else {
@@ -223,6 +217,7 @@ public struct DoctorTool: Sendable {
         var results: [String] = []
 
         let result = await runCommand("/usr/bin/xcrun", arguments: ["devicectl", "version"])
+
         if result.exitCode == 0 {
             results.append("[OK] devicectl available")
         } else {
@@ -238,11 +233,11 @@ public struct DoctorTool: Sendable {
         var results: [String] = []
 
         let result = await runCommand("/usr/bin/swift", arguments: ["--version"])
+
         if result.exitCode == 0 {
-            let version =
-                result.stdout.trimmingCharacters(in: .whitespacesAndNewlines).components(
-                    separatedBy: .newlines,
-                ).first ?? "Unknown"
+            let version = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines).components(
+                separatedBy: .newlines,
+            ).first ?? "Unknown"
             results.append("[OK] \(version)")
         } else {
             results.append("[FAIL] Swift not found")
@@ -255,10 +250,10 @@ public struct DoctorTool: Sendable {
         var results: [String] = []
 
         let result = await runCommand("/usr/bin/xcrun", arguments: ["lldb", "--version"])
+
         if result.exitCode == 0 {
-            let version =
-                result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
-                    .components(separatedBy: .newlines).first ?? "Unknown"
+            let version = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+                .components(separatedBy: .newlines).first ?? "Unknown"
             results.append("[OK] \(version)")
         } else {
             results.append("[WARN] LLDB not available")
@@ -271,10 +266,12 @@ public struct DoctorTool: Sendable {
         var results: [String] = []
 
         let result = await runCommand("/usr/bin/xcodebuild", arguments: ["-showsdks"])
+
         if result.exitCode == 0 {
             let lines = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
                 .components(separatedBy: .newlines)
                 .filter { $0.contains("-sdk ") }
+
             if lines.isEmpty {
                 results.append("[WARN] No SDKs found")
             } else {
@@ -298,11 +295,10 @@ public struct DoctorTool: Sendable {
         if fm.fileExists(atPath: derivedDataPath) {
             do {
                 let attrs = try fm.attributesOfFileSystem(forPath: derivedDataPath)
+
                 if let freeSize = attrs[.systemFreeSize] as? Int64 {
                     let freeGB = Double(freeSize) / 1_073_741_824
-                    results.append(
-                        String(format: "Disk free space: %.1f GB", freeGB),
-                    )
+                    results.append(String(format: "Disk free space: %.1f GB", freeGB))
                 }
                 // Count subdirectories to estimate project count
                 let contents = try fm.contentsOfDirectory(atPath: derivedDataPath)
@@ -318,7 +314,10 @@ public struct DoctorTool: Sendable {
         return results
     }
 
-    private func runCommand(_ command: String, arguments: [String]) async -> (
+    private func runCommand(
+        _ command: String,
+        arguments: [String]
+    ) async -> (
         exitCode: Int32, stdout: String, stderr: String,
     ) {
         do {

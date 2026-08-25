@@ -104,14 +104,14 @@ struct URLTypeToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Write URL types to plist
-        let plist: [String: Any] = [
+        let plist: [String: AnyValue] = [
             "CFBundleURLTypes": [
                 [
                     "CFBundleURLName": "app.toba.ThesisApp",
                     "CFBundleURLSchemes": ["thesisapp"],
                     "CFBundleTypeRole": "Editor",
-                ] as [String: Any]
-            ] as [[String: Any]]
+                ]
+            ]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -175,11 +175,11 @@ struct URLTypeToolsTests {
 
         // Verify plist contents
         let plist = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let urlTypes = plist["CFBundleURLTypes"] as? [[String: Any]]
+        let urlTypes = plist["CFBundleURLTypes"]?.dictionaryArrayValue
         #expect(urlTypes?.count == 1)
-        #expect(urlTypes?.first?["CFBundleURLName"] as? String == "com.example.myapp")
-        #expect(urlTypes?.first?["CFBundleTypeRole"] as? String == "Editor")
-        let schemes = urlTypes?.first?["CFBundleURLSchemes"] as? [String]
+        #expect(urlTypes?.first?["CFBundleURLName"]?.stringValue == "com.example.myapp")
+        #expect(urlTypes?.first?["CFBundleTypeRole"]?.stringValue == "Editor")
+        let schemes = urlTypes?.first?["CFBundleURLSchemes"]?.stringArrayValue
         #expect(schemes == ["myapp", "myapp-dev"])
     }
 
@@ -190,9 +190,8 @@ struct URLTypeToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Pre-populate
-        let plist: [String: Any] = [
-            "CFBundleURLTypes": [["CFBundleURLName": "com.example.myapp"] as [String: Any]]
-                as [[String: Any]]
+        let plist: [String: AnyValue] = [
+            "CFBundleURLTypes": [["CFBundleURLName": "com.example.myapp"]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -218,14 +217,14 @@ struct URLTypeToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Pre-populate
-        let plist: [String: Any] = [
+        let plist: [String: AnyValue] = [
             "CFBundleURLTypes": [
                 [
                     "CFBundleURLName": "com.example.myapp",
                     "CFBundleTypeRole": "Viewer",
                     "CFBundleURLSchemes": ["myapp"],
-                ] as [String: Any]
-            ] as [[String: Any]]
+                ]
+            ]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -247,9 +246,9 @@ struct URLTypeToolsTests {
 
         // Verify update
         let updated = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let urlTypes = updated["CFBundleURLTypes"] as? [[String: Any]]
-        #expect(urlTypes?.first?["CFBundleTypeRole"] as? String == "Editor")
-        let schemes = urlTypes?.first?["CFBundleURLSchemes"] as? [String]
+        let urlTypes = updated["CFBundleURLTypes"]?.dictionaryArrayValue
+        #expect(urlTypes?.first?["CFBundleTypeRole"]?.stringValue == "Editor")
+        let schemes = urlTypes?.first?["CFBundleURLSchemes"]?.stringArrayValue
         #expect(schemes == ["myapp", "myapp-beta"])
     }
 
@@ -281,9 +280,8 @@ struct URLTypeToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Pre-populate
-        let plist: [String: Any] = [
-            "CFBundleURLTypes": [["CFBundleURLName": "com.example.myapp"] as [String: Any]]
-                as [[String: Any]]
+        let plist: [String: AnyValue] = [
+            "CFBundleURLTypes": [["CFBundleURLName": "com.example.myapp"]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -328,8 +326,8 @@ struct URLTypeToolsTests {
         #expect(message.contains("Successfully added"))
 
         let plist = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let urlTypes = plist["CFBundleURLTypes"] as? [[String: Any]]
-        #expect(urlTypes?.first?["CustomKey"] as? String == "CustomValue")
+        let urlTypes = plist["CFBundleURLTypes"]?.dictionaryArrayValue
+        #expect(urlTypes?.first?["CustomKey"]?.stringValue == "CustomValue")
     }
 
     @Test

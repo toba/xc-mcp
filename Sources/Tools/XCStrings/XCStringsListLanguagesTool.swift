@@ -4,12 +4,10 @@ import XCMCPCore
 public struct XCStringsListLanguagesTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_list_languages",
             description: "List all languages in the xcstrings file",
             inputSchema: .object([
@@ -18,7 +16,7 @@ public struct XCStringsListLanguagesTool: Sendable {
                     "file": .object([
                         "type": .string("string"),
                         "description": .string("Path to the xcstrings file"),
-                    ]),
+                    ])
                 ]),
                 "required": .array([.string("file")]),
             ]),
@@ -29,18 +27,12 @@ public struct XCStringsListLanguagesTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let filePath = try arguments.getRequiredString("file")
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
             let languages = try await parser.listLanguages()
 
             let json = try encodePrettyJSON(languages, fallback: "[]")
 
-            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(json)
         }
     }
 }

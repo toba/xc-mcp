@@ -66,13 +66,11 @@ public enum PBXTargetMap {
         // Fallback: scan for /* TargetName */ comment references
         guard let content = PBXProjParsing.readText(projectPath: projectPath) else { return nil }
 
-        let uuidPattern = "[A-F0-9]{\(PBXProjParsing.identifierLength)}"
-
         for line in content.splitLines() {
             if line.contains("PBXNativeTarget") { continue }
             if line.contains("/* \(targetName) */"),
-               let range = line.range(of: uuidPattern, options: .regularExpression) {
-                return String(line[range])
+               let uuid = PBXProjParsing.firstIdentifier(in: line, requireUppercase: true) {
+                return uuid
             }
         }
 

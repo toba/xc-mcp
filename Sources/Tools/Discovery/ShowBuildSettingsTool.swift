@@ -105,7 +105,7 @@ public struct ShowBuildSettingsTool: Sendable {
                 output = format == "json"
                     ? formatBuildSettingsJSON(from: result.stdout, fields: fieldSet, filter: filter)
                     : formatBuildSettings(from: result.stdout, fields: fieldSet, filter: filter)
-                return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+                return CallTool.Result.text(output)
             } else {
                 throw MCPError.internalError("Failed to get build settings: \(result.errorOutput)")
             }
@@ -114,13 +114,27 @@ public struct ShowBuildSettingsTool: Sendable {
         }
     }
 
+    /// Keeps the settings a `fields` list names, or the ones a `filter` matches.
+    ///
+    /// An empty `fields` list falls through to `filter`. Neither one keeps every setting.
+    private static func select(
+        _ settings: [String: String],
+        fields: Set<String>,
+        filter: String?,
+    ) -> [String: String] {
+        if !fields.isEmpty { return settings.filter { fields.contains($0.key) } }
+        guard let filter else { return settings }
+        return settings.filter { key, value in
+            key.lowercased().contains(filter) || value.lowercased().contains(filter)
+        }
+    }
+
     private func formatBuildSettings(
         from json: String,
         fields: Set<String>,
         filter: String?,
     ) -> String {
-        let data = Data(json.utf8)
-        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+        guard let entries = BuildSettingExtractor.decodeEntries(json) else {
             // If not JSON, return raw output (possibly filtered)
             if let filter {
                 let lines = json.components(separatedBy: .newlines)
@@ -132,31 +146,14 @@ public struct ShowBuildSettingsTool: Sendable {
 
         var output = ""
 
-        for targetSettings in parsed {
-            guard let target = targetSettings["target"] as? String,
-                  let settings = targetSettings["buildSettings"] as? [String: Any] else { continue }
+        for entry in entries {
+            guard let target = entry.target else { continue }
 
             output += "Target: \(target)\n"
             output += String(repeating: "=", count: 60) + "\n\n"
 
-            // Sort settings by key
-            let sortedKeys = settings.keys.sorted()
-
-            for key in sortedKeys {
-                guard let value = settings[key] else { continue }
-
-                // Fields takes precedence over filter
-                if !fields.isEmpty {
-                    if !fields.contains(key) { continue }
-                } else if let filter {
-                    let keyLower = key.lowercased()
-                    let valueLower = String(describing: value).lowercased()
-                    if !keyLower.contains(filter), !valueLower.contains(filter) { continue }
-                }
-
-                let valueStr = String(describing: value)
-                output += "\(key) = \(valueStr)\n"
-            }
+            let selected = Self.select(entry.buildSettings, fields: fields, filter: filter)
+            for key in selected.keys.sorted() { output += "\(key) = \(selected[key] ?? "")\n" }
 
             output += "\n"
         }
@@ -178,35 +175,19 @@ public struct ShowBuildSettingsTool: Sendable {
         fields: Set<String>,
         filter: String?,
     ) -> String {
-        let data = Data(json.utf8)
-        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            return json
+        guard let entries = BuildSettingExtractor.decodeEntries(json) else { return json }
+
+        let filtered = entries.compactMap { entry -> BuildSettingsEntry? in
+            guard entry.target != nil else { return nil }
+            return BuildSettingsEntry(
+                target: entry.target,
+                buildSettings: Self.select(entry.buildSettings, fields: fields, filter: filter),
+            )
         }
 
-        // Apply fields/filter to each target's build settings
-        let filtered: [[String: Any]] = parsed.compactMap { targetSettings in
-            guard let target = targetSettings["target"] as? String,
-                  let settings = targetSettings["buildSettings"] as? [String: Any]
-            else { return nil }
-
-            let filteredSettings: [String: Any]
-            if !fields.isEmpty {
-                filteredSettings = settings.filter { fields.contains($0.key) }
-            } else if let filter {
-                filteredSettings = settings.filter { key, value in
-                    key.lowercased().contains(filter)
-                        || String(describing: value).lowercased().contains(filter)
-                }
-            } else {
-                filteredSettings = settings
-            }
-
-            return ["target": target, "buildSettings": filteredSettings]
-        }
-
-        guard let outputData = try? JSONSerialization.data(
-            withJSONObject: filtered, options: [.prettyPrinted, .sortedKeys],
-        ),
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let outputData = try? encoder.encode(filtered),
               let outputString = String(data: outputData, encoding: .utf8) else { return json }
 
         return outputString

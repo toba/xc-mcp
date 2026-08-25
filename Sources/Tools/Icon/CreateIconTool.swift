@@ -6,21 +6,18 @@ import Foundation
 
 /// MCP tool for creating an Icon Composer `.icon` bundle from a PNG image.
 ///
-/// Creates the `.icon` directory structure with an `icon.json` manifest and
-/// copies the source PNG into the `Assets/` subdirectory. Optionally adds the
-/// `.icon` to an Xcode project with the correct `lastKnownFileType`.
+/// Creates the `.icon` directory structure with an `icon.json` manifest and copies the source PNG
+/// into the `Assets/` subdirectory. Optionally adds the `.icon` to an Xcode project with the
+/// correct `lastKnownFileType`.
 public struct CreateIconTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "create_icon",
-            description:
-            "Create an Icon Composer .icon bundle from a PNG image. "
+            description: "Create an Icon Composer .icon bundle from a PNG image. "
                 + "Generates the icon.json manifest and Assets/ directory structure "
                 + "compatible with Icon Composer and ictool. "
                 + "Optionally adds the .icon file to an Xcode project with the correct "
@@ -31,9 +28,7 @@ public struct CreateIconTool: Sendable {
                 "properties": .object([
                     "png_path": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Path to the source PNG image."
-                        ),
+                        "description": .string("Path to the source PNG image."),
                     ]),
                     "output_path": .object([
                         "type": .string("string"),
@@ -88,21 +83,15 @@ public struct CreateIconTool: Sendable {
                     ]),
                     "shadow_opacity": .object([
                         "type": .string("number"),
-                        "description": .string(
-                            "Shadow opacity 0.0–1.0 (default: 0.5)."
-                        ),
+                        "description": .string("Shadow opacity 0.0–1.0 (default: 0.5)."),
                     ]),
                     "translucency_enabled": .object([
                         "type": .string("boolean"),
-                        "description": .string(
-                            "Enable translucency effect (default: true)."
-                        ),
+                        "description": .string("Enable translucency effect (default: true)."),
                     ]),
                     "translucency_value": .object([
                         "type": .string("number"),
-                        "description": .string(
-                            "Translucency amount 0.0–1.0 (default: 0.5)."
-                        ),
+                        "description": .string("Translucency amount 0.0–1.0 (default: 0.5)."),
                     ]),
                     "project_path": .object([
                         "type": .string("string"),
@@ -137,12 +126,10 @@ public struct CreateIconTool: Sendable {
         let darkFillColor = arguments.getString("dark_fill_color")
         let glyphScale = arguments.getDouble("glyph_scale")
         let glass = arguments.getBool("glass")
-        let specular: Bool? = arguments["specular"] != nil ? arguments.getBool("specular") : nil
+        let specular = arguments.getOptionalBool("specular")
         let shadowKind = arguments.getString("shadow_kind") ?? "neutral"
         let shadowOpacity = arguments.getDouble("shadow_opacity") ?? 0.5
-        let translucencyEnabled = arguments["translucency_enabled"] != nil
-            ? arguments.getBool("translucency_enabled")
-            : true
+        let translucencyEnabled = arguments.getBool("translucency_enabled", default: true)
         let translucencyValue = arguments.getDouble("translucency_value") ?? 0.5
         let projectPath = arguments.getString("project_path")
         let targetName = arguments.getString("target_name")
@@ -171,16 +158,12 @@ public struct CreateIconTool: Sendable {
 
         // Copy PNG into Assets/
         let destPNG = assetsDir + "/" + pngFilename
-        if fm.fileExists(atPath: destPNG) {
-            try fm.removeItem(atPath: destPNG)
-        }
+        if fm.fileExists(atPath: destPNG) { try fm.removeItem(atPath: destPNG) }
         try fm.copyItem(atPath: resolvedPNG, toPath: destPNG)
 
         // Build layer
         var position: IconManifest.Position?
-        if let glyphScale, glyphScale != 1.0 {
-            position = IconManifest.Position(scale: glyphScale)
-        }
+        if let glyphScale, glyphScale != 1.0 { position = IconManifest.Position(scale: glyphScale) }
 
         let layer = IconManifest.Layer(
             imageName: pngFilename,
@@ -205,16 +188,17 @@ public struct CreateIconTool: Sendable {
         )
 
         // Build fill
-        let resolvedFill = fillColor.map { Self.resolveFill($0) }
+        let resolvedFill = fillColor.map { IconManifest.resolveFill($0) }
 
         // Dark mode specialization
         var fillSpecializations: [IconManifest.Specialization<IconManifest.Fill>]?
+
         if let darkFillColor {
             fillSpecializations = [
                 IconManifest.Specialization(
                     appearance: "dark",
-                    value: Self.resolveFill(darkFillColor)
-                ),
+                    value: IconManifest.resolveFill(darkFillColor)
+                )
             ]
         }
 
@@ -236,35 +220,12 @@ public struct CreateIconTool: Sendable {
                 "project_path": .string(projectPath),
                 "file_path": .string(resolvedOutput),
             ]
-            if let targetName {
-                addArgs["target_name"] = .string(targetName)
-            }
-            if let groupName {
-                addArgs["group_name"] = .string(groupName)
-            }
+            if let targetName { addArgs["target_name"] = .string(targetName) }
+            if let groupName { addArgs["group_name"] = .string(groupName) }
             let addResult = try addFileTool.execute(arguments: addArgs)
-            if case let .text(text, _, _) = addResult.content.first {
-                messages.append(text)
-            }
+            if case let .text(text, _, _) = addResult.content.first { messages.append(text) }
         }
 
-        return CallTool.Result(
-            content: [
-                .text(
-                    text: messages.joined(separator: "\n"),
-                    annotations: nil,
-                    _meta: nil,
-                ),
-            ],
-        )
-    }
-
-    /// Resolves a fill color string — hex colors are converted to Apple sRGB notation.
-    private static func resolveFill(_ color: String) -> IconManifest.Fill {
-        if color.hasPrefix("#") || (color.count == 6 && color.allSatisfy(\.isHexDigit)) {
-            return .fromHex(color)
-        }
-        // Already in Apple notation (e.g. "extended-srgb:0.0,0.5,1.0,1.0")
-        return .automaticGradient(color)
+        return CallTool.Result.text(messages.joined(separator: "\n"))
     }
 }

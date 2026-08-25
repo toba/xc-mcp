@@ -43,6 +43,18 @@ extension [String: Value] {
         return nil
     }
 
+    /// Extracts an optional string value for the given key, treating an empty string as absent
+    ///
+    /// A filter argument reads better this way. An empty string narrows nothing, so a caller that
+    /// sends one means the same as a caller that sends no key at all.
+    ///
+    /// - Parameter key: The argument key to look up.
+    /// - Returns: The string value, or `nil` when the key is missing, not a string, or empty.
+    public func getNonEmptyString(_ key: String) -> String? {
+        guard let value = getString(key), !value.isEmpty else { return nil }
+        return value
+    }
+
     /// Extracts a required string value for the given key.
     ///
     /// - Parameter key: The argument key to look up.
@@ -55,6 +67,38 @@ extension [String: Value] {
         return value
     }
 
+    /// Extracts the `platform` argument as an ``ApplePlatform``
+    ///
+    /// An unrecognized name is rejected rather than mapped to a fallback. A silent fallback writes
+    /// the deployment target under the wrong build setting key, and the target then builds against
+    /// the SDK default instead of the version the caller asked for.
+    ///
+    /// - Parameter defaultPlatform: The platform to use when the caller omits the key.
+    /// - Returns: The parsed platform.
+    /// - Throws: ``MCPError/invalidParams(_:)`` when the value names no known platform.
+    public func getPlatform(
+        default defaultPlatform: ApplePlatform = .iOS,
+    ) throws(MCPError) -> ApplePlatform {
+        guard let name = getString("platform") else { return defaultPlatform }
+        guard let platform = ApplePlatform(rawValue: name) else {
+            throw .invalidParams(
+                "Unknown platform: \(name). Expected one of \(ApplePlatform.allNames)",
+            )
+        }
+        return platform
+    }
+
+    /// Schema property for the target platform, listing every ``ApplePlatform`` case.
+    public static var platformSchemaProperty: [String: Value] {
+        [
+            "platform": .object([
+                "type": .string("string"),
+                "enum": .array(ApplePlatform.allCases.map { .string($0.rawValue) }),
+                "description": .string("Platform (\(ApplePlatform.allNames)). Defaults to iOS"),
+            ])
+        ]
+    }
+
     /// Extracts an optional boolean value for the given key.
     ///
     /// - Parameters:
@@ -64,6 +108,19 @@ extension [String: Value] {
     public func getBool(_ key: String, default defaultValue: Bool = false) -> Bool {
         if case let .bool(value) = self[key] { return value }
         return defaultValue
+    }
+
+    /// Extracts a boolean value for the given key, distinguishing absence from false
+    ///
+    /// Use this where the three states differ. A tool that leaves a build setting alone when the
+    /// caller omits the key, and writes it otherwise, needs the `nil` case. Where a missing key
+    /// means one fixed value, call ``getBool(_:default:)`` instead.
+    ///
+    /// - Parameter key: The argument key to look up.
+    /// - Returns: The boolean value, or `nil` when the key is missing or not a boolean.
+    public func getOptionalBool(_ key: String) -> Bool? {
+        if case let .bool(value) = self[key] { return value }
+        return nil
     }
 
     /// Extracts an optional integer value for the given key.
@@ -90,6 +147,21 @@ extension [String: Value] {
         }
     }
 
+    /// Extracts a required double value for the given key.
+    ///
+    /// Accepts an integer as well, the same as ``getDouble(_:)`` , because a JSON client sends `0`
+    /// rather than `0.0` for a whole number.
+    ///
+    /// - Parameter key: The argument key to look up.
+    /// - Returns: The double value.
+    /// - Throws: MCPError.invalidParams if the key is missing or holds no number.
+    public func getRequiredDouble(_ key: String) throws(MCPError) -> Double {
+        guard let value = getDouble(key) else {
+            throw .invalidParams("\(key) is required and must be a number")
+        }
+        return value
+    }
+
     /// Extracts a string-to-string dictionary for the given key.
     ///
     /// - Parameter key: The argument key to look up.
@@ -104,6 +176,7 @@ extension [String: Value] {
     /// dropping any non-string values.
     static func stringValues(from object: [String: Value]) -> [String: String] {
         var result: [String: String] = [:]
+        result.reserveCapacity(object.count)
         for (k, v) in object { if case let .string(s) = v { result[k] = s } }
         return result
     }
@@ -126,6 +199,19 @@ extension [String: Value] {
             if case let .string(s) = value { return s }
             return nil
         }
+    }
+
+    /// Extracts a string array for the given key, distinguishing absence from an empty array
+    ///
+    /// Use this where the caller clears a field by sending `[]` and leaves it alone by sending no
+    /// key. ``getStringArray(_:)`` collapses both to an empty array, which loses that distinction.
+    ///
+    /// - Parameter key: The argument key to look up.
+    /// - Returns: The strings in the array, or `nil` when the key is missing or holds no array.
+    ///   Non-string elements are dropped.
+    public func getOptionalStringArray(_ key: String) -> [String]? {
+        guard case .array = self[key] else { return nil }
+        return getStringArray(key)
     }
 
     /// Extracts test selection and coverage parameters from arguments.
@@ -492,7 +578,7 @@ extension [String: Value] {
         var pid = getInt("pid").map(Int32.init)
 
         if pid == nil, let bundleID = getString("bundle_id") {
-            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleID)
+            pid = await LLDBSessionManager.shared.getPID(bundleID: bundleID)
         }
 
         guard let targetPID = pid else {

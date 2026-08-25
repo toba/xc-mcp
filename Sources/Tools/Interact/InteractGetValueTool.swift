@@ -19,9 +19,7 @@ public struct InteractGetValueTool: Sendable {
                 "properties": .object(InteractRunner.appResolutionSchemaProperties.merging([
                     "element_id": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Element ID from interact_ui_tree.",
-                        ),
+                        "description": .string("Element ID from interact_ui_tree."),
                     ])
                 ]) { _, new in new },
                 ),
@@ -36,18 +34,18 @@ public struct InteractGetValueTool: Sendable {
         let pid = try interactRunner.resolveAppFromArguments(arguments)
         try interactRunner.ensureAccessibility()
 
-        guard let elementId = arguments.getInt("element_id") else {
+        guard let elementID = arguments.getInt("element_id") else {
             throw MCPError.invalidParams("element_id is required")
         }
 
         guard let cached = await InteractSessionManager.shared.getElement(
-            pid: pid, elementID: elementId,
-        ) else { throw InteractError.elementNotFound(elementId) }
+            pid: pid, elementID: elementID,
+        ) else { throw InteractError.elementNotFound(elementID) }
 
-        let info = interactRunner.getAttributes(from: cached.element, id: elementId)
+        let info = interactRunner.getAttributes(from: cached.element, id: elementID)
 
         var lines: [String] = []
-        lines.append("Element \(elementId):")
+        lines.append("Element \(elementID):")
         if let role = info.role { lines.append("  Role: \(role)") }
         if let subrole = info.subrole { lines.append("  Subrole: \(subrole)") }
         if let title = info.title { lines.append("  Title: \(title)") }
@@ -63,12 +61,6 @@ public struct InteractGetValueTool: Sendable {
         }
         lines.append("  Children: \(info.childCount)")
 
-        return CallTool.Result(content: [
-            .text(
-                text: lines.joined(separator: "\n"),
-                annotations: nil,
-                _meta: nil,
-            )
-        ])
+        return CallTool.Result.text(lines.joined(separator: "\n"))
     }
 }

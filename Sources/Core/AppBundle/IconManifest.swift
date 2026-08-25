@@ -1,3 +1,4 @@
+import MCP
 import Foundation
 
 /// Codable representation of an Icon Composer `.icon` bundle's `icon.json` manifest.
@@ -241,6 +242,38 @@ public struct IconManifest: Codable, Sendable {
             self.translationInPoints = translationInPoints
         }
 
+        /// Merges the optional scale and offset arguments onto a position.
+        ///
+        /// An argument the caller omits keeps the value `existing` carries. A group or layer with
+        /// no position starts from scale 1 at the origin.
+        ///
+        /// - Parameters:
+        ///   - existing: The position already on the group or the layer, or `nil`.
+        ///   - scale: The `scale` argument.
+        ///   - offsetX: The `offset_x` argument.
+        ///   - offsetY: The `offset_y` argument.
+        public static func merging(
+            _ existing: Position?,
+            scale: Double?,
+            offsetX: Double?,
+            offsetY: Double?,
+        ) -> Position {
+            .init(
+                scale: scale ?? existing?.scale ?? 1.0,
+                translationInPoints: [
+                    offsetX ?? existing?.translationInPoints.first ?? 0,
+                    offsetY ?? existing?.translationInPoints.dropFirst().first ?? 0,
+                ],
+            )
+        }
+
+        /// The position written the way the icon tools report it.
+        public var summary: String {
+            let x = translationInPoints.first ?? 0
+            let y = translationInPoints.dropFirst().first ?? 0
+            return "scale=\(scale), offset=[\(x), \(y)]"
+        }
+
         enum CodingKeys: String, CodingKey {
             case scale
             case translationInPoints = "translation-in-points"
@@ -287,6 +320,25 @@ public struct IconManifest: Codable, Sendable {
 
     // MARK: - Hex Color Conversion
 
+    /// Converts a color argument to the notation `icon.json` stores.
+    ///
+    /// A hex string becomes Apple's sRGB notation. Every other value passes through, because the
+    /// manifest also names a color from an asset catalog.
+    ///
+    /// - Parameter color: A hex string with or without a leading `#`, or an asset catalog name.
+    public static func resolveColor(_ color: String) -> String {
+        color.hasPrefix("#") || (color.count == 6 && color.allSatisfy(\.isHexDigit))
+            ? hexToSRGB(color)
+            : color
+    }
+
+    /// Converts a color argument to a fill, the way every icon tool that takes one does.
+    ///
+    /// - Parameter color: A hex string with or without a leading `#`, or an asset catalog name.
+    public static func resolveFill(_ color: String) -> Fill {
+        .automaticGradient(resolveColor(color))
+    }
+
     /// Converts a hex color string to Apple's sRGB notation: `"srgb:R,G,B,1.00000"`.
     public static func hexToSRGB(_ hex: String) -> String {
         var h = hex
@@ -315,6 +367,30 @@ public extension IconManifest {
         let jsonURL = URL(fileURLWithPath: iconBundlePath).appendingPathComponent("icon.json")
         let data = try Data(contentsOf: jsonURL)
         return try JSONDecoder().decode(IconManifest.self, from: data)
+    }
+
+    /// Reads the manifest of a `.icon` bundle, rejecting a path that is not on disk.
+    ///
+    /// Every icon tool checks the bundle before it reads. A missing bundle is a caller mistake, so
+    /// it reports as `invalidParams` rather than as a decoding failure.
+    ///
+    /// - Parameter iconBundlePath: The `.icon` bundle directory.
+    /// - Throws: ``MCPError/invalidParams(_:)`` when the bundle is absent, or a decoding error.
+    static func open(_ iconBundlePath: String) throws -> IconManifest {
+        guard FileManager.default.fileExists(atPath: iconBundlePath) else {
+            throw MCPError.invalidParams("Icon bundle not found: \(iconBundlePath)")
+        }
+        return try read(from: iconBundlePath)
+    }
+
+    /// Rejects a group index that names no group.
+    ///
+    /// - Parameter index: The `group_index` argument.
+    /// - Throws: ``MCPError/invalidParams(_:)`` naming the valid range.
+    func validateGroupIndex(_ index: Int) throws(MCPError) {
+        guard index >= 0, index < groups.count else {
+            throw .invalidParams("group_index \(index) out of range (0..<\(groups.count))")
+        }
     }
 
     /// Encodes to pretty-printed, sorted-keys JSON data.

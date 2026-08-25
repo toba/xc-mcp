@@ -35,26 +35,16 @@ public struct ValidateSchemeTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(schemeName) = arguments["scheme_name"]
-        else {
-            throw MCPError.invalidParams("project_path and scheme_name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let schemeName = arguments.getString("scheme_name")
+        else { throw MCPError.invalidParams("project_path and scheme_name are required") }
 
         let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
         let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
         guard let schemePath = SchemePathResolver.findScheme(
             named: schemeName, in: resolvedProjectPath,
-        ) else {
-            return CallTool.Result(content: [
-                .text(
-                    text: "Scheme '\(schemeName)' not found in project",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],)
-        }
+        ) else { return CallTool.Result.text("Scheme '\(schemeName)' not found in project") }
 
         do {
             let scheme = try XCScheme(pathString: schemePath)
@@ -167,20 +157,14 @@ public struct ValidateSchemeTool: Sendable {
             }
 
             if issues.isEmpty {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Scheme '\(schemeName)' is valid",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
+                return CallTool.Result.text("Scheme '\(schemeName)' is valid")
             } else {
                 var result = "Scheme '\(schemeName)' has \(issues.count) issue(s):\n"
                 for issue in issues { result += "  - \(issue)\n" }
-                return CallTool.Result(content: [.text(text: result, annotations: nil, _meta: nil)])
+                return CallTool.Result.text(result)
             }
         } catch {
-            throw MCPError.internalError("Failed to validate scheme: \(error.localizedDescription)")
+            throw try error.asMCPError()
         }
     }
 }

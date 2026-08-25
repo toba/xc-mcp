@@ -6,16 +6,16 @@ public struct LaunchAppLogsSimTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "launch_app_logs_sim",
             description:
-            "Launch an app on a simulator and capture its console output (stdout/stderr) for a specified duration.",
+                "Launch an app on a simulator and capture its console output (stdout/stderr) for a specified duration.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -50,45 +50,31 @@ public struct LaunchAppLogsSimTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        guard case let .string(bundleId) = arguments["bundle_id"] else {
-            throw MCPError.invalidParams("bundle_id is required")
-        }
+        let bundleID = try arguments.getRequiredString("bundle_id")
+
         do {
-            try PredicateFilterValidator.validate(bundleId, field: "bundle_id")
+            try PredicateFilterValidator.validate(bundleID, field: "bundle_id")
         } catch {
             throw try error.asMCPError()
         }
 
-        // Get simulator
-        let simulator: String
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
-            throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let simulator = try await sessionManager.resolveSimulator(from: arguments)
 
         let durationSeconds = min(60, max(1, arguments.getInt("duration_seconds") ?? 10))
 
         let launchArgs = arguments.getStringArray("args")
 
         do {
-            // Launch the app with console output redirection
-            // Using simctl spawn with the app
+            // Launch the app with console output redirection Using simctl spawn with the app
             let launchResult = try await simctlRunner.launch(
                 udid: simulator,
-                bundleId: bundleId,
+                bundleID: bundleID,
                 waitForDebugger: false,
                 args: launchArgs,
             )
 
             guard launchResult.succeeded else {
-                throw MCPError.internalError(
-                    "Failed to launch app: \(launchResult.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to launch app: \(launchResult.errorOutput)")
             }
 
             // Extract PID for log filtering
@@ -97,25 +83,28 @@ public struct LaunchAppLogsSimTool: Sendable {
             // Capture logs using log stream
             let logs = try await captureLogs(
                 simulator: simulator,
-                bundleId: bundleId,
+                bundleID: bundleID,
                 pid: pid,
                 duration: durationSeconds,
             )
 
-            var output = "Launched '\(bundleId)' on simulator '\(simulator)'\n"
-            if let pid {
-                output += "Process ID: \(pid)\n"
-            }
+            var output = "Launched '\(bundleID)' on simulator '\(simulator)'\n"
+            if let pid { output += "Process ID: \(pid)\n" }
             output += "Captured \(durationSeconds) seconds of logs:\n\n"
             output += logs
 
-            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(output)
         } catch {
             throw try error.asMCPError()
         }
     }
 
-    private func captureLogs(simulator: String, bundleId: String, pid: String?, duration: Int)
+    private func captureLogs(
+        simulator: String,
+        bundleID: String,
+        pid: String?,
+        duration: Int
+    )
         async throws -> String
     {
         // Use log stream to capture logs
@@ -129,7 +118,7 @@ public struct LaunchAppLogsSimTool: Sendable {
             args.append(contentsOf: ["--predicate", "processID == \(pid)"])
         } else {
             // Filter by bundle ID subsystem
-            args.append(contentsOf: ["--predicate", "subsystem CONTAINS '\(bundleId)'"])
+            args.append(contentsOf: ["--predicate", "subsystem CONTAINS '\(bundleID)'"])
         }
 
         process.arguments = args
@@ -139,9 +128,12 @@ public struct LaunchAppLogsSimTool: Sendable {
         process.standardError = stdoutPipe
 
         try process.run()
+        // Pairs with run on every exit path. A cancelled sleep below throws, and without this the
+        // log stream survives the server as an orphan.
+        defer { if process.isRunning { process.terminate() } }
 
         // Wait for specified duration
-        try await Task.sleep(nanoseconds: UInt64(duration) * 1_000_000_000)
+        try await Task.sleep(for: .seconds(duration))
 
         // Terminate log stream
         process.terminate()
@@ -151,11 +143,9 @@ public struct LaunchAppLogsSimTool: Sendable {
 
         // Limit output size
         let lines = output.components(separatedBy: .newlines)
-        if lines.count > 200 {
-            return lines.suffix(200).joined(separator: "\n")
+        return lines.count > 200
+            ? lines.suffix(200).joined(separator: "\n")
                 + "\n\n(Output truncated to last 200 lines)"
-        }
-
-        return output
+            : output
     }
 }

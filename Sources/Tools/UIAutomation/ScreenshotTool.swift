@@ -42,23 +42,12 @@ public struct ScreenshotTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get simulator
-        let simulator: String
-
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
-            throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let simulator = try await sessionManager.resolveSimulator(from: arguments)
 
         // Get output path
         let outputPath: String
 
-        if case let .string(value) = arguments["output_path"] {
+        if let value = arguments.getString("output_path") {
             outputPath = value
         } else {
             let timestamp = Int(Date().timeIntervalSince1970)
@@ -68,7 +57,7 @@ public struct ScreenshotTool: Sendable {
         // Get format
         let format: String
 
-        if case let .string(value) = arguments["format"] {
+        if let value = arguments.getString("format") {
             format = value.lowercased()
         } else {
             format = "png"
@@ -92,11 +81,7 @@ public struct ScreenshotTool: Sendable {
             let result = try await simctlRunner.screenshot(udid: simulator, outputPath: finalPath)
 
             if result.succeeded {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Screenshot saved to: \(finalPath)",
-                        annotations: nil, _meta: nil)
-                ],)
+                return CallTool.Result.text("Screenshot saved to: \(finalPath)")
             } else {
                 throw MCPError.internalError("Failed to take screenshot: \(result.errorOutput)")
             }

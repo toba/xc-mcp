@@ -64,31 +64,18 @@ public struct AddPackageProductTool: Sendable {
     private enum ProductKind: String { case library, plugin }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(productName) = arguments["product_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let productName = arguments.getString("product_name")
         else {
             throw MCPError.invalidParams("project_path, target_name, and product_name are required")
         }
 
-        let kindArg: String?
-        if case let .string(k) = arguments["kind"] { kindArg = k } else { kindArg = nil }
+        let kindArg = arguments.getString("kind")
 
-        let packageURLArg: String?
+        let packageURLArg = arguments.getString("package_url")
 
-        if case let .string(u) = arguments["package_url"] {
-            packageURLArg = u
-        } else {
-            packageURLArg = nil
-        }
-
-        let packagePathArg: String?
-
-        if case let .string(p) = arguments["package_path"] {
-            packagePathArg = p
-        } else {
-            packagePathArg = nil
-        }
+        let packagePathArg = arguments.getString("package_path")
 
         if packageURLArg != nil, packagePathArg != nil {
             throw MCPError.invalidParams("Specify either package_url or package_path, not both")
@@ -270,13 +257,9 @@ public struct AddPackageProductTool: Sendable {
             }
             message += traitsNote
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(message)
         } catch {
-            throw MCPError.internalError(
-                "Failed to add package product: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 

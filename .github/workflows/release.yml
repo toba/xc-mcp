@@ -141,11 +141,17 @@ jobs:
             SERVERS = %w[xc-build xc-debug xc-device xc-project xc-simulator xc-strings xc-swift].freeze
 
             def install
-              # The release links the toba packages static, so the glob is empty. It stays
-              # because a release built without TOBA_STATIC_LINK ships dylibs the executable
-              # reaches through an rpath of @loader_path/../lib.
-              lib.install Dir["lib/*.dylib"]
-              bin.install "bin/xc-mcp"
+              # A release built with TOBA_STATIC_LINK carries no dylib, so the tarball holds
+              # bin alone. Homebrew changes into a lone top-level directory before install
+              # runs, which leaves the executable at the staged root. A release that ships
+              # dylibs holds bin and lib, so no change of directory happens.
+              staged = File.directory?("bin") ? "bin" : "."
+
+              # The executable reaches a dylib through an rpath of @loader_path/../lib.
+              dylibs = Dir["lib/*.dylib"]
+              lib.install dylibs unless dylibs.empty?
+
+              bin.install "#{staged}/xc-mcp"
               SERVERS.each do |name|
                 bin.install_symlink "xc-mcp" => name
               end

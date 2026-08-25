@@ -4,8 +4,8 @@ import ArgumentParser
 
 /// Command-line interface for the xc-device MCP server.
 ///
-/// This focused server provides physical iOS device tools with minimal
-/// token overhead (~2K tokens vs ~50K for the full xc-mcp server).
+/// This focused server provides physical iOS device tools with minimal token overhead (~2K tokens
+/// vs ~50K for the full xc-mcp server).
 ///
 /// ## Usage
 ///

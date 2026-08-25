@@ -52,20 +52,17 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(folderPath) = arguments["folder_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .array(filesArray) = arguments["files"]
+        guard let projectPath = arguments.getString("project_path"),
+              let folderPath = arguments.getString("folder_path"),
+              let targetName = arguments.getString("target_name"),
+              case .array = arguments["files"]
         else {
             throw MCPError.invalidParams(
                 "project_path, folder_path, target_name, and files are required",
             )
         }
 
-        let files = filesArray.compactMap { value -> String? in
-            if case let .string(s) = value { return s }
-            return nil
-        }
+        let files = arguments.getStringArray("files")
 
         guard !files.isEmpty else { throw MCPError.invalidParams("files array must not be empty") }
 
@@ -101,11 +98,9 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
                 let newFiles = files.filter { !existing.contains($0) }
 
                 if newFiles.isEmpty {
-                    return CallTool.Result(content: [
-                        .text(
-                            text: "All specified files are already in the exception set for target '\(targetName)' on '\(folderPath)'",
-                            annotations: nil, _meta: nil)
-                    ],)
+                    return CallTool.Result.text(
+                        "All specified files are already in the exception set for target '\(targetName)' on '\(folderPath)'"
+                    )
                 }
 
                 try editor.addEntriesToArray(
@@ -133,17 +128,11 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
             try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
 
             let fileList = files.joined(separator: ", ")
-            return CallTool.Result(content: [
-                .text(
-                    text: "Successfully added membership exceptions for [\(fileList)] in synchronized folder '\(folderPath)' for target '\(targetName)'",
-                    annotations: nil, _meta: nil)
-            ],)
-        } catch let error as MCPError {
-            throw error
-        } catch {
-            throw MCPError.internalError(
-                "Failed to add synchronized folder exception: \(error.localizedDescription)",
+            return CallTool.Result.text(
+                "Successfully added membership exceptions for [\(fileList)] in synchronized folder '\(folderPath)' for target '\(targetName)'"
             )
+        } catch {
+            throw try error.asMCPError()
         }
     }
 }

@@ -8,27 +8,24 @@ import Foundation
 struct SetTestPlanSkippedTestsToolTests {
     private let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
-    private func createTestPlan(_ json: [String: Any]) throws -> String {
+    private func createTestPlan(_ json: [String: AnyValue]) throws -> String {
         let path = TemporaryDirectory.url.appendingPathComponent("test.xctestplan").path
         try TestPlanFile.write(json, to: path)
         return path
     }
 
-    private func basePlan() -> [String: Any] {
+    private func basePlan() -> [String: AnyValue] {
         [
-            "configurations": [
-                ["id": "DEFAULT", "name": "Default", "options": [:] as [String: Any]]
-                    as [String: Any]
-            ],
-            "defaultOptions": [:] as [String: Any],
+            "configurations": [["id": "DEFAULT", "name": "Default", "options": [:]]],
+            "defaultOptions": [:],
             "testTargets": [
                 [
                     "target": [
                         "containerPath": "container:App.xcodeproj",
                         "identifier": "ABC123",
                         "name": "AppTests",
-                    ] as [String: Any]
-                ] as [String: Any]
+                    ]
+                ]
             ],
             "version": 1,
         ]
@@ -63,8 +60,8 @@ struct SetTestPlanSkippedTestsToolTests {
         #expect(message.contains("plan-level defaults"))
 
         let json = try TestPlanFile.read(from: path)
-        let defaults = json["defaultOptions"] as? [String: Any]
-        let tests = defaults?["skippedTests"] as? [String]
+        let defaults = json["defaultOptions"]?.dictionaryValue
+        let tests = defaults?["skippedTests"]?.stringArrayValue
         #expect(tests == ["PerfTests", "XMLDecoderPerformanceTests/testDecode()"])
     }
 
@@ -87,17 +84,17 @@ struct SetTestPlanSkippedTestsToolTests {
         #expect(message.contains("target 'AppTests'"))
 
         let json = try TestPlanFile.read(from: path)
-        let targets = json["testTargets"] as? [[String: Any]]
-        let tests = targets?.first?["skippedTests"] as? [String]
+        let targets = json["testTargets"]?.dictionaryArrayValue
+        let tests = targets?.first?["skippedTests"]?.stringArrayValue
         #expect(tests == ["PerfTests"])
     }
 
     @Test
     func `Remove tests from plan-level defaults`() throws {
         var plan = basePlan()
-        var defaults = try #require(plan["defaultOptions"] as? [String: Any])
+        var defaults = try #require(plan["defaultOptions"]?.dictionaryValue)
         defaults["skippedTests"] = ["PerfTests", "SlowTests", "FlakyTests"]
-        plan["defaultOptions"] = defaults
+        plan["defaultOptions"] = .dictionary(defaults)
 
         let path = try createTestPlan(plan)
 
@@ -116,16 +113,16 @@ struct SetTestPlanSkippedTestsToolTests {
         #expect(message.contains("Removed"))
 
         let json = try TestPlanFile.read(from: path)
-        let tests = (json["defaultOptions"] as? [String: Any])?["skippedTests"] as? [String]
+        let tests = (json["defaultOptions"]?.dictionaryValue)?["skippedTests"]?.stringArrayValue
         #expect(tests == ["FlakyTests"])
     }
 
     @Test
     func `Remove all tests clears skippedTests key`() throws {
         var plan = basePlan()
-        var defaults = try #require(plan["defaultOptions"] as? [String: Any])
+        var defaults = try #require(plan["defaultOptions"]?.dictionaryValue)
         defaults["skippedTests"] = ["PerfTests"]
-        plan["defaultOptions"] = defaults
+        plan["defaultOptions"] = .dictionary(defaults)
 
         let path = try createTestPlan(plan)
 
@@ -138,16 +135,16 @@ struct SetTestPlanSkippedTestsToolTests {
         _ = try tool.execute(arguments: args)
 
         let json = try TestPlanFile.read(from: path)
-        let tests = (json["defaultOptions"] as? [String: Any])?["skippedTests"]
+        let tests = (json["defaultOptions"]?.dictionaryValue)?["skippedTests"]
         #expect(tests == nil)
     }
 
     @Test
     func `Add duplicate tests is idempotent`() throws {
         var plan = basePlan()
-        var defaults = try #require(plan["defaultOptions"] as? [String: Any])
+        var defaults = try #require(plan["defaultOptions"]?.dictionaryValue)
         defaults["skippedTests"] = ["PerfTests"]
-        plan["defaultOptions"] = defaults
+        plan["defaultOptions"] = .dictionary(defaults)
 
         let path = try createTestPlan(plan)
 
@@ -159,7 +156,7 @@ struct SetTestPlanSkippedTestsToolTests {
         _ = try tool.execute(arguments: args)
 
         let json = try TestPlanFile.read(from: path)
-        let tests = (json["defaultOptions"] as? [String: Any])?["skippedTests"] as? [String]
+        let tests = (json["defaultOptions"]?.dictionaryValue)?["skippedTests"]?.stringArrayValue
         #expect(tests == ["PerfTests", "SlowTests"])
     }
 
@@ -192,39 +189,44 @@ struct SetTestPlanSkippedTestsToolTests {
     /// The value holds 10 leaf entries. The first suite holds 2 nested suites and 3 test functions.
     /// The second holds 2 test functions. The third names a whole suite. The XCTest class holds 2
     /// methods.
-    private func nestedSkippedTests() -> [String: Any] {
-        let attributedString: [String: Any] = [
+    private func nestedSkippedTests() -> [String: AnyValue] {
+        let attributedString: [String: AnyValue] = [
             "name": "AttributedStringExtensionsTests",
             "suites": [
                 ["name": "fancyQuotes(rawText:rawExpect:)"],
                 ["name": "plainTextJsonCodable(given:expect:)"],
-            ] as [[String: Any]],
+            ],
             "testFunctions": ["jsonDecode()", "jsonEncode()", "trimEnd()"],
         ]
-        let bibliography: [String: Any] = [
+        let bibliography: [String: AnyValue] = [
             "name": "BibliographyTests",
             "testFunctions": ["defaultSort()", "nameSort()"],
         ]
-        let xmlDecoder: [String: Any] = ["name": "XMLDecoderTests"]
-        let legacy: [String: Any] = [
+        let xmlDecoder: [String: AnyValue] = ["name": "XMLDecoderTests"]
+        let legacy: [String: AnyValue] = [
             "name": "LegacyTests",
             "xctestMethods": ["testOne()", "testTwo()"],
         ]
-        return ["suites": [attributedString, bibliography, xmlDecoder], "xctestClasses": [legacy]]
+        return [
+            "suites": [
+                .dictionary(attributedString), .dictionary(bibliography), .dictionary(xmlDecoder),
+            ],
+            "xctestClasses": [.dictionary(legacy)],
+        ]
     }
 
-    private func planWithNestedSkippedTests() -> [String: Any] {
+    private func planWithNestedSkippedTests() -> [String: AnyValue] {
         var plan = basePlan()
-        var targets = plan["testTargets"] as? [[String: Any]] ?? []
-        targets[0]["skippedTests"] = nestedSkippedTests()
-        plan["testTargets"] = targets
+        var targets = plan["testTargets"]?.dictionaryArrayValue ?? []
+        targets[0]["skippedTests"] = .dictionary(nestedSkippedTests())
+        plan["testTargets"] = .dictionaries(targets)
         return plan
     }
 
-    private func skippedTestsDictionary(at path: String) throws -> [String: Any] {
+    private func skippedTestsDictionary(at path: String) throws -> [String: AnyValue] {
         let json = try TestPlanFile.read(from: path)
-        let targets = try #require(json["testTargets"] as? [[String: Any]])
-        return try #require(targets.first?["skippedTests"] as? [String: Any])
+        let targets = try #require(json["testTargets"]?.dictionaryArrayValue)
+        return try #require(targets.first?["skippedTests"]?.dictionaryValue)
     }
 
     private func execute(
@@ -255,18 +257,19 @@ struct SetTestPlanSkippedTestsToolTests {
         _ = try execute(path: path, tests: ["XMLDecoderTests"], action: "remove")
 
         let skipped = try skippedTestsDictionary(at: path)
-        let suites = try #require(skipped["suites"] as? [[String: Any]])
+        let suites = try #require(skipped["suites"]?.dictionaryArrayValue)
         #expect(suites.count == 2)
         #expect(
-            suites.map { $0["name"] as? String } == [
+            suites.map { $0["name"]?.stringValue } == [
                 "AttributedStringExtensionsTests", "BibliographyTests",
             ])
 
         let first = try #require(suites.first)
-        #expect((first["suites"] as? [[String: Any]])?.count == 2)
+        #expect((first["suites"]?.dictionaryArrayValue)?.count == 2)
         #expect(
-            first["testFunctions"] as? [String] == ["jsonDecode()", "jsonEncode()", "trimEnd()"])
-        #expect((skipped["xctestClasses"] as? [[String: Any]])?.count == 1)
+            first["testFunctions"]?
+                .stringArrayValue == ["jsonDecode()", "jsonEncode()", "trimEnd()"])
+        #expect((skipped["xctestClasses"]?.dictionaryArrayValue)?.count == 1)
     }
 
     @Test
@@ -291,13 +294,14 @@ struct SetTestPlanSkippedTestsToolTests {
         )
 
         let skipped = try skippedTestsDictionary(at: path)
-        let suites = try #require(skipped["suites"] as? [[String: Any]])
+        let suites = try #require(skipped["suites"]?.dictionaryArrayValue)
         #expect(suites.count == 3)
         let parent = try #require(suites.first)
-        let children = try #require(parent["suites"] as? [[String: Any]])
-        #expect(children.map { $0["name"] as? String } == ["plainTextJsonCodable(given:expect:)"])
+        let children = try #require(parent["suites"]?.dictionaryArrayValue)
+        #expect(children.map { $0["name"]?.stringValue } == ["plainTextJsonCodable(given:expect:)"])
         #expect(
-            parent["testFunctions"] as? [String] == ["jsonDecode()", "jsonEncode()", "trimEnd()"])
+            parent["testFunctions"]?
+                .stringArrayValue == ["jsonDecode()", "jsonEncode()", "trimEnd()"])
     }
 
     @Test
@@ -307,12 +311,12 @@ struct SetTestPlanSkippedTestsToolTests {
         _ = try execute(path: path, tests: ["BibliographyTests/defaultSort()"], action: "remove")
 
         let skipped = try skippedTestsDictionary(at: path)
-        let suites = try #require(skipped["suites"] as? [[String: Any]])
+        let suites = try #require(skipped["suites"]?.dictionaryArrayValue)
         #expect(suites.count == 3)
         let bibliography = try #require(suites.first {
-            $0["name"] as? String == "BibliographyTests"
+            $0["name"]?.stringValue == "BibliographyTests"
         })
-        #expect(bibliography["testFunctions"] as? [String] == ["nameSort()"])
+        #expect(bibliography["testFunctions"]?.stringArrayValue == ["nameSort()"])
     }
 
     @Test
@@ -326,9 +330,9 @@ struct SetTestPlanSkippedTestsToolTests {
         )
 
         let skipped = try skippedTestsDictionary(at: path)
-        let suites = try #require(skipped["suites"] as? [[String: Any]])
+        let suites = try #require(skipped["suites"]?.dictionaryArrayValue)
         #expect(
-            suites.map { $0["name"] as? String } == [
+            suites.map { $0["name"]?.stringValue } == [
                 "AttributedStringExtensionsTests", "XMLDecoderTests",
             ])
     }
@@ -340,9 +344,9 @@ struct SetTestPlanSkippedTestsToolTests {
         _ = try execute(path: path, tests: ["LegacyTests/testOne()"], action: "remove")
 
         let skipped = try skippedTestsDictionary(at: path)
-        let classes = try #require(skipped["xctestClasses"] as? [[String: Any]])
+        let classes = try #require(skipped["xctestClasses"]?.dictionaryArrayValue)
         #expect(classes.count == 1)
-        #expect(classes.first?["xctestMethods"] as? [String] == ["testTwo()"])
+        #expect(classes.first?["xctestMethods"]?.stringArrayValue == ["testTwo()"])
     }
 
     @Test
@@ -354,7 +358,7 @@ struct SetTestPlanSkippedTestsToolTests {
         #expect(message.contains("no matching entry for 'NotThere'"))
         #expect(message.contains("entries: 10 → 10"))
         let skipped = try skippedTestsDictionary(at: path)
-        #expect((skipped["suites"] as? [[String: Any]])?.count == 3)
+        #expect((skipped["suites"]?.dictionaryArrayValue)?.count == 3)
     }
 
     @Test
@@ -373,7 +377,7 @@ struct SetTestPlanSkippedTestsToolTests {
         )
 
         let json = try TestPlanFile.read(from: path)
-        let targets = try #require(json["testTargets"] as? [[String: Any]])
+        let targets = try #require(json["testTargets"]?.dictionaryArrayValue)
         #expect(targets.first?["skippedTests"] == nil)
     }
 
@@ -384,10 +388,10 @@ struct SetTestPlanSkippedTestsToolTests {
         _ = try execute(path: path, tests: ["NewSuiteTests"], action: "add")
 
         let skipped = try skippedTestsDictionary(at: path)
-        let suites = try #require(skipped["suites"] as? [[String: Any]])
+        let suites = try #require(skipped["suites"]?.dictionaryArrayValue)
         #expect(suites.count == 4)
-        #expect(suites.last?["name"] as? String == "NewSuiteTests")
-        #expect((skipped["xctestClasses"] as? [[String: Any]])?.count == 1)
+        #expect(suites.last?["name"]?.stringValue == "NewSuiteTests")
+        #expect((skipped["xctestClasses"]?.dictionaryArrayValue)?.count == 1)
     }
 
     @Test
@@ -397,13 +401,14 @@ struct SetTestPlanSkippedTestsToolTests {
         _ = try execute(path: path, tests: ["BibliographyTests/extraSort()"], action: "add")
 
         let skipped = try skippedTestsDictionary(at: path)
-        let suites = try #require(skipped["suites"] as? [[String: Any]])
+        let suites = try #require(skipped["suites"]?.dictionaryArrayValue)
         let bibliography = try #require(suites.first {
-            $0["name"] as? String == "BibliographyTests"
+            $0["name"]?.stringValue == "BibliographyTests"
         })
         #expect(
-            bibliography["testFunctions"]
-                as? [String] == ["defaultSort()", "nameSort()", "extraSort()"])
+            bibliography["testFunctions"]?
+                .stringArrayValue
+                == ["defaultSort()", "nameSort()", "extraSort()"])
     }
 
     @Test
@@ -413,9 +418,9 @@ struct SetTestPlanSkippedTestsToolTests {
         _ = try execute(path: path, tests: ["BibliographyTests"], action: "add")
 
         let skipped = try skippedTestsDictionary(at: path)
-        let suites = try #require(skipped["suites"] as? [[String: Any]])
+        let suites = try #require(skipped["suites"]?.dictionaryArrayValue)
         let bibliography = try #require(suites.first {
-            $0["name"] as? String == "BibliographyTests"
+            $0["name"]?.stringValue == "BibliographyTests"
         })
         #expect(bibliography["testFunctions"] == nil)
         #expect(bibliography.count == 1)
@@ -428,11 +433,12 @@ struct SetTestPlanSkippedTestsToolTests {
         _ = try execute(path: path, tests: ["LegacyTests/testThree()"], action: "add")
 
         let skipped = try skippedTestsDictionary(at: path)
-        let classes = try #require(skipped["xctestClasses"] as? [[String: Any]])
+        let classes = try #require(skipped["xctestClasses"]?.dictionaryArrayValue)
         #expect(
-            classes.first?["xctestMethods"]
-                as? [String] == ["testOne()", "testTwo()", "testThree()"])
-        #expect((skipped["suites"] as? [[String: Any]])?.count == 3)
+            classes.first?["xctestMethods"]?
+                .stringArrayValue
+                == ["testOne()", "testTwo()", "testThree()"])
+        #expect((skipped["suites"]?.dictionaryArrayValue)?.count == 3)
     }
 
     @Test
@@ -448,33 +454,33 @@ struct SetTestPlanSkippedTestsToolTests {
     @Test
     func `Nested remove works at plan-level defaults`() throws {
         var plan = basePlan()
-        var defaults = try #require(plan["defaultOptions"] as? [String: Any])
-        defaults["skippedTests"] = nestedSkippedTests()
-        plan["defaultOptions"] = defaults
+        var defaults = try #require(plan["defaultOptions"]?.dictionaryValue)
+        defaults["skippedTests"] = .dictionary(nestedSkippedTests())
+        plan["defaultOptions"] = .dictionary(defaults)
         let path = try createTestPlan(plan)
 
         _ = try execute(path: path, tests: ["XMLDecoderTests"], action: "remove", targetName: nil)
 
         let json = try TestPlanFile.read(from: path)
         let skipped = try #require(
-            (json["defaultOptions"] as? [String: Any])?["skippedTests"] as? [String: Any],
+            (json["defaultOptions"]?.dictionaryValue)?["skippedTests"]?.dictionaryValue,
         )
-        #expect((skipped["suites"] as? [[String: Any]])?.count == 2)
+        #expect((skipped["suites"]?.dictionaryArrayValue)?.count == 2)
     }
 
     @Test
     func `Unknown keys in the nested value survive a remove`() throws {
         var plan = basePlan()
-        var targets = try #require(plan["testTargets"] as? [[String: Any]])
+        var targets = try #require(plan["testTargets"]?.dictionaryArrayValue)
         var skipped = nestedSkippedTests()
         skipped["futureXcodeKey"] = ["keep": "me"]
-        targets[0]["skippedTests"] = skipped
-        plan["testTargets"] = targets
+        targets[0]["skippedTests"] = .dictionary(skipped)
+        plan["testTargets"] = .dictionaries(targets)
         let path = try createTestPlan(plan)
 
         _ = try execute(path: path, tests: ["XMLDecoderTests"], action: "remove")
 
         let result = try skippedTestsDictionary(at: path)
-        #expect(result["futureXcodeKey"] as? [String: String] == ["keep": "me"])
+        #expect(result["futureXcodeKey"] == ["keep": "me"])
     }
 }

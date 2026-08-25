@@ -1,24 +1,56 @@
+import MCP
 import System
 import Foundation
 import Subprocess
 
-/// Result of reading Xcode IDE state from UserInterfaceState.xcuserstate.
-public struct XcodeStateResult: Sendable {
+/// Xcode IDE state read from UserInterfaceState.xcuserstate.
+public struct XcodeState: Sendable {
     public let scheme: String?
     public let simulatorUDID: String?
     public let simulatorName: String?
-    public let error: String?
 
     public init(
         scheme: String? = nil,
         simulatorUDID: String? = nil,
         simulatorName: String? = nil,
-        error: String? = nil,
     ) {
         self.scheme = scheme
         self.simulatorUDID = simulatorUDID
         self.simulatorName = simulatorName
-        self.error = error
+    }
+}
+
+/// Why ``XcodeStateReader/readState(projectOrWorkspacePath:)`` could not report the IDE state.
+public enum XcodeStateError: LocalizedError, Sendable, MCPErrorConvertible {
+    /// No state file exists for the current user under any of the paths tried.
+    case stateFileNotFound(username: String, candidates: [String])
+    /// `plutil` could not convert the binary state file to XML.
+    case conversionFailed(String)
+    /// The converted file could not be read back.
+    case conversionUnreadable
+    /// The plist parsed, but it is not the archive shape this reader expects.
+    case unexpectedStructure
+    /// The plist itself is malformed.
+    case parseFailed(String)
+    /// The archive holds neither a scheme nor a run destination.
+    case noSchemeOrDestination
+
+    public var errorDescription: String? {
+        switch self {
+            case let .stateFileNotFound(username, candidates):
+                "No UserInterfaceState.xcuserstate found for user '\(username)'. Tried:\n"
+                    + candidates.joined(separator: "\n")
+            case let .conversionFailed(stderr): "plutil conversion failed: \(stderr)"
+            case .conversionUnreadable: "Failed to read converted plist"
+            case .unexpectedStructure: "Unexpected plist structure (not NSKeyedArchiver)"
+            case let .parseFailed(detail): "Plist parse error: \(detail)"
+            case .noSchemeOrDestination:
+                "Could not find scheme or destination in Xcode state. The project may not have been opened in Xcode recently."
+        }
+    }
+
+    public func toMCPError() -> MCPError {
+        .internalError(errorDescription ?? "Could not read Xcode state")
     }
 }
 
@@ -30,16 +62,18 @@ public enum XcodeStateReader {
     /// NSKeyedArchiver objects to extract scheme and destination.
     ///
     /// - Parameter path: Path to .xcodeproj or .xcworkspace.
-    /// - Returns: Parsed state or an error description.
-    public static func readState(projectOrWorkspacePath path: String) async -> XcodeStateResult {
+    /// - Returns: The scheme and run destination Xcode last used.
+    /// - Throws: ``XcodeStateError`` when the state file is absent, unreadable, or holds neither
+    ///   field.
+    public static func readState(
+        projectOrWorkspacePath path: String
+    ) async throws(XcodeStateError) -> XcodeState {
         let username = NSUserName()
         let candidates = xcuserstateCandidates(for: path, username: username)
 
         guard let statePath = candidates.first(where: { FileManager.default.fileExists(atPath: $0) }
         ) else {
-            return XcodeStateResult(
-                error: "No UserInterfaceState.xcuserstate found for user '\(username)'. Tried:\n\(candidates.joined(separator: "\n"))",
-            )
+            throw .stateFileNotFound(username: username, candidates: candidates)
         }
 
         // Convert binary plist to XML via plutil
@@ -53,26 +87,26 @@ public enum XcodeStateReader {
             arguments: ["-convert", "xml1", "-o", tempPath, statePath],
         )
         guard convertResult.exitCode == 0 else {
-            return XcodeStateResult(error: "plutil conversion failed: \(convertResult.stderr)")
+            throw .conversionFailed(convertResult.stderr)
         }
 
         // Parse the XML plist
         guard let data = FileManager.default.contents(atPath: tempPath) else {
-            return XcodeStateResult(error: "Failed to read converted plist")
+            throw .conversionUnreadable
         }
+
+        let plist: Any
 
         do {
-            guard let plist = try PropertyListSerialization.propertyList(from: data, format: nil)
-                as? [String: Any],
-                  let objects = plist["$objects"] as? [Any]
-            else {
-                return XcodeStateResult(error: "Unexpected plist structure (not NSKeyedArchiver)")
-            }
-
-            return extractState(from: objects)
+            plist = try PropertyListSerialization.propertyList(from: data, format: nil)
         } catch {
-            return XcodeStateResult(error: "Plist parse error: \(error.localizedDescription)")
+            throw .parseFailed(error.localizedDescription)
         }
+
+        guard let root = plist as? [String: Any], let objects = root["$objects"] as? [Any] else {
+            throw .unexpectedStructure
+        }
+        return try extractState(from: objects)
     }
 
     // MARK: - Private
@@ -100,7 +134,7 @@ public enum XcodeStateReader {
     }
 
     /// Extracts scheme and destination from NSKeyedArchiver $objects array.
-    private static func extractState(from objects: [Any]) -> XcodeStateResult {
+    private static func extractState(from objects: [Any]) throws(XcodeStateError) -> XcodeState {
         var scheme: String?
         var simulatorUDID: String?
         var simulatorName: String?
@@ -151,15 +185,9 @@ public enum XcodeStateReader {
             }
         }
 
-        if scheme == nil, simulatorUDID == nil {
-            return XcodeStateResult(
-                error: "Could not find scheme or destination in Xcode state. The project may not have been opened in Xcode recently.",
-            )
-        }
+        if scheme == nil, simulatorUDID == nil { throw .noSchemeOrDestination }
 
-        return .init(
-            scheme: scheme, simulatorUDID: simulatorUDID, simulatorName: simulatorName,
-        )
+        return .init(scheme: scheme, simulatorUDID: simulatorUDID, simulatorName: simulatorName)
     }
 
     /// Resolves a plist value that may be a UID reference into the $objects array.
@@ -172,10 +200,31 @@ public enum XcodeStateReader {
         return nil
     }
 
+    /// Group lengths of a UDID: 8-4-4-4-12 uppercase hex digits
+    private static let udidGroupLengths = [8, 4, 4, 4, 12]
+
+    /// Runs once per string in the archived object table, so it walks the bytes instead of building
+    /// a regex
     private static func isUDID(_ string: String) -> Bool {
-        // UDIDs are typically uppercase hex with dashes: XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
-        let pattern = #"^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}$"#
-        return string.range(of: pattern, options: .regularExpression) != nil
+        let bytes = string.utf8
+        guard bytes.count == 36 else { return false }
+
+        var index = bytes.startIndex
+
+        for (group, length) in udidGroupLengths.enumerated() {
+            if group > 0 {
+                guard bytes[index] == UInt8(ascii: "-") else { return false }
+                index = bytes.index(after: index)
+            }
+            for _ in 0..<length {
+                let byte = bytes[index]
+                let isDigit = byte >= UInt8(ascii: "0") && byte <= UInt8(ascii: "9")
+                let isUpperHex = byte >= UInt8(ascii: "A") && byte <= UInt8(ascii: "F")
+                guard isDigit || isUpperHex else { return false }
+                index = bytes.index(after: index)
+            }
+        }
+        return true
     }
 
     private static func runProcess(

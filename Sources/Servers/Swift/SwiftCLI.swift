@@ -4,8 +4,8 @@ import ArgumentParser
 
 /// Command-line interface for the xc-swift MCP server.
 ///
-/// This focused server provides Swift Package Manager tools with minimal
-/// token overhead (~1.5K tokens vs ~50K for the full xc-mcp server).
+/// This focused server provides Swift Package Manager tools with minimal token overhead (~1.5K
+/// tokens vs ~50K for the full xc-mcp server).
 ///
 /// ## Usage
 ///

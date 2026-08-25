@@ -1,21 +1,16 @@
 import MCP
-import PathKit
 import XCMCPCore
-import XcodeProj
-import Foundation
 
 public struct ManageTypeIdentifierTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "manage_type_identifier",
             description:
-            "Add, update, remove, or prune an exported or imported type identifier (UTExportedTypeDeclarations / UTImportedTypeDeclarations) in a target's Info.plist. For update/remove, target an entry by 'identifier', 'match_description', or 'match_index' (the number shown by list_type_identifiers) — the latter two let you repair declarations that are missing a UTTypeIdentifier. 'prune' deletes every declaration missing a UTTypeIdentifier (such entries are ignored by LaunchServices).",
+                "Add, update, remove, or prune an exported or imported type identifier (UTExportedTypeDeclarations / UTImportedTypeDeclarations) in a target's Info.plist. For update/remove, target an entry by 'identifier', 'match_description', or 'match_index' (the number shown by list_type_identifiers) — the latter two let you repair declarations that are missing a UTTypeIdentifier. 'prune' deletes every declaration missing a UTTypeIdentifier (such entries are ignored by LaunchServices).",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -31,9 +26,7 @@ public struct ManageTypeIdentifierTool: Sendable {
                     ]),
                     "action": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Action to perform: add, update, remove, or prune",
-                        ),
+                        "description": .string("Action to perform: add, update, remove, or prune"),
                         "enum": .array([
                             .string("add"), .string("update"), .string("remove"),
                             .string("prune"),
@@ -114,14 +107,12 @@ public struct ManageTypeIdentifierTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(action) = arguments["action"],
-              case let .string(kind) = arguments["kind"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let action = arguments.getString("action"),
+              let kind = arguments.getString("kind")
         else {
-            throw MCPError.invalidParams(
-                "project_path, target_name, action, and kind are required",
-            )
+            throw MCPError.invalidParams("project_path, target_name, action, and kind are required")
         }
 
         guard ["add", "update", "remove", "prune"].contains(action) else {
@@ -131,166 +122,111 @@ public struct ManageTypeIdentifierTool: Sendable {
             throw MCPError.invalidParams("kind must be 'exported' or 'imported'")
         }
 
-        // 'add' is the only action that requires an identifier up front; for
-        // update/remove the entry can be located by description or index.
+        // 'add' is the only action that requires an identifier up front; for update/remove the
+        // entry can be located by description or index.
         if action == "add", (arguments.getString("identifier") ?? "").isEmpty {
             throw MCPError.invalidParams("identifier is required for the 'add' action")
         }
 
-        let plistKey =
-            kind == "exported" ? "UTExportedTypeDeclarations" : "UTImportedTypeDeclarations"
         let kindLabel = kind == "exported" ? "exported" : "imported"
+        let editor = PlistArrayEditor(
+            plistKey: kind == "exported"
+                ? "UTExportedTypeDeclarations"
+                : "UTImportedTypeDeclarations",
+            primaryKey: "UTTypeIdentifier",
+            noun: "\(kindLabel) type identifier",
+            applyFields: ManageTypeIdentifierTool.applyFields,
+        )
 
         do {
-            let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
-            let projectURL = URL(fileURLWithPath: resolvedProjectPath)
-            let projectDir = projectURL.deletingLastPathComponent().path
-
-            let xcodeproj = try XcodeProj(path: Path(projectURL.path))
-
-            guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
+            if action == "add" {
+                return try editor.perform(
+                    action: action, name: arguments.getString("identifier") ?? "",
+                    projectPath: projectPath, targetName: targetName, pathUtility: pathUtility,
+                    arguments: arguments,
                 )
             }
 
-            // Resolve or materialize Info.plist
-            var plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
-            )
-
-            if plistPath == nil {
-                plistPath = try InfoPlistUtility.materializeInfoPlist(
-                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
-                    projectPath: Path(projectURL.path),
-                )
+            guard var session = try editor.open(
+                projectPath: projectPath, targetName: targetName, pathUtility: pathUtility,
+            ) else {
+                return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
-
-            guard let resolvedPlistPath = plistPath else {
-                throw MCPError.internalError(
-                    "Failed to resolve or create Info.plist for target '\(targetName)'",
-                )
-            }
-
-            var plist = try InfoPlistUtility.readInfoPlist(path: resolvedPlistPath)
-            var typeDecls = plist[plistKey] as? [[String: Any]] ?? []
 
             switch action {
-                case "add":
-                    let identifier = arguments.getString("identifier") ?? ""
-                    if typeDecls.contains(where: {
-                        ($0["UTTypeIdentifier"] as? String) == identifier
-                    }) {
-                        return Self.message(
-                            "\(kindLabel.capitalized) type identifier '\(identifier)' already exists in target '\(targetName)'",
-                        )
-                    }
-
-                    var entry: [String: Any] = ["UTTypeIdentifier": identifier]
-                    applyFields(to: &entry, from: arguments)
-                    typeDecls.append(entry)
-
-                    plist[plistKey] = typeDecls
-                    try InfoPlistUtility.writeInfoPlist(plist, toPath: resolvedPlistPath)
-
-                    return Self.message(
-                        "Successfully added \(kindLabel) type identifier '\(identifier)' to target '\(targetName)'",
-                    )
-
                 case "update":
-                    switch Self.locate(in: typeDecls, arguments: arguments) {
+                    switch Self.locate(in: session.entries, arguments: arguments) {
                         case .noLocator:
-                            return Self.message(
+                            return CallTool.Result.text(
                                 "Provide 'identifier', 'match_description', or 'match_index' to identify the \(kindLabel) type declaration to update in target '\(targetName)'",
                             )
                         case .notFound:
-                            return Self.message(
+                            return CallTool.Result.text(
                                 "No matching \(kindLabel) type declaration found in target '\(targetName)'",
                             )
                         case let .found(index, byIdentifier):
-                            var entry = typeDecls[index]
+                            var entry = session.entries[index]
 
-                            // When the entry was located by description/index, an
-                            // 'identifier' argument backfills (or renames) its
-                            // missing UTTypeIdentifier.
+                            // When the entry was located by description/index, an 'identifier'
+                            // argument backfills (or renames) its missing UTTypeIdentifier.
                             if !byIdentifier,
                                let newIdentifier = arguments.getString("identifier"),
                                !newIdentifier.isEmpty
                             {
-                                entry["UTTypeIdentifier"] = newIdentifier
+                                entry["UTTypeIdentifier"] = .string(newIdentifier)
                             }
-                            applyFields(to: &entry, from: arguments)
+                            Self.applyFields(to: &entry, from: arguments)
 
-                            guard let finalID = entry["UTTypeIdentifier"] as? String,
+                            guard let finalID = entry["UTTypeIdentifier"]?.stringValue,
                                   !finalID.isEmpty
                             else {
-                                return Self.message(
+                                return CallTool.Result.text(
                                     "Cannot update entry: the \(kindLabel) type declaration has no UTTypeIdentifier. Pass 'identifier' to backfill one (LaunchServices ignores declarations without it).",
                                 )
                             }
 
-                            typeDecls[index] = entry
-                            plist[plistKey] = typeDecls
-                            try InfoPlistUtility.writeInfoPlist(plist, toPath: resolvedPlistPath)
+                            session.entries[index] = entry
+                            try session.save()
 
-                            return Self.message(
+                            return CallTool.Result.text(
                                 "Successfully updated \(kindLabel) type identifier '\(finalID)' in target '\(targetName)'",
                             )
                     }
 
                 case "remove":
-                    switch Self.locate(in: typeDecls, arguments: arguments) {
+                    switch Self.locate(in: session.entries, arguments: arguments) {
                         case .noLocator:
-                            return Self.message(
+                            return CallTool.Result.text(
                                 "Provide 'identifier', 'match_description', or 'match_index' to identify the \(kindLabel) type declaration to remove from target '\(targetName)'",
                             )
                         case .notFound:
-                            return Self.message(
+                            return CallTool.Result.text(
                                 "No matching \(kindLabel) type declaration found in target '\(targetName)'",
                             )
                         case let .found(index, _):
-                            let descriptor = Self.describe(typeDecls[index])
-                            typeDecls.remove(at: index)
+                            let descriptor = Self.describe(session.entries[index])
+                            session.entries.remove(at: index)
+                            try session.save()
 
-                            if typeDecls.isEmpty {
-                                plist.removeValue(forKey: plistKey)
-                            } else {
-                                plist[plistKey] = typeDecls
-                            }
-                            try InfoPlistUtility.writeInfoPlist(plist, toPath: resolvedPlistPath)
-
-                            return Self.message(
+                            return CallTool.Result.text(
                                 "Successfully removed \(kindLabel) type identifier \(descriptor) from target '\(targetName)'",
                             )
                     }
 
                 case "prune":
-                    let malformed = typeDecls.filter {
-                        ($0["UTTypeIdentifier"] as? String).map(\.isEmpty) ?? true
-                    }
+                    let malformed = session.entries.filter(Self.isMalformed)
+
                     if malformed.isEmpty {
-                        return Self.message(
+                        return CallTool.Result.text(
                             "No malformed \(kindLabel) type declarations (all have a UTTypeIdentifier) in target '\(targetName)'",
                         )
                     }
 
-                    typeDecls.removeAll {
-                        ($0["UTTypeIdentifier"] as? String).map(\.isEmpty) ?? true
-                    }
-
-                    if typeDecls.isEmpty {
-                        plist.removeValue(forKey: plistKey)
-                    } else {
-                        plist[plistKey] = typeDecls
-                    }
-                    try InfoPlistUtility.writeInfoPlist(plist, toPath: resolvedPlistPath)
+                    session.entries.removeAll(where: Self.isMalformed)
+                    try session.save()
 
                     let removed = malformed.map(Self.describe).joined(separator: ", ")
-                    return Self.message(
+                    return CallTool.Result.text(
                         "Pruned \(malformed.count) malformed \(kindLabel) type declaration(s) missing a UTTypeIdentifier from target '\(targetName)': \(removed)",
                     )
 
@@ -299,13 +235,14 @@ public struct ManageTypeIdentifierTool: Sendable {
                         "action must be 'add', 'update', 'remove', or 'prune'",
                     )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to manage type identifier: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
+    }
+
+    /// LaunchServices ignores a declaration with no UTTypeIdentifier, so prune treats it as junk.
+    private static func isMalformed(_ entry: [String: AnyValue]) -> Bool {
+        entry["UTTypeIdentifier"]?.stringValue.map(\.isEmpty) ?? true
     }
 
     /// Outcome of resolving which declaration an update/remove targets.
@@ -318,11 +255,12 @@ public struct ManageTypeIdentifierTool: Sendable {
         case noLocator
     }
 
-    /// Resolves the target declaration from `match_index`, `match_description`, or
-    /// `identifier` (in that precedence). The index/description locators let callers
-    /// reach declarations that have no UTTypeIdentifier.
+    /// Resolves the target declaration from `match_index`, `match_description`, or `identifier` (in
+    /// that precedence). The index/description locators let callers reach declarations that have no
+    /// UTTypeIdentifier.
     private static func locate(
-        in typeDecls: [[String: Any]], arguments: [String: Value],
+        in typeDecls: [[String: AnyValue]],
+        arguments: [String: Value],
     ) -> LocateResult {
         if let matchIndex = arguments.getInt("match_index") {
             let zeroBased = matchIndex - 1
@@ -331,13 +269,13 @@ public struct ManageTypeIdentifierTool: Sendable {
         }
         if let description = arguments.getString("match_description") {
             guard let index = typeDecls.firstIndex(where: {
-                ($0["UTTypeDescription"] as? String) == description
+                $0["UTTypeDescription"]?.stringValue == description
             }) else { return .notFound }
             return .found(index: index, byIdentifier: false)
         }
         if let identifier = arguments.getString("identifier"), !identifier.isEmpty {
             guard let index = typeDecls.firstIndex(where: {
-                ($0["UTTypeIdentifier"] as? String) == identifier
+                $0["UTTypeIdentifier"]?.stringValue == identifier
             }) else { return .notFound }
             return .found(index: index, byIdentifier: true)
         }
@@ -345,70 +283,44 @@ public struct ManageTypeIdentifierTool: Sendable {
     }
 
     /// Human-readable descriptor for an entry, preferring its identifier.
-    private static func describe(_ entry: [String: Any]) -> String {
-        if let id = entry["UTTypeIdentifier"] as? String, !id.isEmpty { return "'\(id)'" }
-        if let desc = entry["UTTypeDescription"] as? String {
-            return "(description: '\(desc)')"
-        }
+    private static func describe(_ entry: [String: AnyValue]) -> String {
+        if let id = entry["UTTypeIdentifier"]?.stringValue, !id.isEmpty { return "'\(id)'" }
+        if let desc = entry["UTTypeDescription"]?.stringValue { return "(description: '\(desc)')" }
         return "(entry without identifier)"
     }
 
-    private static func message(_ text: String) -> CallTool.Result {
-        CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
-    }
-
-    private func applyFields(to entry: inout [String: Any], from arguments: [String: Value]) {
-        if case let .string(desc) = arguments["description"] {
-            entry["UTTypeDescription"] = desc
+    private static func applyFields(
+        to entry: inout [String: AnyValue],
+        from arguments: [String: Value]
+    ) {
+        if let desc = arguments.getString("description") {
+            entry["UTTypeDescription"] = .string(desc)
         }
-        if case let .array(conformsTo) = arguments["conforms_to"] {
-            entry["UTTypeConformsTo"] = conformsTo.compactMap { value -> String? in
-                if case let .string(s) = value { return s }
-                return nil
-            }
+        if let conformsTo = arguments.getOptionalStringArray("conforms_to") {
+            entry["UTTypeConformsTo"] = .strings(conformsTo)
         }
 
         // Build UTTypeTagSpecification from extensions and mime_types
-        var tagSpec = entry["UTTypeTagSpecification"] as? [String: Any] ?? [:]
+        var tagSpec = entry["UTTypeTagSpecification"]?.dictionaryValue ?? [:]
         var tagSpecModified = false
 
-        if case let .array(extensions) = arguments["extensions"] {
-            let exts = extensions.compactMap { value -> String? in
-                if case let .string(s) = value { return s }
-                return nil
-            }
-            if !exts.isEmpty {
-                tagSpec["public.filename-extension"] = exts
-                tagSpecModified = true
-            }
+        if let exts = arguments.getOptionalStringArray("extensions"), !exts.isEmpty {
+            tagSpec["public.filename-extension"] = .strings(exts)
+            tagSpecModified = true
         }
-        if case let .array(mimeTypes) = arguments["mime_types"] {
-            let mimes = mimeTypes.compactMap { value -> String? in
-                if case let .string(s) = value { return s }
-                return nil
-            }
-            if !mimes.isEmpty {
-                tagSpec["public.mime-type"] = mimes
-                tagSpecModified = true
-            }
+        if let mimes = arguments.getOptionalStringArray("mime_types"), !mimes.isEmpty {
+            tagSpec["public.mime-type"] = .strings(mimes)
+            tagSpecModified = true
         }
-        if tagSpecModified {
-            entry["UTTypeTagSpecification"] = tagSpec
+        if tagSpecModified { entry["UTTypeTagSpecification"] = .dictionary(tagSpec) }
+
+        if let refURL = arguments.getString("reference_url") {
+            entry["UTTypeReferenceURL"] = .string(refURL)
+        }
+        if let iconName = arguments.getString("icon_name") {
+            entry["UTTypeIconName"] = .string(iconName)
         }
 
-        if case let .string(refURL) = arguments["reference_url"] {
-            entry["UTTypeReferenceURL"] = refURL
-        }
-        if case let .string(iconName) = arguments["icon_name"] {
-            entry["UTTypeIconName"] = iconName
-        }
-        if case let .string(jsonString) = arguments["additional_properties"],
-           let additionalProps = try? JSONSerialization.jsonObject(with: Data(jsonString.utf8))
-           as? [String: Any]
-        {
-            for (key, value) in additionalProps {
-                entry[key] = value
-            }
-        }
+        PlistArrayEditor.applyAdditionalProperties(to: &entry, from: arguments)
     }
 }

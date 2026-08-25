@@ -7,23 +7,19 @@ import Foundation
 public struct SetTestTargetApplicationTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_test_target_application",
             description:
-            "Set the target application (macro expansion) for a UI test target in a scheme's Test action",
+                "Set the target application (macro expansion) for a UI test target in a scheme's Test action",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "project_path": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Path to the .xcodeproj file",
-                        ),
+                        "description": .string("Path to the .xcodeproj file"),
                     ]),
                     "scheme_name": .object([
                         "type": .string("string"),
@@ -46,9 +42,9 @@ public struct SetTestTargetApplicationTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(schemeName) = arguments["scheme_name"],
-              case let .string(targetApplication) = arguments["target_application"]
+        guard let projectPath = arguments.getString("project_path"),
+              let schemeName = arguments.getString("scheme_name"),
+              let targetApplication = arguments.getString("target_application")
         else {
             throw MCPError.invalidParams(
                 "project_path, scheme_name, and target_application are required",
@@ -58,44 +54,25 @@ public struct SetTestTargetApplicationTool: Sendable {
         let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
 
         let xcodeproj: XcodeProj
+
         do {
             xcodeproj = try XcodeProj(path: Path(resolvedProjectPath))
         } catch {
-            throw MCPError.internalError(
-                "Failed to open project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
 
         // Find the app target
-        guard
-            let appTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
-                $0.name == targetApplication
-            })
-        else {
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Target '\(targetApplication)' not found in project",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+        guard let appTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
+            $0.name == targetApplication
+        }) else {
+            return CallTool.Result.text("Target '\(targetApplication)' not found in project")
         }
 
         // Find the scheme
-        guard
-            let schemePath = SchemePathResolver.findScheme(
-                named: schemeName, in: resolvedProjectPath,
-            )
-        else {
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Scheme '\(schemeName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
+        guard let schemePath = SchemePathResolver.findScheme(
+            named: schemeName, in: resolvedProjectPath,
+        ) else {
+            return CallTool.Result.text("Scheme '\(schemeName)' not found in project")
         }
 
         do {
@@ -105,6 +82,7 @@ public struct SetTestTargetApplicationTool: Sendable {
             let productName = appTarget.productName ?? appTarget.name
             let productType = appTarget.productType
             let buildableName: String
+
             if let productType, productType == .application {
                 buildableName = "\(productName).app"
             } else {
@@ -113,7 +91,7 @@ public struct SetTestTargetApplicationTool: Sendable {
 
             let buildRef = XCScheme.BuildableReference(
                 referencedContainer:
-                "container:\(URL(fileURLWithPath: resolvedProjectPath).lastPathComponent)",
+                    "container:\(URL(fileURLWithPath: resolvedProjectPath).lastPathComponent)",
                 blueprint: appTarget,
                 buildableName: buildableName,
                 blueprintName: appTarget.name,
@@ -131,17 +109,10 @@ public struct SetTestTargetApplicationTool: Sendable {
 
             try scheme.write(path: Path(schemePath), override: true)
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Set target application to '\(targetApplication)' in scheme '\(schemeName)'",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result.text(
+                "Set target application to '\(targetApplication)' in scheme '\(schemeName)'")
         } catch {
-            throw MCPError.internalError(
-                "Failed to update scheme: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

@@ -8,27 +8,24 @@ import Foundation
 struct SetTestPlanOptionsToolTests {
     let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
-    private func createTestPlan(_ json: [String: Any]) throws -> String {
+    private func createTestPlan(_ json: [String: AnyValue]) throws -> String {
         let path = TemporaryDirectory.url.appendingPathComponent("test.xctestplan").path
         try TestPlanFile.write(json, to: path)
         return path
     }
 
-    private func basePlan() -> [String: Any] {
+    private func basePlan() -> [String: AnyValue] {
         [
-            "configurations": [
-                ["id": "DEFAULT", "name": "Default", "options": [:] as [String: Any]]
-                    as [String: Any]
-            ],
-            "defaultOptions": [:] as [String: Any],
+            "configurations": [["id": "DEFAULT", "name": "Default", "options": [:]]],
+            "defaultOptions": [:],
             "testTargets": [
                 [
                     "target": [
                         "containerPath": "container:App.xcodeproj",
                         "identifier": "ABC123",
                         "name": "AppTests",
-                    ] as [String: Any]
-                ] as [String: Any]
+                    ]
+                ]
             ],
             "version": 1,
         ]
@@ -59,10 +56,10 @@ struct SetTestPlanOptionsToolTests {
         #expect(message.contains("plan-level defaultOptions"))
 
         let json = try TestPlanFile.read(from: path)
-        let defaults = try #require(json["defaultOptions"] as? [String: Any])
-        #expect(defaults["diagnosticCollectionPolicy"] as? String == "Never")
-        #expect(defaults["userAttachmentLifetime"] as? String == "keepNever")
-        #expect(defaults["codeCoverage"] as? Bool == true)
+        let defaults = try #require(json["defaultOptions"]?.dictionaryValue)
+        #expect(defaults["diagnosticCollectionPolicy"]?.stringValue == "Never")
+        #expect(defaults["userAttachmentLifetime"]?.stringValue == "keepNever")
+        #expect(defaults["codeCoverage"]?.boolValue == true)
     }
 
     @Test
@@ -83,11 +80,11 @@ struct SetTestPlanOptionsToolTests {
         #expect(message.contains("configuration 'Default'"))
 
         let json = try TestPlanFile.read(from: path)
-        let configs = try #require(json["configurations"] as? [[String: Any]])
-        let options = try #require(configs.first?["options"] as? [String: Any])
-        #expect(options["mainThreadCheckerEnabled"] as? Bool == false)
+        let configs = try #require(json["configurations"]?.dictionaryArrayValue)
+        let options = try #require(configs.first?["options"]?.dictionaryValue)
+        #expect(options["mainThreadCheckerEnabled"]?.boolValue == false)
         // defaultOptions untouched
-        let defaults = json["defaultOptions"] as? [String: Any]
+        let defaults = json["defaultOptions"]?.dictionaryValue
         #expect(defaults?["mainThreadCheckerEnabled"] == nil)
     }
 
@@ -104,10 +101,10 @@ struct SetTestPlanOptionsToolTests {
         ])
 
         let json = try TestPlanFile.read(from: path)
-        let defaults = try #require(json["defaultOptions"] as? [String: Any])
-        #expect(defaults["codeCoverage"] as? Bool == false)
+        let defaults = try #require(json["defaultOptions"]?.dictionaryValue)
+        #expect(defaults["codeCoverage"]?.boolValue == false)
         // Untouched key preserved
-        #expect(defaults["mainThreadCheckerEnabled"] as? Bool == true)
+        #expect(defaults["mainThreadCheckerEnabled"]?.boolValue == true)
     }
 
     @Test
@@ -129,9 +126,9 @@ struct SetTestPlanOptionsToolTests {
         #expect(message.contains("cleared codeCoverage"))
 
         let json = try TestPlanFile.read(from: path)
-        let defaults = try #require(json["defaultOptions"] as? [String: Any])
+        let defaults = try #require(json["defaultOptions"]?.dictionaryValue)
         #expect(defaults["codeCoverage"] == nil)
-        #expect(defaults["diagnosticCollectionPolicy"] as? String == "Always")
+        #expect(defaults["diagnosticCollectionPolicy"]?.stringValue == "Always")
     }
 
     @Test

@@ -38,8 +38,9 @@ public struct ScaffoldModuleTool: Sendable {
                     ]),
                     "platform": .object([
                         "type": .string("string"),
+                        "enum": .array(ApplePlatform.allCases.map { .string($0.rawValue) }),
                         "description": .string(
-                            "Platform (iOS, macOS, tvOS, watchOS). Defaults to iOS",
+                            "Platform (\(ApplePlatform.allNames)). Defaults to iOS",
                         ),
                     ]),
                     "deployment_target": .object([
@@ -107,64 +108,31 @@ public struct ScaffoldModuleTool: Sendable {
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         // 1. Extract and validate parameters
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(name) = arguments["name"],
-              case let .string(bundleIdentifier) = arguments["bundle_identifier"]
+        guard let projectPath = arguments.getString("project_path"),
+              let name = arguments.getString("name"),
+              let bundleIdentifier = arguments.getString("bundle_identifier")
         else {
             throw MCPError.invalidParams("project_path, name, and bundle_identifier are required")
         }
 
-        let platform: String
-        if case let .string(p) = arguments["platform"] { platform = p } else { platform = "iOS" }
+        let platform = try arguments.getPlatform()
 
-        let deploymentTarget: String?
+        let deploymentTarget = arguments.getString("deployment_target")
 
-        if case let .string(dt) = arguments["deployment_target"] {
-            deploymentTarget = dt
-        } else {
-            deploymentTarget = nil
-        }
+        let parentGroupPath = arguments.getString("parent_group")
 
-        let parentGroupPath: String?
+        let withTests = arguments.getBool("with_tests", default: true)
 
-        if case let .string(pg) = arguments["parent_group"] {
-            parentGroupPath = pg
-        } else {
-            parentGroupPath = nil
-        }
+        let linkToNames = arguments.getStringArray("link_to")
+        let embedInNames = arguments.getStringArray("embed_in")
 
-        let withTests: Bool
-        if case let .bool(wt) = arguments["with_tests"] { withTests = wt } else { withTests = true }
-
-        let linkToNames: [String]
-
-        if case let .array(arr) = arguments["link_to"] {
-            linkToNames = arr.compactMap { if case let .string(s) = $0 { s } else { nil } }
-        } else {
-            linkToNames = []
-        }
-
-        let embedInNames: [String]
-
-        if case let .array(arr) = arguments["embed_in"] {
-            embedInNames = arr.compactMap { if case let .string(s) = $0 { s } else { nil } }
-        } else {
-            embedInNames = []
-        }
-
-        let testPlanPath: String?
-
-        if case let .string(tp) = arguments["test_plan"] {
-            testPlanPath = tp
-        } else {
-            testPlanPath = nil
-        }
+        let testPlanPath = arguments.getString("test_plan")
 
         let testTargetName = "\(name)Tests"
 
         let groupLayout: GroupLayout
 
-        if case let .string(gl) = arguments["group_layout"] {
+        if let gl = arguments.getString("group_layout") {
             switch gl {
                 case "nested": groupLayout = .nested
                 case "sibling": groupLayout = .sibling
@@ -178,13 +146,8 @@ public struct ScaffoldModuleTool: Sendable {
         }
 
         // Resolve project path
-        let resolvedProjectPath: String
-        let projectURL: URL
-
-        do {
-            resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
-            projectURL = URL(fileURLWithPath: resolvedProjectPath)
-        }
+        let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
+        let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
         let projectDir = projectURL.deletingLastPathComponent().path
 
@@ -193,7 +156,7 @@ public struct ScaffoldModuleTool: Sendable {
 
         let sourcePath: String
 
-        if case let .string(sp) = arguments["source_path"] {
+        if let sp = arguments.getString("source_path") {
             sourcePath = sp
         } else {
             switch groupLayout {
@@ -204,7 +167,7 @@ public struct ScaffoldModuleTool: Sendable {
 
         let testPath: String
 
-        if case let .string(tp) = arguments["test_path"] {
+        if let tp = arguments.getString("test_path") {
             testPath = tp
         } else {
             switch groupLayout {
@@ -283,6 +246,11 @@ public struct ScaffoldModuleTool: Sendable {
                 extraSettings: ["DEFINES_MODULE": .string("YES")],
             )
 
+            // createTarget always assigns a product reference, so this only guards a future change
+            guard let frameworkProduct = frameworkTarget.product else {
+                throw MCPError.internalError("Framework target '\(name)' has no product reference")
+            }
+
             // 4. Create framework group + sync folder
             let containerGroup: PBXGroup
 
@@ -329,10 +297,10 @@ public struct ScaffoldModuleTool: Sendable {
                 testTarget = tt
 
                 // Add dependency: test target depends on framework target
-                addDependency(xcodeproj: xcodeproj, from: tt, to: frameworkTarget)
+                addDependency(xcodeproj: xcodeproj, project: project, from: tt, to: frameworkTarget)
 
                 // Link framework product into test target's Frameworks phase
-                linkProduct(xcodeproj: xcodeproj, product: frameworkTarget.product!, into: tt)
+                linkProduct(xcodeproj: xcodeproj, product: frameworkProduct, into: tt)
 
                 // 6. Create test sync folder. For nested layout it goes inside the
                 // module group; for sibling layout we add a second top-level group.
@@ -362,9 +330,10 @@ public struct ScaffoldModuleTool: Sendable {
                     $0.name == targetName
                 }) else { continue }
 
-                addDependency(xcodeproj: xcodeproj, from: target, to: frameworkTarget)
+                addDependency(
+                    xcodeproj: xcodeproj, project: project, from: target, to: frameworkTarget)
 
-                linkProduct(xcodeproj: xcodeproj, product: frameworkTarget.product!, into: target)
+                linkProduct(xcodeproj: xcodeproj, product: frameworkProduct, into: target)
             }
 
             // 8. Wire embed_in — find/create Embed Frameworks phase, add with CodeSignOnCopy
@@ -373,28 +342,27 @@ public struct ScaffoldModuleTool: Sendable {
                     $0.name == targetName
                 }) else { continue }
 
-                embedProduct(xcodeproj: xcodeproj, product: frameworkTarget.product!, into: target)
+                embedProduct(xcodeproj: xcodeproj, product: frameworkProduct, into: target)
             }
 
             // 9. Add to test plan
             if let testPlanPath, withTests, let testTarget {
                 let resolvedTestPlanPath = try pathUtility.resolvePath(from: testPlanPath)
                 var json = try TestPlanFile.read(from: resolvedTestPlanPath)
-                var testTargets = json["testTargets"] as? [[String: Any]] ?? []
+                var testTargets = TestPlanFile.testTargets(in: json)
 
                 let existingNames = TestPlanFile.targetNames(from: json)
 
                 if !existingNames.contains(testTargetName) {
                     let containerPath = TestPlanFile.containerPath(for: projectURL)
-                    let entry: [String: Any] = [
+                    testTargets.append([
                         "target": [
-                            "containerPath": containerPath,
-                            "identifier": testTarget.uuid,
-                            "name": testTargetName,
-                        ] as [String: Any]
-                    ]
-                    testTargets.append(entry)
-                    json["testTargets"] = testTargets
+                            "containerPath": .string(containerPath),
+                            "identifier": .string(testTarget.uuid),
+                            "name": .string(testTargetName),
+                        ]
+                    ])
+                    json["testTargets"] = .dictionaries(testTargets)
                     try TestPlanFile.write(json, to: resolvedTestPlanPath)
                 }
             }
@@ -418,9 +386,7 @@ public struct ScaffoldModuleTool: Sendable {
                 summary.append("Added '\(testTargetName)' to test plan")
             }
 
-            return CallTool.Result(content: [
-                .text(text: summary.joined(separator: "\n"), annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text(summary.joined(separator: "\n"))
         } catch {
             for dir in createdDirs.reversed() { try? FileManager.default.removeItem(atPath: dir) }
             throw try error.asMCPError()
@@ -435,7 +401,7 @@ public struct ScaffoldModuleTool: Sendable {
         name: String,
         bundleIdentifier: String,
         productType: PBXProductType,
-        platform: String,
+        platform: ApplePlatform,
         deploymentTarget: String?,
         configNames: [String],
         extraSettings: [String: BuildSetting],
@@ -447,16 +413,8 @@ public struct ScaffoldModuleTool: Sendable {
         ]
         for (key, value) in extraSettings { baseSettings[key] = value }
 
-        // Add deployment target if specified
         if let deploymentTarget {
-            let key =
-                switch platform {
-                    case "macOS": "MACOSX_DEPLOYMENT_TARGET"
-                    case "tvOS": "TVOS_DEPLOYMENT_TARGET"
-                    case "watchOS": "WATCHOS_DEPLOYMENT_TARGET"
-                    default: "IPHONEOS_DEPLOYMENT_TARGET"
-                }
-            baseSettings[key] = .string(deploymentTarget)
+            baseSettings[platform.deploymentTargetKey] = .string(deploymentTarget)
         }
 
         var targetBuildConfigs: [XCBuildConfiguration] = []
@@ -563,6 +521,7 @@ public struct ScaffoldModuleTool: Sendable {
 
     private func addDependency(
         xcodeproj: XcodeProj,
+        project: PBXProject,
         from dependent: PBXNativeTarget,
         to dependency: PBXNativeTarget,
     ) {
@@ -570,7 +529,7 @@ public struct ScaffoldModuleTool: Sendable {
         if dependent.dependencies.contains(where: { $0.target == dependency }) { return }
 
         let containerItemProxy = PBXContainerItemProxy(
-            containerPortal: .project(xcodeproj.pbxproj.rootObject!),
+            containerPortal: .project(project),
             remoteGlobalID: .object(dependency),
             proxyType: .nativeTarget,
             remoteInfo: dependency.name,

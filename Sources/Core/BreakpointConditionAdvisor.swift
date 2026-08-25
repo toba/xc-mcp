@@ -138,18 +138,25 @@ public enum BreakpointConditionAdvisor {
         return nil
     }
 
+    /// One alternation over ``inferiorCallFunctions``, matching `fn(` and allowing a cast prefix
+    /// like `(int)strncmp(`
+    ///
+    /// The names sort longest first, so `strncmp` wins over `strcmp` at the same position. The set
+    /// itself is unordered, so sorting also makes the result independent of iteration order.
+    private static nonisolated(unsafe) let inferiorCallRegex: NSRegularExpression? = {
+        let alternatives = inferiorCallFunctions
+            .sorted { $0.count == $1.count ? $0 < $1 : $0.count > $1.count }
+            .map { NSRegularExpression.escapedPattern(for: $0) }
+            .joined(separator: "|")
+        return try? NSRegularExpression(pattern: "\\b(\(alternatives))\\s*\\(")
+    }()
+
     /// Returns the earliest-occurring inferior-calling function name used in `condition`, or `nil`.
     private static func inferiorCallInCondition(_ condition: String) -> String? {
-        var best: (fn: String, index: String.Index)?
-
-        for fn in inferiorCallFunctions {
-            // Match `fn(` allowing a cast prefix like `(int)strncmp(`.
-            guard let range = condition.range(
-                of: "\\b\(NSRegularExpression.escapedPattern(for: fn))\\s*\\(",
-                options: .regularExpression,
-            ) else { continue }
-            if best == nil || range.lowerBound < best!.index { best = (fn, range.lowerBound) }
-        }
-        return best?.fn
+        guard let regex = inferiorCallRegex else { return nil }
+        let range = NSRange(condition.startIndex..<condition.endIndex, in: condition)
+        guard let match = regex.firstMatch(in: condition, range: range),
+              let nameRange = Range(match.range(at: 1), in: condition) else { return nil }
+        return String(condition[nameRange])
     }
 }

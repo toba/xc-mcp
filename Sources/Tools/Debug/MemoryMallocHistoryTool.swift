@@ -4,8 +4,8 @@ import Foundation
 
 /// Tracks allocation history for a specific memory address using `malloc_history`.
 ///
-/// Wraps `/usr/bin/malloc_history` to show the allocation backtrace for a given
-/// address. Requires the target process to have been launched with `MallocStackLogging=1`.
+/// Wraps `/usr/bin/malloc_history` to show the allocation backtrace for a given address. Requires
+/// the target process to have been launched with `MallocStackLogging=1`.
 ///
 /// ## Example
 ///
@@ -16,18 +16,16 @@ public struct MemoryMallocHistoryTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "memory_malloc_history",
             description:
-            "Show allocation backtrace for a specific memory address. Requires the process to have been launched with MallocStackLogging=1 environment variable. Use after finding a suspicious allocation via memory_heap or memory_leaks.",
+                "Show allocation backtrace for a specific memory address. Requires the process to have been launched with MallocStackLogging=1 environment variable. Use after finding a suspicious allocation via memory_heap or memory_leaks.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the target process.",
-                        ),
+                        "description": .string("Process ID of the target process."),
                     ]),
                     "address": .object([
                         "type": .string("string"),
@@ -54,9 +52,7 @@ public struct MemoryMallocHistoryTool: Sendable {
         let fullStacks = arguments.getBool("full_stacks")
 
         var args = ["\(pid)"]
-        if fullStacks {
-            args.append("-fullStacks")
-        }
+        if fullStacks { args.append("-fullStacks") }
         args.append(address)
 
         let result = try await ProcessResult.run(
@@ -66,19 +62,14 @@ public struct MemoryMallocHistoryTool: Sendable {
         )
 
         guard result.succeeded else {
-            let hint =
-                result.errorOutput.contains("stack logging")
-                    ? " Hint: The target process must be launched with MallocStackLogging=1 environment variable."
-                    : ""
+            let hint = result.errorOutput.contains("stack logging")
+                ? " Hint: The target process must be launched with MallocStackLogging=1 environment variable."
+                : ""
             throw MCPError.internalError(
                 "malloc_history failed (exit \(result.exitCode)): \(result.errorOutput)\(hint)",
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: result.stdout,
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text(result.stdout)
     }
 }

@@ -52,8 +52,8 @@ public struct PinsFileBackup: Sendable {
 /// SwiftPM never raises a pin on its own. Resolution reuses whatever `Package.resolved` records,
 /// even when the project's requirement allows a newer tag. Dropping one pin makes resolution treat
 /// that package as unresolved and choose the newest version the requirement allows, while every
-/// other pin stays exactly where it is. That is the surgical form of Xcode's
-/// **Update to Latest Package Versions**.
+/// other pin stays exactly where it is. That is the surgical form of Xcode's **Update to Latest
+/// Package Versions**.
 public struct PackageResolvedEditor: Sendable {
     /// Errors surfaced while rewriting a pins file.
     public enum EditError: Error, Equatable, Sendable, LocalizedError {
@@ -91,26 +91,27 @@ public struct PackageResolvedEditor: Sendable {
             throw .unreadable(path)
         }
 
-        let object: Any
+        // A pins file carries fields this editor never reads, and SwiftPM rewrites the whole file
+        // from what it finds there. Decoding into an AnyValue tree keeps every one of them, which a
+        // model naming only `pins` and `identity` would drop on the write below.
+        var root: [String: AnyValue]
 
         do {
-            object = try JSONSerialization.jsonObject(with: data)
+            root = try JSONDecoder().decode([String: AnyValue].self, from: data)
         } catch {
             throw .malformed(path)
         }
 
-        guard var root = object as? [String: Any] else { throw .malformed(path) }
-
         var removed: [String] = []
 
         // v2/v3: pins live at the top level. v1: they live under `object.pins`.
-        if let pins = root["pins"] as? [[String: Any]] {
+        if let pins = root["pins"]?.arrayValue {
             root["pins"] = filter(pins, identities: identities, removed: &removed)
-        } else if var container = root["object"] as? [String: Any],
-                  let pins = container["pins"] as? [[String: Any]]
+        } else if var container = root["object"]?.dictionaryValue,
+           let pins = container["pins"]?.arrayValue
         {
             container["pins"] = filter(pins, identities: identities, removed: &removed)
-            root["object"] = container
+            root["object"] = .dictionary(container)
         } else {
             throw .malformed(path)
         }
@@ -118,11 +119,9 @@ public struct PackageResolvedEditor: Sendable {
         guard !removed.isEmpty else { return [] }
 
         do {
-            let output = try JSONSerialization.data(
-                withJSONObject: root,
-                options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes],
-            )
-            try output.write(to: URL(fileURLWithPath: path), options: .atomic)
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+            try encoder.encode(root).write(to: URL(fileURLWithPath: path), options: .atomic)
         } catch {
             throw .unwritable(path)
         }
@@ -131,11 +130,12 @@ public struct PackageResolvedEditor: Sendable {
 
     /// Keeps the pins that survive, and records the identity of each one dropped.
     private func filter(
-        _ pins: [[String: Any]],
+        _ pins: [AnyValue],
         identities: Set<String>?,
         removed: inout [String],
-    ) -> [[String: Any]] {
-        pins.filter { pin in
+    ) -> AnyValue {
+        .array(pins.filter { pin in
+            guard let pin = pin.dictionaryValue else { return true }
             let identity = Self.identity(of: pin)
 
             guard let identities else {
@@ -148,13 +148,13 @@ public struct PackageResolvedEditor: Sendable {
                 return false
             }
             return true
-        }
+        })
     }
 
     /// Reads a pin's identity, deriving it from the location when the field is absent (v1 files).
-    static func identity(of pin: [String: Any]) -> String {
-        if let identity = pin["identity"] as? String { return identity.lowercased() }
-        let location = (pin["location"] as? String) ?? (pin["repositoryURL"] as? String) ?? ""
+    static func identity(of pin: [String: AnyValue]) -> String {
+        if let identity = pin["identity"]?.stringValue { return identity.lowercased() }
+        let location = pin["location"]?.stringValue ?? pin["repositoryURL"]?.stringValue ?? ""
         return PackageResolvedParser.identity(forURL: location)
     }
 }

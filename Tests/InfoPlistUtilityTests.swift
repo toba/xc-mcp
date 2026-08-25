@@ -90,8 +90,8 @@ struct InfoPlistUtilityTests {
         try data.write(to: URL(fileURLWithPath: plistPath))
 
         let result = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        #expect(result["CFBundleName"] as? String == "TestApp")
-        #expect(result["CFBundleVersion"] as? String == "1.0")
+        #expect(result["CFBundleName"]?.stringValue == "TestApp")
+        #expect(result["CFBundleVersion"]?.stringValue == "1.0")
     }
 
     @Test
@@ -106,20 +106,20 @@ struct InfoPlistUtilityTests {
         let tempDir = TemporaryDirectory.url
 
         let plistPath = tempDir.appendingPathComponent("Info.plist").path
-        let testPlist: [String: Any] = [
+        let testPlist: [String: AnyValue] = [
             "CFBundleName": "TestApp",
             "CFBundleDocumentTypes": [
                 ["CFBundleTypeName": "Test Document", "CFBundleTypeRole": "Editor"]
-            ] as [[String: Any]],
+            ],
         ]
 
         try InfoPlistUtility.writeInfoPlist(testPlist, toPath: plistPath)
         let readBack = try InfoPlistUtility.readInfoPlist(path: plistPath)
 
-        #expect(readBack["CFBundleName"] as? String == "TestApp")
-        let docTypes = readBack["CFBundleDocumentTypes"] as? [[String: Any]]
+        #expect(readBack["CFBundleName"]?.stringValue == "TestApp")
+        let docTypes = readBack["CFBundleDocumentTypes"]?.dictionaryArrayValue
         #expect(docTypes?.count == 1)
-        #expect(docTypes?.first?["CFBundleTypeName"] as? String == "Test Document")
+        #expect(docTypes?.first?["CFBundleTypeName"]?.stringValue == "Test Document")
     }
 
     @Test

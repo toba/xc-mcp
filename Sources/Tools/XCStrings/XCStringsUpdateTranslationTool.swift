@@ -5,12 +5,10 @@ import Foundation
 public struct XCStringsUpdateTranslationTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_update_translation",
             description: "Update a translation for a key",
             inputSchema: .object([
@@ -47,20 +45,10 @@ public struct XCStringsUpdateTranslationTool: Sendable {
         let language = try arguments.getRequiredString("language")
         let value = try arguments.getRequiredString("value")
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
             try await parser.updateTranslation(key: key, language: language, value: value)
 
-            return CallTool.Result(content: [.text(
-                text: "Translation updated successfully",
-                annotations: nil,
-                _meta: nil,
-            )])
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text("Translation updated successfully")
         }
     }
 }

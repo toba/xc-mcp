@@ -17,28 +17,10 @@ public struct XCStringsStatsCalculator: Sendable {
         let translatableEntries = file.strings.values.filter(\.requiresTranslation)
 
         var coverageByLanguage: [String: LanguageStats] = [:]
+        coverageByLanguage.reserveCapacity(allLanguages.count)
 
         for language in allLanguages {
-            var translated = 0
-            var untranslated = 0
-
-            for entry in translatableEntries {
-                if entry.localizations?[language]?.hasContent == true {
-                    translated += 1
-                } else {
-                    untranslated += 1
-                }
-            }
-
-            let total = translated + untranslated
-            let coveragePercent = total == 0 ? 0 : Double(translated) / Double(total) * 100
-
-            coverageByLanguage[language] = LanguageStats(
-                translated: translated,
-                untranslated: untranslated,
-                total: total,
-                coveragePercent: coveragePercent,
-            )
+            coverageByLanguage[language] = Self.stats(for: language, in: translatableEntries)
         }
 
         return .init(
@@ -49,15 +31,40 @@ public struct XCStringsStatsCalculator: Sendable {
         )
     }
 
+    /// Counts the translated and untranslated entries of one language.
+    private static func stats(
+        for language: String,
+        in translatableEntries: some Collection<StringEntry>,
+    ) -> LanguageStats {
+        var translated = 0
+        var untranslated = 0
+
+        for entry in translatableEntries {
+            if entry.localizations?[language]?.hasContent == true {
+                translated += 1
+            } else {
+                untranslated += 1
+            }
+        }
+
+        let total = translated + untranslated
+
+        return .init(
+            translated: translated,
+            untranslated: untranslated,
+            total: total,
+            coveragePercent: total == 0 ? 0 : Double(translated) / Double(total) * 100,
+        )
+    }
+
     /// Get progress for a specific language
     public func getProgress(for language: String) throws(XCStringsError) -> LanguageStats {
-        let stats = getStats()
-
-        guard let langStats = stats.coverageByLanguage[language] else {
+        // count the one language asked for rather than every language getStats would cover
+        guard reader.listLanguages().contains(language) else {
             throw XCStringsError.languageNotFound(language: language, key: "")
         }
 
-        return langStats
+        return Self.stats(for: language, in: file.strings.values.filter(\.requiresTranslation))
     }
 
     /// Get compact coverage summary (token-efficient)

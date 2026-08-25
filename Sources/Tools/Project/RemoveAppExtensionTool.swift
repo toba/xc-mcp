@@ -7,15 +7,13 @@ import Foundation
 public struct RemoveAppExtensionTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_app_extension",
             description:
-            "Remove an App Extension target from the project and its embedding from the host app",
+                "Remove an App Extension target from the project and its embedding from the host app",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -37,11 +35,9 @@ public struct RemoveAppExtensionTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(extensionName) = arguments["extension_name"]
-        else {
-            throw MCPError.invalidParams("project_path and extension_name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let extensionName = arguments.getString("extension_name")
+        else { throw MCPError.invalidParams("project_path and extension_name are required") }
 
         do {
             // Resolve and validate the project path
@@ -51,20 +47,11 @@ public struct RemoveAppExtensionTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the extension target to remove
-            guard
-                let extensionTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
-                    $0.name == extensionName
-                })
-            else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Extension target '\(extensionName)' not found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+            guard let extensionTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == extensionName
+            }) else {
+                return CallTool.Result.text(
+                    "Extension target '\(extensionName)' not found in project")
             }
 
             // Verify it's an app extension
@@ -81,12 +68,8 @@ public struct RemoveAppExtensionTool: Sendable {
             ]
 
             guard extensionProductTypes.contains(extensionTarget.productType ?? .none) else {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Target '\(extensionName)' is not an App Extension. Use remove_target for other target types.",
-                            annotations: nil, _meta: nil),
-                    ],
+                return CallTool.Result.text(
+                    "Target '\(extensionName)' is not an App Extension. Use remove_target for other target types."
                 )
             }
 
@@ -100,6 +83,7 @@ public struct RemoveAppExtensionTool: Sendable {
             // Remove the extension's product from each host target's embed build phases.
             for target in xcodeproj.pbxproj.nativeTargets {
                 var emptyEmbedPhases: [PBXCopyFilesBuildPhase] = []
+
                 for buildPhase in target.buildPhases {
                     if let copyPhase = buildPhase as? PBXCopyFilesBuildPhase {
                         // Remove build files referencing the extension product
@@ -113,8 +97,7 @@ public struct RemoveAppExtensionTool: Sendable {
 
                         // Mark empty embed phases for cleanup after iteration
                         if copyPhase.files?.isEmpty == true,
-                           copyPhase.name == "Embed App Extensions"
-                        {
+                           copyPhase.name == "Embed App Extensions" {
                             emptyEmbedPhases.append(copyPhase)
                         }
                     }
@@ -142,8 +125,7 @@ public struct RemoveAppExtensionTool: Sendable {
             if let productRef = productReference {
                 // Remove from products group
                 if let project = xcodeproj.pbxproj.rootObject,
-                   let productsGroup = project.productsGroup
-                {
+                   let productsGroup = project.productsGroup {
                     productsGroup.children.removeAll { $0 == productRef }
                 }
                 xcodeproj.pbxproj.delete(object: productRef)
@@ -156,7 +138,7 @@ public struct RemoveAppExtensionTool: Sendable {
 
             // Remove extension group if exists
             if let project = try xcodeproj.pbxproj.rootProject(),
-               let mainGroup = project.mainGroup
+                let mainGroup = project.mainGroup
             {
                 removeExtensionGroup(
                     from: mainGroup, extensionName: extensionName, xcodeproj: xcodeproj,
@@ -169,22 +151,18 @@ public struct RemoveAppExtensionTool: Sendable {
             // Save project
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully removed App Extension '\(extensionName)' from project and all host app embeddings",
-                        annotations: nil, _meta: nil),
-                ],
+            return CallTool.Result.text(
+                "Successfully removed App Extension '\(extensionName)' from project and all host app embeddings"
             )
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove App Extension from Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
     private func removeExtensionGroup(
-        from group: PBXGroup, extensionName: String, xcodeproj: XcodeProj,
+        from group: PBXGroup,
+        extensionName: String,
+        xcodeproj: XcodeProj,
     ) {
         group.children.removeAll { element in
             if let groupElement = element as? PBXGroup,

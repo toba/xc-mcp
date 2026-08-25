@@ -42,17 +42,11 @@ public struct KeyPressTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
-        guard case let .string(key) = arguments["key"] else {
-            throw MCPError.invalidParams("key is required")
-        }
+        let key = try arguments.getRequiredString("key")
 
         do {
             try await uiInput.pressKey(simulator: simulator, key: key)
-            return CallTool.Result(content: [
-                .text(
-                    text: "Pressed key '\(key)' on simulator '\(simulator)'",
-                    annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text("Pressed key '\(key)' on simulator '\(simulator)'")
         } catch {
             throw try error.asMCPError()
         }

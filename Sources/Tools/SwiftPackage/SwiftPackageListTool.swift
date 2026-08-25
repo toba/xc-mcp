@@ -36,30 +36,9 @@ public struct SwiftPackageListTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get package path
-        let packagePath: String
-
-        if case let .string(value) = arguments["package_path"] {
-            packagePath = value
-        } else if let sessionPackagePath = await sessionManager.packagePath {
-            packagePath = sessionPackagePath
-        } else {
-            throw MCPError.invalidParams(
-                "package_path is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
 
         let timeout = arguments.resolveTimeout(default: SwiftRunner.defaultTimeout)
-
-        // Verify Package.swift exists
-        let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift",
-        ).path
-        guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
-            throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
-            )
-        }
 
         do {
             let result = try await swiftRunner.showDependencies(
@@ -76,8 +55,7 @@ public struct SwiftPackageListTool: Sendable {
                     message += result.stdout
                 }
 
-                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
-                )
+                return CallTool.Result.text(message)
             } else {
                 throw MCPError.internalError("Failed to list dependencies:\n\(result.output)")
             }

@@ -17,7 +17,7 @@ public struct AuditBuildSettingsTool: Sendable {
     private let pathUtility: PathUtility
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
         pathUtility: PathUtility,
     ) {
@@ -27,10 +27,9 @@ public struct AuditBuildSettingsTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "audit_build_settings",
-            description:
-                "Audit resolved build settings for known incremental-build anti-patterns: "
+            description: "Audit resolved build settings for known incremental-build anti-patterns: "
                 + "whole-module compilation in Debug, dwarf-with-dsym in Debug, ONLY_ACTIVE_ARCH "
                 + "off, optimization enabled in Debug, explicit modules / compilation caching off, "
                 + "and run-script phases with no output paths (which re-run every build). Read-only "
@@ -83,12 +82,13 @@ public struct AuditBuildSettingsTool: Sendable {
             scheme: scheme, configuration: configuration,
             destination: XcodebuildRunner.macOSDestination,
         )
-        let settings = Self.parseBuildSettings(from: settingsResult.stdout)
+        let settings = BuildSettingExtractor.parseSettings(from: settingsResult.stdout)
 
         var findings = Self.auditSettings(settings, configuration: configuration)
 
         // Best-effort run-script scan: only .xcodeproj projects can be opened directly.
-        if let projectPath, projectPath.hasSuffix(".xcodeproj"),
+        if let projectPath,
+           projectPath.hasSuffix(".xcodeproj"),
            let scriptFindings = try? scanRunScriptPhases(projectPath: projectPath)
         {
             findings.append(contentsOf: scriptFindings)
@@ -97,7 +97,7 @@ public struct AuditBuildSettingsTool: Sendable {
         let text = Self.formatReport(
             findings: findings, scheme: scheme, configuration: configuration,
         )
-        return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(text)
     }
 
     // MARK: - Settings audit
@@ -135,19 +135,17 @@ public struct AuditBuildSettingsTool: Sendable {
     }
 
     static func auditSettings(
-        _ settings: [String: String], configuration: String,
+        _ settings: [String: String],
+        configuration: String,
     ) -> [Finding] {
         var findings: [Finding] = []
-        guard isDebugConfiguration(settings, configuration: configuration) else {
-            return findings
-        }
+        guard isDebugConfiguration(settings, configuration: configuration) else { return findings }
 
         if settings["SWIFT_COMPILATION_MODE"] == "wholemodule"
             || settings["SWIFT_WHOLE_MODULE_OPTIMIZATION"] == "YES"
         {
             findings.append(Finding(
-                severity: .warning,
-                title: "Whole-module compilation in Debug",
+                severity: .warning, title: "Whole-module compilation in Debug",
                 detail: "SWIFT_COMPILATION_MODE is whole-module, so every incremental build "
                     + "recompiles the entire module.",
                 recommendation: "Set SWIFT_COMPILATION_MODE = incremental for the Debug "
@@ -157,8 +155,7 @@ public struct AuditBuildSettingsTool: Sendable {
 
         if let opt = settings["SWIFT_OPTIMIZATION_LEVEL"], opt != "-Onone" {
             findings.append(Finding(
-                severity: .warning,
-                title: "Swift optimization enabled in Debug",
+                severity: .warning, title: "Swift optimization enabled in Debug",
                 detail: "SWIFT_OPTIMIZATION_LEVEL is \(opt); optimizing Debug builds slows "
                     + "compilation with no debugging benefit.",
                 recommendation: "Set SWIFT_OPTIMIZATION_LEVEL = -Onone for Debug.",
@@ -167,8 +164,7 @@ public struct AuditBuildSettingsTool: Sendable {
 
         if settings["DEBUG_INFORMATION_FORMAT"] == "dwarf-with-dsym" {
             findings.append(Finding(
-                severity: .warning,
-                title: "dSYM generation in Debug",
+                severity: .warning, title: "dSYM generation in Debug",
                 detail: "DEBUG_INFORMATION_FORMAT is dwarf-with-dsym; generating a dSYM on every "
                     + "Debug build adds link-time cost that's only needed for release symbolication.",
                 recommendation: "Set DEBUG_INFORMATION_FORMAT = dwarf for Debug.",
@@ -177,9 +173,9 @@ public struct AuditBuildSettingsTool: Sendable {
 
         if settings["ONLY_ACTIVE_ARCH"] == "NO" {
             findings.append(Finding(
-                severity: .warning,
-                title: "Building all architectures in Debug",
-                detail: "ONLY_ACTIVE_ARCH is NO, so Debug builds compile every architecture instead "
+                severity: .warning, title: "Building all architectures in Debug",
+                detail:
+                    "ONLY_ACTIVE_ARCH is NO, so Debug builds compile every architecture instead "
                     + "of just the active one.",
                 recommendation: "Set ONLY_ACTIVE_ARCH = YES for Debug.",
             ))
@@ -189,8 +185,7 @@ public struct AuditBuildSettingsTool: Sendable {
         // value may be the Xcode default, and flagging it would add noise.
         if settings["SWIFT_ENABLE_EXPLICIT_MODULES"] == "NO" {
             findings.append(Finding(
-                severity: .info,
-                title: "Explicit modules disabled",
+                severity: .info, title: "Explicit modules disabled",
                 detail: "SWIFT_ENABLE_EXPLICIT_MODULES is NO; explicit modules improve incremental "
                     + "caching and parallelism.",
                 recommendation: "Set SWIFT_ENABLE_EXPLICIT_MODULES = YES.",
@@ -199,12 +194,10 @@ public struct AuditBuildSettingsTool: Sendable {
 
         if settings["EAGER_LINKING"] == "NO" {
             findings.append(Finding(
-                severity: .info,
-                title: "Eager linking disabled",
+                severity: .info, title: "Eager linking disabled",
                 detail: "EAGER_LINKING is NO; enabling it lets dependent targets link before their "
                     + "dependencies finish, shortening the critical path on multi-framework "
-                    + "projects.",
-                recommendation: "Set EAGER_LINKING = YES.",
+                    + "projects.", recommendation: "Set EAGER_LINKING = YES.",
             ))
         }
 
@@ -229,8 +222,7 @@ public struct AuditBuildSettingsTool: Sendable {
 
                 let name = shell.name ?? "<unnamed>"
                 findings.append(Finding(
-                    severity: .warning,
-                    title: "Run-script phase with no output paths",
+                    severity: .warning, title: "Run-script phase with no output paths",
                     detail: "Target '\(target.name)' phase '\(name)' declares no output files, so "
                         + "Xcode treats it as always-out-of-date and re-runs it on every "
                         + "incremental build.",
@@ -242,37 +234,12 @@ public struct AuditBuildSettingsTool: Sendable {
         return findings
     }
 
-    // MARK: - Parsing
-
-    /// Parses xcodebuild -showBuildSettings output (JSON preferred, text fallback). Mirrors
-    /// DiffBuildSettingsTool's parser.
-    static func parseBuildSettings(from output: String) -> [String: String] {
-        let data = Data(output.utf8)
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-            var settings: [String: String] = [:]
-            for entry in json {
-                if let buildSettings = entry["buildSettings"] as? [String: Any] {
-                    for (key, value) in buildSettings { settings[key] = "\(value)" }
-                }
-            }
-            if !settings.isEmpty { return settings }
-        }
-
-        var settings: [String: String] = [:]
-        for line in output.split(separator: "\n") {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard let equalsRange = trimmed.range(of: " = ") else { continue }
-            let key = String(trimmed[trimmed.startIndex..<equalsRange.lowerBound])
-            let value = String(trimmed[equalsRange.upperBound...])
-            if !key.isEmpty { settings[key] = value }
-        }
-        return settings
-    }
-
     // MARK: - Formatting
 
     static func formatReport(
-        findings: [Finding], scheme: String, configuration: String,
+        findings: [Finding],
+        scheme: String,
+        configuration: String,
     ) -> String {
         var text = "## Build Settings Audit\n\n"
         text += "**Scheme:** \(scheme)  **Configuration:** \(configuration)\n\n"
@@ -283,11 +250,9 @@ public struct AuditBuildSettingsTool: Sendable {
         }
 
         let sorted = findings.sorted { $0.severity.rawValue < $1.severity.rawValue }
-        let warnings = sorted.filter { $0.severity == .warning }.count
+        let warnings = sorted.count(where: { $0.severity == .warning })
         text += "\(findings.count) finding\(findings.count == 1 ? "" : "s")"
-        if warnings > 0 {
-            text += " (\(warnings) warning\(warnings == 1 ? "" : "s"))"
-        }
+        if warnings > 0 { text += " (\(warnings) warning\(warnings == 1 ? "" : "s"))" }
         text += ":\n\n"
 
         for finding in sorted {

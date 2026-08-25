@@ -74,16 +74,16 @@ public struct SetTestPlanOptionsTool: Sendable {
         ]
 
         for option in Self.enumOptions {
-            properties[
-                option.param] = .object([
+            properties[option
+                .param] = .object([
                     "type": .string("string"),
                     "enum": .array(option.values.map { .string($0) }),
                     "description": .string("Sets '\(option.jsonKey)'."),
                 ])
         }
         for option in Self.boolOptions {
-            properties[
-                option.param] = .object([
+            properties[option
+                .param] = .object([
                     "type": .string("boolean"),
                     "description": .string("Sets '\(option.jsonKey)'."),
                 ])
@@ -125,7 +125,7 @@ public struct SetTestPlanOptionsTool: Sendable {
         }
 
         // Collect the keys to set, validating enum values.
-        var setValues: [(jsonKey: String, value: Any, display: String)] = []
+        var setValues: [(jsonKey: String, value: AnyValue, display: String)] = []
 
         for option in Self.enumOptions {
             guard let value = arguments.getString(option.param) else { continue }
@@ -134,11 +134,11 @@ public struct SetTestPlanOptionsTool: Sendable {
                     "\(option.param) must be one of: \(option.values.joined(separator: ", "))",
                 )
             }
-            setValues.append((option.jsonKey, value, "\(option.jsonKey)=\(value)"))
+            setValues.append((option.jsonKey, .string(value), "\(option.jsonKey)=\(value)"))
         }
         for option in Self.boolOptions {
-            guard case let .bool(value) = arguments[option.param] else { continue }
-            setValues.append((option.jsonKey, value, "\(option.jsonKey)=\(value)"))
+            guard let value = arguments.getOptionalBool(option.param) else { continue }
+            setValues.append((option.jsonKey, .boolean(value), "\(option.jsonKey)=\(value)"))
         }
 
         guard !setValues.isEmpty || !clearKeys.isEmpty else {
@@ -150,7 +150,7 @@ public struct SetTestPlanOptionsTool: Sendable {
         do {
             var json = try TestPlanFile.read(from: resolvedPath)
 
-            try mutateOptions(&json, configurationName: configurationName) { options in
+            try TestPlanFile.mutateOptions(&json, configurationName: configurationName) { options in
                 for key in clearKeys { options.removeValue(forKey: key) }
                 for entry in setValues { options[entry.jsonKey] = entry.value }
             }
@@ -164,54 +164,10 @@ public struct SetTestPlanOptionsTool: Sendable {
                 changes.append("set \(setValues.map(\.display).joined(separator: ", "))")
             }
             if !clearKeys.isEmpty { changes.append("cleared \(clearKeys.joined(separator: ", "))") }
-            return CallTool.Result(content: [
-                .text(
-                    text: "Updated \(scope) in \(resolvedPath): \(changes.joined(separator: "; "))",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],)
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(
+                "Updated \(scope) in \(resolvedPath): \(changes.joined(separator: "; "))")
         } catch {
-            throw MCPError.internalError(
-                "Failed to update test plan options: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
-    }
-
-    /// Applies `transform` to the target options dictionary — either a named configuration's
-    /// `options` block or the plan-level `defaultOptions`.
-    private func mutateOptions(
-        _ json: inout [String: Any],
-        configurationName: String?,
-        _ transform: (inout [String: Any]) -> Void,
-    ) throws(MCPError) {
-        guard let configurationName else {
-            var defaults = json["defaultOptions"] as? [String: Any] ?? [:]
-            transform(&defaults)
-            json["defaultOptions"] = defaults
-            return
-        }
-
-        guard var configurations = json["configurations"] as? [[String: Any]] else {
-            throw MCPError.invalidParams("Test plan has no configurations")
-        }
-        guard let index = configurations.firstIndex(where: {
-            $0["name"] as? String == configurationName
-        }) else {
-            let names = configurations.compactMap { $0["name"] as? String }.joined(separator: ", ")
-            throw MCPError.invalidParams(
-                "Configuration '\(configurationName)' not found in test plan."
-                    + (names.isEmpty ? "" : " Available: \(names)"),
-            )
-        }
-
-        var entry = configurations[index]
-        var options = entry["options"] as? [String: Any] ?? [:]
-        transform(&options)
-        entry["options"] = options
-        configurations[index] = entry
-        json["configurations"] = configurations
     }
 }

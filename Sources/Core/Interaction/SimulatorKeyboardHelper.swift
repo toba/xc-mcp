@@ -51,7 +51,7 @@ public enum SimulatorKeyboardHelper {
         do {
             resolution = try await simctlRunner.findDevice(matching: udid)
         } catch {
-            throw MCPError.internalError("Failed to list simulators: \(error)")
+            throw try error.asMCPError()
         }
         switch resolution {
             case let .booted(device): return device

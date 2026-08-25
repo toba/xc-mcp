@@ -138,17 +138,9 @@ public struct ListTestPlanTargetsTool: Sendable {
                         let suffix = target.skipped ? " (skipped)" : ""
                         output += "  - \(target.name)\(suffix)\n"
                     }
-                    return CallTool.Result(content: [
-                        .text(text: output, annotations: nil, _meta: nil)
-                    ])
+                    return CallTool.Result.text(output)
                 }
-                return CallTool.Result(content: [
-                    .text(
-                        text: "No test plans found for scheme '\(scheme)'.",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
+                return CallTool.Result.text("No test plans found for scheme '\(scheme)'.")
             }
 
             if format == "json" {
@@ -174,7 +166,7 @@ public struct ListTestPlanTargetsTool: Sendable {
                 }
             }
 
-            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(output)
         } catch {
             throw try error.asMCPError()
         }
@@ -210,7 +202,7 @@ public struct ListTestPlanTargetsTool: Sendable {
                 targets: targets.map { TestTargetResult(name: $0.name, enabled: $0.enabled) },
             )
             let json = try encodePrettyJSON(result)
-            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(json)
         }
 
         var output = "Test plan '\(planName)':\n"
@@ -219,7 +211,7 @@ public struct ListTestPlanTargetsTool: Sendable {
             let suffix = target.enabled ? "" : " (disabled)"
             output += "  - \(target.name)\(suffix)\n"
         }
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 
     // MARK: - All Plans Discovery
@@ -231,13 +223,7 @@ public struct ListTestPlanTargetsTool: Sendable {
         let allFiles = TestPlanFile.findFiles(under: projectRoot)
 
         if allFiles.isEmpty {
-            return CallTool.Result(content: [
-                .text(
-                    text: "No .xctestplan files found under \(projectRoot)",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],)
+            return CallTool.Result.text("No .xctestplan files found under \(projectRoot)")
         }
 
         if format == "json" {
@@ -265,7 +251,7 @@ public struct ListTestPlanTargetsTool: Sendable {
                 )
             }
             let json = try encodePrettyJSON(Result(testPlans: plans))
-            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(json)
         }
 
         var output = "Found \(allFiles.count) test plan(s):\n"
@@ -285,7 +271,7 @@ public struct ListTestPlanTargetsTool: Sendable {
                 }
             }
         }
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 
     private func formatTestPlansJSON(
@@ -316,7 +302,7 @@ public struct ListTestPlanTargetsTool: Sendable {
 
         let result = Result(scheme: scheme, testPlans: plans)
         let json = try encodePrettyJSON(result)
-        return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(json)
     }
 
     /// Runs `xcodebuild -showTestPlans` to get test plan names for a scheme.
@@ -348,10 +334,16 @@ public struct ListTestPlanTargetsTool: Sendable {
 
         // Parse JSON output to extract test plan names
         let data = Data(result.stdout.utf8)
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let testPlans = json["testPlans"] as? [[String: Any]] else { return [] }
+        guard let list = try? JSONDecoder().decode(TestPlanList.self, from: data) else { return [] }
 
-        return testPlans.compactMap { $0["name"] as? String }
+        return list.testPlans.compactMap(\.name)
+    }
+
+    /// The `xcodebuild -showTestPlans -json` payload.
+    private struct TestPlanList: Decodable {
+        struct Plan: Decodable { let name: String? }
+
+        let testPlans: [Plan]
     }
 
     // MARK: - Scheme Testable Fallback
@@ -403,7 +395,7 @@ public struct ListTestPlanTargetsTool: Sendable {
             targets: targets.map { TargetEntry(name: $0.name, skipped: $0.skipped) },
         )
         let json = try encodePrettyJSON(result)
-        return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(json)
     }
 
     /// Finds and parses a `.xctestplan` file to extract test target names and enabled status.

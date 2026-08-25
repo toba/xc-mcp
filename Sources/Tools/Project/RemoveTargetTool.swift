@@ -43,13 +43,12 @@ public struct RemoveTargetTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"]
-        else {
-            throw MCPError.invalidParams("project_path and target_name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name")
+        else { throw MCPError.invalidParams("project_path and target_name are required") }
 
-        let cascade: Bool = if case let .bool(value) = arguments["cascade"] { value } else { false }
+        let cascade: Bool =
+            if let value = arguments.getOptionalBool("cascade") { value } else { false }
 
         do {
             // Resolve and validate the project path
@@ -63,15 +62,7 @@ public struct RemoveTargetTool: Sendable {
             // Find the target to remove (check all target types, not just native)
             guard let project = xcodeproj.pbxproj.rootObject,
                   let target = project.targets.first(where: { $0.name == targetName })
-            else {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
-            }
+            else { return CallTool.Result.text("Target '\(targetName)' not found in project") }
 
             let projectFilename = projectURL.lastPathComponent
 
@@ -80,6 +71,7 @@ public struct RemoveTargetTool: Sendable {
             // unless the caller explicitly opts in with `cascade`. The target's own artifacts are
             // always removed; only cross-target references require the explicit acknowledgement.
             var referencingTargets: [String] = []
+
             for other in project.targets where other != target {
                 if other.dependencies.contains(where: { $0.target == target }) {
                     referencingTargets.append("\(other.name) depends on it")
@@ -87,22 +79,14 @@ public struct RemoveTargetTool: Sendable {
                 if let product = target.product,
                    other.buildPhases.contains(where: { phase in
                        (phase.files ?? []).contains { $0.file == product }
-                   })
-                {
-                    referencingTargets.append("\(other.name) embeds or links its product")
-                }
+                   }) { referencingTargets.append("\(other.name) embeds or links its product") }
             }
             if !referencingTargets.isEmpty, !cascade {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Refusing to remove target '\(targetName)': other targets still "
-                            + "reference it — " + referencingTargets.joined(separator: "; ")
-                            + ". Remove those references first, or re-run with cascade=true to "
-                            + "remove them as part of this operation.",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
+                return CallTool.Result.text(
+                    "Refusing to remove target '\(targetName)': other targets still "
+                        + "reference it — " + referencingTargets.joined(separator: "; ")
+                        + ". Remove those references first, or re-run with cascade=true to "
+                        + "remove them as part of this operation.")
             }
 
             // Remove every build file that embeds or links this target's product from other
@@ -125,9 +109,9 @@ public struct RemoveTargetTool: Sendable {
 
                 // Sweep any remaining build files referencing the product (e.g. orphaned ones not
                 // attached to a build phase).
-                for buildFile in xcodeproj.pbxproj.buildFiles where buildFile.file == productReference {
-                    xcodeproj.pbxproj.delete(object: buildFile)
-                }
+                for buildFile in xcodeproj.pbxproj.buildFiles
+                    where buildFile.file == productReference
+                { xcodeproj.pbxproj.delete(object: buildFile) }
             }
 
             // Detach and delete every object that references this target from elsewhere in the
@@ -191,47 +175,48 @@ public struct RemoveTargetTool: Sendable {
             // target that no longer exists — a dangling reference makes Xcode fail to load the
             // whole project. (Defect 1)
             let projectDir = projectURL.deletingLastPathComponent().path
+            // both directory walks feed the edit pass and the validation pass below
+            let testPlanPaths = TestPlanFile.findPaths(under: projectDir)
+            let schemePaths = SchemeTargetEditor.schemeFiles(in: resolvedProjectPath)
             var editedTestPlans: [String] = []
-            for plan in TestPlanFile.findFiles(under: projectDir)
-                where TestPlanFile.targetNames(from: plan.json).contains(targetName)
-            {
-                guard var testTargets = plan.json["testTargets"] as? [[String: Any]] else { continue }
-                testTargets.removeAll { entry in
-                    (entry["target"] as? [String: Any])?["name"] as? String == targetName
-                }
-                var updated = plan.json
-                updated["testTargets"] = testTargets
-                try TestPlanFile.write(updated, to: plan.path)
-                editedTestPlans.append(plan.path)
+
+            for path in testPlanPaths {
+                guard let json = try? TestPlanFile.read(from: path),
+                      TestPlanFile.targetNames(from: json).contains(targetName) else { continue }
+                var testTargets = TestPlanFile.testTargets(in: json)
+                testTargets.removeAll { TestPlanFile.entry($0, names: targetName) }
+                var updated = json
+                updated["testTargets"] = .dictionaries(testTargets)
+                try TestPlanFile.write(updated, to: path)
+                editedTestPlans.append(path)
             }
 
             var editedSchemes: [String] = []
-            for schemePath in SchemeTargetEditor.schemeFiles(in: resolvedProjectPath) {
-                if try SchemeTargetEditor.removeTarget(
+            for schemePath in schemePaths
+                where try SchemeTargetEditor.removeTarget(
                     named: targetName, projectFilename: projectFilename, fromSchemeAt: schemePath,
-                ) {
-                    editedSchemes.append(schemePath)
-                }
-            }
+                )
+            { editedSchemes.append(schemePath) }
 
             // Save project (drops the target) last, once nothing else references it.
             try PBXProjWriter.write(xcodeproj, to: projectPathKit, expectedPreimage: preimage)
 
             // Post-op cross-file validation: prove zero dangling references remain anywhere — not
-            // just that the project file is a valid plist.
+            // just that the project file is a valid plist. re-read each plan; the point of this
+            // pass is to prove the write landed
             var dangling: [String] = []
-            for plan in TestPlanFile.findFiles(under: projectDir)
-                where TestPlanFile.targetNames(from: plan.json).contains(targetName)
-            {
-                dangling.append(plan.path)
+
+            for path in testPlanPaths {
+                guard let json = try? TestPlanFile.read(from: path),
+                      TestPlanFile.targetNames(from: json).contains(targetName) else { continue }
+                dangling.append(path)
             }
-            for schemePath in SchemeTargetEditor.schemeFiles(in: resolvedProjectPath)
+            for schemePath in schemePaths
                 where SchemeTargetEditor.references(
                     target: targetName, projectFilename: projectFilename, schemeAt: schemePath,
                 )
-            {
-                dangling.append(schemePath)
-            }
+            { dangling.append(schemePath) }
+
             if !dangling.isEmpty {
                 throw MCPError.internalError(
                     "Target '\(targetName)' was removed but these files still reference it: "
@@ -240,6 +225,7 @@ public struct RemoveTargetTool: Sendable {
             }
 
             var summary = "Successfully removed target '\(targetName)' from project"
+
             if !editedTestPlans.isEmpty {
                 summary += "\nUpdated \(editedTestPlans.count) test plan(s): "
                     + editedTestPlans.map { URL(fileURLWithPath: $0).lastPathComponent }
@@ -251,13 +237,9 @@ public struct RemoveTargetTool: Sendable {
                     .joined(separator: ", ")
             }
 
-            return CallTool.Result(content: [
-                .text(text: summary, annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text(summary)
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove target from Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

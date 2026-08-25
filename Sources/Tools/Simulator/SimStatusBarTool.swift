@@ -6,16 +6,16 @@ public struct SimStatusBarTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "sim_statusbar",
             description:
-            "Override the status bar display on a simulator. Useful for taking clean screenshots.",
+                "Override the status bar display on a simulator. Useful for taking clean screenshots.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -33,9 +33,7 @@ public struct SimStatusBarTool: Sendable {
                     ]),
                     "battery_level": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Battery level percentage (0-100).",
-                        ),
+                        "description": .string("Battery level percentage (0-100)."),
                     ]),
                     "battery_state": .object([
                         "type": .string("string"),
@@ -51,21 +49,15 @@ public struct SimStatusBarTool: Sendable {
                     ]),
                     "cellular_bars": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Cellular signal bars (0-4).",
-                        ),
+                        "description": .string("Cellular signal bars (0-4)."),
                     ]),
                     "wifi_mode": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "WiFi mode: 'searching', 'failed', 'active'.",
-                        ),
+                        "description": .string("WiFi mode: 'searching', 'failed', 'active'."),
                     ]),
                     "wifi_bars": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "WiFi signal bars (0-3).",
-                        ),
+                        "description": .string("WiFi signal bars (0-3)."),
                     ]),
                     "clear": .object([
                         "type": .string("boolean"),
@@ -81,17 +73,7 @@ public struct SimStatusBarTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get simulator
-        let simulator: String
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
-            throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let simulator = try await sessionManager.resolveSimulator(from: arguments)
 
         // Check if we should clear
         if arguments.getBool("clear") {
@@ -99,13 +81,8 @@ public struct SimStatusBarTool: Sendable {
                 let result = try await simctlRunner.clearStatusBar(udid: simulator)
 
                 if result.succeeded {
-                    return CallTool.Result(
-                        content: [
-                            .text(text:
-                                "Successfully cleared status bar overrides on simulator '\(simulator)'",
-                                annotations: nil, _meta: nil),
-                        ],
-                    )
+                    return CallTool.Result.text(
+                        "Successfully cleared status bar overrides on simulator '\(simulator)'")
                 } else {
                     throw MCPError.internalError(
                         "Failed to clear status bar: \(result.errorOutput)",
@@ -153,17 +130,11 @@ public struct SimStatusBarTool: Sendable {
 
             if result.succeeded {
                 let optionsList = setOptions.sorted().joined(separator: ", ")
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Successfully set status bar overrides (\(optionsList)) on simulator '\(simulator)'",
-                            annotations: nil, _meta: nil),
-                    ],
+                return CallTool.Result.text(
+                    "Successfully set status bar overrides (\(optionsList)) on simulator '\(simulator)'"
                 )
             } else {
-                throw MCPError.internalError(
-                    "Failed to set status bar: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to set status bar: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

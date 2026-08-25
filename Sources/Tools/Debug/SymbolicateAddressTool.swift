@@ -5,8 +5,8 @@ import Subprocess
 
 /// Symbolicates memory addresses to function names using `atos`.
 ///
-/// Wraps `xcrun atos` to convert raw memory addresses from crash logs or
-/// diagnostics into human-readable `ClassName.method + offset` format.
+/// Wraps `xcrun atos` to convert raw memory addresses from crash logs or diagnostics into
+/// human-readable `ClassName.method + offset` format.
 ///
 /// ## Example
 ///
@@ -19,10 +19,10 @@ public struct SymbolicateAddressTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "symbolicate_address",
             description:
-            "Convert raw memory addresses to symbol names (function/method + offset) using atos. Essential for symbolicating crash logs and diagnosing unsymbolicated crash reports.",
+                "Convert raw memory addresses to symbol names (function/method + offset) using atos. Essential for symbolicating crash logs and diagnosing unsymbolicated crash reports.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -47,12 +47,8 @@ public struct SymbolicateAddressTool: Sendable {
                     ]),
                     "arch": .object([
                         "type": .string("string"),
-                        "enum": .array([
-                            .string("arm64"), .string("arm64e"), .string("x86_64"),
-                        ]),
-                        "description": .string(
-                            "Architecture of the binary. Default: arm64.",
-                        ),
+                        "enum": .array([.string("arm64"), .string("arm64e"), .string("x86_64")]),
+                        "description": .string("Architecture of the binary. Default: arm64."),
                     ]),
                     "pid": .object([
                         "type": .string("integer"),
@@ -112,11 +108,12 @@ public struct SymbolicateAddressTool: Sendable {
             .components(separatedBy: "\n")
 
         var output = ""
+
         for (index, symbol) in symbols.enumerated() {
             let addr = index < addresses.count ? addresses[index] : "?"
             output += "\(addr)  →  \(symbol)\n"
         }
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 }

@@ -7,31 +7,27 @@ import ApplicationServices
 public struct InteractFocusTool: Sendable {
     private let interactRunner: InteractRunner
 
-    public init(interactRunner: InteractRunner) {
-        self.interactRunner = interactRunner
-    }
+    public init(interactRunner: InteractRunner) { self.interactRunner = interactRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "interact_focus",
             description:
-            "Bring a macOS application to the front and optionally focus a specific element. "
+                "Bring a macOS application to the front and optionally focus a specific element. "
                 + "Uses NSRunningApplication.activate() to bring the app forward.",
-            inputSchema: .object(
-                [
-                    "type": .string("object"),
-                    "properties": .object(
-                        InteractRunner.appResolutionSchemaProperties.merging([
-                            "element_id": .object([
-                                "type": .string("integer"),
-                                "description": .string(
-                                    "Optional element ID to focus after activating the app.",
-                                ),
-                            ]),
-                        ]) { _, new in new },
-                    ),
-                    "required": .array([]),
-                ],
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object(InteractRunner.appResolutionSchemaProperties.merging([
+                    "element_id": .object([
+                        "type": .string("integer"),
+                        "description": .string(
+                            "Optional element ID to focus after activating the app.",
+                        ),
+                    ])
+                ]) { _, new in new },
+                ),
+                "required": .array([]),
+            ],
             ),
             annotations: .mutation,
         )
@@ -49,26 +45,20 @@ public struct InteractFocusTool: Sendable {
         var result = "Activated \(app.localizedName ?? "PID \(pid)")."
 
         // Optionally focus a specific element
-        if let elementId = arguments.getInt("element_id") {
+        if let elementID = arguments.getInt("element_id") {
             try interactRunner.ensureAccessibility()
-            guard
-                let cached = await InteractSessionManager.shared.getElement(
-                    pid: pid, elementID: elementId,
-                )
-            else {
-                throw InteractError.elementNotFound(elementId)
-            }
+            guard let cached = await InteractSessionManager.shared.getElement(
+                pid: pid, elementID: elementID,
+            ) else { throw InteractError.elementNotFound(elementID) }
             AXUIElementSetAttributeValue(
                 cached.element, kAXFocusedAttribute as CFString, true as CFTypeRef,
             )
-            result += " Focused element \(elementId)."
+            result += " Focused element \(elementID)."
         }
 
         let snapshot = try await InteractPostAction.settledSnapshot(
             runner: interactRunner, pid: pid,
         )
-        return CallTool.Result(
-            content: [.text(text: "\(result)\n\(snapshot)", annotations: nil, _meta: nil)],
-        )
+        return CallTool.Result.text("\(result)\n\(snapshot)")
     }
 }

@@ -86,33 +86,18 @@ public struct SetTestPlanSkippedTestsTool: Sendable {
         do {
             var json = try TestPlanFile.read(from: resolvedPath)
 
-            let outcome: TestPlanSkipList.Outcome
-
-            if let targetName {
-                outcome = try applyToTarget(
-                    &json, targetName: targetName, tests: tests, action: action,
-                )
-            } else {
-                outcome = applyToDefaults(&json, tests: tests, action: action)
+            let outcome = try TestPlanFile.mutateScope(&json, targetName: targetName) { scope in
+                Self.apply(action, tests: tests, in: &scope)
             }
 
             try TestPlanFile.write(json, to: resolvedPath)
 
             let scope = targetName.map { "target '\($0)'" } ?? "plan-level defaults"
             let testList = tests.map { "'\($0)'" }.joined(separator: ", ")
-            return CallTool.Result(content: [
-                .text(
-                    text: "\(action.verb) \(testList) in \(scope)\(Self.report(outcome))",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],)
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(
+                "\(action.verb) \(testList) in \(scope)\(Self.report(outcome))")
         } catch {
-            throw MCPError.internalError(
-                "Failed to update test plan skipped tests: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
@@ -153,7 +138,7 @@ public struct SetTestPlanSkippedTestsTool: Sendable {
     private static func apply(
         _ action: Action,
         tests: [String],
-        in scope: inout [String: Any],
+        in scope: inout [String: AnyValue],
     ) -> TestPlanSkipList.Outcome {
         let value = scope["skippedTests"]
         let outcome =
@@ -167,40 +152,6 @@ public struct SetTestPlanSkippedTestsTool: Sendable {
         } else {
             scope.removeValue(forKey: "skippedTests")
         }
-        return outcome
-    }
-
-    /// Applies changes to plan-level `defaultOptions.skippedTests`.
-    private func applyToDefaults(
-        _ json: inout [String: Any],
-        tests: [String],
-        action: Action,
-    ) -> TestPlanSkipList.Outcome {
-        var defaults = json["defaultOptions"] as? [String: Any] ?? [:]
-        let outcome = Self.apply(action, tests: tests, in: &defaults)
-        json["defaultOptions"] = defaults
-        return outcome
-    }
-
-    /// Applies changes to a specific target's `skippedTests`.
-    private func applyToTarget(
-        _ json: inout [String: Any],
-        targetName: String,
-        tests: [String],
-        action: Action,
-    ) throws(MCPError) -> TestPlanSkipList.Outcome {
-        guard var testTargets = json["testTargets"] as? [[String: Any]] else {
-            throw MCPError.invalidParams("Test plan has no test targets")
-        }
-
-        guard let index = testTargets.firstIndex(where: {
-            ($0["target"] as? [String: Any])?["name"] as? String == targetName
-        }) else { throw MCPError.invalidParams("Target '\(targetName)' not found in test plan") }
-
-        var entry = testTargets[index]
-        let outcome = Self.apply(action, tests: tests, in: &entry)
-        testTargets[index] = entry
-        json["testTargets"] = testTargets
         return outcome
     }
 }

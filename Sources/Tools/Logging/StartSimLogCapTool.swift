@@ -51,49 +51,27 @@ public struct StartSimLogCapTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get simulator
-        let simulator: String
-
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
-            throw MCPError.invalidParams(
-                "simulator is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let simulator = try await sessionManager.resolveSimulator(from: arguments)
 
         // Get output file
-        let outputFile: String
-
-        if case let .string(value) = arguments["output_file"] {
-            outputFile = value
-        } else {
-            outputFile = "/tmp/sim_log_\(simulator).log"
-        }
+        let outputFile = arguments.getString("output_file") ?? "/tmp/sim_log_\(simulator).log"
 
         // Get optional bundle_id filter
-        let bundleId = arguments.getString("bundle_id")
+        let bundleID = arguments.getString("bundle_id")
 
         // Get optional predicate
         let predicate = arguments.getString("predicate")
 
         do {
-            if let bundleId {
-                try PredicateFilterValidator.validate(bundleId, field: "bundle_id")
-            }
+            if let bundleID { try PredicateFilterValidator.validate(bundleID, field: "bundle_id") }
 
             var args = ["simctl", "spawn", simulator, "log", "stream", "--style", "compact"]
 
-            if let bundleId {
+            if let bundleID {
                 args.append(contentsOf: [
-                    "--predicate", "processImagePath CONTAINS \"\(bundleId)\"",
+                    "--predicate", "processImagePath CONTAINS \"\(bundleID)\"",
                 ])
-            } else if let predicate
-            {
-                args.append(contentsOf: ["--predicate", predicate])
-            }
+            } else if let predicate { args.append(contentsOf: ["--predicate", predicate]) }
 
             let pid = try LogCapture.launchStreamProcess(
                 executable: "/usr/bin/xcrun", arguments: args, outputFile: outputFile,
@@ -102,10 +80,10 @@ public struct StartSimLogCapTool: Sendable {
             var message = "Started log capture for simulator '\(simulator)'\n"
             message += "Output file: \(outputFile)\n"
             message += "Process ID: \(pid)\n"
-            if let bundleId { message += "Filtering for bundle: \(bundleId)\n" }
+            if let bundleID { message += "Filtering for bundle: \(bundleID)\n" }
             message += "\nUse stop_sim_log_cap to stop the capture."
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

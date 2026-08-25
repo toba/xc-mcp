@@ -6,13 +6,13 @@ public struct LaunchAppSimTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "launch_app_sim",
             description: "Launch an app on a simulator by its bundle identifier.",
             inputSchema: .object([
@@ -49,7 +49,7 @@ public struct LaunchAppSimTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let bundleId = try arguments.getRequiredString("bundle_id")
+        let bundleID = try arguments.getRequiredString("bundle_id")
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
         let waitForDebugger = arguments.getBool("wait_for_debugger")
         let launchArgs = arguments.getStringArray("args")
@@ -57,27 +57,19 @@ public struct LaunchAppSimTool: Sendable {
         do {
             let result = try await simctlRunner.launch(
                 udid: simulator,
-                bundleId: bundleId,
+                bundleID: bundleID,
                 waitForDebugger: waitForDebugger,
                 args: launchArgs,
             )
 
             if result.succeeded {
-                var message = "Successfully launched '\(bundleId)' on simulator '\(simulator)'"
-                if waitForDebugger {
-                    message += "\nApp is waiting for debugger to attach."
-                }
+                var message = "Successfully launched '\(bundleID)' on simulator '\(simulator)'"
+                if waitForDebugger { message += "\nApp is waiting for debugger to attach." }
                 // Extract PID if available
-                if let pid = result.launchedPID {
-                    message += "\nProcess ID: \(pid)"
-                }
-                return CallTool.Result(content: [
-                    .text(text: message, annotations: nil, _meta: nil),
-                ])
+                if let pid = result.launchedPID { message += "\nProcess ID: \(pid)" }
+                return CallTool.Result.text(message)
             } else {
-                throw MCPError.internalError(
-                    "Failed to launch app: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to launch app: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

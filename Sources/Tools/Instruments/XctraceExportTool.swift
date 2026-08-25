@@ -4,26 +4,24 @@ import Foundation
 
 /// Exports data from Instruments `.trace` files.
 ///
-/// This tool uses `xctrace export` to extract data from trace files as XML.
-/// Use `toc=true` to see the table of contents (available data tables),
-/// then use `xpath` to query specific tables.
+/// This tool uses `xctrace export` to extract data from trace files as XML. Use `toc=true` to see
+/// the table of contents (available data tables), then use `xpath` to query specific tables.
 ///
 /// ## Typical Workflow
 ///
 /// 1. `xctrace_export input_path=... toc=true` — see available tables
-/// 2. `xctrace_export input_path=... xpath='/trace-toc/run/data/table[@schema="time-profile"]'` — extract data
+/// 2. `xctrace_export input_path=... xpath='/trace-toc/run/data/table[@schema="time-profile"]'` —
+///    extract data
 public struct XctraceExportTool: Sendable {
     private let xctraceRunner: XctraceRunner
 
-    public init(xctraceRunner: XctraceRunner = XctraceRunner()) {
-        self.xctraceRunner = xctraceRunner
-    }
+    public init(xctraceRunner: XctraceRunner = .init()) { self.xctraceRunner = xctraceRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xctrace_export",
             description:
-            "Export data from an Instruments .trace file as XML. Use toc=true to see available tables, then use xpath to query specific data.",
+                "Export data from an Instruments .trace file as XML. Use toc=true to see available tables, then use xpath to query specific data.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -51,17 +49,16 @@ public struct XctraceExportTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        guard case let .string(inputPath) = arguments["input_path"] else {
-            throw MCPError.invalidParams("input_path is required")
-        }
+        let inputPath = try arguments.getRequiredString("input_path")
 
         let xpath = arguments.getString("xpath")
 
         let toc: Bool
-        if case let .bool(value) = arguments["toc"] {
+
+        if let value = arguments.getOptionalBool("toc") {
             toc = value
         } else {
-            toc = xpath == nil // Default to toc when no xpath provided
+            toc = xpath == nil  // Default to toc when no xpath provided
         }
 
         do {
@@ -76,13 +73,9 @@ public struct XctraceExportTool: Sendable {
             }
 
             let output = result.stdout.isEmpty ? result.stderr : result.stdout
-            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(output)
         } catch {
-            throw MCPError.internalError(
-                "Failed to export trace: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

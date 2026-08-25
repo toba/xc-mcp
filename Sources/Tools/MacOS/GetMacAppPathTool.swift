@@ -60,51 +60,38 @@ public struct GetMacAppPathTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let bundleId = arguments.getString("bundle_id")
+        let bundleID = arguments.getString("bundle_id")
 
         // If bundle_id is provided, search for the app in Applications directories
-        if let bundleId {
-            if let appPath = findAppByBundleId(bundleId) {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "App path for '\(bundleId)':\n\(appPath)",
-                            annotations: nil,
-                            _meta: nil,
-                        )
-                    ],
-                )
+        if let bundleID {
+            if let appPath = findAppByBundleID(bundleID) {
+                return CallTool.Result.text("App path for '\(bundleID)':\n\(appPath)")
             }
             throw MCPError.internalError(
-                "Could not find app with bundle identifier '\(bundleId)' in Applications directories.",
+                "Could not find app with bundle identifier '\(bundleID)' in Applications directories.",
             )
         }
 
-        // Otherwise, use build settings to find the app
+        // Otherwise, use build settings to find the app. Both messages name bundle_id, which the
+        // shared resolvers know nothing about, so restate them here.
         let projectPath: String?
-
-        if case let .string(value) = arguments["project_path"] {
-            projectPath = value
-        } else {
-            projectPath = await sessionManager.projectPath
-        }
-
         let workspacePath: String?
 
-        if case let .string(value) = arguments["workspace_path"] {
-            workspacePath = value
-        } else {
-            workspacePath = await sessionManager.workspacePath
+        do {
+            (
+                projectPath, workspacePath
+            ) = try await sessionManager.resolveBuildPaths(from: arguments)
+        } catch {
+            throw MCPError.invalidParams(
+                "Either bundle_id, project_path, or workspace_path is required.",
+            )
         }
 
-        // Get scheme
         let scheme: String
 
-        if case let .string(value) = arguments["scheme"] {
-            scheme = value
-        } else if let sessionScheme = await sessionManager.scheme {
-            scheme = sessionScheme
-        } else {
+        do {
+            scheme = try await sessionManager.resolveScheme(from: arguments)
+        } catch {
             throw MCPError.invalidParams(
                 "scheme is required when using build settings. Set it with set_session_defaults or pass it directly.",
             )
@@ -112,13 +99,6 @@ public struct GetMacAppPathTool: Sendable {
 
         // Get configuration (nil = honor the scheme's own configuration)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
-
-        // Validate we have either project or workspace
-        if projectPath == nil, workspacePath == nil {
-            throw MCPError.invalidParams(
-                "Either bundle_id, project_path, or workspace_path is required.",
-            )
-        }
 
         do {
             let buildSettings = try await xcodebuildRunner.showBuildSettings(
@@ -142,34 +122,23 @@ public struct GetMacAppPathTool: Sendable {
                 )
             }
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "App path for scheme '\(scheme)':\n\(appPath)",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],
-            )
+            return CallTool.Result.text("App path for scheme '\(scheme)':\n\(appPath)")
         } catch {
             throw try error.asMCPError()
         }
     }
 
-    private func findAppByBundleId(_ bundleId: String) -> String? {
-        let searchPaths = [
-            "/Applications",
-            NSHomeDirectory() + "/Applications",
-        ]
+    private func findAppByBundleID(_ bundleID: String) -> String? {
+        let searchPaths = ["/Applications", NSHomeDirectory() + "/Applications"]
 
         for searchPath in searchPaths {
-            if let appPath = searchForApp(in: searchPath, bundleId: bundleId) { return appPath }
+            if let appPath = searchForApp(in: searchPath, bundleID: bundleID) { return appPath }
         }
 
         return nil
     }
 
-    private func searchForApp(in directory: String, bundleId: String) -> String? {
+    private func searchForApp(in directory: String, bundleID: String) -> String? {
         let fileManager = FileManager.default
         guard let contents = try? fileManager.contentsOfDirectory(atPath: directory) else {
             return nil
@@ -179,8 +148,8 @@ public struct GetMacAppPathTool: Sendable {
             let fullPath = "\(directory)/\(item)"
 
             if item.hasSuffix(".app") {
-                if let appBundleId = getBundleIdentifier(forApp: fullPath),
-                   appBundleId == bundleId { return fullPath }
+                if let appBundleID = getBundleIdentifier(forApp: fullPath),
+                   appBundleID == bundleID { return fullPath }
             }
         }
 
@@ -190,11 +159,11 @@ public struct GetMacAppPathTool: Sendable {
     private func getBundleIdentifier(forApp appPath: String) -> String? {
         let plistPath = "\(appPath)/Contents/Info.plist"
         guard let plistData = FileManager.default.contents(atPath: plistPath),
-              let plist = try? PropertyListSerialization.propertyList(
-                  from: plistData, options: [], format: nil,
-              ) as? [String: Any],
-              let bundleId = plist["CFBundleIdentifier"] as? String else { return nil }
-        return bundleId
+            let plist = try? PropertyListSerialization.propertyList(
+                from: plistData, options: [], format: nil,
+            ) as? [String: Any],
+            let bundleID = plist["CFBundleIdentifier"] as? String else { return nil }
+        return bundleID
     }
 
     private func extractAppPath(from buildSettings: String) -> String? {

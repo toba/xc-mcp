@@ -4,9 +4,8 @@ import Foundation
 
 /// Opens files, projects, or workspaces in Xcode using `xed`.
 ///
-/// Wraps `/usr/bin/xed` to open files at specific lines, projects, or workspaces
-/// in Xcode. Useful for directing the developer to a specific location after
-/// diagnosing an issue.
+/// Wraps `/usr/bin/xed` to open files at specific lines, projects, or workspaces in Xcode. Useful
+/// for directing the developer to a specific location after diagnosing an issue.
 ///
 /// ## Example
 ///
@@ -18,10 +17,10 @@ public struct OpenInXcodeTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "open_in_xcode",
             description:
-            "Open a file, project, or workspace in Xcode. Optionally jump to a specific line number.",
+                "Open a file, project, or workspace in Xcode. Optionally jump to a specific line number.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -33,9 +32,7 @@ public struct OpenInXcodeTool: Sendable {
                     ]),
                     "line": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Line number to jump to (files only).",
-                        ),
+                        "description": .string("Line number to jump to (files only)."),
                     ]),
                 ]),
                 "required": .array([.string("path")]),
@@ -48,9 +45,7 @@ public struct OpenInXcodeTool: Sendable {
         let path = try arguments.getRequiredString("path")
 
         var args: [String] = []
-        if let line = arguments.getInt("line") {
-            args.append(contentsOf: ["--line", "\(line)"])
-        }
+        if let line = arguments.getInt("line") { args.append(contentsOf: ["--line", "\(line)"]) }
         args.append(path)
 
         let result = try await ProcessResult.run(
@@ -68,10 +63,6 @@ public struct OpenInXcodeTool: Sendable {
 
         let fileName = (path as NSString).lastPathComponent
         let lineInfo = arguments.getInt("line").map { " at line \($0)" } ?? ""
-        return CallTool.Result(content: [.text(
-            text: "Opened \(fileName)\(lineInfo) in Xcode.",
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text("Opened \(fileName)\(lineInfo) in Xcode.")
     }
 }

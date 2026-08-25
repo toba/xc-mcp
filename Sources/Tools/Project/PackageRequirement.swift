@@ -5,9 +5,9 @@ import Foundation
 
 /// Parses and formats the version requirement on an `XCRemoteSwiftPackageReference`.
 ///
-/// `add_swift_package`, `update_swift_package`, `list_swift_packages` and
-/// `show_package_resolution` all read or write the same requirement strings, so the mapping between
-/// the tool-facing text form and XcodeProj's enum lives here.
+/// `add_swift_package`, `update_swift_package`, `list_swift_packages` and `show_package_resolution`
+/// all read or write the same requirement strings, so the mapping between the tool-facing text form
+/// and XcodeProj's enum lives here.
 public enum PackageRequirement {
     /// Parses a tool-facing requirement string.
     ///
@@ -25,8 +25,12 @@ public enum PackageRequirement {
         let trimmed = requirement.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if let value = value(of: "from", in: trimmed) { return .upToNextMajorVersion(value) }
-        if let value = value(of: "upToNextMajor", in: trimmed) { return .upToNextMajorVersion(value) }
-        if let value = value(of: "upToNextMinor", in: trimmed) { return .upToNextMinorVersion(value) }
+        if let value = value(of: "upToNextMajor", in: trimmed) {
+            return .upToNextMajorVersion(value)
+        }
+        if let value = value(of: "upToNextMinor", in: trimmed) {
+            return .upToNextMinorVersion(value)
+        }
         if let value = value(of: "branch", in: trimmed) { return .branch(value) }
         if let value = value(of: "revision", in: trimmed) { return .revision(value) }
         if let value = value(of: "exact", in: trimmed) { return .exact(value) }
@@ -67,8 +71,8 @@ public enum PackageRequirement {
         }
     }
 
-    /// Reports whether a version falls inside the window a requirement allows. Returns `false` for a
-    /// branch or revision requirement, and for a version that does not parse.
+    /// Reports whether a version falls inside the window a requirement allows. Returns `false` for
+    /// a branch or revision requirement, and for a version that does not parse.
     public static func allows(
         _ version: SemanticVersion,
         requirement: XCRemoteSwiftPackageReference.VersionRequirement,
@@ -99,7 +103,7 @@ public enum PackageRequirement {
     private static func parseRange(_ text: String) -> (from: String, to: String)? {
         for separator in ["..<", "...", " - ", "-"] {
             guard let position = text.range(of: separator) else { continue }
-            let from = String(text[text.startIndex ..< position.lowerBound])
+            let from = String(text[text.startIndex..<position.lowerBound])
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             let to = String(text[position.upperBound...])
                 .trimmingCharacters(in: .whitespacesAndNewlines)

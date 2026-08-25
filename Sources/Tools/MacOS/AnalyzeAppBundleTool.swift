@@ -101,9 +101,7 @@ public struct AnalyzeAppBundleTool: Sendable {
                 checkLaunchable: checkLaunchable,
                 includeFrameworks: includeFrameworks,
             )
-            return CallTool.Result(content: [.text(text: report, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(report)
         } catch {
             throw try error.asMCPError()
         }
@@ -116,14 +114,26 @@ public struct AnalyzeAppBundleTool: Sendable {
             return try locateApp(inputPath: provided)
         }
 
-        // Resolve from build settings (mirror get_mac_app_path).
-        let sessionProjectPath = await sessionManager.projectPath
-        let sessionWorkspacePath = await sessionManager.workspacePath
-        let projectPath = arguments.getString("project_path") ?? sessionProjectPath
-        let workspacePath = arguments.getString("workspace_path") ?? sessionWorkspacePath
+        // Resolve from build settings (mirror get_mac_app_path). Both messages name app_path, which
+        // the shared resolvers know nothing about, so restate them here.
+        let projectPath: String?
+        let workspacePath: String?
 
-        let sessionScheme = await sessionManager.scheme
-        guard let scheme = arguments.getString("scheme") ?? sessionScheme else {
+        do {
+            (
+                projectPath, workspacePath
+            ) = try await sessionManager.resolveBuildPaths(from: arguments)
+        } catch {
+            throw MCPError.invalidParams(
+                "Either app_path, project_path, or workspace_path is required.",
+            )
+        }
+
+        let scheme: String
+
+        do {
+            scheme = try await sessionManager.resolveScheme(from: arguments)
+        } catch {
             throw MCPError.invalidParams(
                 "scheme is required when app_path is omitted. Set it with set_session_defaults or "
                     + "pass it directly.",
@@ -132,15 +142,8 @@ public struct AnalyzeAppBundleTool: Sendable {
 
         // nil = honor the scheme's own configuration (matches what build_macos produces when no
         // configuration is specified).
-        let sessionConfiguration = await sessionManager.configuration
-        let configuration = arguments.getString("configuration") ?? sessionConfiguration
+        let configuration = await sessionManager.resolveConfiguration(from: arguments)
         let configurationLabel = configuration ?? "scheme default"
-
-        if projectPath == nil, workspacePath == nil {
-            throw MCPError.invalidParams(
-                "Either app_path, project_path, or workspace_path is required.",
-            )
-        }
 
         let buildSettings = try await xcodebuildRunner.showBuildSettings(
             projectPath: projectPath,
@@ -168,7 +171,7 @@ public struct AnalyzeAppBundleTool: Sendable {
     }
 
     /// Accepts a `.app` or `.xcarchive` path and returns the `.app` to analyze.
-    private func locateApp(inputPath: String) throws -> String {
+    private func locateApp(inputPath: String) throws(MCPError) -> String {
         let fm = FileManager.default
         let path = (inputPath as NSString).expandingTildeInPath
 

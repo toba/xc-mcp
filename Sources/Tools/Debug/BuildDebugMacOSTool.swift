@@ -154,15 +154,11 @@ public struct BuildDebugMacOSTool: Sendable {
             // above returns no settings. Retry without a destination to recover the full settings
             // dump — this is what lets the SUPPORTED_PLATFORMS check below emit a friendly "scheme
             // does not support macOS" error instead of an opaque destination-resolution failure
-            // later in the build.
-            if BuildSettingExtractor.extractSetting(
-                "PRODUCT_BUNDLE_IDENTIFIER",
-                from: buildSettings.stdout,
-            ) == nil,
-               BuildSettingExtractor.extractSetting(
-                   "SUPPORTED_PLATFORMS",
-                   from: buildSettings.stdout,
-               ) == nil
+            // later in the build. One decode serves both lookups; the payload runs to megabytes.
+            let fastPassSettings = BuildSettingSet(buildSettings.stdout)
+
+            if fastPassSettings.value("PRODUCT_BUNDLE_IDENTIFIER") == nil,
+               fastPassSettings.value("SUPPORTED_PLATFORMS") == nil
             {
                 buildSettings = try await xcodebuildRunner.showBuildSettings(
                     projectPath: projectPath,
@@ -189,16 +185,16 @@ public struct BuildDebugMacOSTool: Sendable {
                 }
             }
 
-            let bundleId = extractBuildSetting(
+            let bundleID = extractBuildSetting(
                 "PRODUCT_BUNDLE_IDENTIFIER", from: buildSettings.stdout,
             )
 
             // Kill any existing session for this bundle ID
-            if let bundleId {
-                if let existing = await LLDBSessionManager.shared.getSession(bundleId: bundleId) {
+            if let bundleID {
+                if let existing = await LLDBSessionManager.shared.getSession(bundleID: bundleID) {
                     // Kill the old process and terminate the session
                     _ = try? await existing.session.sendCommand("process kill")
-                    await LLDBSessionManager.shared.removeSession(bundleId: bundleId)
+                    await LLDBSessionManager.shared.removeSession(bundleID: bundleID)
                 }
             }
 
@@ -296,8 +292,8 @@ public struct BuildDebugMacOSTool: Sendable {
             )
 
             // Step 7: Register bundle ID mapping
-            if let bundleId, pid > 0 {
-                await LLDBSessionManager.shared.registerBundleId(bundleId, forPID: pid)
+            if let bundleID, pid > 0 {
+                await LLDBSessionManager.shared.registerBundleID(bundleID, forPID: pid)
             }
 
             // Detect early crash from the launch output
@@ -310,7 +306,7 @@ public struct BuildDebugMacOSTool: Sendable {
             if crashed {
                 message = "Built '\(scheme)' but process crashed immediately after launch"
                 message += "\nPID: \(pid)"
-                if let bundleId { message += "\nBundle ID: \(bundleId)" }
+                if let bundleID { message += "\nBundle ID: \(bundleID)" }
                 message +=
                     "\n\nDebugger attached. Use debug_stack, debug_variables, debug_lldb_command for investigation."
                 message += "\n\n" + launchResult.output
@@ -325,14 +321,14 @@ public struct BuildDebugMacOSTool: Sendable {
                 CrashReportParser.appendCrashReports(
                     to: &message,
                     processName: appName,
-                    bundleID: bundleId,
+                    bundleID: bundleID,
                 )
             } else {
                 let verb = skipBuild ? "relaunched" : "built and launched"
                 message = "Successfully \(verb) '\(scheme)' under debugger"
                 message += "\nPID: \(pid)"
                 message += "\nApp path: \(appPath)"
-                if let bundleId { message += "\nBundle ID: \(bundleId)" }
+                if let bundleID { message += "\nBundle ID: \(bundleID)" }
 
                 if stopAtEntry {
                     message += "\n\nProcess stopped at entry point. Use debug_continue to run."

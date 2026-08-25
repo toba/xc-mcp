@@ -4,15 +4,15 @@ import Foundation
 
 /// Parses xcactivitylog files for Swift compiler crash signatures.
 ///
-/// Searches for stack traces, signal handlers, segfaults, illegal instructions,
-/// assertion failures, and other crash indicators in build logs. Returns the
-/// crash trace with the source file being compiled and compiler arguments.
+/// Searches for stack traces, signal handlers, segfaults, illegal instructions, assertion failures,
+/// and other crash indicators in build logs. Returns the crash trace with the source file being
+/// compiled and compiler arguments.
 public struct ExtractCrashTracesTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -20,13 +20,11 @@ public struct ExtractCrashTracesTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "extract_crash_traces",
-            description:
-            "Find compiler crash signatures in Xcode build logs (xcactivitylog). "
+            description: "Find compiler crash signatures in Xcode build logs (xcactivitylog). "
                 + "Searches for stack traces, signal handlers, segfaults, assertion failures, "
-                +
-                "and other crash indicators. Use when a build fails silently with no error output.",
+                + "and other crash indicators. Use when a build fails silently with no error output.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -75,51 +73,33 @@ public struct ExtractCrashTracesTool: Sendable {
             scheme: scheme,
         )
 
-        let logsDir = URL(fileURLWithPath: projectRoot).appendingPathComponent("Logs/Build").path
-        let fm = FileManager.default
+        let logs = try BuildLogLocator.requireLogs(inProjectRoot: projectRoot, limit: maxLogs)
 
-        guard let entries = try? fm.contentsOfDirectory(atPath: logsDir) else {
-            throw MCPError.internalError("No build logs found at \(logsDir)")
+        // Each log decompresses independently and runs to several megabytes, so the gunzip calls
+        // run concurrently. The index restores the newest-first order the locator returned.
+        let decompressed = await withTaskGroup(of: (index: Int, crash: CrashSummary?).self) {
+            group in
+            for (index, log) in logs.enumerated() {
+                group.addTask(name: "extract_crash_traces decompress \(index)") {
+                    guard let body = try? await BuildLogLocator.decompress(log) else {
+                        return (index: index, crash: nil)
+                    }
+
+                    let traces = extractCrashTraces(from: body)
+                    guard !traces.isEmpty else { return (index: index, crash: nil) }
+                    return (
+                        index: index,
+                        crash: CrashSummary(logDate: log.formattedDate, traces: traces),
+                    )
+                }
+            }
+            var results: [(index: Int, crash: CrashSummary?)] = []
+            results.reserveCapacity(logs.count)
+            for await result in group { results.append(result) }
+            return results.sorted { $0.index < $1.index }
         }
 
-        let logs = entries.filter { $0.hasSuffix(".xcactivitylog") }
-            .compactMap { name -> (path: String, date: Date)? in
-                let path = (logsDir as NSString).appendingPathComponent(name)
-                guard let attrs = try? fm.attributesOfItem(atPath: path),
-                      let date = attrs[.modificationDate] as? Date
-                else { return nil }
-                return (path, date)
-            }
-            .sorted { $0.date > $1.date }
-            .prefix(maxLogs)
-
-        guard !logs.isEmpty else {
-            throw MCPError.internalError("No build logs found in \(logsDir)")
-        }
-
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-
-        var allCrashes: [(logDate: String, traces: [CrashTrace])] = []
-
-        for log in logs {
-            let decompressed: String
-            do {
-                let result = try await ProcessResult.run(
-                    "/usr/bin/gunzip", arguments: ["-c", log.path], timeout: .seconds(30),
-                )
-                decompressed = result.stdout
-            } catch {
-                continue
-            }
-
-            let traces = extractCrashTraces(from: decompressed)
-            if !traces.isEmpty {
-                allCrashes.append(
-                    (logDate: dateFormatter.string(from: log.date), traces: traces),
-                )
-            }
-        }
+        let allCrashes = decompressed.compactMap(\.crash)
 
         // Format output
         var text = "## Compiler Crash Traces\n\n"
@@ -134,6 +114,7 @@ public struct ExtractCrashTracesTool: Sendable {
         } else {
             for crash in allCrashes {
                 text += "### Build Log: \(crash.logDate)\n\n"
+
                 for (index, trace) in crash.traces.enumerated() {
                     text += "**Crash \(index + 1):** \(trace.signal)\n"
                     if let sourceFile = trace.sourceFile {
@@ -144,15 +125,21 @@ public struct ExtractCrashTracesTool: Sendable {
             }
         }
 
-        return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(text)
     }
 
     // MARK: - Private
 
-    private struct CrashTrace {
+    private struct CrashTrace: Sendable {
         let signal: String
         let sourceFile: String?
         let stackTrace: String
+    }
+
+    /// Every crash found in one build log, with the log's modification time already rendered
+    private struct CrashSummary: Sendable {
+        let logDate: String
+        let traces: [CrashTrace]
     }
 
     /// Crash signature patterns to search for in build log output.
@@ -170,18 +157,17 @@ public struct ExtractCrashTracesTool: Sendable {
     ]
 
     private func extractCrashTraces(from log: String) -> [CrashTrace] {
+        // Slices, not copies: the decompressed log runs to megabytes and every line here is only
+        // read.
         let lines = log.split(separator: "\n", omittingEmptySubsequences: false)
-            .map(String.init)
         var traces: [CrashTrace] = []
 
         for (index, line) in lines.enumerated() {
-            for (pattern, label) in Self.crashPatterns {
-                guard line.contains(pattern) else { continue }
-
+            for (pattern, label) in Self.crashPatterns where line.contains(pattern) {
                 // Extract surrounding context (up to 30 lines before, 20 after)
                 let contextStart = max(0, index - 30)
                 let contextEnd = min(lines.count, index + 20)
-                let context = Array(lines[contextStart ..< contextEnd])
+                let context = lines[contextStart..<contextEnd]
 
                 // Try to find the source file being compiled from context
                 let sourceFile = findSourceFile(in: context)
@@ -191,19 +177,14 @@ public struct ExtractCrashTracesTool: Sendable {
                     .trimmingCharacters(in: .whitespacesAndNewlines)
 
                 // Limit stack trace length
-                let truncated =
-                    stackTrace.count > 3000
-                        ? String(stackTrace.prefix(3000)) + "\n... (truncated)"
-                        : stackTrace
+                let truncated = stackTrace.count > 3000
+                    ? String(stackTrace.prefix(3000)) + "\n... (truncated)"
+                    : stackTrace
 
-                traces.append(
-                    CrashTrace(
-                        signal: label,
-                        sourceFile: sourceFile,
-                        stackTrace: truncated,
-                    ),
-                )
-                break // Only match one pattern per line
+                traces.append(CrashTrace(
+                    signal: label, sourceFile: sourceFile, stackTrace: truncated,
+                ))
+                break  // Only match one pattern per line
             }
         }
 
@@ -211,26 +192,22 @@ public struct ExtractCrashTracesTool: Sendable {
     }
 
     /// Attempts to find the Swift source file being compiled when the crash occurred.
-    private func findSourceFile(in context: [String]) -> String? {
+    private func findSourceFile(in context: ArraySlice<Substring>) -> String? {
         // Look for swiftc invocation lines or CompileSwift lines
         for line in context {
             // CompileSwift normal <arch> <path>
             if line.contains("CompileSwift") || line.contains("CompileC") {
                 let parts = line.split(separator: " ")
-                for part in parts where part.hasSuffix(".swift") || part.hasSuffix(".m")
+                for part in parts
+                    where part.hasSuffix(".swift") || part.hasSuffix(".m")
                     || part.hasSuffix(".c")
-                {
-                    return String(part)
-                }
+                { return String(part) }
             }
             // -primary-file /path/to/file.swift
             if line.contains("-primary-file") {
                 let parts = line.split(separator: " ")
                 if let idx = parts.firstIndex(where: { $0 == "-primary-file" }),
-                   idx + 1 < parts.count
-                {
-                    return String(parts[idx + 1])
-                }
+                   idx + 1 < parts.count { return String(parts[idx + 1]) }
             }
         }
         return nil

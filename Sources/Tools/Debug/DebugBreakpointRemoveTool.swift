@@ -5,23 +5,18 @@ import Foundation
 public struct DebugBreakpointRemoveTool: Sendable {
     private let lldbRunner: LLDBRunner
 
-    public init(lldbRunner: LLDBRunner = LLDBRunner()) {
-        self.lldbRunner = lldbRunner
-    }
+    public init(lldbRunner: LLDBRunner = .init()) { self.lldbRunner = lldbRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_breakpoint_remove",
-            description:
-            "Remove a breakpoint from a debugging session.",
+            description: "Remove a breakpoint from a debugging session.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the debugged process.",
-                        ),
+                        "description": .string("Process ID of the debugged process."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -31,9 +26,7 @@ public struct DebugBreakpointRemoveTool: Sendable {
                     ]),
                     "breakpoint_id": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "ID of the breakpoint to remove.",
-                        ),
+                        "description": .string("ID of the breakpoint to remove."),
                     ]),
                 ]),
                 "required": .array([.string("breakpoint_id")]),
@@ -46,19 +39,19 @@ public struct DebugBreakpointRemoveTool: Sendable {
         let targetPID = try await arguments.resolveDebugPID()
 
         // Get breakpoint ID
-        guard let breakpointId = arguments.getInt("breakpoint_id") else {
+        guard let breakpointID = arguments.getInt("breakpoint_id") else {
             throw MCPError.invalidParams("breakpoint_id is required")
         }
 
         do {
             let result = try await lldbRunner.deleteBreakpoint(
-                pid: targetPID, breakpointId: breakpointId,
+                pid: targetPID, breakpointID: breakpointID,
             )
 
-            var message = "Breakpoint \(breakpointId) removed"
+            var message = "Breakpoint \(breakpointID) removed"
             message += "\n\n\(result.output)"
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

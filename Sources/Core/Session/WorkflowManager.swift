@@ -16,6 +16,7 @@ public enum Workflow: String, CaseIterable, Sendable {
     case swiftPackage
     case instruments
     case utility
+    case strings
 }
 
 /// Manages which tool workflows are enabled or disabled.

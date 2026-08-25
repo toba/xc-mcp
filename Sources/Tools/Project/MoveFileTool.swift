@@ -46,14 +46,14 @@ public struct MoveFileTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(oldPath) = arguments["old_path"],
-              case let .string(newPath) = arguments["new_path"]
+        guard let projectPath = arguments.getString("project_path"),
+              let oldPath = arguments.getString("old_path"),
+              let newPath = arguments.getString("new_path")
         else { throw MCPError.invalidParams("project_path, old_path, and new_path are required") }
 
         let moveOnDisk: Bool
 
-        if case let .bool(move) = arguments["move_on_disk"] {
+        if let move = arguments.getOptionalBool("move_on_disk") {
             moveOnDisk = move
         } else {
             moveOnDisk = false
@@ -87,10 +87,10 @@ public struct MoveFileTool: Sendable {
                 where fileRef.path == oldRelativePath || fileRef.path == oldPath
                 || fileRef.name == oldFileName || fileRef.path == oldFileName
             {
-                // A `.group` reference resolves its path against the directory of the group
-                // that owns it, so the stored path must be relative to that directory. Store
-                // the source tree the new location needs as well, because a move can carry the
-                // file out of the group directory.
+                // A `.group` reference resolves its path against the directory of the group that
+                // owns it, so the stored path must be relative to that directory. Store the source
+                // tree the new location needs as well, because a move can carry the file out of the
+                // group directory.
                 let location = FileReferencePath.location(
                     forResolvedPath: resolvedNewPath,
                     groupFullPath: fileRef.owningGroupFullPath(projectRoot: projectRoot),
@@ -113,19 +113,21 @@ public struct MoveFileTool: Sendable {
                 guard var exceptions = exceptionSet.membershipExceptions else { continue }
                 var changed = false
 
-                for i in exceptions.indices
-                    where exceptions[i] == oldPath || exceptions[i] == oldRelativePath
-                    || exceptions[i] == oldFileName
-                {
-                    // Determine the new entry: use the same style as the old entry
-                    // (filename-only stays filename-only, path stays path)
-                    if exceptions[i] == oldFileName, !oldFileName.contains("/") {
-                        exceptions[i] = newFileName
-                    } else if exceptions[i] == oldPath {
-                        exceptions[i] = newPath
-                    } else {
-                        exceptions[i] = newRelativePath
-                    }
+                for i in exceptions.indices {
+                    let entry = exceptions[i]
+                    guard entry == oldPath || entry == oldRelativePath || entry == oldFileName
+                    else { continue }
+
+                    // Determine the new entry: use the same style as the old entry (filename-only
+                    // stays filename-only, path stays path)
+                    exceptions[i] =
+                        if entry == oldFileName, !oldFileName.contains("/") {
+                            newFileName
+                        } else if entry == oldPath {
+                            newPath
+                        } else {
+                            newRelativePath
+                        }
                     changed = true
                 }
                 if changed {
@@ -163,21 +165,12 @@ public struct MoveFileTool: Sendable {
                     message += " (also updated synchronized folder exception sets)"
                 }
 
-                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
-                )
+                return CallTool.Result.text(message)
             } else {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "File not found in project: \(oldFileName)",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
+                return CallTool.Result.text("File not found in project: \(oldFileName)")
             }
         } catch {
-            throw MCPError.internalError(
-                "Failed to move file in Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

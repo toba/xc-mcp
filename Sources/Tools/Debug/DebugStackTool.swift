@@ -5,23 +5,18 @@ import Foundation
 public struct DebugStackTool: Sendable {
     private let lldbRunner: LLDBRunner
 
-    public init(lldbRunner: LLDBRunner = LLDBRunner()) {
-        self.lldbRunner = lldbRunner
-    }
+    public init(lldbRunner: LLDBRunner = .init()) { self.lldbRunner = lldbRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_stack",
-            description:
-            "Get the current call stack (backtrace) of a debugged process.",
+            description: "Get the current call stack (backtrace) of a debugged process.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the debugged process.",
-                        ),
+                        "description": .string("Process ID of the debugged process."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -53,12 +48,10 @@ public struct DebugStackTool: Sendable {
             let result = try await lldbRunner.getStack(pid: targetPID, threadIndex: threadIndex)
 
             var message = "Stack trace for process \(targetPID)"
-            if let threadIndex {
-                message += " (thread \(threadIndex))"
-            }
+            if let threadIndex { message += " (thread \(threadIndex))" }
             message += ":\n\n\(result.output)"
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

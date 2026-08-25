@@ -253,6 +253,7 @@ public struct XCStringsReader: Sendable {
     /// Check if multiple keys exist
     public func checkKeys(_ keys: [String], language: String?) -> [String: Bool] {
         var results: [String: Bool] = [:]
+        results.reserveCapacity(keys.count)
         for key in keys { results[key] = checkKey(key, language: language) }
         return results
     }
@@ -276,7 +277,8 @@ public struct XCStringsReader: Sendable {
         }
 
         let translatedLanguages = entry.localizations?.keys.sorted() ?? []
-        let missingLanguages = allLanguages.filter { !translatedLanguages.contains($0) }
+        let translatedSet = Set(translatedLanguages)
+        let missingLanguages = allLanguages.filter { !translatedSet.contains($0) }
         let coveragePercent = allLanguages.isEmpty
             ? 0
             : Double(translatedLanguages.count) / Double(allLanguages.count) * 100

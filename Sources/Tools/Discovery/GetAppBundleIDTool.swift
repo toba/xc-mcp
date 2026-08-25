@@ -2,7 +2,7 @@ import MCP
 import XCMCPCore
 import Foundation
 
-public struct GetAppBundleIdTool: Sendable {
+public struct GetAppBundleIDTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
 
@@ -54,45 +54,11 @@ public struct GetAppBundleIdTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get project/workspace path
-        let projectPath: String?
-
-        if case let .string(value) = arguments["project_path"] {
-            projectPath = value
-        } else {
-            projectPath = await sessionManager.projectPath
-        }
-
-        let workspacePath: String?
-
-        if case let .string(value) = arguments["workspace_path"] {
-            workspacePath = value
-        } else {
-            workspacePath = await sessionManager.workspacePath
-        }
-
-        // Get scheme
-        let scheme: String
-
-        if case let .string(value) = arguments["scheme"] {
-            scheme = value
-        } else if let sessionScheme = await sessionManager.scheme {
-            scheme = sessionScheme
-        } else {
-            throw MCPError.invalidParams(
-                "scheme is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
-
+        let (projectPath, workspacePath) = try await sessionManager.resolveBuildPaths(
+            from: arguments)
+        let scheme = try await sessionManager.resolveScheme(from: arguments)
         // Get configuration (nil = honor the scheme's own configuration)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
-
-        // Validate we have either project or workspace
-        if projectPath == nil, workspacePath == nil {
-            throw MCPError.invalidParams(
-                "Either project_path or workspace_path is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
 
         do {
             let result = try await xcodebuildRunner.showBuildSettings(
@@ -103,38 +69,29 @@ public struct GetAppBundleIdTool: Sendable {
             )
 
             if result.succeeded {
-                guard let bundleId = extractBundleId(from: result.stdout) else {
+                let settings = BuildSettingSet(result.stdout)
+
+                guard let bundleID = settings.bundleID else {
                     throw MCPError.internalError(
                         "Could not find PRODUCT_BUNDLE_IDENTIFIER in build settings for scheme '\(scheme)'",
                     )
                 }
 
-                var output =
-                    "Bundle identifier for scheme '\(scheme)' "
-                        + "(\(configuration ?? "scheme default")):\n"
-                output += bundleId
+                var output = "Bundle identifier for scheme '\(scheme)' "
+                    + "(\(configuration ?? "scheme default")):\n"
+                output += bundleID
 
                 // Also extract product name if available
-                if let productName = extractProductName(from: result.stdout) {
+                if let productName = settings.productName {
                     output += "\n\nProduct name: \(productName)"
                 }
 
-                return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+                return CallTool.Result.text(output)
             } else {
-                throw MCPError.internalError(
-                    "Failed to get build settings: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to get build settings: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()
         }
-    }
-
-    private func extractBundleId(from buildSettings: String) -> String? {
-        BuildSettingExtractor.extractBundleId(from: buildSettings)
-    }
-
-    private func extractProductName(from buildSettings: String) -> String? {
-        BuildSettingExtractor.extractProductName(from: buildSettings)
     }
 }

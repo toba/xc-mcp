@@ -24,20 +24,17 @@ let package = Package(
     .package(url: "https://github.com/modelcontextprotocol/swift-sdk", from: "0.12.0"),
     .package(url: "https://github.com/tuist/xcodeproj", from: "9.15.1"),
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.7.1"),
-    .package(url: "https://github.com/swiftlang/swift-subprocess", from: "0.4.0"),
+    .package(url: "https://github.com/swiftlang/swift-subprocess", from: "1.0.0"),
     .package(url: "https://github.com/toba/swiftiomatic-plugins", from: "3.0.0"),
 
     // 1.11.3 is the floor because it reads TOBA_STATIC_LINK and links TobaCore static.
     .package(url: "https://github.com/toba/toba-core", from: "1.11.3"),
-    // 1.1.1 is the floor because it reads TOBA_STATIC_LINK and links TobaConcurrency static.
-    .package(url: "https://github.com/toba/toba-concurrency", from: "1.1.1"),
-    // 1.0.3 is the floor because it is the release where `ByteExpressible` and `StableHasher`
-    // took their current shape. Earlier releases spell the `String` conformance differently.
-    .package(url: "https://github.com/toba/toba-hash", from: "1.0.3"),
-    // 1.0.0 is the floor for the API this package calls. 1.3.0 is the floor in practice because it
-    // is the first release that reads `PlatformImage` from `TobaCore` instead of `TobaUI`. An
-    // earlier release pulls a whole UI chain into the test target.
-    .package(url: "https://github.com/toba/toba-testing", from: "1.3.0"),
+    // 1.1.2 is the floor because it is the first release declaring the macOS 27 platform.
+    .package(url: "https://github.com/toba/toba-concurrency", from: "1.1.2"),
+    // 1.3.0 is the floor because it is the first release declaring the macOS 27 platform.
+    .package(url: "https://github.com/toba/toba-hash", from: "1.3.0"),
+    // 1.3.5 is the floor because it is the first release declaring the macOS 27 platform.
+    .package(url: "https://github.com/toba/toba-testing", from: "1.3.5"),
   ],
   targets: [
     // MARK: - Shared Core Library

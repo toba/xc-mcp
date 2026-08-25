@@ -4,14 +4,14 @@ import Foundation
 
 /// Reads Swift/Clang serialized diagnostics (.dia) files from DerivedData.
 ///
-/// These binary files are the ground truth for what the compiler actually reported,
-/// even when the build log is empty or truncated. Uses `c-index-test` to decode them.
+/// These binary files are the ground truth for what the compiler actually reported, even when the
+/// build log is empty or truncated. Uses `c-index-test` to decode them.
 public struct ReadSerializedDiagnosticsTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -19,10 +19,9 @@ public struct ReadSerializedDiagnosticsTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "read_serialized_diagnostics",
-            description:
-            "Decode serialized diagnostics (.dia) files from DerivedData. "
+            description: "Decode serialized diagnostics (.dia) files from DerivedData. "
                 + "These binary files contain the compiler's actual error/warning/note "
                 + "messages and exist even when the build log is empty or truncated. "
                 + "Provide either a target name (to find .dia files automatically) "
@@ -105,21 +104,31 @@ public struct ReadSerializedDiagnosticsTool: Sendable {
                 )
             }
         } else {
-            throw MCPError.invalidParams(
-                "Either 'target' or 'dia_path' is required.",
-            )
+            throw MCPError.invalidParams("Either 'target' or 'dia_path' is required.")
         }
 
-        // Decode each .dia file using c-index-test
+        // Decode each .dia file using c-index-test. Each decode is an independent subprocess with
+        // its own timeout, so they run concurrently and the index restores the input order.
+        let decoded = try await withThrowingTaskGroup(of: (index: Int, output: String).self) {
+            group in
+            for (index, path) in diaPaths.enumerated() {
+                group.addTask(name: "read_serialized_diagnostics decode \(index)") {
+                    (index: index, output: try await decodeDiaFile(at: path))
+                }
+            }
+            var results: [(index: Int, output: String)] = []
+            results.reserveCapacity(diaPaths.count)
+            for try await result in group { results.append(result) }
+            return results.sorted { $0.index < $1.index }
+        }
+
         var allDiagnostics: [(file: String, output: String)] = []
 
-        for path in diaPaths {
-            let output = try await decodeDiaFile(at: path)
-            if !output.isEmpty {
-                allDiagnostics.append(
-                    (file: URL(fileURLWithPath: path).lastPathComponent, output: output),
-                )
-            }
+        for result in decoded where !result.output.isEmpty {
+            allDiagnostics.append((
+                file: URL(fileURLWithPath: diaPaths[result.index]).lastPathComponent,
+                output: result.output,
+            ))
         }
 
         // Format output
@@ -131,15 +140,12 @@ public struct ReadSerializedDiagnosticsTool: Sendable {
         } else {
             for diag in allDiagnostics {
                 let filtered: String
-                if errorsOnly {
-                    filtered =
-                        diag.output
-                            .split(separator: "\n")
-                            .filter { $0.contains("error:") }
-                            .joined(separator: "\n")
-                } else {
-                    filtered = diag.output
-                }
+                filtered = errorsOnly
+                    ? diag.output
+                        .split(separator: "\n")
+                        .filter { $0.contains("error:") }
+                        .joined(separator: "\n")
+                    : diag.output
                 guard !filtered.isEmpty else { continue }
 
                 text += "### \(diag.file)\n\n"
@@ -147,26 +153,24 @@ public struct ReadSerializedDiagnosticsTool: Sendable {
             }
         }
 
-        return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(text)
     }
 
     // MARK: - Private
 
     private func findDiaFiles(intermediatesDir: String, target: String) -> [String] {
         let fm = FileManager.default
-        guard let enumerator = fm.enumerator(atPath: intermediatesDir) else {
-            return []
-        }
+        guard let enumerator = fm.enumerator(atPath: intermediatesDir) else { return [] }
 
         var diaFiles: [(path: String, date: Date)] = []
+
         while let element = enumerator.nextObject() as? String {
             if element.hasSuffix(".dia"),
                element.contains("\(target).build")
             {
                 let fullPath = (intermediatesDir as NSString).appendingPathComponent(element)
                 if let attrs = try? fm.attributesOfItem(atPath: fullPath),
-                   let date = attrs[.modificationDate] as? Date
-                {
+                   let date = attrs[.modificationDate] as? Date {
                     diaFiles.append((path: fullPath, date: date))
                 }
             }

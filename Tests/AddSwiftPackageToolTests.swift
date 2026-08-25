@@ -8,12 +8,12 @@ import Foundation
 
 /// Test case for package requirement tests
 struct PackageRequirementTestCase {
-    let packageUrl: String
+    let packageURL: String
     let requirementInput: String
     let expectedRequirementDescription: String
 
-    init(_ packageUrl: String, _ requirementInput: String, _ expectedDescription: String) {
-        self.packageUrl = packageUrl
+    init(_ packageURL: String, _ requirementInput: String, _ expectedDescription: String) {
+        self.packageURL = packageURL
         self.requirementInput = requirementInput
         expectedRequirementDescription = expectedDescription
     }
@@ -105,7 +105,7 @@ struct AddSwiftPackageToolTests {
         let tool = AddSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
         let args: [String: Value] = [
             "project_path": Value.string(projectPath.string),
-            "package_url": Value.string(testCase.packageUrl),
+            "package_url": Value.string(testCase.packageURL),
             "requirement": Value.string(testCase.requirementInput),
         ]
 
@@ -120,7 +120,7 @@ struct AddSwiftPackageToolTests {
         // Verify package was added
         let xcodeproj = try XcodeProj(path: projectPath)
         let project = try xcodeproj.pbxproj.rootProject()
-        let packageRef = project?.remotePackages.first { $0.repositoryURL == testCase.packageUrl }
+        let packageRef = project?.remotePackages.first { $0.repositoryURL == testCase.packageURL }
         #expect(packageRef != nil)
 
         // Verify the requirement matches expected description

@@ -6,10 +6,10 @@ public struct SearchCrashReportsTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "search_crash_reports",
             description:
-            "Search ~/Library/Logs/DiagnosticReports/ for recent .ips crash reports, or read a specific report by path. "
+                "Search ~/Library/Logs/DiagnosticReports/ for recent .ips crash reports, or read a specific report by path. "
                 + "Returns exception type, signal, termination reason, crashing thread stack trace, and details. "
                 + "Useful after an app crash to diagnose the cause without opening Console.app.",
             inputSchema: .object([
@@ -19,8 +19,7 @@ public struct SearchCrashReportsTool: Sendable {
                         "type": .string("string"),
                         "description": .string(
                             "Process name to filter by (e.g., 'ThesisApp'). "
-                                +
-                                "Matched case-insensitively against filename and crash report contents.",
+                                + "Matched case-insensitively against filename and crash report contents.",
                         ),
                     ]),
                     "bundle_id": .object([
@@ -53,17 +52,19 @@ public struct SearchCrashReportsTool: Sendable {
         if let reportPath = arguments.getString("report_path") {
             guard let summary = CrashReportParser.parse(at: reportPath) else {
                 return CallTool.Result(
-                    content: [.text(
-                        text: "Could not parse crash report at: \(reportPath)",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
+                    content: [
+                        .text(
+                            text: "Could not parse crash report at: \(reportPath)",
+                            annotations: nil,
+                            _meta: nil,
+                        )
+                    ],
                     isError: true,
                 )
             }
             var output = "File: \(reportPath)\n"
             output += summary.formatted()
-            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(output)
         }
 
         // Search mode
@@ -78,35 +79,34 @@ public struct SearchCrashReportsTool: Sendable {
         )
 
         if results.isEmpty {
-            var message = "No crash reports found in the last \(minutes) minute\(minutes == 1 ? "" : "s")"
-            if let processName {
-                message += " for process '\(processName)'"
-            }
-            if let bundleID {
-                message += " with bundle ID '\(bundleID)'"
-            }
+            var message =
+                "No crash reports found in the last \(minutes) minute\(minutes == 1 ? "" : "s")"
+            if let processName { message += " for process '\(processName)'" }
+            if let bundleID { message += " with bundle ID '\(bundleID)'" }
             message += ".\n\nSearched: \(CrashReportParser.diagnosticReportsDir)"
 
             if let diagnostics {
                 if diagnostics.throttleLikely, let processName {
-                    message += "\n\n⚠️ ReportCrash throttling likely: found \(diagnostics.totalReportsForProcess ?? 0) total reports for '\(processName)' across all time."
-                    message += "\nmacOS stops generating new .ips files after ~25 reports per process."
-                    message += "\nTo reset, delete old reports: rm ~/Library/Logs/DiagnosticReports/\(processName)-*.ips"
+                    message +=
+                        "\n\n⚠️ ReportCrash throttling likely: found \(diagnostics.totalReportsForProcess ?? 0) total reports for '\(processName)' across all time."
+                    message +=
+                        "\nmacOS stops generating new .ips files after ~25 reports per process."
+                    message +=
+                        "\nTo reset, delete old reports: rm ~/Library/Logs/DiagnosticReports/\(processName)-*.ips"
                 }
                 if !diagnostics.processesInWindow.isEmpty {
-                    message += "\n\nProcesses with reports in this time window: \(diagnostics.processesInWindow.joined(separator: ", "))"
+                    message +=
+                        "\n\nProcesses with reports in this time window: \(diagnostics.processesInWindow.joined(separator: ", "))"
                 }
             }
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         }
 
         var output = "Found \(results.count) crash report\(results.count == 1 ? "" : "s"):\n"
 
         for (i, result) in results.enumerated() {
-            if i > 0 {
-                output += "\n" + String(repeating: "─", count: 60) + "\n"
-            }
+            if i > 0 { output += "\n" + String(repeating: "─", count: 60) + "\n" }
             output += "\nFile: \(result.path)\n"
             output += result.summary.formatted()
             output += "\n"
@@ -114,6 +114,6 @@ public struct SearchCrashReportsTool: Sendable {
 
         output += "\nUse report_path to read a specific report again without re-searching."
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 }

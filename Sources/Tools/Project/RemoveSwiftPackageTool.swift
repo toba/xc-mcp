@@ -49,25 +49,11 @@ public struct RemoveSwiftPackageTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
 
-        let packageURL: String?
+        let packageURL = arguments.getString("package_url")
 
-        if case let .string(url) = arguments["package_url"] {
-            packageURL = url
-        } else {
-            packageURL = nil
-        }
-
-        let packagePath: String?
-
-        if case let .string(path) = arguments["package_path"] {
-            packagePath = path
-        } else {
-            packagePath = nil
-        }
+        let packagePath = arguments.getString("package_path")
 
         guard packageURL != nil || packagePath != nil else {
             throw MCPError.invalidParams(
@@ -81,7 +67,7 @@ public struct RemoveSwiftPackageTool: Sendable {
 
         let removeFromTargets: Bool
 
-        if case let .bool(remove) = arguments["remove_from_targets"] {
+        if let remove = arguments.getOptionalBool("remove_from_targets") {
             removeFromTargets = remove
         } else {
             removeFromTargets = true
@@ -94,182 +80,93 @@ public struct RemoveSwiftPackageTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             if let packageURL {
-                return try removeRemotePackage(
+                return try removePackage(
+                    references: \.remotePackages,
+                    identifier: packageURL,
                     xcodeproj: xcodeproj,
                     projectURL: projectURL,
                     preimage: preimage,
-                    packageURL: packageURL,
                     removeFromTargets: removeFromTargets,
                 )
             } else {
-                return try removeLocalPackage(
+                return try removePackage(
+                    references: \.localPackages,
+                    identifier: packagePath!,
                     xcodeproj: xcodeproj,
                     projectURL: projectURL,
                     preimage: preimage,
-                    packagePath: packagePath!,
                     removeFromTargets: removeFromTargets,
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove Swift Package from Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
-    private func removeRemotePackage(
+    /// Removes one package reference and, on request, every product dependency it feeds
+    ///
+    /// - Parameters:
+    ///   - references: The project array holding references of this kind, remote or local.
+    ///   - identifier: The repository URL or relative path of the reference to remove.
+    ///   - removeFromTargets: Whether to drop the product dependencies the reference feeds.
+    private func removePackage<Reference: PackageReferencing>(
+        references: ReferenceWritableKeyPath<PBXProject, [Reference]>,
+        identifier: String,
         xcodeproj: XcodeProj,
         projectURL: URL,
         preimage: Data?,
-        packageURL: String,
         removeFromTargets: Bool,
     ) throws -> CallTool.Result {
         guard let project = try xcodeproj.pbxproj.rootProject() else {
             throw MCPError.internalError("Unable to access project root")
         }
 
-        guard let packageIndex = project.remotePackages.firstIndex(where: {
-            $0.repositoryURL == packageURL
+        guard let packageIndex = project[keyPath: references].firstIndex(where: {
+            $0.packageIdentifier == identifier
         }) else {
-            return CallTool.Result(content: [
-                .text(
-                    text: "Swift Package '\(packageURL)' not found in project",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],)
+            return CallTool.Result.text(
+                "\(Reference.capitalizedNoun) '\(identifier)' not found in project")
         }
 
-        let packageRef = project.remotePackages[packageIndex]
-
-        if removeFromTargets {
-            removeProductDependencies(xcodeproj: xcodeproj, packageRef: packageRef)
-        } else {
-            // Block-when-deps-remain: removing the package while targets still depend on its
-            // products would leave each `XCSwiftPackageProductDependency.package` pointing at a
-            // deleted reference — a dangling ref Xcode cannot load. Refuse and require the caller to
-            // be explicit rather than silently writing a broken project.
-            let usingTargets = xcodeproj.pbxproj.nativeTargets.filter { target in
-                (target.packageProductDependencies ?? []).contains { $0.package === packageRef }
-            }
-            if !usingTargets.isEmpty {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Refusing to remove Swift Package '\(packageURL)': it is still used "
-                            + "by " + usingTargets.map(\.name).joined(separator: ", ")
-                            + ". Re-run with remove_from_targets=true to remove those product "
-                            + "dependencies too.",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
-            }
-        }
-
-        project.remotePackages.remove(at: packageIndex)
-        xcodeproj.pbxproj.delete(object: packageRef)
-
-        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
-
-        var message = "Successfully removed Swift Package '\(packageURL)' from project"
-        if removeFromTargets { message += " and all targets" }
-
-        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
-    }
-
-    private func removeLocalPackage(
-        xcodeproj: XcodeProj,
-        projectURL: URL,
-        preimage: Data?,
-        packagePath: String,
-        removeFromTargets: Bool,
-    ) throws -> CallTool.Result {
-        guard let project = try xcodeproj.pbxproj.rootProject() else {
-            throw MCPError.internalError("Unable to access project root")
-        }
-
-        guard let packageIndex = project.localPackages.firstIndex(where: {
-            $0.relativePath == packagePath
-        }) else {
-            return CallTool.Result(content: [
-                .text(
-                    text: "Local Swift Package '\(packagePath)' not found in project",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],)
-        }
-
-        let localRef = project.localPackages[packageIndex]
-
-        // Remove product dependencies from targets if requested Local packages don't have a direct
-        // package ref on the product dependency, so we match by product name derived from the
-        // package path
-        let packageName = URL(fileURLWithPath: packagePath).lastPathComponent
-        // Local package products carry no package reference, so they are matched by product name
-        // (which conventionally matches the package directory name).
-        func dependsOnPackage(_ dependency: XCSwiftPackageProductDependency) -> Bool {
-            dependency.package == nil && dependency.productName == packageName
-        }
+        let packageRef = project[keyPath: references][packageIndex]
 
         if removeFromTargets {
             for target in xcodeproj.pbxproj.nativeTargets {
-                if let dependencies = target.packageProductDependencies {
-                    for dependency in dependencies where dependsOnPackage(dependency) {
-                        removeBuildFiles(xcodeproj: xcodeproj, target: target, product: dependency)
-                        target.packageProductDependencies?.removeAll { $0 === dependency }
-                        xcodeproj.pbxproj.delete(object: dependency)
-                    }
-                }
-            }
-        } else {
-            let usingTargets = xcodeproj.pbxproj.nativeTargets.filter { target in
-                (target.packageProductDependencies ?? []).contains(where: dependsOnPackage)
-            }
-            if !usingTargets.isEmpty {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Refusing to remove local Swift Package '\(packagePath)': it is "
-                            + "still used by " + usingTargets.map(\.name).joined(separator: ", ")
-                            + ". Re-run with remove_from_targets=true to remove those product "
-                            + "dependencies too.",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
-            }
-        }
+                let stale = (target.packageProductDependencies ?? []).filter(packageRef.owns)
 
-        project.localPackages.remove(at: packageIndex)
-        xcodeproj.pbxproj.delete(object: localRef)
-
-        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
-
-        var message = "Successfully removed local Swift Package '\(packagePath)' from project"
-        if removeFromTargets { message += " and all targets" }
-
-        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
-    }
-
-    private func removeProductDependencies(
-        xcodeproj: XcodeProj,
-        packageRef: XCRemoteSwiftPackageReference,
-    ) {
-        for target in xcodeproj.pbxproj.nativeTargets {
-            if let dependencies = target.packageProductDependencies {
-                let dependenciesToRemove = dependencies.filter { dependency in
-                    dependency.package === packageRef
-                }
-
-                for dependency in dependenciesToRemove {
+                for dependency in stale {
                     removeBuildFiles(xcodeproj: xcodeproj, target: target, product: dependency)
                     target.packageProductDependencies?.removeAll { $0 === dependency }
                     xcodeproj.pbxproj.delete(object: dependency)
                 }
             }
+        } else {
+            // Block-when-deps-remain: removing the package while targets still depend on its
+            // products would leave each `XCSwiftPackageProductDependency.package` pointing at a
+            // deleted reference — a dangling ref Xcode cannot load. Refuse and require the caller
+            // to be explicit rather than silently writing a broken project.
+            let usingTargets = xcodeproj.pbxproj.nativeTargets.filter { target in
+                (target.packageProductDependencies ?? []).contains(where: packageRef.owns)
+            }
+
+            if !usingTargets.isEmpty {
+                return CallTool.Result.text(
+                    "Refusing to remove \(Reference.noun) '\(identifier)': it is still used "
+                        + "by " + usingTargets.map(\.name).joined(separator: ", ")
+                        + ". Re-run with remove_from_targets=true to remove those product "
+                        + "dependencies too.")
+            }
         }
+
+        project[keyPath: references].remove(at: packageIndex)
+        xcodeproj.pbxproj.delete(object: packageRef)
+
+        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
+
+        var message = "Successfully removed \(Reference.noun) '\(identifier)' from project"
+        if removeFromTargets { message += " and all targets" }
+
+        return CallTool.Result.text(message)
     }
 
     private func removeBuildFiles(

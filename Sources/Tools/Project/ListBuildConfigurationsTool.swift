@@ -7,12 +7,10 @@ import Foundation
 public struct ListBuildConfigurationsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_build_configurations",
             description: "List all build configurations in an Xcode project",
             inputSchema: .object([
@@ -23,7 +21,7 @@ public struct ListBuildConfigurationsTool: Sendable {
                         "description": .string(
                             "Path to the .xcodeproj file (relative to current directory)",
                         ),
-                    ]),
+                    ])
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
@@ -32,9 +30,7 @@ public struct ListBuildConfigurationsTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
 
         do {
             // Resolve and validate the path
@@ -45,29 +41,20 @@ public struct ListBuildConfigurationsTool: Sendable {
             let buildConfigurations = xcodeproj.pbxproj.buildConfigurations
 
             var configList: [String] = []
+
             for config in buildConfigurations {
                 let configInfo = "- \(config.name)"
                 configList.append(configInfo)
             }
 
-            let result =
-                configList.isEmpty
-                    ? "No build configurations found in the project."
-                    : configList.joined(separator: "\n")
+            let result = configList.isEmpty
+                ? "No build configurations found in the project."
+                : configList.joined(separator: "\n")
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Build configurations in \(projectURL.lastPathComponent):\n\(result)",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
+            return CallTool.Result.text(
+                "Build configurations in \(projectURL.lastPathComponent):\n\(result)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

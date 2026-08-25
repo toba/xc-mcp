@@ -54,9 +54,9 @@ public struct AddDependencyTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(dependencyName) = arguments["dependency_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let dependencyName = arguments.getString("dependency_name")
         else {
             throw MCPError.invalidParams(
                 "project_path, target_name, and dependency_name are required",
@@ -64,7 +64,7 @@ public struct AddDependencyTool: Sendable {
         }
 
         var crossProjectPath: String?
-        if case let .string(value) = arguments["cross_project_path"], !value.isEmpty {
+        if let value = arguments.getNonEmptyString("cross_project_path") {
             crossProjectPath = value
         }
 
@@ -131,9 +131,7 @@ public struct AddDependencyTool: Sendable {
                 linkBinary: linkBinary,
             )
         } catch {
-            throw MCPError.internalError(
-                "Failed to add dependency to Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
@@ -149,8 +147,13 @@ public struct AddDependencyTool: Sendable {
         var didAddDependency = false
 
         if !target.dependencies.contains(where: { $0.target == dependencyTarget }) {
+            guard let project = xcodeproj.pbxproj.rootObject else {
+                throw MCPError.invalidParams(
+                    "Project has no root object: \(projectURL.lastPathComponent)")
+            }
+
             let containerItemProxy = PBXContainerItemProxy(
-                containerPortal: .project(xcodeproj.pbxproj.rootObject!),
+                containerPortal: .project(project),
                 remoteGlobalID: .object(dependencyTarget),
                 proxyType: .nativeTarget,
                 remoteInfo: dependencyName,
@@ -343,11 +346,5 @@ public struct AddDependencyTool: Sendable {
             ))
         }
         return candidates
-    }
-}
-
-private extension CallTool.Result {
-    static func text(_ message: String) -> CallTool.Result {
-        CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
 }

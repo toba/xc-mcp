@@ -7,12 +7,10 @@ import Foundation
 public struct RemoveTestPlanFromSchemeTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_test_plan_from_scheme",
             description: "Remove a test plan reference from a scheme's TestAction",
             inputSchema: .object([
@@ -42,9 +40,9 @@ public struct RemoveTestPlanFromSchemeTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(schemeName) = arguments["scheme_name"],
-              case let .string(testPlanPath) = arguments["test_plan_path"]
+        guard let projectPath = arguments.getString("project_path"),
+              let schemeName = arguments.getString("scheme_name"),
+              let testPlanPath = arguments.getString("test_plan_path")
         else {
             throw MCPError.invalidParams(
                 "project_path, scheme_name, and test_plan_path are required",
@@ -54,21 +52,9 @@ public struct RemoveTestPlanFromSchemeTool: Sendable {
         let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
         let resolvedTestPlanPath = try pathUtility.resolvePath(from: testPlanPath)
 
-        guard
-            let schemePath = SchemePathResolver.findScheme(
-                named: schemeName, in: resolvedProjectPath,
-            )
-        else {
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Scheme '\(schemeName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
-        }
+        guard let schemePath = SchemePathResolver.findScheme(
+            named: schemeName, in: resolvedProjectPath,
+        ) else { return CallTool.Result.text("Scheme '\(schemeName)' not found in project") }
 
         do {
             let scheme = try XCScheme(pathString: schemePath)
@@ -81,13 +67,7 @@ public struct RemoveTestPlanFromSchemeTool: Sendable {
                   let plans = testAction.testPlans,
                   plans.contains(where: { $0.reference == reference })
             else {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Test plan is not referenced in scheme '\(schemeName)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text("Test plan is not referenced in scheme '\(schemeName)'")
             }
 
             let filtered = plans.filter { $0.reference != reference }
@@ -95,17 +75,9 @@ public struct RemoveTestPlanFromSchemeTool: Sendable {
 
             try scheme.write(path: Path(schemePath), override: true)
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Removed test plan from scheme '\(schemeName)'",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result.text("Removed test plan from scheme '\(schemeName)'")
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove test plan from scheme: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

@@ -7,12 +7,10 @@ import Foundation
 public struct AddTestPlanToSchemeTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "add_test_plan_to_scheme",
             description: "Add a test plan reference to an existing scheme's TestAction",
             inputSchema: .object([
@@ -46,9 +44,9 @@ public struct AddTestPlanToSchemeTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(schemeName) = arguments["scheme_name"],
-              case let .string(testPlanPath) = arguments["test_plan_path"]
+        guard let projectPath = arguments.getString("project_path"),
+              let schemeName = arguments.getString("scheme_name"),
+              let testPlanPath = arguments.getString("test_plan_path")
         else {
             throw MCPError.invalidParams(
                 "project_path, scheme_name, and test_plan_path are required",
@@ -56,7 +54,8 @@ public struct AddTestPlanToSchemeTool: Sendable {
         }
 
         let isDefault: Bool
-        if case let .bool(value) = arguments["is_default"] {
+
+        if let value = arguments.getOptionalBool("is_default") {
             isDefault = value
         } else {
             isDefault = false
@@ -66,30 +65,12 @@ public struct AddTestPlanToSchemeTool: Sendable {
         let resolvedTestPlanPath = try pathUtility.resolvePath(from: testPlanPath)
 
         guard FileManager.default.fileExists(atPath: resolvedTestPlanPath) else {
-            return CallTool.Result(
-                content: [.text(
-                    text: "Test plan file not found at \(resolvedTestPlanPath)",
-                    annotations: nil,
-                    _meta: nil,
-                )],
-            )
+            return CallTool.Result.text("Test plan file not found at \(resolvedTestPlanPath)")
         }
 
-        guard
-            let schemePath = SchemePathResolver.findScheme(
-                named: schemeName, in: resolvedProjectPath,
-            )
-        else {
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Scheme '\(schemeName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
-        }
+        guard let schemePath = SchemePathResolver.findScheme(
+            named: schemeName, in: resolvedProjectPath,
+        ) else { return CallTool.Result.text("Scheme '\(schemeName)' not found in project") }
 
         do {
             let scheme = try XCScheme(pathString: schemePath)
@@ -102,19 +83,11 @@ public struct AddTestPlanToSchemeTool: Sendable {
             if let existingPlans = scheme.testAction?.testPlans,
                existingPlans.contains(where: { $0.reference == reference })
             {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Test plan is already referenced in scheme '\(schemeName)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Test plan is already referenced in scheme '\(schemeName)'")
             }
 
-            let testPlanRef = XCScheme.TestPlanReference(
-                reference: reference,
-                default: isDefault,
-            )
+            let testPlanRef = XCScheme.TestPlanReference(reference: reference, default: isDefault)
 
             if let testAction = scheme.testAction {
                 var plans = testAction.testPlans ?? []
@@ -137,17 +110,13 @@ public struct AddTestPlanToSchemeTool: Sendable {
 
             try scheme.write(path: Path(schemePath), override: true)
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Added test plan to scheme '\(schemeName)'\(isDefault ? " (set as default)" : "")",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result(content: [
+                .text(
+                    text: "Added test plan to scheme '\(schemeName)'\(isDefault ? " (set as default)" : "")",
+                    annotations: nil, _meta: nil)
+            ],)
         } catch {
-            throw MCPError.internalError(
-                "Failed to add test plan to scheme: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

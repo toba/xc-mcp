@@ -6,10 +6,10 @@ public struct OpenSimTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "open_sim",
             description:
-            "Open the Simulator.app. Optionally specify a simulator UDID to open a specific device.",
+                "Open the Simulator.app. Optionally specify a simulator UDID to open a specific device.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -18,7 +18,7 @@ public struct OpenSimTool: Sendable {
                         "description": .string(
                             "Optional simulator UDID to open. If not specified, opens Simulator.app with the default device.",
                         ),
-                    ]),
+                    ])
                 ]),
                 "required": .array([]),
             ]),
@@ -32,25 +32,14 @@ public struct OpenSimTool: Sendable {
         do {
             guard let args = FocusPolicy.openSimulatorAppArgs(simulatorID: simulator) else {
                 let message = "Simulator.app launch skipped by \(FocusPolicy.envVar)"
-                return CallTool.Result(content: [.text(
-                    text: message,
-                    annotations: nil,
-                    _meta: nil,
-                )])
+                return CallTool.Result.text(message)
             }
 
             let result = try await ProcessResult.run("/usr/bin/open", arguments: args)
 
             if result.succeeded {
-                let message =
-                    simulator != nil
-                        ? "Opened Simulator.app with device: \(simulator!)"
-                        : "Opened Simulator.app"
-                return CallTool.Result(content: [.text(
-                    text: message,
-                    annotations: nil,
-                    _meta: nil,
-                )])
+                let device = simulator.map { " with device: \($0)" } ?? ""
+                return CallTool.Result.text("Opened Simulator.app\(device)")
             } else {
                 throw MCPError.internalError("Failed to open Simulator.app")
             }

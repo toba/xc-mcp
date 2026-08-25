@@ -7,15 +7,13 @@ import Foundation
 public struct AddTargetToSynchronizedFolderTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "add_target_to_synchronized_folder",
             description:
-            "Add an existing synchronized folder to a target's file system synchronized groups (for sharing a folder between multiple targets)",
+                "Add an existing synchronized folder to a target's file system synchronized groups (for sharing a folder between multiple targets)",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -48,65 +46,43 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(folderPath) = arguments["folder_path"],
-              case let .string(targetName) = arguments["target_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let folderPath = arguments.getString("folder_path"),
+              let targetName = arguments.getString("target_name")
         else {
-            throw MCPError.invalidParams(
-                "project_path, folder_path, and target_name are required",
-            )
+            throw MCPError.invalidParams("project_path, folder_path, and target_name are required")
         }
 
         do {
-            let resolvedProjectPath = try pathUtility.resolvePath(
-                from: projectPath,
-            )
+            let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(filePath: resolvedProjectPath)
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                  let mainGroup = project.mainGroup
-            else {
-                throw MCPError.internalError("Main group not found in project")
-            }
+                let mainGroup = project.mainGroup
+            else { throw MCPError.internalError("Main group not found in project") }
 
-            guard
-                let syncGroup = SynchronizedFolderUtility.findSyncGroup(
-                    folderPath, in: mainGroup,
-                )
+            guard let syncGroup = SynchronizedFolderUtility.findSyncGroup(folderPath, in: mainGroup)
             else {
                 throw MCPError.invalidParams(
                     "Synchronized folder '\(folderPath)' not found in project",
                 )
             }
 
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: {
-                    $0.name == targetName
-                })
-            else {
-                throw MCPError.invalidParams(
-                    "Target '\(targetName)' not found in project",
-                )
-            }
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else { throw MCPError.invalidParams("Target '\(targetName)' not found in project") }
 
             // Idempotency check
             if let existing = target.fileSystemSynchronizedGroups,
                existing.contains(where: { $0 === syncGroup })
             {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Synchronized folder '\(folderPath)' is already in target '\(targetName)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Synchronized folder '\(folderPath)' is already in target '\(targetName)'")
             }
 
             let comment = syncGroup.path ?? folderPath
-            var text = try PBXProjTextEditor.read(
-                projectPath: projectURL.path,
-            )
+            var text = try PBXProjTextEditor.read(projectPath: projectURL.path)
             text = try PBXProjTextEditor.addReference(
                 text, blockUUID: target.uuid,
                 field: "fileSystemSynchronizedGroups",
@@ -114,19 +90,10 @@ public struct AddTargetToSynchronizedFolderTool: Sendable {
             )
             try PBXProjTextEditor.write(text, projectPath: projectURL.path)
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully added synchronized folder '\(folderPath)' to target '\(targetName)'",
-                        annotations: nil, _meta: nil),
-                ],
-            )
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(
+                "Successfully added synchronized folder '\(folderPath)' to target '\(targetName)'")
         } catch {
-            throw MCPError.internalError(
-                "Failed to add target to synchronized folder: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

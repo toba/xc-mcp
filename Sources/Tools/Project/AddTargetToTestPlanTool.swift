@@ -7,12 +7,10 @@ import Foundation
 public struct AddTargetToTestPlanTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "add_target_to_test_plan",
             description: "Add a test target to an existing .xctestplan file",
             inputSchema: .object([
@@ -92,9 +90,9 @@ public struct AddTargetToTestPlanTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(testPlanPath) = arguments["test_plan_path"],
-              case let .string(targetName) = arguments["target_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let testPlanPath = arguments.getString("test_plan_path"),
+              let targetName = arguments.getString("target_name")
         else {
             throw MCPError.invalidParams(
                 "project_path, test_plan_path, and target_name are required",
@@ -108,120 +106,93 @@ public struct AddTargetToTestPlanTool: Sendable {
         do {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: {
-                    $0.name == targetName
-                })
-            else {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
             var json = try TestPlanFile.read(from: resolvedTestPlanPath)
-            var testTargets = json["testTargets"] as? [[String: Any]] ?? []
+            var testTargets = TestPlanFile.testTargets(in: json)
 
             // Check for duplicate
             let existingNames = TestPlanFile.targetNames(from: json)
+
             if existingNames.contains(targetName) {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Target '\(targetName)' is already in the test plan",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text("Target '\(targetName)' is already in the test plan")
             }
 
             let containerPath = TestPlanFile.containerPath(for: projectURL)
-            var entry: [String: Any] = [
+            var entry: [String: AnyValue] = [
                 "target": [
-                    "containerPath": containerPath,
-                    "identifier": target.uuid,
-                    "name": targetName,
-                ] as [String: Any],
+                    "containerPath": .string(containerPath),
+                    "identifier": .string(target.uuid),
+                    "name": .string(targetName),
+                ]
             ]
 
             let selectedTests = Self.buildSelectedTests(from: arguments)
-            if !selectedTests.isEmpty {
-                entry["selectedTests"] = selectedTests
-            }
+            if !selectedTests.isEmpty { entry["selectedTests"] = .dictionary(selectedTests) }
 
             testTargets.append(entry)
-            json["testTargets"] = testTargets
+            json["testTargets"] = .dictionaries(testTargets)
 
             try TestPlanFile.write(json, to: resolvedTestPlanPath)
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Added target '\(targetName)' to test plan at \(resolvedTestPlanPath)",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result.text(
+                "Added target '\(targetName)' to test plan at \(resolvedTestPlanPath)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to add target to test plan: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
     /// Builds a `selectedTests` dictionary from `xctest_classes` and `suites` parameters.
     ///
     /// Returns an empty dictionary when neither parameter is provided.
-    private static func buildSelectedTests(from arguments: [String: Value]) -> [String: Any] {
-        var selected: [String: Any] = [:]
+    private static func buildSelectedTests(from arguments: [String: Value]) -> [String: AnyValue] {
+        var selected: [String: AnyValue] = [:]
 
-        if case let .array(classes) = arguments["xctest_classes"] {
-            var xctestClasses: [[String: Any]] = []
-            for item in classes {
-                guard case let .object(obj) = item,
-                      case let .string(name) = obj["name"]
-                else { continue }
-                var classEntry: [String: Any] = ["name": name]
-                if case let .array(methods) = obj["xctest_methods"] {
-                    let methodNames = methods.compactMap { value -> String? in
-                        guard case let .string(s) = value else { return nil }
-                        return s
-                    }
-                    if !methodNames.isEmpty {
-                        classEntry["xctestMethods"] = methodNames
-                    }
-                }
-                xctestClasses.append(classEntry)
-            }
-            if !xctestClasses.isEmpty {
-                selected["xctestClasses"] = xctestClasses
-            }
-        }
+        let xctestClasses = namedEntries(
+            in: arguments, key: "xctest_classes", childKey: "xctest_methods",
+            childJSONKey: "xctestMethods",
+        )
+        if !xctestClasses.isEmpty { selected["xctestClasses"] = .array(xctestClasses) }
 
-        if case let .array(suiteValues) = arguments["suites"] {
-            var suites: [[String: Any]] = []
-            for item in suiteValues {
-                guard case let .object(obj) = item,
-                      case let .string(name) = obj["name"]
-                else { continue }
-                var suiteEntry: [String: Any] = ["name": name]
-                if case let .array(functions) = obj["test_functions"] {
-                    let funcNames = functions.compactMap { value -> String? in
-                        guard case let .string(s) = value else { return nil }
-                        return s
-                    }
-                    if !funcNames.isEmpty {
-                        suiteEntry["testFunctions"] = funcNames
-                    }
-                }
-                suites.append(suiteEntry)
-            }
-            if !suites.isEmpty {
-                selected["suites"] = suites
-            }
-        }
+        let suites = namedEntries(
+            in: arguments, key: "suites", childKey: "test_functions",
+            childJSONKey: "testFunctions",
+        )
+        if !suites.isEmpty { selected["suites"] = .array(suites) }
 
         return selected
+    }
+
+    /// Reads an array of `{ name, <childKey>: [String] }` objects into test-plan JSON entries.
+    ///
+    /// - Parameters:
+    ///   - arguments: The tool arguments dictionary.
+    ///   - key: The argument key holding the array of objects.
+    ///   - childKey: The key each object uses for its nested string array.
+    ///   - childJSONKey: The key the test-plan JSON uses for that same array.
+    /// - Returns: One entry per object that carries a name. An object without one is skipped.
+    private static func namedEntries(
+        in arguments: [String: Value],
+        key: String,
+        childKey: String,
+        childJSONKey: String,
+    ) -> [AnyValue] {
+        guard case let .array(items) = arguments[key] else { return [] }
+
+        var entries: [AnyValue] = []
+        entries.reserveCapacity(items.count)
+
+        for item in items {
+            guard case let .object(obj) = item, let name = obj.getString("name") else { continue }
+            var entry: [String: AnyValue] = ["name": .string(name)]
+            let children = obj.getStringArray(childKey)
+            if !children.isEmpty { entry[childJSONKey] = .strings(children) }
+            entries.append(.dictionary(entry))
+        }
+        return entries
     }
 }

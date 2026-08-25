@@ -63,7 +63,10 @@ public enum BuildGuard {
     private static func writeLockDescription(fd: Int32, description: String) {
         let data = Data(description.utf8)
         _ = ftruncate(fd, 0)
-        _ = data.withUnsafeBytes { pwrite(fd, $0.baseAddress!, $0.count, 0) }
+        // an empty description leaves the truncated file empty; baseAddress is nil for that case
+        _ = data.withUnsafeBytes { buffer in
+            buffer.baseAddress.map { pwrite(fd, $0, buffer.count, 0) } ?? 0
+        }
     }
 
     /// Release the build lock.
@@ -72,7 +75,7 @@ public enum BuildGuard {
         close(fd)
     }
 
-    private static func lockPath(for projectPath: String) -> String {
+    static func lockPath(for projectPath: String) -> String {
         let hash = projectPath.utf8.reduce(into: UInt64(5381)) { h, c in h = h &* 33 &+ UInt64(c) }
         return "/tmp/xc-mcp-build-\(hash).lock"
     }

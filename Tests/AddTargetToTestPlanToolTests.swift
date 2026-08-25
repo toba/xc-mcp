@@ -18,20 +18,17 @@ struct AddTargetToTestPlanToolTests {
         return projectPath.string
     }
 
-    private func createTestPlan(_ json: [String: Any]) throws -> String {
+    private func createTestPlan(_ json: [String: AnyValue]) throws -> String {
         let path = TemporaryDirectory.url.appendingPathComponent("test.xctestplan").path
         try TestPlanFile.write(json, to: path)
         return path
     }
 
-    private func emptyPlan() -> [String: Any] {
+    private func emptyPlan() -> [String: AnyValue] {
         [
-            "configurations": [
-                ["id": "DEFAULT", "name": "Default", "options": [:] as [String: Any]]
-                    as [String: Any]
-            ],
-            "defaultOptions": [:] as [String: Any],
-            "testTargets": [] as [[String: Any]],
+            "configurations": [["id": "DEFAULT", "name": "Default", "options": [:]]],
+            "defaultOptions": [:],
+            "testTargets": [],
             "version": 1,
         ]
     }
@@ -54,7 +51,7 @@ struct AddTargetToTestPlanToolTests {
         #expect(message.contains("Added"))
 
         let json = try TestPlanFile.read(from: path)
-        let targets = json["testTargets"] as? [[String: Any]] ?? []
+        let targets = json["testTargets"]?.dictionaryArrayValue ?? []
         #expect(targets.count == 1)
         #expect(targets[0]["selectedTests"] == nil)
     }
@@ -84,19 +81,19 @@ struct AddTargetToTestPlanToolTests {
         #expect(message.contains("Added"))
 
         let json = try TestPlanFile.read(from: path)
-        let targets = json["testTargets"] as? [[String: Any]] ?? []
+        let targets = json["testTargets"]?.dictionaryArrayValue ?? []
         #expect(targets.count == 1)
 
-        let selected = targets[0]["selectedTests"] as? [String: Any]
+        let selected = targets[0]["selectedTests"]?.dictionaryValue
         #expect(selected != nil)
 
-        let classes = selected?["xctestClasses"] as? [[String: Any]] ?? []
+        let classes = selected?["xctestClasses"]?.dictionaryArrayValue ?? []
         #expect(classes.count == 2)
-        #expect(classes[0]["name"] as? String == "URLRequestTests")
+        #expect(classes[0]["name"]?.stringValue == "URLRequestTests")
         #expect(classes[0]["xctestMethods"] == nil)
-        #expect(classes[1]["name"] as? String == "SessionTests")
+        #expect(classes[1]["name"]?.stringValue == "SessionTests")
 
-        let methods = classes[1]["xctestMethods"] as? [String] ?? []
+        let methods = classes[1]["xctestMethods"]?.stringArrayValue ?? []
         #expect(methods == ["testInit()"])
     }
 
@@ -125,17 +122,17 @@ struct AddTargetToTestPlanToolTests {
         #expect(message.contains("Added"))
 
         let json = try TestPlanFile.read(from: path)
-        let targets = json["testTargets"] as? [[String: Any]] ?? []
-        let selected = targets[0]["selectedTests"] as? [String: Any]
+        let targets = json["testTargets"]?.dictionaryArrayValue ?? []
+        let selected = targets[0]["selectedTests"]?.dictionaryValue
         #expect(selected != nil)
 
-        let suites = selected?["suites"] as? [[String: Any]] ?? []
+        let suites = selected?["suites"]?.dictionaryArrayValue ?? []
         #expect(suites.count == 2)
-        #expect(suites[0]["name"] as? String == "NetworkTests")
+        #expect(suites[0]["name"]?.stringValue == "NetworkTests")
 
-        let funcs = suites[0]["testFunctions"] as? [String] ?? []
+        let funcs = suites[0]["testFunctions"]?.stringArrayValue ?? []
         #expect(funcs == ["fetchKeys()", "keys()"])
-        #expect(suites[1]["name"] as? String == "CacheTests")
+        #expect(suites[1]["name"]?.stringValue == "CacheTests")
         #expect(suites[1]["testFunctions"] == nil)
     }
 
@@ -153,12 +150,12 @@ struct AddTargetToTestPlanToolTests {
         ])
 
         let json = try TestPlanFile.read(from: path)
-        let targets = json["testTargets"] as? [[String: Any]] ?? []
-        let selected = targets[0]["selectedTests"] as? [String: Any]
+        let targets = json["testTargets"]?.dictionaryArrayValue ?? []
+        let selected = targets[0]["selectedTests"]?.dictionaryValue
         #expect(selected != nil)
 
-        let classes = selected?["xctestClasses"] as? [[String: Any]] ?? []
-        let suites = selected?["suites"] as? [[String: Any]] ?? []
+        let classes = selected?["xctestClasses"]?.dictionaryArrayValue ?? []
+        let suites = selected?["suites"]?.dictionaryArrayValue ?? []
         #expect(classes.count == 1)
         #expect(suites.count == 1)
     }
@@ -186,7 +183,8 @@ struct AddTargetToTestPlanToolTests {
             ]),
         ])
 
-        // Read raw JSON data to verify it's valid xctestplan format
+        // Read the file with JSONSerialization rather than TestPlanFile, so the check proves the
+        // bytes on disk are valid JSON and not that this server can read what it wrote
         let data = try Data(contentsOf: URL(fileURLWithPath: path))
         let rawJSON = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         #expect(rawJSON != nil)

@@ -4,12 +4,12 @@ import Foundation
 ///
 /// Xcode records a fingerprint for every macro package the user approves in the IDE. A fresh
 /// package resolve changes that fingerprint, so the next build stops with
-/// `Macro "X" from package "Y" was changed since a previous approval and must be enabled before it
-/// can be used`. No command-line prompt exists to approve it, so a non-interactive build cannot
-/// recover on its own. `-skipMacroValidation` is the only way through.
+/// `Macro "X" from package "Y" was changed since a previous approval and must be enabled before it can be used`.
+/// No command-line prompt exists to approve it, so a non-interactive build cannot recover on its
+/// own. `-skipMacroValidation` is the only way through.
 ///
-/// xc-mcp passes `-skipMacroValidation` by default (see ``MacroValidation``). This advice covers the
-/// case where a caller turned that default off.
+/// xc-mcp passes `-skipMacroValidation` by default (see ``MacroValidation``). This advice covers
+/// the case where a caller turned that default off.
 public enum MacroApprovalAdvice {
     /// Substrings that identify the macro-approval failure across Xcode's phrasings.
     private static let markers = [

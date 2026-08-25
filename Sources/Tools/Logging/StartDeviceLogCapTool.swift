@@ -66,7 +66,7 @@ public struct StartDeviceLogCapTool: Sendable {
         let match = arguments.getString("match")
         let process = arguments.getString("process")
         let quiet: Bool
-        if case let .bool(q) = arguments["quiet"] { quiet = q } else { quiet = true }
+        if let q = arguments.getOptionalBool("quiet") { quiet = q } else { quiet = true }
 
         do {
             let idevicesyslog = try await findIdevicesyslog()
@@ -87,11 +87,7 @@ public struct StartDeviceLogCapTool: Sendable {
             try await LogCapture.verifyStreamHealth(pid: pid, outputFile: outputFile)
 
             // Save capture metadata so stop_device_log_cap can find the process
-            let metadata = DeviceLogCapMetadata(
-                device: device,
-                pid: pid,
-                outputFile: outputFile,
-            )
+            let metadata = DeviceLogCapMetadata(device: device, pid: pid, outputFile: outputFile)
             let metadataPath = DeviceLogCapMetadata.path(for: device)
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
@@ -108,7 +104,7 @@ public struct StartDeviceLogCapTool: Sendable {
                 "\nNote: On iOS 26+, NSLog content is privacy-redacted. Use os.Logger for visible log output."
             message += "\nUse stop_device_log_cap to stop the capture and retrieve logs."
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }
@@ -134,16 +130,18 @@ public struct StartDeviceLogCapTool: Sendable {
         return hwUDID
     }
 
-    private func findIdevicesyslog() async throws(MCPError) -> String {
+    // Untyped throws on purpose. The lookup awaits, so it can be cancelled, and asMCPError rethrows
+    // CancellationError unchanged. A typed MCPError signature would convert that cancellation into
+    // a response, which tears down the client pipe.
+    private func findIdevicesyslog() async throws -> String {
         for path in ["/opt/homebrew/bin/idevicesyslog", "/usr/local/bin/idevicesyslog"]
-        where FileManager.default.isExecutableFile(atPath: path) { return path }
+            where FileManager.default.isExecutableFile(atPath: path)
+        { return path }
 
         do {
             return try await BinaryLocator.find("idevicesyslog")
         } catch {
-            throw MCPError.internalError(
-                "idevicesyslog not found. Install it with: brew install libimobiledevice",
-            )
+            throw try error.asMCPError()
         }
     }
 }

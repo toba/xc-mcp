@@ -34,10 +34,9 @@ public struct ListCopyFilesPhases: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"] else {
-            throw MCPError.invalidParams("project_path and target_name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name")
+        else { throw MCPError.invalidParams("project_path and target_name are required") }
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -48,29 +47,14 @@ public struct ListCopyFilesPhases: Sendable {
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
                 $0.name == targetName
             }) else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Target '\(targetName)' not found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        )
-                    ],
-                )
+                return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
             let copyFilesPhases = target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
 
             if copyFilesPhases.isEmpty {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "No Copy Files build phases found in target '\(targetName)'",
-                            annotations: nil,
-                            _meta: nil,
-                        )
-                    ],
-                )
+                return CallTool.Result.text(
+                    "No Copy Files build phases found in target '\(targetName)'")
             }
 
             var output = "Copy Files Build Phases in target '\(targetName)':\n\n"
@@ -105,17 +89,9 @@ public struct ListCopyFilesPhases: Sendable {
                 output += "\n"
             }
 
-            return CallTool.Result(content: [
-                .text(
-                    text: output.trimmingCharacters(in: .whitespacesAndNewlines),
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ])
+            return CallTool.Result.text(output.trimmingCharacters(in: .whitespacesAndNewlines))
         } catch {
-            throw MCPError.internalError(
-                "Failed to list copy files phases: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 

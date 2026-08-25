@@ -6,21 +6,19 @@ import Foundation
 
 /// MCP tool for creating new Xcode project files.
 ///
-/// Creates a new .xcodeproj file with basic configuration including
-/// a main target, build configurations, and standard project structure.
+/// Creates a new .xcodeproj file with basic configuration including a main target, build
+/// configurations, and standard project structure.
 public struct CreateXcodeprojTool: Sendable {
     private let pathUtility: PathUtility
 
     /// Creates a new CreateXcodeprojTool instance.
     ///
     /// - Parameter pathUtility: Utility for resolving and validating paths.
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     /// Returns the MCP tool definition.
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "create_xcodeproj",
             description: "Create a new Xcode project file (.xcodeproj)",
             inputSchema: .object([
@@ -65,38 +63,29 @@ public struct CreateXcodeprojTool: Sendable {
 
     /// Executes the tool with the given arguments.
     ///
-    /// - Parameter arguments: Dictionary containing project_name, path, and optional organization_name and bundle_identifier.
+    /// - Parameter arguments: Dictionary containing project_name, path, and optional
+    ///   organization_name and bundle_identifier.
     /// - Returns: The result containing success message or error.
     /// - Throws: MCPError if required parameters are missing or project creation fails.
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectName) = arguments["project_name"],
-              case let .string(pathString) = arguments["path"]
-        else {
-            throw MCPError.invalidParams("project_name and path are required")
-        }
+        guard let projectName = arguments.getString("project_name"),
+              let pathString = arguments.getString("path")
+        else { throw MCPError.invalidParams("project_name and path are required") }
 
-        let organizationName: String
-        if case let .string(org) = arguments["organization_name"] {
-            organizationName = org
-        } else {
-            organizationName = ""
-        }
+        let organizationName = arguments.getString("organization_name") ?? ""
 
-        let bundleIdentifier: String
-        if case let .string(bundle) = arguments["bundle_identifier"] {
-            bundleIdentifier = bundle
-        } else {
-            bundleIdentifier = "com.example"
-        }
+        let bundleIdentifier = arguments.getString("bundle_identifier") ?? "com.example"
 
         let skipDefaultTarget: Bool
-        if case let .bool(skip) = arguments["skip_default_target"] {
+
+        if let skip = arguments.getOptionalBool("skip_default_target") {
             skipDefaultTarget = skip
         } else {
             skipDefaultTarget = false
         }
 
         let objectVersion: Int
+
         if case let .int(ver) = arguments["object_version"] {
             objectVersion = ver
         } else {
@@ -121,16 +110,10 @@ public struct CreateXcodeprojTool: Sendable {
 
             // Create project build configurations
             let debugConfig = XCBuildConfiguration(
-                name: "Debug",
-                buildSettings: [
-                    "ORGANIZATION_NAME": .string(organizationName),
-                ],
-            )
+                name: "Debug", buildSettings: ["ORGANIZATION_NAME": .string(organizationName)])
             let releaseConfig = XCBuildConfiguration(
                 name: "Release",
-                buildSettings: [
-                    "ORGANIZATION_NAME": .string(organizationName),
-                ],
+                buildSettings: ["ORGANIZATION_NAME": .string(organizationName)],
             )
             pbxproj.add(object: debugConfig)
             pbxproj.add(object: releaseConfig)
@@ -231,19 +214,10 @@ public struct CreateXcodeprojTool: Sendable {
             // Write project
             try xcodeproj.write(path: projectPath)
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Successfully created Xcode project at: \(projectPath.string)",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
+            return CallTool.Result.text(
+                "Successfully created Xcode project at: \(projectPath.string)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to create Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

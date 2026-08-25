@@ -77,16 +77,6 @@ public struct SwiftPackageBuildTool: Sendable {
         let timeout = explicitTimeout
             ?? (isCold ? SwiftRunner.coldCacheTimeout : SwiftRunner.defaultTimeout)
 
-        // Verify Package.swift exists
-        let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift",
-        ).path
-        guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
-            throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
-            )
-        }
-
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
         let destination = try await requestedDestination.resolve()
@@ -125,8 +115,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 if let warning = traits.replacedDefaultsWarning { message += "\n\n\(warning)" }
                 if let sinkSummary { message += "\n\n\(sinkSummary.formatted())" }
 
-                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
-                )
+                return CallTool.Result.text(message)
             }
 
             // On compiler signal crash, retry with -v to surface the crashing file

@@ -4,8 +4,8 @@ import Foundation
 
 /// Examines heap allocations in a running process using the `heap` command.
 ///
-/// Wraps `/usr/bin/heap` to show all heap allocations organized by class,
-/// sorted by size or count. Useful for identifying which objects consume the most memory.
+/// Wraps `/usr/bin/heap` to show all heap allocations organized by class, sorted by size or count.
+/// Useful for identifying which objects consume the most memory.
 ///
 /// ## Example
 ///
@@ -17,18 +17,16 @@ public struct MemoryHeapTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "memory_heap",
             description:
-            "Examine heap allocations in a running macOS process. Shows all heap objects organized by class, sorted by total size or count. Use to find which objects consume the most memory.",
+                "Examine heap allocations in a running macOS process. Shows all heap objects organized by class, sorted by total size or count. Use to find which objects consume the most memory.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID to examine. Use this or bundle_id.",
-                        ),
+                        "description": .string("Process ID to examine. Use this or bundle_id."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -45,9 +43,7 @@ public struct MemoryHeapTool: Sendable {
                     ]),
                     "top_n": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Limit output to the top N classes. Default: all.",
-                        ),
+                        "description": .string("Limit output to the top N classes. Default: all."),
                     ]),
                     "class_name": .object([
                         "type": .string("string"),
@@ -67,9 +63,7 @@ public struct MemoryHeapTool: Sendable {
         let sortBy = arguments.getString("sort_by") ?? "size"
 
         var args: [String] = []
-        if sortBy == "size" {
-            args.append("--sortBySize")
-        }
+        if sortBy == "size" { args.append("--sortBySize") }
         args.append("\(pid)")
 
         let result = try await ProcessResult.run(
@@ -103,6 +97,7 @@ public struct MemoryHeapTool: Sendable {
             var headerLines: [String] = []
             var dataLines: [String] = []
             var inData = false
+
             for line in lines {
                 if !inData {
                     if line.contains("BYTES"), line.contains("COUNT") {
@@ -119,6 +114,6 @@ public struct MemoryHeapTool: Sendable {
             output = limited.joined(separator: "\n")
         }
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 }

@@ -109,6 +109,7 @@ public enum PreviewExtractor {
         let chars = Array(source.unicodeScalars)
         let count = chars.count
         var result: [Unicode.Scalar] = []
+        result.reserveCapacity(count)
         var i = 0
 
         while i < count {
@@ -197,9 +198,28 @@ public enum PreviewExtractor {
 
         if afterIndex < chars.count {
             let after = chars[afterIndex]
-            if CharacterSet.alphanumerics.contains(after) || after == "_" { return false }
+            if isAlphanumeric(after) || after == "_" { return false }
         }
         return true
+    }
+
+    /// Matches the members of `CharacterSet.alphanumerics` without constructing the set, which the
+    /// tokenizer would otherwise do once per scalar it scans.
+    private static func isAlphanumeric(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.properties.generalCategory {
+            case .uppercaseLetter,
+                 .lowercaseLetter,
+                 .titlecaseLetter,
+                 .modifierLetter,
+                 .otherLetter,
+                 .nonspacingMark,
+                 .spacingMark,
+                 .enclosingMark,
+                 .decimalNumber,
+                 .letterNumber,
+                 .otherNumber: true
+            default: false
+        }
     }
 
     /// Skips whitespace and newlines, returning the new index.
@@ -208,7 +228,7 @@ public enum PreviewExtractor {
         from index: Int,
     ) -> Int {
         var i = index
-        while i < chars.count, CharacterSet.whitespacesAndNewlines.contains(chars[i]) { i += 1 }
+        while i < chars.count, chars[i].properties.isWhitespace { i += 1 }
         return i
     }
 

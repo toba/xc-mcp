@@ -7,14 +7,15 @@ public struct InstallAppDeviceTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
+        deviceCtlRunner: DeviceCtlRunner = .init(),
+        sessionManager: SessionManager,
     ) {
         self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "install_app_device",
             description: "Install an app (.app bundle or .ipa) on a connected device.",
             inputSchema: .object([
@@ -45,19 +46,10 @@ public struct InstallAppDeviceTool: Sendable {
             let result = try await deviceCtlRunner.install(udid: device, appPath: appPath)
 
             if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Successfully installed app at '\(appPath)' on device '\(device)'",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Successfully installed app at '\(appPath)' on device '\(device)'")
             } else {
-                throw MCPError.internalError(
-                    "Failed to install app: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to install app: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

@@ -7,17 +7,18 @@ public struct StopAppDeviceTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        deviceCtlRunner: DeviceCtlRunner = DeviceCtlRunner(), sessionManager: SessionManager,
+        deviceCtlRunner: DeviceCtlRunner = .init(),
+        sessionManager: SessionManager,
     ) {
         self.deviceCtlRunner = deviceCtlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "stop_app_device",
             description:
-            "Stop (terminate) a running app on a connected device by its bundle identifier.",
+                "Stop (terminate) a running app on a connected device by its bundle identifier.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -41,26 +42,17 @@ public struct StopAppDeviceTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let bundleId = try arguments.getRequiredString("bundle_id")
+        let bundleID = try arguments.getRequiredString("bundle_id")
         let device = try await sessionManager.resolveDevice(from: arguments)
 
         do {
-            let result = try await deviceCtlRunner.terminate(udid: device, bundleId: bundleId)
+            let result = try await deviceCtlRunner.terminate(udid: device, bundleID: bundleID)
 
             if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Successfully stopped '\(bundleId)' on device '\(device)'",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Successfully stopped '\(bundleID)' on device '\(device)'")
             } else {
-                throw MCPError.internalError(
-                    "Failed to stop app: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to stop app: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

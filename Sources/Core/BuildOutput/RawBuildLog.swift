@@ -25,7 +25,11 @@ public enum RawBuildLog {
         public let capturedAt: Date
 
         public init(
-            action: String, destination: String, succeeded: Bool, byteCount: Int, capturedAt: Date,
+            action: String,
+            destination: String,
+            succeeded: Bool,
+            byteCount: Int,
+            capturedAt: Date,
         ) {
             self.action = action
             self.destination = destination
@@ -50,7 +54,7 @@ public enum RawBuildLog {
         if let override = ProcessInfo.processInfo.environment["XC_MCP_LAST_BUILD"] {
             return URL(fileURLWithPath: override)
         }
-        return URL(fileURLWithPath: "/tmp/xc-mcp-last-build-\(getppid()).log")
+        return .init(fileURLWithPath: "/tmp/xc-mcp-last-build-\(getppid()).log")
     }
 
     /// Persists the raw output and metadata for the most recent build/test.
@@ -80,8 +84,8 @@ public enum RawBuildLog {
         succeeded: Bool,
         to url: URL,
     ) {
-        // Skip trivial captures (e.g. an empty string from a launch failure) so a real prior build's
-        // diagnostics aren't clobbered by a no-op.
+        // Skip trivial captures (e.g. an empty string from a launch failure) so a real prior
+        // build's diagnostics aren't clobbered by a no-op.
         guard !rawOutput.isEmpty else { return }
 
         do {
@@ -90,6 +94,7 @@ public enum RawBuildLog {
                 action: action, destination: destination, succeeded: succeeded,
                 byteCount: rawOutput.utf8.count, capturedAt: Date(),
             )
+
             if let data = try? JSONEncoder().encode(meta) {
                 try? data.write(to: url.appendingPathExtension("json"), options: .atomic)
             }

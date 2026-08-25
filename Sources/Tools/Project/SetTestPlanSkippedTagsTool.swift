@@ -5,15 +5,13 @@ import Foundation
 public struct SetTestPlanSkippedTagsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_test_plan_skipped_tags",
             description:
-            "Add or remove skipped test tags in a .xctestplan file. Can apply to plan-level defaults or a specific test target.",
+                "Add or remove skipped test tags in a .xctestplan file. Can apply to plan-level defaults or a specific test target.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -57,22 +55,15 @@ public struct SetTestPlanSkippedTagsTool: Sendable {
         guard action == "add" || action == "remove" else {
             throw MCPError.invalidParams("action must be 'add' or 'remove'")
         }
-        guard !tags.isEmpty else {
-            throw MCPError.invalidParams("tags array must not be empty")
-        }
+        guard !tags.isEmpty else { throw MCPError.invalidParams("tags array must not be empty") }
 
         let resolvedPath = try pathUtility.resolvePath(from: testPlanPath)
 
         do {
             var json = try TestPlanFile.read(from: resolvedPath)
 
-            let resultTags: [String]
-            if let targetName {
-                resultTags = try applyToTarget(
-                    &json, targetName: targetName, tags: tags, action: action,
-                )
-            } else {
-                resultTags = applyToDefaults(&json, tags: tags, action: action)
+            let resultTags = try TestPlanFile.mutateScope(&json, targetName: targetName) { scope in
+                Self.applySkippedTags(to: &scope, tags: tags, action: action)
             }
 
             try TestPlanFile.write(json, to: resolvedPath)
@@ -80,30 +71,17 @@ public struct SetTestPlanSkippedTagsTool: Sendable {
             let scope = targetName.map { "target '\($0)'" } ?? "plan-level defaults"
             let verb = action == "add" ? "Added" : "Removed"
             let tagList = tags.map { "'\($0)'" }.joined(separator: ", ")
-            let remaining =
-                resultTags.isEmpty
-                    ? " (no skipped tags remaining)"
-                    : " — skipped tags: \(resultTags.joined(separator: ", "))"
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "\(verb) \(tagList) in \(scope)\(remaining)",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
-        } catch let error as MCPError {
-            throw error
+            let remaining = resultTags.isEmpty
+                ? " (no skipped tags remaining)"
+                : " — skipped tags: \(resultTags.joined(separator: ", "))"
+            return CallTool.Result.text("\(verb) \(tagList) in \(scope)\(remaining)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to update test plan skipped tags: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
     /// Adds or removes tags from an existing tag list, preserving insertion order.
-    private func applyTagChanges(
+    private static func applyTagChanges(
         existing: [String],
         tags: [String],
         action: String,
@@ -117,72 +95,29 @@ public struct SetTestPlanSkippedTagsTool: Sendable {
         }
     }
 
-    /// Applies tag changes to plan-level `defaultOptions.skippedTags`.
-    private func applyToDefaults(
-        _ json: inout [String: Any],
+    /// Rewrites the `skippedTags` block of one scope and reports the tags it now holds.
+    ///
+    /// The key drops when no tag remains, because Xcode omits an empty block.
+    private static func applySkippedTags(
+        to scope: inout [String: AnyValue],
         tags: [String],
         action: String,
     ) -> [String] {
-        var defaults = json["defaultOptions"] as? [String: Any] ?? [:]
-        var skipped = defaults["skippedTags"] as? [String: Any] ?? [:]
-        let existing = skipped["tags"] as? [String] ?? []
+        var skipped = scope["skippedTags"]?.dictionaryValue ?? [:]
+        let existing = skipped["tags"]?.stringArrayValue ?? []
 
         let result = applyTagChanges(existing: existing, tags: tags, action: action)
 
         if result.isEmpty {
-            defaults.removeValue(forKey: "skippedTags")
+            scope.removeValue(forKey: "skippedTags")
         } else {
-            skipped["tags"] = result
-            // Plan-level uses "mode" key
-            if skipped["mode"] == nil {
-                skipped["mode"] = "or"
-            }
-            defaults["skippedTags"] = skipped
+            skipped["tags"] = .strings(result)
+            // Preserve existing "mode"; default to "or" so the block uses OR semantics (absence
+            // means AND, which silently no-ops in practice).
+            if skipped["mode"] == nil { skipped["mode"] = "or" }
+            scope["skippedTags"] = .dictionary(skipped)
         }
 
-        json["defaultOptions"] = defaults
-        return result
-    }
-
-    /// Applies tag changes to a specific target's `skippedTags`.
-    private func applyToTarget(
-        _ json: inout [String: Any],
-        targetName: String,
-        tags: [String],
-        action: String,
-    ) throws(MCPError) -> [String] {
-        guard var testTargets = json["testTargets"] as? [[String: Any]] else {
-            throw MCPError.invalidParams("Test plan has no test targets")
-        }
-
-        guard
-            let index = testTargets.firstIndex(where: {
-                ($0["target"] as? [String: Any])?["name"] as? String == targetName
-            })
-        else {
-            throw MCPError.invalidParams("Target '\(targetName)' not found in test plan")
-        }
-
-        var entry = testTargets[index]
-        var skipped = entry["skippedTags"] as? [String: Any] ?? [:]
-        let existing = skipped["tags"] as? [String] ?? []
-
-        let result = applyTagChanges(existing: existing, tags: tags, action: action)
-
-        if result.isEmpty {
-            entry.removeValue(forKey: "skippedTags")
-        } else {
-            skipped["tags"] = result
-            // Preserve existing "mode"; default to "or" so the block uses OR
-            // semantics (absence means AND, which silently no-ops in practice).
-            if skipped["mode"] == nil {
-                skipped["mode"] = "or"
-            }
-            entry["skippedTags"] = skipped
-        }
-
-        testTargets[index] = entry
-        json["testTargets"] = testTargets
         return result
     }
 }

@@ -42,8 +42,7 @@ public struct SwiftSymbolsTool: Sendable {
                     "show_doc": .object([
                         "type": .string("boolean"),
                         "description": .string(
-                            "Include doc comments in output. Defaults to false.",
-                        ),
+                            "Include doc comments in output. Defaults to false."),
                     ]),
                 ]),
                 "required": .array([.string("module")]),
@@ -108,7 +107,7 @@ public struct SwiftSymbolsTool: Sendable {
             module: module, platform: platform, symbols: symbols, showDoc: showDoc,
         )
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 }
 
@@ -140,7 +139,7 @@ private struct PlatformInfo {
     let triple: String
 }
 
-private func resolvePlatform(_ platform: String) throws -> PlatformInfo {
+private func resolvePlatform(_ platform: String) throws(MCPError) -> PlatformInfo {
     switch platform.lowercased() {
         case "macos": return PlatformInfo(sdk: "macosx", triple: "arm64-apple-macos15.0")
         case "ios": return PlatformInfo(sdk: "iphoneos", triple: "arm64-apple-ios18.0")
@@ -182,6 +181,8 @@ private func formatOutput(
     showDoc: Bool,
 ) -> String {
     var lines: [String] = []
+    // header, blank, then a title and a trailing blank per symbol, plus optional detail lines
+    lines.reserveCapacity(symbols.count * 3 + 2)
     lines.append("Module: \(module) (\(platform), \(symbols.count) symbols)")
     lines.append("")
 
@@ -248,7 +249,7 @@ private actor SymbolGraphCache {
         let key = "\(module)|\(platform)|\(sdkPath)|\(triple)"
         if let cached = cached[key] { return cached }
         if let inflight = inflight[key] { return try await inflight.value }
-        let task = Task {
+        let task = Task(name: "symbol-graph-extract:\(module)") {
             try await Self.extract(
                 module: module, platform: platform, sdkPath: sdkPath, triple: triple,
             )
@@ -307,9 +308,7 @@ private actor SymbolGraphCache {
 private struct SymbolGraph: Decodable, Sendable {
     let symbols: [Symbol]
 
-    private enum CodingKeys: String, CodingKey {
-        case symbols
-    }
+    private enum CodingKeys: String, CodingKey { case symbols }
 }
 
 private struct Symbol: Decodable {

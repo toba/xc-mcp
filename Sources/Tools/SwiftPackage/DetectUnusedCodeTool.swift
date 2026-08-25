@@ -207,11 +207,7 @@ public struct DetectUnusedCodeTool: Sendable {
         if let existing = Self.loadChecklist(path: clPath) {
             state = existing
         } else {
-            if declarations.isEmpty {
-                return CallTool.Result(content: [
-                    .text(text: "No unused code found.", annotations: nil, _meta: nil)
-                ])
-            }
+            if declarations.isEmpty { return CallTool.Result.text("No unused code found.") }
             state = Self.createChecklist(from: declarations, cachePath: cachePath)
         }
 
@@ -244,9 +240,7 @@ public struct DetectUnusedCodeTool: Sendable {
         try Self.saveChecklist(state, path: clPath)
 
         if filtered.isEmpty, declarations.isEmpty {
-            return CallTool.Result(content: [
-                .text(text: "No unused code found.", annotations: nil, _meta: nil)
-            ])
+            return CallTool.Result.text("No unused code found.")
         }
 
         // Build declaration → checklist index map (1-based)
@@ -278,7 +272,7 @@ public struct DetectUnusedCodeTool: Sendable {
                 "\n\(superfluousCount) superfluous ignore comment warning(s) filtered (Periphery bug)"
         }
 
-        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(message)
     }
 
     /// Resolves the cache file path for the given arguments without running a scan.
@@ -393,8 +387,6 @@ public struct DetectUnusedCodeTool: Sendable {
                     packagePath: packagePath, project: project, schemes: schemes,
                 )
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
             throw try error.asMCPError()
         }
@@ -493,15 +485,20 @@ public struct DetectUnusedCodeTool: Sendable {
         if kindFilter.isEmpty, fileFilter.isEmpty, statusFilter.isEmpty { return declarations }
 
         let statusSet = Set(statusFilter.compactMap { ChecklistStatus(rawValue: $0) })
+        let kindSet = Set(kindFilter)
+        // both collections run to the thousands, so the status lookup is indexed once here
+        let statusByID: [String: ChecklistStatus] = statusSet.isEmpty
+            ? [:]
+            : (state.map { Dictionary($0.items.map { ($0.id, $0.status) }) { _, last in last } }
+                ?? [:])
 
         return declarations.filter { decl in
-            if !kindFilter.isEmpty, !kindFilter.contains(formatKind(decl.kind)) { return false }
+            if !kindSet.isEmpty, !kindSet.contains(formatKind(decl.kind)) { return false }
             if !fileFilter.isEmpty, !fileFilter.contains(where: { decl.file.contains($0) }) {
                 return false
             }
-            if !statusSet.isEmpty, let state {
-                let itemID = makeItemID(decl)
-                let itemStatus = state.items.first { $0.id == itemID }?.status ?? .pending
+            if !statusSet.isEmpty, state != nil {
+                let itemStatus = statusByID[makeItemID(decl)] ?? .pending
                 if !statusSet.contains(itemStatus) { return false }
             }
             return true

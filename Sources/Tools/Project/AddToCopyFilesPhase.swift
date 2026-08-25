@@ -35,18 +35,14 @@ public struct AddToCopyFilesPhase: Sendable {
                         "description": .string(
                             "Array of file paths to add (must already exist in project)",
                         ),
-                        "items": .object([
-                            "type": .string("string")
-                        ]),
+                        "items": .object(["type": .string("string")]),
                     ]),
                     "attributes": .object([
                         "type": .string("array"),
                         "description": .string(
                             "Build file attributes (e.g. ['CodeSignOnCopy', 'RemoveHeadersOnCopy']). Auto-defaults for 'Embed Frameworks' phases.",
                         ),
-                        "items": .object([
-                            "type": .string("string")
-                        ]),
+                        "items": .object(["type": .string("string")]),
                     ]),
                 ]),
                 "required": .array([
@@ -59,26 +55,17 @@ public struct AddToCopyFilesPhase: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(phaseName) = arguments["phase_name"],
-              case let .array(filesArray) = arguments["files"] else {
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let phaseName = arguments.getString("phase_name"),
+              case .array = arguments["files"]
+        else {
             throw MCPError.invalidParams(
                 "project_path, target_name, phase_name, and files are required",
             )
         }
 
-        // Parse explicit attributes
-        let explicitAttributes: [String]?
-
-        if case let .array(attrsArray) = arguments["attributes"] {
-            explicitAttributes = attrsArray.compactMap { value -> String? in
-                if case let .string(s) = value { return s }
-                return nil
-            }
-        } else {
-            explicitAttributes = nil
-        }
+        let explicitAttributes = arguments.getOptionalStringArray("attributes")
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -89,39 +76,22 @@ public struct AddToCopyFilesPhase: Sendable {
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
                 $0.name == targetName
             }) else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Target '\(targetName)' not found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        )
-                    ],
-                )
+                return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
             // Find the copy files phase by name
             guard let copyFilesPhase = target.buildPhases.compactMap({
                 $0 as? PBXCopyFilesBuildPhase
-            },
-            )
+            })
             .first(where: { $0.name == phaseName }) else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text:
-                                "Copy Files phase '\(phaseName)' not found in target '\(targetName)'",
-                            annotations: nil, _meta: nil)
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Copy Files phase '\(phaseName)' not found in target '\(targetName)'")
             }
 
             var addedFiles: [String] = []
             var notFoundFiles: [String] = []
 
-            for fileValue in filesArray {
-                guard case let .string(filePath) = fileValue else { continue }
-
+            for filePath in arguments.getStringArray("files") {
                 // Resolve the file path
                 let resolvedFilePath: String
 
@@ -181,13 +151,9 @@ public struct AddToCopyFilesPhase: Sendable {
                 for file in notFoundFiles { message += "\n  - \(file)" }
             }
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(message)
         } catch {
-            throw MCPError.internalError(
-                "Failed to add files to copy files phase: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

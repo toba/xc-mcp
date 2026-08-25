@@ -282,7 +282,7 @@ struct RemoveTargetToolTests {
 
         // A test plan that references the target we are about to remove.
         let planPath = tempDir.appendingPathComponent("Tests.xctestplan").path
-        let plan: [String: Any] = [
+        let plan: [String: AnyValue] = [
             "version": 1,
             "testTargets": [
                 [

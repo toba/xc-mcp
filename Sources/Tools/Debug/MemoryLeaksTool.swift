@@ -4,8 +4,8 @@ import Foundation
 
 /// Detects memory leaks in a running process using the `leaks` command.
 ///
-/// Wraps `/usr/bin/leaks` and parses the output into a structured summary
-/// showing leaked object counts, sizes, and backtraces.
+/// Wraps `/usr/bin/leaks` and parses the output into a structured summary showing leaked object
+/// counts, sizes, and backtraces.
 ///
 /// ## Example
 ///
@@ -17,10 +17,10 @@ public struct MemoryLeaksTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "memory_leaks",
             description:
-            "Detect memory leaks in a running macOS process. Returns leaked object counts, sizes, and backtraces. Use pid or bundle_id to identify the target process.",
+                "Detect memory leaks in a running macOS process. Returns leaked object counts, sizes, and backtraces. Use pid or bundle_id to identify the target process.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -54,9 +54,7 @@ public struct MemoryLeaksTool: Sendable {
         let groupByBacktrace = arguments.getBool("group_by_backtrace", default: true)
 
         var args = ["\(pid)"]
-        if groupByBacktrace {
-            args.append("--groupByBacktrace")
-        }
+        if groupByBacktrace { args.append("--groupByBacktrace") }
 
         let result = try await ProcessResult.run(
             "/usr/bin/leaks",
@@ -72,6 +70,6 @@ public struct MemoryLeaksTool: Sendable {
         }
 
         let output = result.stdout.isEmpty ? result.output : result.stdout
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 }

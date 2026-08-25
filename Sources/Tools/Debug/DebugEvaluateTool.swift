@@ -5,29 +5,23 @@ import Foundation
 public struct DebugEvaluateTool: Sendable {
     private let lldbRunner: LLDBRunner
 
-    public init(lldbRunner: LLDBRunner = LLDBRunner()) {
-        self.lldbRunner = lldbRunner
-    }
+    public init(lldbRunner: LLDBRunner = .init()) { self.lldbRunner = lldbRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_evaluate",
             description:
-            "Evaluate an expression in the context of a debugged process. Wraps po, p, and expr commands.",
+                "Evaluate an expression in the context of a debugged process. Wraps po, p, and expr commands.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "expression": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Expression to evaluate.",
-                        ),
+                        "description": .string("Expression to evaluate."),
                     ]),
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the debugged process.",
-                        ),
+                        "description": .string("Process ID of the debugged process."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -67,17 +61,7 @@ public struct DebugEvaluateTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        var pid = arguments.getInt("pid").map(Int32.init)
-
-        if pid == nil, let bundleId = arguments.getString("bundle_id") {
-            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
-        }
-
-        guard let targetPID = pid else {
-            throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required",
-            )
-        }
+        let targetPID = try await arguments.resolveDebugPID()
 
         let expression = try arguments.getRequiredString("expression")
         let language = arguments.getString("language")
@@ -104,16 +88,16 @@ public struct DebugEvaluateTool: Sendable {
             )
 
             let message = "Expression result:\n\n\(result.output)"
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }
     }
 
-    /// Wraps `execute` with a periodic heartbeat progress notification so the MCP client
-    /// doesn't tool-call-timeout (and cancel) on Swift expressions whose JIT compile +
-    /// inferior call exceed its default per-call patience — multi-line bodies that
-    /// define a nested type then mutate AppKit/Foundation state are the slow path.
+    /// Wraps `execute` with a periodic heartbeat progress notification so the MCP client doesn't
+    /// tool-call-timeout (and cancel) on Swift expressions whose JIT compile + inferior call exceed
+    /// its default per-call patience — multi-line bodies that define a nested type then mutate
+    /// AppKit/Foundation state are the slow path.
     public func executeWithProgress(
         arguments: [String: Value],
         progressToken: ProgressToken,
@@ -121,7 +105,7 @@ public struct DebugEvaluateTool: Sendable {
     ) async throws -> CallTool.Result {
         let reporter = ProgressReporter(token: progressToken, notify: notify)
         return try await reporter.stream {
-            let heartbeat = Task { [reporter] in
+            let heartbeat = Task(name: "debug-evaluate-heartbeat") { [reporter] in
                 let start = ContinuousClock.now
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .seconds(2))
@@ -131,7 +115,7 @@ public struct DebugEvaluateTool: Sendable {
                 }
             }
             defer { heartbeat.cancel() }
-            return try await self.execute(arguments: arguments)
+            return try await execute(arguments: arguments)
         }
     }
 }

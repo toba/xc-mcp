@@ -6,20 +6,18 @@ import Foundation
 
 /// Toggles the per-link-phase `Merge` PBXBuildFile attribute on an entry inside a target's
 /// `PBXFrameworksBuildPhase`. This is the per-library flag Xcode writes when the user checks
-/// "Merge" in the Frameworks build phase UI; combined with `MERGED_BINARY_TYPE = manual` on
-/// the consumer target, it selects which dependencies actually merge.
+/// "Merge" in the Frameworks build phase UI; combined with `MERGED_BINARY_TYPE = manual` on the
+/// consumer target, it selects which dependencies actually merge.
 public struct SetFrameworkMergeAttributeTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_framework_merge_attribute",
             description:
-            "Set or clear the per-library 'Merge' PBXBuildFile attribute on an entry in a target's PBXFrameworksBuildPhase. This is the flag MERGED_BINARY_TYPE=manual uses to decide which mergeable dependencies merge. Matches against productName (SPM products), PBXReferenceProxy name/path (cross-project), or file path's last component / name (local frameworks). No-op (with a clear message) if the attribute is already in the requested state.",
+                "Set or clear the per-library 'Merge' PBXBuildFile attribute on an entry in a target's PBXFrameworksBuildPhase. This is the flag MERGED_BINARY_TYPE=manual uses to decide which mergeable dependencies merge. Matches against productName (SPM products), PBXReferenceProxy name/path (cross-project), or file path's last component / name (local frameworks). No-op (with a clear message) if the attribute is already in the requested state.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -31,7 +29,8 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
-                        "description": .string("Name of the target whose Frameworks phase to modify"),
+                        "description": .string(
+                            "Name of the target whose Frameworks phase to modify"),
                     ]),
                     "framework_name": .object([
                         "type": .string("string"),
@@ -56,10 +55,10 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(frameworkName) = arguments["framework_name"],
-              case let .bool(merge) = arguments["merge"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let frameworkName = arguments.getString("framework_name"),
+              let merge = arguments.getOptionalBool("merge")
         else {
             throw MCPError.invalidParams(
                 "project_path, target_name, framework_name, and merge are required",
@@ -72,88 +71,61 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
-            else {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil, _meta: nil,
-                    ),
-                ])
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
             let phases = target.buildPhases.compactMap { $0 as? PBXFrameworksBuildPhase }
+
             if phases.isEmpty {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Target '\(targetName)' has no PBXFrameworksBuildPhase",
-                        annotations: nil, _meta: nil,
-                    ),
-                ])
+                return CallTool.Result.text("Target '\(targetName)' has no PBXFrameworksBuildPhase")
             }
 
             // Collect every match across all frameworks phases so we can refuse ambiguous edits.
             var matches: [PBXBuildFile] = []
+
             for phase in phases {
-                for buildFile in phase.files ?? [] where Self.matches(buildFile, name: frameworkName) {
-                    matches.append(buildFile)
-                }
+                for buildFile in phase.files ?? []
+                    where Self.matches(buildFile, name: frameworkName)
+                { matches.append(buildFile) }
             }
 
             if matches.isEmpty {
-                return CallTool.Result(content: [
-                    .text(
-                        text:
-                        "No frameworks-phase entry matching '\(frameworkName)' in target '\(targetName)'. Use list_frameworks_phase to see available entries.",
-                        annotations: nil, _meta: nil,
-                    ),
-                ])
+                return CallTool.Result.text(
+                    "No frameworks-phase entry matching '\(frameworkName)' in target '\(targetName)'. Use list_frameworks_phase to see available entries."
+                )
             }
 
             if matches.count > 1 {
-                return CallTool.Result(content: [
-                    .text(
-                        text:
-                        "Ambiguous framework name '\(frameworkName)' in target '\(targetName)' — \(matches.count) entries match. Use a more specific identifier.",
-                        annotations: nil, _meta: nil,
-                    ),
-                ])
+                return CallTool.Result.text(
+                    "Ambiguous framework name '\(frameworkName)' in target '\(targetName)' — \(matches.count) entries match. Use a more specific identifier."
+                )
             }
 
             let buildFile = matches[0]
             let (changed, beforeAttrs, afterAttrs) = Self.applyMerge(merge, to: buildFile)
 
             if !changed {
-                return CallTool.Result(content: [
-                    .text(
-                        text:
-                        "'\(frameworkName)' already has merge=\(merge) (ATTRIBUTES=\(beforeAttrs)). No changes made.",
-                        annotations: nil, _meta: nil,
-                    ),
-                ])
+                return CallTool.Result.text(
+                    "'\(frameworkName)' already has merge=\(merge) (ATTRIBUTES=\(beforeAttrs)). No changes made."
+                )
             }
 
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            return CallTool.Result(content: [
-                .text(
-                    text:
-                    "Set merge=\(merge) on '\(frameworkName)' in target '\(targetName)' (ATTRIBUTES \(beforeAttrs) → \(afterAttrs))",
-                    annotations: nil, _meta: nil,
-                ),
-            ])
-        } catch {
-            throw MCPError.internalError(
-                "Failed to set framework merge attribute: \(error.localizedDescription)",
+            return CallTool.Result.text(
+                "Set merge=\(merge) on '\(frameworkName)' in target '\(targetName)' (ATTRIBUTES \(beforeAttrs) → \(afterAttrs))"
             )
+        } catch {
+            throw try error.asMCPError()
         }
     }
 
     static func matches(_ buildFile: PBXBuildFile, name: String) -> Bool {
-        if let product = buildFile.product {
-            if product.productName == name { return true }
-        }
+        if let product = buildFile.product { if product.productName == name { return true } }
+
         if let fileElement = buildFile.file {
             if let proxy = fileElement as? PBXReferenceProxy {
                 if proxy.path == name || proxy.name == name { return true }
@@ -172,6 +144,7 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
     ) -> (Bool, String, String) {
         var settings = buildFile.settings ?? [:]
         var attrs: [String]
+
         if case let .array(existing) = settings["ATTRIBUTES"] {
             attrs = existing
         } else if case let .string(single) = settings["ATTRIBUTES"] {
@@ -184,14 +157,10 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
         let hasMerge = attrs.contains("Merge")
 
         if merge {
-            if hasMerge {
-                return (false, beforeDesc, beforeDesc)
-            }
+            if hasMerge { return (false, beforeDesc, beforeDesc) }
             attrs.append("Merge")
         } else {
-            if !hasMerge {
-                return (false, beforeDesc, beforeDesc)
-            }
+            if !hasMerge { return (false, beforeDesc, beforeDesc) }
             attrs.removeAll { $0 == "Merge" }
         }
 

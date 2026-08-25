@@ -340,20 +340,21 @@ public actor SessionManager {
         let runner = warmupRunner
         let started = ContinuousClock.now
         warmupStatus[packagePath] = .running(startedAt: started)
-        warmupTasks[
-            packagePath] = Task.immediateDetached(priority: .background) { [weak self] in
-                do {
-                    try await runner(packagePath)
-                    await self?.completeWarmup(packagePath: packagePath, started: started)
-                } catch is CancellationError {
-                    await self?.markWarmupCancelled(packagePath: packagePath)
-                } catch {
-                    await self?.markWarmupFailed(
-                        packagePath: packagePath,
-                        message: String(describing: error),
-                    )
-                }
+        warmupTasks[packagePath] = Task.immediateDetached(
+            name: "package-warmup:\(packagePath)", priority: .background,
+        ) { [weak self] in
+            do {
+                try await runner(packagePath)
+                await self?.completeWarmup(packagePath: packagePath, started: started)
+            } catch is CancellationError {
+                await self?.markWarmupCancelled(packagePath: packagePath)
+            } catch {
+                await self?.markWarmupFailed(
+                    packagePath: packagePath,
+                    message: String(describing: error),
+                )
             }
+        }
     }
 
     /// Cancels an in-flight warmup for `packagePath` and waits for the background task to terminate
@@ -505,6 +506,18 @@ public actor SessionManager {
         )
     }
 
+    /// Resolves the simulator UDID from arguments or session defaults, or returns `nil`
+    ///
+    /// Use this where the absence of a simulator selects another path rather than fails. The caller
+    /// then reports its own error, or falls back to a macOS target.
+    ///
+    /// - Parameter arguments: The tool arguments dictionary.
+    /// - Returns: The resolved simulator UDID, or `nil` when neither source supplies one.
+    public func resolveOptionalSimulator(from arguments: [String: Value]) -> String? {
+        reloadIfNeeded()
+        return arguments.getString("simulator") ?? simulatorUDID
+    }
+
     /// Resolves the device UDID from arguments or session defaults.
     ///
     /// - Parameter arguments: The tool arguments dictionary.
@@ -643,19 +656,37 @@ public actor SessionManager {
 
     /// Resolves the package path from arguments or session defaults.
     ///
+    /// The result names a directory that holds a `Package.swift`. Every SwiftPM tool needs that
+    /// guarantee, so the check belongs here rather than in each caller.
+    ///
     /// - Parameter arguments: The tool arguments dictionary.
     /// - Returns: The resolved package path.
-    /// - Throws: MCPError.invalidParams if no package path is available.
+    /// - Throws: MCPError.invalidParams if no package path is available, or if the resolved
+    ///   directory holds no `Package.swift`.
     public func resolvePackagePath(from arguments: [String: Value]) throws(MCPError) -> String {
         reloadIfNeeded()
+
+        let resolved: String
+
         if let value = arguments.getString("package_path") {
-            return PathUtility.resolvePath(from: value)
+            resolved = PathUtility.resolvePath(from: value)
+        } else if let session = packagePath {
+            resolved = session
+        } else if let detected = PathUtility.findPackageRoot() {
+            // Auto-detect by walking up from cwd looking for Package.swift
+            resolved = detected
+        } else {
+            throw MCPError.invalidParams(
+                "package_path is required. Set it with set_session_defaults or pass it directly.",
+            )
         }
-        if let session = packagePath { return session }
-        // Auto-detect by walking up from cwd looking for Package.swift
-        if let detected = PathUtility.findPackageRoot() { return detected }
-        throw MCPError.invalidParams(
-            "package_path is required. Set it with set_session_defaults or pass it directly.",
-        )
+
+        let manifest = URL(fileURLWithPath: resolved).appendingPathComponent("Package.swift").path
+        guard FileManager.default.fileExists(atPath: manifest) else {
+            throw MCPError.invalidParams(
+                "No Package.swift found at \(resolved). Please provide a valid Swift package path.",
+            )
+        }
+        return resolved
     }
 }

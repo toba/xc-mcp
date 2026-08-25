@@ -17,9 +17,7 @@ public struct DebugThreadsTool: Sendable {
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the debugged process.",
-                        ),
+                        "description": .string("Process ID of the debugged process."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -29,9 +27,7 @@ public struct DebugThreadsTool: Sendable {
                     ]),
                     "select": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Thread index to switch to.",
-                        ),
+                        "description": .string("Thread index to switch to."),
                     ]),
                 ]),
                 "required": .array([]),
@@ -41,28 +37,16 @@ public struct DebugThreadsTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        var pid = arguments.getInt("pid").map(Int32.init)
-
-        if pid == nil, let bundleId = arguments.getString("bundle_id") {
-            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
-        }
-
-        guard let targetPID = pid else {
-            throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required",
-            )
-        }
+        let targetPID = try await arguments.resolveDebugPID()
 
         let selectIndex = arguments.getInt("select")
 
         do {
             try await lldbRunner.requireStopped(pid: targetPID)
-            let result = try await lldbRunner.listThreads(
-                pid: targetPID, selectIndex: selectIndex,
-            )
+            let result = try await lldbRunner.listThreads(pid: targetPID, selectIndex: selectIndex)
 
             let message = "Threads for process \(targetPID):\n\n\(result.output)"
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

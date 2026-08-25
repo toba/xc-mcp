@@ -46,9 +46,9 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(folderPath) = arguments["folder_path"],
-              case let .string(targetName) = arguments["target_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let folderPath = arguments.getString("folder_path"),
+              let targetName = arguments.getString("target_name")
         else {
             throw MCPError.invalidParams("project_path, folder_path, and target_name are required")
         }
@@ -80,11 +80,8 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
             guard let syncGroups = target.fileSystemSynchronizedGroups,
                   syncGroups.contains(where: { $0 === syncGroup })
             else {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Target '\(targetName)' does not reference synchronized folder '\(folderPath)'",
-                        annotations: nil, _meta: nil)
-                ],)
+                return CallTool.Result.text(
+                    "Target '\(targetName)' does not reference synchronized folder '\(folderPath)'")
             }
 
             var editor = try PBXProjEditor(PBXProjTextEditor.read(projectPath: projectURL.path))
@@ -111,17 +108,11 @@ public struct RemoveTargetFromSynchronizedFolderTool: Sendable {
 
             try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
 
-            return CallTool.Result(content: [
-                .text(
-                    text: "Successfully removed target '\(targetName)' from synchronized folder '\(folderPath)'",
-                    annotations: nil, _meta: nil)
-            ],)
-        } catch let error as MCPError {
-            throw error
-        } catch {
-            throw MCPError.internalError(
-                "Failed to remove target from synchronized folder: \(error.localizedDescription)",
+            return CallTool.Result.text(
+                "Successfully removed target '\(targetName)' from synchronized folder '\(folderPath)'"
             )
+        } catch {
+            throw try error.asMCPError()
         }
     }
 }

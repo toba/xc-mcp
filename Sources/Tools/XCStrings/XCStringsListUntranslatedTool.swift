@@ -4,12 +4,10 @@ import XCMCPCore
 public struct XCStringsListUntranslatedTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_list_untranslated",
             description: "List untranslated keys for a specific language",
             inputSchema: .object([
@@ -34,18 +32,12 @@ public struct XCStringsListUntranslatedTool: Sendable {
         let filePath = try arguments.getRequiredString("file")
         let language = try arguments.getRequiredString("language")
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
             let untranslated = try await parser.listUntranslated(for: language)
 
             let json = try encodePrettyJSON(untranslated, fallback: "[]")
 
-            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(json)
         }
     }
 }

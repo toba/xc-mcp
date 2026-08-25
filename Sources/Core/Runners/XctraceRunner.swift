@@ -1,3 +1,4 @@
+import MCP
 import Foundation
 import Subprocess
 
@@ -28,9 +29,13 @@ public struct XctraceRunner: Sendable {
     ///
     /// - Parameter arguments: The command-line arguments to pass to xctrace.
     /// - Returns: The result containing exit code and output.
-    /// - Throws: An error if the process fails to launch.
-    public func run(arguments: [String]) async throws -> XctraceResult {
-        try await ProcessResult.xcrun("xctrace", arguments: arguments)
+    /// - Throws: ``XctraceError/commandFailed(_:)`` if the process fails to launch.
+    public func run(arguments: [String]) async throws(XctraceError) -> XctraceResult {
+        do {
+            return try await ProcessResult.xcrun("xctrace", arguments: arguments)
+        } catch {
+            throw .commandFailed("\(error)")
+        }
     }
 
     /// Starts a long-running trace recording, returning the Process for lifecycle management.
@@ -48,7 +53,7 @@ public struct XctraceRunner: Sendable {
     ///   - allProcesses: Whether to record system-wide.
     ///   - launchPath: Optional path to an app bundle to launch under xctrace.
     /// - Returns: The running Process instance.
-    /// - Throws: An error if the process fails to launch.
+    /// - Throws: ``XctraceError/launchFailed(_:)`` if the process fails to launch.
     public func record(
         template: String,
         outputPath: String,
@@ -58,7 +63,7 @@ public struct XctraceRunner: Sendable {
         attachName: String?,
         allProcesses: Bool,
         launchPath: String? = nil,
-    ) throws -> Process {
+    ) throws(XctraceError) -> Process {
         var args = ["record", "--template", template, "--output", outputPath]
 
         if let device { args += ["--device", device] }
@@ -74,7 +79,12 @@ public struct XctraceRunner: Sendable {
         if allProcesses { args += ["--all-processes"] }
 
         let process = Process.xcrun("xctrace", arguments: args)
-        try process.run()
+
+        do {
+            try process.run()
+        } catch {
+            throw .launchFailed("\(error)")
+        }
         return process
     }
 
@@ -82,8 +92,8 @@ public struct XctraceRunner: Sendable {
     ///
     /// - Parameter kind: The type of listing: "templates", "instruments", or "devices".
     /// - Returns: The result containing the list output.
-    /// - Throws: An error if the process fails to launch.
-    public func list(kind: String) async throws -> XctraceResult {
+    /// - Throws: ``XctraceError/commandFailed(_:)`` if the process fails to launch.
+    public func list(kind: String) async throws(XctraceError) -> XctraceResult {
         try await run(arguments: ["list", kind])
     }
 
@@ -94,16 +104,36 @@ public struct XctraceRunner: Sendable {
     ///   - xpath: Optional XPath query for specific data tables.
     ///   - toc: Whether to show the table of contents.
     /// - Returns: The result containing the exported XML data.
-    /// - Throws: An error if the process fails to launch.
+    /// - Throws: ``XctraceError/commandFailed(_:)`` if the process fails to launch.
     public func export(
         inputPath: String,
         xpath: String?,
         toc: Bool,
-    ) async throws -> XctraceResult {
+    ) async throws(XctraceError) -> XctraceResult {
         var args = ["export", "--input", inputPath]
 
         if let xpath { args += ["--xpath", xpath] } else if toc { args += ["--toc"] }
 
         return try await run(arguments: args)
+    }
+}
+
+/// Errors from ``XctraceRunner``.
+public enum XctraceError: LocalizedError, Sendable, MCPErrorConvertible {
+    /// An xctrace command failed to launch or to run to completion.
+    case commandFailed(String)
+
+    /// A long-running recording process failed to launch.
+    case launchFailed(String)
+
+    public var errorDescription: String? {
+        switch self {
+            case let .commandFailed(message): "xctrace command failed: \(message)"
+            case let .launchFailed(message): "xctrace recording failed to start: \(message)"
+        }
+    }
+
+    public func toMCPError() -> MCPError {
+        .internalError(errorDescription ?? "xctrace operation failed")
     }
 }

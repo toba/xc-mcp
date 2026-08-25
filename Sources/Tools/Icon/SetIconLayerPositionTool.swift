@@ -9,8 +9,7 @@ public struct SetIconLayerPositionTool: Sendable {
     public func tool() -> Tool {
         .init(
             name: "set_icon_layer_position",
-            description:
-                "Adjust the scale and offset of a layer or group in a .icon bundle.",
+            description: "Adjust the scale and offset of a layer or group in a .icon bundle.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -60,34 +59,20 @@ public struct SetIconLayerPositionTool: Sendable {
         let offsetX = arguments.getDouble("offset_x")
         let offsetY = arguments.getDouble("offset_y")
 
-        guard FileManager.default.fileExists(atPath: bundlePath) else {
-            throw MCPError.invalidParams("Icon bundle not found: \(bundlePath)")
-        }
-
-        var manifest = try IconManifest.read(from: bundlePath)
-        guard groupIndex >= 0, groupIndex < manifest.groups.count else {
-            throw MCPError.invalidParams(
-                "group_index \(groupIndex) out of range (0..<\(manifest.groups.count))"
-            )
-        }
+        var manifest = try IconManifest.open(bundlePath)
+        try manifest.validateGroupIndex(groupIndex)
 
         // Read existing or create new position
         let desc: String
 
         switch target {
             case "group":
-                let existing = manifest.groups[groupIndex].position
-                let newScale = scale ?? existing?.scale ?? 1.0
-                let newOffsetX = offsetX ?? existing?.translationInPoints.first ?? 0
-                let newOffsetY = offsetY
-                    ?? (existing?.translationInPoints.count ?? 0 > 1
-                        ? existing!.translationInPoints[1]
-                        : 0)
-                manifest.groups[groupIndex].position = IconManifest.Position(
-                    scale: newScale, translationInPoints: [newOffsetX, newOffsetY],
+                let position = IconManifest.Position.merging(
+                    manifest.groups[groupIndex].position,
+                    scale: scale, offsetX: offsetX, offsetY: offsetY,
                 )
-                desc =
-                    "group \(groupIndex) → scale=\(newScale), offset=[\(newOffsetX), \(newOffsetY)]"
+                manifest.groups[groupIndex].position = position
+                desc = "group \(groupIndex) → \(position.summary)"
 
             case "layer":
                 guard let layerIndex else {
@@ -99,25 +84,18 @@ public struct SetIconLayerPositionTool: Sendable {
                         "layer_index \(layerIndex) out of range (0..<\(layers.count))"
                     )
                 }
-                let existing = manifest.groups[groupIndex].layers[layerIndex].position
-                let newScale = scale ?? existing?.scale ?? 1.0
-                let newOffsetX = offsetX ?? existing?.translationInPoints.first ?? 0
-                let newOffsetY = offsetY
-                    ?? (existing?.translationInPoints.count ?? 0 > 1
-                        ? existing!.translationInPoints[1]
-                        : 0)
-                manifest.groups[groupIndex].layers[layerIndex].position = IconManifest.Position(
-                    scale: newScale, translationInPoints: [newOffsetX, newOffsetY],
+                let position = IconManifest.Position.merging(
+                    layers[layerIndex].position,
+                    scale: scale, offsetX: offsetX, offsetY: offsetY,
                 )
-                desc = "layer \(layerIndex) in group \(groupIndex) → scale=\(newScale), offset=[\(newOffsetX), \(newOffsetY)]"
+                manifest.groups[groupIndex].layers[layerIndex].position = position
+                desc = "layer \(layerIndex) in group \(groupIndex) → \(position.summary)"
 
             default: throw MCPError.invalidParams("target must be 'layer' or 'group'")
         }
 
         try manifest.write(to: bundlePath)
 
-        return CallTool.Result(
-            content: [.text(text: "Positioned \(desc)", annotations: nil, _meta: nil)],
-        )
+        return CallTool.Result.text("Positioned \(desc)")
     }
 }

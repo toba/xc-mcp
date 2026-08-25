@@ -88,21 +88,18 @@ public struct ShowLastBuildRawTool: Sendable {
         // holds the complete linker invocation and can be read directly as a last resort.
         parts.append("Full raw log on disk: \(capture.path)")
 
-        return CallTool.Result(content: [
-            .text(text: parts.joined(separator: "\n\n"), annotations: nil, _meta: nil)
-        ],)
+        return CallTool.Result.text(parts.joined(separator: "\n\n"))
     }
 
     // MARK: - Formatting
 
     private func header(for capture: RawBuildLog.Capture) -> String {
         guard let meta = capture.metadata else { return "## Last build raw output" }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let status = meta.succeeded ? "succeeded" : "failed"
         return "## Last build raw output (\(meta.action) — \(status))\n"
             + "Destination: \(meta.destination)\n"
-            + "Captured: \(formatter.string(from: meta.capturedAt)) — \(meta.byteCount) bytes"
+            + "Captured: \(TimestampFormatting.buildLog.string(from: meta.capturedAt))"
+            + " — \(meta.byteCount) bytes"
     }
 
     private func body(label: String, text: String) -> String { "\(label):\n\n```\n\(text)\n```" }

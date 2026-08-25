@@ -4,12 +4,10 @@ import XCMCPCore
 public struct XCStringsBatchCheckKeysTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_batch_check_keys",
             description: "Check if multiple keys exist in an xcstrings file in one call",
             inputSchema: .object([
@@ -26,9 +24,7 @@ public struct XCStringsBatchCheckKeysTool: Sendable {
                     ]),
                     "language": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Optional language to check translations for",
-                        ),
+                        "description": .string("Optional language to check translations for"),
                     ]),
                 ]),
                 "required": .array([.string("file"), .string("keys")]),
@@ -45,19 +41,13 @@ public struct XCStringsBatchCheckKeysTool: Sendable {
         }
         let language = arguments.getString("language")
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
             let results = try await parser.checkKeys(keys, language: language)
 
             let batchResult = BatchCheckKeysResult(results: results)
             let json = try encodePrettyJSON(batchResult)
 
-            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(json)
         }
     }
 }

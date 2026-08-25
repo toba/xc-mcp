@@ -120,7 +120,7 @@ struct DiscoveryIntegrationTests {
 
     @Test(.timeLimit(.minutes(2)))
     func `get app bundle id ice cubes app`() async throws {
-        let tool = GetAppBundleIdTool(
+        let tool = GetAppBundleIDTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
         )
@@ -137,7 +137,7 @@ struct DiscoveryIntegrationTests {
 
     @Test(.timeLimit(.minutes(2)))
     func `get mac bundle id alamofire`() async throws {
-        let tool = GetMacBundleIdTool(
+        let tool = GetMacBundleIDTool(
             xcodebuildRunner: xcodebuildRunner,
             sessionManager: sessionManager,
         )

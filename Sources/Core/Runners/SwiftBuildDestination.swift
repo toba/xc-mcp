@@ -78,16 +78,17 @@ public enum SwiftBuildDestination: String, Sendable, CaseIterable {
     /// A simulator slice matches the host architecture, because the simulator runs native code. A
     /// device slice is always 64-bit ARM. watchOS devices use the `arm64_32` ILP32 variant.
     public var architecture: String {
-        if isSimulator || self == .macOS { return Self.hostArchitecture }
-        return self == .watchOS ? "arm64_32" : "arm64"
+        isSimulator || self == .macOS
+            ? Self.hostArchitecture
+            : self == .watchOS ? "arm64_32" : "arm64"
     }
 
     /// The architecture of the machine running the server.
     public static var hostArchitecture: String {
         #if arch(arm64)
-            "arm64"
+        "arm64"
         #else
-            "x86_64"
+        "x86_64"
         #endif
     }
 
@@ -161,6 +162,7 @@ public struct ResolvedSwiftDestination: Sendable {
     /// The SwiftPM flags that select this destination.
     public var arguments: [String] { ["--sdk", sdkPath, "--triple", triple] }
 
-    /// A label for a tool result, such as `ios-simulator destination arm64-apple-ios26.5-simulator`.
+    /// A label for a tool result, such as
+    /// `ios-simulator destination arm64-apple-ios26.5-simulator`.
     public var label: String { "\(destination.rawValue) destination \(triple)" }
 }

@@ -44,21 +44,16 @@ public struct DuplicateTargetTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(sourceTargetName) = arguments["source_target"],
-              case let .string(newTargetName) = arguments["new_target_name"] else {
+        guard let projectPath = arguments.getString("project_path"),
+              let sourceTargetName = arguments.getString("source_target"),
+              let newTargetName = arguments.getString("new_target_name")
+        else {
             throw MCPError.invalidParams(
                 "project_path, source_target, and new_target_name are required",
             )
         }
 
-        let newBundleIdentifier: String?
-
-        if case let .string(bundleId) = arguments["new_bundle_identifier"] {
-            newBundleIdentifier = bundleId
-        } else {
-            newBundleIdentifier = nil
-        }
+        let newBundleIdentifier = arguments.getString("new_bundle_identifier")
 
         do {
             // Resolve and validate the project path
@@ -71,28 +66,13 @@ public struct DuplicateTargetTool: Sendable {
             guard let sourceTarget = xcodeproj.pbxproj.nativeTargets.first(where: {
                 $0.name == sourceTargetName
             }) else {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Source target '\(sourceTargetName)' not found in project",
-                            annotations: nil,
-                            _meta: nil,
-                        )
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Source target '\(sourceTargetName)' not found in project")
             }
 
             // Check if target with new name already exists
             if xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == newTargetName }) {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Target '\(newTargetName)' already exists in project",
-                            annotations: nil,
-                            _meta: nil,
-                        )
-                    ],
-                )
+                return CallTool.Result.text("Target '\(newTargetName)' already exists in project")
             }
 
             // Duplicate build configuration list
@@ -178,12 +158,16 @@ public struct DuplicateTargetTool: Sendable {
             )
             newTarget.productName = newTargetName
 
+            guard let project = xcodeproj.pbxproj.rootObject else {
+                throw MCPError.invalidParams("Project has no root object: \(projectPath)")
+            }
+
             // Copy dependencies
             for sourceDependency in sourceTarget.dependencies {
                 if let dependencyTarget = sourceDependency.target {
                     // Create new proxy
                     let newProxy = PBXContainerItemProxy(
-                        containerPortal: .project(xcodeproj.pbxproj.rootObject!),
+                        containerPortal: .project(project),
                         remoteGlobalID: .object(dependencyTarget),
                         proxyType: .nativeTarget,
                         remoteInfo: dependencyTarget.name,
@@ -204,12 +188,10 @@ public struct DuplicateTargetTool: Sendable {
             xcodeproj.pbxproj.add(object: newTarget)
 
             // Add target to project
-            if let project = xcodeproj.pbxproj.rootObject { project.targets.append(newTarget) }
+            project.targets.append(newTarget)
 
             // Create target folder in main group
-            if let project = try xcodeproj.pbxproj.rootProject(),
-               let mainGroup = project.mainGroup
-            {
+            if let mainGroup = project.mainGroup {
                 let targetGroup = PBXGroup(sourceTree: .group, name: newTargetName)
                 xcodeproj.pbxproj.add(object: targetGroup)
                 mainGroup.children.append(targetGroup)
@@ -218,21 +200,12 @@ public struct DuplicateTargetTool: Sendable {
             // Save project
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            let bundleIdText = newBundleIdentifier != nil
-                ? " with bundle identifier '\(newBundleIdentifier!)'"
-                : ""
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text:
-                            "Successfully duplicated target '\(sourceTargetName)' as '\(newTargetName)'\(bundleIdText)",
-                        annotations: nil, _meta: nil)
-                ],
+            let bundleIDText = newBundleIdentifier.map { " with bundle identifier '\($0)'" } ?? ""
+            return CallTool.Result.text(
+                "Successfully duplicated target '\(sourceTargetName)' as '\(newTargetName)'\(bundleIDText)"
             )
         } catch {
-            throw MCPError.internalError(
-                "Failed to duplicate target in Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

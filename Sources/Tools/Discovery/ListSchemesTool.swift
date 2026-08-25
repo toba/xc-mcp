@@ -73,7 +73,7 @@ public struct ListSchemesTool: Sendable {
                 output = format == "json"
                     ? formatSchemesJSON(from: result.stdout)
                     : parseSchemeList(from: result.stdout)
-                return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+                return CallTool.Result.text(output)
             } else {
                 throw MCPError.internalError("Failed to list schemes: \(result.errorOutput)")
             }
@@ -92,40 +92,53 @@ public struct ListSchemesTool: Sendable {
         return outputString
     }
 
+    /// The `xcodebuild -list -json` payload.
+    ///
+    /// A workspace payload carries the `workspace` key and a project payload the `project` key.
+    private struct SchemeList: Decodable {
+        /// The container the payload describes. A workspace names no target or configuration.
+        struct Container: Decodable {
+            let name: String?
+            let schemes: [String]?
+            let targets: [String]?
+            let configurations: [String]?
+        }
+
+        let workspace: Container?
+        let project: Container?
+    }
+
     private func parseSchemeList(from json: String) -> String {
-        let data = Data(json.utf8)
-        guard let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        guard let parsed = try? JSONDecoder().decode(SchemeList.self, from: Data(json.utf8)) else {
             // If not JSON, return raw output
             return json
         }
 
         var output = ""
 
-        // Handle workspace format
-        if let workspace = parsed["workspace"] as? [String: Any] {
-            if let name = workspace["name"] as? String { output += "Workspace: \(name)\n\n" }
+        if let workspace = parsed.workspace {
+            if let name = workspace.name { output += "Workspace: \(name)\n\n" }
 
-            if let schemes = workspace["schemes"] as? [String] {
+            if let schemes = workspace.schemes {
                 output += "Schemes (\(schemes.count)):\n"
                 for scheme in schemes.sorted() { output += "  - \(scheme)\n" }
             }
         }
 
-        // Handle project format
-        if let project = parsed["project"] as? [String: Any] {
-            if let name = project["name"] as? String { output += "Project: \(name)\n\n" }
+        if let project = parsed.project {
+            if let name = project.name { output += "Project: \(name)\n\n" }
 
-            if let schemes = project["schemes"] as? [String] {
+            if let schemes = project.schemes {
                 output += "Schemes (\(schemes.count)):\n"
                 for scheme in schemes.sorted() { output += "  - \(scheme)\n" }
             }
 
-            if let targets = project["targets"] as? [String] {
+            if let targets = project.targets {
                 output += "\nTargets (\(targets.count)):\n"
                 for target in targets.sorted() { output += "  - \(target)\n" }
             }
 
-            if let configurations = project["configurations"] as? [String] {
+            if let configurations = project.configurations {
                 output += "\nConfigurations (\(configurations.count)):\n"
                 for config in configurations { output += "  - \(config)\n" }
             }

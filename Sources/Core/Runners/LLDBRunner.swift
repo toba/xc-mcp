@@ -5,39 +5,29 @@ import Subprocess
 import Synchronization
 import TobaConcurrency
 
-/// Thread-safe one-shot wrapper around a `CheckedContinuation` .
+/// Which arm of the ``LLDBSession/readUntilPrompt(timeout:poisonOnFailure:)`` race finished first.
+private enum ReadOutcome: Sendable {
+    /// The reader reached the prompt, end of file, or a hangup, and carries what it read.
+    case output(String)
+
+    /// The deadline passed with no prompt in sight.
+    case deadline
+
+    /// The arm stood down because the read as a whole was cancelled.
+    case retired
+}
+
+/// The output the PTY reader has consumed so far.
 ///
-/// Ensures the continuation is resumed exactly once, even when multiple threads race to complete it
-/// (e.g., a reader thread and a timeout handler).
-private final class OneShotContinuation<T: Sendable>: Sendable {
-    private let continuation: CheckedContinuation<T, any Error>
-    private let resumed = Mutex(false)
+/// A reference type because a `~Copyable` `Mutex` cannot cross the `sending` boundary a task group
+/// imposes on `addTask`. The reader owns every write; the deadline arm reads it to quote what
+/// arrived before it gave up.
+private final class PartialOutput: Sendable {
+    private let text = Mutex("")
 
-    init(_ continuation: CheckedContinuation<T, any Error>) { self.continuation = continuation }
+    func record(_ value: String) { text(set: value) }
 
-    /// Resumes with a value. Returns true if this call won the race.
-    @discardableResult
-    func resume(returning value: T) -> Bool {
-        let didResume = resumed.withLock { flag -> Bool in
-            if flag { return false }
-            flag = true
-            return true
-        }
-        if didResume { continuation.resume(returning: value) }
-        return didResume
-    }
-
-    /// Resumes with an error. Returns true if this call won the race.
-    @discardableResult
-    func resume(throwing error: any Error) -> Bool {
-        let didResume = resumed.withLock { flag -> Bool in
-            if flag { return false }
-            flag = true
-            return true
-        }
-        if didResume { continuation.resume(throwing: error) }
-        return didResume
-    }
+    var current: String { text.withLock { $0 } }
 }
 
 /// Opens a pseudo-TTY pair and returns (primary, replica) file descriptors.
@@ -119,8 +109,9 @@ public actor LLDBSession {
     private let stderr: FileHandle
     /// Maximum time to wait for a command response. Mutable so the long launch/`--waitfor` window
     /// can be lowered to an interactive value once attach completes (see
-    /// ``setCommandTimeout(_:)``).
-    private var commandTimeout: TimeInterval
+    /// ``setCommandTimeout(_:)``). Readable so a caller that raises it can restore the value it
+    /// found instead of assuming the interactive default.
+    public private(set) var commandTimeout: TimeInterval
     /// File descriptors to close when the session is terminated.
     private let ptyFDs: [Int32]
 
@@ -428,6 +419,13 @@ public actor LLDBSession {
     /// cancelled/timed-out/force-killed session would otherwise leak a stale `lldb-rpc-server` that
     /// wedges the next debug launch.
     public func terminate() async {
+        // Shielded because this is the cleanup a cancelled launch depends on. Every await below
+        // spawns or waits on a subprocess, and runSubprocess kills its child group on cancel, so an
+        // unshielded lookup returns nothing and leaks the very lldb-rpc-server this reaps.
+        await withTaskCancellationShield { await self.terminateUnshielded() }
+    }
+
+    private func terminateUnshielded() async {
         let lldbPID = process.processIdentifier
         // Capture child pids now, while lldb is still their parent — once lldb exits they reparent
         // to launchd and can no longer be found via `pgrep -P <lldbPID>`.
@@ -478,163 +476,159 @@ public actor LLDBSession {
     /// lets the read abort in bounded time and memory regardless of scheduler pressure.
     static let maxResponseBytes = 1_000_000
 
+    /// Reads the PTY until the `(lldb) ` prompt arrives
+    ///
+    /// Polls without waiting and suspends between empty polls, so a quiet session parks the task
+    /// instead of holding a cooperative thread. Each decoded chunk goes into `partial`, which is
+    /// what the deadline arm quotes when it wins the race.
+    ///
+    /// - Parameters:
+    ///   - fd: The primary end of the LLDB pseudo-terminal.
+    ///   - partial: Receives the text read so far.
+    /// - Returns: The output ahead of the prompt, or everything read when the PTY reports end of
+    ///   file, a hangup, or cancellation.
+    private static func readToPrompt(
+        fd: Int32,
+        partial: PartialOutput,
+    ) async throws(LLDBError) -> String {
+        let promptMarker = "(lldb) "
+        var accumulated = ""
+        var buffer = Data()
+        var totalBytes = 0
+        var chunkData = Data(count: 4096)
+
+        while !Task.isCancelled {
+            var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+            let ready = poll(&pollFD, 1, 0)
+
+            if ready < 0, errno != EINTR {
+                throw .commandFailed(
+                    "poll() on LLDB PTY failed: \(String(cString: strerror(errno)))",
+                )
+            }
+            if ready <= 0 {
+                // nothing pending: suspend rather than hold the thread
+                try? await Task.sleep(for: .milliseconds(20))
+                continue
+            }
+            // POLLHUP/POLLERR — treat like EOF.
+            guard pollFD.revents & Int16(POLLIN) != 0 else { return accumulated }
+
+            let n = chunkData.withUnsafeMutableBytes { raw -> Int in
+                guard let base = raw.baseAddress else { return -1 }
+                return read(fd, base, raw.count)
+            }
+            if n == 0 { return accumulated }  // EOF — process exited
+
+            if n < 0 {
+                if errno == EINTR || errno == EAGAIN {
+                    await Task.yield()
+                    continue
+                }
+                throw .commandFailed(
+                    "read() from LLDB PTY failed: \(String(cString: strerror(errno)))",
+                )
+            }
+
+            totalBytes += n
+            buffer.append(chunkData.prefix(n))
+
+            if let text = String(data: buffer, encoding: .utf8) {
+                buffer = Data()
+                accumulated += text
+                partial.record(accumulated)
+
+                if accumulated.hasSuffix(promptMarker) {
+                    return String(accumulated.dropLast(promptMarker.count))
+                }
+            }
+
+            // Flood guard: a bounded amount of output without ever seeing a prompt means the target
+            // is emitting faster than LLDB hands back control.
+            if totalBytes > maxResponseBytes {
+                throw .commandFailed(
+                    "LLDB emitted over \(maxResponseBytes / 1000)KB without returning a prompt — the target is flooding output, typically a breakpoint on a high-frequency symbol (sqlite3_prepare_v2, malloc, objc_msgSend, …) or an inferior-function-calling condition. Aborting to avoid a wedged session; recreate the session and use a narrower breakpoint.",
+                )
+            }
+            // a flooding target must not monopolise the thread
+            await Task.yield()
+        }
+        return accumulated
+    }
+
+    /// Builds the message for a read that ran out of time, quoting the tail of `partial`
+    ///
+    /// Separates an expression-evaluator hang from a generic read timeout. LLDB echoes an `expr`
+    /// and then never produces a follow-up prompt when its own expression pipeline wedges, which is
+    /// typically ObjC/JIT runtime bridge resolution against a freshly auto-interrupted process
+    /// whose main thread is parked mid-syscall (lul-evz). Saying so keeps the next reader off the
+    /// reader-leak path (t57-a7q), which presents the same way.
+    private static func timeoutDetail(partial: String, timeout: TimeInterval) -> String {
+        guard !partial.isEmpty else {
+            return "Timed out waiting for LLDB response (no output received)"
+        }
+        let maxChars = 2000
+        let truncated = partial.count > maxChars ? "...\(partial.suffix(maxChars))" : partial
+        let trimmed = partial.trimmingCharacters(in: .whitespacesAndNewlines)
+        let looksLikeExprHang = trimmed.hasPrefix("expr ")
+            || trimmed.hasPrefix("expression ")
+            || trimmed.contains("\nexpr ")
+            || trimmed.contains("\nexpression ")
+        return looksLikeExprHang
+            ? "LLDB expression evaluator did not return within \(Int(timeout))s. LLDB received the command but never produced a `(lldb)` prompt — typically the inferior is wedged in a syscall (e.g. TCC preflight) or the JIT is hung resolving runtime bridges against an auto-interrupted process. Try `process status` to see what the threads are doing; consider warming the session with a trivial `expr -- (int)0` before the AppKit-touching call. Partial output:\n\(truncated)"
+            : "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
+    }
+
     /// Reads output from LLDB until the `(lldb) ` prompt appears.
     ///
-    /// Uses a lock-guarded flag to ensure the continuation is resumed exactly once. On timeout or a
-    /// runaway-output flood, marks the session as poisoned so it will be recreated on next use,
-    /// unless `poisonOnFailure` is false (used by speculative drain / early-crash callers that
-    /// tolerate unterminated buffered output without invalidating the shared session).
+    /// Races the PTY reader against the deadline in a task group, so the loser is cancelled the
+    /// moment the winner posts. The group also cannot return while either arm is alive, which is
+    /// what keeps a reader from surviving into the next command and stealing its bytes (t57-a7q).
+    ///
+    /// On timeout or a runaway-output flood, marks the session as poisoned so it will be recreated
+    /// on next use, unless `poisonOnFailure` is false (used by speculative drain / early-crash
+    /// callers that tolerate unterminated buffered output without invalidating the shared session).
     func readUntilPrompt(
         timeout: TimeInterval? = nil,
         poisonOnFailure: Bool = true,
     ) async throws(LLDBError) -> String {
-        let promptMarker = "(lldb) "
+        let effectiveTimeout = timeout ?? commandTimeout
+        let fd = stdout.fileDescriptor
+        let partial = PartialOutput()
 
         do {
-            return try await withCheckedThrowingContinuation {
-                (continuation: CheckedContinuation<String, any Error>) in
-                // One-shot guard ensures the continuation is resumed exactly once.
-                let gate = OneShotContinuation(continuation)
-                // Shared accumulator so timeout handler can report partial output.
-                let partialOutput = Mutex("")
-                // Set once the gate has been resolved (by reader, flood guard, or timeout) so the
-                // reader thread stops promptly instead of spinning on flooding output forever.
-                let finished = Mutex(false)
-                // Set by the GCD reader on exit. The timeout path polls this before resuming the
-                // continuation so the reader can't survive past readUntilPrompt's return — if it
-                // did, it would race the NEXT command's reader for bytes on the shared PTY fd and
-                // silently swallow the response (t57-a7q).
-                let readerDone = Mutex(false)
-
-                let finish: @Sendable (Bool) -> Void = { resumed in
-                    if resumed { finished(set: true) }
+            let outcome = try await withThrowingTaskGroup(of: ReadOutcome.self) { group in
+                group.addTask(name: "lldb-pty-reader") {
+                    let text = try await Self.readToPrompt(fd: fd, partial: partial)
+                    return .output(text)
+                }
+                group.addTask(name: "lldb-command-timeout") {
+                    do { try await Task.sleep(for: .seconds(effectiveTimeout)) } catch {
+                        return .retired
+                    }
+                    return .deadline
                 }
 
-                // Reader: runs on a GCD thread. Uses non-blocking read() with a short poll() wait
-                // so it can notice `finished` (set by the timeout task or a parallel resolution)
-                // within ~50ms and exit cleanly — instead of blocking forever in
-                // FileHandle.availableData, which would leak this thread past readUntilPrompt's
-                // return. A leaked reader would consume the NEXT command's response bytes and
-                // discard them on the `finished` check, leaving the next caller's reader blocked
-                // with no data until its own timeout fires (the t57-a7q "no output received" hang
-                // after a tight 2s drain timeout).
-                let fd = stdout.fileDescriptor
-                DispatchQueue.global().async {
-                    defer { readerDone(set: true) }
-                    var accumulated = ""
-                    var buffer = Data()
-                    var totalBytes = 0
-                    var chunkData = Data(count: 4096)
-                    while true {
-                        if finished.withLock({ $0 }) { return }
-
-                        var pollFD = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
-                        // Short poll so we recheck `finished` ~20×/s. Long enough not to spin a
-                        // CPU; short enough that a stalled session aborts promptly so the timeout
-                        // path doesn't have to wait long for us to exit.
-                        let pollResult = poll(&pollFD, 1, 50)
-                        if pollResult <= 0 { continue }
-
-                        if pollFD.revents & Int16(POLLIN) == 0 {
-                            // POLLHUP/POLLERR — treat like EOF.
-                            finish(gate.resume(returning: accumulated))
-                            return
-                        }
-
-                        let n = chunkData.withUnsafeMutableBytes { raw -> Int in
-                            guard let base = raw.baseAddress else { return -1 }
-                            return read(fd, base, raw.count)
-                        }
-                        if n == 0 {
-                            // EOF — process exited
-                            finish(gate.resume(returning: accumulated))
-                            return
-                        }
-                        if n < 0 {
-                            if errno == EINTR || errno == EAGAIN { continue }
-                            finish(gate.resume(throwing: LLDBError.commandFailed(
-                                "read() from LLDB PTY failed: \(String(cString: strerror(errno)))",
-                            )))
-                            return
-                        }
-                        let chunk = chunkData.prefix(n)
-                        totalBytes += n
-                        buffer.append(chunk)
-
-                        if let str = String(data: buffer, encoding: .utf8) {
-                            buffer = Data()
-                            accumulated += str
-                            partialOutput(set: accumulated)
-
-                            if accumulated.hasSuffix(promptMarker) {
-                                let endIndex = accumulated.index(
-                                    accumulated.endIndex, offsetBy: -promptMarker.count,
-                                )
-                                finish(gate.resume(returning: String(
-                                    accumulated[accumulated.startIndex..<endIndex],
-                                )))
-                                return
-                            }
-                        }
-
-                        // Flood guard: a bounded amount of output without ever seeing a prompt
-                        // means the target is emitting faster than LLDB hands back control.
-                        if totalBytes > Self.maxResponseBytes {
-                            finish(gate.resume(throwing: LLDBError.commandFailed(
-                                "LLDB emitted over \(Self.maxResponseBytes / 1000)KB without returning a prompt — the target is flooding output, typically a breakpoint on a high-frequency symbol (sqlite3_prepare_v2, malloc, objc_msgSend, …) or an inferior-function-calling condition. Aborting to avoid a wedged session; recreate the session and use a narrower breakpoint.",
-                            )))
-                            return
-                        }
+                var first = ReadOutcome.output("")
+                while let next = try await group.next() {
+                    // A retired arm means the whole read was cancelled, so let the other arm
+                    // report.
+                    guard case .retired = next else {
+                        first = next
+                        break
                     }
                 }
+                // Retire the loser here rather than at the group's implicit exit, so no arm sleeps
+                // out a window the command already beat.
+                group.cancelAll()
+                return first
+            }
 
-                // Timeout: uses Task.sleep instead of DispatchQueue.asyncAfter.
-                let effectiveTimeout = timeout ?? self.commandTimeout
-                Task(name: "lldb-command-timeout") { [weak self] in
-                    try? await Task.sleep(for: .seconds(effectiveTimeout))
-                    let partial = partialOutput.withLock { $0 }
-                    let detail: String
-                    if partial.isEmpty {
-                        detail = "Timed out waiting for LLDB response (no output received)"
-                    } else {
-                        let maxChars = 2000
-                        let truncated = partial.count > maxChars
-                            ? "...\(partial.suffix(maxChars))"
-                            : partial
-                        // Distinguish an expression-evaluator hang (LLDB received and echoed an
-                        // `expr` but never produced a follow-up prompt within the read window) from
-                        // a generic read timeout. Avoids the next agent re-chasing the reader-leak
-                        // path (t57-a7q) when the underlying issue is LLDB's own expr pipeline
-                        // wedging — typically ObjC/JIT runtime bridge resolution on a freshly
-                        // auto-interrupted process whose main thread is parked mid-syscall
-                        // (lul-evz).
-                        let trimmed = partial.trimmingCharacters(in: .whitespacesAndNewlines)
-                        let looksLikeExprHang = trimmed.hasPrefix("expr ")
-                            || trimmed.hasPrefix("expression ")
-                            || trimmed.contains("\nexpr ")
-                            || trimmed.contains("\nexpression ")
-                        detail = looksLikeExprHang
-                            ? "LLDB expression evaluator did not return within \(Int(effectiveTimeout))s. LLDB received the command but never produced a `(lldb)` prompt — typically the inferior is wedged in a syscall (e.g. TCC preflight) or the JIT is hung resolving runtime bridges against an auto-interrupted process. Try `process status` to see what the threads are doing; consider warming the session with a trivial `expr -- (int)0` before the AppKit-touching call. Partial output:\n\(truncated)"
-                            : "Timed out waiting for LLDB response. Partial output:\n\(truncated)"
-                    }
-                    // Mark finished FIRST so the reader's next poll-tick exits, then wait for it
-                    // (bounded) before resuming the continuation. This guarantees no leaked reader
-                    // survives past readUntilPrompt's return — see t57-a7q for the failure mode
-                    // when a leaked reader silently steals the next command's bytes. Mark finished
-                    // FIRST so the reader's next poll-tick exits, then wait for it (bounded) before
-                    // resuming the continuation. This guarantees no leaked reader survives past
-                    // readUntilPrompt's return — see t57-a7q for the failure mode when a leaked
-                    // reader silently steals the next command's bytes.
-                    finished(set: true)
-                    let waitDeadline = ContinuousClock.now + .milliseconds(500)
-                    while !readerDone.withLock({ $0 }), ContinuousClock.now < waitDeadline {
-                        try? await Task.sleep(for: .milliseconds(10))
-                    }
-                    let resumed = gate.resume(throwing: LLDBError.commandFailed(detail))
-                    if resumed, poisonOnFailure, let self {
-                        await markPoisoned(reason: "readUntilPrompt timeout (\(effectiveTimeout)s)")
-                    }
-                }
+            switch outcome {
+                case let .output(text): return text
+                case .deadline, .retired:
+                    throw LLDBError.commandFailed(Self.timeoutDetail(
+                        partial: partial.current, timeout: effectiveTimeout))
             }
         } catch let error as LLDBError {
             // A flood abort wedges the session just as a timeout does — poison it so the manager
@@ -796,6 +790,11 @@ public actor LLDBSession {
         var accumulated = ""
         var buffer = Data()
         var totalBytes = 0
+        var hits = 0
+        // Tail of the previous chunk, so a marker split across two reads still counts once. It is
+        // one character short of the marker, so it can never hold a match of its own.
+        let carryLength = max(marker.count - 1, 0)
+        var carry = ""
         let deadline = ContinuousClock.now + timeout
 
         while ContinuousClock.now < deadline {
@@ -810,14 +809,17 @@ public actor LLDBSession {
             if let str = String(data: buffer, encoding: .utf8) {
                 buffer = Data()
                 accumulated += str
+                // Count over the new chunk alone. Rescanning the accumulator per chunk is quadratic
+                // in the output, and a hot breakpoint drives that toward the megabyte cap.
+                let window = carry + str
+                hits += window.components(separatedBy: marker).count - 1
+                carry = String(window.suffix(carryLength))
             }
 
-            let hits = accumulated.components(separatedBy: marker).count - 1
             if hits >= count { return (accumulated, hits) }
             if totalBytes > Self.maxResponseBytes { break }
         }
 
-        let hits = accumulated.components(separatedBy: marker).count - 1
         return (accumulated, hits)
     }
 
@@ -904,7 +906,7 @@ public actor LLDBSessionManager {
     private var sessions: [Int32: LLDBSession] = [:]
 
     /// Bundle ID to PID mapping for convenience lookup.
-    private var bundleIdToPID: [String: Int32] = [:]
+    private var bundleIDToPID: [String: Int32] = [:]
 
     /// Creates a new persistent LLDB session attached to a process.
     ///
@@ -913,11 +915,12 @@ public actor LLDBSessionManager {
     /// - Parameter pid: The process ID to debug.
     /// - Returns: The LLDB session.
     public func createSession(pid: Int32) async throws(LLDBError) -> LLDBSession {
-        if let existing = sessions[pid], await existing.isAlive { return existing }
-
-        // Clean up any dead or poisoned session for this PID
-        if let old = sessions[pid] { await old.terminate() }
-        sessions.removeValue(forKey: pid)
+        if let existing = sessions[pid] {
+            if await existing.isAlive { return existing }
+            // drop a dead or poisoned session before replacing it
+            await existing.terminate()
+            sessions.removeValue(forKey: pid)
+        }
 
         let session = try LLDBSession(pid: pid)
         try await session.attach()
@@ -1106,13 +1109,13 @@ public actor LLDBSessionManager {
 
     /// Gets an existing session by bundle ID.
     ///
-    /// - Parameter bundleId: The bundle identifier.
+    /// - Parameter bundleID: The bundle identifier.
     /// - Returns: The PID and session if found, nil otherwise.
-    public func getSession(bundleId: String) async -> (pid: Int32, session: LLDBSession)? {
-        guard let pid = bundleIdToPID[bundleId] else { return nil }
+    public func getSession(bundleID: String) async -> (pid: Int32, session: LLDBSession)? {
+        guard let pid = bundleIDToPID[bundleID] else { return nil }
         guard let session = await getSession(pid: pid) else {
             // Clean up stale mapping
-            bundleIdToPID.removeValue(forKey: bundleId)
+            bundleIDToPID.removeValue(forKey: bundleID)
             return nil
         }
         return (pid, session)
@@ -1120,20 +1123,20 @@ public actor LLDBSessionManager {
 
     /// Gets the PID for a bundle ID (for backward compatibility).
     ///
-    /// - Parameter bundleId: The bundle identifier.
+    /// - Parameter bundleID: The bundle identifier.
     /// - Returns: The process ID if a session exists, nil otherwise.
-    public func getPID(bundleId: String) async -> Int32? {
-        guard let result = await getSession(bundleId: bundleId) else { return nil }
+    public func getPID(bundleID: String) async -> Int32? {
+        guard let result = await getSession(bundleID: bundleID) else { return nil }
         return result.pid
     }
 
     /// Associates a bundle ID with a PID.
     ///
     /// - Parameters:
-    ///   - bundleId: The bundle identifier.
+    ///   - bundleID: The bundle identifier.
     ///   - pid: The process ID.
-    public func registerBundleId(_ bundleId: String, forPID pid: Int32) {
-        bundleIdToPID[bundleId] = pid
+    public func registerBundleID(_ bundleID: String, forPID pid: Int32) {
+        bundleIDToPID[bundleID] = pid
     }
 
     /// Removes and terminates a session by PID.
@@ -1142,21 +1145,21 @@ public actor LLDBSessionManager {
     public func removeSession(pid: Int32) async {
         if let session = sessions.removeValue(forKey: pid) { await session.terminate() }
         // Clean up any bundle ID mappings that pointed to this PID
-        bundleIdToPID = bundleIdToPID.filter { $0.value != pid }
+        bundleIDToPID = bundleIDToPID.filter { $0.value != pid }
     }
 
     /// Removes and terminates a session by bundle ID.
     ///
-    /// - Parameter bundleId: The bundle identifier.
-    public func removeSession(bundleId: String) async {
-        guard let pid = bundleIdToPID.removeValue(forKey: bundleId) else { return }
+    /// - Parameter bundleID: The bundle identifier.
+    public func removeSession(bundleID: String) async {
+        guard let pid = bundleIDToPID.removeValue(forKey: bundleID) else { return }
         await removeSession(pid: pid)
     }
 
     /// Gets all active sessions as a bundle ID to PID mapping.
     ///
     /// - Returns: Dictionary mapping bundle IDs to process IDs.
-    public func getAllSessions() -> [String: Int32] { bundleIdToPID }
+    public func getAllSessions() -> [String: Int32] { bundleIDToPID }
 
     /// Gets or creates a session for a PID.
     ///
@@ -1243,6 +1246,20 @@ public struct LLDBRunner: Sendable {
 
         var didInterrupt = false
 
+        // Resume on every exit path so a transient eval error doesn't leave the app frozen. The
+        // session may be poisoned (e.g. expression timeout in `viewHierarchy`), and the poisoning
+        // happens in a fire-and-forget Task that races this block, so `sendCommandNoWait`
+        // ("continue") may succeed yet not actually resume the inferior. SIGCONT covers that, and
+        // the resume error is dropped because the body's own result or error is what the caller
+        // needs.
+        defer {
+            if didInterrupt {
+                try? await session.sendCommandNoWait("continue")
+                await session.setProcessState(.running)
+                kill(pid, SIGCONT)
+            }
+        }
+
         if case .running = await session.syncedProcessState() {
             // Strict interrupt: refuse to proceed if LLDB never confirms the stop. `body` typically
             // issues `expr`, which silently wedges LLDB's evaluator against a still-running target
@@ -1263,29 +1280,21 @@ public struct LLDBRunner: Sendable {
             )
         }
 
-        let result: T
-
-        do {
-            result = try await body(session)
-        } catch {
-            // Resume even on failure so a transient eval error doesn't leave the app frozen. The
-            // session may be poisoned (e.g. expression timeout in `viewHierarchy`) — but poisoning
-            // happens in a fire-and-forget Task that races with this catch path, so
-            // `sendCommandNoWait("continue")` may succeed yet not actually resume the inferior.
-            // Always send SIGCONT as well so the user's app doesn't stay SIGSTOP'd regardless of
-            // whether the queued continue reaches LLDB before the rpc-server is torn down.
+        // Resume on every exit path so a transient eval error doesn't leave the app frozen. The
+        // session may be poisoned (e.g. expression timeout in `viewHierarchy`) — but poisoning
+        // happens in a fire-and-forget Task that races this block, so
+        // `sendCommandNoWait("continue")` may succeed yet not actually resume the inferior. Always
+        // send SIGCONT as well so the user's app doesn't stay SIGSTOP'd regardless of whether the
+        // queued continue reaches LLDB before the rpc-server is torn down.
+        defer {
             if didInterrupt {
                 try? await session.sendCommandNoWait("continue")
                 await session.setProcessState(.running)
                 kill(pid, SIGCONT)
             }
-            throw error
         }
 
-        if didInterrupt {
-            try await session.sendCommandNoWait("continue")
-            await session.setProcessState(.running)
-        }
+        let result = try await body(session)
         return (result, didInterrupt)
     }
 
@@ -1475,14 +1484,14 @@ public struct LLDBRunner: Sendable {
     ///
     /// - Parameters:
     ///   - pid: The process ID of the target process.
-    ///   - breakpointId: The breakpoint ID to delete.
+    ///   - breakpointID: The breakpoint ID to delete.
     /// - Returns: The result containing updated breakpoint list.
     public func deleteBreakpoint(
         pid: Int32,
-        breakpointId: Int,
+        breakpointID: Int,
     ) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
-        let deleteOutput = try await session.sendCommand("breakpoint delete \(breakpointId)")
+        let deleteOutput = try await session.sendCommand("breakpoint delete \(breakpointID)")
         let listOutput = try await session.sendCommand("breakpoint list")
         return .init(exitCode: 0, stdout: deleteOutput + "\n" + listOutput, stderr: "")
     }
@@ -1667,7 +1676,7 @@ public struct LLDBRunner: Sendable {
     ///   - action: The action to perform ( `"add"` , `"remove"` , or `"list"` ).
     ///   - variable: Variable name for add action.
     ///   - address: Memory address for add action (alternative to variable).
-    ///   - watchpointId: Watchpoint ID for remove action.
+    ///   - watchpointID: Watchpoint ID for remove action.
     ///   - condition: Optional condition expression for add action.
     /// - Returns: The result containing watchpoint information.
     public func manageWatchpoint(
@@ -1675,7 +1684,7 @@ public struct LLDBRunner: Sendable {
         action: String,
         variable: String?,
         address: String?,
-        watchpointId: Int?,
+        watchpointID: Int?,
         condition: String?,
     ) async throws(LLDBError) -> LLDBResult {
         let session = try await LLDBSessionManager.shared.getOrCreateSession(pid: pid)
@@ -1707,12 +1716,12 @@ public struct LLDBRunner: Sendable {
                 return LLDBResult(exitCode: 0, stdout: output + "\n" + listOutput, stderr: "")
 
             case "remove":
-                guard let watchpointId else {
+                guard let watchpointID else {
                     throw LLDBError.commandFailed("watchpoint_id is required for remove")
                 }
                 let deleteOutput =
                     try await session
-                    .sendCommand("watchpoint delete \(watchpointId)")
+                    .sendCommand("watchpoint delete \(watchpointID)")
                 let listOutput = try await session.sendCommand("watchpoint list")
                 return LLDBResult(exitCode: 0, stdout: deleteOutput + "\n" + listOutput, stderr: "")
 
@@ -1846,14 +1855,19 @@ public struct LLDBRunner: Sendable {
 
         let (outputs, autoResumed) = try await withProcessStopped(pid: pid) {
             session throws(LLDBError) -> [String] in
-            // Raise the read timeout for the dump and restore it on the way out so the elevated
-            // window doesn't leak to unrelated commands on the shared session.
+            // Raise the read timeout for the dump and restore it on every exit path so the elevated
+            // window doesn't leak to unrelated commands on the shared session. Read the value in
+            // place rather than assuming the interactive default, because a launch session runs at
+            // a longer timeout that must survive the dump.
             let previousReadTimeout: TimeInterval?
             if let readTimeoutSeconds {
-                previousReadTimeout = LLDBSession.interactiveCommandTimeout
+                previousReadTimeout = await session.commandTimeout
                 await session.setCommandTimeout(readTimeoutSeconds)
             } else {
                 previousReadTimeout = nil
+            }
+            defer {
+                if let previousReadTimeout { await session.setCommandTimeout(previousReadTimeout) }
             }
 
             var outputs: [String] = []
@@ -1945,7 +1959,6 @@ public struct LLDBRunner: Sendable {
                 outputs.append("Horizontal constraints:\n" + hOutput)
                 outputs.append("Vertical constraints:\n" + vOutput)
             }
-            if let previousReadTimeout { await session.setCommandTimeout(previousReadTimeout) }
             return outputs
         }
 

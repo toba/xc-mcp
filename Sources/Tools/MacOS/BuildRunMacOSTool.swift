@@ -148,14 +148,15 @@ public struct BuildRunMacOSTool: Sendable {
                 outputTimeout: outputTimeout,
             )
 
-            guard let appPath = extractAppPath(from: buildSettings.stdout) else {
+            // One decode serves every lookup below; the payload runs to megabytes.
+            let settings = BuildSettingSet(buildSettings.stdout)
+
+            guard let appPath = settings.appPath else {
                 throw MCPError.internalError("Could not determine app path from build settings.")
             }
 
             // Step 3: Prepare app bundle for launch (symlink non-embedded frameworks)
-            let builtProductsDir = BuildSettingExtractor.extractSetting(
-                "BUILT_PRODUCTS_DIR", from: buildSettings.stdout,
-            )
+            let builtProductsDir = settings.value("BUILT_PRODUCTS_DIR")
             try await AppBundlePreparer.prepare(
                 appPath: appPath, builtProductsDir: builtProductsDir,
             )
@@ -176,9 +177,9 @@ public struct BuildRunMacOSTool: Sendable {
                 // Resolve PID and check liveness
                 let appName = URL(fileURLWithPath: appPath).deletingPathExtension()
                     .lastPathComponent
-                let bundleId = extractBundleId(from: buildSettings.stdout)
+                let bundleID = settings.bundleID
 
-                if let pid = await PIDResolver.findLaunchedPID(bundleID: bundleId, appName: appName)
+                if let pid = await PIDResolver.findLaunchedPID(bundleID: bundleID, appName: appName)
                 {
                     try await Task.sleep(for: .seconds(1))
 
@@ -188,15 +189,14 @@ public struct BuildRunMacOSTool: Sendable {
                         message += "\nPID: \(pid) (exited — app may have crashed on launch)"
 
                         CrashReportParser.appendCrashReports(
-                            to: &message, processName: appName, bundleID: bundleId,
+                            to: &message, processName: appName, bundleID: bundleID,
                         )
                     }
                 }
 
                 message += "\n\n" + derivedDataNote
 
-                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
-                )
+                return CallTool.Result.text(message)
             } else {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }
@@ -212,13 +212,5 @@ public struct BuildRunMacOSTool: Sendable {
         } catch {
             throw try error.asMCPError()
         }
-    }
-
-    private func extractAppPath(from buildSettings: String) -> String? {
-        BuildSettingExtractor.extractAppPath(from: buildSettings)
-    }
-
-    private func extractBundleId(from buildSettings: String) -> String? {
-        BuildSettingExtractor.extractBundleId(from: buildSettings)
     }
 }

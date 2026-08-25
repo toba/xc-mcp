@@ -58,9 +58,8 @@ struct CompilerCrashReportTests {
         #expect(script.contains("'/usr/bin/swift-frontend'"))
         #expect(script.contains("signal 11"))
 
-        let permissions = try FileManager.default.attributesOfItem(atPath: scriptPath)[
-            .posixPermissions,
-        ] as? NSNumber
+        let permissions = try FileManager.default.attributesOfItem(
+            atPath: scriptPath)[.posixPermissions] as? NSNumber
         #expect(permissions?.intValue == 0o755)
 
         let argv = try String(contentsOfFile: argvPath, encoding: .utf8)

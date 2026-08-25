@@ -98,15 +98,13 @@ public struct CleanTool: Sendable {
 
                 // Clean derived data if requested
                 if cleanDerivedData {
-                    let derivedDataResult = cleanDerivedDataDirectory(
+                    let derivedDataResult = await cleanDerivedDataDirectory(
                         projectPath: projectPath, workspacePath: workspacePath,
                     )
                     messages.append(derivedDataResult)
                 }
 
-                return CallTool.Result(content: [
-                    .text(text: messages.joined(separator: "\n"), annotations: nil, _meta: nil)
-                ],)
+                return CallTool.Result.text(messages.joined(separator: "\n"))
             } else {
                 let errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
                 throw MCPError.internalError("Clean failed:\n\(errorOutput)")
@@ -116,7 +114,10 @@ public struct CleanTool: Sendable {
         }
     }
 
-    private func cleanDerivedDataDirectory(projectPath: String?, workspacePath: String?) -> String {
+    private func cleanDerivedDataDirectory(
+        projectPath: String?,
+        workspacePath: String?,
+    ) async -> String {
         // Get the project/workspace name to find the specific derived data folder
         let projectName: String
 
@@ -158,7 +159,7 @@ public struct CleanTool: Sendable {
                 {
                     let fullPath = parent + "/" + name
 
-                    if let err = removePath(fullPath) {
+                    if let err = await removePath(fullPath) {
                         failures.append("\(fullPath): \(err)")
                     } else {
                         deleted.append(fullPath)
@@ -176,7 +177,7 @@ public struct CleanTool: Sendable {
            !deleted.contains(override),
            FileManager.default.fileExists(atPath: override)
         {
-            if let err = removePath(override) {
+            if let err = await removePath(override) {
                 failures.append("\(override): \(err)")
             } else {
                 deleted.append(override)
@@ -197,7 +198,7 @@ public struct CleanTool: Sendable {
                 {
                     let fullPath = xcodeDerivedData + "/" + item
 
-                    if let err = removePath(fullPath) {
+                    if let err = await removePath(fullPath) {
                         failures.append("\(item): \(err)")
                     } else {
                         deleted.append(item)
@@ -221,7 +222,7 @@ public struct CleanTool: Sendable {
 
     /// Removes a path, falling back to `rm -rf` when `FileManager` hits a permissions edge case.
     /// Returns `nil` on success or a human-readable error message.
-    private func removePath(_ path: String) -> String? {
+    private func removePath(_ path: String) async -> String? {
         let fileManager = FileManager.default
 
         do {
@@ -238,7 +239,8 @@ public struct CleanTool: Sendable {
 
             do {
                 try process.run()
-                process.waitUntilExit()
+                // waitUntilExit parks a cooperative worker until rm finishes.
+                await process.waitForExit()
                 return process.terminationStatus == 0
                     ? nil
                     : "rm -rf exited \(process.terminationStatus)"

@@ -17,9 +17,7 @@ public struct StopSimLogCapTool: Sendable {
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the log capture process to stop.",
-                        ),
+                        "description": .string("Process ID of the log capture process to stop."),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
@@ -48,22 +46,14 @@ public struct StopSimLogCapTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let pid = arguments.getInt("pid")
-        let simulator: String?
-
-        if let explicit = arguments.getString("simulator") {
-            simulator = explicit
-        } else {
-            simulator = await sessionManager.simulatorUDID
-        }
+        let simulator = await sessionManager.resolveOptionalSimulator(from: arguments)
         let outputFile = arguments.getString("output_file")
             ?? simulator.map { "/tmp/sim_log_\($0).log" }
         let tailLines = arguments.getInt("tail_lines") ?? 50
 
         // Must have either pid or simulator
         if pid == nil, simulator == nil {
-            throw MCPError.invalidParams(
-                "Either pid or simulator is required to stop log capture.",
-            )
+            throw MCPError.invalidParams("Either pid or simulator is required to stop log capture.")
         }
 
         await LogCapture.stopCapture(
@@ -77,13 +67,10 @@ public struct StopSimLogCapTool: Sendable {
 
         if let pid {
             message += " (PID: \(pid))"
-        } else if let simulator
-        {
-            message += " for simulator '\(simulator)'"
-        }
+        } else if let simulator { message += " for simulator '\(simulator)'" }
 
         await LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
 
-        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(message)
     }
 }

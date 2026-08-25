@@ -264,15 +264,13 @@ public struct ExportArchiveTool: Sendable {
                 text += "\nExportOptions.plist: \(plistPath)"
             }
 
-            return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(text)
         } catch {
             throw try error.asMCPError()
         }
     }
 
-    private func validateMethod(_ method: String) throws -> String {
+    private func validateMethod(_ method: String) throws(MCPError) -> String {
         if Self.validMethods.contains(method) { return method }
 
         if let modern = Self.deprecatedMethodMap[method] {
@@ -319,13 +317,16 @@ public struct ExportArchiveTool: Sendable {
             .sorted()
     }
 
+    /// Matches the 36 character submission identifier that follows the label
+    private static nonisolated(unsafe) let submissionIDPattern = /[0-9a-fA-F-]{36}/
+
     private func extractSubmissionID(from output: String) -> String? {
         for line in output.split(separator: "\n") {
             let lower = line.lowercased()
 
             if lower.contains("submission id") || lower.contains("submissionid") {
-                if let range = line.range(of: "[0-9a-fA-F-]{36}", options: .regularExpression) {
-                    return String(line[range])
+                if let match = line.firstMatch(of: Self.submissionIDPattern) {
+                    return String(match.output)
                 }
             }
         }

@@ -55,27 +55,21 @@ public struct MoveGroupTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(groupPath) = arguments["group_path"]
+        guard let projectPath = arguments.getString("project_path"),
+              let groupPath = arguments.getString("group_path")
         else {
             throw MCPError.invalidParams("project_path and group_path are required")
         }
 
         let newParentPath: String?
 
-        if case let .string(np) = arguments["new_parent"], !np.isEmpty {
+        if let np = arguments.getNonEmptyString("new_parent") {
             newParentPath = np
         } else {
             newParentPath = nil
         }
 
-        let newPathRewrite: String?
-
-        if case let .string(p) = arguments["new_path"] {
-            newPathRewrite = p
-        } else {
-            newPathRewrite = nil
-        }
+        let newPathRewrite = arguments.getString("new_path")
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -133,13 +127,8 @@ public struct MoveGroupTool: Sendable {
             }
 
             if !parentChanged, newPathRewrite == nil {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Group '\(groupPath)' is already under the requested parent",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
+                return CallTool.Result.text(
+                    "Group '\(groupPath)' is already under the requested parent")
             }
 
             // Re-pathing or re-parenting a group cascades onto descendant synchronized folders:
@@ -182,7 +171,7 @@ public struct MoveGroupTool: Sendable {
                 msg += "; preserved \(preservedChildren) child \(noun) path"
                     + (preservedChildren == 1 ? "" : "s")
             }
-            return CallTool.Result(content: [.text(text: msg, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(msg)
         } catch {
             throw try error.asMCPError()
         }

@@ -2,12 +2,12 @@ import MCP
 import XCMCPCore
 import Foundation
 
-public struct GetMacBundleIdTool: Sendable {
+public struct GetMacBundleIDTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -15,10 +15,10 @@ public struct GetMacBundleIdTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "get_mac_bundle_id",
             description:
-            "Get the bundle identifier for a macOS app. Can read from a .app bundle directly or from build settings.",
+                "Get the bundle identifier for a macOS app. Can read from a .app bundle directly or from build settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -61,32 +61,30 @@ public struct GetMacBundleIdTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // If app_path is provided, read directly from the app bundle
-        if case let .string(appPath) = arguments["app_path"] {
-            return try readBundleIdFromApp(appPath: appPath)
+        if let appPath = arguments.getString("app_path") {
+            return try readBundleIDFromApp(appPath: appPath)
         }
 
-        // Otherwise, use build settings
+        // Otherwise, use build settings. Both messages name app_path, which the shared resolvers
+        // know nothing about, so restate them here.
         let projectPath: String?
-        if case let .string(value) = arguments["project_path"] {
-            projectPath = value
-        } else {
-            projectPath = await sessionManager.projectPath
-        }
-
         let workspacePath: String?
-        if case let .string(value) = arguments["workspace_path"] {
-            workspacePath = value
-        } else {
-            workspacePath = await sessionManager.workspacePath
+
+        do {
+            (
+                projectPath, workspacePath
+            ) = try await sessionManager.resolveBuildPaths(from: arguments)
+        } catch {
+            throw MCPError.invalidParams(
+                "Either app_path, project_path, or workspace_path is required.",
+            )
         }
 
-        // Get scheme
         let scheme: String
-        if case let .string(value) = arguments["scheme"] {
-            scheme = value
-        } else if let sessionScheme = await sessionManager.scheme {
-            scheme = sessionScheme
-        } else {
+
+        do {
+            scheme = try await sessionManager.resolveScheme(from: arguments)
+        } catch {
             throw MCPError.invalidParams(
                 "scheme is required when not providing app_path. Set it with set_session_defaults or pass it directly.",
             )
@@ -94,13 +92,6 @@ public struct GetMacBundleIdTool: Sendable {
 
         // Get configuration (nil = honor the scheme's own configuration)
         let configuration = await sessionManager.resolveConfiguration(from: arguments)
-
-        // Validate we have either project or workspace
-        if projectPath == nil, workspacePath == nil {
-            throw MCPError.invalidParams(
-                "Either app_path, project_path, or workspace_path is required.",
-            )
-        }
 
         do {
             let result = try await xcodebuildRunner.showBuildSettings(
@@ -111,34 +102,33 @@ public struct GetMacBundleIdTool: Sendable {
             )
 
             if result.succeeded {
-                guard let bundleId = extractBundleId(from: result.stdout) else {
+                let settings = BuildSettingSet(result.stdout)
+
+                guard let bundleID = settings.bundleID else {
                     throw MCPError.internalError(
                         "Could not find PRODUCT_BUNDLE_IDENTIFIER in build settings for scheme '\(scheme)'",
                     )
                 }
 
-                var output =
-                    "Bundle identifier for macOS scheme '\(scheme)' "
-                        + "(\(configuration ?? "scheme default")):\n"
-                output += bundleId
+                var output = "Bundle identifier for macOS scheme '\(scheme)' "
+                    + "(\(configuration ?? "scheme default")):\n"
+                output += bundleID
 
                 // Also extract product name if available
-                if let productName = extractProductName(from: result.stdout) {
+                if let productName = settings.productName {
                     output += "\n\nProduct name: \(productName)"
                 }
 
-                return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+                return CallTool.Result.text(output)
             } else {
-                throw MCPError.internalError(
-                    "Failed to get build settings: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to get build settings: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()
         }
     }
 
-    private func readBundleIdFromApp(appPath: String) throws -> CallTool.Result {
+    private func readBundleIDFromApp(appPath: String) throws -> CallTool.Result {
         let plistPath = "\(appPath)/Contents/Info.plist"
 
         guard FileManager.default.fileExists(atPath: plistPath) else {
@@ -148,21 +138,21 @@ public struct GetMacBundleIdTool: Sendable {
         }
 
         guard let plistData = FileManager.default.contents(atPath: plistPath),
-              let plist = try? PropertyListSerialization.propertyList(
-                  from: plistData, options: [], format: nil,
-              ) as? [String: Any]
+            let plist = try? PropertyListSerialization.propertyList(
+                from: plistData, options: [], format: nil,
+            ) as? [String: Any]
         else {
             throw MCPError.internalError("Failed to read Info.plist from \(appPath)")
         }
 
-        guard let bundleId = plist["CFBundleIdentifier"] as? String else {
+        guard let bundleID = plist["CFBundleIdentifier"] as? String else {
             throw MCPError.internalError(
                 "CFBundleIdentifier not found in Info.plist for \(appPath)",
             )
         }
 
         var output = "Bundle identifier for '\(appPath)':\n"
-        output += bundleId
+        output += bundleID
 
         // Also extract other useful info
         if let bundleName = plist["CFBundleName"] as? String {
@@ -175,14 +165,6 @@ public struct GetMacBundleIdTool: Sendable {
             output += "\nBuild: \(buildNumber)"
         }
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
-    }
-
-    private func extractBundleId(from buildSettings: String) -> String? {
-        BuildSettingExtractor.extractBundleId(from: buildSettings)
-    }
-
-    private func extractProductName(from buildSettings: String) -> String? {
-        BuildSettingExtractor.extractProductName(from: buildSettings)
+        return CallTool.Result.text(output)
     }
 }

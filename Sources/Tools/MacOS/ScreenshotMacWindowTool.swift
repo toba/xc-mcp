@@ -1,19 +1,17 @@
-import CoreGraphics
-import Foundation
-import ImageIO
 import MCP
+import ImageIO
 import XCMCPCore
+import Foundation
+import CoreGraphics
 
 public struct ScreenshotMacWindowTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "screenshot_mac_window",
-            description:
-            "Take a screenshot of a macOS application window. "
-                +
-                "Returns the image inline as base64 PNG. Requires Screen Recording permission in System Settings.",
+            description: "Take a screenshot of a macOS application window. "
+                + "Returns the image inline as base64 PNG. Requires Screen Recording permission in System Settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -50,28 +48,28 @@ public struct ScreenshotMacWindowTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let appName = arguments.getString("app_name")
-        let bundleId = arguments.getString("bundle_id")
+        let bundleID = arguments.getString("bundle_id")
         let windowTitle = arguments.getString("window_title")
         let savePath = arguments.getString("save_path")
 
-        if appName == nil, bundleId == nil, windowTitle == nil {
+        if appName == nil, bundleID == nil, windowTitle == nil {
             throw MCPError.invalidParams(
                 "At least one of app_name, bundle_id, or window_title is required.",
             )
         }
 
         let window = try WindowCapture.findWindow(
-            appName: appName, bundleID: bundleId, windowTitle: windowTitle,
+            appName: appName, bundleID: bundleID, windowTitle: windowTitle,
         )
-        let pngData = try await WindowCapture.capture(
-            windowID: window.windowID, savePath: savePath,
-        )
+        let pngData = try await WindowCapture.capture(windowID: window.windowID, savePath: savePath)
 
         // Get image dimensions for the description
         let width: Int
         let height: Int
+
         if let imageSource = CGImageSourceCreateWithData(pngData as CFData, nil),
-           let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [String: Any]
+           let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil)
+               as? [String: Any]
         {
             width = properties[kCGImagePropertyPixelWidth as String] as? Int ?? 0
             height = properties[kCGImagePropertyPixelHeight as String] as? Int ?? 0
@@ -86,15 +84,11 @@ public struct ScreenshotMacWindowTool: Sendable {
 
         var description =
             "Screenshot of '\(appInfo)' window '\(windowName)' (\(width)x\(height) px)"
-        if let savePath {
-            description += "\nSaved to: \(savePath)"
-        }
+        if let savePath { description += "\nSaved to: \(savePath)" }
 
-        return CallTool.Result(
-            content: [
-                .image(data: base64, mimeType: "image/png", annotations: nil, _meta: nil),
-                .text(text: description, annotations: nil, _meta: nil),
-            ],
-        )
+        return CallTool.Result(content: [
+            .image(data: base64, mimeType: "image/png", annotations: nil, _meta: nil),
+            .text(text: description, annotations: nil, _meta: nil),
+        ],)
     }
 }

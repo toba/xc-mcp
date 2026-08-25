@@ -28,28 +28,22 @@ enum FileReferencePath {
         projectRoot: String,
         basePath: String,
     ) -> FileReferenceLocation {
-        if resolvedFilePath.hasPrefix(groupFullPath + "/") {
-            // The file sits inside the group directory, so the path stays group-relative.
-            return FileReferenceLocation(
+        resolvedFilePath.hasPrefix(groupFullPath + "/")
+            ? FileReferenceLocation(
                 sourceTree: .group,
                 path: String(resolvedFilePath.dropFirst(groupFullPath.count + 1)),
             )
-        }
-
-        if resolvedFilePath.hasPrefix(projectRoot + "/") {
-            // The file sits outside the group but inside the project directory.
-            return FileReferenceLocation(
-                sourceTree: .sourceRoot,
-                path: String(resolvedFilePath.dropFirst(projectRoot.count + 1)),
-            )
-        }
-
-        return resolvedFilePath.hasPrefix(basePath + "/")
-            ? FileReferenceLocation(
-                sourceTree: .sourceRoot,
-                path: relativePath(from: projectRoot, to: resolvedFilePath),
-            )
-            : FileReferenceLocation(sourceTree: .absolute, path: resolvedFilePath)
+            : resolvedFilePath.hasPrefix(projectRoot + "/")
+                ? FileReferenceLocation(
+                    sourceTree: .sourceRoot,
+                    path: String(resolvedFilePath.dropFirst(projectRoot.count + 1)),
+                )
+                : resolvedFilePath.hasPrefix(basePath + "/")
+                    ? FileReferenceLocation(
+                        sourceTree: .sourceRoot,
+                        path: relativePath(from: projectRoot, to: resolvedFilePath),
+                    )
+                    : FileReferenceLocation(sourceTree: .absolute, path: resolvedFilePath)
     }
 
     /// Computes a relative path from `base` to `target` using `../` components.

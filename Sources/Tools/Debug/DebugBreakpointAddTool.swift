@@ -10,16 +10,13 @@ public struct DebugBreakpointAddTool: Sendable {
     public func tool() -> Tool {
         .init(
             name: "debug_breakpoint_add",
-            description:
-                "Add a breakpoint to a debugging session.",
+            description: "Add a breakpoint to a debugging session.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the debugged process.",
-                        ),
+                        "description": .string("Process ID of the debugged process."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -35,15 +32,11 @@ public struct DebugBreakpointAddTool: Sendable {
                     ]),
                     "file": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Source file path for file:line breakpoint.",
-                        ),
+                        "description": .string("Source file path for file:line breakpoint."),
                     ]),
                     "line": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Line number for file:line breakpoint.",
-                        ),
+                        "description": .string("Line number for file:line breakpoint."),
                     ]),
                 ]),
                 "required": .array([]),
@@ -93,13 +86,10 @@ public struct DebugBreakpointAddTool: Sendable {
 
             if let symbol {
                 message += " at symbol '\(symbol)'"
-            } else if let file, let line
-            {
-                message += " at \(file):\(line)"
-            }
+            } else if let file, let line { message += " at \(file):\(line)" }
             message += "\n\n\(result.output)"
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

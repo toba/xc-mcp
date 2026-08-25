@@ -17,9 +17,7 @@ public struct DebugViewBordersTool: Sendable {
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the debugged process.",
-                        ),
+                        "description": .string("Process ID of the debugged process."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -29,15 +27,11 @@ public struct DebugViewBordersTool: Sendable {
                     ]),
                     "enabled": .object([
                         "type": .string("boolean"),
-                        "description": .string(
-                            "Whether to enable or disable view borders.",
-                        ),
+                        "description": .string("Whether to enable or disable view borders."),
                     ]),
                     "border_width": .object([
                         "type": .string("number"),
-                        "description": .string(
-                            "Border width in points. Defaults to 2.0.",
-                        ),
+                        "description": .string("Border width in points. Defaults to 2.0."),
                     ]),
                     "color": .object([
                         "type": .string("string"),
@@ -53,25 +47,13 @@ public struct DebugViewBordersTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        var pid = arguments.getInt("pid").map(Int32.init)
+        let targetPID = try await arguments.resolveDebugPID()
 
-        if pid == nil, let bundleId = arguments.getString("bundle_id") {
-            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
-        }
-
-        guard let targetPID = pid else {
-            throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required",
-            )
-        }
-
-        guard case let .bool(enabled) = arguments["enabled"] else {
+        guard let enabled = arguments.getOptionalBool("enabled") else {
             throw MCPError.invalidParams("'enabled' parameter is required")
         }
 
-        let borderWidth = arguments.getDouble("border_width")
-            ?? arguments.getInt("border_width").map(Double.init)
-            ?? 2.0
+        let borderWidth = arguments.getDouble("border_width") ?? 2.0
 
         let colorName = arguments.getString("color") ?? "red"
 
@@ -110,7 +92,7 @@ public struct DebugViewBordersTool: Sendable {
 
             let state = enabled ? "enabled" : "disabled"
             let message = "View borders \(state):\n\n\(result.output)"
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

@@ -16,11 +16,11 @@ struct PerformanceMetricsTests {
                 testRuns: [
                     XCResultParser.TestRunWithMetrics(
                         testPlanConfiguration: XCResultParser.MetricConfiguration(
-                            configurationId: "config-1",
+                            configurationID: "config-1",
                             configurationName: "Test Scheme Action",
                         ),
                         device: XCResultParser.MetricDevice(
-                            deviceId: "device-1",
+                            deviceID: "device-1",
                             deviceName: "My Mac",
                         ),
                         metrics: [
@@ -75,9 +75,9 @@ struct PerformanceMetricsTests {
                 testRuns: [
                     XCResultParser.TestRunWithMetrics(
                         testPlanConfiguration: XCResultParser.MetricConfiguration(
-                            configurationId: "c1", configurationName: "Config",
+                            configurationID: "c1", configurationName: "Config",
                         ),
-                        device: XCResultParser.MetricDevice(deviceId: "d1", deviceName: "Mac"),
+                        device: XCResultParser.MetricDevice(deviceID: "d1", deviceName: "Mac"),
                         metrics: [
                             XCResultParser.PerformanceMetric(
                                 displayName: "Clock Time",
@@ -170,9 +170,9 @@ struct PerformanceMetricsTests {
                 testRuns: [
                     XCResultParser.TestRunWithMetrics(
                         testPlanConfiguration: XCResultParser.MetricConfiguration(
-                            configurationId: "c1", configurationName: "Config",
+                            configurationID: "c1", configurationName: "Config",
                         ),
-                        device: XCResultParser.MetricDevice(deviceId: "d1", deviceName: "Mac"),
+                        device: XCResultParser.MetricDevice(deviceID: "d1", deviceName: "Mac"),
                         metrics: [
                             XCResultParser.PerformanceMetric(
                                 displayName: "Wall Clock Time",
@@ -303,12 +303,12 @@ struct PerformanceMetricsTests {
     @Test
     func `Format value for time metrics`() {
         let short = ShowPerformanceBaselinesTool.formatValue(
-            0.037, metricId: "com.apple.dt.XCTMetric_Clock.time.monotonic",
+            0.037, metricID: "com.apple.dt.XCTMetric_Clock.time.monotonic",
         )
         #expect(short == "0.0370s")
 
         let long = ShowPerformanceBaselinesTool.formatValue(
-            1.234, metricId: "com.apple.dt.XCTMetric_Clock.time.monotonic",
+            1.234, metricID: "com.apple.dt.XCTMetric_Clock.time.monotonic",
         )
         #expect(long == "1.234s")
     }
@@ -316,17 +316,17 @@ struct PerformanceMetricsTests {
     @Test
     func `Format value for memory metrics`() {
         let kb = ShowPerformanceBaselinesTool.formatValue(
-            15400, metricId: "com.apple.dt.XCTMetric_Memory.physical_peak",
+            15400, metricID: "com.apple.dt.XCTMetric_Memory.physical_peak",
         )
         #expect(kb == "15400 kB")
 
         let gb = ShowPerformanceBaselinesTool.formatValue(
-            2_500_000, metricId: "com.apple.dt.XCTMetric_Memory.physical",
+            2_500_000, metricID: "com.apple.dt.XCTMetric_Memory.physical",
         )
         #expect(gb == "2.5 GB")
 
         let bytes = ShowPerformanceBaselinesTool.formatValue(
-            512, metricId: "com.apple.dt.XCTMetric_Memory.physical",
+            512, metricID: "com.apple.dt.XCTMetric_Memory.physical",
         )
         #expect(bytes == "512 bytes")
     }

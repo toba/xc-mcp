@@ -25,28 +25,7 @@ public struct SwiftPackageCleanTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        // Get package path
-        let packagePath: String
-
-        if case let .string(value) = arguments["package_path"] {
-            packagePath = value
-        } else if let sessionPackagePath = await sessionManager.packagePath {
-            packagePath = sessionPackagePath
-        } else {
-            throw MCPError.invalidParams(
-                "package_path is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
-
-        // Verify Package.swift exists
-        let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift",
-        ).path
-        guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
-            throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
-            )
-        }
+        let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
 
         await sessionManager.cancelWarmupIfRunning(packagePath: packagePath)
 
@@ -57,13 +36,8 @@ public struct SwiftPackageCleanTool: Sendable {
 
             if result.succeeded {
                 let elapsed = cleanStart.duration(to: .now).elapsedDescription
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Package cleaned successfully at \(packagePath) (\(elapsed))",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],)
+                return CallTool.Result.text(
+                    "Package cleaned successfully at \(packagePath) (\(elapsed))")
             } else {
                 throw MCPError.internalError("Clean failed:\n\(result.output)")
             }

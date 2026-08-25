@@ -55,16 +55,6 @@ public struct SwiftDiagnosticsTool: Sendable {
         let traits = try await sessionManager.resolveTraits(from: arguments)
         let timeout = arguments.resolveTimeout(default: SwiftRunner.defaultTimeout)
 
-        // Verify Package.swift exists
-        let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift",
-        ).path
-        guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
-            throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
-            )
-        }
-
         do {
             // Step 1: Clean to force full recompilation
             _ = try await swiftRunner.clean(packagePath: packagePath)
@@ -107,7 +97,7 @@ public struct SwiftDiagnosticsTool: Sendable {
 
             if buildFailed { throw MCPError.internalError(output) }
 
-            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(output)
         } catch {
             throw try error.asMCPError()
         }

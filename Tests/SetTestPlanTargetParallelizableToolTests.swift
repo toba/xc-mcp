@@ -8,27 +8,24 @@ import Foundation
 struct SetTestPlanTargetParallelizableToolTests {
     let pathUtility = PathUtility(basePath: TemporaryDirectory.path)
 
-    private func createTestPlan(_ json: [String: Any]) throws -> String {
+    private func createTestPlan(_ json: [String: AnyValue]) throws -> String {
         let path = TemporaryDirectory.url.appendingPathComponent("test.xctestplan").path
         try TestPlanFile.write(json, to: path)
         return path
     }
 
-    private func basePlan() -> [String: Any] {
+    private func basePlan() -> [String: AnyValue] {
         [
-            "configurations": [
-                ["id": "DEFAULT", "name": "Default", "options": [:] as [String: Any]]
-                    as [String: Any]
-            ],
-            "defaultOptions": [:] as [String: Any],
+            "configurations": [["id": "DEFAULT", "name": "Default", "options": [:]]],
+            "defaultOptions": [:],
             "testTargets": [
                 [
                     "target": [
                         "containerPath": "container:App.xcodeproj",
                         "identifier": "ABC123",
                         "name": "AppTests",
-                    ] as [String: Any]
-                ] as [String: Any]
+                    ]
+                ]
             ],
             "version": 1,
         ]
@@ -59,8 +56,8 @@ struct SetTestPlanTargetParallelizableToolTests {
         #expect(message.contains("target 'AppTests'"))
 
         let json = try TestPlanFile.read(from: path)
-        let targets = json["testTargets"] as? [[String: Any]]
-        #expect(targets?.first?["parallelizable"] as? Bool == false)
+        let targets = json["testTargets"]?.dictionaryArrayValue
+        #expect(targets?.first?["parallelizable"]?.boolValue == false)
     }
 
     @Test
@@ -75,16 +72,16 @@ struct SetTestPlanTargetParallelizableToolTests {
         ])
 
         let json = try TestPlanFile.read(from: path)
-        let targets = json["testTargets"] as? [[String: Any]]
-        #expect(targets?.first?["parallelizable"] as? Bool == true)
+        let targets = json["testTargets"]?.dictionaryArrayValue
+        #expect(targets?.first?["parallelizable"]?.boolValue == true)
     }
 
     @Test
     func `Overwrites existing parallelizable value`() throws {
         var plan = basePlan()
-        var targets = try #require(plan["testTargets"] as? [[String: Any]])
+        var targets = try #require(plan["testTargets"]?.dictionaryArrayValue)
         targets[0]["parallelizable"] = true
-        plan["testTargets"] = targets
+        plan["testTargets"] = .dictionaries(targets)
 
         let path = try createTestPlan(plan)
 
@@ -96,8 +93,8 @@ struct SetTestPlanTargetParallelizableToolTests {
         ])
 
         let json = try TestPlanFile.read(from: path)
-        let result = json["testTargets"] as? [[String: Any]]
-        #expect(result?.first?["parallelizable"] as? Bool == false)
+        let result = json["testTargets"]?.dictionaryArrayValue
+        #expect(result?.first?["parallelizable"]?.boolValue == false)
     }
 
     @Test
@@ -117,8 +114,8 @@ struct SetTestPlanTargetParallelizableToolTests {
         #expect(message.contains("plan-level defaults"))
 
         let json = try TestPlanFile.read(from: path)
-        let defaults = json["defaultOptions"] as? [String: Any]
-        #expect(defaults?["parallelizable"] as? Bool == false)
+        let defaults = json["defaultOptions"]?.dictionaryValue
+        #expect(defaults?["parallelizable"]?.boolValue == false)
     }
 
     @Test

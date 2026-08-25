@@ -212,7 +212,7 @@ public struct BenchmarkBuildTool: Sendable {
                 scheme: scheme, configuration: configuration,
                 cleanSeconds: cleanSeconds, incrementalSeconds: incrementalSeconds,
                 machine: MachineMetadata.current().cpuBrandString,
-                timestamp: ISO8601DateFormatter().string(from: Date()),
+                timestamp: TimestampFormatting.iso8601.string(from: Date()),
             )
             savedTo = Self.saveBaseline(record, to: baselineURL)
         }
@@ -223,7 +223,7 @@ public struct BenchmarkBuildTool: Sendable {
             timingSummary: lastTimingSummary, priorBaseline: priorBaseline,
             savedTo: savedTo,
         )
-        return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(text)
     }
 
     // MARK: - Build invocation

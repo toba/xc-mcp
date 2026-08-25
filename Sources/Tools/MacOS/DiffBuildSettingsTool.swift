@@ -30,15 +30,11 @@ public struct DiffBuildSettingsTool: Sendable {
                 "properties": .object([
                     "target_a": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "First target name (or scheme name) to compare.",
-                        ),
+                        "description": .string("First target name (or scheme name) to compare."),
                     ]),
                     "target_b": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Second target name (or scheme name) to compare.",
-                        ),
+                        "description": .string("Second target name (or scheme name) to compare."),
                     ]),
                     "configuration_a": .object([
                         "type": .string("string"),
@@ -105,8 +101,8 @@ public struct DiffBuildSettingsTool: Sendable {
             destination: XcodebuildRunner.macOSDestination,
         )
 
-        let settingsA = try await parseBuildSettings(from: settingsAResult.stdout)
-        let settingsB = try await parseBuildSettings(from: settingsBResult.stdout)
+        let settingsA = try await BuildSettingExtractor.parseSettings(from: settingsAResult.stdout)
+        let settingsB = try await BuildSettingExtractor.parseSettings(from: settingsBResult.stdout)
 
         // Find differences
         let allKeys = Set(settingsA.keys).union(settingsB.keys).sorted()
@@ -163,37 +159,6 @@ public struct DiffBuildSettingsTool: Sendable {
             }
         }
 
-        return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
-    }
-
-    // MARK: - Private
-
-    /// Parses xcodebuild -showBuildSettings text output into a key-value dictionary.
-    private func parseBuildSettings(from output: String) -> [String: String] {
-        // Try JSON format first
-        let data = Data(output.utf8)
-        if let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
-        {
-            var settings: [String: String] = [:]
-
-            for entry in json {
-                if let buildSettings = entry["buildSettings"] as? [String: Any] {
-                    for (key, value) in buildSettings { settings[key] = "\(value)" }
-                }
-            }
-            if !settings.isEmpty { return settings }
-        }
-
-        // Fallback: parse text format " KEY = VALUE"
-        var settings: [String: String] = [:]
-
-        for line in output.split(separator: "\n") {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard let equalsRange = trimmed.range(of: " = ") else { continue }
-            let key = String(trimmed[trimmed.startIndex..<equalsRange.lowerBound])
-            let value = String(trimmed[equalsRange.upperBound...])
-            if !key.isEmpty { settings[key] = value }
-        }
-        return settings
+        return CallTool.Result.text(text)
     }
 }

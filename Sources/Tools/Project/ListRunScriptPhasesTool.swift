@@ -6,17 +6,15 @@ import Foundation
 
 /// Lists PBXShellScriptBuildPhase entries across targets.
 ///
-/// Useful for auditing pre/post-build script invocations (Swiftiomatic, SwiftGen,
-/// GRDB pre-actions, custom codegen) without grepping project.pbxproj manually.
+/// Useful for auditing pre/post-build script invocations (Swiftiomatic, SwiftGen, GRDB pre-actions,
+/// custom codegen) without grepping project.pbxproj manually.
 public struct ListRunScriptPhasesTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_run_script_phases",
             description:
                 "List every PBXShellScriptBuildPhase across the project's native targets, with each phase's name, position among build phases, input/output paths, sandbox/dependency-tracking flags, and shellScript body. Optionally restrict to a single target or filter by a substring of the shellScript body.",
@@ -49,17 +47,15 @@ public struct ListRunScriptPhasesTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
 
         let targetFilter: String?
-        if case let .string(t) = arguments["target_name"] { targetFilter = t } else {
+        if let t = arguments.getString("target_name") { targetFilter = t } else {
             targetFilter = nil
         }
 
         let scriptFilter: String?
-        if case let .string(s) = arguments["filter_script"], !s.isEmpty { scriptFilter = s } else {
+        if let s = arguments.getNonEmptyString("filter_script") { scriptFilter = s } else {
             scriptFilter = nil
         }
 
@@ -76,16 +72,12 @@ public struct ListRunScriptPhasesTool: Sendable {
                 .sorted(by: { $0.name < $1.name })
 
             if let targetFilter, targets.isEmpty {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Target '\(targetFilter)' not found in project",
-                        annotations: nil, _meta: nil,
-                    ),
-                ])
+                return CallTool.Result.text("Target '\(targetFilter)' not found in project")
             }
 
             for target in targets {
                 var targetSection: [String] = []
+
                 for (idx, phase) in target.buildPhases.enumerated() {
                     guard let shell = phase as? PBXShellScriptBuildPhase else { continue }
                     let body = shell.shellScript ?? ""
@@ -100,9 +92,7 @@ public struct ListRunScriptPhasesTool: Sendable {
                     let runOnly = shell.runOnlyForDeploymentPostprocessing
                     let alwaysOOD = shell.alwaysOutOfDate
                     let depFile = shell.dependencyFile ?? "<none>"
-                    targetSection.append(
-                        "  - phase[\(idx)] '\(name)' (uuid=\(shell.uuid))",
-                    )
+                    targetSection.append("  - phase[\(idx)] '\(name)' (uuid=\(shell.uuid))")
                     targetSection.append("    shellPath: \(shellPath)")
                     targetSection.append(
                         "    runOnlyForDeploymentPostprocessing=\(runOnly) alwaysOutOfDate=\(alwaysOOD) dependencyFile=\(depFile)",
@@ -113,6 +103,7 @@ public struct ListRunScriptPhasesTool: Sendable {
                     if !outputs.isEmpty {
                         targetSection.append("    outputs: \(outputs.joined(separator: ", "))")
                     }
+
                     if !inputLists.isEmpty {
                         targetSection.append(
                             "    inputFileLists: \(inputLists.joined(separator: ", "))",
@@ -128,9 +119,7 @@ public struct ListRunScriptPhasesTool: Sendable {
                         whereSeparator: \.isNewline,
                     )
                     targetSection.append("    shellScript:")
-                    for sl in scriptLines {
-                        targetSection.append("      | \(sl)")
-                    }
+                    for sl in scriptLines { targetSection.append("      | \(sl)") }
                 }
                 if !targetSection.isEmpty {
                     lines.append("Target '\(target.name)':")
@@ -138,21 +127,16 @@ public struct ListRunScriptPhasesTool: Sendable {
                 }
             }
 
-            let scope =
-                "target=\(targetFilter ?? "*"), filter=\(scriptFilter ?? "<none>")"
+            let scope = "target=\(targetFilter ?? "*"), filter=\(scriptFilter ?? "<none>")"
             let header =
                 "list_run_script_phases in \(projectURL.lastPathComponent) (\(scope)): \(phaseCount) phase\(phaseCount == 1 ? "" : "s")"
-            let body = lines.isEmpty ? "  (no matching shell-script phases)" : lines.joined(separator: "\n")
+            let body = lines.isEmpty
+                ? "  (no matching shell-script phases)"
+                : lines.joined(separator: "\n")
 
-            return CallTool.Result(content: [
-                .text(text: "\(header)\n\(body)", annotations: nil, _meta: nil),
-            ])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text("\(header)\n\(body)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

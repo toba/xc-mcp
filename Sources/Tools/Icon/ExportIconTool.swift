@@ -12,10 +12,9 @@ public struct ExportIconTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "export_icon",
-            description:
-            "Export an .icon file (Icon Composer format) to PNG using ictool. "
+            description: "Export an .icon file (Icon Composer format) to PNG using ictool. "
                 + "Renders at the specified size, platform, and rendition (Default, Tinted, TintedDark, etc.). "
                 + "Requires Icon Composer (standalone or bundled with Xcode 26+).",
             inputSchema: .object([
@@ -86,11 +85,9 @@ public struct ExportIconTool: Sendable {
         let scale = arguments.getInt("scale") ?? 1
 
         // Find ictool
-        guard
-            let ictoolPath = Self.ictoolSearchPaths.first(where: {
-                FileManager.default.fileExists(atPath: $0)
-            })
-        else {
+        guard let ictoolPath = Self.ictoolSearchPaths.first(where: {
+            FileManager.default.fileExists(atPath: $0)
+        }) else {
             throw MCPError.internalError(
                 "ictool not found. Install Icon Composer from developer.apple.com/download or use Xcode 26+.",
             )
@@ -101,8 +98,8 @@ public struct ExportIconTool: Sendable {
             throw MCPError.invalidParams("Icon file not found: \(iconPath)")
         }
 
-        // Build ictool arguments:
-        // ictool <input> --export-image --output-file <path> --platform <p> --rendition <r> --width <w> --height <h> --scale <s>
+        // Build ictool arguments: ictool <input> --export-image --output-file <path> --platform <p>
+        // --rendition <r> --width <w> --height <h> --scale <s>
         var args = [
             iconPath,
             "--export-image",
@@ -152,11 +149,9 @@ public struct ExportIconTool: Sendable {
         let pngData = try Data(contentsOf: URL(fileURLWithPath: outputPath))
         let base64 = pngData.base64EncodedString()
 
-        return CallTool.Result(
-            content: [
-                .image(data: base64, mimeType: "image/png", annotations: nil, _meta: nil),
-                .text(text: description, annotations: nil, _meta: nil),
-            ],
-        )
+        return CallTool.Result(content: [
+            .image(data: base64, mimeType: "image/png", annotations: nil, _meta: nil),
+            .text(text: description, annotations: nil, _meta: nil),
+        ],)
     }
 }

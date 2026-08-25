@@ -6,10 +6,10 @@ import Foundation
 
 /// Changes the version requirement on a remote Swift Package already declared in a project.
 ///
-/// `add_swift_package` refuses a package that already exists, and `remove_swift_package` unlinks the
-/// product from every target. Neither raises or lowers a requirement, so a version bump previously
-/// meant editing the project file by hand. This tool rewrites the requirement in place and leaves
-/// every target link untouched.
+/// `add_swift_package` refuses a package that already exists, and `remove_swift_package` unlinks
+/// the product from every target. Neither raises or lowers a requirement, so a version bump
+/// previously meant editing the project file by hand. This tool rewrites the requirement in place
+/// and leaves every target link untouched.
 public struct UpdateSwiftPackageTool: Sendable {
     private let pathUtility: PathUtility
 
@@ -24,31 +24,30 @@ public struct UpdateSwiftPackageTool: Sendable {
                 + "Run resolve_packages afterwards to move the pin in Package.resolved.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object(
-                    [
-                        "project_path": .object([
-                            "type": .string("string"),
-                            "description": .string(
-                                "Path to the .xcodeproj file (relative to current directory)",
-                            ),
-                        ]),
-                        "package_url": .object([
-                            "type": .string("string"),
-                            "description": .string(
-                                "URL of the remote Swift Package to update. Matching ignores a "
-                                    + "trailing '.git' or slash, so either URL form works.",
-                            ),
-                        ]),
-                        "requirement": .object([
-                            "type": .string("string"),
-                            "description": .string(
-                                "New version requirement. Accepts 'from: 1.2.0', "
-                                    + "'upToNextMajor: 1.2.0', 'upToNextMinor: 1.2.0', "
-                                    + "'exact: 1.2.0', 'range: 1.2.0..<2.0.0', 'branch: main', "
-                                    + "'revision: <sha>', or a bare version (treated as exact).",
-                            ),
-                        ]),
-                    ].merging(SwiftPackageTraits.schemaProperty) { _, new in new },
+                "properties": .object([
+                    "project_path": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Path to the .xcodeproj file (relative to current directory)",
+                        ),
+                    ]),
+                    "package_url": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "URL of the remote Swift Package to update. Matching ignores a "
+                                + "trailing '.git' or slash, so either URL form works.",
+                        ),
+                    ]),
+                    "requirement": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "New version requirement. Accepts 'from: 1.2.0', "
+                                + "'upToNextMajor: 1.2.0', 'upToNextMinor: 1.2.0', "
+                                + "'exact: 1.2.0', 'range: 1.2.0..<2.0.0', 'branch: main', "
+                                + "'revision: <sha>', or a bare version (treated as exact).",
+                        ),
+                    ]),
+                ].merging(SwiftPackageTraits.schemaProperty) { _, new in new },
                 ),
                 "required": .array([
                     .string("project_path"), .string("package_url"), .string("requirement"),
@@ -59,15 +58,9 @@ public struct UpdateSwiftPackageTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
-        guard case let .string(packageURL) = arguments["package_url"] else {
-            throw MCPError.invalidParams("package_url is required")
-        }
-        guard case let .string(requirementText) = arguments["requirement"] else {
-            throw MCPError.invalidParams("requirement is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
+        let packageURL = try arguments.getRequiredString("package_url")
+        let requirementText = try arguments.getRequiredString("requirement")
 
         let traits = SwiftPackageTraits.parse(from: arguments)
 
@@ -123,13 +116,9 @@ public struct UpdateSwiftPackageTool: Sendable {
             message += "\n\nThe pin in Package.resolved still holds the old version. Run "
                 + "resolve_packages(update: true, package_url: \"\(packageURL)\") to move it."
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(message)
         } catch {
-            throw MCPError.internalError(
-                "Failed to update Swift Package requirement: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

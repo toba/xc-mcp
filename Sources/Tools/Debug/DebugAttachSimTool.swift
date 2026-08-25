@@ -20,8 +20,7 @@ public struct DebugAttachSimTool: Sendable {
     public func tool() -> Tool {
         .init(
             name: "debug_attach_sim",
-            description:
-                "Attach LLDB debugger to a running app on a simulator or macOS. "
+            description: "Attach LLDB debugger to a running app on a simulator or macOS. "
                 + "For simulator apps, provide bundle_id with a simulator UDID. "
                 + "For macOS apps, provide bundle_id without a simulator — the PID is resolved automatically.",
             inputSchema: .object([
@@ -29,9 +28,7 @@ public struct DebugAttachSimTool: Sendable {
                 "properties": .object([
                     "bundle_id": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Bundle identifier of the app to debug.",
-                        ),
+                        "description": .string("Bundle identifier of the app to debug."),
                     ]),
                     "simulator": .object([
                         "type": .string("string"),
@@ -43,8 +40,7 @@ public struct DebugAttachSimTool: Sendable {
                     "pid": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Process ID to attach to. Alternative to bundle_id.",
-                        ),
+                            "Process ID to attach to. Alternative to bundle_id."),
                     ]),
                 ]),
                 "required": .array([]),
@@ -58,27 +54,19 @@ public struct DebugAttachSimTool: Sendable {
         var pid = arguments.getInt("pid").map(Int32.init)
 
         if pid == nil {
-            guard let bundleId = arguments.getString("bundle_id") else {
+            guard let bundleID = arguments.getString("bundle_id") else {
                 throw MCPError.invalidParams("Either bundle_id or pid is required")
             }
 
             // Try to resolve simulator; if none available, treat as macOS app
-            let simulator: String?
-
-            if let value = arguments.getString("simulator") {
-                simulator = value
-            } else if let sessionSimulator = await sessionManager.simulatorUDID {
-                simulator = sessionSimulator
-            } else {
-                simulator = nil
-            }
+            let simulator = await sessionManager.resolveOptionalSimulator(from: arguments)
 
             if let simulator {
                 // Get PID of the running app on the simulator
-                pid = try await findSimulatorAppPID(bundleId: bundleId, simulator: simulator)
+                pid = try await findSimulatorAppPID(bundleID: bundleID, simulator: simulator)
             } else {
                 // Get PID of the running macOS app
-                pid = try await findMacOSAppPID(bundleId: bundleId)
+                pid = try await findMacOSAppPID(bundleID: bundleID)
             }
         }
 
@@ -91,10 +79,8 @@ public struct DebugAttachSimTool: Sendable {
 
             if result.succeeded || result.output.contains("Process") {
                 // Register the bundle ID mapping
-                if let bundleId = arguments.getString("bundle_id") {
-                    await LLDBSessionManager.shared.registerBundleId(
-                        bundleId, forPID: targetPID,
-                    )
+                if let bundleID = arguments.getString("bundle_id") {
+                    await LLDBSessionManager.shared.registerBundleID(bundleID, forPID: targetPID)
                 }
 
                 var message = "Successfully attached to process \(targetPID)\n\n"
@@ -104,7 +90,9 @@ public struct DebugAttachSimTool: Sendable {
                     NextStepHint(
                         label: "Add a breakpoint",
                         tool: "debug_breakpoint_add",
-                        params: [("pid", .int(Int(targetPID))), ("file", .string("")), ("line", .int(0))],
+                        params: [
+                            ("pid", .int(Int(targetPID))), ("file", .string("")), ("line", .int(0)),
+                        ],
                         priority: 1,
                     ),
                     NextStepHint(
@@ -122,56 +110,52 @@ public struct DebugAttachSimTool: Sendable {
                 ]
                 message = NextStepHints.appended(to: message, hints: hints)
 
-                return CallTool.Result(content: [
-                    .text(text: message, annotations: nil, _meta: nil)
-                ])
+                return CallTool.Result.text(message)
             } else {
-                throw MCPError.internalError(
-                    "Failed to attach to process: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to attach to process: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()
         }
     }
 
-    private func findSimulatorAppPID(bundleId: String, simulator: String) async throws -> Int32 {
+    private func findSimulatorAppPID(bundleID: String, simulator: String) async throws -> Int32 {
         // Verify the app is installed on the simulator
         do {
             _ = try await simctlRunner.getAppContainer(
-                udid: simulator, bundleId: bundleId, container: "app",
+                udid: simulator, bundleID: bundleID, container: "app",
             )
         } catch {
-            throw MCPError.invalidParams(
-                "App '\(bundleId)' not found on simulator '\(simulator)'",
-            )
+            throw try error.asMCPError()
         }
 
         // Use pgrep to find the process
-        let result = try await ProcessResult.run("/usr/bin/pgrep", arguments: ["-f", bundleId])
+        let result = try await ProcessResult.run("/usr/bin/pgrep", arguments: ["-f", bundleID])
         let output = result.stdout
 
         guard let pidString = output.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: .newlines).first,
-              let pid = Int32(pidString) else {
+            let pid = Int32(pidString)
+        else {
             throw MCPError.internalError(
-                "App '\(bundleId)' is not running on simulator '\(simulator)'. Launch it first with launch_app_sim.",
+                "App '\(bundleID)' is not running on simulator '\(simulator)'. Launch it first with launch_app_sim.",
             )
         }
 
         return pid
     }
 
-    private func findMacOSAppPID(bundleId: String) async throws -> Int32 {
+    private func findMacOSAppPID(bundleID: String) async throws -> Int32 {
         // Use pgrep to find the macOS app process by bundle ID
-        let result = try await ProcessResult.run("/usr/bin/pgrep", arguments: ["-f", bundleId])
+        let result = try await ProcessResult.run("/usr/bin/pgrep", arguments: ["-f", bundleID])
         let output = result.stdout
 
         guard let pidString = output.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: .newlines).first,
-              let pid = Int32(pidString) else {
+            let pid = Int32(pidString)
+        else {
             throw MCPError.internalError(
-                "macOS app '\(bundleId)' is not running. Launch it first with build_run_macos or launch_mac_app.",
+                "macOS app '\(bundleID)' is not running. Launch it first with build_run_macos or launch_mac_app.",
             )
         }
 

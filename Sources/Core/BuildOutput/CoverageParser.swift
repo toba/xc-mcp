@@ -63,8 +63,8 @@ public struct CoverageParser: Sendable {
 
             let jsonFiles = files.filter { $0.hasSuffix(".json") }
 
-            if let firstJsonFile = jsonFiles.first {
-                let jsonPath = (coveragePath as NSString).appendingPathComponent(firstJsonFile)
+            if let firstJSONFile = jsonFiles.first {
+                let jsonPath = (coveragePath as NSString).appendingPathComponent(firstJSONFile)
                 return parseCoverageJSON(at: jsonPath, targetFilter: targetFilter)
             }
 

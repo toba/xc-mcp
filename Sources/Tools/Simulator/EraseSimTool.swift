@@ -6,16 +6,16 @@ public struct EraseSimTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "erase_sims",
             description:
-            "Erase all content and settings from a simulator, restoring it to factory state.",
+                "Erase all content and settings from a simulator, restoring it to factory state.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -27,9 +27,7 @@ public struct EraseSimTool: Sendable {
                     ]),
                     "all": .object([
                         "type": .string("boolean"),
-                        "description": .string(
-                            "If true, erases all simulators. Use with caution.",
-                        ),
+                        "description": .string("If true, erases all simulators. Use with caution."),
                     ]),
                 ]),
                 "required": .array([]),
@@ -47,13 +45,7 @@ public struct EraseSimTool: Sendable {
                 let result = try await simctlRunner.eraseAll()
 
                 if result.succeeded {
-                    return CallTool.Result(
-                        content: [.text(
-                            text: "Successfully erased all simulators",
-                            annotations: nil,
-                            _meta: nil,
-                        )],
-                    )
+                    return CallTool.Result.text("Successfully erased all simulators")
                 } else {
                     throw MCPError.internalError(
                         "Failed to erase simulators: \(result.errorOutput)",
@@ -65,12 +57,7 @@ public struct EraseSimTool: Sendable {
         }
 
         // Erase specific simulator
-        let simulator: String
-        if case let .string(value) = arguments["simulator"] {
-            simulator = value
-        } else if let sessionSimulator = await sessionManager.simulatorUDID {
-            simulator = sessionSimulator
-        } else {
+        guard let simulator = await sessionManager.resolveOptionalSimulator(from: arguments) else {
             throw MCPError.invalidParams(
                 "simulator is required. Set it with set_session_defaults or pass it directly, or use 'all: true' to erase all.",
             )
@@ -80,17 +67,9 @@ public struct EraseSimTool: Sendable {
             let result = try await simctlRunner.erase(udid: simulator)
 
             if result.succeeded {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Successfully erased simulator '\(simulator)'",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
+                return CallTool.Result.text("Successfully erased simulator '\(simulator)'")
             } else {
-                throw MCPError.internalError(
-                    "Failed to erase simulator: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to erase simulator: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

@@ -190,9 +190,7 @@ public struct ResolvePackagesTool: Sendable {
             workspacePath: workspacePath, projectPath: projectPath, destination: destination,
         ))
 
-        return CallTool.Result(content: [
-            .text(text: lines.joined(separator: "\n"), annotations: nil, _meta: nil)
-        ])
+        return CallTool.Result.text(lines.joined(separator: "\n"))
     }
 
     // MARK: - Pins

@@ -5,12 +5,10 @@ import Foundation
 public struct XCStringsDeleteTranslationsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_delete_translations",
             description: "Delete translations for multiple languages at once",
             inputSchema: .object([
@@ -47,24 +45,11 @@ public struct XCStringsDeleteTranslationsTool: Sendable {
             throw MCPError.invalidParams("languages array is required and cannot be empty")
         }
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
             try await parser.deleteTranslations(key: key, languages: languages)
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Translations deleted successfully for \(languages.count) languages",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(
+                "Translations deleted successfully for \(languages.count) languages")
         }
     }
 }

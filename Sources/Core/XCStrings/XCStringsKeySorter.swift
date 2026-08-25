@@ -5,11 +5,14 @@ import Foundation
 /// runs.
 public enum XCStringsKeySorter {
     public static func sort(_ keys: some Sequence<String>) -> [String] {
-        keys.sorted { lhs, rhs in
-            let comparison = lhs.localizedStandardCompare(rhs)
+        // bridge each key to NSString once rather than on every comparison the sort makes; the
+        // argument side still bridges because localizedStandardCompare takes a String
+        let decorated = keys.map { ($0, $0 as NSString) }
+        return decorated.sorted { lhs, rhs in
+            let comparison = lhs.1.localizedStandardCompare(rhs.0)
             return comparison == .orderedSame
-                ? lhs < rhs
+                ? lhs.0 < rhs.0
                 : comparison == .orderedAscending
-        }
+        }.map(\.0)
     }
 }

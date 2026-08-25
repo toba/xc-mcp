@@ -6,13 +6,13 @@ public struct InstallAppSimTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "install_app_sim",
             description: "Install an app (.app bundle) on a simulator.",
             inputSchema: .object([
@@ -43,17 +43,10 @@ public struct InstallAppSimTool: Sendable {
             let result = try await simctlRunner.install(udid: simulator, appPath: appPath)
 
             if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Successfully installed app at '\(appPath)' on simulator '\(simulator)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Successfully installed app at '\(appPath)' on simulator '\(simulator)'")
             } else {
-                throw MCPError.internalError(
-                    "Failed to install app: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to install app: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

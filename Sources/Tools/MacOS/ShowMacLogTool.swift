@@ -5,53 +5,16 @@ import Foundation
 public struct ShowMacLogTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "show_mac_log",
             description:
-            "Query historical macOS unified logs via `log show`. Useful for inspecting logs emitted before capture started — e.g. from a crash or app launch that already happened.",
+                "Query historical macOS unified logs via `log show`. Useful for inspecting logs emitted before capture started — e.g. from a crash or app launch that already happened.",
             inputSchema: .object([
                 "type": .string("object"),
-                "properties": .object([
-                    "bundle_id": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Optional bundle identifier to filter logs to a specific app. Uses the last component as the executable name (e.g., 'com.example.MyApp' matches process 'MyApp').",
-                        ),
-                    ]),
-                    "process_name": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Optional process name to filter logs to a specific process. May contain spaces and parentheses (e.g., 'ThesisApp (debug)' from a build_debug_macos launch).",
-                        ),
-                    ]),
-                    "subsystem": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Optional OSLog subsystem to filter logs (e.g., 'com.apple.CloudKit').",
-                        ),
-                    ]),
-                    "predicate": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Optional custom predicate to filter logs. Overrides bundle_id, process_name, and subsystem filters.",
-                        ),
-                    ]),
-                    "level": .object([
-                        "type": .string("string"),
-                        "description": .string(
-                            "Log level to include: 'default', 'info', or 'debug'. Default is 'default' which excludes info/debug messages. Use 'info' or 'debug' to include lower-severity messages.",
-                        ),
-                        "enum": .array([
-                            .string("default"),
-                            .string("info"),
-                            .string("debug"),
-                        ]),
-                    ]),
+                "properties": .object(UnifiedLogQuery.schemaProperties.merging([
                     "last": .object([
                         "type": .string("string"),
                         "description": .string(
@@ -76,7 +39,8 @@ public struct ShowMacLogTool: Sendable {
                             "Maximum number of lines to return from the end of the output. Defaults to 200.",
                         ),
                     ]),
-                ]),
+                ]) { _, new in new },
+                ),
                 "required": .array([]),
             ]),
             annotations: .readOnly,
@@ -84,93 +48,28 @@ public struct ShowMacLogTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let bundleId = arguments.getString("bundle_id")
-        let processName = arguments.getString("process_name")
-        let subsystem = arguments.getString("subsystem")
-        let customPredicate = arguments.getString("predicate")
-
-        let level = arguments.getString("level")
         let last = arguments.getString("last")
         let start = arguments.getString("start")
         let end = arguments.getString("end")
         let tailLines = arguments.getInt("tail_lines") ?? 200
 
         do {
-            if let bundleId {
-                try PredicateFilterValidator.validate(bundleId, field: "bundle_id")
-            }
-            if let processName {
-                try PredicateFilterValidator.validateStringLiteral(
-                    processName, field: "process_name",
-                )
-            }
-            if let subsystem {
-                try PredicateFilterValidator.validate(subsystem, field: "subsystem")
-            }
+            let query = try UnifiedLogQuery(arguments: arguments)
 
-            var args = ["show", "--style", "compact"]
-
-            // Add log level flags
-            if let level {
-                switch level {
-                    case "debug":
-                        args.append("--debug")
-                    case "info":
-                        args.append("--info")
-                    default:
-                        break // "default" needs no flag
-                }
-            }
-
-            // Add time range — default to --last 5m if none specified
-            if let last {
-                args.append(contentsOf: ["--last", last])
-            } else if let start {
-                args.append(contentsOf: ["--start", start])
-                if let end {
-                    args.append(contentsOf: ["--end", end])
-                }
-            } else {
-                args.append(contentsOf: ["--last", "5m"])
-            }
-
-            // Build predicate
-            var predicate: String?
-
-            if let customPredicate {
-                predicate = customPredicate
-            } else {
-                var predicateParts: [String] = []
-
-                if let bundleId {
-                    if let resolved =
-                        await StartMacLogCapTool
-                            .resolveExecutableName(bundleId: bundleId)
-                    {
-                        predicateParts.append("process == \"\(resolved)\"")
-                    } else {
-                        let appName =
-                            bundleId.split(separator: ".").last
-                                .map(String.init) ?? bundleId
-                        predicateParts.append("process ==[cd] \"\(appName)\"")
-                    }
-                }
-                if let processName {
-                    let escaped = PredicateFilterValidator.escapeStringLiteral(processName)
-                    predicateParts.append("process == \"\(escaped)\"")
-                }
-                if let subsystem {
-                    predicateParts.append("subsystem == \"\(subsystem)\"")
+            // Default to --last 5m when the caller names no time range
+            let timeRangeArgs: [String] =
+                if let last {
+                    ["--last", last]
+                } else if let start {
+                    ["--start", start] + (end.map { ["--end", $0] } ?? [])
+                } else {
+                    ["--last", "5m"]
                 }
 
-                if !predicateParts.isEmpty {
-                    predicate = predicateParts.joined(separator: " AND ")
-                }
-            }
-
-            if let predicate {
-                args.append(contentsOf: ["--predicate", predicate])
-            }
+            let predicate = await query.resolvedPredicate()
+            let args = query.commandArguments(
+                subcommand: "show", predicate: predicate, extra: timeRangeArgs,
+            )
 
             let result = try await ProcessResult.run(
                 "/usr/bin/log", arguments: args, timeout: .seconds(30),
@@ -182,20 +81,16 @@ public struct ShowMacLogTool: Sendable {
 
             // Tail the output to avoid overwhelming context
             let lines: [String]
-            if totalLines > tailLines {
-                lines = Array(allLines.suffix(tailLines))
-            } else {
-                lines = allLines
-            }
+            lines = totalLines > tailLines
+                ? Array(allLines.suffix(tailLines))
+                : allLines
 
             var message = "## macOS Log Query\n\n"
 
             // Metadata header
-            if let predicate {
-                message += "**Predicate:** `\(predicate)`\n"
-            }
-            if let level, level != "default" {
-                message += "**Level:** \(level)\n"
+            if let predicate { message += "**Predicate:** `\(predicate)`\n" }
+            if let level = query.level, level != .default {
+                message += "**Level:** \(level.rawValue)\n"
             }
             let timeRange = last ?? start ?? "last 5m"
             message += "**Time range:** \(timeRange)\n"
@@ -210,7 +105,7 @@ public struct ShowMacLogTool: Sendable {
             message += lines.joined(separator: "\n")
             message += "\n```"
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

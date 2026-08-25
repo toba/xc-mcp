@@ -49,19 +49,19 @@ struct DebugAttachSimToolTests {
     // `simulatorUDID`), so the upstream XcodeBuildMCP #411 bug — where an inherited `bundle_id`
     // from session defaults tripped mutual-exclusion validation when the caller passed an explicit
     // `pid` — cannot occur here. This test locks in that contract by confirming SessionManager
-    // exposes no `bundleId` surface.
+    // exposes no `bundleID` surface.
     @Test
     func `SessionManager does not store bundle_id as a session default`() async {
         let manager = SessionManager()
-        // If a `bundleId` property is ever added to SessionManager that gets applied as a default
+        // If a `bundleID` property is ever added to SessionManager that gets applied as a default
         // in tool argument merging, this Mirror-based check will need to be revisited together with
         // DebugAttachSimTool's precedence logic.
         let mirror = Mirror(reflecting: manager)
-        let hasBundleIdField = mirror.children.contains {
+        let hasBundleIDField = mirror.children.contains {
             $0.label?.lowercased().contains("bundleid") == true
         }
         #expect(
-            !hasBundleIdField,
+            !hasBundleIDField,
             "SessionManager must not store a bundle_id default — see issue a3v-j0l")
         _ = await manager.simulatorUDID
     }

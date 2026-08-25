@@ -104,7 +104,7 @@ struct DocumentTypeToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Write document types to plist
-        let plist: [String: Any] = [
+        let plist: [String: AnyValue] = [
             "CFBundleDocumentTypes": [
                 [
                     "CFBundleTypeName": "Thesis Document",
@@ -112,8 +112,8 @@ struct DocumentTypeToolsTests {
                     "CFBundleTypeRole": "Editor",
                     "LSHandlerRank": "Owner",
                     "NSDocumentClass": "$(PRODUCT_MODULE_NAME).Document",
-                ] as [String: Any]
-            ] as [[String: Any]]
+                ]
+            ]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -179,12 +179,12 @@ struct DocumentTypeToolsTests {
 
         // Verify plist contents
         let plist = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let docTypes = plist["CFBundleDocumentTypes"] as? [[String: Any]]
+        let docTypes = plist["CFBundleDocumentTypes"]?.dictionaryArrayValue
         #expect(docTypes?.count == 1)
-        #expect(docTypes?.first?["CFBundleTypeName"] as? String == "Test Document")
-        #expect(docTypes?.first?["CFBundleTypeRole"] as? String == "Editor")
-        #expect(docTypes?.first?["LSHandlerRank"] as? String == "Owner")
-        let contentTypes = docTypes?.first?["LSItemContentTypes"] as? [String]
+        #expect(docTypes?.first?["CFBundleTypeName"]?.stringValue == "Test Document")
+        #expect(docTypes?.first?["CFBundleTypeRole"]?.stringValue == "Editor")
+        #expect(docTypes?.first?["LSHandlerRank"]?.stringValue == "Owner")
+        let contentTypes = docTypes?.first?["LSItemContentTypes"]?.stringArrayValue
         #expect(contentTypes == ["com.example.test"])
     }
 
@@ -195,9 +195,8 @@ struct DocumentTypeToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Pre-populate
-        let plist: [String: Any] = [
-            "CFBundleDocumentTypes": [["CFBundleTypeName": "Test Document"] as [String: Any]]
-                as [[String: Any]]
+        let plist: [String: AnyValue] = [
+            "CFBundleDocumentTypes": [["CFBundleTypeName": "Test Document"]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -223,10 +222,10 @@ struct DocumentTypeToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Pre-populate
-        let plist: [String: Any] = [
+        let plist: [String: AnyValue] = [
             "CFBundleDocumentTypes": [
-                ["CFBundleTypeName": "Test Document", "CFBundleTypeRole": "Viewer"] as [String: Any]
-            ] as [[String: Any]]
+                ["CFBundleTypeName": "Test Document", "CFBundleTypeRole": "Viewer"]
+            ]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -248,9 +247,9 @@ struct DocumentTypeToolsTests {
 
         // Verify update
         let updated = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let docTypes = updated["CFBundleDocumentTypes"] as? [[String: Any]]
-        #expect(docTypes?.first?["CFBundleTypeRole"] as? String == "Editor")
-        #expect(docTypes?.first?["LSHandlerRank"] as? String == "Owner")
+        let docTypes = updated["CFBundleDocumentTypes"]?.dictionaryArrayValue
+        #expect(docTypes?.first?["CFBundleTypeRole"]?.stringValue == "Editor")
+        #expect(docTypes?.first?["LSHandlerRank"]?.stringValue == "Owner")
     }
 
     @Test
@@ -281,9 +280,8 @@ struct DocumentTypeToolsTests {
         let (projectPath, plistPath) = try createProjectWithInfoPlist(tempDir: tempDir)
 
         // Pre-populate
-        let plist: [String: Any] = [
-            "CFBundleDocumentTypes": [["CFBundleTypeName": "Test Document"] as [String: Any]]
-                as [[String: Any]]
+        let plist: [String: AnyValue] = [
+            "CFBundleDocumentTypes": [["CFBundleTypeName": "Test Document"]]
         ]
         try InfoPlistUtility.writeInfoPlist(plist, toPath: plistPath)
 
@@ -328,8 +326,8 @@ struct DocumentTypeToolsTests {
         #expect(message.contains("Successfully added"))
 
         let plist = try InfoPlistUtility.readInfoPlist(path: plistPath)
-        let docTypes = plist["CFBundleDocumentTypes"] as? [[String: Any]]
-        #expect(docTypes?.first?["CustomKey"] as? String == "CustomValue")
+        let docTypes = plist["CFBundleDocumentTypes"]?.dictionaryArrayValue
+        #expect(docTypes?.first?["CustomKey"]?.stringValue == "CustomValue")
     }
 
     @Test

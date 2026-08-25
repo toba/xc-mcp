@@ -56,6 +56,6 @@ public struct InteractKeyTool: Sendable {
             )
             desc += "\n\(snapshot)"
         }
-        return CallTool.Result(content: [.text(text: desc, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(desc)
     }
 }

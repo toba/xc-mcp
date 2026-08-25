@@ -62,8 +62,8 @@ import XCMCPTools
         return root
     }
 
-    // A real release build runs here. The limit bounds a wedged `swift build` so it cannot hang
-    // the whole suite.
+    // A real release build runs here. The limit bounds a wedged `swift build` so it cannot hang the
+    // whole suite.
     @Test(.timeLimit(.minutes(5)))
     func `a release build of the test targets compiles the @testable import`() async throws {
         let package = try makePackage()

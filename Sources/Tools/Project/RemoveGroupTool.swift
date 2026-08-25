@@ -7,12 +7,10 @@ import Foundation
 public struct RemoveGroupTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_group",
             description: "Remove a group from the project navigator",
             inputSchema: .object([
@@ -44,14 +42,13 @@ public struct RemoveGroupTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(groupName) = arguments["group_name"]
-        else {
-            throw MCPError.invalidParams("project_path and group_name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let groupName = arguments.getString("group_name")
+        else { throw MCPError.invalidParams("project_path and group_name are required") }
 
         let recursive: Bool
-        if case let .bool(r) = arguments["recursive"] {
+
+        if let r = arguments.getOptionalBool("recursive") {
             recursive = r
         } else {
             recursive = false
@@ -64,27 +61,21 @@ public struct RemoveGroupTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                  let mainGroup = project.mainGroup
-            else {
-                throw MCPError.internalError("Main group not found in project")
-            }
+                let mainGroup = project.mainGroup
+            else { throw MCPError.internalError("Main group not found in project") }
 
             // Walk the path to find the target group and its parent
             let targetGroup: PBXGroup
+
             do {
                 targetGroup = try mainGroup.resolveGroupPath(groupName)
             } catch {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Group '\(groupName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
+                return CallTool.Result.text("Group '\(groupName)' not found in project")
             }
 
             let pathComponents = groupName.split(separator: "/")
             let parentGroup: PBXGroup
+
             if pathComponents.count > 1 {
                 let parentPath = pathComponents.dropLast().joined(separator: "/")
                 parentGroup = try mainGroup.resolveGroupPath(parentPath)
@@ -94,19 +85,13 @@ public struct RemoveGroupTool: Sendable {
 
             // Check for children when not recursive
             if !recursive, !targetGroup.children.isEmpty {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Group '\(groupName)' has \(targetGroup.children.count) children. Use recursive=true to remove it and all its contents.",
-                            annotations: nil, _meta: nil),
-                    ],
+                return CallTool.Result.text(
+                    "Group '\(groupName)' has \(targetGroup.children.count) children. Use recursive=true to remove it and all its contents."
                 )
             }
 
             // Remove children recursively
-            if recursive {
-                removeChildren(of: targetGroup, from: xcodeproj.pbxproj)
-            }
+            if recursive { removeChildren(of: targetGroup, from: xcodeproj.pbxproj) }
 
             // Remove from parent
             parentGroup.children.removeAll { $0 === targetGroup }
@@ -117,27 +102,15 @@ public struct RemoveGroupTool: Sendable {
             // Save project
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Successfully removed group '\(groupName)' from project",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
+            return CallTool.Result.text("Successfully removed group '\(groupName)' from project")
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove group from Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
     private func removeChildren(of group: PBXGroup, from pbxproj: PBXProj) {
         for child in group.children {
-            if let childGroup = child as? PBXGroup {
-                removeChildren(of: childGroup, from: pbxproj)
-            }
+            if let childGroup = child as? PBXGroup { removeChildren(of: childGroup, from: pbxproj) }
             pbxproj.delete(object: child)
         }
         group.children.removeAll()

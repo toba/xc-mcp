@@ -77,12 +77,12 @@ public enum XCResultParser {
     }
 
     public struct MetricConfiguration: Sendable, Codable {
-        public let configurationId: String
+        public let configurationID: String
         public let configurationName: String
     }
 
     public struct MetricDevice: Sendable, Codable {
-        public let deviceId: String
+        public let deviceID: String
         public let deviceName: String
     }
 
@@ -104,17 +104,17 @@ public enum XCResultParser {
     ///
     /// - Parameters:
     ///   - path: Path to the `.xcresult` bundle.
-    ///   - testId: Optional test identifier to filter results.
+    ///   - testID: Optional test identifier to filter results.
     /// - Returns: Parsed performance metric results, or nil if parsing fails.
     public static func parsePerformanceMetrics(
         at path: String,
-        testId: String? = nil,
+        testID: String? = nil,
     ) async -> [PerformanceMetricResult]? {
         var arguments = [
             "xcresulttool", "get", "test-results", "metrics",
             "--path", path, "--compact",
         ]
-        if let testId { arguments.append(contentsOf: ["--test-id", testId]) }
+        if let testID { arguments.append(contentsOf: ["--test-id", testID]) }
 
         guard let result = try? await ProcessResult.runSubprocess(
             .name("xcrun"),

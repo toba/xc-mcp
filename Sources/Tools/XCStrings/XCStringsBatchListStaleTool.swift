@@ -4,15 +4,12 @@ import XCMCPCore
 public struct XCStringsBatchListStaleTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_batch_list_stale",
-            description:
-            "List keys with extractionState 'stale' across multiple xcstrings files",
+            description: "List keys with extractionState 'stale' across multiple xcstrings files",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -20,7 +17,7 @@ public struct XCStringsBatchListStaleTool: Sendable {
                         "type": .string("array"),
                         "items": .object(["type": .string("string")]),
                         "description": .string("Array of paths to xcstrings files"),
-                    ]),
+                    ])
                 ]),
                 "required": .array([.string("files")]),
             ]),
@@ -40,11 +37,9 @@ public struct XCStringsBatchListStaleTool: Sendable {
 
             let json = try encodePrettyJSON(summary)
 
-            return CallTool.Result(content: [.text(text: json, annotations: nil, _meta: nil)])
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text(json)
+        } catch {
+            throw try error.asMCPError()
         }
     }
 }

@@ -5,23 +5,18 @@ import Foundation
 public struct DebugVariablesTool: Sendable {
     private let lldbRunner: LLDBRunner
 
-    public init(lldbRunner: LLDBRunner = LLDBRunner()) {
-        self.lldbRunner = lldbRunner
-    }
+    public init(lldbRunner: LLDBRunner = .init()) { self.lldbRunner = lldbRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_variables",
-            description:
-            "Get local variables in the current stack frame of a debugged process.",
+            description: "Get local variables in the current stack frame of a debugged process.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the debugged process.",
-                        ),
+                        "description": .string("Process ID of the debugged process."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -31,9 +26,7 @@ public struct DebugVariablesTool: Sendable {
                     ]),
                     "frame": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Stack frame index. Defaults to 0 (current frame).",
-                        ),
+                        "description": .string("Stack frame index. Defaults to 0 (current frame)."),
                     ]),
                 ]),
                 "required": .array([]),
@@ -55,7 +48,7 @@ public struct DebugVariablesTool: Sendable {
             var message = "Variables in frame \(frameIndex) for process \(targetPID):\n\n"
             message += result.output
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

@@ -1,5 +1,6 @@
 import MCP
 import Testing
+import Foundation
 @testable import XCMCPCore
 @testable import XCMCPTools
 
@@ -62,29 +63,36 @@ struct GetTestAttachmentsToolTests {
         }
     }
 
+    /// Feeds a manifest literal the way ``GetTestAttachmentsTool/flattenManifest(_:)`` takes it.
+    private func flatten(_ manifest: String) -> [GetTestAttachmentsTool.Attachment] {
+        GetTestAttachmentsTool.flattenManifest(Data(manifest.utf8))
+    }
+
     @Test
     func `flattenManifest parses nested attachments array`() {
-        let manifest: [[String: Any]] = [
+        let attachments = flatten(
+            """
             [
+              {
                 "testIdentifier": "ThesisUITests/SideNoteTests/testCitationFlow()",
                 "attachments": [
-                    [
-                        "exportedFileName": "screenshot-1.png",
-                        "suggestedHumanReadableName": "Citation Screenshot",
-                        "isAssociatedWithFailure": false,
-                        "timestamp": 1_740_529_200.0,
-                    ],
-                    [
-                        "exportedFileName": "failure-diff.png",
-                        "suggestedHumanReadableName": "Failure Diff",
-                        "isAssociatedWithFailure": true,
-                        "timestamp": 1_740_529_201.0,
-                    ],
-                ] as [[String: Any]],
+                  {
+                    "exportedFileName": "screenshot-1.png",
+                    "suggestedHumanReadableName": "Citation Screenshot",
+                    "isAssociatedWithFailure": false,
+                    "timestamp": 1740529200.0
+                  },
+                  {
+                    "exportedFileName": "failure-diff.png",
+                    "suggestedHumanReadableName": "Failure Diff",
+                    "isAssociatedWithFailure": true,
+                    "timestamp": 1740529201.0
+                  }
+                ]
+              }
             ]
-        ]
+            """)
 
-        let attachments = GetTestAttachmentsTool.flattenManifest(manifest)
         #expect(attachments.count == 2)
 
         #expect(attachments[0].name == "Citation Screenshot")
@@ -100,18 +108,20 @@ struct GetTestAttachmentsToolTests {
 
     @Test
     func `flattenManifest parses single attachment object`() {
-        let manifest: [[String: Any]] = [
+        let attachments = flatten(
+            """
             [
+              {
                 "testIdentifier": "Tests/MyTest/testFoo()",
-                "attachments": [
-                    "exportedFileName": "data.json",
-                    "suggestedHumanReadableName": "Response Body",
-                    "isAssociatedWithFailure": false,
-                ] as [String: Any],
+                "attachments": {
+                  "exportedFileName": "data.json",
+                  "suggestedHumanReadableName": "Response Body",
+                  "isAssociatedWithFailure": false
+                }
+              }
             ]
-        ]
+            """)
 
-        let attachments = GetTestAttachmentsTool.flattenManifest(manifest)
         #expect(attachments.count == 1)
         #expect(attachments[0].name == "Response Body")
         #expect(attachments[0].exportedFileName == "data.json")
@@ -120,15 +130,16 @@ struct GetTestAttachmentsToolTests {
 
     @Test
     func `flattenManifest uses exportedFileName when name is missing`() {
-        let manifest: [[String: Any]] = [
+        let attachments = flatten(
+            """
             [
+              {
                 "testIdentifier": "Tests/MyTest/testBar()",
-                "attachments": [["exportedFileName": "auto-screenshot.png"] as [String: Any]]
-                    as [[String: Any]],
+                "attachments": [{ "exportedFileName": "auto-screenshot.png" }]
+              }
             ]
-        ]
+            """)
 
-        let attachments = GetTestAttachmentsTool.flattenManifest(manifest)
         #expect(attachments.count == 1)
         #expect(attachments[0].name == "auto-screenshot.png")
         #expect(attachments[0].exportedFileName == "auto-screenshot.png")
@@ -136,10 +147,12 @@ struct GetTestAttachmentsToolTests {
 
     @Test
     func `flattenManifest skips entries without attachments`() {
-        let manifest: [[String: Any]] = [["testIdentifier": "Tests/MyTest/testEmpty()"]]
+        #expect(flatten(#"[{ "testIdentifier": "Tests/MyTest/testEmpty()" }]"#).isEmpty)
+    }
 
-        let attachments = GetTestAttachmentsTool.flattenManifest(manifest)
-        #expect(attachments.isEmpty)
+    @Test
+    func `flattenManifest returns nothing for a manifest it cannot read`() {
+        #expect(flatten("not json").isEmpty)
     }
 
     @Test

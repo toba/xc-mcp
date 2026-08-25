@@ -130,7 +130,7 @@ public struct PathUtility: Sendable {
 
         for path in paths {
             do {
-                resolved.append(try resolvePath(from: path))
+                try resolved.append(resolvePath(from: path))
             } catch {
                 let expanded = URL(fileURLWithPath: Self.expandTilde(path)).standardized.path
                 guard isWithinSandbox(expanded) else { throw error }

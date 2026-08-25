@@ -5,16 +5,16 @@ import Foundation
 @testable import XCMCPTools
 
 @Suite(.temporaryDirectory)
-struct WhyTargetIdToolTests {
+struct WhyTargetIDToolTests {
     @Test
     func `Tool metadata`() {
-        let tool = WhyTargetIdTool(pathUtility: PathUtility(basePath: "/tmp")).tool()
+        let tool = WhyTargetIDTool(pathUtility: PathUtility(basePath: "/tmp")).tool()
         #expect(tool.name == "why_target_id")
     }
 
     @Test
     func `Requires both arguments`() {
-        let tool = WhyTargetIdTool(pathUtility: PathUtility(basePath: "/tmp"))
+        let tool = WhyTargetIDTool(pathUtility: PathUtility(basePath: "/tmp"))
         #expect(throws: MCPError.self) { try tool.execute(arguments: [:]) }
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: ["project_path": .string("/tmp/x.xcodeproj")])
@@ -25,7 +25,7 @@ struct WhyTargetIdToolTests {
     func `Rejects target_id without a 64-char hex hash`() throws {
         let fixture = try TestPIFCacheFixture.makeWithDuplicateCoreTarget()
 
-        let tool = WhyTargetIdTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
+        let tool = WhyTargetIDTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
         #expect(throws: MCPError.self) {
             try tool.execute(arguments: [
                 "project_path": .string("/tmp/Thesis.xcodeproj"),
@@ -39,7 +39,7 @@ struct WhyTargetIdToolTests {
     func `Surfaces duplicate target guid and its consumer`() throws {
         let fixture = try TestPIFCacheFixture.makeWithDuplicateCoreTarget()
 
-        let tool = WhyTargetIdTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
+        let tool = WhyTargetIDTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
         let result = try tool.execute(arguments: [
             "project_path": .string("/tmp/Thesis.xcodeproj"),
             "target_id":
@@ -66,7 +66,7 @@ struct WhyTargetIdToolTests {
         let fixture = try TestPIFCacheFixture.makeWithDuplicateCoreTarget()
 
         let unknown = String(repeating: "f", count: 64)
-        let tool = WhyTargetIdTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
+        let tool = WhyTargetIDTool(pathUtility: PathUtility(basePath: "/", sandboxEnabled: false))
         let result = try tool.execute(arguments: [
             "project_path": .string("/tmp/Thesis.xcodeproj"),
             "target_id": .string(unknown),

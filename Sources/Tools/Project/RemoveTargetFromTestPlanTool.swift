@@ -5,12 +5,10 @@ import Foundation
 public struct RemoveTargetFromTestPlanTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_target_from_test_plan",
             description: "Remove a test target from a .xctestplan file",
             inputSchema: .object([
@@ -32,60 +30,33 @@ public struct RemoveTargetFromTestPlanTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(testPlanPath) = arguments["test_plan_path"],
-              case let .string(targetName) = arguments["target_name"]
-        else {
-            throw MCPError.invalidParams("test_plan_path and target_name are required")
-        }
+        guard let testPlanPath = arguments.getString("test_plan_path"),
+              let targetName = arguments.getString("target_name")
+        else { throw MCPError.invalidParams("test_plan_path and target_name are required") }
 
         let resolvedTestPlanPath = try pathUtility.resolvePath(from: testPlanPath)
 
         do {
             var json = try TestPlanFile.read(from: resolvedTestPlanPath)
-            guard var testTargets = json["testTargets"] as? [[String: Any]] else {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Test plan has no test targets",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
+            guard json["testTargets"] != nil else {
+                return CallTool.Result.text("Test plan has no test targets")
             }
 
+            var testTargets = TestPlanFile.testTargets(in: json)
             let originalCount = testTargets.count
-            testTargets.removeAll { entry in
-                guard let target = entry["target"] as? [String: Any],
-                      let name = target["name"] as? String
-                else {
-                    return false
-                }
-                return name == targetName
-            }
+            testTargets.removeAll { TestPlanFile.entry($0, names: targetName) }
 
             if testTargets.count == originalCount {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Target '\(targetName)' not found in test plan",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text("Target '\(targetName)' not found in test plan")
             }
 
-            json["testTargets"] = testTargets
+            json["testTargets"] = .dictionaries(testTargets)
             try TestPlanFile.write(json, to: resolvedTestPlanPath)
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Removed target '\(targetName)' from test plan at \(resolvedTestPlanPath)",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result.text(
+                "Removed target '\(targetName)' from test plan at \(resolvedTestPlanPath)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove target from test plan: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

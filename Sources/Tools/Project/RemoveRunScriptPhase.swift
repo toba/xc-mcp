@@ -7,12 +7,10 @@ import Foundation
 public struct RemoveRunScriptPhase: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_run_script_phase",
             description: "Remove a Run Script (PBXShellScriptBuildPhase) build phase from a target",
             inputSchema: .object([
@@ -44,9 +42,9 @@ public struct RemoveRunScriptPhase: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(phaseName) = arguments["phase_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let phaseName = arguments.getString("phase_name")
         else {
             throw MCPError.invalidParams("project_path, target_name, and phase_name are required")
         }
@@ -57,20 +55,14 @@ public struct RemoveRunScriptPhase: Sendable {
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
-            else {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
-            // Find the run-script phase by name. Treat a nil name as the
-            // implicit default "ShellScript" so callers can target unnamed phases.
+            // Find the run-script phase by name. Treat a nil name as the implicit default
+            // "ShellScript" so callers can target unnamed phases.
             let matchingIndices = target.buildPhases.enumerated().compactMap {
                 index, phase -> Int? in
                 guard let shell = phase as? PBXShellScriptBuildPhase else { return nil }
@@ -79,41 +71,25 @@ public struct RemoveRunScriptPhase: Sendable {
             }
 
             guard let phaseIndex = matchingIndices.first else {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Run Script phase '\(phaseName)' not found in target '\(targetName)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Run Script phase '\(phaseName)' not found in target '\(targetName)'")
             }
 
             if matchingIndices.count > 1 {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Multiple Run Script phases named '\(phaseName)' found in target '\(targetName)'; rename them to disambiguate before removal",
-                            annotations: nil, _meta: nil),
-                    ],
+                return CallTool.Result.text(
+                    "Multiple Run Script phases named '\(phaseName)' found in target '\(targetName)'; rename them to disambiguate before removal"
                 )
             }
 
             guard let shellPhase = target.buildPhases[phaseIndex] as? PBXShellScriptBuildPhase
             else {
-                return CallTool.Result(
-                    content: [
-                        .text(text:
-                            "Run Script phase '\(phaseName)' not found in target '\(targetName)'",
-                            annotations: nil, _meta: nil),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Run Script phase '\(phaseName)' not found in target '\(targetName)'")
             }
 
             // Remove any build files (rare for shell phases but possible).
             if let buildFiles = shellPhase.files {
-                for buildFile in buildFiles {
-                    xcodeproj.pbxproj.delete(object: buildFile)
-                }
+                for buildFile in buildFiles { xcodeproj.pbxproj.delete(object: buildFile) }
             }
 
             target.buildPhases.remove(at: phaseIndex)
@@ -121,19 +97,10 @@ public struct RemoveRunScriptPhase: Sendable {
 
             try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully removed Run Script phase '\(phaseName)' from target '\(targetName)'",
-                        annotations: nil, _meta: nil),
-                ],
-            )
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(
+                "Successfully removed Run Script phase '\(phaseName)' from target '\(targetName)'")
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove run script phase: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

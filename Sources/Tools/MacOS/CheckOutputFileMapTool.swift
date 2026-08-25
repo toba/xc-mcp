@@ -4,15 +4,15 @@ import Foundation
 
 /// Compares a target's OutputFileMap.json against actual files on disk in DerivedData.
 ///
-/// Reports which source files compiled successfully (produced a .o file) and which
-/// did not. This is the fastest way to find silent compiler crashes — the compiler
-/// dies mid-compilation, so some .o files simply never get written.
+/// Reports which source files compiled successfully (produced a .o file) and which did not. This is
+/// the fastest way to find silent compiler crashes — the compiler dies mid-compilation, so some .o
+/// files simply never get written.
 public struct CheckOutputFileMapTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -20,10 +20,9 @@ public struct CheckOutputFileMapTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "check_output_file_map",
-            description:
-            "Compare a target's OutputFileMap.json against actual .o files on disk. "
+            description: "Compare a target's OutputFileMap.json against actual .o files on disk. "
                 + "Identifies source files whose object files are missing — the hallmark "
                 + "of a silent compiler crash where the compiler dies mid-compilation.",
             inputSchema: .object([
@@ -31,9 +30,7 @@ public struct CheckOutputFileMapTool: Sendable {
                 "properties": .object([
                     "target": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Target name to check. Required.",
-                        ),
+                        "description": .string("Target name to check. Required."),
                     ]),
                     "project_path": .object([
                         "type": .string("string"),
@@ -91,8 +88,7 @@ public struct CheckOutputFileMapTool: Sendable {
 
         // Parse the OutputFileMap
         let data = try Data(contentsOf: URL(fileURLWithPath: outputFileMapPath))
-        guard
-            let fileMap = try JSONSerialization
+        guard let fileMap = try JSONSerialization
             .jsonObject(with: data) as? [String: [String: String]]
         else {
             throw MCPError.internalError(
@@ -106,10 +102,7 @@ public struct CheckOutputFileMapTool: Sendable {
         var present: [String] = []
         var totalSources = 0
 
-        for (source, outputs) in fileMap.sorted(by: { $0.key < $1.key }) {
-            // Skip the empty-string master entry
-            guard !source.isEmpty else { continue }
-
+        for (source, outputs) in fileMap.sorted(by: { $0.key < $1.key }) where !source.isEmpty {
             guard let objectFile = outputs["object"] else { continue }
             totalSources += 1
 
@@ -130,9 +123,9 @@ public struct CheckOutputFileMapTool: Sendable {
             text += "All source files compiled successfully — no missing object files."
         } else {
             text += "### Missing Object Files\n\n"
-            text +=
-                "These source files have no .o file, indicating the compiler crashed or was "
+            text += "These source files have no .o file, indicating the compiler crashed or was "
                 + "killed before completing them:\n\n"
+
             for entry in missing {
                 let sourceName = URL(fileURLWithPath: entry.source).lastPathComponent
                 text += "- **\(sourceName)**\n"
@@ -141,13 +134,14 @@ public struct CheckOutputFileMapTool: Sendable {
             }
         }
 
-        return CallTool.Result(content: [.text(text: text, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(text)
     }
 
     // MARK: - Private
 
     private func findOutputFileMap(
-        intermediatesDir: String, target: String,
+        intermediatesDir: String,
+        target: String,
     ) throws -> String {
         let fm = FileManager.default
 
@@ -159,15 +153,16 @@ public struct CheckOutputFileMapTool: Sendable {
         }
 
         var candidates: [(path: String, date: Date)] = []
+
         while let element = enumerator.nextObject() as? String {
             let pathComponent = (element as NSString).lastPathComponent
+
             if pathComponent == "OutputFileMap.json",
                element.contains("\(target).build")
             {
                 let fullPath = (intermediatesDir as NSString).appendingPathComponent(element)
                 if let attrs = try? fm.attributesOfItem(atPath: fullPath),
-                   let date = attrs[.modificationDate] as? Date
-                {
+                   let date = attrs[.modificationDate] as? Date {
                     candidates.append((path: fullPath, date: date))
                 }
             }

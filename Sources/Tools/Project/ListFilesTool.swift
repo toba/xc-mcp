@@ -34,13 +34,9 @@ public struct ListFilesTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
 
-        guard case let .string(targetName) = arguments["target_name"] else {
-            throw MCPError.invalidParams("target_name is required")
-        }
+        let targetName = try arguments.getRequiredString("target_name")
 
         do {
             // Resolve and validate the path
@@ -148,9 +144,7 @@ public struct ListFilesTool: Sendable {
                         let relativePath: String
 
                         if filePath.hasPrefix(prefix) {
-                            var start = filePath.index(
-                                filePath.startIndex, offsetBy: prefix.count,
-                            )
+                            var start = filePath.index(filePath.startIndex, offsetBy: prefix.count)
                             if start < filePath.endIndex, filePath[start] == "/" {
                                 start = filePath.index(after: start)
                             }
@@ -209,9 +203,8 @@ public struct ListFilesTool: Sendable {
                 guard let exceptions = syncGroup.exceptions else { continue }
                 let hasTargetException = exceptions.contains { exception in
                     guard let buildException =
-                        exception as? PBXFileSystemSynchronizedBuildFileExceptionSet else {
-                        return false
-                    }
+                        exception as? PBXFileSystemSynchronizedBuildFileExceptionSet
+                    else { return false }
                     return buildException.target === target
                 }
                 if hasTargetException {
@@ -238,19 +231,9 @@ public struct ListFilesTool: Sendable {
                 ? "No files found in target '\(targetName)'."
                 : sections.joined(separator: "\n")
 
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "Files in target '\(targetName)':\n\(result)",
-                        annotations: nil,
-                        _meta: nil,
-                    )
-                ],
-            )
+            return CallTool.Result.text("Files in target '\(targetName)':\n\(result)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

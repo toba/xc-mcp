@@ -27,8 +27,12 @@ public enum LinkerDiagnostics {
             // One line of leading context — usually the `Ld …`/`CompileC …` command that names the
             // failing target, or the `"symbol", referenced from:` header above an object list.
             var back = index - 1
+
             while back >= 0 {
-                if lines[back].trimmingCharacters(in: .whitespaces).isEmpty { back -= 1; continue }
+                if lines[back].trimmingCharacters(in: .whitespaces).isEmpty {
+                    back -= 1
+                    continue
+                }
                 include.insert(back)
                 break
             }
@@ -38,6 +42,7 @@ public enum LinkerDiagnostics {
             // non-indented line; a following non-indented anchor (e.g. `ld: symbol(s) not found …`)
             // is captured independently by the outer loop and merges via index adjacency.
             var forward = index + 1
+
             while forward < lines.count {
                 let next = lines[forward]
                 if next.trimmingCharacters(in: .whitespaces).isEmpty { break }

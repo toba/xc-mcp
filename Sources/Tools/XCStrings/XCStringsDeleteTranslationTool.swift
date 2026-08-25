@@ -5,12 +5,10 @@ import Foundation
 public struct XCStringsDeleteTranslationTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_delete_translation",
             description: "Delete a specific translation for a key",
             inputSchema: .object([
@@ -40,22 +38,10 @@ public struct XCStringsDeleteTranslationTool: Sendable {
         let key = try arguments.getRequiredString("key")
         let language = try arguments.getRequiredString("language")
 
-        do {
-            let resolvedPath = try pathUtility.resolvePath(from: filePath)
-            let parser = XCStringsParser(path: resolvedPath)
+        return try await pathUtility.withParser(at: filePath) { parser, _ in
             try await parser.deleteTranslation(key: key, language: language)
 
-            return CallTool.Result(
-                content: [.text(
-                    text: "Translation for '\(language)' deleted successfully",
-                    annotations: nil,
-                    _meta: nil,
-                )],
-            )
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+            return CallTool.Result.text("Translation for '\(language)' deleted successfully")
         }
     }
 }

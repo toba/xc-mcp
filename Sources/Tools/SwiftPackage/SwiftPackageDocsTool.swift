@@ -90,14 +90,6 @@ public struct SwiftPackageDocsTool: Sendable {
                 "minimum_access_level must be one of: \(Self.accessLevels.joined(separator: ", ")).",
             )
         }
-        let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift",
-        ).path
-        guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
-            throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
-            )
-        }
 
         do {
             let doccPath = try await Self.findDocC()
@@ -153,7 +145,7 @@ public struct SwiftPackageDocsTool: Sendable {
             let output = sections.joined(separator: "\n\n")
             if failed { throw MCPError.internalError(output) }
 
-            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(output)
         } catch {
             throw try error.asMCPError()
         }

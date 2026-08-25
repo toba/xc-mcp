@@ -5,15 +5,13 @@ import Foundation
 public struct ClearSessionDefaultsTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "clear_session_defaults",
             description:
-            "Clear all session defaults, resetting project, scheme, simulator, and device settings.",
+                "Clear all session defaults, resetting project, scheme, simulator, and device settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([:]),
@@ -25,10 +23,6 @@ public struct ClearSessionDefaultsTool: Sendable {
 
     public func execute(arguments _: [String: Value]) async -> CallTool.Result {
         await sessionManager.clear()
-        return CallTool.Result(
-            content: [
-                .text(text: "Session defaults cleared.", annotations: nil, _meta: nil),
-            ],
-        )
+        return CallTool.Result.text("Session defaults cleared.")
     }
 }

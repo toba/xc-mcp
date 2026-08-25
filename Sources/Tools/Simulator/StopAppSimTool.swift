@@ -6,13 +6,13 @@ public struct StopAppSimTool: Sendable {
     private let simctlRunner: SimctlRunner
     private let sessionManager: SessionManager
 
-    public init(simctlRunner: SimctlRunner = SimctlRunner(), sessionManager: SessionManager) {
+    public init(simctlRunner: SimctlRunner = .init(), sessionManager: SessionManager) {
         self.simctlRunner = simctlRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "stop_app_sim",
             description: "Stop (terminate) a running app on a simulator by its bundle identifier.",
             inputSchema: .object([
@@ -38,36 +38,20 @@ public struct StopAppSimTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let bundleId = try arguments.getRequiredString("bundle_id")
+        let bundleID = try arguments.getRequiredString("bundle_id")
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
 
         do {
-            let result = try await simctlRunner.terminate(udid: simulator, bundleId: bundleId)
+            let result = try await simctlRunner.terminate(udid: simulator, bundleID: bundleID)
 
             if result.succeeded {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Successfully stopped '\(bundleId)' on simulator '\(simulator)'",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "Successfully stopped '\(bundleID)' on simulator '\(simulator)'")
             } else if result.stderr.contains("No matching processes") {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "App '\(bundleId)' was not running on simulator '\(simulator)'",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result.text(
+                    "App '\(bundleID)' was not running on simulator '\(simulator)'")
             } else {
-                throw MCPError.internalError(
-                    "Failed to stop app: \(result.errorOutput)",
-                )
+                throw MCPError.internalError("Failed to stop app: \(result.errorOutput)")
             }
         } catch {
             throw try error.asMCPError()

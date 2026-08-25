@@ -5,15 +5,13 @@ import Foundation
 public struct StopMacLogCapTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "stop_mac_log_cap",
             description:
-            "Stop capturing macOS logs. Can stop by process ID or kill all log stream processes. "
+                "Stop capturing macOS logs. Can stop by process ID or kill all log stream processes. "
                 + "If a process_name or bundle_id is provided and the log contains crash indicators, "
                 + "automatically searches for and includes parsed crash report summaries.",
             inputSchema: .object([
@@ -21,9 +19,7 @@ public struct StopMacLogCapTool: Sendable {
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the log capture process to stop.",
-                        ),
+                        "description": .string("Process ID of the log capture process to stop."),
                     ]),
                     "output_file": .object([
                         "type": .string("string"),
@@ -63,22 +59,18 @@ public struct StopMacLogCapTool: Sendable {
         let processName = arguments.getString("process_name")
         let bundleID = arguments.getString("bundle_id")
 
-        await LogCapture.stopCapture(
-            pid: pid,
-            pkillPatterns: ["/usr/bin/log stream"],
-        )
+        await LogCapture.stopCapture(pid: pid, pkillPatterns: ["/usr/bin/log stream"])
 
         var message = "Stopped log capture"
-        if let pid {
-            message += " (PID: \(pid))"
-        }
+        if let pid { message += " (PID: \(pid))" }
 
         await LogCapture.appendTail(to: &message, from: outputFile, lines: tailLines)
 
-        // Auto-search for crash reports if we have a process identifier and the
-        // log output contains crash indicators (or we have no log to check)
+        // Auto-search for crash reports if we have a process identifier and the log output contains
+        // crash indicators (or we have no log to check)
         if processName != nil || bundleID != nil {
             let shouldSearch = Self.logContainsCrashIndicators(message) || outputFile == nil
+
             if shouldSearch {
                 CrashReportParser.appendCrashReports(
                     to: &message, processName: processName, bundleID: bundleID,
@@ -86,7 +78,7 @@ public struct StopMacLogCapTool: Sendable {
             }
         }
 
-        return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(message)
     }
 
     /// Checks whether log output contains indicators of a process crash.

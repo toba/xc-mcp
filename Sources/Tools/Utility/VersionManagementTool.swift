@@ -6,8 +6,8 @@ import Subprocess
 
 /// Manages marketing version and build numbers using `agvtool`.
 ///
-/// Wraps `xcrun agvtool` for reading and updating version strings in
-/// Xcode projects. Useful for CI/CD version bumping before archive builds.
+/// Wraps `xcrun agvtool` for reading and updating version strings in Xcode projects. Useful for
+/// CI/CD version bumping before archive builds.
 ///
 /// ## Example
 ///
@@ -20,10 +20,10 @@ public struct VersionManagementTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "version_management",
             description:
-            "Manage marketing version and build numbers in an Xcode project using agvtool. Supports reading current versions, setting new versions, and incrementing build numbers. The project must use CURRENT_PROJECT_VERSION and MARKETING_VERSION build settings.",
+                "Manage marketing version and build numbers in an Xcode project using agvtool. Supports reading current versions, setting new versions, and incrementing build numbers. The project must use CURRENT_PROJECT_VERSION and MARKETING_VERSION build settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -63,16 +63,14 @@ public struct VersionManagementTool: Sendable {
         let action = try arguments.getRequiredString("action")
 
         switch action {
-            case "get":
-                return try await getVersions(projectDir: projectDir)
+            case "get": return try await getVersions(projectDir: projectDir)
             case "set_marketing_version":
                 let version = try arguments.getRequiredString("version")
                 return try await setMarketingVersion(projectDir: projectDir, version: version)
             case "set_build_number":
                 let version = try arguments.getRequiredString("version")
                 return try await setBuildNumber(projectDir: projectDir, version: version)
-            case "bump_build":
-                return try await bumpBuildNumber(projectDir: projectDir)
+            case "bump_build": return try await bumpBuildNumber(projectDir: projectDir)
             default:
                 throw MCPError.invalidParams(
                     "Unknown action '\(action)'. Use get, set_marketing_version, set_build_number, or bump_build.",
@@ -102,10 +100,11 @@ public struct VersionManagementTool: Sendable {
         let marketingVersion = marketing.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         let buildNumber = build.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        var output = "Marketing version: \(marketingVersion.isEmpty ? "(not set)" : marketingVersion)\n"
+        var output =
+            "Marketing version: \(marketingVersion.isEmpty ? "(not set)" : marketingVersion)\n"
         output += "Build number: \(buildNumber.isEmpty ? "(not set)" : buildNumber)"
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 
     private func setMarketingVersion(
@@ -125,11 +124,7 @@ public struct VersionManagementTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: "Marketing version set to \(version)\n\(result.stdout)",
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text("Marketing version set to \(version)\n\(result.stdout)")
     }
 
     private func setBuildNumber(
@@ -149,11 +144,7 @@ public struct VersionManagementTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: "Build number set to \(version)\n\(result.stdout)",
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text("Build number set to \(version)\n\(result.stdout)")
     }
 
     private func bumpBuildNumber(projectDir: String) async throws -> CallTool.Result {
@@ -170,10 +161,6 @@ public struct VersionManagementTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: result.stdout,
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text(result.stdout)
     }
 }

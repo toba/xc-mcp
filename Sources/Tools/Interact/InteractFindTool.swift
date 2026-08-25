@@ -5,56 +5,48 @@ import Foundation
 public struct InteractFindTool: Sendable {
     private let interactRunner: InteractRunner
 
-    public init(interactRunner: InteractRunner) {
-        self.interactRunner = interactRunner
-    }
+    public init(interactRunner: InteractRunner) { self.interactRunner = interactRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "interact_find",
             description:
-            "Search for UI elements by role, title, identifier, or value with substring matching. "
+                "Search for UI elements by role, title, identifier, or value with substring matching. "
                 + "Returns matching elements and caches the full tree for subsequent interact_ calls. "
                 + "Default search depth is 10.",
-            inputSchema: .object(
-                [
-                    "type": .string("object"),
-                    "properties": .object(
-                        InteractRunner.appResolutionSchemaProperties.merging([
-                            "role": .object([
-                                "type": .string("string"),
-                                "description": .string(
-                                    "AX role to match (e.g., 'AXButton', 'AXTextField'). Case-insensitive substring match.",
-                                ),
-                            ]),
-                            "title": .object([
-                                "type": .string("string"),
-                                "description": .string(
-                                    "Title text to match. Case-insensitive substring match.",
-                                ),
-                            ]),
-                            "identifier": .object([
-                                "type": .string("string"),
-                                "description": .string(
-                                    "Accessibility identifier to match. Case-insensitive substring match.",
-                                ),
-                            ]),
-                            "value": .object([
-                                "type": .string("string"),
-                                "description": .string(
-                                    "Value to match. Case-insensitive substring match.",
-                                ),
-                            ]),
-                            "max_depth": .object([
-                                "type": .string("integer"),
-                                "description": .string(
-                                    "Maximum depth to search. Default 10.",
-                                ),
-                            ]),
-                        ]) { _, new in new },
-                    ),
-                    "required": .array([]),
-                ],
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object(InteractRunner.appResolutionSchemaProperties.merging([
+                    "role": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "AX role to match (e.g., 'AXButton', 'AXTextField'). Case-insensitive substring match.",
+                        ),
+                    ]),
+                    "title": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Title text to match. Case-insensitive substring match.",
+                        ),
+                    ]),
+                    "identifier": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Accessibility identifier to match. Case-insensitive substring match.",
+                        ),
+                    ]),
+                    "value": .object([
+                        "type": .string("string"),
+                        "description": .string("Value to match. Case-insensitive substring match."),
+                    ]),
+                    "max_depth": .object([
+                        "type": .string("integer"),
+                        "description": .string("Maximum depth to search. Default 10."),
+                    ]),
+                ]) { _, new in new },
+                ),
+                "required": .array([]),
+            ],
             ),
             annotations: .readOnly,
         )
@@ -88,8 +80,7 @@ public struct InteractFindTool: Sendable {
                 return false
             }
             if let identifier,
-               element.identifier?.localizedCaseInsensitiveContains(identifier) != true
-            {
+               element.identifier?.localizedCaseInsensitiveContains(identifier) != true {
                 return false
             }
             if let value, element.value?.localizedCaseInsensitiveContains(value) != true {
@@ -103,14 +94,8 @@ public struct InteractFindTool: Sendable {
             "Found \(matches.count) matching element(s) (searched \(fullTree.count) total, depth=\(maxDepth)):",
         )
         lines.append("")
-        for (element, _) in matches {
-            lines.append(element.summary(indent: false))
-        }
+        for (element, _) in matches { lines.append(element.summary(indent: false)) }
 
-        return CallTool.Result(content: [.text(
-            text: lines.joined(separator: "\n"),
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text(lines.joined(separator: "\n"))
     }
 }

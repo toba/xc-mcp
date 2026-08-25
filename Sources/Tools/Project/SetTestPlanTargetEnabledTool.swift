@@ -5,15 +5,13 @@ import Foundation
 public struct SetTestPlanTargetEnabledTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_test_plan_target_enabled",
             description:
-            "Enable or disable a test target in a .xctestplan file without removing it",
+                "Enable or disable a test target in a .xctestplan file without removing it",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -27,9 +25,7 @@ public struct SetTestPlanTargetEnabledTool: Sendable {
                     ]),
                     "enabled": .object([
                         "type": .string("boolean"),
-                        "description": .string(
-                            "true to enable the target, false to disable it",
-                        ),
+                        "description": .string("true to enable the target, false to disable it"),
                     ]),
                 ]),
                 "required": .array([
@@ -41,9 +37,9 @@ public struct SetTestPlanTargetEnabledTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(testPlanPath) = arguments["test_plan_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .bool(enabled) = arguments["enabled"]
+        guard let testPlanPath = arguments.getString("test_plan_path"),
+              let targetName = arguments.getString("target_name"),
+              let enabled = arguments.getOptionalBool("enabled")
         else {
             throw MCPError.invalidParams("test_plan_path, target_name, and enabled are required")
         }
@@ -52,60 +48,38 @@ public struct SetTestPlanTargetEnabledTool: Sendable {
 
         do {
             var json = try TestPlanFile.read(from: resolvedTestPlanPath)
-            guard var testTargets = json["testTargets"] as? [[String: Any]] else {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Test plan has no test targets",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
+            guard json["testTargets"] != nil else {
+                return CallTool.Result.text("Test plan has no test targets")
             }
 
+            var testTargets = TestPlanFile.testTargets(in: json)
             var found = false
-            for i in testTargets.indices {
-                guard let target = testTargets[i]["target"] as? [String: Any],
-                      let name = target["name"] as? String,
-                      name == targetName
-                else {
-                    continue
-                }
+
+            for i in testTargets.indices
+                where TestPlanFile.entry(testTargets[i], names: targetName)
+            {
                 found = true
+
                 if enabled {
                     // Absent "enabled" key means enabled in Xcode's format
                     testTargets[i].removeValue(forKey: "enabled")
                 } else {
-                    testTargets[i]["enabled"] = false
+                    testTargets[i]["enabled"] = .boolean(false)
                 }
             }
 
             if !found {
-                return CallTool.Result(
-                    content: [
-                        .text(
-                            text: "Target '\(targetName)' not found in test plan",
-                            annotations: nil,
-                            _meta: nil,
-                        ),
-                    ],
-                )
+                return CallTool.Result.text("Target '\(targetName)' not found in test plan")
             }
 
-            json["testTargets"] = testTargets
+            json["testTargets"] = .dictionaries(testTargets)
             try TestPlanFile.write(json, to: resolvedTestPlanPath)
 
             let action = enabled ? "Enabled" : "Disabled"
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "\(action) target '\(targetName)' in test plan at \(resolvedTestPlanPath)",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result.text(
+                "\(action) target '\(targetName)' in test plan at \(resolvedTestPlanPath)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to update test plan target: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

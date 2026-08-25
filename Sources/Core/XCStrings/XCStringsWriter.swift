@@ -38,20 +38,39 @@ public enum XCStringsWriter {
         allowOverwrite: Bool = false,
     ) throws(XCStringsError) -> XCStringsFile {
         var result = file
+        try addTranslations(
+            to: &result, key: key, translations: translations, allowOverwrite: allowOverwrite,
+        )
+        return result
+    }
 
-        if result.strings[key] == nil { result.strings[key] = StringEntry(localizations: [:]) }
-
-        if result.strings[key]?.localizations == nil { result.strings[key]?.localizations = [:] }
-
-        for (language, value) in translations {
-            if !allowOverwrite, result.strings[key]?.localizations?[language] != nil {
-                throw XCStringsError.keyAlreadyExists(key: "\(key):\(language)")
-            }
-
-            result.strings[key]?.localizations?[language] = translated(value)
+    /// Add translations for multiple languages, in place
+    ///
+    /// A batch runs this once per entry against one catalog. Taking `file` by value there copies
+    /// the whole `strings` dictionary per entry, because the caller holds the previous copy live
+    /// across the call.
+    ///
+    /// Every language is checked before any is written, so a rejected entry leaves `file` exactly
+    /// as it was. The batch caller depends on that: it keeps the catalog and records the failure.
+    public static func addTranslations(
+        to file: inout XCStringsFile,
+        key: String,
+        translations: [String: String],
+        allowOverwrite: Bool = false,
+    ) throws(XCStringsError) {
+        if !allowOverwrite {
+            for language in translations.keys
+                where file.strings[key]?.localizations?[language] != nil
+            { throw XCStringsError.keyAlreadyExists(key: "\(key):\(language)") }
         }
 
-        return result
+        if file.strings[key] == nil { file.strings[key] = StringEntry(localizations: [:]) }
+
+        if file.strings[key]?.localizations == nil { file.strings[key]?.localizations = [:] }
+
+        for (language, value) in translations {
+            file.strings[key]?.localizations?[language] = translated(value)
+        }
     }
 
     /// Add a manual source-language key for a promoted localizable literal.
@@ -107,18 +126,28 @@ public enum XCStringsWriter {
         translations: [String: String],
     ) throws(XCStringsError) -> XCStringsFile {
         var result = file
+        try updateTranslations(in: &result, key: key, translations: translations)
+        return result
+    }
 
-        guard result.strings[key] != nil else { throw XCStringsError.keyNotFound(key: key) }
+    /// Update translations for multiple languages, in place
+    ///
+    /// Carries the same reason and the same guarantee as the in-place add: no per-entry copy of the
+    /// catalog, and a rejected entry leaves `file` untouched.
+    public static func updateTranslations(
+        in file: inout XCStringsFile,
+        key: String,
+        translations: [String: String],
+    ) throws(XCStringsError) {
+        guard file.strings[key] != nil else { throw XCStringsError.keyNotFound(key: key) }
+
+        for language in translations.keys
+            where file.strings[key]?.localizations?[language] == nil
+        { throw XCStringsError.languageNotFound(language: language, key: key) }
 
         for (language, value) in translations {
-            guard result.strings[key]?.localizations?[language] != nil else {
-                throw XCStringsError.languageNotFound(language: language, key: key)
-            }
-
-            result.strings[key]?.localizations?[language] = translated(value)
+            file.strings[key]?.localizations?[language] = translated(value)
         }
-
-        return result
     }
 
     /// Add translations for multiple keys atomically
@@ -134,8 +163,8 @@ public enum XCStringsWriter {
 
         for entry in entries {
             do {
-                result = try addTranslations(
-                    to: result, key: entry.key, translations: entry.translations,
+                try addTranslations(
+                    to: &result, key: entry.key, translations: entry.translations,
                     allowOverwrite: allowOverwrite,
                 )
                 succeeded += 1
@@ -159,8 +188,8 @@ public enum XCStringsWriter {
 
         for entry in entries {
             do {
-                result = try updateTranslations(
-                    in: result, key: entry.key, translations: entry.translations,
+                try updateTranslations(
+                    in: &result, key: entry.key, translations: entry.translations,
                 )
                 succeeded += 1
             } catch {

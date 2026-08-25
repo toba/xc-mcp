@@ -5,15 +5,13 @@ import Foundation
 public struct ShowPerformanceBaselinesTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "show_performance_baselines",
             description:
-            "Display existing Xcode performance baselines (.xcbaseline) for test targets. Shows baseline averages, regression thresholds, and machine metadata in a readable format.",
+                "Display existing Xcode performance baselines (.xcbaseline) for test targets. Shows baseline averages, regression thresholds, and machine metadata in a readable format.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -31,9 +29,7 @@ public struct ShowPerformanceBaselinesTool: Sendable {
                     ]),
                     "test_class": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Filter to a specific test class name.",
-                        ),
+                        "description": .string("Filter to a specific test class name."),
                     ]),
                     "metric_filter": .object([
                         "type": .string("string"),
@@ -54,14 +50,13 @@ public struct ShowPerformanceBaselinesTool: Sendable {
 
         // Resolve project path
         let projectPath: String
+
         if let path = arguments.getString("project_path") {
             projectPath = path
         } else {
             let (project, _) = try await sessionManager.resolveBuildPaths(from: arguments)
             guard let project else {
-                throw MCPError.invalidParams(
-                    "project_path is required (no session default set)",
-                )
+                throw MCPError.invalidParams("project_path is required (no session default set)")
             }
             projectPath = project
         }
@@ -75,22 +70,15 @@ public struct ShowPerformanceBaselinesTool: Sendable {
         let fm = FileManager.default
 
         guard fm.fileExists(atPath: baselinesDir) else {
-            return CallTool.Result(content: [
-                .text(text:
-                    "No performance baselines found. The directory does not exist:\n\(baselinesDir)",
-                    annotations: nil, _meta: nil),
-            ])
+            return CallTool.Result.text(
+                "No performance baselines found. The directory does not exist:\n\(baselinesDir)")
         }
 
         let contents = (try? fm.contentsOfDirectory(atPath: baselinesDir)) ?? []
         let baselineDirs = contents.filter { $0.hasSuffix(".xcbaseline") }
 
         guard !baselineDirs.isEmpty else {
-            return CallTool.Result(content: [
-                .text(text:
-                    "No .xcbaseline directories found in:\n\(baselinesDir)",
-                    annotations: nil, _meta: nil),
-            ])
+            return CallTool.Result.text("No .xcbaseline directories found in:\n\(baselinesDir)")
         }
 
         // Build target UUID → name map from pbxproj
@@ -103,15 +91,13 @@ public struct ShowPerformanceBaselinesTool: Sendable {
             let targetName = targetMap[targetUUID] ?? targetUUID
 
             // Apply target filter
-            if let filter = targetNameFilter, targetName != filter {
-                continue
-            }
+            if let filter = targetNameFilter, targetName != filter { continue }
 
             let fullPath = "\(baselinesDir)/\(baselineDir)"
 
             // Read Info.plist for machine metadata
-            let infoPlistPath = "\(fullPath)/Info.plist"
-            let machineEntries = parseMachineInfo(at: infoPlistPath)
+            let machineEntries = BaselineInfoPlist.read(from: "\(fullPath)/Info.plist")
+                .machineSummaries
 
             // Find run-destination plists (UUID.plist files, not Info.plist)
             let plistFiles = ((try? fm.contentsOfDirectory(atPath: fullPath)) ?? [])
@@ -125,73 +111,53 @@ public struct ShowPerformanceBaselinesTool: Sendable {
 
                 // Header
                 var header = "\(targetName) Baselines"
-                if let desc = machineDesc {
-                    header += " (\(desc))"
-                }
+                if let desc = machineDesc { header += " (\(desc))" }
                 output.append(header)
                 output.append(String(repeating: "=", count: header.count))
 
                 // Parse baseline data
                 let plistPath = "\(fullPath)/\(plistFile)"
                 guard let data = fm.contents(atPath: plistPath),
-                      let plist = try? PropertyListSerialization.propertyList(
-                          from: data, format: nil,
-                      ) as? [String: Any],
-                      let classNames = plist["classNames"] as? [String: Any]
+                      let plist = try? PropertyListDecoder().decode(
+                          PerformanceBaselinePlist.self, from: data,
+                      )
                 else {
                     output.append("  (unable to parse baseline data)")
                     output.append("")
                     continue
                 }
 
-                let sortedClasses = classNames.keys.sorted()
-                for className in sortedClasses {
+                for className in plist.classNames.keys.sorted() {
                     // Apply test class filter
                     if let filter = testClassFilter,
-                       !className.localizedCaseInsensitiveContains(filter)
-                    {
-                        continue
-                    }
+                       !className.localizedCaseInsensitiveContains(filter) { continue }
 
-                    guard let methods = classNames[className] as? [String: Any] else { continue }
+                    guard let methods = plist.classNames[className] else { continue }
 
                     output.append(className)
 
-                    let sortedMethods = methods.keys.sorted()
-                    for methodName in sortedMethods {
-                        guard let metrics = methods[methodName] as? [String: Any] else { continue }
+                    for methodName in methods.keys.sorted() {
+                        guard let metrics = methods[methodName] else { continue }
 
                         output.append("  \(methodName)")
 
-                        let sortedMetrics = metrics.keys.sorted()
-                        for metricId in sortedMetrics {
+                        for metricID in metrics.keys.sorted() {
                             // Apply metric filter
                             if let filter = metricFilter,
-                               !metricId.localizedCaseInsensitiveContains(filter),
-                               !Self.humanMetricName(metricId)
-                               .localizedCaseInsensitiveContains(filter)
-                            {
-                                continue
+                               !metricID.localizedCaseInsensitiveContains(filter),
+                               !Self.humanMetricName(metricID)
+                                   .localizedCaseInsensitiveContains(filter) { continue }
+
+                            guard let metric = metrics[metricID] else { continue }
+
+                            var line = "    \(Self.humanMetricName(metricID)):"
+                            if let avg = metric.baselineAverage {
+                                line += "  \(Self.formatValue(avg, metricID: metricID))"
                             }
-
-                            guard let metricDict = metrics[metricId] as? [String: Any] else {
-                                continue
-                            }
-
-                            let displayName = Self.humanMetricName(metricId)
-                            let avg = metricDict["baselineAverage"] as? Double
-
-                            var line = "    \(displayName):"
-                            if let avg {
-                                line += "  \(Self.formatValue(avg, metricId: metricId))"
-                            }
-
-                            if let maxReg = metricDict["maxPercentRegression"] as? Double {
+                            if let maxReg = metric.maxPercentRegression {
                                 line += "  (max regression: \(Self.formatPercent(maxReg)))"
                             }
-                            if let maxRSD = metricDict[
-                                "maxPercentRelativeStandardDeviation",
-                            ] as? Double {
+                            if let maxRSD = metric.maxPercentRelativeStandardDeviation {
                                 line += "  (max stddev: \(Self.formatPercent(maxRSD)))"
                             }
 
@@ -203,55 +169,10 @@ public struct ShowPerformanceBaselinesTool: Sendable {
             }
         }
 
-        if output.isEmpty {
-            return CallTool.Result(content: [
-                .text(text:
-                    "No baselines match the specified filters.",
-                    annotations: nil, _meta: nil),
-            ])
-        }
-
-        return CallTool.Result(content: [
-            .text(text:
-                output.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
-                annotations: nil, _meta: nil),
-        ])
-    }
-
-    // MARK: - Machine Info Parsing
-
-    private func parseMachineInfo(at path: String) -> [String: String] {
-        guard let data = FileManager.default.contents(atPath: path),
-              let dict = try? PropertyListSerialization.propertyList(
-                  from: data, format: nil,
-              ) as? [String: Any]
-        else {
-            return [:]
-        }
-
-        var result = [String: String]()
-
-        // Xcode format: { runDestinationsByUUID: { UUID: { localComputer: { cpuKind, modelCode, ... } } } }
-        if let byUUID = dict["runDestinationsByUUID"] as? [String: Any] {
-            for (uuid, value) in byUUID {
-                guard let dest = value as? [String: Any],
-                      let computer = dest["localComputer"] as? [String: Any]
-                else { continue }
-                let cpu = computer["cpuKind"] as? String ?? "Unknown CPU"
-                let model = computer["modelCode"] as? String ?? "Unknown"
-                result[uuid] = "\(cpu), \(model)"
-            }
-            return result
-        }
-
-        // Flat format from set_performance_baseline: { UUID: { cpuKind, modelCode, ... } }
-        for (key, value) in dict {
-            guard let entry = value as? [String: Any] else { continue }
-            let cpu = entry["cpuKind"] as? String ?? "Unknown CPU"
-            let model = entry["modelCode"] as? String ?? "Unknown"
-            result[key] = "\(cpu), \(model)"
-        }
-        return result
+        return output.isEmpty
+            ? CallTool.Result.text("No baselines match the specified filters.")
+            : CallTool.Result.text(
+                output.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
     // MARK: - Formatting
@@ -279,8 +200,8 @@ public struct ShowPerformanceBaselinesTool: Sendable {
         metricDisplayNames[identifier] ?? identifier
     }
 
-    static func formatValue(_ value: Double, metricId: String) -> String {
-        if metricId.contains("Memory") || metricId.contains("memory") {
+    static func formatValue(_ value: Double, metricID: String) -> String {
+        if metricID.contains("Memory") || metricID.contains("memory") {
             if value >= 1_000_000 {
                 return String(format: "%.1f GB", value / 1_000_000)
             } else if value >= 1000 {
@@ -290,27 +211,18 @@ public struct ShowPerformanceBaselinesTool: Sendable {
             }
         }
 
-        if metricId.contains("time") || metricId.contains("Clock")
-            || metricId.contains("Duration") || metricId.contains("duration")
+        if metricID.contains("time") || metricID.contains("Clock")
+            || metricID.contains("Duration") || metricID.contains("duration")
         {
-            if value >= 1.0 {
-                return String(format: "%.3fs", value)
-            } else {
-                return String(format: "%.4fs", value)
-            }
+            return value >= 1.0 ? String(format: "%.3fs", value) : String(format: "%.4fs", value)
         }
 
         // Generic numeric
-        if value == value.rounded(), value < 1_000_000 {
-            return String(format: "%.0f", value)
-        }
-        return String(format: "%.4g", value)
+        if value == value.rounded(), value < 1_000_000 { return String(format: "%.0f", value) }
+        return .init(format: "%.4g", value)
     }
 
     static func formatPercent(_ value: Double) -> String {
-        if value == value.rounded() {
-            return String(format: "%.0f%%", value)
-        }
-        return String(format: "%.1f%%", value)
+        value == value.rounded() ? String(format: "%.0f%%", value) : String(format: "%.1f%%", value)
     }
 }

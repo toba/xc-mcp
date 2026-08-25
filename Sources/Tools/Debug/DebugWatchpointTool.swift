@@ -17,9 +17,7 @@ public struct DebugWatchpointTool: Sendable {
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the debugged process.",
-                        ),
+                        "description": .string("Process ID of the debugged process."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -29,15 +27,11 @@ public struct DebugWatchpointTool: Sendable {
                     ]),
                     "action": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Action to perform: 'add', 'remove', or 'list'.",
-                        ),
+                        "description": .string("Action to perform: 'add', 'remove', or 'list'."),
                     ]),
                     "variable": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Variable name to watch (for add action).",
-                        ),
+                        "description": .string("Variable name to watch (for add action)."),
                     ]),
                     "address": .object([
                         "type": .string("string"),
@@ -47,9 +41,7 @@ public struct DebugWatchpointTool: Sendable {
                     ]),
                     "watchpoint_id": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Watchpoint ID to remove (for remove action).",
-                        ),
+                        "description": .string("Watchpoint ID to remove (for remove action)."),
                     ]),
                     "condition": .object([
                         "type": .string("string"),
@@ -65,22 +57,12 @@ public struct DebugWatchpointTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        var pid = arguments.getInt("pid").map(Int32.init)
-
-        if pid == nil, let bundleId = arguments.getString("bundle_id") {
-            pid = await LLDBSessionManager.shared.getPID(bundleId: bundleId)
-        }
-
-        guard let targetPID = pid else {
-            throw MCPError.invalidParams(
-                "Either pid or bundle_id (with active session) is required",
-            )
-        }
+        let targetPID = try await arguments.resolveDebugPID()
 
         let action = try arguments.getRequiredString("action")
         let variable = arguments.getString("variable")
         let address = arguments.getString("address")
-        let watchpointId = arguments.getInt("watchpoint_id")
+        let watchpointID = arguments.getInt("watchpoint_id")
         let condition = arguments.getString("condition")
 
         do {
@@ -89,7 +71,7 @@ public struct DebugWatchpointTool: Sendable {
                 action: action,
                 variable: variable,
                 address: address,
-                watchpointId: watchpointId,
+                watchpointID: watchpointID,
                 condition: condition,
             )
 
@@ -102,7 +84,7 @@ public struct DebugWatchpointTool: Sendable {
                 default: message = result.output
             }
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

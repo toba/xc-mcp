@@ -18,7 +18,7 @@ struct SearchTestPlansToolTests {
         return (projectPath, tmpDir)
     }
 
-    private func writePlan(_ json: [String: Any], dir: String, name: String) throws -> String {
+    private func writePlan(_ json: [String: AnyValue], dir: String, name: String) throws -> String {
         let path = (Path(dir) + "\(name).xctestplan").string
         try TestPlanFile.write(json, to: path)
         return path
@@ -27,16 +27,16 @@ struct SearchTestPlansToolTests {
     @Test func `matches substring inside string value`() throws {
         let (projectPath, tmpDir) = try setup()
 
-        let plan: [String: Any] = [
+        let plan: [String: AnyValue] = [
             "version": 1,
             "configurations": [
                 [
                     "id": "DEFAULT",
                     "name": "Default",
                     "options": ["targetForVariableExpansion": "com.thesisapp.editor"],
-                ] as [String: Any]
+                ]
             ],
-            "testTargets": [] as [[String: Any]],
+            "testTargets": [],
         ]
         _ = try writePlan(plan, dir: tmpDir, name: "Hit")
 
@@ -58,10 +58,10 @@ struct SearchTestPlansToolTests {
     @Test func `reports no matches when query absent`() throws {
         let (projectPath, tmpDir) = try setup()
 
-        let plan: [String: Any] = [
+        let plan: [String: AnyValue] = [
             "version": 1,
-            "configurations": [["id": "X", "name": "Default"] as [String: Any]],
-            "testTargets": [] as [[String: Any]],
+            "configurations": [["id": "X", "name": "Default"]],
+            "testTargets": [],
         ]
         _ = try writePlan(plan, dir: tmpDir, name: "Empty")
 
@@ -81,9 +81,9 @@ struct SearchTestPlansToolTests {
     @Test func `case insensitive match`() throws {
         let (projectPath, tmpDir) = try setup()
 
-        let plan: [String: Any] = [
+        let plan: [String: AnyValue] = [
             "version": 1,
-            "testTargets": [["target": ["name": "MyAppTests"] as [String: Any]] as [String: Any]],
+            "testTargets": [["target": ["name": "MyAppTests"]]],
         ]
         _ = try writePlan(plan, dir: tmpDir, name: "Plan")
 

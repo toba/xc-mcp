@@ -19,8 +19,7 @@ public enum SelfProjectReference {
 
         for entry in rootObject.projects {
             guard let projectRef = entry["ProjectRef"],
-                  let refPath = projectRef.path ?? projectRef.name
-            else { continue }
+                  let refPath = projectRef.path ?? projectRef.name else { continue }
             let base = (refPath as NSString).lastPathComponent
             if base == projectName { found.append(base) }
         }

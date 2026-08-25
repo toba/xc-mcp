@@ -7,8 +7,8 @@ import Foundation
 /// `Macro "X" ... must be enabled before it can be used`. Approval happens in the Xcode UI, so a
 /// non-interactive build has no way to grant it and the failure repeats on every retry.
 ///
-/// xc-mcp drives builds without a user present, so it passes `-skipMacroValidation` by default.
-/// Set `XC_MCP_REQUIRE_MACRO_APPROVAL=1` to restore Xcode's validation.
+/// xc-mcp drives builds without a user present, so it passes `-skipMacroValidation` by default. Set
+/// `XC_MCP_REQUIRE_MACRO_APPROVAL=1` to restore Xcode's validation.
 public enum MacroValidation {
     /// The xcodebuild flag that bypasses macro-approval validation.
     public static let flag = "-skipMacroValidation"
@@ -18,19 +18,21 @@ public enum MacroValidation {
     ///
     /// - Parameters:
     ///   - additionalArguments: Args the caller plans to pass to xcodebuild.
-    ///   - environment: Process environment (for testing). Defaults to the live env.
+    ///   - environment: Process environment (for testing). Defaults to the startup snapshot.
     public static func args(
         additionalArguments: [String] = [],
-        environment: [String: String] = ProcessInfo.processInfo.environment,
+        environment: [String: String] = ProcessEnvironment.current,
     ) -> [String] {
-        if additionalArguments.contains(flag) { return [] }
-        if requiresApproval(environment: environment) { return [] }
-        return [flag]
+        additionalArguments.contains(flag)
+            ? []
+            : requiresApproval(environment: environment)
+                ? []
+                : [flag]
     }
 
     /// Reports whether `XC_MCP_REQUIRE_MACRO_APPROVAL` turns the default off.
     public static func requiresApproval(
-        environment: [String: String] = ProcessInfo.processInfo.environment
+        environment: [String: String] = ProcessEnvironment.current
     ) -> Bool {
         guard let value = environment["XC_MCP_REQUIRE_MACRO_APPROVAL"], !value.isEmpty
         else { return false }

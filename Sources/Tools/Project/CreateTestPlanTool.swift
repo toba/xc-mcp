@@ -7,12 +7,10 @@ import Foundation
 public struct CreateTestPlanTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "create_test_plan",
             description: "Create a .xctestplan file for the given project and test targets",
             inputSchema: .object([
@@ -51,18 +49,17 @@ public struct CreateTestPlanTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(name) = arguments["name"]
-        else {
-            throw MCPError.invalidParams("project_path and name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let name = arguments.getString("name")
+        else { throw MCPError.invalidParams("project_path and name are required") }
 
         let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
         let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
         // Determine output directory
         let outputDir: String
-        if case let .string(dir) = arguments["output_directory"] {
+
+        if let dir = arguments.getString("output_directory") {
             outputDir = try pathUtility.resolvePath(from: dir)
         } else {
             outputDir = projectURL.deletingLastPathComponent().path
@@ -72,27 +69,18 @@ public struct CreateTestPlanTool: Sendable {
 
         // Check if file already exists
         if FileManager.default.fileExists(atPath: outputPath) {
-            return CallTool.Result(
-                content: [.text(
-                    text: "Test plan '\(name).xctestplan' already exists at \(outputPath)",
-                    annotations: nil,
-                    _meta: nil,
-                )],
-            )
+            return CallTool.Result.text(
+                "Test plan '\(name).xctestplan' already exists at \(outputPath)")
         }
 
         // Parse test target names
         var targetNames: [String] = []
-        if case let .array(targets) = arguments["test_targets"] {
-            for target in targets {
-                if case let .string(targetName) = target {
-                    targetNames.append(targetName)
-                }
-            }
-        }
+
+        targetNames.append(contentsOf: arguments.getStringArray("test_targets"))
 
         let codeCoverageEnabled: Bool
-        if case let .bool(enabled) = arguments["code_coverage_enabled"] {
+
+        if let enabled = arguments.getOptionalBool("code_coverage_enabled") {
             codeCoverageEnabled = enabled
         } else {
             codeCoverageEnabled = false
@@ -102,51 +90,39 @@ public struct CreateTestPlanTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Build test target entries
-            var testTargetEntries: [[String: Any]] = []
+            var testTargetEntries: [AnyValue] = []
+
             for targetName in targetNames {
-                guard
-                    let target = xcodeproj.pbxproj.nativeTargets.first(where: {
-                        $0.name == targetName
-                    })
-                else {
-                    return CallTool.Result(
-                        content: [
-                            .text(
-                                text: "Test target '\(targetName)' not found in project",
-                                annotations: nil,
-                                _meta: nil,
-                            ),
-                        ],
-                    )
+                guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                    $0.name == targetName
+                }) else {
+                    return CallTool.Result.text("Test target '\(targetName)' not found in project")
                 }
 
                 let containerPath = TestPlanFile.containerPath(for: projectURL)
-                let entry: [String: Any] = [
+                testTargetEntries.append([
                     "target": [
-                        "containerPath": containerPath,
-                        "identifier": target.uuid,
-                        "name": targetName,
-                    ] as [String: Any],
-                ]
-                testTargetEntries.append(entry)
+                        "containerPath": .string(containerPath),
+                        "identifier": .string(target.uuid),
+                        "name": .string(targetName),
+                    ]
+                ])
             }
 
             // Build test plan JSON
-            var defaultOptions: [String: Any] = [:]
-            if codeCoverageEnabled {
-                defaultOptions["codeCoverageEnabled"] = true
-            }
+            var defaultOptions: [String: AnyValue] = [:]
+            if codeCoverageEnabled { defaultOptions["codeCoverageEnabled"] = true }
 
-            let testPlanJSON: [String: Any] = [
+            let testPlanJSON: [String: AnyValue] = [
                 "configurations": [
                     [
-                        "id": UUID().uuidString,
+                        "id": .string(UUID().uuidString),
                         "name": "Test Scheme Action",
-                        "options": [:] as [String: Any],
-                    ] as [String: Any],
+                        "options": .dictionary([:]),
+                    ]
                 ],
-                "defaultOptions": defaultOptions,
-                "testTargets": testTargetEntries,
+                "defaultOptions": .dictionary(defaultOptions),
+                "testTargets": .array(testTargetEntries),
                 "version": 1,
             ]
 
@@ -157,11 +133,9 @@ public struct CreateTestPlanTool: Sendable {
                 summary += "\nTest targets: \(targetNames.joined(separator: ", "))"
             }
 
-            return CallTool.Result(content: [.text(text: summary, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(summary)
         } catch {
-            throw MCPError.internalError(
-                "Failed to create test plan: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

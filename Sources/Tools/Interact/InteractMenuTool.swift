@@ -43,12 +43,7 @@ public struct InteractMenuTool: Sendable {
         let snapshot = try await InteractPostAction.settledSnapshot(
             runner: interactRunner, pid: pid,
         )
-        return CallTool.Result(content: [
-            .text(
-                text: "Clicked menu: \(menuPath.joined(separator: " > "))\n\(snapshot)",
-                annotations: nil,
-                _meta: nil,
-            )
-        ],)
+        return CallTool.Result.text(
+            "Clicked menu: \(menuPath.joined(separator: " > "))\n\(snapshot)")
     }
 }

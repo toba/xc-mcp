@@ -270,11 +270,11 @@ struct AuditBuildSettingsToolTests {
     }
 
     @Test
-    func `parseBuildSettings reads JSON output`() {
+    func `parseSettings reads JSON output`() {
         let json = """
             [{"target":"App","buildSettings":{"ONLY_ACTIVE_ARCH":"YES","PRODUCT_NAME":"App"}}]
             """
-        let settings = AuditBuildSettingsTool.parseBuildSettings(from: json)
+        let settings = BuildSettingExtractor.parseSettings(from: json)
         #expect(settings["ONLY_ACTIVE_ARCH"] == "YES")
         #expect(settings["PRODUCT_NAME"] == "App")
     }

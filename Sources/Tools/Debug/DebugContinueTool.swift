@@ -5,23 +5,18 @@ import Foundation
 public struct DebugContinueTool: Sendable {
     private let lldbRunner: LLDBRunner
 
-    public init(lldbRunner: LLDBRunner = LLDBRunner()) {
-        self.lldbRunner = lldbRunner
-    }
+    public init(lldbRunner: LLDBRunner = .init()) { self.lldbRunner = lldbRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "debug_continue",
-            description:
-            "Continue execution of a debugged process.",
+            description: "Continue execution of a debugged process.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID of the debugged process.",
-                        ),
+                        "description": .string("Process ID of the debugged process."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -43,13 +38,9 @@ public struct DebugContinueTool: Sendable {
             let result = try await lldbRunner.continueExecution(pid: targetPID)
 
             var message = "Continuing execution of process \(targetPID)"
-            if !result.output.isEmpty {
-                message += "\n\n\(result.output)"
-            }
+            if !result.output.isEmpty { message += "\n\n\(result.output)" }
 
-            return CallTool.Result(content: [
-                .text(text: message, annotations: nil, _meta: nil),
-            ])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

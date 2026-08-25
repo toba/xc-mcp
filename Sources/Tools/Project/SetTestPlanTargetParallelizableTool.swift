@@ -5,15 +5,13 @@ import Foundation
 public struct SetTestPlanTargetParallelizableTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_test_plan_target_parallelizable",
             description:
-            "Set the 'parallelizable' flag on a test plan target (or plan-level defaultOptions). Use enabled=false to opt a target out of Swift Testing's default parallel execution — needed when test code transitively triggers main-queue dispatch (CloudKit, CoreSymbolication, etc.) and trips libdispatch's main-thread assertion.",
+                "Set the 'parallelizable' flag on a test plan target (or plan-level defaultOptions). Use enabled=false to opt a target out of Swift Testing's default parallel execution — needed when test code transitively triggers main-queue dispatch (CloudKit, CoreSymbolication, etc.) and trips libdispatch's main-thread assertion.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -42,7 +40,7 @@ public struct SetTestPlanTargetParallelizableTool: Sendable {
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         let testPlanPath = try arguments.getRequiredString("test_plan_path")
-        guard case let .bool(enabled) = arguments["enabled"] else {
+        guard let enabled = arguments.getOptionalBool("enabled") else {
             throw MCPError.invalidParams("enabled is required and must be a boolean")
         }
         let targetName = arguments.getString("target_name")
@@ -52,60 +50,18 @@ public struct SetTestPlanTargetParallelizableTool: Sendable {
         do {
             var json = try TestPlanFile.read(from: resolvedPath)
 
-            if let targetName {
-                try applyToTarget(&json, targetName: targetName, enabled: enabled)
-            } else {
-                applyToDefaults(&json, enabled: enabled)
+            try TestPlanFile.mutateScope(&json, targetName: targetName) { scope in
+                scope["parallelizable"] = .boolean(enabled)
             }
 
             try TestPlanFile.write(json, to: resolvedPath)
 
             let scope = targetName.map { "target '\($0)'" } ?? "plan-level defaults"
             let verb = enabled ? "Enabled" : "Disabled"
-            return CallTool.Result(
-                content: [
-                    .text(
-                        text: "\(verb) parallel execution for \(scope) in \(resolvedPath)",
-                        annotations: nil,
-                        _meta: nil,
-                    ),
-                ],
-            )
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(
+                "\(verb) parallel execution for \(scope) in \(resolvedPath)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to update test plan parallelizable setting: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
-    }
-
-    private func applyToDefaults(_ json: inout [String: Any], enabled: Bool) {
-        var defaults = json["defaultOptions"] as? [String: Any] ?? [:]
-        defaults["parallelizable"] = enabled
-        json["defaultOptions"] = defaults
-    }
-
-    private func applyToTarget(
-        _ json: inout [String: Any],
-        targetName: String,
-        enabled: Bool,
-    ) throws(MCPError) {
-        guard var testTargets = json["testTargets"] as? [[String: Any]] else {
-            throw MCPError.invalidParams("Test plan has no test targets")
-        }
-
-        guard
-            let index = testTargets.firstIndex(where: {
-                ($0["target"] as? [String: Any])?["name"] as? String == targetName
-            })
-        else {
-            throw MCPError.invalidParams("Target '\(targetName)' not found in test plan")
-        }
-
-        var entry = testTargets[index]
-        entry["parallelizable"] = enabled
-        testTargets[index] = entry
-        json["testTargets"] = testTargets
     }
 }

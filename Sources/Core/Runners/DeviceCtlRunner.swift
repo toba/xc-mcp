@@ -66,7 +66,7 @@ public struct ConnectedDevice: Sendable {
 /// try await runner.install(udid: device.udid, appPath: "/path/to/App.app")
 ///
 /// // Launch the app
-/// try await runner.launch(udid: device.udid, bundleId: "com.example.app")
+/// try await runner.launch(udid: device.udid, bundleID: "com.example.app")
 /// ```
 public struct DeviceCtlRunner: Sendable {
     /// Creates a new devicectl runner.
@@ -129,13 +129,13 @@ public struct DeviceCtlRunner: Sendable {
     ///
     /// - Parameters:
     ///   - udid: The UDID of the target device.
-    ///   - bundleId: Bundle identifier of the app to launch.
+    ///   - bundleID: Bundle identifier of the app to launch.
     /// - Returns: The result containing exit code and output.
     public func launch(
         udid: String,
-        bundleId: String,
+        bundleID: String,
     ) async throws(DeviceCtlError) -> DeviceCtlResult {
-        try await run(arguments: ["device", "process", "launch", "--device", udid, bundleId])
+        try await run(arguments: ["device", "process", "launch", "--device", udid, bundleID])
     }
 
     /// Terminates an app on a physical device by resolving its bundle ID to a PID.
@@ -146,14 +146,14 @@ public struct DeviceCtlRunner: Sendable {
     ///
     /// - Parameters:
     ///   - udid: The UDID of the target device.
-    ///   - bundleId: Bundle identifier of the app to terminate.
+    ///   - bundleID: Bundle identifier of the app to terminate.
     /// - Returns: The result containing exit code and output.
     /// - Throws: ``DeviceCtlError/processNotFound(_:)`` if no running process matches.
     public func terminate(
         udid: String,
-        bundleId: String,
+        bundleID: String,
     ) async throws(DeviceCtlError) -> DeviceCtlResult {
-        let pid = try await findPID(forBundleID: bundleId, udid: udid)
+        let pid = try await findPID(forBundleID: bundleID, udid: udid)
         return try await run(arguments: [
             "device", "process", "terminate", "--device", udid, "--pid", "\(pid)",
         ])
@@ -177,39 +177,39 @@ public struct DeviceCtlRunner: Sendable {
     /// the bundle identifier.
     ///
     /// - Parameters:
-    ///   - bundleId: The bundle identifier to look for.
+    ///   - bundleID: The bundle identifier to look for.
     ///   - udid: The UDID of the target device.
     /// - Returns: The PID of the matching process.
     /// - Throws: ``DeviceCtlError/processNotFound(_:)`` if no match is found.
     public func findPID(
-        forBundleID bundleId: String,
+        forBundleID bundleID: String,
         udid: String,
     ) async throws(DeviceCtlError) -> Int {
         let processes = try await listProcesses(udid: udid)
         // Try exact bundle URL match first (e.g. ".../com.example.MyApp/...")
-        if let match = processes.first(where: { $0.bundleURL?.contains(bundleId) == true }) {
+        if let match = processes.first(where: { $0.bundleURL?.contains(bundleID) == true }) {
             return match.processIdentifier
         }
         // Fall back to executable path matching the last component of the bundle ID
-        let appName = bundleId.components(separatedBy: ".").last ?? bundleId
+        let appName = bundleID.components(separatedBy: ".").last ?? bundleID
         if let match = processes.first(where: {
             $0.executable?.localizedCaseInsensitiveContains(appName) == true
         }) { return match.processIdentifier }
-        throw DeviceCtlError.processNotFound(bundleId)
+        throw DeviceCtlError.processNotFound(bundleID)
     }
 
     /// Gets app information from a physical device.
     ///
     /// - Parameters:
     ///   - udid: The UDID of the target device.
-    ///   - bundleId: Bundle identifier of the app to query.
+    ///   - bundleID: Bundle identifier of the app to query.
     /// - Returns: The result containing JSON-formatted app information.
     public func getAppInfo(
         udid: String,
-        bundleId: String,
+        bundleID: String,
     ) async throws(DeviceCtlError) -> DeviceCtlResult {
         try await run(arguments: [
-            "device", "info", "apps", "--device", udid, "--bundle-id", bundleId, "--json-output",
+            "device", "info", "apps", "--device", udid, "--bundle-id", bundleID, "--json-output",
             "-",
         ])
     }
@@ -347,8 +347,8 @@ public enum DeviceCtlError: LocalizedError, Sendable, MCPErrorConvertible {
             case let .commandFailed(message): "devicectl command failed: \(message)"
             case .invalidOutput: "devicectl returned invalid output"
             case let .deviceNotFound(udid): "Device not found: \(udid)"
-            case let .processNotFound(bundleId):
-                "No running process found for bundle identifier: \(bundleId)"
+            case let .processNotFound(bundleID):
+                "No running process found for bundle identifier: \(bundleID)"
         }
     }
 

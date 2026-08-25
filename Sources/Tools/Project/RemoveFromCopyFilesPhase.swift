@@ -57,17 +57,15 @@ public struct RemoveFromCopyFilesPhase: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(fileName) = arguments["file_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let fileName = arguments.getString("file_name")
         else {
             throw MCPError.invalidParams("project_path, target_name, and file_name are required")
         }
 
-        let phaseName: String?
-        if case let .string(p) = arguments["phase_name"] { phaseName = p } else { phaseName = nil }
-        let dstPath: String?
-        if case let .string(d) = arguments["dst_path"] { dstPath = d } else { dstPath = nil }
+        let phaseName = arguments.getString("phase_name")
+        let dstPath = arguments.getString("dst_path")
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -112,12 +110,8 @@ public struct RemoveFromCopyFilesPhase: Sendable {
             return .text(
                 "Removed \(removedCount) \(noun) (\(removedLabels.joined(separator: ", "))) from Copy Files phase '\(phaseLabel)' of target '\(targetName)'. \(remaining) entr\(remaining == 1 ? "y" : "ies") remain.",
             )
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove entry from copy files phase: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
@@ -133,11 +127,5 @@ public struct RemoveFromCopyFilesPhase: Sendable {
         if let product = buildFile.product { return product.productName }
         if let file = buildFile.file { return file.path ?? file.name ?? file.uuid }
         return "<dangling \(buildFile.uuid)>"
-    }
-}
-
-private extension CallTool.Result {
-    static func text(_ message: String) -> CallTool.Result {
-        CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
     }
 }

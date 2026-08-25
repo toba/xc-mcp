@@ -86,7 +86,12 @@ public enum LocalizableKeyNaming {
     /// Parse format placeholders from a value, in source order. Supports `%@`, `%lld`, positional
     /// `%1$@`, and named `%1$(ordinal)@`. `%%` is treated as a literal escape and ignored.
     static func placeholders(in value: String) -> [FormatPlaceholder] {
-        let chars = Array(value)
+        placeholders(in: Array(value))
+    }
+
+    /// Parses the same placeholders from an already-materialized character array, so a caller that
+    /// needs the array as well builds it once.
+    private static func placeholders(in chars: [Character]) -> [FormatPlaceholder] {
         let n = chars.count
         var result: [FormatPlaceholder] = []
         var i = 0
@@ -174,11 +179,12 @@ public enum LocalizableKeyNaming {
 
     /// Remove format placeholder spans from a value (used when deriving a key).
     private static func stripPlaceholders(from value: String) -> String {
-        let found = placeholders(in: value)
+        let chars = Array(value)
+        let found = placeholders(in: chars)
         guard !found.isEmpty else { return value }
 
-        let chars = Array(value)
         var result = ""
+        result.reserveCapacity(value.count)
         var index = 0
 
         for placeholder in found {

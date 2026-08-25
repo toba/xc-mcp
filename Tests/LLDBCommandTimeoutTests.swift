@@ -19,6 +19,26 @@ struct LLDBCommandTimeoutTests {
         #expect(LLDBSession.interactiveCommandTimeout <= 60)
     }
 
+    /// A caller that raises the read window for one command restores what it found, so a launch
+    /// session that runs at 120s is not dropped to the 30s interactive default on the way out.
+    @Test
+    func `the session reports its current command timeout so a caller can restore it`() async throws
+    {
+        try #require(Self.lldbAvailable, "lldb not installed")
+
+        try await withLLDBSession(commandTimeout: 120) { session in
+            #expect(await session.commandTimeout == 120)
+
+            let previous = await session.commandTimeout
+            await session.setCommandTimeout(45)
+            #expect(await session.commandTimeout == 45)
+
+            await session.setCommandTimeout(previous)
+            #expect(await session.commandTimeout == 120)
+            #expect(previous != LLDBSession.interactiveCommandTimeout)
+        }
+    }
+
     @Test
     func `a wedged command times out within the lowered window and poisons the session`()
         async throws
@@ -135,6 +155,34 @@ struct LLDBCommandTimeoutTests {
             // recreation.
             let poisoned = await session.isPoisoned
             #expect(poisoned)
+        }
+    }
+
+    /// Regression test for fa747e00.
+    ///
+    /// The deadline arm of the read race used to be an unowned `Task` that nothing cancelled, so a
+    /// command that returned early left it asleep for the rest of its window. It is now a child of
+    /// the same task group as the reader, and the group cannot return until both arms finish. That
+    /// makes the leak observable: an uncancelled deadline arm holds the group open for the full
+    /// window, so a short sequence of trivial commands against a very long window would take
+    /// minutes instead of milliseconds.
+    @Test
+    func `a completed command does not wait out its timeout window`() async throws {
+        try #require(Self.lldbAvailable, "lldb not installed")
+
+        // A window far longer than the assertion budget: only a retired deadline arm keeps the
+        // commands fast.
+        try await withLLDBSession(commandTimeout: 300) { session in
+            _ = try await session.readUntilPrompt()
+
+            let start = ContinuousClock.now
+            for _ in 0..<5 { _ = try await session.sendCommand("version") }
+            let elapsed = ContinuousClock.now - start
+
+            #expect(
+                elapsed < .seconds(30),
+                "5 commands took \(elapsed) — a deadline arm is running to its full window",
+            )
         }
     }
 

@@ -1,21 +1,16 @@
 import MCP
-import PathKit
 import XCMCPCore
-import XcodeProj
-import Foundation
 
 public struct ManageDocumentTypeTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "manage_document_type",
             description:
-            "Add, update, or remove a document type (CFBundleDocumentTypes entry) in a target's Info.plist",
+                "Add, update, or remove a document type (CFBundleDocumentTypes entry) in a target's Info.plist",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -55,9 +50,7 @@ public struct ManageDocumentTypeTool: Sendable {
                     ]),
                     "handler_rank": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "LSHandlerRank: Owner, Default, Alternate, or None",
-                        ),
+                        "description": .string("LSHandlerRank: Owner, Default, Alternate, or None"),
                     ]),
                     "document_class": .object([
                         "type": .string("string"),
@@ -88,10 +81,10 @@ public struct ManageDocumentTypeTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(action) = arguments["action"],
-              case let .string(name) = arguments["name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let action = arguments.getString("action"),
+              let name = arguments.getString("name")
         else {
             throw MCPError.invalidParams("project_path, target_name, action, and name are required")
         }
@@ -101,175 +94,41 @@ public struct ManageDocumentTypeTool: Sendable {
         }
 
         do {
-            let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
-            let projectURL = URL(fileURLWithPath: resolvedProjectPath)
-            let projectDir = projectURL.deletingLastPathComponent().path
-
-            let xcodeproj = try XcodeProj(path: Path(projectURL.path))
-
-            guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
-            }
-
-            // Resolve or materialize Info.plist
-            var plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
+            return try Self.editor.perform(
+                action: action, name: name, projectPath: projectPath, targetName: targetName,
+                pathUtility: pathUtility, arguments: arguments,
             )
-
-            if plistPath == nil {
-                plistPath = try InfoPlistUtility.materializeInfoPlist(
-                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
-                    projectPath: Path(projectURL.path),
-                )
-            }
-
-            guard let resolvedPlistPath = plistPath else {
-                throw MCPError.internalError(
-                    "Failed to resolve or create Info.plist for target '\(targetName)'",
-                )
-            }
-
-            var plist = try InfoPlistUtility.readInfoPlist(path: resolvedPlistPath)
-            var documentTypes = plist["CFBundleDocumentTypes"] as? [[String: Any]] ?? []
-
-            switch action {
-                case "add":
-                    if documentTypes.contains(where: {
-                        ($0["CFBundleTypeName"] as? String) == name
-                    }) {
-                        return CallTool.Result(
-                            content: [
-                                .text(text:
-                                    "Document type '\(name)' already exists in target '\(targetName)'",
-                                    annotations: nil, _meta: nil),
-                            ],
-                        )
-                    }
-
-                    var entry: [String: Any] = ["CFBundleTypeName": name]
-                    applyFields(to: &entry, from: arguments)
-                    documentTypes.append(entry)
-
-                    plist["CFBundleDocumentTypes"] = documentTypes
-                    try InfoPlistUtility.writeInfoPlist(plist, toPath: resolvedPlistPath)
-
-                    return CallTool.Result(
-                        content: [
-                            .text(text:
-                                "Successfully added document type '\(name)' to target '\(targetName)'",
-                                annotations: nil, _meta: nil),
-                        ],
-                    )
-
-                case "update":
-                    guard
-                        let index = documentTypes.firstIndex(where: {
-                            ($0["CFBundleTypeName"] as? String) == name
-                        })
-                    else {
-                        return CallTool.Result(
-                            content: [
-                                .text(text:
-                                    "Document type '\(name)' not found in target '\(targetName)'",
-                                    annotations: nil, _meta: nil),
-                            ],
-                        )
-                    }
-
-                    var entry = documentTypes[index]
-                    applyFields(to: &entry, from: arguments)
-                    documentTypes[index] = entry
-
-                    plist["CFBundleDocumentTypes"] = documentTypes
-                    try InfoPlistUtility.writeInfoPlist(plist, toPath: resolvedPlistPath)
-
-                    return CallTool.Result(
-                        content: [
-                            .text(text:
-                                "Successfully updated document type '\(name)' in target '\(targetName)'",
-                                annotations: nil, _meta: nil),
-                        ],
-                    )
-
-                case "remove":
-                    guard
-                        let index = documentTypes.firstIndex(where: {
-                            ($0["CFBundleTypeName"] as? String) == name
-                        })
-                    else {
-                        return CallTool.Result(
-                            content: [
-                                .text(text:
-                                    "Document type '\(name)' not found in target '\(targetName)'",
-                                    annotations: nil, _meta: nil),
-                            ],
-                        )
-                    }
-
-                    documentTypes.remove(at: index)
-
-                    if documentTypes.isEmpty {
-                        plist.removeValue(forKey: "CFBundleDocumentTypes")
-                    } else {
-                        plist["CFBundleDocumentTypes"] = documentTypes
-                    }
-                    try InfoPlistUtility.writeInfoPlist(plist, toPath: resolvedPlistPath)
-
-                    return CallTool.Result(
-                        content: [
-                            .text(text:
-                                "Successfully removed document type '\(name)' from target '\(targetName)'",
-                                annotations: nil, _meta: nil),
-                        ],
-                    )
-
-                default:
-                    throw MCPError.invalidParams("action must be 'add', 'update', or 'remove'")
-            }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to manage document type: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
-    private func applyFields(to entry: inout [String: Any], from arguments: [String: Value]) {
-        if case let .array(contentTypes) = arguments["content_types"] {
-            entry["LSItemContentTypes"] = contentTypes.compactMap { value -> String? in
-                if case let .string(s) = value { return s }
-                return nil
-            }
+    private static let editor = PlistArrayEditor(
+        plistKey: "CFBundleDocumentTypes",
+        primaryKey: "CFBundleTypeName",
+        noun: "document type",
+        applyFields: ManageDocumentTypeTool.applyFields,
+    )
+
+    private static func applyFields(
+        to entry: inout [String: AnyValue],
+        from arguments: [String: Value]
+    ) {
+        if let contentTypes = arguments.getOptionalStringArray("content_types") {
+            entry["LSItemContentTypes"] = .strings(contentTypes)
         }
-        if case let .string(role) = arguments["role"] {
-            entry["CFBundleTypeRole"] = role
+        if let role = arguments.getString("role") { entry["CFBundleTypeRole"] = .string(role) }
+        if let rank = arguments.getString("handler_rank") { entry["LSHandlerRank"] = .string(rank) }
+        if let docClass = arguments.getString("document_class") {
+            entry["NSDocumentClass"] = .string(docClass)
         }
-        if case let .string(rank) = arguments["handler_rank"] {
-            entry["LSHandlerRank"] = rank
+        if let iconFile = arguments.getString("icon_file") {
+            entry["CFBundleTypeIconFile"] = .string(iconFile)
         }
-        if case let .string(docClass) = arguments["document_class"] {
-            entry["NSDocumentClass"] = docClass
+        if let isPackage = arguments.getOptionalBool("is_package") {
+            entry["LSTypeIsPackage"] = .boolean(isPackage)
         }
-        if case let .string(iconFile) = arguments["icon_file"] {
-            entry["CFBundleTypeIconFile"] = iconFile
-        }
-        if case let .bool(isPackage) = arguments["is_package"] {
-            entry["LSTypeIsPackage"] = isPackage
-        }
-        if case let .string(jsonString) = arguments["additional_properties"],
-           let additionalProps = try? JSONSerialization.jsonObject(with: Data(jsonString.utf8))
-           as? [String: Any]
-        {
-            for (key, value) in additionalProps {
-                entry[key] = value
-            }
-        }
+
+        PlistArrayEditor.applyAdditionalProperties(to: &entry, from: arguments)
     }
 }

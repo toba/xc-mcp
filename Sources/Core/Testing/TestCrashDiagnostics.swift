@@ -76,10 +76,7 @@ public enum TestCrashDiagnostics {
 
     /// `log show` accepts wall-clock timestamps in `YYYY-MM-DD HH:MM:SS` form.
     static func logTimestamp(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return formatter.string(from: date)
+        TimestampFormatting.buildLog.string(from: date)
     }
 
     /// Predicate that matches Swift traps and Objective-C exceptions in the unified log, optionally

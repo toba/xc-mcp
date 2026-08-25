@@ -5,12 +5,10 @@ import Foundation
 public struct XCStringsCreateFileTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xcstrings_create_file",
             description: "Create a new xcstrings file with the specified source language",
             inputSchema: .object([
@@ -48,17 +46,11 @@ public struct XCStringsCreateFileTool: Sendable {
                 at: resolvedPath, sourceLanguage: sourceLanguage, overwrite: overwrite,
             )
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Created xcstrings file at '\(resolvedPath)' with source language '\(sourceLanguage)'",
-                        annotations: nil, _meta: nil),
-                ],
+            return CallTool.Result.text(
+                "Created xcstrings file at '\(resolvedPath)' with source language '\(sourceLanguage)'"
             )
-        } catch let error as XCStringsError {
-            throw error.toMCPError()
-        } catch let error as PathError {
-            throw MCPError.invalidParams(error.localizedDescription)
+        } catch {
+            throw try error.asMCPError()
         }
     }
 }

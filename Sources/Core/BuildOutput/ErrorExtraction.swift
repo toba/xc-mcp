@@ -225,13 +225,8 @@ public enum ErrorExtractor {
 
         if succeeded {
             let elapsedSuffix = wallClock.map { " (\($0.elapsedDescription) total)" } ?? ""
-            return CallTool.Result(content: [
-                .text(
-                    text: "Tests passed for \(context)\(elapsedSuffix)\n\n\(testResult)\(bundleSuffix)",
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],)
+            return CallTool.Result.text(
+                "Tests passed for \(context)\(elapsedSuffix)\n\n\(testResult)\(bundleSuffix)")
         } else {
             throw MCPError.internalError("Tests failed:\n\(testResult)\(bundleSuffix)")
         }
@@ -445,8 +440,7 @@ public enum ErrorExtractor {
         _ tests: [XCResultParser.TestDetail],
         limit: Int = 10,
     ) -> String? {
-        let sorted =
-            tests
+        let sorted = tests.lazy
             .compactMap { test -> (XCResultParser.TestDetail, Double)? in
                 guard let duration = test.duration else { return nil }
                 return (test, duration)
@@ -705,19 +699,23 @@ public enum ErrorExtractor {
             return id
         }
 
+        // invert the map once so each target name costs one lookup, not a scan of every scheme
+        var schemesByTarget: [String: [String]] = [:]
+
+        for (scheme, targets) in schemeMap {
+            for target in targets { schemesByTarget[target, default: []].append(scheme) }
+        }
+        schemesByTarget = schemesByTarget.mapValues { $0.sorted() }
+
         // Find schemes that contain each target
         var suggestions: [String] = []
+        suggestions.reserveCapacity(targetNames.count)
 
         for targetName in targetNames {
-            let matchingSchemes = schemeMap
-                .filter { $0.value.contains(targetName) }
-                .map(\.key)
-                .sorted()
-
-            if !matchingSchemes.isEmpty {
-                let schemeList = matchingSchemes.map { "'\($0)'" }.joined(separator: ", ")
-                suggestions.append("Target '\(targetName)' is in scheme \(schemeList).")
-            }
+            guard let matchingSchemes = schemesByTarget[targetName], !matchingSchemes.isEmpty
+            else { continue }
+            let schemeList = matchingSchemes.map { "'\($0)'" }.joined(separator: ", ")
+            suggestions.append("Target '\(targetName)' is in scheme \(schemeList).")
         }
 
         return suggestions.isEmpty

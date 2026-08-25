@@ -64,19 +64,16 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(folderPath) = arguments["folder_path"],
-              case let .string(targetName) = arguments["target_name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let folderPath = arguments.getString("folder_path"),
+              let targetName = arguments.getString("target_name")
         else {
             throw MCPError.invalidParams("project_path, folder_path, and target_name are required")
         }
 
-        let fileName: String?
-        if case let .string(f) = arguments["file_name"] { fileName = f } else { fileName = nil }
-        let phaseName: String?
-        if case let .string(p) = arguments["phase_name"] { phaseName = p } else { phaseName = nil }
-        let dstPath: String?
-        if case let .string(d) = arguments["dst_path"] { dstPath = d } else { dstPath = nil }
+        let fileName = arguments.getString("file_name")
+        let phaseName = arguments.getString("phase_name")
+        let dstPath = arguments.getString("dst_path")
 
         // Presence of phase_name or dst_path switches to the build-phase routing set.
         let routingMode = phaseName != nil || dstPath != nil
@@ -109,7 +106,7 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
             let setLabel: String
 
             if routingMode {
-                let phase = try locatePhase(
+                let phase = try CopyFilesPhaseLocator.locateAnyPhase(
                     in: resolvedTarget, phaseName: phaseName, dstPath: dstPath,
                     targetName: targetName,
                 )
@@ -150,9 +147,7 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
 
             if let fileName {
                 guard membership.contains(fileName) else {
-                    throw MCPError.invalidParams(
-                        "File '\(fileName)' not found in \(setLabel)",
-                    )
+                    throw MCPError.invalidParams("File '\(fileName)' not found in \(setLabel)")
                 }
 
                 let remaining = try editor.removeEntriesFromArray(
@@ -170,19 +165,14 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                     )
 
                     try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
-                    return CallTool.Result(content: [
-                        .text(
-                            text: "Removed '\(fileName)' from \(setLabel) on '\(folderPath)'. Exception set was empty and has been removed.",
-                            annotations: nil, _meta: nil)
-                    ],)
+                    return CallTool.Result.text(
+                        "Removed '\(fileName)' from \(setLabel) on '\(folderPath)'. Exception set was empty and has been removed."
+                    )
                 }
 
                 try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Removed '\(fileName)' from \(setLabel) on '\(folderPath)'",
-                        annotations: nil, _meta: nil)
-                ],)
+                return CallTool.Result.text(
+                    "Removed '\(fileName)' from \(setLabel) on '\(folderPath)'")
             } else {
                 // Remove the entire exception set
                 try editor.removeBlock(uuid: exceptionUUID)
@@ -192,68 +182,11 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                 )
 
                 try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Removed \(setLabel) from synchronized folder '\(folderPath)'",
-                        annotations: nil, _meta: nil)
-                ],)
+                return CallTool.Result.text(
+                    "Removed \(setLabel) from synchronized folder '\(folderPath)'")
             }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove synchronized folder exception: \(error.localizedDescription)",
-            )
-        }
-    }
-
-    /// Locate the build phase on `target` matching the given criteria. Priority: explicit
-    /// `phaseName` → `dstPath` (on Copy Files phases) → the target's sole Copy Files phase.
-    /// Mirrors `AddSynchronizedFolderPhaseMembershipTool` so add/remove locate the same phase.
-    private func locatePhase(
-        in target: PBXNativeTarget,
-        phaseName: String?,
-        dstPath: String?,
-        targetName: String,
-    ) throws -> PBXBuildPhase {
-        if let phaseName {
-            guard let byName = target.buildPhases.first(where: { $0.name() == phaseName }) else {
-                throw MCPError.invalidParams(
-                    "Build phase named '\(phaseName)' not found on target '\(targetName)'",
-                )
-            }
-            return byName
-        }
-
-        if let dstPath {
-            let matches = target.buildPhases
-                .compactMap { $0 as? PBXCopyFilesBuildPhase }
-                .filter { ($0.dstPath ?? "") == dstPath }
-            switch matches.count {
-                case 0:
-                    throw MCPError.invalidParams(
-                        "No Copy Files phase with dstPath '\(dstPath)' on target '\(targetName)'",
-                    )
-                case 1: return matches[0]
-                default:
-                    throw MCPError.invalidParams(
-                        "Multiple Copy Files phases on target '\(targetName)' have dstPath '\(dstPath)' — pass phase_name to disambiguate",
-                    )
-            }
-        }
-
-        let copyPhases = target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
-        switch copyPhases.count {
-            case 0:
-                throw MCPError.invalidParams(
-                    "Target '\(targetName)' has no Copy Files build phases. Pass phase_name to select a different phase type.",
-                )
-            case 1: return copyPhases[0]
-            default:
-                let names = copyPhases.map { $0.name ?? ("dstPath=" + ($0.dstPath ?? "")) }
-                throw MCPError.invalidParams(
-                    "Target '\(targetName)' has \(copyPhases.count) Copy Files phases: \(names.joined(separator: ", ")). Pass phase_name or dst_path to disambiguate.",
-                )
+            throw try error.asMCPError()
         }
     }
 

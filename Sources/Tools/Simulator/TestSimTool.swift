@@ -9,8 +9,8 @@ public struct TestSimTool: Sendable {
     private let sessionManager: SessionManager
 
     public init(
-        xcodebuildRunner: XcodebuildRunner = XcodebuildRunner(),
-        simctlRunner: SimctlRunner = SimctlRunner(),
+        xcodebuildRunner: XcodebuildRunner = .init(),
+        simctlRunner: SimctlRunner = .init(),
         sessionManager: SessionManager,
     ) {
         self.xcodebuildRunner = xcodebuildRunner
@@ -19,10 +19,10 @@ public struct TestSimTool: Sendable {
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "test_sim",
             description:
-            "Run tests for an Xcode project or workspace on the iOS/tvOS/watchOS Simulator.",
+                "Run tests for an Xcode project or workspace on the iOS/tvOS/watchOS Simulator.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(

@@ -43,8 +43,7 @@ public struct DebugCaptureBacktraceTool: Sendable {
                     "frame_count": .object([
                         "type": .string("integer"),
                         "description": .string(
-                            "Max frames per backtrace. Omit for the full stack.",
-                        ),
+                            "Max frames per backtrace. Omit for the full stack."),
                     ]),
                     "max_hits": .object([
                         "type": .string("integer"),
@@ -54,9 +53,7 @@ public struct DebugCaptureBacktraceTool: Sendable {
                     ]),
                     "timeout_seconds": .object([
                         "type": .string("number"),
-                        "description": .string(
-                            "Overall capture budget in seconds (default 10).",
-                        ),
+                        "description": .string("Overall capture budget in seconds (default 10)."),
                     ]),
                 ]),
                 "required": .array([.string("symbol")]),
@@ -93,7 +90,7 @@ public struct DebugCaptureBacktraceTool: Sendable {
             )
             message += result.output
 
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }

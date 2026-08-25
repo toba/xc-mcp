@@ -39,18 +39,12 @@ public struct TypeTextTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let simulator = try await sessionManager.resolveSimulator(from: arguments)
-        guard case let .string(text) = arguments["text"] else {
-            throw MCPError.invalidParams("text is required")
-        }
+        let text = try arguments.getRequiredString("text")
 
         do {
             try await uiInput.typeText(simulator: simulator, text: text)
             let truncatedText = text.count > 20 ? String(text.prefix(20)) + "..." : text
-            return CallTool.Result(content: [
-                .text(
-                    text: "Typed '\(truncatedText)' on simulator '\(simulator)'",
-                    annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text("Typed '\(truncatedText)' on simulator '\(simulator)'")
         } catch {
             throw try error.asMCPError()
         }

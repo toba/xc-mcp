@@ -7,15 +7,13 @@ import Foundation
 public struct RemoveCopyFilesPhase: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "remove_copy_files_phase",
             description:
-            "Remove a Copy Files build phase from a target. Locates the phase by phase_name or dst_path; if the target has exactly one Copy Files phase, that one is used.",
+                "Remove a Copy Files build phase from a target. Locates the phase by phase_name or dst_path; if the target has exactly one Copy Files phase, that one is used.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -42,25 +40,19 @@ public struct RemoveCopyFilesPhase: Sendable {
                         ),
                     ]),
                 ]),
-                "required": .array([
-                    .string("project_path"), .string("target_name"),
-                ]),
+                "required": .array([.string("project_path"), .string("target_name")]),
             ]),
             annotations: .destructive,
         )
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"]
-        else {
-            throw MCPError.invalidParams("project_path and target_name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name")
+        else { throw MCPError.invalidParams("project_path and target_name are required") }
 
-        let phaseName: String?
-        if case let .string(p) = arguments["phase_name"] { phaseName = p } else { phaseName = nil }
-        let dstPath: String?
-        if case let .string(d) = arguments["dst_path"] { dstPath = d } else { dstPath = nil }
+        let phaseName = arguments.getString("phase_name")
+        let dstPath = arguments.getString("dst_path")
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -68,16 +60,10 @@ public struct RemoveCopyFilesPhase: Sendable {
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
-            else {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
             let copyFilesPhase = try CopyFilesPhaseLocator.locate(
@@ -103,9 +89,7 @@ public struct RemoveCopyFilesPhase: Sendable {
 
             // Remove build files from the phase
             if let buildFiles = copyFilesPhase.files {
-                for buildFile in buildFiles {
-                    xcodeproj.pbxproj.delete(object: buildFile)
-                }
+                for buildFile in buildFiles { xcodeproj.pbxproj.delete(object: buildFile) }
             }
 
             // Remove the phase from the target
@@ -120,39 +104,34 @@ public struct RemoveCopyFilesPhase: Sendable {
             let routingNote = droppedRoutingSets > 0
                 ? " (also removed \(droppedRoutingSets) synchronized-folder routing exception set\(droppedRoutingSets == 1 ? "" : "s"))"
                 : ""
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Successfully removed Copy Files phase '\(label)' from target '\(targetName)'\(routingNote)",
-                        annotations: nil, _meta: nil),
-                ],
+            return CallTool.Result.text(
+                "Successfully removed Copy Files phase '\(label)' from target '\(targetName)'\(routingNote)"
             )
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to remove copy files phase: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
     /// Removes every `PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet` that routes a
-    /// synchronized folder's files into `phase`, detaching each from its sync group and deleting the
-    /// object. Returns the number of routing sets dropped.
+    /// synchronized folder's files into `phase`, detaching each from its sync group and deleting
+    /// the object. Returns the number of routing sets dropped.
     private func removeRoutingExceptionSets(
         for phase: PBXCopyFilesBuildPhase,
         target: PBXNativeTarget,
         xcodeproj: XcodeProj,
     ) -> Int {
         var dropped = 0
+
         for syncGroup in collectSyncGroups(for: target, in: xcodeproj) {
             guard let exceptions = syncGroup.exceptions, !exceptions.isEmpty else { continue }
             var kept: [PBXFileSystemSynchronizedExceptionSet] = []
             var toDelete: [PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet] = []
+
             for exception in exceptions {
                 if let membership =
                     exception as? PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet,
-                    membership.buildPhase?.uuid == phase.uuid {
+                   membership.buildPhase?.uuid == phase.uuid
+                {
                     toDelete.append(membership)
                 } else {
                     kept.append(exception)
@@ -160,6 +139,7 @@ public struct RemoveCopyFilesPhase: Sendable {
             }
             guard !toDelete.isEmpty else { continue }
             syncGroup.exceptions = kept.isEmpty ? nil : kept
+
             for membership in toDelete {
                 xcodeproj.pbxproj.delete(object: membership)
                 dropped += 1
@@ -176,9 +156,7 @@ public struct RemoveCopyFilesPhase: Sendable {
     ) -> [PBXFileSystemSynchronizedRootGroup] {
         var byUUID: [String: PBXFileSystemSynchronizedRootGroup] = [:]
 
-        for group in target.fileSystemSynchronizedGroups ?? [] {
-            byUUID[group.uuid] = group
-        }
+        for group in target.fileSystemSynchronizedGroups ?? [] { byUUID[group.uuid] = group }
 
         if let mainGroup = try? xcodeproj.pbxproj.rootProject()?.mainGroup {
             collectSyncGroups(from: mainGroup, into: &byUUID)

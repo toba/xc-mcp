@@ -5,15 +5,13 @@ import Foundation
 public struct ShowSessionDefaultsTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "show_session_defaults",
             description:
-            "Display the current session defaults including project, scheme, simulator, and device settings.",
+                "Display the current session defaults including project, scheme, simulator, and device settings.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([:]),
@@ -25,14 +23,6 @@ public struct ShowSessionDefaultsTool: Sendable {
 
     public func execute(arguments _: [String: Value]) async -> CallTool.Result {
         let summary = await sessionManager.summary()
-        return CallTool.Result(
-            content: [
-                .text(
-                    text: "Current session defaults:\n\n\(summary)",
-                    annotations: nil,
-                    _meta: nil,
-                ),
-            ],
-        )
+        return CallTool.Result.text("Current session defaults:\n\n\(summary)")
     }
 }

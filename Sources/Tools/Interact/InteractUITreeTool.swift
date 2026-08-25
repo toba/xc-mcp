@@ -48,12 +48,6 @@ public struct InteractUITreeTool: Sendable {
         lines.append("")
         for (element, _) in tree { lines.append(element.summary()) }
 
-        return CallTool.Result(content: [
-            .text(
-                text: lines.joined(separator: "\n"),
-                annotations: nil,
-                _meta: nil,
-            )
-        ])
+        return CallTool.Result.text(lines.joined(separator: "\n"))
     }
 }

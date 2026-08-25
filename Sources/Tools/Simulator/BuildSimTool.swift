@@ -142,14 +142,9 @@ public struct BuildSimTool: Sendable {
                 result, projectRoot: projectRoot, derivedDataNote: derivedDataNote,
             )
 
-            return CallTool.Result(content: [
-                .text(
-                    text: "Build succeeded for scheme '\(scheme)' on simulator '\(simulator)'"
-                        + "\n\n" + derivedDataNote,
-                    annotations: nil,
-                    _meta: nil,
-                )
-            ],)
+            return CallTool.Result.text(
+                "Build succeeded for scheme '\(scheme)' on simulator '\(simulator)'"
+                    + "\n\n" + derivedDataNote)
         } catch {
             throw try error.asMCPError()
         }

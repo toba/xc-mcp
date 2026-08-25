@@ -44,19 +44,17 @@ public struct RepairProjectTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
 
         let dryRun: Bool
-        if case let .bool(dry) = arguments["dry_run"] { dryRun = dry } else { dryRun = false }
+        if let dry = arguments.getOptionalBool("dry_run") { dryRun = dry } else { dryRun = false }
 
         let resolvedPath: String
 
         do {
             resolvedPath = try pathUtility.resolvePath(from: projectPath)
         } catch {
-            throw MCPError.invalidParams("Invalid project path: \(error)")
+            throw try error.asMCPError()
         }
 
         let path = Path(resolvedPath)
@@ -65,9 +63,7 @@ public struct RepairProjectTool: Sendable {
         do {
             xcodeproj = try XcodeProj(path: path)
         } catch {
-            throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
 
         var fixes = [String]()
@@ -129,26 +125,22 @@ public struct RepairProjectTool: Sendable {
             if !dryRun { for orphan in orphans { pbxproj.delete(object: orphan) } }
         }
 
-        // --- Remove orphaned PBXTargetDependency / PBXContainerItemProxy objects ---
-        // Dependency edges no longer reachable from any target's `dependencies` array (e.g. left
-        // behind when a dependent target was removed) keep pointing at the depended-on target, and
-        // the safe-write referential-integrity audit then refuses to drop *that* target. Garbage-
-        // collect them, plus any edge/proxy whose referenced object no longer exists.
+        // --- Remove orphaned PBXTargetDependency / PBXContainerItemProxy objects --- Dependency
+        // edges no longer reachable from any target's `dependencies` array (e.g. left behind when a
+        // dependent target was removed) keep pointing at the depended-on target, and the safe-write
+        // referential-integrity audit then refuses to drop *that* target. Garbage- collect them,
+        // plus any edge/proxy whose referenced object no longer exists.
         let allTargets = pbxproj.projects.flatMap(\.targets)
         let liveTargetRefs = Set(allTargets.map(ObjectIdentifier.init))
         let referencedDependencies = Set(
-            allTargets.flatMap(\.dependencies).map(ObjectIdentifier.init),
-        )
+            allTargets.flatMap(\.dependencies).map(ObjectIdentifier.init))
 
         // A dependency is orphaned if no target's `dependencies` array references it, or if the
         // target/proxy it points at is gone.
         let orphanedDependencies = pbxproj.targetDependencies.filter { dependency in
             if !referencedDependencies.contains(ObjectIdentifier(dependency)) { return true }
             if let depTarget = dependency.target,
-               !liveTargetRefs.contains(ObjectIdentifier(depTarget))
-            {
-                return true
-            }
+               !liveTargetRefs.contains(ObjectIdentifier(depTarget)) { return true }
             return false
         }
 
@@ -156,14 +148,13 @@ public struct RepairProjectTool: Sendable {
             fixes.append(
                 "Removed \(orphanedDependencies.count) orphaned PBXTargetDependency object\(orphanedDependencies.count == 1 ? "" : "s") not referenced by any target",
             )
+
             if !dryRun {
                 for dependency in orphanedDependencies {
                     // Detach from any target that still lists it before deleting. The proxy it owns
                     // is left for the proxy pass below, which now sees it unreferenced and reports
                     // it as the orphan it is.
-                    for target in allTargets {
-                        target.dependencies.removeAll { $0 === dependency }
-                    }
+                    for target in allTargets { target.dependencies.removeAll { $0 === dependency } }
                     pbxproj.delete(object: dependency)
                 }
             }
@@ -175,20 +166,15 @@ public struct RepairProjectTool: Sendable {
         // the live set so they fall through to here even on a dry run (nothing was deleted yet).
         let orphanedDependencyIDs = Set(orphanedDependencies.map(ObjectIdentifier.init))
         let liveProxyRefs = Set(
-            pbxproj.targetDependencies
+            pbxproj.targetDependencies.lazy
                 .filter { !orphanedDependencyIDs.contains(ObjectIdentifier($0)) }
                 .compactMap(\.targetProxy).map(ObjectIdentifier.init),
-        ).union(
-            pbxproj.referenceProxies.compactMap(\.remote).map(ObjectIdentifier.init),
-        )
+        ).union(pbxproj.referenceProxies.lazy.compactMap(\.remote).map(ObjectIdentifier.init))
         let orphanedProxies = pbxproj.containerItemProxies.filter { proxy in
             if liveProxyRefs.contains(ObjectIdentifier(proxy)) {
                 // Still referenced, but the object it points at may be gone.
                 if case let .object(obj)? = proxy.remoteGlobalID,
-                   !liveTargetRefs.contains(ObjectIdentifier(obj))
-                {
-                    return true
-                }
+                   !liveTargetRefs.contains(ObjectIdentifier(obj)) { return true }
                 return false
             }
             return true
@@ -206,9 +192,7 @@ public struct RepairProjectTool: Sendable {
             do {
                 try PBXProjWriter.write(xcodeproj, to: path)
             } catch {
-                throw MCPError.internalError(
-                    "Failed to write repaired project: \(error.localizedDescription)",
-                )
+                throw try error.asMCPError()
             }
         }
 
@@ -229,13 +213,7 @@ public struct RepairProjectTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [
-            .text(
-                text: output.joined(separator: "\n"),
-                annotations: nil,
-                _meta: nil,
-            )
-        ])
+        return CallTool.Result.text(output.joined(separator: "\n"))
     }
 
     private func phaseName(for phase: PBXBuildPhase) -> String {

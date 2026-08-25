@@ -91,9 +91,7 @@ public struct AuditSwiftPackagesTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -112,13 +110,9 @@ public struct AuditSwiftPackagesTool: Sendable {
                 pinsPresent: pins != nil,
                 pinCount: pins?.count ?? 0,
             )
-            return CallTool.Result(content: [.text(text: report, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(report)
         } catch {
-            throw MCPError.internalError(
-                "Failed to audit Swift packages: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
@@ -148,7 +142,7 @@ public struct AuditSwiftPackagesTool: Sendable {
         do {
             return try resolvedParser.parse(fileAt: file)
         } catch {
-            throw MCPError.internalError("Package.resolved at \(file) is malformed: \(error)")
+            throw try error.asMCPError()
         }
     }
 

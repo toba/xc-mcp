@@ -5,15 +5,13 @@ import Foundation
 public struct SwiftPackageStopTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "swift_package_stop",
             description:
-            "Stop a running Swift package executable that was started via swift_package_run. Uses process termination to stop the executable.",
+                "Stop a running Swift package executable that was started via swift_package_run. Uses process termination to stop the executable.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -45,7 +43,7 @@ public struct SwiftPackageStopTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Get executable name
-        guard case let .string(executable) = arguments["executable"] else {
+        guard let executable = arguments.getString("executable") else {
             throw MCPError.invalidParams("executable is required to identify the process to stop.")
         }
 
@@ -74,21 +72,20 @@ public struct SwiftPackageStopTool: Sendable {
             if result.succeeded {
                 // Wait for processes to actually exit
                 var allExited = true
+
                 for pid in pids {
                     let exited = await ProcessResult.waitForProcessExit(pid: pid)
+
                     if !exited {
                         // Escalate to SIGKILL
-                        _ = try? await ProcessResult.run(
-                            "/bin/kill", arguments: ["-9", "\(pid)"],
-                        )
+                        _ = try? await ProcessResult.run("/bin/kill", arguments: ["-9", "\(pid)"])
                         allExited = false
                     }
                 }
-                let detail =
-                    allExited
-                        ? "Successfully stopped '\(executable)'"
-                        : "Stopped '\(executable)' (escalated to SIGKILL after SIGTERM timeout)"
-                return CallTool.Result(content: [.text(text: detail, annotations: nil, _meta: nil)])
+                let detail = allExited
+                    ? "Successfully stopped '\(executable)'"
+                    : "Stopped '\(executable)' (escalated to SIGKILL after SIGTERM timeout)"
+                return CallTool.Result.text(detail)
             } else if result.exitCode == 1 {
                 // pkill returns 1 when no process found (race: exited between pgrep and pkill)
                 throw MCPError.invalidParams("No running process found matching '\(executable)'")

@@ -58,10 +58,10 @@ public struct LaunchMacAppTool: Sendable {
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         let appPath = arguments.getString("app_path")
-        let bundleId = arguments.getString("bundle_id")
+        let bundleID = arguments.getString("bundle_id")
 
         // Validate we have either app_path or bundle_id
-        if appPath == nil, bundleId == nil {
+        if appPath == nil, bundleID == nil {
             throw MCPError.invalidParams("Either app_path or bundle_id is required.")
         }
 
@@ -71,11 +71,7 @@ public struct LaunchMacAppTool: Sendable {
 
         var launchArgs: [String] = []
 
-        if case let .array(argsArray) = arguments["args"] {
-            for arg in argsArray {
-                if case let .string(argValue) = arg { launchArgs.append(argValue) }
-            }
-        }
+        launchArgs.append(contentsOf: arguments.getStringArray("args"))
 
         do {
             // Prepare app bundle when launching from DerivedData
@@ -89,9 +85,9 @@ public struct LaunchMacAppTool: Sendable {
 
             var openArgs: [String] = []
 
-            if let bundleId {
+            if let bundleID {
                 openArgs.append("-b")
-                openArgs.append(bundleId)
+                openArgs.append(bundleID)
             } else if let appPath { openArgs.append(appPath) }
 
             if newInstance { openArgs.append("-n") }
@@ -108,7 +104,7 @@ public struct LaunchMacAppTool: Sendable {
             let result = try await ProcessResult.run("/usr/bin/open", arguments: openArgs)
 
             if result.succeeded {
-                let identifier = bundleId ?? appPath ?? "unknown"
+                let identifier = bundleID ?? appPath ?? "unknown"
                 var message = "Successfully launched '\(identifier)'"
                 if newInstance { message += " (new instance)" }
                 if hide { message += " (hidden)" }
@@ -127,7 +123,7 @@ public struct LaunchMacAppTool: Sendable {
                     appPath
                     .map { URL(fileURLWithPath: $0).deletingPathExtension().lastPathComponent }
 
-                if let pid = await PIDResolver.findLaunchedPID(bundleID: bundleId, appName: appName)
+                if let pid = await PIDResolver.findLaunchedPID(bundleID: bundleID, appName: appName)
                 {
                     // Brief delay then liveness check
                     try await Task.sleep(for: .seconds(1))
@@ -138,13 +134,12 @@ public struct LaunchMacAppTool: Sendable {
                         message += "\nPID: \(pid) (exited — app may have crashed on launch)"
 
                         CrashReportParser.appendCrashReports(
-                            to: &message, processName: appName, bundleID: bundleId,
+                            to: &message, processName: appName, bundleID: bundleID,
                         )
                     }
                 }
 
-                return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)]
-                )
+                return CallTool.Result.text(message)
             } else {
                 throw MCPError.internalError("Failed to launch app: \(result.stdout)")
             }

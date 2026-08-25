@@ -4,8 +4,8 @@ import Foundation
 
 /// Displays virtual memory mapping for a running process using `vmmap`.
 ///
-/// Wraps `/usr/bin/vmmap` to show virtual memory regions including dirty,
-/// clean, and swapped pages, organized by region type.
+/// Wraps `/usr/bin/vmmap` to show virtual memory regions including dirty, clean, and swapped pages,
+/// organized by region type.
 ///
 /// ## Example
 ///
@@ -17,18 +17,16 @@ public struct MemoryVmmapTool: Sendable {
     public init() {}
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "memory_vmmap",
             description:
-            "Display virtual memory mapping for a running macOS process. Shows memory regions with dirty/clean/swapped breakdown. Use summary mode for a concise overview, or full mode for per-region detail.",
+                "Display virtual memory mapping for a running macOS process. Shows memory regions with dirty/clean/swapped breakdown. Use summary mode for a concise overview, or full mode for per-region detail.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
                     "pid": .object([
                         "type": .string("integer"),
-                        "description": .string(
-                            "Process ID to examine. Use this or bundle_id.",
-                        ),
+                        "description": .string("Process ID to examine. Use this or bundle_id."),
                     ]),
                     "bundle_id": .object([
                         "type": .string("string"),
@@ -54,9 +52,7 @@ public struct MemoryVmmapTool: Sendable {
         let summary = arguments.getBool("summary", default: true)
 
         var args: [String] = []
-        if summary {
-            args.append("-summary")
-        }
+        if summary { args.append("-summary") }
         args.append("\(pid)")
 
         let result = try await ProcessResult.run(
@@ -71,10 +67,6 @@ public struct MemoryVmmapTool: Sendable {
             )
         }
 
-        return CallTool.Result(content: [.text(
-            text: result.stdout,
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text(result.stdout)
     }
 }

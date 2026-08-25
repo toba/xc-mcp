@@ -9,8 +9,8 @@ import Foundation
 /// holds a `name` and an optional `xctestMethods` array.
 ///
 /// Every function here edits the value in place and keeps unknown keys. That keeps a plan written
-/// by a newer Xcode lossless through a round trip. The type therefore works on the raw
-/// `[String: Any]` that `JSONSerialization` produces instead of a decoded model.
+/// by a newer Xcode lossless through a round trip. The type therefore works on an `AnyValue` tree
+/// instead of a fixed model, because a fixed model would drop every key it does not declare.
 public enum TestPlanSkipList {
     /// The shape of the value that was read, with the counts that describe it.
     public enum Shape: Equatable, Sendable {
@@ -25,7 +25,7 @@ public enum TestPlanSkipList {
     /// The result of an add or a remove.
     public struct Outcome {
         /// The new value for the key. A `nil` value means the caller removes the key.
-        public var value: Any?
+        public var value: AnyValue?
         /// The shape of the new value.
         public var shape: Shape
         /// The number of leaf entries before the change.
@@ -45,10 +45,10 @@ public enum TestPlanSkipList {
     /// An absent value or a flat value produces a flat value. A structured value stays structured.
     /// An identifier whose first segment names an existing XCTest class goes to `xctestClasses`.
     /// Every other identifier goes to `suites`.
-    public static func adding(_ identifiers: [String], to value: Any?) -> Outcome {
+    public static func adding(_ identifiers: [String], to value: AnyValue?) -> Outcome {
         let before = entryCount(of: value)
 
-        if var dict = value as? [String: Any] {
+        if var dict = value?.dictionaryValue {
             var alreadyPresent: [String] = []
 
             for identifier in identifiers {
@@ -56,11 +56,11 @@ public enum TestPlanSkipList {
                 if !didAdd { alreadyPresent.append(identifier) }
             }
             return makeOutcome(
-                dict, before: before, unmatched: EmptyCollection<String>(),
+                .dictionary(dict), before: before, unmatched: EmptyCollection<String>(),
                 alreadyPresent: alreadyPresent)
         }
 
-        let existing = value as? [String] ?? []
+        let existing = flatList(value)
         let existingSet = Set(existing)
         let alreadyPresent = identifiers.filter { existingSet.contains($0) }
         var result = existing
@@ -71,7 +71,7 @@ public enum TestPlanSkipList {
             result.append(identifier)
         }
         return makeOutcome(
-            result, before: before, unmatched: EmptyCollection<String>(),
+            .strings(result), before: before, unmatched: EmptyCollection<String>(),
             alreadyPresent: alreadyPresent)
     }
 
@@ -79,10 +79,10 @@ public enum TestPlanSkipList {
     ///
     /// A structured value keeps every entry the identifiers do not name. The value drops to `nil`
     /// only when the removal leaves no entries at all.
-    public static func removing(_ identifiers: [String], from value: Any?) -> Outcome {
+    public static func removing(_ identifiers: [String], from value: AnyValue?) -> Outcome {
         let before = entryCount(of: value)
 
-        if var dict = value as? [String: Any] {
+        if var dict = value?.dictionaryValue {
             var unmatched: [String] = []
 
             for identifier in identifiers {
@@ -90,17 +90,18 @@ public enum TestPlanSkipList {
                 if !didRemove { unmatched.append(identifier) }
             }
             return makeOutcome(
-                dict, before: before, unmatched: unmatched,
+                .dictionary(dict), before: before, unmatched: unmatched,
                 alreadyPresent: EmptyCollection<String>())
         }
 
-        let existing = value as? [String] ?? []
+        let existing = flatList(value)
         let existingSet = Set(existing)
         let unmatched = identifiers.filter { !existingSet.contains($0) }
         let removeSet = Set(identifiers)
         let result = existing.filter { !removeSet.contains($0) }
         return makeOutcome(
-            result, before: before, unmatched: unmatched, alreadyPresent: EmptyCollection<String>())
+            .strings(result), before: before, unmatched: unmatched,
+            alreadyPresent: EmptyCollection<String>())
     }
 
     // MARK: - Counting
@@ -109,40 +110,47 @@ public enum TestPlanSkipList {
     ///
     /// A suite named with no children counts as one entry, because it skips everything under
     /// itself. A suite with children counts its children instead.
-    public static func entryCount(of value: Any?) -> Int {
-        if let list = value as? [String] { return list.count }
-        guard let dict = value as? [String: Any] else { return 0 }
-        let suites: [[String: Any]] = array(forKey: "suites", in: dict)
-        let classes: [[String: Any]] = array(forKey: "xctestClasses", in: dict)
+    public static func entryCount(of value: AnyValue?) -> Int {
+        if let list = value?.arrayValue { return list.count }
+        guard let dict = value?.dictionaryValue else { return 0 }
+        let suites = nodes(forKey: "suites", in: dict)
+        let classes = nodes(forKey: "xctestClasses", in: dict)
         return suites.reduce(0) { $0 + suiteEntryCount($1) }
             + classes.reduce(0) { $0 + classEntryCount($1) }
     }
 
-    private static func suiteEntryCount(_ node: [String: Any]) -> Int {
-        let children: [[String: Any]] = array(forKey: "suites", in: node)
-        let functions: [String] = array(forKey: "testFunctions", in: node)
+    private static func suiteEntryCount(_ node: [String: AnyValue]) -> Int {
+        let children = nodes(forKey: "suites", in: node)
+        let functions = names(forKey: "testFunctions", in: node)
         let total = children.reduce(0) { $0 + suiteEntryCount($1) } + functions.count
         return total == 0 ? 1 : total
     }
 
-    private static func classEntryCount(_ node: [String: Any]) -> Int {
-        let methods: [String] = array(forKey: "xctestMethods", in: node)
+    private static func classEntryCount(_ node: [String: AnyValue]) -> Int {
+        let methods = names(forKey: "xctestMethods", in: node)
         return methods.isEmpty ? 1 : methods.count
     }
 
     // MARK: - Outcome
 
-    private static func shape(of value: Any?) -> Shape {
-        if let list = value as? [String] { return .flat(list) }
-        guard let dict = value as? [String: Any] else { return .absent }
-        let suites: [[String: Any]] = array(forKey: "suites", in: dict)
-        let classes: [[String: Any]] = array(forKey: "xctestClasses", in: dict)
-        return .structured(suiteCount: suites.count, classCount: classes.count)
+    private static func shape(of value: AnyValue?) -> Shape {
+        if value?.arrayValue != nil { return .flat(flatList(value)) }
+        guard let dict = value?.dictionaryValue else { return .absent }
+        return .structured(
+            suiteCount: nodes(forKey: "suites", in: dict).count,
+            classCount: nodes(forKey: "xctestClasses", in: dict).count,
+        )
+    }
+
+    /// The identifiers a flat `skippedTests` value holds, empty for every other shape.
+    private static func flatList(_ value: AnyValue?) -> [String] {
+        guard let items = value?.arrayValue else { return [] }
+        return items.compactMap(\.stringValue)
     }
 
     /// Wraps a new value in an outcome and drops it to `nil` when it holds nothing.
     private static func makeOutcome(
-        _ value: Any,
+        _ value: AnyValue,
         before: Int,
         unmatched: some Sequence<String>,
         alreadyPresent: some Sequence<String>,
@@ -162,11 +170,11 @@ public enum TestPlanSkipList {
     ///
     /// A structured value with other keys stays, because those keys carry data this type does not
     /// model.
-    private static func isEmptyValue(_ value: Any) -> Bool {
-        if let list = value as? [String] { return list.isEmpty }
-        guard let dict = value as? [String: Any] else { return true }
+    private static func isEmptyValue(_ value: AnyValue) -> Bool {
+        if let list = value.arrayValue { return list.isEmpty }
+        guard let dict = value.dictionaryValue else { return true }
         let hasOtherKeys = dict.keys.contains { $0 != "suites" && $0 != "xctestClasses" }
-        return !hasOtherKeys && entryCount(of: dict) == 0
+        return !hasOtherKeys && entryCount(of: value) == 0
     }
 
     // MARK: - Structured remove
@@ -174,19 +182,19 @@ public enum TestPlanSkipList {
     /// Removes one identifier from a structured value. Returns `true` when it matched.
     private static func removeFromStructured(
         _ identifier: String,
-        in dict: inout [String: Any],
+        in dict: inout [String: AnyValue],
     ) -> Bool {
         let path = segments(of: identifier)
         guard !path.isEmpty else { return false }
 
-        var suites: [[String: Any]] = array(forKey: "suites", in: dict)
+        var suites = nodes(forKey: "suites", in: dict)
 
         if removeFromSuites(path[...], in: &suites) {
             setOrRemove(suites, forKey: "suites", in: &dict)
             return true
         }
 
-        var classes: [[String: Any]] = array(forKey: "xctestClasses", in: dict)
+        var classes = nodes(forKey: "xctestClasses", in: dict)
 
         if removeFromClasses(path, in: &classes) {
             setOrRemove(classes, forKey: "xctestClasses", in: &dict)
@@ -199,12 +207,12 @@ public enum TestPlanSkipList {
     /// Removes one path from a suite array. Returns `true` when it matched.
     private static func removeFromSuites(
         _ path: ArraySlice<String>,
-        in suites: inout [[String: Any]],
+        in suites: inout [[String: AnyValue]],
     ) -> Bool {
         guard let head = path.first else { return false }
         let rest = path.dropFirst()
 
-        guard let index = suites.firstIndex(where: { $0["name"] as? String == head }) else {
+        guard let index = suites.firstIndex(where: { $0["name"]?.stringValue == head }) else {
             return false
         }
 
@@ -215,7 +223,7 @@ public enum TestPlanSkipList {
 
         var node = suites[index]
         var matched = false
-        var children: [[String: Any]] = array(forKey: "suites", in: node)
+        var children = nodes(forKey: "suites", in: node)
 
         if removeFromSuites(rest, in: &children) {
             matched = true
@@ -223,7 +231,7 @@ public enum TestPlanSkipList {
         }
 
         if !matched, rest.count == 1, let leaf = rest.first {
-            var functions: [String] = array(forKey: "testFunctions", in: node)
+            var functions = names(forKey: "testFunctions", in: node)
 
             if let position = functions.firstIndex(where: { functionName($0, matches: leaf) }) {
                 functions.remove(at: position)
@@ -243,10 +251,10 @@ public enum TestPlanSkipList {
     /// Removes one path from an XCTest class array. Returns `true` when it matched.
     private static func removeFromClasses(
         _ path: [String],
-        in classes: inout [[String: Any]],
+        in classes: inout [[String: AnyValue]],
     ) -> Bool {
         guard path.count <= 2, let head = path.first else { return false }
-        guard let index = classes.firstIndex(where: { $0["name"] as? String == head }) else {
+        guard let index = classes.firstIndex(where: { $0["name"]?.stringValue == head }) else {
             return false
         }
 
@@ -256,7 +264,7 @@ public enum TestPlanSkipList {
         }
 
         var node = classes[index]
-        var methods: [String] = array(forKey: "xctestMethods", in: node)
+        var methods = names(forKey: "xctestMethods", in: node)
         guard let position = methods.firstIndex(where: { functionName($0, matches: path[1]) })
         else { return false }
         methods.remove(at: position)
@@ -264,7 +272,7 @@ public enum TestPlanSkipList {
         if methods.isEmpty {
             classes.remove(at: index)
         } else {
-            node["xctestMethods"] = methods
+            node["xctestMethods"] = .strings(methods)
             classes[index] = node
         }
         return true
@@ -275,38 +283,38 @@ public enum TestPlanSkipList {
     /// Adds one identifier to a structured value. Returns `false` when it was already there.
     private static func addToStructured(
         _ identifier: String,
-        in dict: inout [String: Any],
+        in dict: inout [String: AnyValue],
     ) -> Bool {
         let path = segments(of: identifier)
         guard let head = path.first else { return false }
 
-        var classes: [[String: Any]] = array(forKey: "xctestClasses", in: dict)
+        var classes = nodes(forKey: "xctestClasses", in: dict)
 
-        if classes.contains(where: { $0["name"] as? String == head }) {
+        if classes.contains(where: { $0["name"]?.stringValue == head }) {
             guard addToClasses(path, in: &classes) else { return false }
-            dict["xctestClasses"] = classes
+            dict["xctestClasses"] = .dictionaries(classes)
             return true
         }
 
-        var suites: [[String: Any]] = array(forKey: "suites", in: dict)
+        var suites = nodes(forKey: "suites", in: dict)
         guard addToSuites(path[...], in: &suites) else { return false }
-        dict["suites"] = suites
+        dict["suites"] = .dictionaries(suites)
         return true
     }
 
     /// Adds one path to a suite array. Returns `false` when the path is already covered.
     private static func addToSuites(
         _ path: ArraySlice<String>,
-        in suites: inout [[String: Any]],
+        in suites: inout [[String: AnyValue]],
     ) -> Bool {
         guard let head = path.first else { return false }
         let rest = path.dropFirst()
-        let index = suites.firstIndex { $0["name"] as? String == head }
+        let index = suites.firstIndex { $0["name"]?.stringValue == head }
 
         // A leaf path names a whole suite. It replaces any narrower entry under that name.
         if rest.isEmpty {
             guard let index else {
-                suites.append(["name": head])
+                suites.append(["name": .string(head)])
                 return true
             }
             if isWholeSuite(suites[index]) { return false }
@@ -320,14 +328,14 @@ public enum TestPlanSkipList {
         let function = leafFunction(in: rest)
 
         guard let index else {
-            var node: [String: Any] = ["name": head]
+            var node: [String: AnyValue] = ["name": .string(head)]
 
             if let function {
-                node["testFunctions"] = [function]
+                node["testFunctions"] = .strings(CollectionOfOne(function))
             } else {
-                var children: [[String: Any]] = []
+                var children: [[String: AnyValue]] = []
                 _ = addToSuites(rest, in: &children)
-                node["suites"] = children
+                node["suites"] = .dictionaries(children)
             }
             suites.append(node)
             return true
@@ -338,16 +346,16 @@ public enum TestPlanSkipList {
         if isWholeSuite(node) { return false }
 
         if let function {
-            var functions: [String] = array(forKey: "testFunctions", in: node)
+            var functions = names(forKey: "testFunctions", in: node)
             guard !functions.contains(where: { functionName($0, matches: function) }) else {
                 return false
             }
             functions.append(function)
-            node["testFunctions"] = functions
+            node["testFunctions"] = .strings(functions)
         } else {
-            var children: [[String: Any]] = array(forKey: "suites", in: node)
+            var children = nodes(forKey: "suites", in: node)
             guard addToSuites(rest, in: &children) else { return false }
-            node["suites"] = children
+            node["suites"] = .dictionaries(children)
         }
 
         suites[index] = node
@@ -355,14 +363,17 @@ public enum TestPlanSkipList {
     }
 
     /// Adds one path to an XCTest class array. Returns `false` when it is already covered.
-    private static func addToClasses(_ path: [String], in classes: inout [[String: Any]]) -> Bool {
+    private static func addToClasses(
+        _ path: [String],
+        in classes: inout [[String: AnyValue]]
+    ) -> Bool {
         guard path.count <= 2,
               let head = path.first,
-              let index = classes.firstIndex(where: { $0["name"] as? String == head })
+              let index = classes.firstIndex(where: { $0["name"]?.stringValue == head })
         else { return false }
 
         var node = classes[index]
-        var methods: [String] = array(forKey: "xctestMethods", in: node)
+        var methods = names(forKey: "xctestMethods", in: node)
         // An empty method list means the whole class is already skipped.
         guard !methods.isEmpty else { return false }
 
@@ -374,26 +385,44 @@ public enum TestPlanSkipList {
 
         guard !methods.contains(where: { functionName($0, matches: path[1]) }) else { return false }
         methods.append(path[1])
-        node["xctestMethods"] = methods
+        node["xctestMethods"] = .strings(methods)
         classes[index] = node
         return true
     }
 
     // MARK: - Dictionary helpers
 
-    /// Reads an array under a key, or an empty array when the key holds nothing of that type.
-    private static func array<Element>(forKey key: String, in dict: [String: Any]) -> [Element] {
-        dict[key] as? [Element] ?? []
+    /// Reads the node array under a key, or an empty array when the key holds something else.
+    private static func nodes(
+        forKey key: String,
+        in dict: [String: AnyValue]
+    ) -> [[String: AnyValue]] { dict[key]?.dictionaryArrayValue ?? [] }
+
+    /// Reads the name array under a key, or an empty array when the key holds something else.
+    private static func names(forKey key: String, in dict: [String: AnyValue]) -> [String] {
+        guard let items = dict[key]?.arrayValue else { return [] }
+        return items.compactMap(\.stringValue)
     }
 
-    /// Stores an array under a key, or removes the key when the array is empty.
+    /// Stores a node array under a key, or removes the key when the array is empty.
     ///
     /// Xcode omits an empty array, so writing one would add noise to the file.
     private static func setOrRemove(
-        _ list: [some Any],
+        _ nodes: [[String: AnyValue]],
         forKey key: String,
-        in dict: inout [String: Any],
-    ) { if list.isEmpty { dict.removeValue(forKey: key) } else { dict[key] = list } }
+        in dict: inout [String: AnyValue],
+    ) {
+        if nodes.isEmpty { dict.removeValue(forKey: key) } else { dict[key] = .dictionaries(nodes) }
+    }
+
+    /// Stores a name array under a key, or removes the key when the array is empty.
+    private static func setOrRemove(
+        _ names: [String],
+        forKey key: String,
+        in dict: inout [String: AnyValue],
+    ) {
+        if names.isEmpty { dict.removeValue(forKey: key) } else { dict[key] = .strings(names) }
+    }
 
     // MARK: - Identifier helpers
 
@@ -426,9 +455,8 @@ public enum TestPlanSkipList {
     /// Reports whether a suite node skips its whole suite.
     ///
     /// A node with only a `name` names no child, so Xcode skips everything under it.
-    private static func isWholeSuite(_ node: [String: Any]) -> Bool {
-        let children: [[String: Any]] = array(forKey: "suites", in: node)
-        let functions: [String] = array(forKey: "testFunctions", in: node)
-        return children.isEmpty && functions.isEmpty
+    private static func isWholeSuite(_ node: [String: AnyValue]) -> Bool {
+        nodes(forKey: "suites", in: node).isEmpty
+            && names(forKey: "testFunctions", in: node).isEmpty
     }
 }

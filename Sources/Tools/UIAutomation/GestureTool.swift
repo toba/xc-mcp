@@ -70,11 +70,8 @@ public struct GestureTool: Sendable {
                 endX: coords.endX, endY: coords.endY,
                 duration: coords.duration,
             )
-            return CallTool.Result(content: [
-                .text(
-                    text: "Performed '\(presetName)' gesture on simulator '\(simulator)'",
-                    annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text(
+                "Performed '\(presetName)' gesture on simulator '\(simulator)'")
         } catch {
             throw try error.asMCPError()
         }

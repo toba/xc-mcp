@@ -7,15 +7,13 @@ import Foundation
 public struct ListGroupsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_groups",
             description:
-            "List all groups, folder references, and file system synchronized groups in an Xcode project",
+                "List all groups, folder references, and file system synchronized groups in an Xcode project",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -24,7 +22,7 @@ public struct ListGroupsTool: Sendable {
                         "description": .string(
                             "Path to the .xcodeproj file (relative to current directory)",
                         ),
-                    ]),
+                    ])
                 ]),
                 "required": .array([.string("project_path")]),
             ]),
@@ -33,9 +31,7 @@ public struct ListGroupsTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"] else {
-            throw MCPError.invalidParams("project_path is required")
-        }
+        let projectPath = try arguments.getRequiredString("project_path")
 
         do {
             // Resolve and validate the path
@@ -46,10 +42,8 @@ public struct ListGroupsTool: Sendable {
 
             // Get the root project and main group
             guard let project = try xcodeproj.pbxproj.rootProject(),
-                  let mainGroup = project.mainGroup
-            else {
-                throw MCPError.internalError("Main group not found in project")
-            }
+                let mainGroup = project.mainGroup
+            else { throw MCPError.internalError("Main group not found in project") }
 
             var groupList: [String] = []
 
@@ -63,23 +57,16 @@ public struct ListGroupsTool: Sendable {
                 traverseGroup(productsGroup, path: "", groupList: &groupList)
             }
 
-            let result =
-                groupList.isEmpty
-                    ? "No groups, folder references, or synchronized groups found in project."
-                    : groupList.joined(separator: "\n")
+            let result = groupList.isEmpty
+                ? "No groups, folder references, or synchronized groups found in project."
+                : groupList.joined(separator: "\n")
 
             let titleMessage =
                 "Groups, folder references, and synchronized groups in project:\n\(result)"
 
-            return CallTool.Result(
-                content: [
-                    .text(text: titleMessage, annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result.text(titleMessage)
         } catch {
-            throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
@@ -90,36 +77,33 @@ public struct ListGroupsTool: Sendable {
         // Build the full path for this group
         let currentPath = path.isEmpty ? groupName : "\(path)/\(groupName)"
 
-        // Add this group to the list if it has a meaningful name
-        // Skip only if it's the root group with no name or path
+        // Add this group to the list if it has a meaningful name Skip only if it's the root group
+        // with no name or path
         let shouldInclude = group.name != nil || group.path != nil
-        if shouldInclude {
-            groupList.append("- \(currentPath)")
-        }
+        if shouldInclude { groupList.append("- \(currentPath)") }
 
         // Process all children (groups, folder references, and synchronized groups)
         for child in group.children {
             if let childGroup = child as? PBXGroup {
-                // For child groups, use current path if this group should be included, otherwise use the parent path
+                // For child groups, use current path if this group should be included, otherwise
+                // use the parent path
                 let childPath = shouldInclude ? currentPath : path
                 traverseGroup(childGroup, path: childPath, groupList: &groupList)
             } else if let syncGroup = child as? PBXFileSystemSynchronizedRootGroup {
                 // Handle PBXFileSystemSynchronizedRootGroup (Xcode 15+ feature)
                 let syncGroupName = syncGroup.path ?? "Unnamed Sync Group"
-                let syncGroupPath =
-                    shouldInclude
-                        ? "\(currentPath)/\(syncGroupName)"
-                        : path.isEmpty ? syncGroupName : "\(path)/\(syncGroupName)"
+                let syncGroupPath = shouldInclude
+                    ? "\(currentPath)/\(syncGroupName)"
+                    : path.isEmpty ? syncGroupName : "\(path)/\(syncGroupName)"
                 groupList.append("- \(syncGroupPath) (file system synchronized)")
             } else if let folderRef = child as? PBXFileReference,
-                      folderRef.lastKnownFileType == "folder"
+               folderRef.lastKnownFileType == "folder"
             {
                 // Handle folder references
                 let folderName = folderRef.name ?? folderRef.path ?? "Unnamed Folder"
-                let folderPath =
-                    shouldInclude
-                        ? "\(currentPath)/\(folderName)"
-                        : path.isEmpty ? folderName : "\(path)/\(folderName)"
+                let folderPath = shouldInclude
+                    ? "\(currentPath)/\(folderName)"
+                    : path.isEmpty ? folderName : "\(path)/\(folderName)"
                 groupList.append("- \(folderPath) (folder reference)")
             }
         }

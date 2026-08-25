@@ -133,13 +133,9 @@ public struct BuildDeviceTool: Sendable {
                 appPathLine = "\nApp path: \(appPath)"
             }
 
-            return CallTool.Result(content: [
-                .text(
-                    text:
-                        "Build succeeded for scheme '\(scheme)' on device '\(device)'\(appPathLine)"
-                        + "\n\n" + derivedDataNote,
-                    annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text(
+                "Build succeeded for scheme '\(scheme)' on device '\(device)'\(appPathLine)"
+                    + "\n\n" + derivedDataNote)
         } catch {
             throw try error.asMCPError()
         }

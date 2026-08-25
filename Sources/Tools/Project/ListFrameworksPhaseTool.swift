@@ -7,12 +7,10 @@ import Foundation
 public struct ListFrameworksPhaseTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "list_frameworks_phase",
             description:
                 "List the entries of a target's PBXFrameworksBuildPhase, classifying each as fileRef (local file), productRef (Swift package product), crossProject (PBXReferenceProxy → another project's product), or dangling (missing reference). Use this to find link-only paths that bypass PBXTargetDependency edges.",
@@ -39,11 +37,9 @@ public struct ListFrameworksPhaseTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"]
-        else {
-            throw MCPError.invalidParams("project_path and target_name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name")
+        else { throw MCPError.invalidParams("project_path and target_name are required") }
 
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
@@ -51,27 +47,17 @@ public struct ListFrameworksPhaseTool: Sendable {
 
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
-            else {
-                return CallTool.Result(content: [
-                    .text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil, _meta: nil,
-                    ),
-                ])
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else {
+                return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
             let phases = target.buildPhases.compactMap { $0 as? PBXFrameworksBuildPhase }
 
             if phases.isEmpty {
-                return CallTool.Result(content: [
-                    .text(
-                        text:
-                            "Target '\(targetName)' has no PBXFrameworksBuildPhase. Nothing is linked.",
-                        annotations: nil, _meta: nil,
-                    ),
-                ])
+                return CallTool.Result.text(
+                    "Target '\(targetName)' has no PBXFrameworksBuildPhase. Nothing is linked.")
             }
 
             // Pre-build a map from PBXTargetDependency edges so we can mark which frameworks-phase
@@ -79,11 +65,13 @@ public struct ListFrameworksPhaseTool: Sendable {
             let depTargetUUIDs = Set(target.dependencies.compactMap(\.target?.uuid))
 
             var lines: [String] = []
+
             for (phaseIdx, phase) in phases.enumerated() {
                 if phases.count > 1 {
                     lines.append("### Frameworks phase #\(phaseIdx + 1) (\(phase.uuid))")
                 }
                 let files = phase.files ?? []
+
                 if files.isEmpty {
                     lines.append("  (empty)")
                     continue
@@ -95,18 +83,11 @@ public struct ListFrameworksPhaseTool: Sendable {
                 }
             }
 
-            return CallTool.Result(content: [
-                .text(
-                    text:
-                        "Frameworks phase for '\(targetName)' in \(projectURL.lastPathComponent):\n\(lines.joined(separator: "\n"))",
-                    annotations: nil,
-                    _meta: nil,
-                ),
-            ])
-        } catch {
-            throw MCPError.internalError(
-                "Failed to list frameworks phase: \(error.localizedDescription)",
+            return CallTool.Result.text(
+                "Frameworks phase for '\(targetName)' in \(projectURL.lastPathComponent):\n\(lines.joined(separator: "\n"))"
             )
+        } catch {
+            throw try error.asMCPError()
         }
     }
 
@@ -125,31 +106,30 @@ public struct ListFrameworksPhaseTool: Sendable {
             return "<dangling> [kind=dangling buildFile=\(buildFile.uuid)]"
         }
 
-        // Cross-project reference: PBXReferenceProxy points at another project's PBXContainerItemProxy.
+        // Cross-project reference: PBXReferenceProxy points at another project's
+        // PBXContainerItemProxy.
         if let proxy = fileElement as? PBXReferenceProxy {
             let name = proxy.path ?? proxy.name ?? "<unnamed>"
             let remote = proxy.remote
             let portalDesc: String
+
             switch remote?.containerPortal {
                 case let .fileReference(ref)?:
                     portalDesc = "fileReference(\(ref.path ?? ref.name ?? ref.uuid))"
-                case let .project(p)?:
-                    portalDesc = "project(\(p.uuid))"
-                case .unknownObject?:
-                    portalDesc = "unknown"
-                case .none:
-                    portalDesc = "<none>"
+                case let .project(p)?: portalDesc = "project(\(p.uuid))"
+                case .unknownObject?: portalDesc = "unknown"
+                case .none: portalDesc = "<none>"
             }
             let remoteUUID: String
+
             switch remote?.remoteGlobalID {
-                case let .object(obj)?:
-                    remoteUUID = obj.uuid
-                case let .string(uuid)?:
-                    remoteUUID = uuid
-                case .none:
-                    remoteUUID = "<none>"
+                case let .object(obj)?: remoteUUID = obj.uuid
+                case let .string(uuid)?: remoteUUID = uuid
+                case .none: remoteUUID = "<none>"
             }
-            let depMark = depTargetUUIDs.contains(remoteUUID) ? "" : " ⚠ no PBXTargetDependency edge"
+            let depMark = depTargetUUIDs.contains(remoteUUID)
+                ? ""
+                : " ⚠ no PBXTargetDependency edge"
             let remoteInfo = remote?.remoteInfo ?? "<none>"
             return
                 "\(name) [kind=crossProject remoteGlobalID=\(remoteUUID) remoteInfo=\(remoteInfo) containerPortal=\(portalDesc) proxy=\(proxy.uuid)]\(depMark)"
@@ -163,12 +143,8 @@ public struct ListFrameworksPhaseTool: Sendable {
 
     static func hasMergeAttribute(_ buildFile: PBXBuildFile) -> Bool {
         guard let settings = buildFile.settings else { return false }
-        if case let .array(attrs) = settings["ATTRIBUTES"] {
-            return attrs.contains("Merge")
-        }
-        if case let .string(single) = settings["ATTRIBUTES"] {
-            return single == "Merge"
-        }
+        if case let .array(attrs) = settings["ATTRIBUTES"] { return attrs.contains("Merge") }
+        if case let .string(single) = settings["ATTRIBUTES"] { return single == "Merge" }
         return false
     }
 }

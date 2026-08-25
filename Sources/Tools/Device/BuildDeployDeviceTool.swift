@@ -129,15 +129,16 @@ public struct BuildDeployDeviceTool: Sendable {
                 outputTimeout: outputTimeout,
             )
 
-            guard let appPath = BuildSettingExtractor.extractAppPath(from: buildSettings.stdout)
-            else {
+            // One decode serves both lookups; the payload runs to megabytes.
+            let settings = BuildSettingSet(buildSettings.stdout)
+
+            guard let appPath = settings.appPath else {
                 throw MCPError.internalError(
                     "Build succeeded but could not determine .app path from build settings.",
                 )
             }
 
-            guard let bundleId = BuildSettingExtractor.extractBundleId(from: buildSettings.stdout)
-            else {
+            guard let bundleID = settings.bundleID else {
                 throw MCPError.internalError(
                     "Build succeeded but could not determine bundle identifier from build settings.",
                 )
@@ -145,12 +146,12 @@ public struct BuildDeployDeviceTool: Sendable {
 
             // Step 4: Stop any running instance (ignore not-running errors)
             do {
-                _ = try await deviceCtlRunner.terminate(udid: device, bundleId: bundleId)
-                steps.append("✓ Stopped running instance of '\(bundleId)'")
+                _ = try await deviceCtlRunner.terminate(udid: device, bundleID: bundleID)
+                steps.append("✓ Stopped running instance of '\(bundleID)'")
             } catch {
                 switch error {
                     case .processNotFound:
-                        steps.append("– No running instance of '\(bundleId)' to stop")
+                        steps.append("– No running instance of '\(bundleID)' to stop")
                     default: steps.append("⚠ Could not stop app: \(error.localizedDescription)")
                 }
             }
@@ -163,21 +164,18 @@ public struct BuildDeployDeviceTool: Sendable {
             steps.append("✓ Installed '\(appPath)'")
 
             // Step 6: Launch
-            let launchResult = try await deviceCtlRunner.launch(udid: device, bundleId: bundleId)
+            let launchResult = try await deviceCtlRunner.launch(udid: device, bundleID: bundleID)
             guard launchResult.succeeded else {
                 throw MCPError.internalError("Launch failed: \(launchResult.errorOutput)")
             }
-            steps.append("✓ Launched '\(bundleId)'")
+            steps.append("✓ Launched '\(bundleID)'")
 
             let summary = steps.joined(separator: "\n")
-            return CallTool.Result(content: [
-                .text(
-                    text:
-                        "Build and deploy succeeded for scheme '\(scheme)' on device '\(device)'\n\n\(summary)"
-                        + "\n\n" + derivedDataNote,
-                    annotations: nil, _meta: nil)
-            ],)
+            return CallTool.Result.text(
+                "Build and deploy succeeded for scheme '\(scheme)' on device '\(device)'\n\n\(summary)"
+                    + "\n\n" + derivedDataNote)
         } catch {
+            if error is CancellationError { throw error }
             let progress = steps.isEmpty ? "" : "\n\nProgress:\n\(steps.joined(separator: "\n"))"
             throw MCPError.internalError(
                 "Build and deploy failed: \(error.localizedDescription)\(progress)",

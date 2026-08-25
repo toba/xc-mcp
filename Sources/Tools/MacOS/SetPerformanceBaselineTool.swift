@@ -6,15 +6,13 @@ import Foundation
 public struct SetPerformanceBaselineTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "set_performance_baseline",
             description:
-            "Create or update Xcode performance baselines (.xcbaseline) for a test target. Extracts current averages from an xcresult bundle or accepts manual baseline values. Xcode uses these baselines for automatic regression detection.",
+                "Create or update Xcode performance baselines (.xcbaseline) for a test target. Extracts current averages from an xcresult bundle or accepts manual baseline values. Xcode uses these baselines for automatic regression detection.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -26,9 +24,7 @@ public struct SetPerformanceBaselineTool: Sendable {
                     ]),
                     "target_name": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Name of the test target (e.g. 'DOMTests').",
-                        ),
+                        "description": .string("Name of the test target (e.g. 'DOMTests')."),
                     ]),
                     "result_bundle_path": .object([
                         "type": .string("string"),
@@ -55,15 +51,12 @@ public struct SetPerformanceBaselineTool: Sendable {
                                 ]),
                                 "baseline_average": .object([
                                     "type": .string("number"),
-                                    "description": .string(
-                                        "The baseline average value.",
-                                    ),
+                                    "description": .string("The baseline average value."),
                                 ]),
                                 "max_percent_regression": .object([
                                     "type": .string("number"),
                                     "description": .string(
-                                        "Maximum allowed regression percentage.",
-                                    ),
+                                        "Maximum allowed regression percentage."),
                                 ]),
                                 "max_percent_relative_standard_deviation": .object([
                                     "type": .string("number"),
@@ -95,14 +88,13 @@ public struct SetPerformanceBaselineTool: Sendable {
 
         // Resolve project path
         let projectPath: String
+
         if let path = arguments.getString("project_path") {
             projectPath = path
         } else {
             let (project, _) = try await sessionManager.resolveBuildPaths(from: arguments)
             guard let project else {
-                throw MCPError.invalidParams(
-                    "project_path is required (no session default set)",
-                )
+                throw MCPError.invalidParams("project_path is required (no session default set)")
             }
             projectPath = project
         }
@@ -112,31 +104,21 @@ public struct SetPerformanceBaselineTool: Sendable {
         }
 
         // Find target UUID from the pbxproj
-        guard
-            let targetUUID = PBXTargetMap.findUUID(
-                projectPath: projectPath, targetName: targetName,
-            )
-        else {
-            throw MCPError.invalidParams("Target '\(targetName)' not found in project.")
-        }
+        guard let targetUUID = PBXTargetMap.findUUID(
+            projectPath: projectPath, targetName: targetName)
+        else { throw MCPError.invalidParams("Target '\(targetName)' not found in project.") }
 
         // Collect baselines from xcresult or manual entries
         var baselineEntries: [BaselineEntry] = []
 
         if let resultBundlePath {
             guard FileManager.default.fileExists(atPath: resultBundlePath) else {
-                throw MCPError.invalidParams(
-                    "Result bundle not found at: \(resultBundlePath)",
-                )
+                throw MCPError.invalidParams("Result bundle not found at: \(resultBundlePath)")
             }
-            guard
-                let metrics = await XCResultParser.parsePerformanceMetrics(
-                    at: resultBundlePath,
-                ), !metrics.isEmpty
+            guard let metrics = await XCResultParser.parsePerformanceMetrics(at: resultBundlePath),
+                  !metrics.isEmpty
             else {
-                throw MCPError.invalidParams(
-                    "No performance metrics found in the result bundle.",
-                )
+                throw MCPError.invalidParams("No performance metrics found in the result bundle.")
             }
             baselineEntries = Self.entriesFromMetrics(metrics)
         }
@@ -147,9 +129,7 @@ public struct SetPerformanceBaselineTool: Sendable {
         }
 
         guard !baselineEntries.isEmpty else {
-            throw MCPError.invalidParams(
-                "Either result_bundle_path or baselines is required.",
-            )
+            throw MCPError.invalidParams("Either result_bundle_path or baselines is required.")
         }
 
         // Get machine metadata for Info.plist
@@ -157,8 +137,7 @@ public struct SetPerformanceBaselineTool: Sendable {
         let runDestUUID = Self.deterministicUUID(from: machineInfo)
 
         // Create xcbaseline directory
-        let baselineDir =
-            "\(projectPath)/xcshareddata/xcbaselines/\(targetUUID).xcbaseline"
+        let baselineDir = "\(projectPath)/xcshareddata/xcbaselines/\(targetUUID).xcbaseline"
         try FileManager.default.createDirectory(
             atPath: baselineDir,
             withIntermediateDirectories: true,
@@ -177,11 +156,9 @@ public struct SetPerformanceBaselineTool: Sendable {
             entries: baselineEntries,
         )
 
-        return CallTool.Result(content: [
-            .text(text:
-                "Set \(count) performance baseline(s) for target '\(targetName)'.\nPath: \(baselineDir)",
-                annotations: nil, _meta: nil),
-        ])
+        return CallTool.Result.text(
+            "Set \(count) performance baseline(s) for target '\(targetName)'.\nPath: \(baselineDir)"
+        )
     }
 
     // MARK: - Baseline Entry Extraction
@@ -199,10 +176,12 @@ public struct SetPerformanceBaselineTool: Sendable {
         _ metrics: [XCResultParser.PerformanceMetricResult],
     ) -> [BaselineEntry] {
         var entries: [BaselineEntry] = []
+
         for result in metrics {
             let parts = result.testIdentifier.split(separator: "/")
             let className: String
             let methodName: String
+
             if parts.count >= 2 {
                 className = String(parts[parts.count - 2])
                 methodName = String(parts[parts.count - 1])
@@ -212,35 +191,30 @@ public struct SetPerformanceBaselineTool: Sendable {
             }
 
             for run in result.testRuns {
-                for metric in run.metrics {
-                    guard !metric.measurements.isEmpty else { continue }
-                    let avg =
-                        metric.measurements.reduce(0, +)
-                            / Double(metric.measurements.count)
-                    entries.append(
-                        BaselineEntry(
-                            className: className,
-                            methodName: methodName,
-                            metricIdentifier: metric.identifier
-                                ?? "com.apple.dt.XCTMetric_Clock.time.monotonic",
-                            baselineAverage: avg,
-                            maxPercentRegression: metric.maxPercentRegression,
-                            maxPercentRelativeStandardDeviation: metric
-                                .maxPercentRelativeStandardDeviation,
-                        ),
-                    )
+                for metric in run.metrics where !metric.measurements.isEmpty {
+                    let avg = metric.measurements.reduce(0, +)
+                        / Double(metric.measurements.count)
+                    entries.append(BaselineEntry(
+                        className: className, methodName: methodName,
+                        metricIdentifier: metric.identifier
+                            ?? "com.apple.dt.XCTMetric_Clock.time.monotonic", baselineAverage: avg,
+                        maxPercentRegression: metric.maxPercentRegression,
+                        maxPercentRelativeStandardDeviation: metric
+                            .maxPercentRelativeStandardDeviation,
+                    ))
                 }
             }
         }
         return entries
     }
 
-    static func entriesFromManual(_ array: [Value]) throws -> [BaselineEntry] {
+    static func entriesFromManual(_ array: [Value]) throws(MCPError) -> [BaselineEntry] {
         var entries: [BaselineEntry] = []
+
         for item in array {
             guard case let .object(obj) = item,
-                  case let .string(testName) = obj["test_name"],
-                  case let .string(metricId) = obj["metric_identifier"]
+                  let testName = obj.getString("test_name"),
+                  let metricID = obj.getString("metric_identifier")
             else {
                 throw MCPError.invalidParams(
                     "Each baseline entry must have test_name and metric_identifier.",
@@ -248,6 +222,7 @@ public struct SetPerformanceBaselineTool: Sendable {
             }
 
             let baselineAvg: Double
+
             if case let .double(v) = obj["baseline_average"] {
                 baselineAvg = v
             } else if case let .int(v) = obj["baseline_average"] {
@@ -261,6 +236,7 @@ public struct SetPerformanceBaselineTool: Sendable {
             let parts = testName.split(separator: "/")
             let className: String
             let methodName: String
+
             if parts.count >= 2 {
                 className = String(parts[parts.count - 2])
                 methodName = String(parts[parts.count - 1])
@@ -276,16 +252,11 @@ public struct SetPerformanceBaselineTool: Sendable {
                 maxPctRSD = v
             }
 
-            entries.append(
-                BaselineEntry(
-                    className: className,
-                    methodName: methodName,
-                    metricIdentifier: metricId,
-                    baselineAverage: baselineAvg,
-                    maxPercentRegression: maxPctReg,
-                    maxPercentRelativeStandardDeviation: maxPctRSD,
-                ),
-            )
+            entries.append(BaselineEntry(
+                className: className, methodName: methodName, metricIdentifier: metricID,
+                baselineAverage: baselineAvg, maxPercentRegression: maxPctReg,
+                maxPercentRelativeStandardDeviation: maxPctRSD,
+            ))
         }
         return entries
     }
@@ -293,11 +264,12 @@ public struct SetPerformanceBaselineTool: Sendable {
     // MARK: - UUID Generation
 
     static func deterministicUUID(from info: MachineMetadata.Info) -> String {
-        let input = "\(info.modelCode)-\(info.cpuBrandString)-\(info.coreCount)-\(info.ramMegabytes)"
+        let input =
+            "\(info.modelCode)-\(info.cpuBrandString)-\(info.coreCount)-\(info.ramMegabytes)"
         let hash = SHA256.hash(data: Data(input.utf8))
         let bytes = Array(hash)
         // Format first 16 bytes as UUID
-        return String(
+        return .init(
             format: "%02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
             bytes[0], bytes[1], bytes[2], bytes[3],
             bytes[4], bytes[5],
@@ -314,40 +286,17 @@ public struct SetPerformanceBaselineTool: Sendable {
         runDestUUID: String,
         machineInfo: MachineMetadata.Info,
     ) throws(MCPError) {
-        var infoPlist: [String: Any]
-        if let data = FileManager.default.contents(atPath: path),
-           let existing = try? PropertyListSerialization.propertyList(
-               from: data, format: nil,
-           ) as? [String: Any]
-        {
-            infoPlist = existing
-        } else {
-            infoPlist = [:]
-        }
-
-        // Add/update run destination entry
-        let destEntry: [String: Any] = [
-            "cpuKind": machineInfo.cpuBrandString,
-            "cpuCount": machineInfo.coreCount,
-            "cpuSpeedInMHz": 0,
-            "modelCode": machineInfo.modelCode,
-            "physicalRAMAmountInMegabytes": machineInfo.ramMegabytes,
-        ]
-        infoPlist[runDestUUID] = destEntry
-
-        let plistData: Data
-        do {
-            plistData = try PropertyListSerialization.data(
-                fromPropertyList: infoPlist,
-                format: .xml,
-                options: 0,
-            )
-        } catch {
-            throw .internalError("Failed to serialize Info.plist: \(error)")
-        }
+        var infoPlist = BaselineInfoPlist.read(from: path)
+        infoPlist.machinesByUUID[runDestUUID] = BaselineMachine(
+            cpuKind: machineInfo.cpuBrandString,
+            cpuCount: machineInfo.coreCount,
+            cpuSpeedInMHz: 0,
+            modelCode: machineInfo.modelCode,
+            physicalRAMAmountInMegabytes: machineInfo.ramMegabytes,
+        )
 
         do {
-            try plistData.write(to: URL(fileURLWithPath: path))
+            try infoPlist.write(to: path)
         } catch {
             throw .internalError("Failed to write Info.plist: \(error)")
         }
@@ -357,55 +306,24 @@ public struct SetPerformanceBaselineTool: Sendable {
         at path: String,
         entries: [BaselineEntry],
     ) throws(MCPError) -> Int {
-        // Load existing plist or start fresh
-        // Structure: { "classNames": { "<class>": { "<method>": { "<metric>": { "baselineAverage": N } } } } }
-        var plist: [String: Any]
-        if let data = FileManager.default.contents(atPath: path),
-           let existing = try? PropertyListSerialization.propertyList(
-               from: data, format: nil,
-           ) as? [String: Any]
-        {
-            plist = existing
-        } else {
-            plist = [:]
-        }
-
-        var classNames = plist["classNames"] as? [String: Any] ?? [:]
+        var plist = PerformanceBaselinePlist.read(from: path)
 
         for entry in entries {
-            var classDict = classNames[entry.className] as? [String: Any] ?? [:]
-            var methodDict = classDict[entry.methodName] as? [String: Any] ?? [:]
-
-            var metricDict: [String: Any] = [
-                "baselineAverage": entry.baselineAverage,
-            ]
-            if let maxReg = entry.maxPercentRegression {
-                metricDict["maxPercentRegression"] = maxReg
-            }
-            if let maxRSD = entry.maxPercentRelativeStandardDeviation {
-                metricDict["maxPercentRelativeStandardDeviation"] = maxRSD
-            }
-
-            methodDict[entry.metricIdentifier] = metricDict
-            classDict[entry.methodName] = methodDict
-            classNames[entry.className] = classDict
-        }
-
-        plist["classNames"] = classNames
-
-        let plistData: Data
-        do {
-            plistData = try PropertyListSerialization.data(
-                fromPropertyList: plist,
-                format: .xml,
-                options: 0,
+            plist.set(
+                PerformanceBaselineMetric(
+                    baselineAverage: entry.baselineAverage,
+                    maxPercentRegression: entry.maxPercentRegression,
+                    maxPercentRelativeStandardDeviation: entry
+                        .maxPercentRelativeStandardDeviation,
+                ),
+                className: entry.className,
+                methodName: entry.methodName,
+                metricIdentifier: entry.metricIdentifier,
             )
-        } catch {
-            throw .internalError("Failed to serialize baseline plist: \(error)")
         }
 
         do {
-            try plistData.write(to: URL(fileURLWithPath: path))
+            try plist.write(to: path)
         } catch {
             throw .internalError("Failed to write baseline plist: \(error)")
         }

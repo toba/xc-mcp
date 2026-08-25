@@ -4,20 +4,18 @@ import Foundation
 
 /// Lists available Instruments templates, instruments, or devices.
 ///
-/// This tool queries `xctrace list` to show what profiling templates,
-/// instruments, or devices are available on the system.
+/// This tool queries `xctrace list` to show what profiling templates, instruments, or devices are
+/// available on the system.
 public struct XctraceListTool: Sendable {
     private let xctraceRunner: XctraceRunner
 
-    public init(xctraceRunner: XctraceRunner = XctraceRunner()) {
-        self.xctraceRunner = xctraceRunner
-    }
+    public init(xctraceRunner: XctraceRunner = .init()) { self.xctraceRunner = xctraceRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xctrace_list",
             description:
-            "List available Instruments templates, instruments, or devices via xctrace.",
+                "List available Instruments templates, instruments, or devices via xctrace.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -29,7 +27,7 @@ public struct XctraceListTool: Sendable {
                         "description": .string(
                             "What to list: 'templates' for profiling templates, 'instruments' for available instruments, 'devices' for connected devices.",
                         ),
-                    ]),
+                    ])
                 ]),
                 "required": .array([.string("kind")]),
             ]),
@@ -38,9 +36,7 @@ public struct XctraceListTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        guard case let .string(kind) = arguments["kind"] else {
-            throw MCPError.invalidParams("kind is required")
-        }
+        let kind = try arguments.getRequiredString("kind")
 
         guard ["templates", "instruments", "devices"].contains(kind) else {
             throw MCPError.invalidParams(
@@ -56,13 +52,9 @@ public struct XctraceListTool: Sendable {
             }
 
             let output = result.stdout.isEmpty ? result.stderr : result.stdout
-            return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
-        } catch let error as MCPError {
-            throw error
+            return CallTool.Result.text(output)
         } catch {
-            throw MCPError.internalError(
-                "Failed to list \(kind): \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

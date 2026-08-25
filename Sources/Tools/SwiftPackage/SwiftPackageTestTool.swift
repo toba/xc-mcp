@@ -81,7 +81,7 @@ public struct SwiftPackageTestTool: Sendable {
         let filter = arguments.getString("filter")
         let skip = arguments.getString("skip")
         let parallel: Bool? =
-            if case let .bool(value) = arguments["parallel"] { value } else { nil }
+            if let value = arguments.getOptionalBool("parallel") { value } else { nil }
         let requestedDestination = try SwiftBuildDestination.parse(from: arguments)
         let traits = try await sessionManager.resolveTraits(from: arguments)
         let explicitTimeout = arguments.explicitTimeout()
@@ -95,16 +95,6 @@ public struct SwiftPackageTestTool: Sendable {
 
         // Merge session env with per-invocation env (per-invocation wins)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
-
-        // Verify Package.swift exists
-        let packageSwiftPath = URL(fileURLWithPath: packagePath).appendingPathComponent(
-            "Package.swift",
-        ).path
-        guard FileManager.default.fileExists(atPath: packageSwiftPath) else {
-            throw MCPError.invalidParams(
-                "No Package.swift found at \(packagePath). Please provide a valid Swift package path.",
-            )
-        }
 
         // Stop any in-flight warmup so it doesn't race the user's invocation on `.build/` (and so
         // the BuildGuard flock is released promptly).
@@ -232,7 +222,7 @@ public struct SwiftPackageTestTool: Sendable {
             }
             if let warning = traits.replacedDefaultsWarning { message += "\n\n\(warning)" }
             if let sinkSummary { message += "\n\n\(sinkSummary.formatted())" }
-            return CallTool.Result(content: [.text(text: message, annotations: nil, _meta: nil)])
+            return CallTool.Result.text(message)
         } catch let ProcessError.timeout(duration) {
             throw MCPError.internalError(SwiftRunner.timeoutMessage(
                 command: "swift build --build-tests", duration: duration, packagePath: packagePath,

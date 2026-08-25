@@ -8,12 +8,12 @@ actor TraceRecordingManager {
 
     private var activeSessions: [String: (process: Process, outputPath: String)] = [:]
 
-    func startRecording(sessionId: String, process: Process, outputPath: String) {
-        activeSessions[sessionId] = (process: process, outputPath: outputPath)
+    func startRecording(sessionID: String, process: Process, outputPath: String) {
+        activeSessions[sessionID] = (process: process, outputPath: outputPath)
     }
 
-    func stopRecording(sessionId: String) -> (process: Process, outputPath: String)? {
-        activeSessions.removeValue(forKey: sessionId)
+    func stopRecording(sessionID: String) -> (process: Process, outputPath: String)? {
+        activeSessions.removeValue(forKey: sessionID)
     }
 
     func getActiveSessions() -> [(id: String, outputPath: String)] {
@@ -23,23 +23,22 @@ actor TraceRecordingManager {
 
 /// Start, stop, or list xctrace trace recording sessions.
 ///
-/// This tool manages long-running Instruments trace recordings using `xctrace record`.
-/// Recordings can be started with a template (e.g., "Time Profiler", "Allocations"),
-/// optionally targeting a specific device or process, and stopped later by session ID.
+/// This tool manages long-running Instruments trace recordings using `xctrace record`. Recordings
+/// can be started with a template (e.g., "Time Profiler", "Allocations"), optionally targeting a
+/// specific device or process, and stopped later by session ID.
 public struct XctraceRecordTool: Sendable {
     private let xctraceRunner: XctraceRunner
     private let sessionManager: SessionManager
 
-    public init(xctraceRunner: XctraceRunner = XctraceRunner(), sessionManager: SessionManager) {
+    public init(xctraceRunner: XctraceRunner = .init(), sessionManager: SessionManager) {
         self.xctraceRunner = xctraceRunner
         self.sessionManager = sessionManager
     }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "xctrace_record",
-            description:
-            "Start, stop, or list Instruments trace recordings using xctrace.",
+            description: "Start, stop, or list Instruments trace recordings using xctrace.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -76,15 +75,11 @@ public struct XctraceRecordTool: Sendable {
                     ]),
                     "attach_pid": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Attach to a running process by PID.",
-                        ),
+                        "description": .string("Attach to a running process by PID."),
                     ]),
                     "attach_name": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "Attach to a running process by name.",
-                        ),
+                        "description": .string("Attach to a running process by name."),
                     ]),
                     "all_processes": .object([
                         "type": .string("boolean"),
@@ -106,17 +101,12 @@ public struct XctraceRecordTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        guard case let .string(action) = arguments["action"] else {
-            throw MCPError.invalidParams("action is required")
-        }
+        let action = try arguments.getRequiredString("action")
 
         switch action {
-            case "start":
-                return try await startRecording(arguments: arguments)
-            case "stop":
-                return try await stopRecording(arguments: arguments)
-            case "list":
-                return await listRecordings()
+            case "start": return try await startRecording(arguments: arguments)
+            case "stop": return try await stopRecording(arguments: arguments)
+            case "list": return await listRecordings()
             default:
                 throw MCPError.invalidParams(
                     "Invalid action: \(action). Use 'start', 'stop', or 'list'.",
@@ -125,16 +115,17 @@ public struct XctraceRecordTool: Sendable {
     }
 
     private func startRecording(arguments: [String: Value]) async throws -> CallTool.Result {
-        guard case let .string(template) = arguments["template"] else {
+        guard let template = arguments.getString("template") else {
             throw MCPError.invalidParams("template is required for 'start' action")
         }
 
         // Determine output path
         let outputPath: String
-        if case let .string(path) = arguments["output_path"] {
+
+        if let path = arguments.getString("output_path") {
             outputPath = path
         } else {
-            let timestamp = ISO8601DateFormatter().string(from: Date())
+            let timestamp = TimestampFormatting.iso8601.string(from: Date())
                 .replacingOccurrences(of: ":", with: "-")
             outputPath = "/tmp/trace_\(timestamp).trace"
         }
@@ -156,84 +147,64 @@ public struct XctraceRecordTool: Sendable {
                 attachName: attachName,
                 allProcesses: allProcesses,
             )
-            let sessionId = UUID().uuidString
+            let sessionID = UUID().uuidString
 
             await TraceRecordingManager.shared.startRecording(
-                sessionId: sessionId, process: process, outputPath: outputPath,
+                sessionID: sessionID, process: process, outputPath: outputPath,
             )
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        """
-                        Started xctrace recording with template '\(template)'
-                        Output: \(outputPath)
-                        Session ID: \(sessionId)
+            return CallTool.Result.text(
+                """
+                Started xctrace recording with template '\(template)'
+                Output: \(outputPath)
+                Session ID: \(sessionID)
 
-                        Use xctrace_record with action='stop' and session_id='\(
-                            sessionId
-                        )' to stop recording.
-                        """,
-                        annotations: nil, _meta: nil),
-                ],
+                Use xctrace_record with action='stop' and session_id='\(
+                sessionID
+                )' to stop recording.
+                """,
             )
         } catch {
-            throw MCPError.internalError(
-                "Failed to start xctrace recording: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
     private func stopRecording(arguments: [String: Value]) async throws -> CallTool.Result {
-        guard case let .string(sessionId) = arguments["session_id"] else {
+        guard let sessionID = arguments.getString("session_id") else {
             throw MCPError.invalidParams("session_id is required for 'stop' action")
         }
 
-        guard
-            let session = await TraceRecordingManager.shared.stopRecording(sessionId: sessionId)
+        guard let session = await TraceRecordingManager.shared.stopRecording(sessionID: sessionID)
         else {
             throw MCPError.invalidParams(
-                "No active recording found with session ID: \(sessionId). Use action='list' to see active recordings.",
+                "No active recording found with session ID: \(sessionID). Use action='list' to see active recordings.",
             )
         }
 
         // Send SIGINT to gracefully stop the recording
         session.process.interrupt()
 
-        // Wait for process to finish
-        session.process.waitUntilExit()
+        // Wait for process to finish. waitUntilExit would park a cooperative worker for as long as
+        // xctrace takes to flush the trace.
+        await session.process.waitForExit()
 
-        return CallTool.Result(
-            content: [
-                .text(text:
-                    """
-                    Stopped xctrace recording.
-                    Session ID: \(sessionId)
-                    Output: \(session.outputPath)
-                    """,
-                    annotations: nil, _meta: nil),
-            ],
+        return CallTool.Result.text(
+            """
+            Stopped xctrace recording.
+            Session ID: \(sessionID)
+            Output: \(session.outputPath)
+            """,
         )
     }
 
     private func listRecordings() async -> CallTool.Result {
         let sessions = await TraceRecordingManager.shared.getActiveSessions()
 
-        if sessions.isEmpty {
-            return CallTool.Result(
-                content: [.text(
-                    text: "No active xctrace recordings.",
-                    annotations: nil,
-                    _meta: nil,
-                )],
-            )
-        }
+        if sessions.isEmpty { return CallTool.Result.text("No active xctrace recordings.") }
 
         var output = "Active xctrace recordings:\n"
-        for session in sessions {
-            output += "  - \(session.id): \(session.outputPath)\n"
-        }
+        for session in sessions { output += "  - \(session.id): \(session.outputPath)\n" }
 
-        return CallTool.Result(content: [.text(text: output, annotations: nil, _meta: nil)])
+        return CallTool.Result.text(output)
     }
 }

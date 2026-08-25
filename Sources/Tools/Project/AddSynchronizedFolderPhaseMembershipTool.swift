@@ -65,25 +65,19 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(folderPath) = arguments["folder_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .array(filesArray) = arguments["files"]
+        guard let projectPath = arguments.getString("project_path"),
+              let folderPath = arguments.getString("folder_path"),
+              let targetName = arguments.getString("target_name"),
+              case .array = arguments["files"]
         else {
             throw MCPError.invalidParams(
                 "project_path, folder_path, target_name, and files are required",
             )
         }
 
-        let phaseName: String?
-        if case let .string(p) = arguments["phase_name"] { phaseName = p } else { phaseName = nil }
-        let dstPath: String?
-        if case let .string(d) = arguments["dst_path"] { dstPath = d } else { dstPath = nil }
-
-        let files = filesArray.compactMap { value -> String? in
-            if case let .string(s) = value { return s }
-            return nil
-        }
+        let phaseName = arguments.getString("phase_name")
+        let dstPath = arguments.getString("dst_path")
+        let files = arguments.getStringArray("files")
 
         guard !files.isEmpty else { throw MCPError.invalidParams("files array must not be empty") }
 
@@ -108,7 +102,7 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
                 folderPath: folderPath, target: target, in: mainGroup,
             )
 
-            let phase = try locatePhase(
+            let phase = try CopyFilesPhaseLocator.locateAnyPhase(
                 in: target,
                 phaseName: phaseName,
                 dstPath: dstPath,
@@ -131,11 +125,9 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
                 let newFiles = files.filter { !existing.contains($0) }
 
                 if newFiles.isEmpty {
-                    return CallTool.Result(content: [
-                        .text(
-                            text: "All specified files are already in the phase membership exception set on '\(folderPath)' for target '\(targetName)'",
-                            annotations: nil, _meta: nil)
-                    ],)
+                    return CallTool.Result.text(
+                        "All specified files are already in the phase membership exception set on '\(folderPath)' for target '\(targetName)'"
+                    )
                 }
 
                 try editor.addEntriesToArray(
@@ -170,68 +162,11 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
 
             let phaseDisplay = phase.name() ?? "<unnamed phase>"
             let fileList = files.joined(separator: ", ")
-            return CallTool.Result(content: [
-                .text(
-                    text: "Successfully added [\(fileList)] from synchronized folder '\(folderPath)' to build phase '\(phaseDisplay)' on target '\(targetName)'",
-                    annotations: nil, _meta: nil)
-            ],)
-        } catch let error as MCPError {
-            throw error
-        } catch {
-            throw MCPError.internalError(
-                "Failed to add synchronized folder phase membership: \(error.localizedDescription)",
+            return CallTool.Result.text(
+                "Successfully added [\(fileList)] from synchronized folder '\(folderPath)' to build phase '\(phaseDisplay)' on target '\(targetName)'"
             )
-        }
-    }
-
-    /// Locate the build phase on `target` matching the given criteria. Priority: explicit
-    /// `phaseName` → `dstPath` (on Copy Files phases) → the target's sole Copy Files phase.
-    private func locatePhase(
-        in target: PBXNativeTarget,
-        phaseName: String?,
-        dstPath: String?,
-        targetName: String,
-    ) throws -> PBXBuildPhase {
-        if let phaseName {
-            let byName = target.buildPhases.first { phase in phase.name() == phaseName }
-            guard let byName else {
-                throw MCPError.invalidParams(
-                    "Build phase named '\(phaseName)' not found on target '\(targetName)'",
-                )
-            }
-            return byName
-        }
-
-        if let dstPath {
-            let copyPhases = target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
-            let matches = copyPhases.filter { ($0.dstPath ?? "") == dstPath }
-
-            switch matches.count {
-                case 0:
-                    throw MCPError.invalidParams(
-                        "No Copy Files phase with dstPath '\(dstPath)' on target '\(targetName)'",
-                    )
-                case 1: return matches[0]
-                default:
-                    throw MCPError.invalidParams(
-                        "Multiple Copy Files phases on target '\(targetName)' have dstPath '\(dstPath)' — pass phase_name to disambiguate",
-                    )
-            }
-        }
-
-        let copyPhases = target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
-
-        switch copyPhases.count {
-            case 0:
-                throw MCPError.invalidParams(
-                    "Target '\(targetName)' has no Copy Files build phases. Pass phase_name to select a different phase type.",
-                )
-            case 1: return copyPhases[0]
-            default:
-                let names = copyPhases.map { $0.name ?? ("dstPath=" + ($0.dstPath ?? "")) }
-                throw MCPError.invalidParams(
-                    "Target '\(targetName)' has \(copyPhases.count) Copy Files phases: \(names.joined(separator: ", ")). Pass phase_name or dst_path to disambiguate.",
-                )
+        } catch {
+            throw try error.asMCPError()
         }
     }
 }

@@ -1,21 +1,16 @@
 import MCP
-import PathKit
 import XCMCPCore
-import XcodeProj
-import Foundation
 
 public struct ManageURLTypeTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "manage_url_type",
             description:
-            "Add, update, or remove a URL type (CFBundleURLTypes entry) in a target's Info.plist. URL types define custom URL schemes the app can handle.",
+                "Add, update, or remove a URL type (CFBundleURLTypes entry) in a target's Info.plist. URL types define custom URL schemes the app can handle.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -49,9 +44,7 @@ public struct ManageURLTypeTool: Sendable {
                     ]),
                     "role": .object([
                         "type": .string("string"),
-                        "description": .string(
-                            "CFBundleTypeRole: Editor, Viewer, Shell, or None",
-                        ),
+                        "description": .string("CFBundleTypeRole: Editor, Viewer, Shell, or None"),
                     ]),
                     "icon_file": .object([
                         "type": .string("string"),
@@ -74,10 +67,10 @@ public struct ManageURLTypeTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"],
-              case let .string(action) = arguments["action"],
-              case let .string(name) = arguments["name"]
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name"),
+              let action = arguments.getString("action"),
+              let name = arguments.getString("name")
         else {
             throw MCPError.invalidParams("project_path, target_name, action, and name are required")
         }
@@ -87,166 +80,34 @@ public struct ManageURLTypeTool: Sendable {
         }
 
         do {
-            let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
-            let projectURL = URL(fileURLWithPath: resolvedProjectPath)
-            let projectDir = projectURL.deletingLastPathComponent().path
-
-            let xcodeproj = try XcodeProj(path: Path(projectURL.path))
-
-            guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
-                return CallTool.Result(
-                    content: [.text(
-                        text: "Target '\(targetName)' not found in project",
-                        annotations: nil,
-                        _meta: nil,
-                    )],
-                )
-            }
-
-            // Resolve or materialize Info.plist
-            var plistPath = InfoPlistUtility.resolveInfoPlistPath(
-                xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
+            return try Self.editor.perform(
+                action: action, name: name, projectPath: projectPath, targetName: targetName,
+                pathUtility: pathUtility, arguments: arguments,
             )
-
-            if plistPath == nil {
-                plistPath = try InfoPlistUtility.materializeInfoPlist(
-                    xcodeproj: xcodeproj, projectDir: projectDir, targetName: targetName,
-                    projectPath: Path(projectURL.path),
-                )
-            }
-
-            guard let resolvedPlistPath = plistPath else {
-                throw MCPError.internalError(
-                    "Failed to resolve or create Info.plist for target '\(targetName)'",
-                )
-            }
-
-            var plist = try InfoPlistUtility.readInfoPlist(path: resolvedPlistPath)
-            var urlTypes = plist["CFBundleURLTypes"] as? [[String: Any]] ?? []
-
-            switch action {
-                case "add":
-                    if urlTypes.contains(where: {
-                        ($0["CFBundleURLName"] as? String) == name
-                    }) {
-                        return CallTool.Result(
-                            content: [
-                                .text(text:
-                                    "URL type '\(name)' already exists in target '\(targetName)'",
-                                    annotations: nil, _meta: nil),
-                            ],
-                        )
-                    }
-
-                    var entry: [String: Any] = ["CFBundleURLName": name]
-                    applyFields(to: &entry, from: arguments)
-                    urlTypes.append(entry)
-
-                    plist["CFBundleURLTypes"] = urlTypes
-                    try InfoPlistUtility.writeInfoPlist(plist, toPath: resolvedPlistPath)
-
-                    return CallTool.Result(
-                        content: [
-                            .text(text:
-                                "Successfully added URL type '\(name)' to target '\(targetName)'",
-                                annotations: nil, _meta: nil),
-                        ],
-                    )
-
-                case "update":
-                    guard
-                        let index = urlTypes.firstIndex(where: {
-                            ($0["CFBundleURLName"] as? String) == name
-                        })
-                    else {
-                        return CallTool.Result(
-                            content: [
-                                .text(text:
-                                    "URL type '\(name)' not found in target '\(targetName)'",
-                                    annotations: nil, _meta: nil),
-                            ],
-                        )
-                    }
-
-                    var entry = urlTypes[index]
-                    applyFields(to: &entry, from: arguments)
-                    urlTypes[index] = entry
-
-                    plist["CFBundleURLTypes"] = urlTypes
-                    try InfoPlistUtility.writeInfoPlist(plist, toPath: resolvedPlistPath)
-
-                    return CallTool.Result(
-                        content: [
-                            .text(text:
-                                "Successfully updated URL type '\(name)' in target '\(targetName)'",
-                                annotations: nil, _meta: nil),
-                        ],
-                    )
-
-                case "remove":
-                    guard
-                        let index = urlTypes.firstIndex(where: {
-                            ($0["CFBundleURLName"] as? String) == name
-                        })
-                    else {
-                        return CallTool.Result(
-                            content: [
-                                .text(text:
-                                    "URL type '\(name)' not found in target '\(targetName)'",
-                                    annotations: nil, _meta: nil),
-                            ],
-                        )
-                    }
-
-                    urlTypes.remove(at: index)
-
-                    if urlTypes.isEmpty {
-                        plist.removeValue(forKey: "CFBundleURLTypes")
-                    } else {
-                        plist["CFBundleURLTypes"] = urlTypes
-                    }
-                    try InfoPlistUtility.writeInfoPlist(plist, toPath: resolvedPlistPath)
-
-                    return CallTool.Result(
-                        content: [
-                            .text(text:
-                                "Successfully removed URL type '\(name)' from target '\(targetName)'",
-                                annotations: nil, _meta: nil),
-                        ],
-                    )
-
-                default:
-                    throw MCPError.invalidParams("action must be 'add', 'update', or 'remove'")
-            }
-        } catch let error as MCPError {
-            throw error
         } catch {
-            throw MCPError.internalError(
-                "Failed to manage URL type: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 
-    private func applyFields(to entry: inout [String: Any], from arguments: [String: Value]) {
-        if case let .array(schemes) = arguments["url_schemes"] {
-            entry["CFBundleURLSchemes"] = schemes.compactMap { value -> String? in
-                if case let .string(s) = value { return s }
-                return nil
-            }
+    private static let editor = PlistArrayEditor(
+        plistKey: "CFBundleURLTypes",
+        primaryKey: "CFBundleURLName",
+        noun: "URL type",
+        applyFields: ManageURLTypeTool.applyFields,
+    )
+
+    private static func applyFields(
+        to entry: inout [String: AnyValue],
+        from arguments: [String: Value]
+    ) {
+        if let schemes = arguments.getOptionalStringArray("url_schemes") {
+            entry["CFBundleURLSchemes"] = .strings(schemes)
         }
-        if case let .string(role) = arguments["role"] {
-            entry["CFBundleTypeRole"] = role
+        if let role = arguments.getString("role") { entry["CFBundleTypeRole"] = .string(role) }
+        if let iconFile = arguments.getString("icon_file") {
+            entry["CFBundleURLIconFile"] = .string(iconFile)
         }
-        if case let .string(iconFile) = arguments["icon_file"] {
-            entry["CFBundleURLIconFile"] = iconFile
-        }
-        if case let .string(jsonString) = arguments["additional_properties"],
-           let additionalProps = try? JSONSerialization.jsonObject(with: Data(jsonString.utf8))
-           as? [String: Any]
-        {
-            for (key, value) in additionalProps {
-                entry[key] = value
-            }
-        }
+
+        PlistArrayEditor.applyAdditionalProperties(to: &entry, from: arguments)
     }
 }

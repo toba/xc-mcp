@@ -7,12 +7,10 @@ import Foundation
 public struct GetBuildSettingsTool: Sendable {
     private let pathUtility: PathUtility
 
-    public init(pathUtility: PathUtility) {
-        self.pathUtility = pathUtility
-    }
+    public init(pathUtility: PathUtility) { self.pathUtility = pathUtility }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "get_build_settings",
             description: "Get build settings for a specific target in an Xcode project",
             inputSchema: .object([
@@ -42,18 +40,11 @@ public struct GetBuildSettingsTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
-        guard case let .string(projectPath) = arguments["project_path"],
-              case let .string(targetName) = arguments["target_name"]
-        else {
-            throw MCPError.invalidParams("project_path and target_name are required")
-        }
+        guard let projectPath = arguments.getString("project_path"),
+              let targetName = arguments.getString("target_name")
+        else { throw MCPError.invalidParams("project_path and target_name are required") }
 
-        let configurationName: String
-        if case let .string(config) = arguments["configuration"] {
-            configurationName = config
-        } else {
-            configurationName = "Debug"
-        }
+        let configurationName = arguments.getString("configuration") ?? "Debug"
 
         do {
             // Resolve and validate the path
@@ -63,11 +54,9 @@ public struct GetBuildSettingsTool: Sendable {
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the target
-            guard
-                let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
-            else {
-                throw MCPError.invalidParams("Target '\(targetName)' not found in project")
-            }
+            guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
+                $0.name == targetName
+            }) else { throw MCPError.invalidParams("Target '\(targetName)' not found in project") }
 
             // Get the build configuration for the target
             guard let configList = target.buildConfigurationList else {
@@ -76,11 +65,9 @@ public struct GetBuildSettingsTool: Sendable {
                 )
             }
 
-            guard
-                let config = configList.buildConfigurations.first(where: {
-                    $0.name == configurationName
-                })
-            else {
+            guard let config = configList.buildConfigurations.first(where: {
+                $0.name == configurationName
+            }) else {
                 throw MCPError.invalidParams(
                     "Configuration '\(configurationName)' not found for target '\(targetName)'",
                 )
@@ -88,13 +75,13 @@ public struct GetBuildSettingsTool: Sendable {
 
             // Format build settings
             var settingsList: [String] = []
+
             for (key, value) in config.buildSettings.sorted(by: { $0.key < $1.key }) {
                 let valueString: String
+
                 switch value {
-                    case let .string(str):
-                        valueString = str
-                    case let .array(arr):
-                        valueString = arr.joined(separator: " ")
+                    case let .string(str): valueString = str
+                    case let .array(arr): valueString = arr.joined(separator: " ")
                 }
                 settingsList.append("  \(key) = \(valueString)")
             }
@@ -103,17 +90,10 @@ public struct GetBuildSettingsTool: Sendable {
                 ? "No build settings found."
                 : settingsList.joined(separator: "\n")
 
-            return CallTool.Result(
-                content: [
-                    .text(text:
-                        "Build settings for target '\(targetName)' (\(configurationName)):\n\(result)",
-                        annotations: nil, _meta: nil),
-                ],
-            )
+            return CallTool.Result.text(
+                "Build settings for target '\(targetName)' (\(configurationName)):\n\(result)")
         } catch {
-            throw MCPError.internalError(
-                "Failed to read Xcode project: \(error.localizedDescription)",
-            )
+            throw try error.asMCPError()
         }
     }
 }

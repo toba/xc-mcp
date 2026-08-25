@@ -4,8 +4,8 @@ import ArgumentParser
 
 /// Command-line interface for the xc-project MCP server.
 ///
-/// This focused server provides Xcode project manipulation tools with minimal
-/// token overhead (~5K tokens vs ~50K for the full xc-mcp server).
+/// This focused server provides Xcode project manipulation tools with minimal token overhead (~5K
+/// tokens vs ~50K for the full xc-mcp server).
 ///
 /// ## Usage
 ///

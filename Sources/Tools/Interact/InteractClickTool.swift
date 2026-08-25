@@ -6,42 +6,35 @@ import ApplicationServices
 public struct InteractClickTool: Sendable {
     private let interactRunner: InteractRunner
 
-    public init(interactRunner: InteractRunner) {
-        self.interactRunner = interactRunner
-    }
+    public init(interactRunner: InteractRunner) { self.interactRunner = interactRunner }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "interact_click",
-            description:
-            "Click a UI element in a macOS application by element_id or role+title.",
-            inputSchema: .object(
-                [
-                    "type": .string("object"),
-                    "properties": .object(
-                        InteractRunner.appResolutionSchemaProperties.merging([
-                            "element_id": .object([
-                                "type": .string("integer"),
-                                "description": .string(
-                                    "Element ID from interact_ui_tree to click.",
-                                ),
-                            ]),
-                            "role": .object([
-                                "type": .string("string"),
-                                "description": .string(
-                                    "AX role to search for (e.g., 'AXButton'). Used with title for query-based click.",
-                                ),
-                            ]),
-                            "title": .object([
-                                "type": .string("string"),
-                                "description": .string(
-                                    "Title to search for. Used with role for query-based click.",
-                                ),
-                            ]),
-                        ]) { _, new in new },
-                    ),
-                    "required": .array([]),
-                ],
+            description: "Click a UI element in a macOS application by element_id or role+title.",
+            inputSchema: .object([
+                "type": .string("object"),
+                "properties": .object(InteractRunner.appResolutionSchemaProperties.merging([
+                    "element_id": .object([
+                        "type": .string("integer"),
+                        "description": .string("Element ID from interact_ui_tree to click."),
+                    ]),
+                    "role": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "AX role to search for (e.g., 'AXButton'). Used with title for query-based click.",
+                        ),
+                    ]),
+                    "title": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Title to search for. Used with role for query-based click.",
+                        ),
+                    ]),
+                ]) { _, new in new },
+                ),
+                "required": .array([]),
+            ],
             ),
             annotations: .mutation,
         )
@@ -53,15 +46,11 @@ public struct InteractClickTool: Sendable {
 
         let element: AXUIElement
 
-        if let elementId = arguments.getInt("element_id") {
+        if let elementID = arguments.getInt("element_id") {
             // Look up from cache
-            guard
-                let cached = await InteractSessionManager.shared.getElement(
-                    pid: pid, elementID: elementId,
-                )
-            else {
-                throw InteractError.elementNotFound(elementId)
-            }
+            guard let cached = await InteractSessionManager.shared.getElement(
+                pid: pid, elementID: elementID,
+            ) else { throw InteractError.elementNotFound(elementID) }
             element = cached.element
         } else {
             // Search by role/title
@@ -72,9 +61,7 @@ public struct InteractClickTool: Sendable {
                     "Either element_id or at least one of role/title is required.",
                 )
             }
-            let matches = try interactRunner.findElements(
-                pid: pid, role: role, title: title,
-            )
+            let matches = try interactRunner.findElements(pid: pid, role: role, title: title)
             guard let first = matches.first else {
                 var query: [String] = []
                 if let role { query.append("role=\(role)") }
@@ -91,10 +78,6 @@ public struct InteractClickTool: Sendable {
         let snapshot = try await InteractPostAction.settledSnapshot(
             runner: interactRunner, pid: pid,
         )
-        return CallTool.Result(content: [.text(
-            text: "Clicked \(desc) successfully.\n\(snapshot)",
-            annotations: nil,
-            _meta: nil,
-        )])
+        return CallTool.Result.text("Clicked \(desc) successfully.\n\(snapshot)")
     }
 }

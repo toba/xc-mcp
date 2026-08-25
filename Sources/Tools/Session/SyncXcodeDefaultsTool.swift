@@ -5,15 +5,13 @@ import Foundation
 public struct SyncXcodeDefaultsTool: Sendable {
     private let sessionManager: SessionManager
 
-    public init(sessionManager: SessionManager) {
-        self.sessionManager = sessionManager
-    }
+    public init(sessionManager: SessionManager) { self.sessionManager = sessionManager }
 
     public func tool() -> Tool {
-        Tool(
+        .init(
             name: "sync_xcode_defaults",
             description:
-            "Read the active scheme and run destination from Xcode's IDE state and apply them as session defaults. Requires the project to have been opened in Xcode.",
+                "Read the active scheme and run destination from Xcode's IDE state and apply them as session defaults. Requires the project to have been opened in Xcode.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -39,12 +37,14 @@ public struct SyncXcodeDefaultsTool: Sendable {
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
         // Resolve the project/workspace path
         let projectPath: String?
+
         if let argProject = arguments.getString("project_path") {
             projectPath = argProject
         } else {
             projectPath = await sessionManager.projectPath
         }
         let workspacePath: String?
+
         if let argWorkspace = arguments.getString("workspace_path") {
             workspacePath = argWorkspace
         } else {
@@ -58,14 +58,16 @@ public struct SyncXcodeDefaultsTool: Sendable {
             )
         }
 
-        let state = await XcodeStateReader.readState(projectOrWorkspacePath: targetPath)
+        let state: XcodeState
 
-        if let error = state.error, state.scheme == nil, state.simulatorUDID == nil {
+        do {
+            state = try await XcodeStateReader.readState(projectOrWorkspacePath: targetPath)
+        } catch {
             return CallTool.Result(
                 content: [
-                    .text(text:
-                        "Could not sync Xcode state: \(error)\n\nUse set_session_defaults to configure manually.",
-                        annotations: nil, _meta: nil),
+                    .text(
+                        text: "Could not sync Xcode state: \(error.localizedDescription)\n\nUse set_session_defaults to configure manually.",
+                        annotations: nil, _meta: nil)
                 ],
                 isError: true,
             )
@@ -87,6 +89,7 @@ public struct SyncXcodeDefaultsTool: Sendable {
         // Also ensure the project path is set
         let hasProjectPath = await sessionManager.projectPath != nil
         let hasWorkspacePath = await sessionManager.workspacePath != nil
+
         if !hasProjectPath, !hasWorkspacePath {
             if targetPath.hasSuffix(".xcworkspace") {
                 await sessionManager.setDefaults(workspacePath: targetPath)
@@ -99,13 +102,6 @@ public struct SyncXcodeDefaultsTool: Sendable {
 
         var message = "Synced from Xcode IDE state:\n"
         message += synced.map { "  \($0)" }.joined(separator: "\n")
-
-        if let error = state.error {
-            message += "\n\nPartial sync (some fields could not be read): \(error)"
-        }
-
-        return CallTool.Result(content: [
-            .text(text: message, annotations: nil, _meta: nil),
-        ])
+        return CallTool.Result.text(message)
     }
 }
