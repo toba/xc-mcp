@@ -72,9 +72,12 @@ public struct SwiftDiagnosticOptions: Sendable {
             }
             return nil
         }
+        // The catch takes no pattern on purpose. The initializer throws SinkError alone, so error
+        // binds to that type, and a pattern here would leave an unreachable implicit rethrow that
+        // crashes SILGen in Swift 6.4.
         do {
             return try StreamedOutputSink(path: stderrPath, filter: stderrFilter)
-        } catch let error as StreamedOutputSink.SinkError {
+        } catch {
             throw MCPError.invalidParams(error.description)
         }
     }

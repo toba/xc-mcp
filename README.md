@@ -83,8 +83,8 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 
 ### Requirements
 
-- macOS 15+
-- Xcode (for `xcodebuild`, `simctl`, `devicectl`)
+- macOS 27+
+- Xcode 27+ (for `xcodebuild`, `simctl`, `devicectl`)
 - Some tools require macOS privacy permissions — see [Permissions](#macos-permissions)
 
 ---

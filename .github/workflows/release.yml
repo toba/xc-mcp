@@ -9,10 +9,23 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  XCODE_VERSION: '27.0'
 
 jobs:
   build:
-    runs-on: macos-26
+    # Xcode 27 carries Swift 6.4 and the macOS 27 SDK, which the manifest needs.
+    # No macos-27 runner label exists yet, so the xcode-27 preview image is the
+    # only hosted image that holds them. Its host still runs macOS 26.5, which
+    # runs a macOS 27 binary all the same.
+    runs-on: xcode-27
+
+    # Every toba package reads TOBA_STATIC_LINK and drops its .dynamic product
+    # type when the variable is set. xc-mcp is one executable image, so a static
+    # link removes the @rpath dylibs the release would otherwise have to carry.
+    # The variable sits on the job because SwiftPM evaluates the manifest during
+    # resolve as well as during build, and the two must agree.
+    env:
+      TOBA_STATIC_LINK: '1'
 
     steps:
     - uses: actions/checkout@v4
@@ -22,7 +35,7 @@ jobs:
         fetch-depth: 0
 
     - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
+      run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
 
     # The four toba packages are private. SwiftPM clones them over https with
     # no credential, so the rewrite supplies one. Each rewrite names one
@@ -48,8 +61,8 @@ jobs:
     - name: Build release binaries
       run: swift build -c release --disable-sandbox
 
-    # The staged layout is bin/ plus lib/. Toba Core and Toba Concurrency each build a
-    # dylib, and the executable dies in dyld without them beside it.
+    # The staged layout is bin/, plus lib/ when the build produced a dylib. TOBA_STATIC_LINK
+    # is set above, so the static link leaves no dylib and the script drops lib/ and the rpath.
     - name: Stage the release
       run: scripts/stage-release.sh "$(swift build -c release --show-bin-path)" dist
 
@@ -106,8 +119,8 @@ jobs:
           TAG="${GITHUB_REF#refs/tags/}"
           VERSION="${TAG#v}"
 
-          # Download SHA256 from the release .sha256 file
-          SHA=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*.sha256" -O - | awk '{print $1}')
+          SHA=$(gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern "xc-mcp-${TAG}-arm64.tar.gz.sha256" -O - | awk '{print $1}')
 
           # Clone tap and update formula
           git clone "https://x-access-token:${GH_TOKEN}@github.com/toba/homebrew-tap.git" tap
@@ -122,14 +135,15 @@ jobs:
             sha256 "SHA_PLACEHOLDER"
             license "MIT"
 
-            depends_on :macos => :sequoia
+            depends_on :macos => :golden_gate
             depends_on arch: :arm64
 
             SERVERS = %w[xc-build xc-debug xc-device xc-project xc-simulator xc-strings xc-swift].freeze
 
             def install
-              # The executable carries an rpath of @loader_path/../lib, so the dylibs
-              # resolve from lib/ in this keg. Dir is empty when the build links statically.
+              # The release links the toba packages static, so the glob is empty. It stays
+              # because a release built without TOBA_STATIC_LINK ships dylibs the executable
+              # reaches through an rpath of @loader_path/../lib.
               lib.install Dir["lib/*.dylib"]
               bin.install "bin/xc-mcp"
               SERVERS.each do |name|

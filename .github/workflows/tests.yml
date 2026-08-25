@@ -8,17 +8,22 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  XCODE_VERSION: '27.0'
 
 jobs:
   test:
-    runs-on: macos-26
-    
+    # Xcode 27 carries Swift 6.4 and the macOS 27 SDK, which the manifest needs.
+    # No macos-27 runner label exists yet, so the xcode-27 preview image is the
+    # only hosted image that holds them. Its host still runs macOS 26.5, which
+    # runs a macOS 27 binary all the same.
+    runs-on: xcode-27
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Select Xcode version
-      run: sudo xcode-select -s /Applications/Xcode_26.4.app/Contents/Developer
-    
+      run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+
     - name: Show Xcode version
       run: xcodebuild -version
     
@@ -32,9 +37,9 @@ jobs:
         # The workflow file joins the key because a failed resolve saves a
         # .build that holds half-cloned repositories. Editing the workflow
         # then retires that entry instead of restoring it.
-        key: ${{ runner.os }}-swift-${{ hashFiles('Package.swift', 'Package.resolved', '.github/workflows/tests.yml') }}
+        key: ${{ runner.os }}-swift-xcode${{ env.XCODE_VERSION }}-${{ hashFiles('Package.swift', 'Package.resolved', '.github/workflows/tests.yml') }}
         restore-keys: |
-          ${{ runner.os }}-swift-
+          ${{ runner.os }}-swift-xcode${{ env.XCODE_VERSION }}-
 
     # The four toba packages are private. SwiftPM clones them over https with
     # no credential, so the rewrite supplies one. A fork pull request gets no

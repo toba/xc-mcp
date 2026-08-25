@@ -1,4 +1,4 @@
-// swift-tools-version: 6.3
+// swift-tools-version: 6.4
 
 import PackageDescription
 
@@ -10,7 +10,7 @@ let sharedSwiftSettings: [SwiftSetting] = [
 let package = Package(
   name: "xc-mcp",
   platforms: [
-    .macOS(.v26)
+    .macOS(.v27)
   ],
   products: [
     // Single multicall binary — symlinks (xc-build, xc-debug, etc.) select the focused server
@@ -27,10 +27,10 @@ let package = Package(
     .package(url: "https://github.com/swiftlang/swift-subprocess", from: "0.4.0"),
     .package(url: "https://github.com/toba/swiftiomatic-plugins", from: "3.0.0"),
 
-    // 1.11.2 is the floor because it ships TobaCore dynamic under its own name.
-    .package(url: "https://github.com/toba/toba-core", from: "1.11.2"),
-    // 1.1.0 is the floor because it ships TobaConcurrency dynamic under its own name.
-    .package(url: "https://github.com/toba/toba-concurrency", from: "1.1.0"),
+    // 1.11.3 is the floor because it reads TOBA_STATIC_LINK and links TobaCore static.
+    .package(url: "https://github.com/toba/toba-core", from: "1.11.3"),
+    // 1.1.1 is the floor because it reads TOBA_STATIC_LINK and links TobaConcurrency static.
+    .package(url: "https://github.com/toba/toba-concurrency", from: "1.1.1"),
     // 1.0.3 is the floor because it is the release where `ByteExpressible` and `StableHasher`
     // took their current shape. Earlier releases spell the `String` conformance differently.
     .package(url: "https://github.com/toba/toba-hash", from: "1.0.3"),

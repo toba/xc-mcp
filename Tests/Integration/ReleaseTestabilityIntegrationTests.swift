@@ -6,9 +6,10 @@ import XCMCPTools
 
 /// End-to-end cover for a release build of a package whose tests use `@testable`.
 ///
-/// SwiftPM passes `-enable-testing` to a debug build alone, so this shape used to fail with "module
-/// 'Widget' was not compiled for testing" and the only workaround was an `unsafeFlags` edit to
-/// `Package.swift`. Both halves run here: the raw argument list still fails, and the tool succeeds.
+/// This shape used to fail with "module 'Widget' was not compiled for testing", because SwiftPM
+/// passed `-enable-testing` to a debug build alone. The only workaround was an `unsafeFlags` edit
+/// to `Package.swift`. `SwiftPackageBuildTool` passes the flag itself, so the build succeeds
+/// whichever way SwiftPM behaves.
 @Suite struct ReleaseTestabilityIntegrationTests {
     /// Writes a package with one internal symbol a test reaches through `@testable`.
     ///
@@ -61,27 +62,14 @@ import XCMCPTools
         return root
     }
 
-    // Two real release builds run here. The limit bounds a wedged `swift build` so it cannot hang
+    // A real release build runs here. The limit bounds a wedged `swift build` so it cannot hang
     // the whole suite.
     @Test(.timeLimit(.minutes(5)))
-    func `a release build of the test targets needs -enable-testing and the tool passes it`()
-        async throws
-    {
+    func `a release build of the test targets compiles the @testable import`() async throws {
         let package = try makePackage()
         defer { try? FileManager.default.removeItem(at: package) }
 
         let runner = SwiftRunner()
-
-        // Without the flag the compiler refuses the @testable import. This is the failure the
-        // manifest edit used to work around.
-        let bare = try await runner.run(
-            arguments: ["build", "-c", "release", "--build-tests"],
-            workingDirectory: package.path,
-            timeout: .seconds(300),
-        )
-        #expect(!bare.succeeded)
-        #expect(bare.output.contains("was not compiled for testing"))
-
         let tool = SwiftPackageBuildTool(swiftRunner: runner, sessionManager: SessionManager())
         let result = try await tool.execute(arguments: [
             "package_path": .string(package.path),

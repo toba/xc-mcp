@@ -21,8 +21,7 @@ extension Swift.Error {
     ///   disconnect symptom in `0xp-xz6` / `ive-jzc`.
     /// - If the error is already an MCPError, returns it unchanged.
     /// - If the error conforms to MCPErrorConvertible, uses `toMCPError()`.
-    /// - Otherwise, wraps the error message in `MCPError.internalError`, with a backtrace appended
-    ///   on macOS 26+.
+    /// - Otherwise, wraps the error message in `MCPError.internalError`, with a backtrace appended.
     public func asMCPError() throws -> MCPError {
         if self is CancellationError { throw self }
         if let mcpError = self as? MCPError { return mcpError }
@@ -33,10 +32,7 @@ extension Swift.Error {
     }
 
     private static func captureBacktrace() -> String? {
-        if #available(macOS 26.0, *) {
-            guard let bt = try? Backtrace.capture() else { return nil }
-            return String(describing: bt.symbolicated)
-        }
-        return nil
+        guard let bt = try? Backtrace.capture() else { return nil }
+        return String(describing: bt.symbolicated)
     }
 }

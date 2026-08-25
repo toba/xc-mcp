@@ -11,8 +11,8 @@ This project provides an MCP server for Xcode project manipulation with build, t
 
 ## Architecture
 
-- **Language**: Swift 6.2 (strict concurrency enabled)
-- **Platform**: macOS 15+
+- **Language**: Swift 6.4 (strict concurrency enabled)
+- **Platform**: macOS 27+
 - **Dependencies**: MCP Swift SDK (≥0.9.0), XcodeProj (≥9.7.2), ArgumentParser (≥1.7.0)
 
 ## Package Structure
@@ -169,7 +169,7 @@ Xcode build system knowledge for injected targets (via XcodeProj). Reference fil
 - XcodeProj library handles .xcodeproj file manipulation
 - Runner utilities in `Sources/Core/` wrap command-line tools (xcodebuild, simctl, devicectl, lldb, swift, xctrace, accessibility)
 - **Testing**: swift-testing framework (506 tests)
-- **Swift 6.2**: Strict concurrency enabled (`swift-tools-version: 6.2`)
+- **Swift 6.4**: Strict concurrency enabled (`swift-tools-version: 6.4`)
 - **Formatting**: `sm` (swiftiomatic from `../swiftiomatic`) before committing
 
 ## Swift Code Quality Standards
@@ -202,9 +202,9 @@ These standards apply to all code changes. Run `/swift` periodically to check fo
 - Use `EmptyCollection()` and `CollectionOfOne(x)` instead of `[]` and `[x]` for parameters typed as `some Collection`/`some Sequence`
 - Prefer `ContinuousClock.now` over `Date()` for timing/benchmarks
 
-### Swift 6.2 Idioms
+### Swift 6.4 Idioms
 
 - Use `InlineArray<N, T>` for fixed-size buffers instead of tuples
-- Use `Span` / `RawSpan` instead of `UnsafeBufferPointer` when deployment target allows (macOS 26.0+)
+- Use `Span` / `RawSpan` instead of `UnsafeBufferPointer`
 - Mark hot public generic functions `@inlinable` in library targets
 - Use isolated conformances instead of `nonisolated` workarounds for `@MainActor` types

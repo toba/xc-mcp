@@ -5,6 +5,12 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# Every toba package drops its .dynamic product type when this is set, so the
+# release links TobaCore and TobaConcurrency into the one executable image and
+# stages no lib directory. SwiftPM reads it during resolve as well as during
+# build, so it is exported rather than set on one command.
+export TOBA_STATIC_LINK=1
+
 keg="$(realpath "$(brew --prefix xc-mcp)")"
 
 echo "Building release..."
