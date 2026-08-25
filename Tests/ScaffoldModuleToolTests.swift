@@ -355,10 +355,9 @@ struct ScaffoldModuleToolTests {
             "testTargets": [],
             "version": 1,
         ]
-        let data = try JSONSerialization.data(
-            withJSONObject: initialPlan, options: [.prettyPrinted, .sortedKeys],
-        )
-        try data.write(to: URL(fileURLWithPath: testPlanPath))
+        // JSONSerialization would abort the process here, because it takes property-list types
+        // alone and raises an uncatchable Objective-C exception on an AnyValue
+        try TestPlanFile.write(initialPlan, to: testPlanPath)
 
         let tool = ScaffoldModuleTool(pathUtility: PathUtility(basePath: tempDir.path))
         let result = try tool.execute(arguments: [

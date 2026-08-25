@@ -664,22 +664,7 @@ public actor SessionManager {
     /// - Throws: MCPError.invalidParams if no package path is available, or if the resolved
     ///   directory holds no `Package.swift`.
     public func resolvePackagePath(from arguments: [String: Value]) throws(MCPError) -> String {
-        reloadIfNeeded()
-
-        let resolved: String
-
-        if let value = arguments.getString("package_path") {
-            resolved = PathUtility.resolvePath(from: value)
-        } else if let session = packagePath {
-            resolved = session
-        } else if let detected = PathUtility.findPackageRoot() {
-            // Auto-detect by walking up from cwd looking for Package.swift
-            resolved = detected
-        } else {
-            throw MCPError.invalidParams(
-                "package_path is required. Set it with set_session_defaults or pass it directly.",
-            )
-        }
+        let resolved = try resolveRootPath(from: arguments)
 
         let manifest = URL(fileURLWithPath: resolved).appendingPathComponent("Package.swift").path
         guard FileManager.default.fileExists(atPath: manifest) else {
@@ -688,5 +673,46 @@ public actor SessionManager {
             )
         }
         return resolved
+    }
+
+    /// Resolves the root directory a source tool reads, without demanding a package manifest
+    ///
+    /// A tool that reads Swift files rather than a SwiftPM graph takes any directory of sources, so
+    /// a loose directory and an Xcode project tree are both valid roots. The lint and format tools
+    /// call this. Every tool that shells out to `swift` calls ``resolvePackagePath(from:)`` instead.
+    ///
+    /// - Parameter arguments: The tool arguments dictionary.
+    /// - Returns: The resolved directory path.
+    /// - Throws: MCPError.invalidParams when no path is available, or when the resolved path names
+    ///   no directory.
+    public func resolveSourceRoot(from arguments: [String: Value]) throws(MCPError) -> String {
+        let resolved = try resolveRootPath(from: arguments)
+
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(atPath: resolved, isDirectory: &isDirectory)
+
+        guard exists, isDirectory.boolValue else {
+            throw MCPError.invalidParams(
+                "No directory at \(resolved). Please provide a path to a directory of Swift sources.",
+            )
+        }
+        return resolved
+    }
+
+    /// The root directory an argument, a session default or a walk up from the working directory
+    /// names, before any check on what the directory holds.
+    private func resolveRootPath(from arguments: [String: Value]) throws(MCPError) -> String {
+        reloadIfNeeded()
+
+        if let value = arguments.getString("package_path") {
+            return PathUtility.resolvePath(from: value)
+        }
+        if let session = packagePath { return session }
+        // Auto-detect by walking up from cwd looking for Package.swift
+        if let detected = PathUtility.findPackageRoot() { return detected }
+
+        throw MCPError.invalidParams(
+            "package_path is required. Set it with set_session_defaults or pass it directly.",
+        )
     }
 }

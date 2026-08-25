@@ -402,13 +402,16 @@ public struct SwiftRunner: Sendable {
         return result
     }
 
-    /// Bounds the wait after `swift test` prints its summary.
+    /// Bounds the wait after `swift test` prints the summary of a whole run.
     ///
     /// `swift-test` reads the test binary's output pipe. A process the tests spawned that inherited
     /// that pipe and outlived them holds it open, so `swift-test` sits idle for minutes after the
-    /// results are complete. The grace period is long enough that no healthy run reaches it: a test
-    /// binary prints its summary immediately before it exits, and any further SwiftPM output
-    /// restarts the clock. (74fa1d59)
+    /// results are complete. (74fa1d59)
+    ///
+    /// Two signals guard a healthy run. The marker matches the root-suite summary alone, so a suite
+    /// that finishes mid-run does not arm the watchdog. The watchdog then reads the process group's
+    /// CPU time, so a run that goes quiet behind a 16 KB stdio buffer keeps its grace period.
+    /// (b5f682b1)
     public static let testSettle = CompletionSettle(grace: .seconds(20)) { tail in
         ErrorExtractor.indicatesTestRunFinished(tail)
     }

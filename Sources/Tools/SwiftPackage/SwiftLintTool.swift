@@ -25,7 +25,7 @@ public struct SwiftLintTool: Sendable {
                     "package_path": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Path to the Swift package directory. Uses session default if not specified.",
+                            "Path to the directory holding the Swift sources. A Swift package root is the usual value, and any directory of Swift files works. Uses session default if not specified.",
                         ),
                     ]),
                 ]),
@@ -36,7 +36,9 @@ public struct SwiftLintTool: Sendable {
     }
 
     public func execute(arguments: [String: Value]) async throws -> CallTool.Result {
-        let packagePath = try await sessionManager.resolvePackagePath(from: arguments)
+        // sm lint reads Swift files and never opens Package.swift, so a directory of loose sources
+        // is a valid root
+        let packagePath = try await sessionManager.resolveSourceRoot(from: arguments)
         let paths = arguments.getStringArray("paths")
 
         let executablePath = try await BinaryLocator.find("sm")

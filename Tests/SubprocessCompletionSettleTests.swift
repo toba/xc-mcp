@@ -1,5 +1,7 @@
+import MCP
 import System
 import Testing
+import Darwin
 import Foundation
 import Subprocess
 import Synchronization
@@ -49,6 +51,47 @@ struct SettleMonitorTests {
         })
         monitor.observe("REA")
         monitor.observe("DY\n")
+        try await Task.sleep(for: .milliseconds(400))
+        #expect(monitor.checkSettled())
+    }
+
+    @Test
+    func `CPU time the group burns while it is quiet holds the settle off`() async throws {
+        // A slow suite writes nothing for minutes behind a 16 KB stdio buffer, and it burns CPU the
+        // whole time. The clock alone would kill it. (b5f682b1)
+        let cpu = Mutex(Duration.seconds(0))
+        let monitor = SettleMonitor(CompletionSettle(grace: .milliseconds(200)) {
+            $0.contains("READY")
+        }, cpuTime: { cpu.withLock { $0 } })
+
+        monitor.observe("READY\n")
+        cpu.withLock { $0 += .seconds(1) }
+        try await Task.sleep(for: .milliseconds(400))
+        #expect(!monitor.checkSettled(), "the group worked through the quiet period")
+
+        // No further work, so the next quiet period settles.
+        try await Task.sleep(for: .milliseconds(400))
+        #expect(monitor.checkSettled())
+    }
+
+    @Test
+    func `A group that burns no CPU settles on the grace period`() async throws {
+        let monitor = SettleMonitor(CompletionSettle(grace: .milliseconds(200)) {
+            $0.contains("READY")
+        }, cpuTime: { .seconds(3) })
+
+        monitor.observe("READY\n")
+        try await Task.sleep(for: .milliseconds(400))
+        #expect(monitor.checkSettled())
+    }
+
+    @Test
+    func `A dead process group settles at once`() async throws {
+        let monitor = SettleMonitor(CompletionSettle(grace: .milliseconds(200)) {
+            $0.contains("READY")
+        }, cpuTime: { nil })
+
+        monitor.observe("READY\n")
         try await Task.sleep(for: .milliseconds(400))
         #expect(monitor.checkSettled())
     }
@@ -183,8 +226,10 @@ struct TestRunFinishedMarkerTests {
                 + " passed after 28.513 seconds.",
             "\u{2718} Test run with 4 tests failed, 12 tests passed after 3.100 seconds.",
             "Test run with 2 tests in 1 suite failed after 1.200 seconds with 2 issues.",
-            "Executed 41 tests, with 0 failures (0 unexpected) in 2.031 (2.044) seconds",
-            "     Executed 1 test, with 1 failure (0 unexpected) in 0.101 (0.102) seconds",
+            "Test Suite 'All tests' passed at 2026-08-25 12:15:00.000.\n"
+                + "\t Executed 41 tests, with 0 failures (0 unexpected) in 2.031 (2.044) seconds",
+            "Test Suite 'Selected tests' failed at 2026-08-25 12:15:00.000.\n"
+                + "\t Executed 1 test, with 1 failure (0 unexpected) in 0.101 (0.102) seconds",
         ]
         for (index, sample) in samples.enumerated() {
             #expect(ErrorExtractor.indicatesTestRunFinished(sample), "sample \(index)")
@@ -205,10 +250,96 @@ struct TestRunFinishedMarkerTests {
         }
     }
 
+    /// XCTest closes every suite with the same summary line, and swift-testing closes every suite
+    /// with its own. A run of 2877 tests hit the first one 2836 tests early, which armed the settle
+    /// watchdog and killed the run. (b5f682b1)
+    @Test
+    func `A per-suite summary does not mark the run as finished`() async throws {
+        let samples = [
+            "Test Suite 'ColumnExpressionTests' passed at 2026-08-25 12:13:55.922.\n"
+                + "\t Executed 5 tests, with 0 failures (0 unexpected) in 0.010 (0.011) seconds",
+            "Test Suite 'GRDBTests.xctest' passed at 2026-08-25 12:13:55.922.\n"
+                + "\t Executed 5 tests, with 0 failures (0 unexpected) in 0.010 (0.011) seconds",
+            "\u{2714} Suite \"ColumnExpressionTests\" passed after 0.010 seconds.",
+        ]
+        for (index, sample) in samples.enumerated() {
+            #expect(!ErrorExtractor.indicatesTestRunFinished(sample), "sample \(index)")
+        }
+    }
+
     @Test
     func `A marker split across two chunks matches once the tail holds both halves`() async throws {
         let first = "\u{2714} Test run with 1731 tests in 210 suites"
         #expect(!ErrorExtractor.indicatesTestRunFinished(first))
         #expect(ErrorExtractor.indicatesTestRunFinished(first + " passed after 28.513 seconds."))
+    }
+}
+
+/// Verifies the CPU-time probe the settle watchdog reads to tell a working child from a finished
+/// one. (b5f682b1)
+struct ProcessGroupActivityTests {
+    @Test
+    func `The probe reports CPU time that grows with work`() async throws {
+        let group = getpgrp()
+        let first = try #require(ProcessGroupActivity.cpuTime(ofGroup: group))
+        var sum = 0
+        for value in 0..<5_000_000 { sum = sum &+ value }
+        #expect(sum > 0)
+        let second = try #require(ProcessGroupActivity.cpuTime(ofGroup: group))
+        #expect(second > first)
+    }
+
+    @Test
+    func `A group id of zero reports nothing`() async throws {
+        #expect(ProcessGroupActivity.cpuTime(ofGroup: 0) == nil)
+    }
+}
+
+/// Verifies what the tool reports when the watchdog ends a run. The counts it parsed cover the
+/// output that arrived, so naming them would state a result the run never reported. (b5f682b1)
+struct WatchdogTestReportTests {
+    /// One suite of a longer run, which is as far as a killed run gets.
+    private static let partialOutput = """
+        Test Suite 'All tests' started at 2026-08-25 12:10:00.000
+        Test Case '-[FooTests testOne]' passed (0.001 seconds).
+        Test Suite 'FooTests' passed at 2026-08-25 12:10:01.000.
+        \t Executed 40 tests, with 1 failure (0 unexpected) in 0.141 (0.142) seconds
+        """
+
+    @Test
+    func `A watchdog kill reports no pass or fail count`() async throws {
+        var message = ""
+        do {
+            _ = try await ErrorExtractor.formatTestToolResult(
+                output: Self.partialOutput,
+                succeeded: false,
+                context: "swift package",
+                settledAfterCompletion: true,
+            )
+            Issue.record("a killed run must not report a result")
+        } catch let error as MCPError {
+            message = error.localizedDescription
+        }
+        #expect(message.contains("Test run incomplete"))
+        #expect(!message.contains("39 passed"))
+        #expect(!message.contains("1 failed"))
+        #expect(message.contains("xc-mcp ended the process group"))
+    }
+
+    @Test
+    func `A run the watchdog left alone still reports its counts`() async throws {
+        var message = ""
+        do {
+            _ = try await ErrorExtractor.formatTestToolResult(
+                output: Self.partialOutput,
+                succeeded: false,
+                context: "swift package",
+            )
+            Issue.record("a failing run must throw")
+        } catch let error as MCPError {
+            message = error.localizedDescription
+        }
+        #expect(message.contains("Tests failed"))
+        #expect(message.contains("39 passed"))
     }
 }

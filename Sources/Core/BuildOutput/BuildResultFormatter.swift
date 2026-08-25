@@ -144,14 +144,19 @@ public enum BuildResultFormatter {
     ///   MyTests.testLogin — Expected true, got false (Sources/MyTests.swift:55)
     ///   MyTests.testLogout — Timeout after 5.0s
     /// ```
+    ///
+    /// - Parameter endedEarly: True when the run did not reach its own end, which drops the counts
+    ///   from the header. The parsed numbers then cover the part of the output that arrived, and a
+    ///   reader has no way to see that from the numbers themselves.
     public static func formatTestResult(
         _ result: BuildResult,
         errorsOnly _: Bool = false,
+        endedEarly: Bool = false,
     ) -> String {
         var parts: [String] = []
 
         // Header line
-        parts.append(formatTestHeader(result))
+        parts.append(endedEarly ? incompleteTestHeader : formatTestHeader(result))
 
         // Failed tests
         if !result.failedTests.isEmpty {
@@ -214,6 +219,10 @@ public enum BuildResultFormatter {
 
         return components.joined(separator: " ")
     }
+
+    /// The header of a run that stopped before it reported its own result.
+    static let incompleteTestHeader =
+        "Test run incomplete (no pass or fail count: the run did not report one)"
 
     private static func formatTestHeader(_ result: BuildResult) -> String {
         var header: String

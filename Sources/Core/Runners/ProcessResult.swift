@@ -83,8 +83,9 @@ public struct ProcessResult: Sendable {
     /// killed the process group because the child printed its completion marker and then stopped
     /// exiting.
     ///
-    /// The captured output is complete when this is true. The exit code is not, because the kill
-    /// produced it. (74fa1d59)
+    /// The exit code means nothing when this is true, because the kill produced it. The output is
+    /// whatever arrived before the kill, so a caller must not report it as a whole run.
+    /// (74fa1d59, b5f682b1)
     public let settledAfterCompletion: Bool
 
     /// The process exit code (0 indicates success).
@@ -165,6 +166,9 @@ private final class TimeoutFlag: Sendable {
 private final class ProcessGroupBox: Sendable {
     private let pid = Mutex<pid_t>(0)
 
+    /// The process group leader, or 0 before the spawn records it.
+    var leader: pid_t { pid.withLock { $0 } }
+
     /// Records the process group leader, which is the child itself.
     func set(_ value: pid_t) { pid(set: value) }
 
@@ -243,7 +247,8 @@ public struct CompletionSettle: Sendable {
     }
 }
 
-/// Tracks whether a child printed its completion marker and when it last wrote output.
+/// Tracks whether a child printed its completion marker, when it last wrote output, and how much
+/// CPU time its process group has burned.
 ///
 /// A reference type so the output callback and the watchdog task can share it across the task
 /// group's `sending` boundary, for the reason ``TimeoutFlag`` is one.
@@ -254,24 +259,45 @@ final class SettleMonitor: Sendable {
     /// How much recent output to keep, so a marker split across two chunks still matches.
     static let tailLimit = 4096
 
+    /// How much CPU time the group must burn over one grace period to count as still working.
+    ///
+    /// A child blocked on a pipe read burns none. A child running tests burns seconds per second,
+    /// so the threshold sits far below anything a live run produces. (b5f682b1)
+    static let workingCPUTime: Duration = .milliseconds(50)
+
     private struct State {
         var tail = ""
         var isComplete = false
-        var lastOutput = ContinuousClock.now
+        var lastActivity = ContinuousClock.now
+        var cpuTime: Duration?
         var didSettle = false
         var pollCount = 0
     }
 
     private let policy: CompletionSettle
+
+    /// Returns the CPU time the child's process group has consumed so far, or `nil` when the group
+    /// is gone or unreadable.
+    private let cpuTime: @Sendable () -> Duration?
+
     private let state = Mutex(State())
 
-    init(_ policy: CompletionSettle) { self.policy = policy }
+    /// Creates a monitor.
+    ///
+    /// - Parameters:
+    ///   - policy: The completion marker and the grace period to apply.
+    ///   - cpuTime: Reads the process group's cumulative CPU time. The default reports nothing, so
+    ///     the marker and the quiet period decide on their own.
+    init(_ policy: CompletionSettle, cpuTime: @escaping @Sendable () -> Duration? = { nil }) {
+        self.policy = policy
+        self.cpuTime = cpuTime
+    }
 
     /// Records one chunk of child output and re-tests the completion marker.
     func observe(_ chunk: String) {
         guard !chunk.isEmpty else { return }
         let tail: String = state.withLock { state in
-            state.lastOutput = .now
+            state.lastActivity = .now
             guard !state.isComplete else { return "" }
             state.tail += chunk
             if state.tail.count > Self.tailLimit {
@@ -280,20 +306,43 @@ final class SettleMonitor: Sendable {
             return state.tail
         }
         guard !tail.isEmpty, policy.isComplete(tail) else { return }
+        // Read the CPU baseline outside the lock, then store it with the marker. The first quiet
+        // check compares against it, so it covers the whole first grace period.
+        let baseline = cpuTime()
         state.withLock { state in
             state.isComplete = true
             state.tail = ""
+            state.cpuTime = baseline
         }
     }
 
-    /// True when the child printed its marker and then wrote nothing for the grace period.
+    /// True when the child printed its marker, wrote nothing for the grace period, and did no work
+    /// in that time.
+    ///
+    /// The quiet period alone is not enough. A test binary writes through a 16 KB stdio buffer, so
+    /// a slow suite goes quiet for minutes while it runs. CPU time separates that from a child that
+    /// finished and stopped exiting. (b5f682b1)
     ///
     /// Counts the call. A settle that never fires is either a watchdog that never polls or a marker
     /// that never arrives, and ``pollCount`` is what tells the two apart.
     func checkSettled() -> Bool {
-        state.withLock { state in
+        let isQuiet: Bool = state.withLock { state in
             state.pollCount += 1
-            return state.isComplete && state.lastOutput.duration(to: .now) >= policy.grace
+            return state.isComplete && state.lastActivity.duration(to: .now) >= policy.grace
+        }
+        guard isQuiet else { return false }
+
+        // A group with no live process cannot produce more output, so nothing is left to wait for.
+        guard let current = cpuTime() else { return true }
+
+        return state.withLock { state in
+            defer { state.cpuTime = current }
+            guard let baseline = state.cpuTime,
+                  current - baseline >= Self.workingCPUTime else { return true }
+            // The child worked through the quiet period, so treat the work as activity and give it
+            // another grace period.
+            state.lastActivity = .now
+            return false
         }
     }
 
@@ -376,8 +425,11 @@ extension ProcessResult {
         // whole group.
         let pgidBox = ProcessGroupBox()
 
-        // Feeds the settle watchdog every chunk of output before the caller sees it.
-        let monitor = settle.map(SettleMonitor.init)
+        // Feeds the settle watchdog every chunk of output before the caller sees it. The watchdog
+        // also reads the group's CPU time, so a quiet child that is still working stays alive.
+        let monitor = settle.map { policy in
+            SettleMonitor(policy) { ProcessGroupActivity.cpuTime(ofGroup: pgidBox.leader) }
+        }
         let observer: (@Sendable (String) -> Void)?
 
         if let monitor {

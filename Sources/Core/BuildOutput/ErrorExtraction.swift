@@ -26,36 +26,60 @@ public enum ErrorExtractor {
 
     /// Parses test output and returns a formatted summary of test results.
     ///
-    /// - Parameter output: The full test output to parse.
+    /// - Parameters:
+    ///   - output: The full test output to parse.
+    ///   - endedEarly: True when the run stopped before it reported its own result, which drops the
+    ///     pass and fail counts from the summary.
     /// - Returns: A formatted string describing the test result.
     public static func extractTestResults(
         from output: String,
         errorsOnly: Bool = false,
+        endedEarly: Bool = false,
     ) -> String {
         let parser = BuildOutputParser()
         let result = parser.parse(input: output)
-        return BuildResultFormatter.formatTestResult(result, errorsOnly: errorsOnly)
+        return BuildResultFormatter.formatTestResult(
+            result, errorsOnly: errorsOnly, endedEarly: endedEarly,
+        )
     }
 
-    /// Returns true when the text holds a line that ends a test run.
+    /// Returns true when the text holds the line that ends a whole test run.
     ///
-    /// Recognizes the swift-testing summary (`Test run with N tests ... passed after X seconds`)
-    /// and the XCTest summary (`Executed N tests, with M failures ...`). A runner uses this as the
-    /// completion marker of a ``CompletionSettle`` policy, so it must match a line the test binary
-    /// prints immediately before it exits. XCTest repeats its line once per suite level, which is
-    /// harmless: the settle only fires after the output goes quiet as well. (74fa1d59)
+    /// Recognizes the swift-testing run summary (`Test run with N tests ... passed after X
+    /// seconds`) and the XCTest root-suite summary (`Executed N tests, with M failures ...`). A
+    /// runner uses this as the completion marker of a ``CompletionSettle`` policy, so it must match
+    /// a line the test binary prints immediately before it exits.
+    ///
+    /// XCTest prints the same `Executed` line at the end of every suite, so that line on its own
+    /// says nothing about the run. Only the root suite carries the last one, and the line above it
+    /// names that suite. Matching a per-suite line armed the settle thousands of tests early, and
+    /// the watchdog then killed healthy runs. (b5f682b1)
+    ///
+    /// swift-testing writes `Test run with ...` once per run. Its per-suite line reads
+    /// `Suite "Name" passed after ...`, which this does not match.
     ///
     /// - Parameter text: A tail of recent test output.
     public static func indicatesTestRunFinished(_ text: String) -> Bool {
+        var previous = ""
         for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
-            if line.contains("Test run with "),
-               line.contains(" passed after ") || line.contains(" failed after ") { return true }
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.contains("Test run with "),
+               trimmed.contains(" passed after ") || trimmed.contains(" failed after ")
+            { return true }
             if trimmed.hasPrefix("Executed "),
                trimmed.contains(" test"),
-               trimmed.contains(", with ") { return true }
+               trimmed.contains(", with "),
+               namesRootTestSuite(previous) { return true }
+            if !trimmed.isEmpty { previous = trimmed }
         }
         return false
+    }
+
+    /// True when the line is the XCTest header of the suite that holds every other suite.
+    ///
+    /// XCTest names it `Selected tests` when a filter narrowed the run, and `All tests` otherwise.
+    private static func namesRootTestSuite(_ line: String) -> Bool {
+        line.contains("Test Suite 'All tests'") || line.contains("Test Suite 'Selected tests'")
     }
 
     /// Formats test output into a `CallTool.Result`, throwing on failure.
@@ -71,8 +95,9 @@ public enum ErrorExtractor {
     ///   - scheme: The scheme name used for the test run, for enhanced error messages.
     ///   - termination: How the test process ended, when the caller knows. Named in the output when
     ///     a signal ended it, because the exit code cannot say so on its own.
-    ///   - settledAfterCompletion: True when the runner killed the test process after it reported
-    ///     its results and stopped exiting.
+    ///   - settledAfterCompletion: True when the runner killed the test process after it printed a
+    ///     run summary and then stopped exiting. The result then carries no pass or fail count,
+    ///     because the output covers the part of the run that arrived.
     /// - Returns: A successful `CallTool.Result` if tests passed.
     /// - Throws: `MCPError.internalError` if tests failed.
     public static func formatTestToolResult(
@@ -130,7 +155,9 @@ public enum ErrorExtractor {
                     )
             }
         } else {
-            testResult = extractTestResults(from: output, errorsOnly: errorsOnly)
+            testResult = extractTestResults(
+                from: output, errorsOnly: errorsOnly, endedEarly: settledAfterCompletion,
+            )
 
             // Extract test count and parsed status from output
             let parsed = parseBuildOutput(output)
@@ -140,8 +167,11 @@ public enum ErrorExtractor {
 
             // Override exit code with parsed status: swift test can exit non-zero even when all
             // tests pass (e.g. due to build warnings or toolchain quirks). Only override when tests
-            // actually ran — if no tests were parsed, trust the exit code.
-            if !succeeded, parsed.status == "success", totalTestCount > 0 { succeeded = true }
+            // actually ran — if no tests were parsed, trust the exit code. A run the watchdog ended
+            // is never a pass: the output covers the part that arrived, not the whole run.
+            if !succeeded, !settledAfterCompletion, parsed.status == "success", totalTestCount > 0 {
+                succeeded = true
+            }
         }
 
         // Check for testmanagerd crashes in stderr
@@ -187,13 +217,14 @@ public enum ErrorExtractor {
             )
         }
 
-        // Say that the runner ended the process. The results above are complete, but the exit code
-        // is the kill, so a reader must not treat it as the test outcome. (74fa1d59)
+        // Say that the runner ended the process, and say what the output does not cover. The counts
+        // are withheld above because the run never reported its own. (74fa1d59, b5f682b1)
         if settledAfterCompletion {
-            testResult += "\n\nThe test run reported these results and then stopped exiting. "
-                + "xc-mcp ended the process group once the output went quiet, so the exit code "
-                + "is the kill and not the test outcome. A process the tests spawned outlived "
-                + "them and holds the output pipe open."
+            testResult += "\n\nxc-mcp ended the process group. The run printed a summary, then went "
+                + "quiet and burned no CPU, which is how a test process that outlives its own "
+                + "results looks: a process the tests spawned holds the output pipe open. Treat "
+                + "the results above as the part of the run that arrived. Run the suite with "
+                + "`swift test` in a terminal for the full count."
         }
 
         // Name a signal. The exit code alone cannot: it carries the signal number, which reads as
@@ -222,6 +253,11 @@ public enum ErrorExtractor {
         }
 
         let bundleSuffix = formatResultBundleSuffix(xcresultPath)
+
+        // A watchdog kill says nothing about the tests, so the message must not read as a failure.
+        if settledAfterCompletion {
+            throw MCPError.internalError("Test run incomplete:\n\(testResult)\(bundleSuffix)")
+        }
 
         if succeeded {
             let elapsedSuffix = wallClock.map { " (\($0.elapsedDescription) total)" } ?? ""

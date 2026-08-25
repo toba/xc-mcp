@@ -70,4 +70,39 @@ struct SessionResolverTests {
         ])
         #expect(resolved == PathUtility.resolvePath(from: root.path))
     }
+
+    // MARK: - resolveSourceRoot
+
+    @Test
+    func `resolveSourceRoot accepts a directory that holds no Package swift`() async throws {
+        let manager = makeManager()
+        let loose = TemporaryDirectory.url.appendingPathComponent("loose", isDirectory: true)
+        try FileManager.default.createDirectory(at: loose, withIntermediateDirectories: true)
+
+        let resolved = try await manager.resolveSourceRoot(from: [
+            "package_path": .string(loose.path)
+        ])
+        #expect(resolved == PathUtility.resolvePath(from: loose.path))
+    }
+
+    @Test
+    func `resolveSourceRoot rejects a path that names no directory`() async throws {
+        let manager = makeManager()
+        let missing = TemporaryDirectory.url.appendingPathComponent("gone", isDirectory: true)
+
+        await #expect(throws: MCPError.self) {
+            try await manager.resolveSourceRoot(from: ["package_path": .string(missing.path)])
+        }
+    }
+
+    @Test
+    func `resolveSourceRoot rejects a path that names a file`() async throws {
+        let manager = makeManager()
+        let file = TemporaryDirectory.url.appendingPathComponent("Lone.swift")
+        try "let value = 1\n".write(to: file, atomically: true, encoding: .utf8)
+
+        await #expect(throws: MCPError.self) {
+            try await manager.resolveSourceRoot(from: ["package_path": .string(file.path)])
+        }
+    }
 }
