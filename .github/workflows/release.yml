@@ -48,15 +48,18 @@ jobs:
     - name: Build release binaries
       run: swift build -c release --disable-sandbox
 
+    # The staged layout is bin/ plus lib/. Toba Core and Toba Concurrency each build a
+    # dylib, and the executable dies in dyld without them beside it.
+    - name: Stage the release
+      run: scripts/stage-release.sh "$(swift build -c release --show-bin-path)" dist
+
+    # Runs every executable in the staged layout. A missing dylib fails the release here
+    # rather than on the first machine that installs it.
+    - name: Verify the staged release
+      run: scripts/verify-release.sh dist
+
     - name: Create archive
-      run: |
-        mkdir -p dist
-        strip -x -o dist/xc-mcp .build/release/xc-mcp
-        cd dist
-        for name in xc-build xc-debug xc-device xc-project xc-simulator xc-strings xc-swift; do
-          ln -s xc-mcp "$name"
-        done
-        tar -czvf ../xc-mcp-${{ github.ref_name }}-arm64.tar.gz *
+      run: tar -czvf xc-mcp-${{ github.ref_name }}-arm64.tar.gz -C dist .
 
     - name: Generate SHA256
       run: shasum -a 256 xc-mcp-${{ github.ref_name }}-arm64.tar.gz > xc-mcp-${{ github.ref_name }}-arm64.tar.gz.sha256
@@ -122,9 +125,14 @@ jobs:
             depends_on :macos => :sequoia
             depends_on arch: :arm64
 
+            SERVERS = %w[xc-build xc-debug xc-device xc-project xc-simulator xc-strings xc-swift].freeze
+
             def install
-              bin.install "xc-mcp"
-              %w[xc-build xc-debug xc-device xc-project xc-simulator xc-strings xc-swift].each do |name|
+              # The executable carries an rpath of @loader_path/../lib, so the dylibs
+              # resolve from lib/ in this keg. Dir is empty when the build links statically.
+              lib.install Dir["lib/*.dylib"]
+              bin.install "bin/xc-mcp"
+              SERVERS.each do |name|
                 bin.install_symlink "xc-mcp" => name
               end
             end
@@ -140,8 +148,12 @@ jobs:
               EOS
             end
 
+            # Every name is checked, not xc-mcp alone. The eight share one binary and one
+            # link line, so a missing dylib stops all of them.
             test do
-              assert_match "MCP server", shell_output("#{bin}/xc-mcp --help")
+              (["xc-mcp"] + SERVERS).each do |name|
+                assert_match "MCP server", shell_output("#{bin}/#{name} --help")
+              end
             end
           end
           FORMULA
