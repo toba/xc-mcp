@@ -40,10 +40,13 @@ struct PIFCacheReaderTests {
             )
             Issue.record("expected cacheMissing")
         } catch let error as PIFCacheReader.Error {
+            // the description is read before the match because interpolating the caught
+            // value inside the match crashes the swift 6.4 seed on the ci runner
+            let described = String(describing: error)
             if case .cacheMissing = error {
                 // expected
             } else {
-                Issue.record("wrong error: \(error)")
+                Issue.record("wrong error: \(described)")
             }
         }
     }
@@ -61,10 +64,11 @@ struct PIFCacheReaderTests {
             )
             Issue.record("expected derivedDataNotFound")
         } catch let error as PIFCacheReader.Error {
+            let described = String(describing: error)
             if case .derivedDataNotFound = error {
                 // expected
             } else {
-                Issue.record("wrong error: \(error)")
+                Issue.record("wrong error: \(described)")
             }
         }
     }

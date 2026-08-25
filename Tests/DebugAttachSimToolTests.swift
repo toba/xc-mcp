@@ -35,10 +35,13 @@ struct DebugAttachSimToolTests {
             _ = try await tool.execute(arguments: [:])
             Issue.record("Expected invalidParams error")
         } catch let error as MCPError {
+            // the description is read before the match because interpolating the caught
+            // value inside the match crashes the swift 6.4 seed on the ci runner
+            let described = String(describing: error)
             if case let .invalidParams(message) = error {
                 #expect(message?.contains("bundle_id") == true || message?.contains("pid") == true)
             } else {
-                Issue.record("Expected .invalidParams, got \(error)")
+                Issue.record("Expected .invalidParams, got \(described)")
             }
         } catch {
             Issue.record("Expected MCPError, got \(type(of: error))")
