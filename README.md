@@ -516,7 +516,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 | `detect_unused_code` | Find unused code via [Periphery](https://github.com/peripheryapp/periphery) — summary, detail, or checklist format |
 | `get_coverage_report` | Per-target coverage from `.xcresult` |
 | `get_file_coverage` | Per-function coverage drill-down |
-| `swift_symbols` | Search Swift symbols |
+| `swift_symbols` | Search Swift symbols in the SDK or a package build |
 
 </details>
 
