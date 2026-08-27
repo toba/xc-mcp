@@ -8,7 +8,7 @@ import Foundation
 
 @Suite(.temporaryDirectory)
 struct DetectUnusedCodeToolTests {
-    let sessionManager = SessionManager()
+    private let sessionManager = SessionManager()
 
     @Test
     func `Self-reference guidance names the offending entry and points to repair_project`() throws {
@@ -30,6 +30,52 @@ struct DetectUnusedCodeToolTests {
         #expect(message.contains("3 self-referencing sub-project"))
         #expect(message.contains("\"TestProject.xcodeproj\""))
         #expect(message.contains("Periphery output:"))
+    }
+
+    // MARK: - Index Store Guidance
+
+    @Test
+    func `Missing index store guidance lists both searched layouts`() {
+        let message = DetectUnusedCodeTool.missingIndexStoreGuidance(
+            packagePath: "/tmp/pkg", skipBuild: false,
+        )
+
+        #expect(message.contains("/tmp/pkg/.build/out"))
+        #expect(message.contains("/tmp/pkg/.build/debug/index/store"))
+        #expect(message.contains("swift_package_clean"))
+    }
+
+    @Test
+    func `Missing index store guidance tells a skip_build caller to build`() {
+        let message = DetectUnusedCodeTool.missingIndexStoreGuidance(
+            packagePath: "/tmp/pkg", skipBuild: true,
+        )
+
+        #expect(message.contains("skip_build was set"))
+        #expect(message.contains("skip_build: false"))
+    }
+
+    @Test
+    func `Stale index store guidance names the package remedy`() {
+        let message = DetectUnusedCodeTool.staleIndexStoreGuidance(
+            project: nil,
+            peripheryDetail:
+                "Error: index store path does not exist: /tmp/pkg/.build/debug/index/store",
+        )
+
+        #expect(message.contains("fresh_scan: true"))
+        #expect(message.contains("Periphery output:"))
+    }
+
+    @Test
+    func `Stale index store guidance names the Xcode project remedy`() {
+        let message = DetectUnusedCodeTool.staleIndexStoreGuidance(
+            project: "/tmp/App.xcodeproj",
+            peripheryDetail: "Error: index store path does not exist: /tmp/DerivedData",
+        )
+
+        #expect(message.contains("build_macos"))
+        #expect(message.contains("DerivedData"))
     }
 
     @Test

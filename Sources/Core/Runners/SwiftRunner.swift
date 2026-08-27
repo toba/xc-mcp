@@ -128,6 +128,9 @@ public struct SwiftRunner: Sendable {
     ///   - environment: Environment variables for the subprocess. Defaults to `.inherit`.
     ///   - timeout: Maximum time to wait for the command. Defaults to ``defaultTimeout``.
     ///   - settle: Optional policy that bounds the wait after the command finishes its work.
+    ///   - guarded: Whether to take the build lock for `workingDirectory`. Pass false when the
+    ///     caller already holds it. A second acquire opens a second file descriptor, and `flock`
+    ///     blocks a second open file description in the same process, so a nested call deadlocks.
     /// - Returns: The result containing exit code and output.
     /// - Throws: ``ProcessError/timeout(duration:)`` if the command exceeds the timeout.
     public func run(
@@ -136,10 +139,11 @@ public struct SwiftRunner: Sendable {
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
         settle: CompletionSettle? = nil,
+        guarded: Bool = true,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> SwiftResult {
         try await BuildGuard.withGuard(
-            path: workingDirectory,
+            path: guarded ? workingDirectory : nil,
             description: "swift \(arguments.first ?? "")",
         ) {
             try await ProcessResult.runSubprocess(
@@ -227,6 +231,8 @@ public struct SwiftRunner: Sendable {
     ///   - traits: The package traits to enable.
     ///   - swiftcFlags: Flags to forward to the compiler.
     ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
+    ///   - guarded: Whether to take the build lock for `packagePath`. Pass false when the caller
+    ///     already holds it, because a nested acquire deadlocks.
     /// - Returns: The build result containing exit code and output.
     public func build(
         packagePath: String,
@@ -240,6 +246,7 @@ public struct SwiftRunner: Sendable {
         swiftcFlags: [String] = [],
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
+        guarded: Bool = true,
         onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> SwiftResult {
         let result = try await run(
@@ -250,6 +257,7 @@ public struct SwiftRunner: Sendable {
             ),
             workingDirectory: packagePath,
             environment: environment, timeout: timeout,
+            guarded: guarded,
             onProgress: onProgress,
         )
         RawBuildLog.store(

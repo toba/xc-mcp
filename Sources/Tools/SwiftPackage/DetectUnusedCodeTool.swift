@@ -158,7 +158,7 @@ public struct DetectUnusedCodeTool: Sendable {
                 ]),
                 "required": .array([]),
             ]),
-            annotations: .readOnly,
+            annotations: .mutation,
         )
     }
 
@@ -382,7 +382,17 @@ public struct DetectUnusedCodeTool: Sendable {
                 path: skipBuild ? nil : (project ?? packagePath),
                 description: "periphery scan",
             ) {
-                try await runPeriphery(
+                var args = args
+
+                // Periphery resolves its own index store path only for an Xcode project. Its SPM
+                // default is stale, so a package scan resolves the store here and hands it over.
+                if project == nil {
+                    let store = try await prepareIndexStore(
+                        packagePath: packagePath, skipBuild: skipBuild,
+                    )
+                    args.append(contentsOf: ["--index-store-path", store])
+                }
+                return try await runPeriphery(
                     executablePath: executablePath, args: args,
                     packagePath: packagePath, project: project, schemes: schemes,
                 )
@@ -390,6 +400,115 @@ public struct DetectUnusedCodeTool: Sendable {
         } catch {
             throw try error.asMCPError()
         }
+    }
+
+    // MARK: - Index Store
+
+    /// Resolves the index store of a Swift package, building it first when the caller allows a
+    /// build.
+    ///
+    /// Periphery defaults an SPM scan to `.build/debug/index/store`. swift-build, the default since
+    /// Swift 6.4, roots the store at `.build/out` instead, so the scan fails on a package that
+    /// builds clean. Periphery's `--index-store-path` implies `--skip-build`, which is why the
+    /// build runs here rather than inside periphery.
+    ///
+    /// - Parameters:
+    ///   - packagePath: The package root, the directory that holds `Package.swift`.
+    ///   - skipBuild: True when the caller asked to reuse an existing store.
+    /// - Returns: Absolute path to a populated index store.
+    /// - Throws: ``MCPError/internalError(_:)`` when the build fails, or when no build populates a
+    ///   store.
+    private func prepareIndexStore(packagePath: String, skipBuild: Bool) async throws -> String {
+        if !skipBuild { try await buildForIndex(packagePath: packagePath, storePath: nil) }
+        let located = IndexStoreLocator.locate(packagePath: packagePath)
+        if located.exists { return located.path }
+
+        // A warm cache can finish a build without recompiling anything, and a target that never
+        // compiles writes no records. Naming the store makes this build's flags differ from the
+        // last one, so the targets compile again and emit it.
+        if !skipBuild {
+            let fallback = IndexStoreLocator.fallbackPath(packagePath: packagePath)
+            try await buildForIndex(packagePath: packagePath, storePath: fallback)
+            let retried = IndexStoreLocator.locate(packagePath: packagePath)
+            if retried.exists { return retried.path }
+        }
+        throw MCPError.internalError(Self.missingIndexStoreGuidance(
+            packagePath: packagePath, skipBuild: skipBuild))
+    }
+
+    /// Builds the package and its test targets so the compiler emits index records.
+    ///
+    /// The test targets have to be indexed too. A declaration that only the tests use reads as
+    /// unused otherwise.
+    ///
+    /// - Parameters:
+    ///   - packagePath: The package root, the directory that holds `Package.swift`.
+    ///   - storePath: Where to write the index store, or `nil` to accept the build system default.
+    private func buildForIndex(packagePath: String, storePath: String?) async throws {
+        let timeout = SwiftRunner.isColdCache(packagePath: packagePath)
+            ? SwiftRunner.coldCacheTimeout
+            : SwiftRunner.defaultTimeout
+        // The scan already holds the build lock for this package, so the build must not take it
+        // again.
+        let result = try await SwiftRunner().build(
+            packagePath: packagePath,
+            buildTests: true,
+            swiftcFlags: storePath.map { ["-index-store-path", $0] } ?? [],
+            timeout: timeout,
+            guarded: false,
+        )
+        guard result.succeeded else {
+            let errors = ErrorExtractor.extractBuildErrors(
+                from: result.output, projectRoot: packagePath, errorsOnly: true,
+            )
+            throw MCPError.internalError(
+                """
+                swift build failed before the periphery scan, so no index store was written.
+
+                \(errors)
+                """,
+            )
+        }
+    }
+
+    /// Builds an actionable error for a package whose build left no index store behind.
+    static func missingIndexStoreGuidance(packagePath: String, skipBuild: Bool) -> String {
+        let searched = IndexStoreLocator.candidates(packagePath: packagePath)
+            .map { "  \($0)" }
+            .joined(separator: "\n")
+        let cause = skipBuild
+            ? "skip_build was set, and no earlier build left a store behind."
+            : "The build finished, but no target emitted index records."
+        let advice = skipBuild
+            ? "Re-run with skip_build: false so the package builds first."
+            : "Run swift_package_clean on the package, then re-run the scan. A warm build cache "
+                + "recompiles nothing, and a target that never compiles emits nothing to index."
+        return """
+            Periphery has no index store to read for this package. \(cause)
+
+            Searched:
+            \(searched)
+
+            \(advice)
+            """
+    }
+
+    /// Builds an actionable error for Periphery's own missing index store failure.
+    ///
+    /// Periphery reports the path it looked for and nothing else, so the caller has to work out
+    /// both the cause and the fix from a path.
+    static func staleIndexStoreGuidance(project: String?, peripheryDetail: String) -> String {
+        let advice = project == nil
+            ? "Re-run the scan with fresh_scan: true and skip_build: false so the package builds "
+                + "and writes its store."
+            : "Build the scheme once through build_macos or test_macos, then re-run the scan. "
+                + "Periphery reads the index store Xcode wrote into DerivedData."
+        return """
+            Periphery looked for an index store that does not exist. \(advice)
+
+            Periphery output:
+            \(peripheryDetail)
+            """
     }
 
     /// Runs the periphery scan and caches its JSON output, returning `(rawJSON, cacheFilePath)`.
@@ -413,6 +532,12 @@ public struct DetectUnusedCodeTool: Sendable {
                let project
             {
                 throw MCPError.internalError(Self.selfReferenceGuidance(
+                    project: project, peripheryDetail: detail,
+                ))
+            }
+
+            if detail.contains("index store path does not exist") {
+                throw MCPError.internalError(Self.staleIndexStoreGuidance(
                     project: project, peripheryDetail: detail,
                 ))
             }
