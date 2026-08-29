@@ -22,7 +22,7 @@ import ArgumentParser
 struct DeviceServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-device",
-        abstract: "MCP server for physical iOS device operations (12 tools, ~2K tokens)",
+        abstract: "MCP server for physical iOS device operations (~2K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")

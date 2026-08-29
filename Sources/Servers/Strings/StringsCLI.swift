@@ -22,8 +22,7 @@ import ArgumentParser
 struct StringsServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-strings",
-        abstract:
-            "MCP server for Xcode String Catalog (.xcstrings) file manipulation (18 tools, ~6K tokens)",
+        abstract: "MCP server for Xcode String Catalog (.xcstrings) file manipulation (~6K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")

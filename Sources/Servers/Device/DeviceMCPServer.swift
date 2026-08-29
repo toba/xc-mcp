@@ -6,13 +6,13 @@ import XCMCPTools
 
 /// MCP server for physical iOS device operations.
 ///
-/// This focused server provides tools for managing physical iOS devices,
-/// building and running apps, and capturing logs.
+/// This focused server provides tools for managing physical iOS devices, building and running apps,
+/// and capturing logs.
 ///
 /// ## Token Efficiency
 ///
-/// This server exposes the 14 tools `ToolRegistry` marks with `ServerSet.device`. Selecting a
-/// focused server trims the tool surface a client pays for.
+/// This server exposes the tools `ToolRegistry` marks with `ServerSet.device`. Selecting a focused
+/// server trims the tool surface a client pays for.
 ///
 /// ## Tool Categories
 ///
@@ -42,7 +42,8 @@ public struct DeviceMCPServer: Sendable {
             capabilities: .init(tools: .init()),
         )
 
-        await installRegistryToolHandlers(on: server, as: .device, deps: ToolDeps(basePath: basePath))
+        await installRegistryToolHandlers(
+            on: server, as: .device, deps: ToolDeps(basePath: basePath))
 
         // Use stdio transport
         let transport = StdioTransport(logger: logger)

@@ -11,8 +11,8 @@ import XCMCPTools
 ///
 /// ## Token Efficiency
 ///
-/// This server exposes the 31 tools `ToolRegistry` marks with `ServerSet.simulator`. Selecting
-/// a focused server trims the tool surface a client pays for.
+/// This server exposes the tools `ToolRegistry` marks with `ServerSet.simulator`. Selecting a
+/// focused server trims the tool surface a client pays for.
 ///
 /// ## Tool Categories
 ///
@@ -43,7 +43,8 @@ public struct SimulatorMCPServer: Sendable {
             capabilities: .init(tools: .init()),
         )
 
-        await installRegistryToolHandlers(on: server, as: .simulator, deps: ToolDeps(basePath: basePath))
+        await installRegistryToolHandlers(
+            on: server, as: .simulator, deps: ToolDeps(basePath: basePath))
 
         // Use stdio transport
         let transport = StdioTransport(logger: logger)

@@ -4,8 +4,8 @@ import ArgumentParser
 
 /// Command-line interface for the xc-build MCP server.
 ///
-/// This focused server provides macOS build, discovery, and utility tools
-/// with moderate token overhead (~3K tokens vs ~50K for the full xc-mcp server).
+/// This focused server provides macOS build, discovery, and utility tools with moderate token
+/// overhead (~3K tokens vs ~50K for the full xc-mcp server).
 ///
 /// ## Usage
 ///
@@ -22,7 +22,7 @@ import ArgumentParser
 struct BuildServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-build",
-        abstract: "MCP server for macOS builds, discovery, and utilities (18 tools, ~3K tokens)",
+        abstract: "MCP server for macOS builds, discovery, and utilities (~3K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")

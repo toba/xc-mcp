@@ -44,7 +44,7 @@ Add xc-mcp to your MCP client configuration:
 
 ## Tool Categories
 
-The server exposes over 90 tools organized into functional categories:
+The server exposes tools organized into functional categories:
 
 ### Project Tools
 
@@ -121,6 +121,7 @@ Tools for Swift Package Manager:
 - Run tests
 - Execute package products
 - Manage dependencies
+- Raise a release through a set of local repositories, transitively (<doc:SyncPackagePins>)
 
 ### Utility Tools
 
@@ -148,6 +149,10 @@ Once defaults are set, tools will use them automatically when parameters are not
 - ``XcodeMCPServerCLI``
 - ``SessionManager``
 
+### Guides
+
+- <doc:SyncPackagePins>
+
 ### Utilities
 
 - ``PathUtility``
@@ -156,6 +161,9 @@ Once defaults are set, tools will use them automatically when parameters are not
 - ``DeviceCtlRunner``
 - ``LLDBRunner``
 - ``SwiftRunner``
+- ``GitRunner``
+- ``ManifestPins``
+- ``PinGraph``
 
 ### Result Types
 

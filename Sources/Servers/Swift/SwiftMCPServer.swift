@@ -11,8 +11,8 @@ import XCMCPTools
 ///
 /// ## Token Efficiency
 ///
-/// This server exposes the 18 tools `ToolRegistry` marks with `ServerSet.swift`. Selecting a
-/// focused server trims the tool surface a client pays for.
+/// This server exposes the tools `ToolRegistry` marks with `ServerSet.swift`. Selecting a focused
+/// server trims the tool surface a client pays for.
 ///
 /// ## Tools
 ///
@@ -38,13 +38,10 @@ public struct SwiftMCPServer: Sendable {
 
     /// Starts the MCP server and begins processing requests.
     public func run() async throws {
-        let server = Server(
-            name: "xc-swift",
-            version: "1.0.0",
-            capabilities: .init(tools: .init()),
-        )
+        let server = Server(name: "xc-swift", version: "1.0.0", capabilities: .init(tools: .init()))
 
-        await installRegistryToolHandlers(on: server, as: .swift, deps: ToolDeps(basePath: basePath))
+        await installRegistryToolHandlers(
+            on: server, as: .swift, deps: ToolDeps(basePath: basePath))
 
         // Use stdio transport
         let transport = StdioTransport(logger: logger)

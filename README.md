@@ -1,6 +1,6 @@
 # xc-mcp
 
-An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with 200 tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, memory diagnostics, crash symbolication, notarization, localization, icon composition, and SwiftUI preview capture.
+An exhaustive MCP server for Swift development on a Mac. Build, test, run, and debug iOS and macOS apps — on simulators, physical devices, and the Mac itself — with tools for project manipulation, LLDB debugging, UI automation, Instruments profiling, memory diagnostics, crash symbolication, notarization, localization, icon composition, and SwiftUI preview capture.
 
 I began working on this because every other, similar MCP I tried crashed or, worse, corrupted the configuration of complex projects (multiple targets, multiple platforms, mix of dependency types). I also thought it would be nice if it was written in Swift rather than TypeScript or Python.
 
@@ -22,17 +22,17 @@ Originally based on [giginet/xcodeproj-mcp-server](https://github.com/giginet/xc
 
 Nine tool categories. Use the monolithic server for everything, or mix focused servers to keep token overhead low.
 
-| | Category | Tools | What it does |
-|---|---|:---:|---|
-| [1](#debugging) | [Debugging](#debugging) | 24 | LLDB sessions, memory diagnostics, crash symbolication, view borders |
-| [2](#macos-builds--screenshots) | [macOS Builds](#macos-builds--screenshots) | 14 | Build, test, run, screenshot, coverage, profiling |
-| [3](#simulators) | [Simulators](#simulators) | 25 | Build, run, screenshot, touch/gesture automation, logs |
-| [4](#devices) | [Devices](#devices) | 9 | Build, deploy, test on physical iOS devices |
-| [5](#project-management) | [Project Management](#project-management) | 58 | Full .xcodeproj manipulation — targets, groups, packages, schemes, test plans |
-| [6](#icon-composition) | [Icon Composition](#icon-composition) | 9 | Create and edit Icon Composer `.icon` bundles, render via `ictool` |
-| [7](#swift-packages) | [Swift Packages](#swift-packages) | 12 | SPM build/test/run, swiftformat, swiftlint, unused code detection |
-| [8](#localization) | [Localization](#localization) | 24 | Full CRUD for `.xcstrings` files — keys, translations, coverage |
-| [9](#session--utilities) | [Session & Utilities](#session--utilities) | 12 | Auto-detection, environment, Xcode sync, notarization, version management |
+| | Category | What it does |
+|---|---|---|
+| [1](#debugging) | [Debugging](#debugging) | LLDB sessions, memory diagnostics, crash symbolication, view borders |
+| [2](#macos-builds--screenshots) | [macOS Builds](#macos-builds--screenshots) | Build, test, run, screenshot, coverage, profiling |
+| [3](#simulators) | [Simulators](#simulators) | Build, run, screenshot, touch/gesture automation, logs |
+| [4](#devices) | [Devices](#devices) | Build, deploy, test on physical iOS devices |
+| [5](#project-management) | [Project Management](#project-management) | Full .xcodeproj manipulation — targets, groups, packages, schemes, test plans |
+| [6](#icon-composition) | [Icon Composition](#icon-composition) | Create and edit Icon Composer `.icon` bundles, render via `ictool` |
+| [7](#swift-packages) | [Swift Packages](#swift-packages) | SPM build/test/run, swiftformat, swiftlint, unused code detection, cross-repository pin sweep |
+| [8](#localization) | [Localization](#localization) | Full CRUD for `.xcstrings` files — keys, translations, coverage |
+| [9](#session--utilities) | [Session & Utilities](#session--utilities) | Auto-detection, environment, Xcode sync, notarization, version management |
 
 Plus a handful of cross-cutting capabilities described in [Notable Powers](#notable-powers).
 
@@ -93,16 +93,16 @@ For Intel Macs, use `/usr/local/bin/xc-mcp` instead.
 
 Run a single server with all tools, or use focused servers to reduce token overhead. Every tool is in `xc-mcp`; the focused servers are strict subsets.
 
-| Server | Tools | Tokens | What's in it |
-|--------|:-----:|:------:|---|
-| `xc-mcp` | 187 | ~30K | Everything |
-| `xc-project` | 61 | ~9K | .xcodeproj manipulation |
-| `xc-build` | 44 | ~7K | macOS builds, profiling, discovery, diagnostics, icons, versioning, notarization |
-| `xc-simulator` | 29 | ~5K | Simulator + UI automation + simulator logs |
-| `xc-debug` | 37 | ~5K | LLDB, memory diagnostics, crash symbolication, screenshots, macOS UI automation (`interact_*`) |
-| `xc-strings` | 24 | ~3K | .xcstrings localization |
-| `xc-swift` | 16 | ~3K | SPM, swiftformat, swiftlint, diagnostics, coverage |
-| `xc-device` | 14 | ~3K | Physical iOS devices |
+| Server | Tokens | What's in it |
+|--------|:------:|---|
+| `xc-mcp` | ~30K | Everything |
+| `xc-project` | ~9K | .xcodeproj manipulation |
+| `xc-build` | ~7K | macOS builds, profiling, discovery, diagnostics, icons, versioning, notarization |
+| `xc-simulator` | ~5K | Simulator + UI automation + simulator logs |
+| `xc-debug` | ~5K | LLDB, memory diagnostics, crash symbolication, screenshots, macOS UI automation (`interact_*`) |
+| `xc-strings` | ~3K | .xcstrings localization |
+| `xc-swift` | ~3K | SPM, swiftformat, swiftlint, diagnostics, coverage |
+| `xc-device` | ~3K | Physical iOS devices |
 
 <details>
 <summary><strong>Configuration presets</strong></summary>
@@ -165,7 +165,7 @@ A few things worth calling out because they're unusual, non-obvious, or the reas
 
 **Unused code detection** — Wraps [Periphery](https://github.com/peripheryapp/periphery). Returns a persistent checklist agents can mark off as they clean up.
 
-**Dynamic tool workflows** — `manage_workflows` enables or disables tool categories at runtime so 187 tools don't all sit in context when you only need six.
+**Dynamic tool workflows** — `manage_workflows` enables or disables tool categories at runtime so the full tool list does not sit in context when you only need six.
 
 ---
 
@@ -177,7 +177,7 @@ Each section below describes a tool category with highlights, then expands to th
 
 ### Debugging
 
-24 tools. LLDB sessions backed by a pseudo-TTY — breakpoints survive across tool calls, no hangs from rapid attach/detach. Plus standalone memory diagnostics and crash symbolication that work on any running process.
+LLDB sessions backed by a pseudo-TTY — breakpoints survive across tool calls, no hangs from rapid attach/detach. Plus standalone memory diagnostics and crash symbolication that work on any running process.
 
 <details>
 <summary><strong>Build & attach</strong></summary>
@@ -241,7 +241,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 ### macOS Builds & Screenshots
 
-14 tools. Build, test, run, screenshot macOS apps. Coverage reports, performance baselines, launch profiling, and build diagnostics.
+Build, test, run and screenshot macOS apps. Coverage reports, performance baselines, launch profiling, and build diagnostics.
 
 <details>
 <summary><strong>All tools</strong></summary>
@@ -269,7 +269,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 </details>
 
-**SwiftUI Preview Capture** (1 tool):
+**SwiftUI Preview Capture**:
 
 | Tool | Description |
 |------|-------------|
@@ -279,7 +279,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 ### Simulators
 
-25 tools. Simulator management, build-and-run, and coordinate-based touch automation via `simctl io`.
+Simulator management, build-and-run, and coordinate-based touch automation via `simctl io`.
 
 <details>
 <summary><strong>Simulator management</strong></summary>
@@ -326,7 +326,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 ### Devices
 
-9 tools. Physical iOS device management, including one-call deployment pipelines.
+Physical iOS device management, including one-call deployment pipelines.
 
 <details>
 <summary><strong>All tools</strong></summary>
@@ -349,7 +349,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 ### Project Management
 
-58 tools. Full `.xcodeproj` manipulation — targets, groups, files, schemes, test plans, Swift packages, synchronized folders, build phases, document types, URL types. All through the XcodeProj library, no `xcodebuild` needed.
+Full `.xcodeproj` manipulation — targets, groups, files, schemes, test plans, Swift packages, synchronized folders, build phases, document types, URL types. All through the XcodeProj library, no `xcodebuild` needed.
 
 <details>
 <summary><strong>Files & groups</strong></summary>
@@ -473,7 +473,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 ### Icon Composition
 
-9 tools. Create and edit Apple's Icon Composer `.icon` bundles — multi-layer icons with fills, glass effects, shadows, translucency, and dark mode variants. Render to PNG via `ictool`. Add to Xcode projects with the correct `lastKnownFileType`.
+Create and edit Apple's Icon Composer `.icon` bundles — multi-layer icons with fills, glass effects, shadows, translucency, and dark mode variants. Render to PNG via `ictool`. Add to Xcode projects with the correct `lastKnownFileType`.
 
 <details>
 <summary><strong>All tools</strong></summary>
@@ -496,7 +496,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 ### Swift Packages
 
-12 tools. SPM operations, formatting, linting, and unused code detection.
+SPM operations, formatting, linting, unused code detection, and a cross-repository pin sweep.
 
 <details>
 <summary><strong>All tools</strong></summary>
@@ -513,6 +513,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 | `swift_lint` | Run swiftlint — supports fix mode |
 | `swift_diagnostics` | Clean-build and collect all compiler warnings and lint violations |
 | `swift_package_docs` | Build a DocC catalog and report documentation diagnostics grouped by article |
+| `sync_package_pins` | Raise a release through a set of local repositories, transitively — orders them so a dependency publishes before its dependents, then commits, tags and pushes each layer |
 | `detect_unused_code` | Find unused code via [Periphery](https://github.com/peripheryapp/periphery) — summary, detail, or checklist format |
 | `get_coverage_report` | Per-target coverage from `.xcresult` |
 | `get_file_coverage` | Per-function coverage drill-down |
@@ -524,7 +525,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 ### Localization
 
-24 tools. Full CRUD for Apple's `.xcstrings` format — keys, translations, coverage stats, stale key detection. Batch operations are atomic.
+Full CRUD for Apple's `.xcstrings` format — keys, translations, coverage stats, stale key detection. Batch operations are atomic.
 
 <details>
 <summary><strong>Read operations</strong></summary>
@@ -570,7 +571,7 @@ Standalone CLI wrappers — work on any running process by PID or bundle ID.
 
 ### Session & Utilities
 
-12 tools. Project paths are auto-detected from the working directory — the server walks up from `cwd` looking for `Package.swift`, `.xcodeproj`, or `.xcworkspace`.
+Project paths are auto-detected from the working directory — the server walks up from `cwd` looking for `Package.swift`, `.xcodeproj`, or `.xcworkspace`.
 
 <details>
 <summary><strong>Session management</strong></summary>
@@ -662,7 +663,7 @@ Test tools parse both **XCTest** and **Swift Testing** output formats, extractin
 
 ## Tests
 
-826 tests — fast unit tests with in-memory fixtures and mock runners, plus integration tests that build and screenshot real open-source projects.
+Fast unit tests with in-memory fixtures and mock runners, plus integration tests that build and screenshot real open-source projects.
 
 ```bash
 # Unit tests (fast, no Xcode projects needed)

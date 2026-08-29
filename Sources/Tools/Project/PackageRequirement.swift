@@ -25,9 +25,11 @@ public enum PackageRequirement {
         let trimmed = requirement.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if let value = value(of: "from", in: trimmed) { return .upToNextMajorVersion(value) }
+
         if let value = value(of: "upToNextMajor", in: trimmed) {
             return .upToNextMajorVersion(value)
         }
+
         if let value = value(of: "upToNextMinor", in: trimmed) {
             return .upToNextMinorVersion(value)
         }
@@ -67,6 +69,38 @@ public enum PackageRequirement {
             case let .upToNextMinorVersion(version):
                 ">= \(version) < \(SemanticVersion(version)?.nextMinor.description ?? "next minor")"
             case let .range(from, to): ">= \(from) < \(to)"
+            case .branch, .revision: nil
+        }
+    }
+
+    /// The floor a requirement states, or `nil` for a branch or revision requirement.
+    ///
+    /// A range reports its lower bound, because that is the version a pin sweep raises.
+    public static func minimumVersion(
+        _ requirement: XCRemoteSwiftPackageReference.VersionRequirement
+    ) -> SemanticVersion? {
+        switch requirement {
+            case let .exact(version): SemanticVersion(version)
+            case let .upToNextMajorVersion(version): SemanticVersion(version)
+            case let .upToNextMinorVersion(version): SemanticVersion(version)
+            case let .range(from, _): SemanticVersion(from)
+            case .branch, .revision: nil
+        }
+    }
+
+    /// The same requirement with its floor moved to `version`, keeping the kind it already had.
+    ///
+    /// Returns `nil` for a branch or revision requirement, which states no floor to move. A range
+    /// keeps its upper bound, so a sweep never widens a window the author chose to close.
+    public static func raised(
+        _ requirement: XCRemoteSwiftPackageReference.VersionRequirement,
+        to version: SemanticVersion,
+    ) -> XCRemoteSwiftPackageReference.VersionRequirement? {
+        switch requirement {
+            case .exact: .exact(version.description)
+            case .upToNextMajorVersion: .upToNextMajorVersion(version.description)
+            case .upToNextMinorVersion: .upToNextMinorVersion(version.description)
+            case let .range(_, to): .range(from: version.description, to: to)
             case .branch, .revision: nil
         }
     }

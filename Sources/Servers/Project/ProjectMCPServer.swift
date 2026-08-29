@@ -11,8 +11,8 @@ import XCMCPTools
 ///
 /// ## Token Efficiency
 ///
-/// This server exposes the 88 tools `ToolRegistry` marks with `ServerSet.project`. Selecting a
-/// focused server trims the tool surface a client pays for.
+/// This server exposes the tools `ToolRegistry` marks with `ServerSet.project`. Selecting a focused
+/// server trims the tool surface a client pays for.
 ///
 /// ## Tools
 ///
@@ -39,8 +39,8 @@ public struct ProjectMCPServer: Sendable {
     ///
     /// - Parameters:
     ///   - basePath: The root directory for file operations.
-    ///   - sandboxEnabled: Whether to enforce that paths stay within the base directory.
-    ///     Defaults to `true`.
+    ///   - sandboxEnabled: Whether to enforce that paths stay within the base directory. Defaults
+    ///     to `true`.
     ///   - logger: Logger instance for diagnostic output.
     public init(basePath: String, sandboxEnabled: Bool = true, logger: Logger) {
         self.basePath = basePath
@@ -56,7 +56,9 @@ public struct ProjectMCPServer: Sendable {
             capabilities: .init(tools: .init()),
         )
 
-        await installRegistryToolHandlers(on: server, as: .project, deps: ToolDeps(basePath: basePath, sandboxEnabled: sandboxEnabled))
+        await installRegistryToolHandlers(
+            on: server, as: .project,
+            deps: ToolDeps(basePath: basePath, sandboxEnabled: sandboxEnabled))
 
         // Use stdio transport
         let transport = StdioTransport(logger: logger)

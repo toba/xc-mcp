@@ -44,7 +44,4 @@ public enum ApplePlatform: String, Sendable, CaseIterable {
             case .visionOS: "7"
         }
     }
-
-    /// The names a tool description lists, in declaration order.
-    public static var allNames: String { allCases.map(\.rawValue).joined(separator: ", ") }
 }

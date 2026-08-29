@@ -22,7 +22,7 @@ import ArgumentParser
 struct SwiftServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-swift",
-        abstract: "MCP server for Swift Package Manager operations (6 tools, ~1.5K tokens)",
+        abstract: "MCP server for Swift Package Manager operations (~1.5K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")

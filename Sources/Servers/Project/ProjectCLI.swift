@@ -22,7 +22,7 @@ import ArgumentParser
 struct ProjectServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-project",
-        abstract: "MCP server for Xcode project file manipulation (23 tools, ~5K tokens)",
+        abstract: "MCP server for Xcode project file manipulation (~5K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")

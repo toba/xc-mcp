@@ -22,7 +22,7 @@ import ArgumentParser
 struct SimulatorServerCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "xc-simulator",
-        abstract: "MCP server for iOS Simulator operations (29 tools, ~6K tokens)",
+        abstract: "MCP server for iOS Simulator operations (~6K tokens)",
     )
 
     @Argument(help: "Base path for the server to operate in. Defaults to current directory.")
