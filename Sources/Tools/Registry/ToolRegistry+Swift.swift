@@ -20,6 +20,19 @@ extension ToolRegistry {
             let tool = SwiftLintTool(sessionManager: deps.session)
             return (tool.tool(), { try await tool.execute(arguments: $0.arguments) })
         },
+        ToolRegistration("swift_package_benchmark", .swiftPackage, [.monolith, .swift]) { deps in
+            let tool = SwiftPackageBenchmarkTool(
+                swiftRunner: deps.swift, sessionManager: deps.session,
+            )
+            return (
+                tool.tool(),
+                { call in
+                    try await call.withProgress { onProgress in
+                        try await tool.execute(arguments: call.arguments, onProgress: onProgress)
+                    }
+                }
+            )
+        },
         ToolRegistration("swift_package_build", .swiftPackage, [.monolith, .swift]) { deps in
             let tool = SwiftPackageBuildTool(swiftRunner: deps.swift, sessionManager: deps.session)
             return (

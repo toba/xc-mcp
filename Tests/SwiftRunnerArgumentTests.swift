@@ -94,8 +94,32 @@ struct SwiftRunnerArgumentTests {
 
     @Test
     func `no compiler flags leaves the argument list untouched`() {
-        #expect(!SwiftRunner.buildArguments().contains("-Xswiftc"))
+        #expect(!SwiftRunner.buildArguments(continueAfterErrors: false).contains("-Xswiftc"))
         #expect(!SwiftRunner.testArguments().contains("-Xswiftc"))
+    }
+
+    // MARK: - Continuing after an error
+
+    @Test
+    func `a build reports every failing file by default`() {
+        let args = SwiftRunner.buildArguments()
+
+        #expect(contains(("-Xswiftc", "-continue-building-after-errors"), in: args))
+    }
+
+    @Test
+    func `a build stops at the first failure when the caller asks it to`() {
+        let args = SwiftRunner.buildArguments(continueAfterErrors: false)
+
+        #expect(!args.contains("-continue-building-after-errors"))
+    }
+
+    @Test
+    func `continuing after an error keeps the caller's own compiler flags`() {
+        let args = SwiftRunner.buildArguments(swiftcFlags: ["-warn-long-function-bodies=100"])
+
+        #expect(contains(("-Xswiftc", "-continue-building-after-errors"), in: args))
+        #expect(contains(("-Xswiftc", "-warn-long-function-bodies=100"), in: args))
     }
 
     // MARK: - Saved temporaries

@@ -53,12 +53,6 @@ public struct BuildMacOSTool: Sendable {
                                 "Architecture to build for (arm64 or x86_64). Defaults to the current machine's architecture.",
                             ),
                         ]),
-                        "errors_only": .object([
-                            "type": .string("boolean"),
-                            "description": .string(
-                                "When true, only show compiler errors, linker errors, and the build summary — all warnings are suppressed. Useful for iterating on build errors without warning noise.",
-                            ),
-                        ]),
                         "show_warnings": .object([
                             "type": .string("boolean"),
                             "description": .string(
@@ -79,7 +73,8 @@ public struct BuildMacOSTool: Sendable {
                                     + "collected so far) are returned instead of an empty error.",
                             ),
                         ]),
-                    ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
+                    ].merging([String: Value].errorsOnlySchemaProperty()) { _, new in new }
+                        .merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].enableSanitizersSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
                         .merging([String: Value].extraArgsSchemaProperty) { _, new in new }

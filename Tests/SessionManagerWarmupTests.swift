@@ -24,7 +24,7 @@ struct SessionManagerWarmupTests {
         packagePath: String,
         timeout: Duration = .seconds(60),
     ) async -> Bool {
-        await poll(timeout: timeout, pollInterval: .milliseconds(20)) {
+        await pollUntil(timeout: timeout, pollInterval: .milliseconds(20)) {
             if case .completed = await manager.warmupState(for: packagePath) { return true }
             return false
         }

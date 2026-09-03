@@ -40,9 +40,7 @@ public enum BuildResultFormatter {
         }
 
         // Linker errors
-        if !result.linkerErrors.isEmpty {
-            parts.append(formatLinkerErrors(result.linkerErrors))
-        }
+        if !result.linkerErrors.isEmpty { parts.append(formatLinkerErrors(result.linkerErrors)) }
 
         // Warnings (only if non-trivial count and not suppressed)
         if !result.warnings.isEmpty, !errorsOnly {
@@ -100,6 +98,7 @@ public enum BuildResultFormatter {
 
         var displayed: [BuildError] = []
         var cascadeCount = 0
+
         for error in errors {
             if isCascadeError(error) { cascadeCount += 1 } else { displayed.append(error) }
         }
@@ -112,10 +111,18 @@ public enum BuildResultFormatter {
 
     // MARK: - Warning Filtering
 
+    /// The directories a package manager checks a dependency's source out into.
+    ///
+    /// A SwiftPM checkout sits under the package root, so a prefix test alone reads every
+    /// dependency warning as project-local. A wide refactor then reports hundreds of warnings the
+    /// caller cannot act on, and they crowd the errors out of the response.
+    private static let checkoutDirectories = ["/.build/checkouts/", "/SourcePackages/checkouts/"]
+
     /// Partitions warnings into project-local and external based on file path.
     ///
-    /// A warning is project-local if its file path starts with the project root. Warnings without a
-    /// file path are always treated as project-local (they can't be classified).
+    /// A warning is project-local when its file path starts with the project root and lies outside
+    /// a dependency checkout. A warning without a file path counts as project-local, because
+    /// nothing places it.
     private static func partitionWarnings(
         _ warnings: [BuildWarning],
         projectRoot: String,
@@ -125,13 +132,17 @@ public enum BuildResultFormatter {
         var externalCount = 0
 
         for warning in warnings {
-            if let file = warning.file, !file.hasPrefix(root) {
+            if let file = warning.file, !file.hasPrefix(root) || isInDependencyCheckout(file) {
                 externalCount += 1
             } else {
                 project.append(warning)
             }
         }
         return (project, externalCount)
+    }
+
+    private static func isInDependencyCheckout(_ file: String) -> Bool {
+        checkoutDirectories.contains { file.contains($0) }
     }
 
     /// Formats a test result for display.
@@ -150,7 +161,6 @@ public enum BuildResultFormatter {
     ///   reader has no way to see that from the numbers themselves.
     public static func formatTestResult(
         _ result: BuildResult,
-        errorsOnly _: Bool = false,
         endedEarly: Bool = false,
     ) -> String {
         var parts: [String] = []
@@ -159,19 +169,13 @@ public enum BuildResultFormatter {
         parts.append(endedEarly ? incompleteTestHeader : formatTestHeader(result))
 
         // Failed tests
-        if !result.failedTests.isEmpty {
-            parts.append(formatFailedTests(result.failedTests))
-        }
+        if !result.failedTests.isEmpty { parts.append(formatFailedTests(result.failedTests)) }
 
         // Build errors (compile errors during test build)
-        if !result.errors.isEmpty {
-            parts.append(formatErrors(result.errors))
-        }
+        if !result.errors.isEmpty { parts.append(formatErrors(result.errors)) }
 
         // Linker errors
-        if !result.linkerErrors.isEmpty {
-            parts.append(formatLinkerErrors(result.linkerErrors))
-        }
+        if !result.linkerErrors.isEmpty { parts.append(formatLinkerErrors(result.linkerErrors)) }
 
         // Performance measurements
         if !result.performanceMeasurements.isEmpty {
@@ -207,9 +211,11 @@ public enum BuildResultFormatter {
         var details: [String] = []
 
         if result.summary.errors > 0 { details.append(pluralized(result.summary.errors, "error")) }
+
         if result.summary.linkerErrors > 0 {
             details.append(pluralized(result.summary.linkerErrors, "linker error"))
         }
+
         if result.summary.warnings > 0 {
             details.append(pluralized(result.summary.warnings, "warning"))
         }
@@ -270,6 +276,7 @@ public enum BuildResultFormatter {
                 let label = error.kind == .duplicateSymbol ? "Duplicate symbol" : "Undefined symbol"
                 var detail = "  \(label) '\(error.symbol)'"
                 if !error.architecture.isEmpty { detail += " (\(error.architecture))" }
+
                 if !error.referencedFrom.isEmpty {
                     detail += " referenced from \(error.referencedFrom)"
                 }

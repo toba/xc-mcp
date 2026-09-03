@@ -39,6 +39,8 @@ public struct SwiftPackageBuildTool: Sendable {
                 "enum": .array(SwiftBuildDestination.acceptedValues.map { Value.string($0) }),
             ]),
         ]
+        properties.merge([String: Value].errorsOnlySchemaProperty()) { current, _ in current }
+        properties.merge([String: Value].continueBuildingSchemaProperty) { current, _ in current }
         properties.merge(SwiftPackageToolSchema.packagePath) { current, _ in current }
         properties.merge(SwiftPackageToolSchema.timeout(for: "the build")) { current, _ in current }
         properties.merge(SwiftDiagnosticOptions.schemaProperties) { current, _ in current }
@@ -47,7 +49,7 @@ public struct SwiftPackageBuildTool: Sendable {
         return .init(
             name: "swift_package_build",
             description:
-                "Build a Swift package. Supports building specific products and configurations. Pass `destination` to cross-compile for another Apple platform, which is the only way to compile source behind `#if os(iOS)` or `#if canImport(UIKit)`. Pass `traits` to enable package traits, which is the only way to compile source behind `#if <TraitName>`; `swiftc_flags` is not a substitute for it. Pass `swiftc_flags` to run a compiler probe without editing Package.swift.",
+                "Build a Swift package. Supports building specific products and configurations. A failed build names every file the compiler reached, not the first failing one alone, so one call carries the whole repair list. Pass `errors_only` to leave the warnings out of that list. Pass `destination` to cross-compile for another Apple platform, which is the only way to compile source behind `#if os(iOS)` or `#if canImport(UIKit)`. Pass `traits` to enable package traits, which is the only way to compile source behind `#if <TraitName>`; `swiftc_flags` is not a substitute for it. Pass `swiftc_flags` to run a compiler probe without editing Package.swift.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object(properties),
@@ -65,6 +67,8 @@ public struct SwiftPackageBuildTool: Sendable {
         let configuration = arguments.getString("configuration") ?? "debug"
         let product = arguments.getString("product")
         let buildTests = arguments.getBool("build_tests")
+        let errorsOnly = arguments.getBool("errors_only")
+        let continueAfterErrors = arguments.getBool("continue_building_after_errors", default: true)
         let requestedDestination = try SwiftBuildDestination.parse(from: arguments)
         let traits = try await sessionManager.resolveTraits(from: arguments)
         let environment = await sessionManager.resolveEnvironment(from: arguments)
@@ -98,6 +102,7 @@ public struct SwiftPackageBuildTool: Sendable {
                 destination: destination,
                 traits: traits,
                 swiftcFlags: diagnostics.swiftcFlags,
+                continueAfterErrors: continueAfterErrors,
                 environment: environment,
                 timeout: timeout,
                 onProgress: progress,
@@ -118,30 +123,28 @@ public struct SwiftPackageBuildTool: Sendable {
                 return CallTool.Result.text(message)
             }
 
+            var errorOutput = BuildResultFormatter.formatBuildResult(
+                buildResult, projectRoot: packagePath, errorsOnly: errorsOnly,
+            )
+            if let sinkSummary { errorOutput += "\n\n\(sinkSummary.formatted())" }
+
             // On compiler signal crash, retry with -v to surface the crashing file
             if let signal = ErrorExtractor.detectCompilerCrash(in: result.output) {
-                let crashDetails = try await swiftRunner.diagnoseCompilerCrash(
-                    signal: signal,
-                    firstAttemptOutput: result.output,
-                    packagePath: packagePath,
-                    configuration: configuration,
-                    product: product,
-                    buildTests: buildTests,
-                    destination: destination,
-                    traits: traits,
-                    swiftcFlags: diagnostics.swiftcFlags,
-                    environment: environment,
-                    timeout: timeout,
-                )
-                var errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
-                if let sinkSummary { errorOutput += "\n\n\(sinkSummary.formatted())" }
-                throw MCPError.internalError(
-                    "Build failed for \(destinationLabel) with \(traits.label):\n\(errorOutput)\n\n\(crashDetails)",
-                )
+                errorOutput += "\n\n"
+                    + (try await swiftRunner.diagnoseCompilerCrash(
+                        signal: signal,
+                        firstAttemptOutput: result.output,
+                        packagePath: packagePath,
+                        configuration: configuration,
+                        product: product,
+                        buildTests: buildTests,
+                        destination: destination,
+                        traits: traits,
+                        swiftcFlags: diagnostics.swiftcFlags,
+                        environment: environment,
+                        timeout: timeout,
+                    ))
             }
-
-            var errorOutput = BuildResultFormatter.formatBuildResult(buildResult)
-            if let sinkSummary { errorOutput += "\n\n\(sinkSummary.formatted())" }
             throw MCPError.internalError(
                 "Build failed for \(destinationLabel) with \(traits.label):\n\(errorOutput)",
             )

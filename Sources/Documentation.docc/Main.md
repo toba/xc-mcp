@@ -119,6 +119,7 @@ Tools for Swift Package Manager:
 
 - Build packages
 - Run tests
+- Run and gate a package-benchmark suite
 - Execute package products
 - Manage dependencies
 - Raise a release through a set of local repositories, transitively (<doc:SyncPackagePins>)

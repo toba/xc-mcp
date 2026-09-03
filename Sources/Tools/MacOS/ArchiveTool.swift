@@ -90,13 +90,6 @@ public struct ArchiveTool: Sendable {
                         + "pre-archive flags.",
                 ),
             ]),
-            "errors_only": .object([
-                "type": .string("boolean"),
-                "description": .string(
-                    "When true, only show compiler errors, linker errors, and the "
-                        + "build summary — all warnings are suppressed.",
-                ),
-            ]),
             "show_warnings": .object([
                 "type": .string("boolean"),
                 "description": .string(
@@ -111,7 +104,8 @@ public struct ArchiveTool: Sendable {
                         + "Install action, dSYM extraction, and mergeable-library link).",
                 ),
             ]),
-        ].merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
+        ].merging([String: Value].errorsOnlySchemaProperty()) { _, new in new }
+            .merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
             .merging([String: Value].enableSanitizersSchemaProperty) { _, new in new }
             .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }
             .merging([String: Value].extraArgsSchemaProperty) { _, new in new }

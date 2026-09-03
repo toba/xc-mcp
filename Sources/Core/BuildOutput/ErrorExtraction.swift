@@ -33,22 +33,20 @@ public enum ErrorExtractor {
     /// - Returns: A formatted string describing the test result.
     public static func extractTestResults(
         from output: String,
-        errorsOnly: Bool = false,
         endedEarly: Bool = false,
     ) -> String {
         let parser = BuildOutputParser()
         let result = parser.parse(input: output)
-        return BuildResultFormatter.formatTestResult(
-            result, errorsOnly: errorsOnly, endedEarly: endedEarly,
-        )
+        return BuildResultFormatter.formatTestResult(result, endedEarly: endedEarly)
     }
 
     /// Returns true when the text holds the line that ends a whole test run.
     ///
-    /// Recognizes the swift-testing run summary (`Test run with N tests ... passed after X
-    /// seconds`) and the XCTest root-suite summary (`Executed N tests, with M failures ...`). A
-    /// runner uses this as the completion marker of a ``CompletionSettle`` policy, so it must match
-    /// a line the test binary prints immediately before it exits.
+    /// Recognizes the swift-testing run summary
+    /// (`Test run with N tests ... passed after X seconds`) and the XCTest root-suite summary
+    /// (`Executed N tests, with M failures ...`). A runner uses this as the completion marker of a
+    /// ``CompletionSettle`` policy, so it must match a line the test binary prints immediately
+    /// before it exits.
     ///
     /// XCTest prints the same `Executed` line at the end of every suite, so that line on its own
     /// says nothing about the run. Only the root suite carries the last one, and the line above it
@@ -61,11 +59,15 @@ public enum ErrorExtractor {
     /// - Parameter text: A tail of recent test output.
     public static func indicatesTestRunFinished(_ text: String) -> Bool {
         var previous = ""
+
         for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+
             if trimmed.contains("Test run with "),
-               trimmed.contains(" passed after ") || trimmed.contains(" failed after ")
-            { return true }
+               trimmed.contains(" passed after ") || trimmed.contains(" failed after ") {
+                return true
+            }
+
             if trimmed.hasPrefix("Executed "),
                trimmed.contains(" test"),
                trimmed.contains(", with "),
@@ -111,7 +113,6 @@ public enum ErrorExtractor {
         workspacePath: String? = nil,
         onlyTesting: [String]? = nil,
         scheme: String? = nil,
-        errorsOnly: Bool = false,
         wallClock: Duration? = nil,
         crashLogWindow: (start: Date, end: Date)? = nil,
         crashProcessName: String? = nil,
@@ -141,7 +142,7 @@ public enum ErrorExtractor {
             // likely failed before tests could execute. Fall back to parsing stdout for
             // compiler/linker errors that the xcresult doesn't capture.
             if !succeeded, xcresultData.passedCount == 0, xcresultData.failedCount == 0 {
-                let buildErrors = extractTestResults(from: output, errorsOnly: errorsOnly)
+                let buildErrors = extractTestResults(from: output)
                 if !buildErrors.isEmpty { testResult += "\n\n" + buildErrors }
             }
 
@@ -155,9 +156,7 @@ public enum ErrorExtractor {
                     )
             }
         } else {
-            testResult = extractTestResults(
-                from: output, errorsOnly: errorsOnly, endedEarly: settledAfterCompletion,
-            )
+            testResult = extractTestResults(from: output, endedEarly: settledAfterCompletion)
 
             // Extract test count and parsed status from output
             let parsed = parseBuildOutput(output)
@@ -196,9 +195,7 @@ public enum ErrorExtractor {
                 output: output, projectRoot: projectRoot,
                 projectPath: projectPath, workspacePath: workspacePath,
                 scheme: scheme,
-            ) {
-                testResult += "\n\n" + hint
-            }
+            ) { testResult += "\n\n" + hint }
         }
 
         // Detect zero-test runs when only_testing filters were specified
@@ -220,7 +217,8 @@ public enum ErrorExtractor {
         // Say that the runner ended the process, and say what the output does not cover. The counts
         // are withheld above because the run never reported its own. (74fa1d59, b5f682b1)
         if settledAfterCompletion {
-            testResult += "\n\nxc-mcp ended the process group. The run printed a summary, then went "
+            testResult +=
+                "\n\nxc-mcp ended the process group. The run printed a summary, then went "
                 + "quiet and burned no CPU, which is how a test process that outlives its own "
                 + "results looks: a process the tests spawned holds the output pipe open. Treat "
                 + "the results above as the part of the run that arrived. Run the suite with "
@@ -292,6 +290,7 @@ public enum ErrorExtractor {
         if let projectPath {
             return URL(fileURLWithPath: projectPath).deletingLastPathComponent().path
         }
+
         if let workspacePath {
             return URL(fileURLWithPath: workspacePath).deletingLastPathComponent().path
         }
@@ -629,6 +628,7 @@ public enum ErrorExtractor {
         // of..."
         let identifierPattern = /\"([^\"]+)\"\s+isn't a member of the specified test plan or scheme/
         var badIdentifiers: [String] = []
+
         for match in output.matches(of: identifierPattern) {
             badIdentifiers.append(String(match.1))
         }

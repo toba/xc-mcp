@@ -50,6 +50,67 @@ struct BuildResultFormatterTests {
     }
 
     @Test
+    func `A failed build in errors_only mode reports every error and no warning`() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 2, warnings: 1, failedTests: 0, passedTests: nil, buildTime: "5.1s",
+            ),
+            errors: [
+                BuildError(
+                    file: "/pkg/Sources/Foo.swift", line: 42, message: "no such module",
+                    column: 10),
+                BuildError(
+                    file: "/pkg/Sources/Bar.swift", line: 15, message: "missing return",
+                    column: 5),
+            ],
+            warnings: [
+                BuildWarning(
+                    file: "/pkg/Sources/Baz.swift", line: 88, message: "unused variable 'x'",
+                    column: 3,
+                )
+            ],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(
+            result, projectRoot: "/pkg", errorsOnly: true,
+        )
+
+        #expect(formatted.contains("/pkg/Sources/Foo.swift:42:10"))
+        #expect(formatted.contains("/pkg/Sources/Bar.swift:15:5"))
+        #expect(!formatted.contains("unused variable"))
+    }
+
+    @Test
+    func `A warning from a dependency stays out of the failure text`() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 1, warnings: 1, failedTests: 0, passedTests: nil, buildTime: "5.1s",
+            ),
+            errors: [
+                BuildError(
+                    file: "/pkg/Sources/Foo.swift", line: 42, message: "no such module",
+                    column: 10)
+            ],
+            warnings: [
+                BuildWarning(
+                    file: "/pkg/.build/checkouts/other/Sources/Other.swift", line: 3,
+                    message: "deprecated", column: 1,
+                )
+            ],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatBuildResult(result, projectRoot: "/pkg")
+
+        #expect(formatted.contains("/pkg/Sources/Foo.swift:42:10"))
+        #expect(!formatted.contains("deprecated"))
+        #expect(formatted.contains("1 warning from dependencies hidden"))
+    }
+
+    @Test
     func `Format test results passed`() {
         let result = BuildResult(
             status: "success",
@@ -316,6 +377,28 @@ struct BuildResultFormatterTests {
         let formatted = ErrorExtractor.extractTestResults(from: output)
         #expect(formatted.contains("Tests passed"))
         #expect(formatted.contains("2 passed"))
+    }
+
+    @Test
+    func `A test result reports the compile errors and no warning`() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 1, warnings: 1, failedTests: 0, passedTests: nil, buildTime: nil,
+            ),
+            errors: [
+                BuildError(file: "Foo.swift", line: 42, message: "no such module", column: 10)
+            ],
+            warnings: [
+                BuildWarning(file: "Bar.swift", line: 8, message: "unused variable 'x'", column: 3)
+            ],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatTestResult(result)
+
+        #expect(formatted.contains("Foo.swift:42:10"))
+        #expect(!formatted.contains("unused variable"))
     }
 
     // MARK: - Cascade Error Truncation

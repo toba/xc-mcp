@@ -78,6 +78,24 @@ struct StreamedOutputSinkTests {
     }
 
     @Test
+    func `a colored line reaches the file as plain text`() throws {
+        let path = scratchPath()
+        defer { try? FileManager.default.removeItem(atPath: path) }
+
+        // The filter pattern is written against the message, so a line that kept its color codes
+        // would never match it.
+        let sink = try StreamedOutputSink(path: path, filter: "error:")
+        sink.receive("\u{1B}[0;1mFoo.swift:1:1: \u{1B}[0;1;31merror: \u{1B}[0mno such module\n")
+        let summary = sink.finish()
+
+        let written = try String(contentsOfFile: path, encoding: .utf8)
+
+        #expect(summary.linesWritten == 1)
+        #expect(summary.lastLine == "Foo.swift:1:1: error: no such module")
+        #expect(!written.contains("\u{1B}"))
+    }
+
+    @Test
     func `an invalid filter is rejected before the build starts`() {
         let path = scratchPath()
         defer { try? FileManager.default.removeItem(atPath: path) }

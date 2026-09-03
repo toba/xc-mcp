@@ -48,13 +48,7 @@ public struct ShowBuildLogTool: Sendable {
                             "The scheme to show build log for. Uses session default if not specified.",
                         ),
                     ]),
-                    "errors_only": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "When true, only show errors (suppress warnings). Defaults to false.",
-                        ),
-                    ]),
-                ]),
+                ].merging([String: Value].errorsOnlySchemaProperty()) { _, new in new }),
                 "required": .array([]),
             ]),
             annotations: .readOnly,

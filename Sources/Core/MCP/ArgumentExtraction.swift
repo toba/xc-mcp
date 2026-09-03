@@ -214,6 +214,18 @@ extension [String: Value] {
         return getStringArray(key)
     }
 
+    /// Extracts an argument that takes either one string or a list of them.
+    ///
+    /// Use this where the underlying option repeats, such as a filter pattern. A caller naturally
+    /// writes one value as a bare string, and both shapes then reach the same list.
+    ///
+    /// - Parameter key: The argument key to look up.
+    /// - Returns: The values, empty when the key is absent. Empty strings are dropped.
+    public func getStringList(_ key: String) -> [String] {
+        if let single = getNonEmptyString(key) { return [single] }
+        return getStringArray(key).filter { !$0.isEmpty }
+    }
+
     /// Extracts test selection and coverage parameters from arguments.
     ///
     /// Normalizes test identifiers that use Swift Testing backtick-escaped names. If a method
@@ -388,12 +400,34 @@ extension [String: Value] {
         )
     }
 
-    /// Returns the `-IDEBuildingContinueBuildingAfterErrors=YES` flag if requested.
+    /// Schema property for the errors-only result mode.
     ///
-    /// xcodebuild stops on the first build error by default. When this parameter is true, the IDE
-    /// flag is appended so all targets continue building and all errors are reported.
+    /// Every build, test, archive and diagnostic tool exposes this property with the same meaning.
+    /// Pair it with `getBool("errors_only")` to read the value.
+    ///
+    /// - Parameter note: An extra sentence appended to the description.
+    public static func errorsOnlySchemaProperty(note: String = "") -> [String: Value] {
+        var description =
+            "When true, leave every warning out of the result and report the errors alone. "
+            + "A failed build of a wide refactor carries hundreds of warnings, and they crowd the "
+            + "errors out of the response. Defaults to false."
+        if !note.isEmpty { description += " " + note }
+        return [
+            "errors_only": .object([
+                "type": .string("boolean"), "description": .string(description),
+            ])
+        ]
+    }
+
+    /// Returns the `-IDEBuildingContinueBuildingAfterErrors` flag for the requested mode.
+    ///
+    /// xcodebuild stops on the first build error, so a caller who reads only that error learns one
+    /// file name per build. A refactor that breaks twenty files then costs twenty builds. The flag
+    /// goes on unless the caller asks for the stop, which matches what `swift build` does through
+    /// `SwiftRunner.continueAfterErrorsArguments`. Opting out passes nothing, because stopping is
+    /// what xcodebuild does on its own.
     public func continueBuildingArgs() -> [String] {
-        getBool("continue_building_after_errors")
+        getBool("continue_building_after_errors", default: true)
             ? ["-IDEBuildingContinueBuildingAfterErrors=YES"]
             : []
     }
@@ -401,16 +435,17 @@ extension [String: Value] {
     /// Schema property for the continue-building-after-errors option.
     ///
     /// Maps to Xcode's "Continue building after errors" preference (
-    /// `-IDEBuildingContinueBuildingAfterErrors` ).
+    /// `-IDEBuildingContinueBuildingAfterErrors` ). One key, one default, across every server that
+    /// builds.
     public static var continueBuildingSchemaProperty: [String: Value] {
         [
             "continue_building_after_errors": .object([
                 "type": .string("boolean"),
                 "description": .string(
-                    "When true, continue building remaining targets after a build error "
-                        + "instead of stopping immediately. Maps to Xcode's "
+                    "When true, the build keeps going after an error, so one call names every "
+                        + "broken file instead of the first one alone. Maps to Xcode's "
                         + "'Continue building after errors' setting. "
-                        + "Defaults to false (stop on first error).",
+                        + "Defaults to true. Pass false to stop at the first error.",
                 ),
             ])
         ]
@@ -561,6 +596,7 @@ extension [String: Value] {
     ///   found.
     public func resolveTargetPID() async throws(MCPError) -> Int32 {
         if let pid = getInt("pid") { return Int32(pid) }
+
         if let bundleID = getString("bundle_id"),
            let pid = await MainActor.run(body: { PIDResolver.findPID(forBundleID: bundleID) }) {
             return pid

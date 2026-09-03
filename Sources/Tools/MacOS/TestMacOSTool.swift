@@ -57,13 +57,12 @@ public struct TestMacOSTool: Sendable {
                                 "Architecture to test on (arm64 or x86_64). Defaults to the current machine's architecture.",
                             ),
                         ]),
-                        "errors_only": .object([
-                            "type": .string("boolean"),
-                            "description": .string(
-                                "When true, only show compiler errors, linker errors, and the build summary — all warnings are suppressed. Useful for iterating on build errors without warning noise.",
-                            ),
-                        ]),
-                    ].merging([String: Value].testSchemaProperties) { _, new in new }
+                    ].merging([String: Value].errorsOnlySchemaProperty(
+                        note: "A completed run reports no warning, so this reaches the partial "
+                            + "diagnostics of a timed-out or stuck run alone.",
+                    ),
+                    ) { _, new in new }
+                        .merging([String: Value].testSchemaProperties) { _, new in new }
                         .merging([String: Value].withoutBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].continueBuildingSchemaProperty) { _, new in new }
                         .merging([String: Value].buildSettingsSchemaProperty) { _, new in new }

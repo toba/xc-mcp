@@ -60,6 +60,7 @@ public struct SwiftRunner: Sendable {
         // A populated checkouts directory is the strongest signal that dependency resolution has
         // run at least once.
         let checkouts = buildDir + "/checkouts"
+
         if let entries = try? fm.contentsOfDirectory(atPath: checkouts), !entries.isEmpty {
             return false
         }
@@ -170,6 +171,19 @@ public struct SwiftRunner: Sendable {
         configuration == "debug" ? [] : ["-Xswiftc", "-enable-testing"]
     }
 
+    /// The arguments that make one build report every file it can compile.
+    ///
+    /// The driver stops scheduling work once a compile job fails, so a build reports the first
+    /// failing batch and nothing behind it. A refactor that breaks twenty files then costs twenty
+    /// builds, and each one exists to learn the next file name.
+    ///
+    /// `-continue-building-after-errors` is a hidden `swiftc` option, listed by
+    /// `swiftc -help-hidden`. It keeps the remaining jobs running, so one build names every broken
+    /// file.
+    public static let continueAfterErrorsArguments = [
+        "-Xswiftc", "-continue-building-after-errors",
+    ]
+
     /// Expands caller-supplied compiler flags into the `-Xswiftc` pairs SwiftPM expects.
     ///
     /// A caller writes the flag as `swiftc` spells it, such as `-Xllvm` followed by
@@ -193,6 +207,8 @@ public struct SwiftRunner: Sendable {
     ///   - destination: A resolved cross-compilation destination, or `nil` for the host.
     ///   - traits: The package traits to enable.
     ///   - swiftcFlags: Flags to forward to the compiler.
+    ///   - continueAfterErrors: When true, the compiler reports every file it can rather than the
+    ///     first batch that fails. See ``continueAfterErrorsArguments``.
     /// - Returns: The argument list, `swift` itself excluded.
     public static func buildArguments(
         configuration: String = "debug",
@@ -203,6 +219,7 @@ public struct SwiftRunner: Sendable {
         destination: ResolvedSwiftDestination? = nil,
         traits: SwiftBuildTraits = .packageDefault,
         swiftcFlags: [String] = [],
+        continueAfterErrors: Bool = true,
     ) -> [String] {
         var args = ["build", "-c", configuration]
         if verbose { args.append("-v") }
@@ -215,6 +232,7 @@ public struct SwiftRunner: Sendable {
         args.append(contentsOf: destination?.arguments ?? [])
         args.append(contentsOf: traits.arguments)
         if saveTemps { args.append(contentsOf: ["-Xswiftc", "-save-temps"]) }
+        if continueAfterErrors { args.append(contentsOf: continueAfterErrorsArguments) }
         args.append(contentsOf: swiftcArguments(swiftcFlags))
         args.append(contentsOf: extraArgsFromEnvironment())
         return args
@@ -230,6 +248,8 @@ public struct SwiftRunner: Sendable {
     ///   - destination: A resolved cross-compilation destination, or `nil` to build for the host.
     ///   - traits: The package traits to enable.
     ///   - swiftcFlags: Flags to forward to the compiler.
+    ///   - continueAfterErrors: When true, one build reports every file it can rather than the
+    ///     first batch that fails.
     ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
     ///   - guarded: Whether to take the build lock for `packagePath`. Pass false when the caller
     ///     already holds it, because a nested acquire deadlocks.
@@ -244,6 +264,7 @@ public struct SwiftRunner: Sendable {
         destination: ResolvedSwiftDestination? = nil,
         traits: SwiftBuildTraits = .packageDefault,
         swiftcFlags: [String] = [],
+        continueAfterErrors: Bool = true,
         environment: Environment = .inherit,
         timeout: Duration = Self.defaultTimeout,
         guarded: Bool = true,
@@ -254,6 +275,7 @@ public struct SwiftRunner: Sendable {
                 configuration: configuration, product: product, buildTests: buildTests,
                 verbose: verbose, saveTemps: saveTemps, destination: destination,
                 traits: traits, swiftcFlags: swiftcFlags,
+                continueAfterErrors: continueAfterErrors,
             ),
             workingDirectory: packagePath,
             environment: environment, timeout: timeout,

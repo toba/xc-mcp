@@ -66,4 +66,20 @@ struct ArgumentExtractionTests {
         let arguments: [String: Value] = ["files": .array([.string("a"), .int(1), .string("b")])]
         #expect(arguments.getOptionalStringArray("files") == ["a", "b"])
     }
+
+    // MARK: - continueBuildingArgs
+
+    @Test
+    func `a build reports every failing target by default`() {
+        #expect(
+            [String: Value]().continueBuildingArgs()
+                == ["-IDEBuildingContinueBuildingAfterErrors=YES"],
+        )
+    }
+
+    @Test
+    func `a build stops at the first error when the caller asks it to`() {
+        let arguments: [String: Value] = ["continue_building_after_errors": .bool(false)]
+        #expect(arguments.continueBuildingArgs().isEmpty)
+    }
 }

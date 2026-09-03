@@ -76,7 +76,8 @@ public enum TestToolHelper {
     ///     compiled into the scoped DerivedData instead of rebuilding.
     ///   - environment: Environment for the test run.
     ///   - context: Human-readable context for error messages (e.g. "on simulator 'X'").
-    ///   - errorsOnly: When true, suppress warnings in output.
+    ///   - errorsOnly: When true, leave the warnings out of the partial diagnostics a timed-out or
+    ///     stuck run reports. A completed run reports no warning either way.
     ///   - onProgress: Optional callback invoked with output lines as they arrive, so a cold
     ///     `xcodebuild` build phase surfaces progress instead of looking hung.
     public static func runAndFormat(
@@ -148,7 +149,6 @@ public enum TestToolHelper {
                 workspacePath: workspacePath,
                 onlyTesting: testParams.onlyTesting,
                 scheme: scheme,
-                errorsOnly: errorsOnly,
                 crashLogWindow: captureCrashLog ? (start: runStart, end: runEnd) : nil,
                 crashSimulatorUDID: crashSimulatorUDID,
                 termination: result.termination,
@@ -159,6 +159,7 @@ public enum TestToolHelper {
             // under it, and it is not Xcode's default location.
             var content: [Tool.Content] = []
             content.reserveCapacity(toolResult.content.count + 2)
+
             if let validationWarning {
                 content.append(.text(text: validationWarning, annotations: nil, _meta: nil))
             }

@@ -1,5 +1,5 @@
 {
-  "originHash" : "fc55acb9dd0e1d295ca953b250ca2acc696136cc49b185298a4f6efcf1c176a1",
+  "originHash" : "8406c62f9b39fab302ae520d29baa38745a0107c4efdd8b755568bd55b318926",
   "pins" : [
     {
       "identity" : "aexml",
@@ -150,8 +150,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/toba/toba-testing",
       "state" : {
-        "revision" : "2338cbea200e174f4fc26b273476debf016308d2",
-        "version" : "1.3.5"
+        "revision" : "96641a5fbd4420acd47e5c8d9ae3f2db72cdf22c",
+        "version" : "1.5.0"
       }
     },
     {

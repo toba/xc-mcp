@@ -9,6 +9,8 @@ import Synchronization
 /// matching an optional regex, and leaves the caller a path to read instead of a response to
 /// truncate.
 ///
+/// Each line loses its terminal escape sequences on the way out, so the file greps like plain text.
+///
 /// ```swift
 /// let sink = try StreamedOutputSink(path: "/tmp/probe.log", filter: "^BISECT")
 /// let result = try await runner.build(packagePath: path, onProgress: sink.receive)
@@ -150,8 +152,10 @@ public final class StreamedOutputSink: Sendable {
         }
     }
 
-    private static func write(_ line: String, to state: inout State) {
+    private static func write(_ rawLine: String, to state: inout State) {
         state.linesSeen += 1
+        // stripping precedes the filter so a colored diagnostic matches a plain pattern
+        let line = TerminalEscapes.stripped(rawLine)
         if let filter = state.filter, line.firstMatch(of: filter) == nil { return }
 
         let data = Data("\(line)\n".utf8)

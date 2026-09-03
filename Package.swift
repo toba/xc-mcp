@@ -33,8 +33,8 @@ let package = Package(
     .package(url: "https://github.com/toba/toba-concurrency", from: "1.1.2"),
     // 1.3.0 is the floor because it is the first release declaring the macOS 27 platform.
     .package(url: "https://github.com/toba/toba-hash", from: "1.3.0"),
-    // 1.3.5 is the floor because it is the first release declaring the macOS 27 platform.
-    .package(url: "https://github.com/toba/toba-testing", from: "1.3.5"),
+    // 1.5.0 is the floor because it is the first release vending pollUntil.
+    .package(url: "https://github.com/toba/toba-testing", from: "1.5.0"),
   ],
   targets: [
     // MARK: - Shared Core Library

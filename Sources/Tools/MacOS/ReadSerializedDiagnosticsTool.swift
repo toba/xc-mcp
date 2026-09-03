@@ -59,13 +59,10 @@ public struct ReadSerializedDiagnosticsTool: Sendable {
                             "The scheme to resolve DerivedData from. Uses session default if not specified.",
                         ),
                     ]),
-                    "errors_only": .object([
-                        "type": .string("boolean"),
-                        "description": .string(
-                            "When true, only show errors (suppress warnings and notes). Defaults to false.",
-                        ),
-                    ]),
-                ]),
+                ].merging([String: Value].errorsOnlySchemaProperty(
+                    note: "A note is left out with the warnings.",
+                ),
+                ) { _, new in new }),
                 "required": .array([]),
             ]),
             annotations: .readOnly,
@@ -125,10 +122,11 @@ public struct ReadSerializedDiagnosticsTool: Sendable {
         var allDiagnostics: [(file: String, output: String)] = []
 
         for result in decoded where !result.output.isEmpty {
-            allDiagnostics.append((
-                file: URL(fileURLWithPath: diaPaths[result.index]).lastPathComponent,
-                output: result.output,
-            ))
+            allDiagnostics.append(
+                (
+                    file: URL(fileURLWithPath: diaPaths[result.index]).lastPathComponent,
+                    output: result.output,
+                ))
         }
 
         // Format output
@@ -169,6 +167,7 @@ public struct ReadSerializedDiagnosticsTool: Sendable {
                element.contains("\(target).build")
             {
                 let fullPath = (intermediatesDir as NSString).appendingPathComponent(element)
+
                 if let attrs = try? fm.attributesOfItem(atPath: fullPath),
                    let date = attrs[.modificationDate] as? Date {
                     diaFiles.append((path: fullPath, date: date))
