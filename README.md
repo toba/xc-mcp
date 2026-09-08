@@ -381,6 +381,7 @@ Full `.xcodeproj` manipulation — targets, groups, files, schemes, test plans, 
 | `rename_target` | Rename in-place — updates product name, settings, deps, schemes |
 | `duplicate_target` | Duplicate a target |
 | `add_dependency` | Add inter-target dependency |
+| `set_product_name` | Set PRODUCT_NAME and the product file reference together |
 | `add_app_extension` | Add App Extension target |
 | `remove_app_extension` | Remove App Extension target |
 | `scaffold_module` | Create framework module in one call — target + test target + sync folder + dep + embed + test plan |
@@ -402,6 +403,7 @@ Full `.xcodeproj` manipulation — targets, groups, files, schemes, test plans, 
 | `add_to_copy_files_phase` | Add files to Copy Files phase |
 | `list_copy_files_phases` | List Copy Files phases |
 | `remove_copy_files_phase` | Remove Copy Files phase |
+| `set_platform_filters` | Set the Platforms column on a phase entry or a dependency |
 | `validate_project` | Check embed settings, duplicate embeds, missing deps |
 
 </details>

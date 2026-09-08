@@ -58,8 +58,10 @@ public struct RenameTargetTool: Sendable {
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
+            let projectFilePath = Path(projectURL.path)
 
-            let xcodeproj = try XcodeProj(path: Path(projectURL.path))
+            let preimage = PBXProjWriter.preimage(of: projectFilePath)
+            let xcodeproj = try XcodeProj(path: projectFilePath)
 
             // Find the target to rename
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
@@ -73,6 +75,15 @@ public struct RenameTargetTool: Sendable {
                 return CallTool.Result.text("Target '\(newName)' already exists in project")
             }
 
+            // A product path follows PRODUCT_NAME, which the caller may set to anything. Read it
+            // before step 2 rewrites it.
+            let productFollowsTargetName = Self.productFollowsTargetName(
+                target: target, targetName: targetName,
+            )
+
+            var rewrites = RewriteLog()
+            var notes: [String] = []
+
             // 1. Update target name and product name
             target.name = newName
             target.productName = newName
@@ -80,36 +91,31 @@ public struct RenameTargetTool: Sendable {
             // 2. Update build settings in all configurations
             if let configList = target.buildConfigurationList {
                 for config in configList.buildConfigurations {
-                    // PRODUCT_NAME — replace if it matches old name
+                    // replace PRODUCT_NAME when it names the old target
                     if config.buildSettings["PRODUCT_NAME"]?.stringValue == targetName {
                         config.buildSettings["PRODUCT_NAME"] = .string(newName)
+                        rewrites.add("\(newName) PRODUCT_NAME: '\(targetName)' -> '\(newName)'")
                     }
 
-                    // INFOPLIST_FILE — string-replace old name with new name
-                    if let infoPlist = config.buildSettings["INFOPLIST_FILE"]?.stringValue,
-                       infoPlist.contains(targetName)
-                    {
-                        let newInfoPlist = infoPlist.replacingOccurrences(
-                            of: targetName, with: newName,
-                        )
-                        config.buildSettings["INFOPLIST_FILE"] = .string(newInfoPlist)
-                    }
-
-                    // PRODUCT_MODULE_NAME — replace if it matches old name
+                    // replace PRODUCT_MODULE_NAME when it names the old target
                     if config.buildSettings["PRODUCT_MODULE_NAME"]?.stringValue == targetName {
                         config.buildSettings["PRODUCT_MODULE_NAME"] = .string(newName)
+                        rewrites.add(
+                            "\(newName) PRODUCT_MODULE_NAME: '\(targetName)' -> '\(newName)'")
                     }
 
-                    // CODE_SIGN_ENTITLEMENTS — string-replace old name with new name in path
-                    if let entitlements = config.buildSettings["CODE_SIGN_ENTITLEMENTS"]?
-                        .stringValue,
-                       entitlements.contains(targetName)
-                    {
-                        config.buildSettings["CODE_SIGN_ENTITLEMENTS"] = .string(
-                            entitlements.replacingOccurrences(of: targetName, with: newName))
+                    for key in ["INFOPLIST_FILE", "CODE_SIGN_ENTITLEMENTS"] {
+                        rewritePathSetting(
+                            in: &config.buildSettings,
+                            key: key,
+                            oldName: targetName,
+                            newName: newName,
+                            scope: newName,
+                            rewrites: &rewrites,
+                        )
                     }
 
-                    // Bundle identifier — update if new_bundle_identifier provided
+                    // set the bundle identifier when the caller supplied one
                     if let newBundleIdentifier {
                         config.buildSettings["PRODUCT_BUNDLE_IDENTIFIER"] = .string(
                             newBundleIdentifier,
@@ -124,34 +130,28 @@ public struct RenameTargetTool: Sendable {
                 guard let configList = otherTarget.buildConfigurationList else { continue }
 
                 for config in configList.buildConfigurations {
-                    // TEST_TARGET_NAME — exact match replace
+                    // replace TEST_TARGET_NAME on an exact match
                     if config.buildSettings["TEST_TARGET_NAME"]?.stringValue == targetName {
                         config.buildSettings["TEST_TARGET_NAME"] = .string(newName)
+                        rewrites.add(
+                            "\(otherTarget.name) TEST_TARGET_NAME: "
+                                + "'\(targetName)' -> '\(newName)'")
                     }
 
-                    // TEST_HOST — string-replace old name with new name
-                    if let testHost = config.buildSettings["TEST_HOST"]?.stringValue,
-                       testHost.contains(targetName)
-                    {
-                        config.buildSettings["TEST_HOST"] = .string(testHost.replacingOccurrences(
-                            of: targetName, with: newName))
+                    let pathKeys = [
+                        "TEST_HOST", "LD_RUNPATH_SEARCH_PATHS", "FRAMEWORK_SEARCH_PATHS",
+                    ]
+
+                    for key in pathKeys {
+                        rewritePathSetting(
+                            in: &config.buildSettings,
+                            key: key,
+                            oldName: targetName,
+                            newName: newName,
+                            scope: otherTarget.name,
+                            rewrites: &rewrites,
+                        )
                     }
-
-                    // LD_RUNPATH_SEARCH_PATHS — handle string or array
-                    replaceBuildSettingValue(
-                        in: &config.buildSettings,
-                        key: "LD_RUNPATH_SEARCH_PATHS",
-                        oldName: targetName,
-                        newName: newName,
-                    )
-
-                    // FRAMEWORK_SEARCH_PATHS — handle string or array
-                    replaceBuildSettingValue(
-                        in: &config.buildSettings,
-                        key: "FRAMEWORK_SEARCH_PATHS",
-                        oldName: targetName,
-                        newName: newName,
-                    )
                 }
             }
 
@@ -160,32 +160,66 @@ public struct RenameTargetTool: Sendable {
                 for dependency in otherTarget.dependencies where dependency.target == target {
                     dependency.name = newName
                     if let proxy = dependency.targetProxy { proxy.remoteInfo = newName }
+                    rewrites.add("\(otherTarget.name) dependency: '\(targetName)' -> '\(newName)'")
                 }
             }
 
-            // 5. Update embed/copy-files phases referencing this target's product
+            // A target's product is renamed with its target in step 6. Rewriting it from a copy
+            // phase as well would apply the new name twice.
+            let productReferences = Set(
+                xcodeproj.pbxproj.nativeTargets.compactMap(\.product).map { ObjectIdentifier($0) },
+            )
+
+            // 5. Update embed/copy-files phases referencing a file named after this target
             for otherTarget in xcodeproj.pbxproj.nativeTargets {
                 for buildPhase in otherTarget.buildPhases {
                     guard let copyPhase = buildPhase as? PBXCopyFilesBuildPhase else { continue }
 
                     for buildFile in copyPhase.files ?? [] {
-                        if let fileRef = buildFile.file,
-                           let path = fileRef.path,
-                           path.contains(targetName)
-                        {
-                            fileRef.path = path.replacingOccurrences(of: targetName, with: newName)
-                        }
+                        guard let fileRef = buildFile.file,
+                              let path = fileRef.path,
+                              !productReferences.contains(ObjectIdentifier(fileRef))
+                        else { continue }
+
+                        let updated = Self.renaming(
+                            path: path, oldName: targetName, newName: newName,
+                        )
+                        guard updated != path else { continue }
+
+                        fileRef.path = updated
+                        rewrites.add("\(otherTarget.name) copied file: '\(path)' -> '\(updated)'")
                     }
                 }
             }
 
             // 6. Update product reference
             if let product = target.product {
-                if let path = product.path, path.contains(targetName) {
-                    product.path = path.replacingOccurrences(of: targetName, with: newName)
-                }
-                if let name = product.name, name.contains(targetName) {
-                    product.name = name.replacingOccurrences(of: targetName, with: newName)
+                if productFollowsTargetName {
+                    if let path = product.path {
+                        let updated = Self.renaming(
+                            path: path, oldName: targetName, newName: newName,
+                        )
+
+                        if updated != path {
+                            product.path = updated
+                            rewrites.add("\(newName) product path: '\(path)' -> '\(updated)'")
+                        }
+                    }
+                    if let name = product.name {
+                        let updated = Self.renaming(
+                            path: name, oldName: targetName, newName: newName,
+                        )
+
+                        if updated != name {
+                            product.name = updated
+                            rewrites.add("\(newName) product name: '\(name)' -> '\(updated)'")
+                        }
+                    }
+                } else if let path = product.path {
+                    notes.append(
+                        "left the product path '\(path)' alone because PRODUCT_NAME does not "
+                            + "track the target name",
+                    )
                 }
             }
 
@@ -208,7 +242,7 @@ public struct RenameTargetTool: Sendable {
             }
 
             // Save project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(xcodeproj, to: projectFilePath, expectedPreimage: preimage)
 
             // 8. Update scheme files
             let schemesUpdated = updateSchemeFiles(
@@ -224,30 +258,98 @@ public struct RenameTargetTool: Sendable {
                     " (updated \(schemesUpdated) scheme file\(schemesUpdated == 1 ? "" : "s"))"
             }
 
+            let lines = rewrites.lines
+
+            if !lines.isEmpty {
+                message += "\n\nRewrote \(lines.count) reference\(lines.count == 1 ? "" : "s"):"
+                for line in lines { message += "\n  - \(line)" }
+            }
+
+            for note in notes { message += "\n\nNote: \(note)" }
+
             return CallTool.Result.text(message)
         } catch {
             throw try error.asMCPError()
         }
     }
 
-    /// Replace old name with new name in a build setting that may be a string or array value.
-    private func replaceBuildSettingValue(
+    /// Collects one line per rewrite, so a setting changed in two configurations reports once.
+    private struct RewriteLog {
+        private(set) var lines: [String] = []
+        private var seen: Set<String> = []
+
+        mutating func add(_ line: String) { if seen.insert(line).inserted { lines.append(line) } }
+    }
+
+    /// Values of PRODUCT_NAME that keep the product named after the target.
+    private static let targetNameMacros: Set<String> = ["$(TARGET_NAME)", "${TARGET_NAME}"]
+
+    /// Whether the target's product still takes its name from the target name.
+    ///
+    /// A configuration that sets PRODUCT_NAME to anything else names the product itself, so a
+    /// rename must leave the product reference alone.
+    private static func productFollowsTargetName(
+        target: PBXNativeTarget,
+        targetName: String,
+    ) -> Bool {
+        (target.buildConfigurationList?.buildConfigurations ?? []).allSatisfy { config in
+            guard let value = config.buildSettings["PRODUCT_NAME"]?.stringValue else { return true }
+            return value == targetName || targetNameMacros.contains(value)
+        }
+    }
+
+    /// Renames the path components that name the target, and leaves every other component alone.
+    ///
+    /// A component matches when it equals the old name, or when the part before its first dot
+    /// equals the old name. A rename of `jig` therefore rewrites `jig` and `jig.app`, and leaves
+    /// `jig-direct.app` and `jig-Info.plist` untouched.
+    private static func renaming(path: String, oldName: String, newName: String) -> String {
+        guard !oldName.isEmpty, path.contains(oldName) else { return path }
+
+        var didChange = false
+        let components = path.split(separator: "/", omittingEmptySubsequences: false)
+        let renamed = components.map { component -> String in
+            guard component.hasPrefix(oldName) else { return String(component) }
+
+            let suffix = component.dropFirst(oldName.count)
+            guard suffix.isEmpty || suffix.hasPrefix(".") else { return String(component) }
+
+            didChange = true
+            return newName + suffix
+        }
+
+        return didChange ? renamed.joined(separator: "/") : path
+    }
+
+    /// Renames the target inside a build setting holding a path, or a list of paths.
+    private func rewritePathSetting(
         in buildSettings: inout BuildSettings,
         key: String,
         oldName: String,
         newName: String,
+        scope: String,
+        rewrites: inout RewriteLog,
     ) {
         guard let value = buildSettings[key] else { return }
 
         switch value {
-            case let .string(str):
-                if str.contains(oldName) {
-                    buildSettings[key] = .string(str.replacingOccurrences(
-                        of: oldName, with: newName))
+            case let .string(path):
+                let updated = Self.renaming(path: path, oldName: oldName, newName: newName)
+                guard updated != path else { return }
+
+                buildSettings[key] = .string(updated)
+                rewrites.add("\(scope) \(key): '\(path)' -> '\(updated)'")
+            case let .array(paths):
+                let updated = paths.map {
+                    Self.renaming(path: $0, oldName: oldName, newName: newName)
                 }
-            case let .array(arr):
-                let updated = arr.map { $0.replacingOccurrences(of: oldName, with: newName) }
-                if updated != arr { buildSettings[key] = .array(updated) }
+                guard updated != paths else { return }
+
+                buildSettings[key] = .array(updated)
+
+                for (before, after) in zip(paths, updated) where before != after {
+                    rewrites.add("\(scope) \(key): '\(before)' -> '\(after)'")
+                }
         }
     }
 
@@ -278,6 +380,12 @@ public struct RenameTargetTool: Sendable {
                 content = content.replacingOccurrences(
                     of: "BuildableName = \"\(oldName).",
                     with: "BuildableName = \"\(newName).",
+                )
+
+                // a command line tool product carries no extension
+                content = content.replacingOccurrences(
+                    of: "BuildableName = \"\(oldName)\"",
+                    with: "BuildableName = \"\(newName)\"",
                 )
 
                 // Replace BlueprintName

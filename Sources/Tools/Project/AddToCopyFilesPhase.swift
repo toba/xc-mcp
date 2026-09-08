@@ -44,6 +44,13 @@ public struct AddToCopyFilesPhase: Sendable {
                         ),
                         "items": .object(["type": .string("string")]),
                     ]),
+                    "platform_filters": .object([
+                        "type": .string("array"),
+                        "description": .string(
+                            "Platforms each added entry builds for, e.g. ['macos']. This is Xcode's Platforms column. A multiplatform target needs it to embed a macOS-only helper without breaking its iOS build. Accepted names: macos, ios, maccatalyst, tvos, watchos, xros, visionos, driverkit. Use set_platform_filters to change an entry that already exists.",
+                        ),
+                        "items": .object(["type": .string("string")]),
+                    ]),
                 ]),
                 "required": .array([
                     .string("project_path"), .string("target_name"), .string("phase_name"),
@@ -67,11 +74,15 @@ public struct AddToCopyFilesPhase: Sendable {
 
         let explicitAttributes = arguments.getOptionalStringArray("attributes")
 
+        let platformFilters = try PlatformFilters.requested(in: arguments)
+
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
+            let projectFilePath = Path(projectURL.path)
 
-            let xcodeproj = try XcodeProj(path: Path(projectURL.path))
+            let preimage = PBXProjWriter.preimage(of: projectFilePath)
+            let xcodeproj = try XcodeProj(path: projectFilePath)
 
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
                 $0.name == targetName
@@ -120,7 +131,10 @@ public struct AddToCopyFilesPhase: Sendable {
                     } ?? false
 
                     if alreadyInPhase {
-                        addedFiles.append("\(fileName) (already present)")
+                        let hint = platformFilters.isEmpty
+                            ? ""
+                            : ", platform filters unchanged"
+                        addedFiles.append("\(fileName) (already present\(hint))")
                     } else {
                         // Determine attributes: explicit > auto-default for Embed Frameworks > none
                         let isEmbedFrameworksPhase = phaseName.contains("Embed Frameworks")
@@ -131,7 +145,11 @@ public struct AddToCopyFilesPhase: Sendable {
                                 : nil)
                         let settings: [String: BuildFileSetting]? =
                             if let attrs { ["ATTRIBUTES": .array(attrs)] } else { nil }
-                        let buildFile = PBXBuildFile(file: fileRef, settings: settings)
+                        let buildFile = PBXBuildFile(
+                            file: fileRef,
+                            settings: settings,
+                            platformFilters: platformFilters.isEmpty ? nil : platformFilters,
+                        )
                         xcodeproj.pbxproj.add(object: buildFile)
                         copyFilesPhase.files?.append(buildFile)
                         addedFiles.append(fileName)
@@ -141,10 +159,15 @@ public struct AddToCopyFilesPhase: Sendable {
                 }
             }
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(xcodeproj, to: projectFilePath, expectedPreimage: preimage)
 
             var message = "Added \(addedFiles.count) file(s) to Copy Files phase '\(phaseName)':"
             for file in addedFiles { message += "\n  - \(file)" }
+
+            if !platformFilters.isEmpty {
+                message += "\n\nplatformFilters = \(PlatformFilters.describe(platformFilters))"
+                message += "\nUse set_platform_filters to change an entry that was already present."
+            }
 
             if !notFoundFiles.isEmpty {
                 message += "\n\nFiles not found in project (add them first with add_file):"

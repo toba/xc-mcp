@@ -38,6 +38,13 @@ public struct AddDependencyTool: Sendable {
                             "Optional path (absolute or relative to project_path's directory, or a suffix like 'GRDB/GRDBCustom.xcodeproj') of a sub-project already referenced by project_path's projectReferences. Use to disambiguate when multiple referenced sub-projects expose a target named dependency_name. When dependency_name is not found among the consumer project's own native targets, add_dependency will auto-scan projectReferences for a matching target; this argument restricts the scan to one sub-project.",
                         ),
                     ]),
+                    "platform_filters": .object([
+                        "type": .string("array"),
+                        "description": .string(
+                            "Platforms the dependency edge applies to, e.g. ['macos']. This is Xcode's Platforms column. A multiplatform target needs it so an iOS build does not try to build a macOS-only helper target. Accepted names: macos, ios, maccatalyst, tvos, watchos, xros, visionos, driverkit. Use set_platform_filters to change a dependency that already exists.",
+                        ),
+                        "items": .object(["type": .string("string")]),
+                    ]),
                     "link_binary": .object([
                         "type": .string("boolean"),
                         "description": .string(
@@ -64,18 +71,23 @@ public struct AddDependencyTool: Sendable {
         }
 
         var crossProjectPath: String?
+
         if let value = arguments.getNonEmptyString("cross_project_path") {
             crossProjectPath = value
         }
 
         let linkBinary = arguments.getBool("link_binary")
 
+        let platformFilters = try PlatformFilters.requested(in: arguments)
+
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
             let sourceRoot = Path(projectURL.deletingLastPathComponent().path)
+            let projectFilePath = Path(projectURL.path)
 
-            let xcodeproj = try XcodeProj(path: Path(projectURL.path))
+            let preimage = PBXProjWriter.preimage(of: projectFilePath)
+            let xcodeproj = try XcodeProj(path: projectFilePath)
 
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
                 $0.name == targetName
@@ -88,11 +100,13 @@ public struct AddDependencyTool: Sendable {
                 return try addInProjectDependency(
                     xcodeproj: xcodeproj,
                     projectURL: projectURL,
+                    preimage: preimage,
                     target: target,
                     targetName: targetName,
                     dependencyTarget: dependencyTarget,
                     dependencyName: dependencyName,
                     linkBinary: linkBinary,
+                    platformFilters: platformFilters,
                 )
             }
 
@@ -123,12 +137,14 @@ public struct AddDependencyTool: Sendable {
             return try addCrossProjectDependency(
                 xcodeproj: xcodeproj,
                 projectURL: projectURL,
+                preimage: preimage,
                 target: target,
                 targetName: targetName,
                 dependencyName: dependencyName,
                 projectRef: match.projectRef,
                 remoteTargetUUID: match.remoteTargetUUID,
                 linkBinary: linkBinary,
+                platformFilters: platformFilters,
             )
         } catch {
             throw try error.asMCPError()
@@ -138,11 +154,13 @@ public struct AddDependencyTool: Sendable {
     private func addInProjectDependency(
         xcodeproj: XcodeProj,
         projectURL: URL,
+        preimage: Data?,
         target: PBXNativeTarget,
         targetName: String,
         dependencyTarget: PBXNativeTarget,
         dependencyName: String,
         linkBinary: Bool,
+        platformFilters: [String],
     ) throws -> CallTool.Result {
         var didAddDependency = false
 
@@ -162,6 +180,7 @@ public struct AddDependencyTool: Sendable {
 
             let targetDependency = PBXTargetDependency(
                 name: dependencyName,
+                platformFilters: platformFilters.isEmpty ? nil : platformFilters,
                 target: dependencyTarget,
                 targetProxy: containerItemProxy,
             )
@@ -184,14 +203,18 @@ public struct AddDependencyTool: Sendable {
 
         // Nothing to write when the dependency already existed and no new link was added.
         if !didAddDependency, !didLink, linkNote.isEmpty {
-            return .text("Target '\(targetName)' already depends on '\(dependencyName)'")
+            let filterText = Self.filterText(platformFilters, didAddDependency: false)
+            return .text(
+                "Target '\(targetName)' already depends on '\(dependencyName)'" + filterText)
         }
 
-        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
+        let filterText = Self.filterText(platformFilters, didAddDependency: didAddDependency)
         let head = didAddDependency
             ? "Successfully added dependency '\(dependencyName)' to target '\(targetName)'"
-            : "Target '\(targetName)' already depends on '\(dependencyName)'"
+                + filterText
+            : "Target '\(targetName)' already depends on '\(dependencyName)'" + filterText
         let linkText: String
 
         if didLink {
@@ -202,6 +225,17 @@ public struct AddDependencyTool: Sendable {
             linkText = ""
         }
         return .text(head + linkText + linkNote)
+    }
+
+    /// Reports the platform filters the call wrote, or why it wrote none.
+    private static func filterText(_ platformFilters: [String], didAddDependency: Bool) -> String {
+        guard !platformFilters.isEmpty else { return "" }
+
+        guard didAddDependency else {
+            return
+                " (the existing dependency keeps its platform filters. Use set_platform_filters to change them.)"
+        }
+        return " with platformFilters \(PlatformFilters.describe(platformFilters))"
     }
 
     /// Adds `product` to `target`'s Frameworks (Link Binary) phase, creating the phase if needed.
@@ -240,12 +274,14 @@ public struct AddDependencyTool: Sendable {
     private func addCrossProjectDependency(
         xcodeproj: XcodeProj,
         projectURL: URL,
+        preimage: Data?,
         target: PBXNativeTarget,
         targetName: String,
         dependencyName: String,
         projectRef: PBXFileReference,
         remoteTargetUUID: String,
         linkBinary: Bool,
+        platformFilters: [String],
     ) throws -> CallTool.Result {
         // Duplicate detection for cross-project: match by portal fileReference + remote UUID.
         let dependencyExists = target.dependencies.contains { dep in
@@ -272,6 +308,7 @@ public struct AddDependencyTool: Sendable {
 
         let targetDependency = PBXTargetDependency(
             name: dependencyName,
+            platformFilters: platformFilters.isEmpty ? nil : platformFilters,
             target: nil,
             targetProxy: containerItemProxy,
         )
@@ -279,14 +316,17 @@ public struct AddDependencyTool: Sendable {
 
         target.dependencies.append(targetDependency)
 
-        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
         let portalName = projectRef.path ?? projectRef.name ?? projectRef.uuid
         let linkNote = linkBinary
             ? " (link_binary is not supported for cross-project dependencies — use add_framework to link \(dependencyName).framework)"
             : ""
+        let filterText = platformFilters.isEmpty
+            ? ""
+            : " with platformFilters \(PlatformFilters.describe(platformFilters))"
         return .text(
-            "Successfully added cross-project dependency '\(dependencyName)' (in \(portalName)) to target '\(targetName)'\(linkNote)",
+            "Successfully added cross-project dependency '\(dependencyName)' (in \(portalName)) to target '\(targetName)'\(filterText)\(linkNote)",
         )
     }
 

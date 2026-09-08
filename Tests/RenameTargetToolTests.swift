@@ -292,6 +292,7 @@ struct RenameTargetToolTests {
         // Add CODE_SIGN_ENTITLEMENTS to build settings
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+
         for config in target.buildConfigurationList?.buildConfigurations ?? [] {
             config.buildSettings["CODE_SIGN_ENTITLEMENTS"] = .string("App/App.entitlements")
         }
@@ -499,5 +500,250 @@ struct RenameTargetToolTests {
                 .stringValue
                 == "$(BUILT_PRODUCTS_DIR)/NewApp/Frameworks",
         )
+    }
+
+    // MARK: - Whole-name matching
+
+    /// Builds the project from the bug report: a tool target named `jig`, an app target named
+    /// `jig-direct`, and an embed phase in the app carrying the tool's product.
+    private func makeSiblingProject(at projectPath: Path) throws {
+        try TestProjectHelper.createTestProjectWithTwoTargets(
+            name: "TestProject", target1: "jig", target2: "jig-direct", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let pbxproj = xcodeproj.pbxproj
+        let tool = try #require(pbxproj.nativeTargets.first { $0.name == "jig" })
+        let app = try #require(pbxproj.nativeTargets.first { $0.name == "jig-direct" })
+
+        tool.productType = .commandLineTool
+
+        let toolProduct = PBXFileReference(sourceTree: .buildProductsDir, name: "jig", path: "jig")
+        let appProduct = PBXFileReference(
+            sourceTree: .buildProductsDir, name: "jig-direct.app", path: "jig-direct.app",
+        )
+        pbxproj.add(object: toolProduct)
+        pbxproj.add(object: appProduct)
+        tool.product = toolProduct
+        app.product = appProduct
+
+        let embedFile = PBXBuildFile(file: toolProduct)
+        pbxproj.add(object: embedFile)
+        let embedPhase = PBXCopyFilesBuildPhase(
+            dstPath: "",
+            dstSubfolderSpec: .executables,
+            name: "Embed Tool",
+            files: [embedFile],
+        )
+        pbxproj.add(object: embedPhase)
+        app.buildPhases.append(embedPhase)
+
+        try PBXProjWriter.write(xcodeproj, to: projectPath)
+    }
+
+    @Test
+    func `Rename target leaves a sibling target's product path alone`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try makeSiblingProject(at: projectPath)
+
+        let tool = RenameTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("jig"),
+            "new_name": Value.string("jig-cli"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Successfully renamed"))
+
+        let updatedProj = try XcodeProj(path: projectPath)
+        let renamed = try #require(updatedProj.pbxproj.nativeTargets.first { $0.name == "jig-cli" })
+        let sibling = try #require(updatedProj.pbxproj.nativeTargets.first {
+            $0.name == "jig-direct"
+        })
+
+        // The renamed target's product takes the new name exactly once.
+        #expect(renamed.product?.path == "jig-cli")
+        #expect(renamed.product?.name == "jig-cli")
+
+        // The sibling target is not being renamed, so its product keeps its name.
+        #expect(sibling.product?.path == "jig-direct.app")
+        #expect(sibling.product?.name == "jig-direct.app")
+    }
+
+    @Test
+    func `Rename target leaves the product path alone when PRODUCT_NAME differs`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+        let productRef = PBXFileReference(
+            sourceTree: .buildProductsDir, name: "App.app", path: "App.app",
+        )
+        xcodeproj.pbxproj.add(object: productRef)
+        target.product = productRef
+
+        for config in target.buildConfigurationList?.buildConfigurations ?? [] {
+            config.buildSettings["PRODUCT_NAME"] = .string("Branded")
+        }
+        try PBXProjWriter.write(xcodeproj, to: projectPath)
+
+        let tool = RenameTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "new_name": Value.string("NewApp"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("PRODUCT_NAME"))
+
+        let updatedProj = try XcodeProj(path: projectPath)
+        let renamed = try #require(updatedProj.pbxproj.nativeTargets.first { $0.name == "NewApp" })
+        #expect(renamed.product?.path == "App.app")
+
+        // PRODUCT_NAME does not name the old target, so the rename leaves it set.
+        let config = try #require(renamed.buildConfigurationList?.buildConfigurations.first)
+        #expect(config.buildSettings["PRODUCT_NAME"]?.stringValue == "Branded")
+    }
+
+    @Test
+    func `Rename target leaves a sibling name inside a build setting alone`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try makeSiblingProject(at: projectPath)
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let app = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "jig-direct" })
+
+        for config in app.buildConfigurationList?.buildConfigurations ?? [] {
+            config.buildSettings["TEST_HOST"] = .string(
+                "$(BUILT_PRODUCTS_DIR)/jig-direct.app/Contents/MacOS/jig-direct",
+            )
+            config.buildSettings["LD_RUNPATH_SEARCH_PATHS"] = .array([
+                "$(inherited)",
+                "@executable_path/../Frameworks/jig-direct",
+                "@executable_path/../Helpers/jig",
+            ])
+        }
+        try PBXProjWriter.write(xcodeproj, to: projectPath)
+
+        let tool = RenameTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("jig"),
+            "new_name": Value.string("jig-cli"),
+        ])
+
+        let updatedProj = try XcodeProj(path: projectPath)
+        let updatedApp = try #require(updatedProj.pbxproj.nativeTargets.first {
+            $0.name == "jig-direct"
+        })
+        let config = try #require(updatedApp.buildConfigurationList?.buildConfigurations.first)
+
+        #expect(
+            config.buildSettings["TEST_HOST"]?
+                .stringValue
+                == "$(BUILT_PRODUCTS_DIR)/jig-direct.app/Contents/MacOS/jig-direct",
+        )
+
+        guard case let .array(paths) = config.buildSettings["LD_RUNPATH_SEARCH_PATHS"] else {
+            Issue.record("Expected array value for LD_RUNPATH_SEARCH_PATHS")
+            return
+        }
+        #expect(paths.contains("@executable_path/../Frameworks/jig-direct"))
+        #expect(paths.contains("@executable_path/../Helpers/jig-cli"))
+    }
+
+    @Test
+    func `Rename target reports each rewritten reference`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+
+        for config in target.buildConfigurationList?.buildConfigurations ?? [] {
+            config.buildSettings["CODE_SIGN_ENTITLEMENTS"] = .string("App/App.entitlements")
+        }
+        try PBXProjWriter.write(xcodeproj, to: projectPath)
+
+        let tool = RenameTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "new_name": Value.string("NewApp"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("CODE_SIGN_ENTITLEMENTS"))
+        #expect(message.contains("App/App.entitlements"))
+        #expect(message.contains("NewApp/NewApp.entitlements"))
+    }
+
+    @Test
+    func `Rename target updates a scheme buildable name without an extension`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try makeSiblingProject(at: projectPath)
+
+        let schemesDir = projectPath.string + "/xcshareddata/xcschemes"
+        try FileManager.default.createDirectory(
+            atPath: schemesDir, withIntermediateDirectories: true,
+        )
+        let schemeContent = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Scheme>
+               <BuildableReference
+                  BuildableIdentifier = "primary"
+                  BlueprintIdentifier = "ABC123"
+                  BuildableName = "jig"
+                  BlueprintName = "jig"
+                  ReferencedContainer = "container:TestProject.xcodeproj">
+               </BuildableReference>
+               <BuildableReference
+                  BuildableIdentifier = "primary"
+                  BlueprintIdentifier = "DEF456"
+                  BuildableName = "jig-direct.app"
+                  BlueprintName = "jig-direct"
+                  ReferencedContainer = "container:TestProject.xcodeproj">
+               </BuildableReference>
+            </Scheme>
+            """
+        try schemeContent.write(
+            toFile: "\(schemesDir)/jig.xcscheme", atomically: true, encoding: .utf8,
+        )
+
+        let tool = RenameTargetTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("jig"),
+            "new_name": Value.string("jig-cli"),
+        ])
+
+        let updatedScheme = try String(
+            contentsOfFile: "\(schemesDir)/jig.xcscheme", encoding: .utf8,
+        )
+        #expect(updatedScheme.contains("BuildableName = \"jig-cli\""))
+        #expect(updatedScheme.contains("BlueprintName = \"jig-cli\""))
+        #expect(updatedScheme.contains("BuildableName = \"jig-direct.app\""))
+        #expect(updatedScheme.contains("BlueprintName = \"jig-direct\""))
     }
 }
