@@ -16,7 +16,7 @@ struct CopyFilesPhaseToolsTests {
         let toolDefinition = tool.tool()
 
         #expect(toolDefinition.name == "list_copy_files_phases")
-        #expect(toolDefinition.description == "List all Copy Files build phases for a target")
+        #expect(toolDefinition.description?.contains("platformFilters") == true)
     }
 
     @Test

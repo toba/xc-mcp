@@ -47,13 +47,20 @@ struct EmbedPackageProductTests {
         return projectPath
     }
 
-    /// The entries of the App target's Embed Frameworks phase, in order.
-    private func entries(of projectPath: Path) throws -> [PBXBuildFile] {
+    /// Reads the entries of the App target's Embed Frameworks phase and hands them to `body`.
+    ///
+    /// The project stays alive for the whole call. A build file resolves its product through a weak
+    /// reference to the project's object table, so the lookup answers nil once the project
+    /// deallocates.
+    private func withEntries<T>(
+        of projectPath: Path,
+        _ body: ([PBXBuildFile]) throws -> T,
+    ) throws -> T {
         let xcodeproj = try XcodeProj(path: projectPath)
         let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
         let phase = try #require(
             target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }.first)
-        return phase.files ?? []
+        return try withExtendedLifetime(xcodeproj) { try body(phase.files ?? []) }
     }
 
     private func addTobaMarkdown(
@@ -78,10 +85,12 @@ struct EmbedPackageProductTests {
         #expect(text.contains("TobaMarkdown"))
         #expect(!text.contains("not found in project"))
 
-        let entry = try #require(entries(of: projectPath).first)
-        #expect(entry.product?.productName == "TobaMarkdown")
-        #expect(entry.file == nil)
-        #expect(entry.attributes == ["CodeSignOnCopy", "RemoveHeadersOnCopy"])
+        try withEntries(of: projectPath) { entries in
+            let entry = try #require(entries.first)
+            #expect(entry.product?.productName == "TobaMarkdown")
+            #expect(entry.file == nil)
+            #expect(entry.attributes == ["CodeSignOnCopy", "RemoveHeadersOnCopy"])
+        }
     }
 
     @Test
@@ -90,8 +99,10 @@ struct EmbedPackageProductTests {
 
         _ = try addTobaMarkdown(to: projectPath, platformFilters: [.string("macos")])
 
-        let entry = try #require(entries(of: projectPath).first)
-        #expect(entry.platformFilters == ["macos"])
+        try withEntries(of: projectPath) { entries in
+            let entry = try #require(entries.first)
+            #expect(entry.platformFilters == ["macos"])
+        }
     }
 
     @Test
@@ -106,8 +117,12 @@ struct EmbedPackageProductTests {
         let phase = try #require(
             target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }.first)
         let entry = try #require(phase.files?.first)
-        #expect(entry.product?.uuid == linked.uuid)
-        #expect(target.packageProductDependencies?.count == 1)
+
+        // the entry resolves its product through a weak reference to the project's object table
+        withExtendedLifetime(xcodeproj) {
+            #expect(entry.product?.uuid == linked.uuid)
+            #expect(target.packageProductDependencies?.count == 1)
+        }
     }
 
     @Test
@@ -118,7 +133,7 @@ struct EmbedPackageProductTests {
         let text = try message(of: addTobaMarkdown(to: projectPath))
 
         #expect(text.contains("already present"))
-        #expect(try entries(of: projectPath).count == 1)
+        try withEntries(of: projectPath) { #expect($0.count == 1) }
     }
 
     @Test
@@ -129,6 +144,6 @@ struct EmbedPackageProductTests {
 
         #expect(text.contains("not found in project"))
         #expect(text.contains("add_package_product"))
-        #expect(try entries(of: projectPath).isEmpty)
+        try withEntries(of: projectPath) { #expect($0.isEmpty) }
     }
 }
