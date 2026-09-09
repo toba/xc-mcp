@@ -75,6 +75,7 @@ public struct AddBuildPhaseTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the target
@@ -154,7 +155,8 @@ public struct AddBuildPhaseTool: Sendable {
             }
 
             // Save project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             return CallTool.Result.text(
                 "Successfully added \(phaseType) build phase '\(phaseName)' to target '\(targetName)'"

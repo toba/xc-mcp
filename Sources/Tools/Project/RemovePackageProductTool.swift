@@ -53,6 +53,7 @@ public struct RemovePackageProductTool: Sendable {
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
@@ -99,7 +100,8 @@ public struct RemovePackageProductTool: Sendable {
 
             if !stillReferenced { xcodeproj.pbxproj.delete(object: dependency) }
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             return CallTool.Result.text(
                 "Removed product '\(productName)' from target '\(targetName)'")

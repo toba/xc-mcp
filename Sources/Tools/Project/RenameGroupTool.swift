@@ -51,6 +51,7 @@ public struct RenameGroupTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
@@ -72,7 +73,8 @@ public struct RenameGroupTool: Sendable {
             if targetGroup.path == oldName { targetGroup.path = newName }
 
             // Save project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             return CallTool.Result.text("Successfully renamed group '\(oldName)' to '\(newName)'")
         } catch {

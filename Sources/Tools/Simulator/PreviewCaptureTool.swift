@@ -156,6 +156,7 @@ public struct PreviewCaptureTool: Sendable {
 
             // Step 3: Detect source module
             let projectURL = URL(fileURLWithPath: resolvedPath)
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             let projectDir = projectURL.deletingLastPathComponent().path
@@ -236,6 +237,7 @@ public struct PreviewCaptureTool: Sendable {
             try injectTarget(
                 xcodeproj: xcodeproj,
                 projectPath: resolvedPath,
+                preimage: preimage,
                 targetName: targetName,
                 bundleID: bundleID,
                 hostSourcePath: hostSourcePath,
@@ -557,6 +559,7 @@ public struct PreviewCaptureTool: Sendable {
             resolved = refPath.hasPrefix("/")
                 ? URL(fileURLWithPath: refPath).standardizedFileURL.path
                 : projectDirURL.appendingPathComponent(refPath).standardizedFileURL.path
+
             if fm.fileExists(atPath: resolved), seenPackageDirs.insert(resolved).inserted {
                 packageDirs.append(resolved)
             }
@@ -754,6 +757,7 @@ public struct PreviewCaptureTool: Sendable {
     private func injectTarget(
         xcodeproj: XcodeProj,
         projectPath: String,
+        preimage: Data?,
         targetName: String,
         bundleID: String,
         hostSourcePath: String,
@@ -795,9 +799,7 @@ public struct PreviewCaptureTool: Sendable {
             for key in [
                 "IPHONEOS_DEPLOYMENT_TARGET",
                 "MACOSX_DEPLOYMENT_TARGET", "SUPPORTS_MACCATALYST",
-            ] {
-                if let value = sourceConfig.buildSettings[key] { debugSettings[key] = value }
-            }
+            ] { if let value = sourceConfig.buildSettings[key] { debugSettings[key] = value } }
             // Don't copy SDKROOT or SUPPORTED_PLATFORMS from the source target. SDKROOT may be a
             // resolved absolute path that causes issues. SUPPORTED_PLATFORMS from the source may
             // restrict to a single platform (e.g., macOS-only), but the preview host must always
@@ -1026,7 +1028,7 @@ public struct PreviewCaptureTool: Sendable {
         if let project = xcodeproj.pbxproj.rootObject { project.targets.append(target) }
 
         // Save project
-        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
     }
 
     /// Runs xcodebuild tolerantly — if the process appears stuck but the build already succeeded
@@ -1275,9 +1277,11 @@ public struct PreviewCaptureTool: Sendable {
 
         for line in settingsResult.stdout.split(separator: "\n") {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+
             if trimmed.hasPrefix("BUILT_PRODUCTS_DIR = ") {
                 builtProductsDir = String(trimmed.dropFirst("BUILT_PRODUCTS_DIR = ".count))
             }
+
             if trimmed.hasPrefix("FULL_PRODUCT_NAME = ") {
                 productName = String(trimmed.dropFirst("FULL_PRODUCT_NAME = ".count))
             }
@@ -1309,6 +1313,7 @@ public struct PreviewCaptureTool: Sendable {
         // Remove injected target from project
         if let projectPath, let targetName {
             do {
+                let preimage = PBXProjWriter.preimage(of: Path(projectPath))
                 let xcodeproj = try XcodeProj(path: Path(projectPath))
 
                 guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
@@ -1383,7 +1388,8 @@ public struct PreviewCaptureTool: Sendable {
                 xcodeproj.pbxproj.delete(object: target)
 
                 // Save
-                try PBXProjWriter.write(xcodeproj, to: Path(projectPath))
+                try PBXProjWriter.write(
+                    xcodeproj, to: Path(projectPath), expectedPreimage: preimage)
             } catch {
                 // Cleanup should never throw
             }

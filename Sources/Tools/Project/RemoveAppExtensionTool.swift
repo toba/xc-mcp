@@ -44,6 +44,7 @@ public struct RemoveAppExtensionTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the extension target to remove
@@ -149,7 +150,8 @@ public struct RemoveAppExtensionTool: Sendable {
             xcodeproj.pbxproj.delete(object: extensionTarget)
 
             // Save project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             return CallTool.Result.text(
                 "Successfully removed App Extension '\(extensionName)' from project and all host app embeddings"

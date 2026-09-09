@@ -76,6 +76,7 @@ public struct AddFileTool: Sendable {
             // Resolve and validate the file path
             let resolvedFilePath = try pathUtility.resolvePath(from: filePath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the group to add the file to
@@ -157,7 +158,8 @@ public struct AddFileTool: Sendable {
             }
 
             // Write project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             let targetInfo = targetName.map { " to target '\($0)'" } ?? ""
             let groupInfo = groupName.map { " in group '\($0)'" } ?? ""

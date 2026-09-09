@@ -12,7 +12,8 @@ public struct ListCopyFilesPhases: Sendable {
     public func tool() -> Tool {
         .init(
             name: "list_copy_files_phases",
-            description: "List all Copy Files build phases for a target",
+            description:
+                "List all Copy Files build phases for a target, with each entry's ATTRIBUTES flags and platformFilters. A CodeSignOnCopy entry is re-signed with the embedding target's identity and entitlements. A filtered entry is skipped when building for any other platform. Change an entry's flags with set_copy_files_attributes, and its platforms with set_platform_filters.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -78,13 +79,12 @@ public struct ListCopyFilesPhases: Sendable {
                 if !dstPath.isEmpty { output += "  Subpath: \(dstPath)\n" }
                 output += "  Files: \(fileCount)\n"
 
-                if let files = phase.files, !files.isEmpty {
-                    for buildFile in files {
-                        if let fileRef = buildFile.file {
-                            let filePath = fileRef.path ?? fileRef.name ?? "(unknown)"
-                            output += "    - \(filePath)\n"
-                        }
-                    }
+                for buildFile in phase.files ?? [] {
+                    let label = CopyFilesPhaseEntry.label(for: buildFile)
+                    let attributes = BuildFileAttributes.describe(BuildFileAttributes.read(
+                        buildFile))
+                    let filters = PlatformFilters.describe(PlatformFilters.read(buildFile))
+                    output += "    - \(label)  attributes: \(attributes)  platforms: \(filters)\n"
                 }
                 output += "\n"
             }

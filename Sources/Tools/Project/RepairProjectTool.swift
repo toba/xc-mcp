@@ -58,6 +58,7 @@ public struct RepairProjectTool: Sendable {
         }
 
         let path = Path(resolvedPath)
+        let preimage = PBXProjWriter.preimage(of: path)
         let xcodeproj: XcodeProj
 
         do {
@@ -190,7 +191,7 @@ public struct RepairProjectTool: Sendable {
         // --- Write if changes were made ---
         if !fixes.isEmpty, !dryRun {
             do {
-                try PBXProjWriter.write(xcodeproj, to: path)
+                try PBXProjWriter.write(xcodeproj, to: path, expectedPreimage: preimage)
             } catch {
                 throw try error.asMCPError()
             }

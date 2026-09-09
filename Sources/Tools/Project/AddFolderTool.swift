@@ -65,13 +65,16 @@ public struct AddFolderTool: Sendable {
 
             // Verify that the path is actually a directory
             var isDirectory: ObjCBool = false
+
             if !FileManager.default.fileExists(
                 atPath: resolvedFolderPath, isDirectory: &isDirectory,
             ) { throw MCPError.invalidParams("Folder does not exist at path: \(folderPath)") }
+
             if !isDirectory.boolValue {
                 throw MCPError.invalidParams("Path is not a directory: \(folderPath)")
             }
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the group to add the folder to (must be done before calculating relative path)
@@ -148,7 +151,8 @@ public struct AddFolderTool: Sendable {
             }
 
             // Write project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             let targetInfo = targetName.map { " to target '\($0)'" } ?? ""
             let groupInfo = groupName.map { " in group '\($0)'" } ?? ""

@@ -11,6 +11,10 @@ public enum InfoPlistUtility {
         public let xcodeproj: XcodeProj
         public let projectURL: URL
 
+        /// The project bytes read before the load. A write hands them back to refuse an overwrite
+        /// of a concurrent edit.
+        public let preimage: Data?
+
         /// The directory a relative `INFOPLIST_FILE` resolves against.
         public var projectDir: String { projectURL.deletingLastPathComponent().path }
     }
@@ -37,13 +41,14 @@ public enum InfoPlistUtility {
     ) throws -> LoadedProject? {
         let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
         let projectURL = URL(fileURLWithPath: resolvedProjectPath)
+        let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
         let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
         guard xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == targetName }) else {
             return nil
         }
 
-        return LoadedProject(xcodeproj: xcodeproj, projectURL: projectURL)
+        return LoadedProject(xcodeproj: xcodeproj, projectURL: projectURL, preimage: preimage)
     }
 
     /// Reads a target's Info.plist, creating nothing.
@@ -65,9 +70,7 @@ public enum InfoPlistUtility {
     ) throws -> ReadOutcome {
         guard let loaded = try loadProject(
             projectPath: projectPath, targetName: targetName, pathUtility: pathUtility,
-        ) else {
-            return .message("Target '\(targetName)' not found in project")
-        }
+        ) else { return .message("Target '\(targetName)' not found in project") }
 
         guard let plistPath = resolveInfoPlistPath(
             xcodeproj: loaded.xcodeproj, projectDir: loaded.projectDir, targetName: targetName,
@@ -160,6 +163,8 @@ public enum InfoPlistUtility {
     ///   - projectDir: The directory containing the .xcodeproj bundle.
     ///   - targetName: The name of the target to materialize a plist for.
     ///   - projectPath: The path to the .xcodeproj for saving.
+    ///   - preimage: The project bytes read before the load, which refuse a write over a concurrent
+    ///     edit.
     /// - Returns: The absolute path to the newly created Info.plist.
     /// - Throws: `MCPError` if the target is not found or file operations fail.
     public static func materializeInfoPlist(
@@ -167,6 +172,7 @@ public enum InfoPlistUtility {
         projectDir: String,
         targetName: String,
         projectPath: Path,
+        preimage: Data?,
     ) throws -> String {
         guard let target = xcodeproj.pbxproj.nativeTargets.first(where: { $0.name == targetName })
         else {
@@ -190,12 +196,13 @@ public enum InfoPlistUtility {
 
         // Set INFOPLIST_FILE on all configurations
         let configs = target.buildConfigurationList?.buildConfigurations ?? []
+
         for config in configs {
             config.buildSettings["INFOPLIST_FILE"] = .string(plistRelativePath)
         }
 
         // Save the project
-        try PBXProjWriter.write(xcodeproj, to: projectPath)
+        try PBXProjWriter.write(xcodeproj, to: projectPath, expectedPreimage: preimage)
 
         return plistAbsolutePath
     }

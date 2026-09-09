@@ -116,6 +116,7 @@ public struct SetRunScriptPhaseIOTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
@@ -178,7 +179,8 @@ public struct SetRunScriptPhaseIOTool: Sendable {
                 changes.append("alwaysOutOfDate=\(alwaysOOD)")
             }
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             return CallTool.Result.text(
                 "Updated Run Script phase '\(phaseName)' in target '\(targetName)': \(changes.joined(separator: ", "))"

@@ -58,6 +58,7 @@ public struct RemoveCopyFilesPhase: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
@@ -98,7 +99,8 @@ public struct RemoveCopyFilesPhase: Sendable {
             // Delete the phase object
             xcodeproj.pbxproj.delete(object: copyFilesPhase)
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             let label = phaseName ?? copyFilesPhase.name ?? ("dstPath=" + (dstPath ?? ""))
             let routingNote = droppedRoutingSets > 0

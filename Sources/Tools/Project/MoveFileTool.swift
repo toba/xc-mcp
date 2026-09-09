@@ -68,6 +68,7 @@ public struct MoveFileTool: Sendable {
             let resolvedOldPath = try pathUtility.resolvePath(from: oldPath)
             let resolvedNewPath = try pathUtility.resolvePath(from: newPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             let oldFileName = URL(fileURLWithPath: resolvedOldPath).lastPathComponent
@@ -137,7 +138,8 @@ public struct MoveFileTool: Sendable {
             }
 
             if fileMoved || exceptionsUpdated {
-                try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+                try PBXProjWriter.write(
+                    xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
                 // Optionally move on disk
                 if moveOnDisk {

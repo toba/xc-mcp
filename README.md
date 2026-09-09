@@ -400,8 +400,9 @@ Full `.xcodeproj` manipulation — targets, groups, files, schemes, test plans, 
 | `remove_framework` | Remove framework — cleans link + embed phases |
 | `add_build_phase` | Add custom build phase |
 | `add_copy_files_phase` | Create Copy Files build phase |
-| `add_to_copy_files_phase` | Add files to Copy Files phase |
-| `list_copy_files_phases` | List Copy Files phases |
+| `add_to_copy_files_phase` | Add files, or a linked Swift package product, to a Copy Files phase |
+| `list_copy_files_phases` | List Copy Files phases, with each entry's ATTRIBUTES flags and platform filters |
+| `set_copy_files_attributes` | Set or clear CodeSignOnCopy on a phase entry, in place |
 | `remove_copy_files_phase` | Remove Copy Files phase |
 | `set_platform_filters` | Set the Platforms column on a phase entry or a dependency |
 | `validate_project` | Check embed settings, duplicate embeds, missing deps |

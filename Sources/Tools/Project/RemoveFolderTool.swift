@@ -46,6 +46,7 @@ public struct RemoveFolderTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(filePath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Get the root project and main group
@@ -79,7 +80,8 @@ public struct RemoveFolderTool: Sendable {
             folderRemoved = removeFromGroup(mainGroup)
 
             if folderRemoved {
-                try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+                try PBXProjWriter.write(
+                    xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
                 return CallTool.Result.text(
                     "Successfully removed synchronized folder '\(removedPath ?? folderPath)' from project"

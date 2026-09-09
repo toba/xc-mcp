@@ -53,6 +53,7 @@ public struct RemoveRunScriptPhase: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
@@ -95,7 +96,8 @@ public struct RemoveRunScriptPhase: Sendable {
             target.buildPhases.remove(at: phaseIndex)
             xcodeproj.pbxproj.delete(object: shellPhase)
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             return CallTool.Result.text(
                 "Successfully removed Run Script phase '\(phaseName)' from target '\(targetName)'")

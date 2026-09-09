@@ -317,18 +317,15 @@ struct CopyFilesPhaseToolsTests {
         )
 
         let tool = AddToCopyFilesPhase(pathUtility: PathUtility(basePath: tempDir.path))
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-            "target_name": .string("App"),
-            "phase_name": .string("NonExistent"),
-            "files": .array([.string("/some/file.txt")]),
-        ])
 
-        guard case let .text(message, _, _) = result.content.first else {
-            Issue.record("Expected text result")
-            return
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": .string(projectPath.string),
+                "target_name": .string("App"),
+                "phase_name": .string("NonExistent"),
+                "files": .array([.string("/some/file.txt")]),
+            ])
         }
-        #expect(message.contains("not found"))
     }
 
     @Test

@@ -56,6 +56,7 @@ public struct RemoveDependencyTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
@@ -88,7 +89,8 @@ public struct RemoveDependencyTool: Sendable {
                 xcodeproj.pbxproj.delete(object: dep)
             }
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             let suffix = removedDeps.count == 1 ? "" : " (\(removedDeps.count) edges)"
             return CallTool.Result.text(

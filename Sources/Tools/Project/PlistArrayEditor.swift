@@ -90,6 +90,7 @@ public struct PlistArrayEditor: Sendable {
             plistPath = try InfoPlistUtility.materializeInfoPlist(
                 xcodeproj: loaded.xcodeproj, projectDir: loaded.projectDir,
                 targetName: targetName, projectPath: Path(loaded.projectURL.path),
+                preimage: loaded.preimage,
             )
         }
 
@@ -127,9 +128,7 @@ public struct PlistArrayEditor: Sendable {
     ) throws -> CallTool.Result {
         guard var session = try open(
             projectPath: projectPath, targetName: targetName, pathUtility: pathUtility,
-        ) else {
-            return CallTool.Result.text("Target '\(targetName)' not found in project")
-        }
+        ) else { return CallTool.Result.text("Target '\(targetName)' not found in project") }
 
         let index = session.entries.firstIndex { $0[primaryKey]?.stringValue == name }
 

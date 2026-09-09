@@ -67,6 +67,7 @@ public struct AddCopyFilesPhase: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
@@ -96,7 +97,8 @@ public struct AddCopyFilesPhase: Sendable {
             xcodeproj.pbxproj.add(object: copyFilesPhase)
             target.buildPhases.append(copyFilesPhase)
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             var message =
                 "Successfully created Copy Files phase '\(phaseName)' in target '\(targetName)'"

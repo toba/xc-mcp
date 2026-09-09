@@ -314,10 +314,14 @@ struct AddToCopyFilesPhaseTests {
                 #expect(props["project_path"] != nil)
                 #expect(props["target_name"] != nil)
                 #expect(props["phase_name"] != nil)
+                #expect(props["dst_path"] != nil)
                 #expect(props["files"] != nil)
             }
 
-            if case let .array(required) = schemaDict["required"] { #expect(required.count == 4) }
+            if case let .array(required) = schemaDict["required"] {
+                #expect(required.count == 3)
+                #expect(!required.contains(.string("phase_name")))
+            }
         }
     }
 
@@ -395,17 +399,14 @@ struct AddToCopyFilesPhaseTests {
         )
 
         let tool = AddToCopyFilesPhase(pathUtility: pathUtility)
-        let result = try tool.execute(arguments: [
-            "project_path": .string(projectPath.string),
-            "target_name": .string("App"),
-            "phase_name": .string("NonExistent"),
-            "files": .array([.string("file.swift")]),
-        ])
 
-        if case let .text(message, _, _) = result.content.first {
-            #expect(message.contains("not found"))
-        } else {
-            Issue.record("Expected text result")
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": .string(projectPath.string),
+                "target_name": .string("App"),
+                "phase_name": .string("NonExistent"),
+                "files": .array([.string("file.swift")]),
+            ])
         }
     }
 
@@ -778,6 +779,7 @@ struct RemoveCopyFilesPhaseTests {
             sourceTree: .group, path: "DefaultStyles", name: "DefaultStyles",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
+
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(syncGroup)
         }

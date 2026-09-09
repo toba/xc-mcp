@@ -185,6 +185,7 @@ public struct ScaffoldModuleTool: Sendable {
 
         do {
             // Load project once
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Validate no duplicate targets
@@ -192,8 +193,7 @@ public struct ScaffoldModuleTool: Sendable {
                 throw MCPError.invalidParams("Target '\(name)' already exists in project")
             }
             if withTests,
-               xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == testTargetName })
-            {
+               xcodeproj.pbxproj.nativeTargets.contains(where: { $0.name == testTargetName }) {
                 throw MCPError.invalidParams("Target '\(testTargetName)' already exists in project")
             }
 
@@ -368,7 +368,8 @@ public struct ScaffoldModuleTool: Sendable {
             }
 
             // 10. Write project — single write
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             // 11. Return summary
             var summary = [String]()
@@ -376,12 +377,15 @@ public struct ScaffoldModuleTool: Sendable {
             if withTests { summary.append("Created test target '\(testTargetName)'") }
             summary.append("Created source folder: \(sourcePath)")
             if withTests { summary.append("Created test folder: \(testPath)") }
+
             if !allLinkTargetNames.isEmpty {
                 summary.append("Linked into: \(allLinkTargetNames.joined(separator: ", "))")
             }
+
             if !embedInNames.isEmpty {
                 summary.append("Embedded in: \(embedInNames.joined(separator: ", "))")
             }
+
             if testPlanPath != nil, withTests {
                 summary.append("Added '\(testTargetName)' to test plan")
             }

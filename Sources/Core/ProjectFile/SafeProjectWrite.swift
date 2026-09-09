@@ -150,7 +150,8 @@ public enum SafeProjectWrite {
         return fd
     }
 
-    private static func lockFilePath(for identifier: String) -> String {
+    /// The advisory lock file that serializes writes to `identifier`.
+    package static func lockFilePath(for identifier: String) -> String {
         // A stable, filesystem-safe name derived from the resource path. Kept in the temp directory
         // so it never pollutes the project's working tree.
         let hash = fnv1a(identifier)

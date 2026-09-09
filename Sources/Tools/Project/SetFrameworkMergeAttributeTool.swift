@@ -68,8 +68,10 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
+            let projectFilePath = Path(projectURL.path)
 
-            let xcodeproj = try XcodeProj(path: Path(projectURL.path))
+            let preimage = PBXProjWriter.preimage(of: projectFilePath)
+            let xcodeproj = try XcodeProj(path: projectFilePath)
 
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
                 $0.name == targetName
@@ -84,12 +86,8 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
             }
 
             // Collect every match across all frameworks phases so we can refuse ambiguous edits.
-            var matches: [PBXBuildFile] = []
-
-            for phase in phases {
-                for buildFile in phase.files ?? []
-                    where Self.matches(buildFile, name: frameworkName)
-                { matches.append(buildFile) }
+            let matches = phases.flatMap { phase in
+                (phase.files ?? []).filter { CopyFilesPhaseEntry.matches($0, name: frameworkName) }
             }
 
             if matches.isEmpty {
@@ -113,7 +111,7 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
                 )
             }
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(xcodeproj, to: projectFilePath, expectedPreimage: preimage)
 
             return CallTool.Result.text(
                 "Set merge=\(merge) on '\(frameworkName)' in target '\(targetName)' (ATTRIBUTES \(beforeAttrs) → \(afterAttrs))"
@@ -123,37 +121,12 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
         }
     }
 
-    static func matches(_ buildFile: PBXBuildFile, name: String) -> Bool {
-        if let product = buildFile.product { if product.productName == name { return true } }
-
-        if let fileElement = buildFile.file {
-            if let proxy = fileElement as? PBXReferenceProxy {
-                if proxy.path == name || proxy.name == name { return true }
-                if let p = proxy.path, (p as NSString).lastPathComponent == name { return true }
-            }
-            if fileElement.path == name || fileElement.name == name { return true }
-            if let p = fileElement.path, (p as NSString).lastPathComponent == name { return true }
-        }
-        return false
-    }
-
-    /// Returns (changed, beforeAttributesDescription, afterAttributesDescription).
     static func applyMerge(
         _ merge: Bool,
         to buildFile: PBXBuildFile,
-    ) -> (Bool, String, String) {
-        var settings = buildFile.settings ?? [:]
-        var attrs: [String]
-
-        if case let .array(existing) = settings["ATTRIBUTES"] {
-            attrs = existing
-        } else if case let .string(single) = settings["ATTRIBUTES"] {
-            attrs = [single]
-        } else {
-            attrs = []
-        }
-
-        let beforeDesc = attrs.isEmpty ? "(none)" : "[\(attrs.joined(separator: ", "))]"
+    ) -> (changed: Bool, before: String, after: String) {
+        var attrs = BuildFileAttributes.read(buildFile)
+        let beforeDesc = BuildFileAttributes.describe(attrs)
         let hasMerge = attrs.contains("Merge")
 
         if merge {
@@ -164,14 +137,7 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
             attrs.removeAll { $0 == "Merge" }
         }
 
-        if attrs.isEmpty {
-            settings.removeValue(forKey: "ATTRIBUTES")
-        } else {
-            settings["ATTRIBUTES"] = .array(attrs)
-        }
-        buildFile.settings = settings.isEmpty ? nil : settings
-
-        let afterDesc = attrs.isEmpty ? "(none)" : "[\(attrs.joined(separator: ", "))]"
-        return (true, beforeDesc, afterDesc)
+        _ = BuildFileAttributes.write(attrs, to: buildFile)
+        return (true, beforeDesc, BuildFileAttributes.describe(attrs))
     }
 }

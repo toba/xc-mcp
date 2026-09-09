@@ -12,7 +12,8 @@ public struct AddToCopyFilesPhase: Sendable {
     public func tool() -> Tool {
         .init(
             name: "add_to_copy_files_phase",
-            description: "Add files to an existing Copy Files build phase",
+            description:
+                "Add files, or a linked Swift package product, to an existing Copy Files build phase. Name the phase with phase_name, or reach an unnamed phase with dst_path. Passing neither selects the target's only Copy Files phase.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -28,19 +29,27 @@ public struct AddToCopyFilesPhase: Sendable {
                     ]),
                     "phase_name": .object([
                         "type": .string("string"),
-                        "description": .string("Name of the Copy Files phase to add files to"),
+                        "description": .string(
+                            "Optional: name of the Copy Files phase to add files to, e.g. 'Embed Helpers'. If absent, the phase is located via dst_path or by being the target's only Copy Files phase.",
+                        ),
+                    ]),
+                    "dst_path": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Optional: dstPath of the Copy Files phase. Used to locate phases that have no name.",
+                        ),
                     ]),
                     "files": .object([
                         "type": .string("array"),
                         "description": .string(
-                            "Array of file paths to add (must already exist in project)",
+                            "Paths of files to add, which must already be in the project. A Swift package product name works here too, e.g. 'TobaMarkdown', once add_package_product links the product to the target. That is Xcode's Embed & Sign for a dynamic package product.",
                         ),
                         "items": .object(["type": .string("string")]),
                     ]),
                     "attributes": .object([
                         "type": .string("array"),
                         "description": .string(
-                            "Build file attributes (e.g. ['CodeSignOnCopy', 'RemoveHeadersOnCopy']). Auto-defaults for 'Embed Frameworks' phases.",
+                            "Build file attributes (e.g. ['CodeSignOnCopy', 'RemoveHeadersOnCopy']). Auto-defaults for 'Embed Frameworks' phases. Use set_copy_files_attributes to change an entry that already exists.",
                         ),
                         "items": .object(["type": .string("string")]),
                     ]),
@@ -53,8 +62,7 @@ public struct AddToCopyFilesPhase: Sendable {
                     ]),
                 ]),
                 "required": .array([
-                    .string("project_path"), .string("target_name"), .string("phase_name"),
-                    .string("files"),
+                    .string("project_path"), .string("target_name"), .string("files"),
                 ]),
             ]),
             annotations: .mutation,
@@ -64,13 +72,8 @@ public struct AddToCopyFilesPhase: Sendable {
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard let projectPath = arguments.getString("project_path"),
               let targetName = arguments.getString("target_name"),
-              let phaseName = arguments.getString("phase_name"),
               case .array = arguments["files"]
-        else {
-            throw MCPError.invalidParams(
-                "project_path, target_name, phase_name, and files are required",
-            )
-        }
+        else { throw MCPError.invalidParams("project_path, target_name, and files are required") }
 
         let explicitAttributes = arguments.getOptionalStringArray("attributes")
 
@@ -90,14 +93,40 @@ public struct AddToCopyFilesPhase: Sendable {
                 return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
-            // Find the copy files phase by name
-            guard let copyFilesPhase = target.buildPhases.compactMap({
-                $0 as? PBXCopyFilesBuildPhase
-            })
-            .first(where: { $0.name == phaseName }) else {
-                return CallTool.Result.text(
-                    "Copy Files phase '\(phaseName)' not found in target '\(targetName)'")
+            let copyFilesPhase = try CopyFilesPhaseLocator.locate(
+                in: target,
+                phaseName: arguments.getNonEmptyString("phase_name"),
+                dstPath: arguments.getString("dst_path"),
+                targetName: targetName,
+            )
+            let phaseLabel = CopyFilesPhaseLocator.label(for: copyFilesPhase)
+
+            // Determine attributes: explicit > auto-default for Embed Frameworks > none
+            let isEmbedFrameworksPhase = copyFilesPhase.name?.contains("Embed Frameworks") == true
+                || copyFilesPhase.dstSubfolderSpec == .frameworks
+            let attributes = explicitAttributes
+                ?? (isEmbedFrameworksPhase ? ["CodeSignOnCopy", "RemoveHeadersOnCopy"] : nil)
+            let settings: [String: BuildFileSetting]? =
+                if let attributes { ["ATTRIBUTES": .array(attributes)] } else { nil }
+            let alreadyPresentNote = Self.alreadyPresentNote(
+                platformFilters: platformFilters, explicitAttributes: explicitAttributes,
+            )
+
+            // a phase Xcode wrote with no files key decodes as nil, and appending in place would
+            // drop the entry
+            if copyFilesPhase.files == nil { copyFilesPhase.files = [] }
+
+            // counts the entries this call creates, which is what decides whether to write
+            var attachedCount = 0
+
+            func attach(_ buildFile: PBXBuildFile) {
+                xcodeproj.pbxproj.add(object: buildFile)
+                copyFilesPhase.files?.append(buildFile)
+                attachedCount += 1
             }
+
+            // reading this per file would lock the object table and copy every reference again
+            let fileReferences = xcodeproj.pbxproj.fileReferences
 
             var addedFiles: [String] = []
             var notFoundFiles: [String] = []
@@ -118,7 +147,7 @@ public struct AddToCopyFilesPhase: Sendable {
                 let fileName = URL(fileURLWithPath: resolvedFilePath).lastPathComponent
 
                 // Find file reference in project
-                if let fileRef = xcodeproj.pbxproj.fileReferences.first(where: {
+                if let fileRef = fileReferences.first(where: {
                     $0.path == relativePath || $0.path == filePath || $0.name == fileName
                         || $0.path == fileName
                 }) {
@@ -131,37 +160,44 @@ public struct AddToCopyFilesPhase: Sendable {
                     } ?? false
 
                     if alreadyInPhase {
-                        let hint = platformFilters.isEmpty
-                            ? ""
-                            : ", platform filters unchanged"
-                        addedFiles.append("\(fileName) (already present\(hint))")
+                        addedFiles.append("\(fileName)\(alreadyPresentNote)")
                     } else {
-                        // Determine attributes: explicit > auto-default for Embed Frameworks > none
-                        let isEmbedFrameworksPhase = phaseName.contains("Embed Frameworks")
-                            || copyFilesPhase.dstSubfolderSpec == .frameworks
-                        let attrs = explicitAttributes
-                            ?? (isEmbedFrameworksPhase
-                                ? ["CodeSignOnCopy", "RemoveHeadersOnCopy"]
-                                : nil)
-                        let settings: [String: BuildFileSetting]? =
-                            if let attrs { ["ATTRIBUTES": .array(attrs)] } else { nil }
-                        let buildFile = PBXBuildFile(
-                            file: fileRef,
-                            settings: settings,
+                        attach(PBXBuildFile(
+                            file: fileRef, settings: settings,
                             platformFilters: platformFilters.isEmpty ? nil : platformFilters,
-                        )
-                        xcodeproj.pbxproj.add(object: buildFile)
-                        copyFilesPhase.files?.append(buildFile)
+                        ))
                         addedFiles.append(fileName)
+                    }
+                } else if let product = target.packageProductDependencies?.first(where: {
+                    $0.productName == filePath || $0.productName == fileName
+                }) {
+                    // Embedding a package product reuses the dependency the target already links,
+                    // the way Xcode's Embed & Sign does.
+                    let alreadyInPhase = copyFilesPhase.files?.contains {
+                        $0.product?.uuid == product.uuid
+                    } ?? false
+
+                    if alreadyInPhase {
+                        addedFiles.append("\(product.productName)\(alreadyPresentNote)")
+                    } else {
+                        attach(PBXBuildFile(
+                            product: product, settings: settings,
+                            platformFilters: platformFilters.isEmpty ? nil : platformFilters,
+                        ))
+                        addedFiles.append(product.productName)
                     }
                 } else {
                     notFoundFiles.append(filePath)
                 }
             }
 
-            try PBXProjWriter.write(xcodeproj, to: projectFilePath, expectedPreimage: preimage)
+            if attachedCount > 0 {
+                try PBXProjWriter.write(xcodeproj, to: projectFilePath, expectedPreimage: preimage)
+            }
 
-            var message = "Added \(addedFiles.count) file(s) to Copy Files phase '\(phaseName)':"
+            var message = attachedCount > 0
+                ? "Added \(attachedCount) file(s) to Copy Files phase '\(phaseLabel)':"
+                : "Added no file to Copy Files phase '\(phaseLabel)'. The project is unchanged."
             for file in addedFiles { message += "\n  - \(file)" }
 
             if !platformFilters.isEmpty {
@@ -169,8 +205,15 @@ public struct AddToCopyFilesPhase: Sendable {
                 message += "\nUse set_platform_filters to change an entry that was already present."
             }
 
+            if let explicitAttributes {
+                message += "\n\nATTRIBUTES = \(BuildFileAttributes.describe(explicitAttributes))"
+                message +=
+                    "\nUse set_copy_files_attributes to change an entry that was already present."
+            }
+
             if !notFoundFiles.isEmpty {
-                message += "\n\nFiles not found in project (add them first with add_file):"
+                message +=
+                    "\n\nFiles not found in project (add a file with add_file, and link a Swift package product to target '\(targetName)' with add_package_product):"
                 for file in notFoundFiles { message += "\n  - \(file)" }
             }
 
@@ -178,5 +221,17 @@ public struct AddToCopyFilesPhase: Sendable {
         } catch {
             throw try error.asMCPError()
         }
+    }
+
+    /// Names what a repeated call leaves untouched on an entry that is already in the phase.
+    private static func alreadyPresentNote(
+        platformFilters: [String],
+        explicitAttributes: [String]?,
+    ) -> String {
+        var unchanged: [String] = []
+        if !platformFilters.isEmpty { unchanged.append("platform filters") }
+        if explicitAttributes != nil { unchanged.append("attributes") }
+        guard !unchanged.isEmpty else { return " (already present)" }
+        return " (already present, \(unchanged.joined(separator: " and ")) unchanged)"
     }
 }

@@ -11,6 +11,10 @@ import Foundation
 /// when the project's requirement allows it. `update: true` drops the pin first, which is what
 /// makes resolution choose the newer tag. Naming a package keeps the blast radius to that one
 /// dependency, so nine unrelated packages do not jump versions at the same time.
+///
+/// Resolution reuses a checkout that already satisfies the requirement, and then writes no pin for
+/// it. A drop that resolution does not replace therefore leaves the package out of
+/// `Package.resolved` altogether, so the call fails and the prior pins go back.
 public struct ResolvePackagesTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let pathUtility: PathUtility
@@ -36,7 +40,8 @@ public struct ResolvePackagesTool: Sendable {
                 "Resolve an Xcode project's Swift Package dependencies. With update: true, drops "
                 + "the pin for one named package (or for every package) first, so resolution picks "
                 + "the newest version each requirement allows. This is the command-line form of "
-                + "Xcode's 'Update to Latest Package Versions'.",
+                + "Xcode's 'Update to Latest Package Versions'. A dropped pin that resolution "
+                + "does not write back fails the call, and Package.resolved goes back as it was.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -171,6 +176,7 @@ public struct ResolvePackagesTool: Sendable {
 
         guard result.succeeded else {
             var message = "Package resolution failed:\n" + result.errorOutput
+
             if let advice = MacroApprovalAdvice.advice(for: result.output) {
                 message += "\n\n" + advice
             }
@@ -184,8 +190,16 @@ public struct ResolvePackagesTool: Sendable {
             throw MCPError.internalError(message)
         }
 
+        let after = pins(for: container)
+        let unreplaced = Self.unreplacedPins(before: before, after: after)
+
+        if let backup, !unreplaced.isEmpty {
+            throw MCPError.internalError(Self.unreplacedPinsMessage(
+                unreplaced, restored: backup.restore()))
+        }
+
         lines.append("Package resolution succeeded.")
-        lines.append(contentsOf: changes(from: before, to: pins(for: container)))
+        lines.append(contentsOf: changes(from: before, to: after))
         lines.append(DerivedDataScoper.note(
             workspacePath: workspacePath, projectPath: projectPath, destination: destination,
         ))
@@ -226,6 +240,41 @@ public struct ResolvePackagesTool: Sendable {
                 error.errorDescription ?? "Could not rewrite Package.resolved",
             )
         }
+    }
+
+    /// The pins that resolution did not write back after the update dropped them.
+    ///
+    /// Resolution reuses a checkout that already satisfies the requirement, and writes no pin for
+    /// it. The entry the drop removed then stays missing, so a package still in the graph loses its
+    /// pin while the call reports success.
+    ///
+    /// - Parameters:
+    ///   - before: The pins read before the drop, keyed by identity.
+    ///   - after: The pins read after resolution, keyed by identity.
+    /// - Returns: The identities present before and missing after, sorted.
+    static func unreplacedPins(
+        before: [String: ResolvedPin],
+        after: [String: ResolvedPin],
+    ) -> [String] { before.keys.filter { after[$0] == nil }.sorted() }
+
+    /// The failure text for pins resolution left out of the file.
+    ///
+    /// - Parameters:
+    ///   - identities: The packages that lost their pin.
+    ///   - restored: Whether the prior pins file went back in place.
+    static func unreplacedPinsMessage(_ identities: [String], restored: Bool) -> String {
+        var message = "Package resolution succeeded but left "
+            + "\(identities.count) package(s) unpinned: "
+            + identities.joined(separator: ", ")
+            + ". Resolution reused a checkout that already satisfied the requirement, so it wrote "
+            + "no pin back and Package.resolved lost the entry."
+
+        message += restored
+            ? " Package.resolved was restored to its prior state, so no version moved. Delete the "
+                + "package's checkout under DerivedData SourcePackages, then retry."
+            : " WARNING: Package.resolved could not be restored and is missing those pins. Recover "
+                + "it from version control before building."
+        return message
     }
 
     /// Reports each pin whose version, branch or revision moved.

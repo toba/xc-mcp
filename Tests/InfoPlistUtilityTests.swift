@@ -131,10 +131,11 @@ struct InfoPlistUtilityTests {
             name: "TestProject", targetName: "App", at: projectPath,
         )
 
+        let preimage = PBXProjWriter.preimage(of: projectPath)
         let xcodeproj = try XcodeProj(path: projectPath)
         let plistAbsPath = try InfoPlistUtility.materializeInfoPlist(
             xcodeproj: xcodeproj, projectDir: tempDir.path, targetName: "App",
-            projectPath: projectPath,
+            projectPath: projectPath, preimage: preimage,
         )
 
         // Verify the file was created
@@ -145,6 +146,7 @@ struct InfoPlistUtilityTests {
         let reloaded = try XcodeProj(path: projectPath)
         let target = try #require(reloaded.pbxproj.nativeTargets.first { $0.name == "App" })
         let configs = target.buildConfigurationList?.buildConfigurations ?? []
+
         for config in configs {
             #expect(config.buildSettings["INFOPLIST_FILE"]?.stringValue == "App/Info.plist")
         }

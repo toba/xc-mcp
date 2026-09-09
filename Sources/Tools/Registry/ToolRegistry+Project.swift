@@ -307,6 +307,10 @@ extension ToolRegistry {
             let tool = SetBuildSettingTool(pathUtility: deps.paths)
             return (tool.tool(), { try tool.execute(arguments: $0.arguments) })
         },
+        ToolRegistration("set_copy_files_attributes", .project, [.monolith, .project]) { deps in
+            let tool = SetCopyFilesAttributesTool(pathUtility: deps.paths)
+            return (tool.tool(), { try tool.execute(arguments: $0.arguments) })
+        },
         ToolRegistration("set_copy_files_phase_subpath", .project, [.monolith, .project]) { deps in
             let tool = SetCopyFilesPhaseSubpath(pathUtility: deps.paths)
             return (tool.tool(), { try tool.execute(arguments: $0.arguments) })

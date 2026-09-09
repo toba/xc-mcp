@@ -57,9 +57,7 @@ public struct MoveGroupTool: Sendable {
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard let projectPath = arguments.getString("project_path"),
               let groupPath = arguments.getString("group_path")
-        else {
-            throw MCPError.invalidParams("project_path and group_path are required")
-        }
+        else { throw MCPError.invalidParams("project_path and group_path are required") }
 
         let newParentPath: String?
 
@@ -75,6 +73,7 @@ public struct MoveGroupTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
             guard let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup else {
                 throw MCPError.internalError("Main group not found in project")
@@ -149,7 +148,8 @@ public struct MoveGroupTool: Sendable {
                 preservedChildren += 1
             }
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             let dest = newParentPath ?? "<main group>"
             var msg: String
@@ -208,6 +208,7 @@ public struct MoveGroupTool: Sendable {
     /// Returns true if `candidate` is `ancestor` itself or any descendant of it.
     private func isDescendant(_ candidate: PBXGroup, of ancestor: PBXGroup) -> Bool {
         if candidate === ancestor { return true }
+
         for child in ancestor.children {
             if let g = child as? PBXGroup, isDescendant(candidate, of: g) { return true }
         }

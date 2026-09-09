@@ -69,6 +69,7 @@ public struct SetCopyFilesPhaseSubpath: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let target = xcodeproj.pbxproj.nativeTargets.first(where: {
@@ -87,7 +88,8 @@ public struct SetCopyFilesPhaseSubpath: Sendable {
             let oldSubpath = phase.dstPath ?? ""
             phase.dstPath = newSubpath
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             let label = phase.name ?? "(unnamed)"
             let message =

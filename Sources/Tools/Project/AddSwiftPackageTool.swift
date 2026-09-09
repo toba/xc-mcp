@@ -81,6 +81,7 @@ public struct AddSwiftPackageTool: Sendable {
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             if let packageURL {
@@ -93,6 +94,7 @@ public struct AddSwiftPackageTool: Sendable {
                     identifier: packageURL,
                     xcodeproj: xcodeproj,
                     projectURL: projectURL,
+                    preimage: preimage,
                     targetName: targetName,
                     productName: productName,
                     traits: traits,
@@ -116,6 +118,7 @@ public struct AddSwiftPackageTool: Sendable {
                     identifier: packagePath,
                     xcodeproj: xcodeproj,
                     projectURL: projectURL,
+                    preimage: preimage,
                     targetName: targetName,
                     productName: productName,
                     traits: traits,
@@ -140,6 +143,8 @@ public struct AddSwiftPackageTool: Sendable {
     /// - Parameters:
     ///   - references: The project array holding references of this kind.
     ///   - identifier: The repository URL or relative path that selects an existing reference.
+    ///   - preimage: The project bytes read before the load, which refuse a write over a concurrent
+    ///     edit.
     ///   - addedMessage: The opening of the reply, used when the reference is newly created.
     ///   - makeReference: Builds the reference, called only when the project holds none.
     private func addPackage<Reference: PackageReferencing>(
@@ -147,6 +152,7 @@ public struct AddSwiftPackageTool: Sendable {
         identifier: String,
         xcodeproj: XcodeProj,
         projectURL: URL,
+        preimage: Data?,
         targetName: String?,
         productName: String?,
         traits: [String]?,
@@ -168,7 +174,10 @@ public struct AddSwiftPackageTool: Sendable {
 
             // If a target is specified, still link the product
             guard let targetName else {
-                if traits != nil { try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path)) }
+                if traits != nil {
+                    try PBXProjWriter.write(
+                        xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
+                }
                 return CallTool.Result.text(
                     "\(Reference.capitalizedNoun) '\(identifier)' already exists in project"
                         + traitsNote)
@@ -181,7 +190,8 @@ public struct AddSwiftPackageTool: Sendable {
                 packageRef: existingRef as? XCRemoteSwiftPackageReference,
             )
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             return CallTool.Result.text(
                 "\(Reference.capitalizedNoun) '\(identifier)' already in project; linked product '\(productName ?? "Unknown")' to target '\(targetName)'"
@@ -203,7 +213,7 @@ public struct AddSwiftPackageTool: Sendable {
         }
 
         // Save project
-        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+        try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
         var message = addedMessage
         if let targetName { message += " to target '\(targetName)'" }

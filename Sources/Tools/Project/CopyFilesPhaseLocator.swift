@@ -83,6 +83,11 @@ enum CopyFilesPhaseLocator {
         )
     }
 
+    /// Names a phase for result text, falling back to its destination when it has no name.
+    static func label(for phase: PBXCopyFilesBuildPhase) -> String {
+        phase.name ?? ("dstPath=" + (phase.dstPath ?? ""))
+    }
+
     private static func copyPhases(of target: PBXNativeTarget) -> [PBXCopyFilesBuildPhase] {
         target.buildPhases.compactMap { $0 as? PBXCopyFilesBuildPhase }
     }
@@ -126,7 +131,7 @@ enum CopyFilesPhaseLocator {
                 )
             case 1: return copyPhases[0]
             default:
-                let names = copyPhases.map { $0.name ?? ("dstPath=" + ($0.dstPath ?? "")) }
+                let names = copyPhases.map { label(for: $0) }
                 throw .invalidParams(
                     "Target '\(targetName)' has \(copyPhases.count) Copy Files phases: \(names.joined(separator: ", ")). Pass phase_name or dst_path to disambiguate.",
                 )

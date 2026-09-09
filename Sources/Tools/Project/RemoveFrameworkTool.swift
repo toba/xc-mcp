@@ -44,9 +44,7 @@ public struct RemoveFrameworkTool: Sendable {
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard let projectPath = arguments.getString("project_path"),
               let frameworkName = arguments.getString("framework_name")
-        else {
-            throw MCPError.invalidParams("project_path and framework_name are required")
-        }
+        else { throw MCPError.invalidParams("project_path and framework_name are required") }
 
         let targetName = arguments.getString("target_name")
 
@@ -54,6 +52,7 @@ public struct RemoveFrameworkTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Normalize framework name for matching
@@ -171,7 +170,8 @@ public struct RemoveFrameworkTool: Sendable {
                 )
             }
 
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             let targetList = removedFromTargets.joined(separator: ", ")
             return CallTool.Result.text(

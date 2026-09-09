@@ -84,6 +84,7 @@ public struct AddPackageProductTool: Sendable {
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(filePath: resolvedProjectPath)
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the target
@@ -231,7 +232,8 @@ public struct AddPackageProductTool: Sendable {
             }
 
             // Save project
-            try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             var message =
                 "Linked \(resolvedKind.rawValue) product '\(productName)' to target '\(targetName)'"
@@ -276,6 +278,7 @@ public struct AddPackageProductTool: Sendable {
             guard let contents = try? String(contentsOfFile: pkgSwift, encoding: .utf8) else {
                 continue
             }
+
             if let kind = parseProductKind(productName: productName, packageSwift: contents) {
                 return kind
             }
@@ -309,6 +312,7 @@ public struct AddPackageProductTool: Sendable {
             // Remote package match: directory basename typically equals the package name (also the
             // URL's last path component without `.git`).
             let dirName = (candidate.path as NSString).lastPathComponent
+
             if let remote = project.remotePackages.first(where: { ref in
                 guard let url = ref.repositoryURL else { return false }
                 return Self.repoLastComponent(url) == dirName
@@ -337,6 +341,7 @@ public struct AddPackageProductTool: Sendable {
                 let resolved: String = rel.hasPrefix("/")
                     ? URL(fileURLWithPath: rel).standardizedFileURL.path
                     : projectDirURL.appendingPathComponent(rel).standardizedFileURL.path
+
                 if fm.fileExists(atPath: resolved) {
                     dirs.append(.init(path: resolved, origin: .local))
                 }
@@ -389,6 +394,7 @@ public struct AddPackageProductTool: Sendable {
             (#"\.library\s*\(\s*name:\s*"\#(escaped)""#, .library),
             (#"\.executable\s*\(\s*name:\s*"\#(escaped)""#, .library),
         ]
+
         for (
             pattern, kind
         ) in patterns where packageSwift.range(of: pattern, options: .regularExpression) != nil {

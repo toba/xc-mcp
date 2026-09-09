@@ -119,32 +119,19 @@ public struct SetPlatformFiltersTool: Sendable {
             if let fileName {
                 let phase = try CopyFilesPhaseLocator.locate(
                     in: target,
-                    phaseName: arguments.getString("phase_name"),
+                    phaseName: arguments.getNonEmptyString("phase_name"),
                     dstPath: arguments.getString("dst_path"),
                     targetName: targetName,
                 )
-                let phaseLabel = phase.name ?? ("dstPath=" + (phase.dstPath ?? ""))
-                let entries = phase.files ?? []
-                let matching = entries.filter { CopyFilesPhaseEntry.matches($0, name: fileName) }
 
-                if matching.isEmpty {
-                    let present = entries.map { "  - " + CopyFilesPhaseEntry.label(for: $0) }
-                    let listing = present.isEmpty
-                        ? "The phase is empty."
-                        : "Entries in the phase:\n\(present.joined(separator: "\n"))"
-                    return .text(
-                        "'\(fileName)' is not in Copy Files phase '\(phaseLabel)' of target '\(targetName)'. \(listing)",
-                    )
+                switch CopyFilesPhaseEntry.resolve(
+                    named: fileName, in: phase, targetName: targetName,
+                ) {
+                    case let .found(match): object = match
+                    case let .explained(text): return .text(text)
                 }
-
-                if matching.count > 1 {
-                    return .text(
-                        "'\(fileName)' matches \(matching.count) entries in Copy Files phase '\(phaseLabel)' of target '\(targetName)'. Use a more specific name.",
-                    )
-                }
-
-                object = matching[0]
-                label = "'\(fileName)' in Copy Files phase '\(phaseLabel)'"
+                label = "'\(fileName)' in Copy Files phase "
+                    + "'\(CopyFilesPhaseLocator.label(for: phase))'"
             } else if let dependencyName {
                 let matching = target.dependencies.filter { Self.matches($0, name: dependencyName) }
 

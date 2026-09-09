@@ -63,6 +63,7 @@ public struct RemoveBuildSettingTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             let scope: BuildSettingScope
@@ -88,7 +89,8 @@ public struct RemoveBuildSettingTool: Sendable {
 
             // Only write if we actually changed something.
             if !removedFrom.isEmpty {
-                try PBXProjWriter.write(xcodeproj, to: Path(projectURL.path))
+                try PBXProjWriter.write(
+                    xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
             }
 
             var message = ""
@@ -100,6 +102,7 @@ public struct RemoveBuildSettingTool: Sendable {
             } else {
                 message = "Removed '\(settingName)' from \(scope.label) in configuration(s): "
                     + removedFrom.joined(separator: ", ")
+
                 if !notPresentIn.isEmpty {
                     message += " (not present in: " + notPresentIn.joined(separator: ", ") + ")"
                 }

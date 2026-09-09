@@ -279,6 +279,46 @@ struct SetFrameworkMergeAttributeToolTests {
     }
 
     @Test
+    func `A concurrent edit refuses the write`() async throws {
+        let tempDir = TemporaryDirectory.url
+
+        let (projectPath, _) = try Self.makeProjectWithFramework(at: tempDir)
+        let projectPathString = projectPath.string
+        let pbxprojPath = XcodeProj.pbxprojPath(projectPath).string
+        let original = try #require(FileManager.default.contents(atPath: pbxprojPath))
+
+        // Hold the write lock, so the tool stops between reading its preimage and writing.
+        let lockPath = SafeProjectWrite.lockFilePath(for: projectPathString)
+        let lockFD = open(lockPath, O_CREAT | O_RDWR, 0o644)
+        try #require(lockFD >= 0)
+        try #require(flock(lockFD, LOCK_EX) == 0)
+
+        let tool = SetFrameworkMergeAttributeTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let running = Task(name: "merge write behind the lock") {
+            try tool.execute(arguments: [
+                "project_path": Value.string(projectPathString),
+                "target_name": Value.string("App"),
+                "framework_name": Value.string("MyLib.framework"),
+                "merge": Value.bool(true),
+            ])
+        }
+
+        // long enough for the tool to read the project and reach the lock it cannot take, with
+        // headroom for a loaded machine
+        try await Task.sleep(for: .seconds(5))
+
+        var edited = original
+        edited.append(contentsOf: "\n".utf8)
+        try edited.write(to: URL(fileURLWithPath: pbxprojPath))
+
+        flock(lockFD, LOCK_UN)
+        close(lockFD)
+
+        await #expect(throws: MCPError.self) { try await running.value }
+        #expect(FileManager.default.contents(atPath: pbxprojPath) == edited)
+    }
+
+    @Test
     func `list_frameworks_phase surfaces merge=true marker`() throws {
         let tempDir = TemporaryDirectory.url
 
