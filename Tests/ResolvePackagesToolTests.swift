@@ -40,9 +40,31 @@ struct ResolvePackagesToolTests {
         #expect(ResolvePackagesTool.unreplacedPins(before: before, after: after).isEmpty)
     }
 
+    private static func unreplaced(
+        _ identity: String,
+        pinned state: String = "3.9.2",
+        requirement: DeclaredRequirement? = nil,
+    ) -> ResolvePackagesTool.UnreplacedPin {
+        .init(identity: identity, pinnedState: state, requirement: requirement)
+    }
+
+    private static func declared(
+        _ requirement: String,
+        file: String,
+        source: DeclaredRequirement.Source,
+        admission: DeclaredRequirement.Admission,
+    ) -> DeclaredRequirement {
+        .init(
+            identity: "toba-data", requirement: requirement, file: file, source: source,
+            admission: admission,
+        )
+    }
+
     @Test
     func `A restored pins file reports that no version moved`() {
-        let message = ResolvePackagesTool.unreplacedPinsMessage(["toba-data"], restored: true)
+        let message = ResolvePackagesTool.unreplacedPinsMessage(
+            [Self.unreplaced("toba-data")], restored: true,
+        )
 
         #expect(message.contains("toba-data"))
         #expect(message.contains("restored to its prior state"))
@@ -51,9 +73,84 @@ struct ResolvePackagesToolTests {
 
     @Test
     func `A pins file that could not be restored warns`() {
-        let message = ResolvePackagesTool.unreplacedPinsMessage(["toba-data"], restored: false)
+        let message = ResolvePackagesTool.unreplacedPinsMessage(
+            [Self.unreplaced("toba-data")], restored: false,
+        )
 
         #expect(message.contains("WARNING"))
         #expect(message.contains("version control"))
+    }
+
+    @Test
+    func `A requirement that still admits the pin names it and drops the checkout remedy`() {
+        let message = ResolvePackagesTool.unreplacedPinsMessage(
+            [
+                Self.unreplaced(
+                    "toba-data",
+                    pinned: "1.2.1",
+                    requirement: Self.declared(
+                        "from: 1.2.0", file: "/repo/App.xcodeproj", source: .project,
+                        admission: .admits,
+                    ),
+                )
+            ],
+            restored: true,
+        )
+
+        #expect(message.contains("from: 1.2.0"))
+        #expect(message.contains("/repo/App.xcodeproj"))
+        #expect(message.contains("update_swift_package"))
+        #expect(!message.contains("DerivedData"))
+    }
+
+    @Test
+    func `A requirement in a local package's manifest names that manifest`() {
+        let message = ResolvePackagesTool.unreplacedPinsMessage(
+            [
+                Self.unreplaced(
+                    "toba-data",
+                    pinned: "1.2.1",
+                    requirement: Self.declared(
+                        "from: 1.2.0", file: "/repo/Package.swift", source: .manifest,
+                        admission: .admits,
+                    ),
+                )
+            ],
+            restored: true,
+        )
+
+        #expect(message.contains("/repo/Package.swift"))
+        #expect(message.contains("local package's manifest"))
+        #expect(!message.contains("DerivedData"))
+    }
+
+    @Test
+    func `A requirement that excludes the pin keeps the checkout remedy`() {
+        let message = ResolvePackagesTool.unreplacedPinsMessage(
+            [
+                Self.unreplaced(
+                    "toba-data",
+                    pinned: "1.2.1",
+                    requirement: Self.declared(
+                        "from: 2.0.0", file: "/repo/Package.swift", source: .manifest,
+                        admission: .excludes,
+                    ),
+                )
+            ],
+            restored: true,
+        )
+
+        #expect(message.contains("from: 2.0.0"))
+        #expect(message.contains("DerivedData"))
+    }
+
+    @Test
+    func `A package no file in reach declares keeps the checkout remedy`() {
+        let message = ResolvePackagesTool.unreplacedPinsMessage(
+            [Self.unreplaced("toba-data", pinned: "1.2.1")], restored: true,
+        )
+
+        #expect(message.contains("no project or manifest in reach"))
+        #expect(message.contains("DerivedData"))
     }
 }

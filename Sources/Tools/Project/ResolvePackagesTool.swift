@@ -14,7 +14,9 @@ import Foundation
 ///
 /// Resolution reuses a checkout that already satisfies the requirement, and then writes no pin for
 /// it. A drop that resolution does not replace therefore leaves the package out of
-/// `Package.resolved` altogether, so the call fails and the prior pins go back.
+/// `Package.resolved` altogether, so the call fails and the prior pins go back. The failure text
+/// names the requirement that admits the pin and the file declaring it, because a package reached
+/// through a local package states its requirement in that package's `Package.swift`.
 public struct ResolvePackagesTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let pathUtility: PathUtility
@@ -194,8 +196,17 @@ public struct ResolvePackagesTool: Sendable {
         let unreplaced = Self.unreplacedPins(before: before, after: after)
 
         if let backup, !unreplaced.isEmpty {
+            let diagnosed = unreplaced.map { identity in
+                UnreplacedPin(
+                    identity: identity,
+                    pinnedState: before[identity]?.stateDescription ?? "(unknown)",
+                    requirement: PackageRequirementLocator.requirement(
+                        for: identity, pinned: before[identity]?.version, in: container,
+                    ),
+                )
+            }
             throw MCPError.internalError(Self.unreplacedPinsMessage(
-                unreplaced, restored: backup.restore()))
+                diagnosed, restored: backup.restore()))
         }
 
         lines.append("Package resolution succeeded.")
@@ -257,24 +268,96 @@ public struct ResolvePackagesTool: Sendable {
         after: [String: ResolvedPin],
     ) -> [String] { before.keys.filter { after[$0] == nil }.sorted() }
 
+    /// One package resolution left out of the pins file, with the requirement that explains it
+    struct UnreplacedPin: Sendable, Equatable {
+        let identity: String
+
+        /// The state the dropped pin held, such as `1.2.1`
+        let pinnedState: String
+
+        /// The requirement a file in reach declares, absent when the search found none
+        let requirement: DeclaredRequirement?
+    }
+
     /// The failure text for pins resolution left out of the file.
     ///
+    /// Two different situations produce the same missing entry, and they take opposite remedies. A
+    /// requirement that still admits the pinned version leaves resolution nothing newer to write,
+    /// and only an edit to the file declaring that requirement moves the pin. A requirement the
+    /// pinned version no longer satisfies points at a stale checkout instead. The per-package lines
+    /// say which one applies rather than stating one cause for both.
+    ///
     /// - Parameters:
-    ///   - identities: The packages that lost their pin.
+    ///   - pins: The packages that lost their pin, each with the requirement found for it.
     ///   - restored: Whether the prior pins file went back in place.
-    static func unreplacedPinsMessage(_ identities: [String], restored: Bool) -> String {
-        var message = "Package resolution succeeded but left "
-            + "\(identities.count) package(s) unpinned: "
-            + identities.joined(separator: ", ")
-            + ". Resolution reused a checkout that already satisfied the requirement, so it wrote "
-            + "no pin back and Package.resolved lost the entry."
+    static func unreplacedPinsMessage(_ pins: [UnreplacedPin], restored: Bool) -> String {
+        var lines = [
+            "Package resolution succeeded but left \(pins.count) package(s) unpinned: "
+                + pins.map(\.identity).joined(separator: ", ")
+                + ". Resolution reused a checkout that already satisfied the requirement, so it "
+                + "wrote no pin back and Package.resolved lost the entry."
+                + (restored
+                    ? " Package.resolved was restored to its prior state, so no version moved."
+                    : " WARNING: Package.resolved could not be restored and is missing those pins. "
+                        + "Recover it from version control before building.")
+        ]
 
-        message += restored
-            ? " Package.resolved was restored to its prior state, so no version moved. Delete the "
-                + "package's checkout under DerivedData SourcePackages, then retry."
-            : " WARNING: Package.resolved could not be restored and is missing those pins. Recover "
-                + "it from version control before building."
-        return message
+        for pin in pins {
+            lines.append("")
+            lines.append(contentsOf: detail(of: pin))
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    /// The lines for one unpinned package: what admits the pin, and where the requirement sits.
+    private static func detail(of pin: UnreplacedPin) -> [String] {
+        let opening = "\(pin.identity): pinned \(pin.pinnedState)"
+
+        guard let requirement = pin.requirement else {
+            return [
+                opening + ", and no project or manifest in reach declares it. Delete the package's "
+                    + "checkout under DerivedData SourcePackages, then retry."
+            ]
+        }
+
+        switch requirement.admission {
+            case .admits:
+                return [
+                    opening
+                        + ", and the requirement '\(requirement.requirement)' still admits that "
+                        + "version, so resolution had nothing newer to write. The checkout is not "
+                        + "the reason.",
+                    remedy(for: requirement),
+                ]
+            case .unknown:
+                return [
+                    opening
+                        + ", and the requirement '\(requirement.requirement)' states no version "
+                        + "window to compare the pin against.",
+                    remedy(for: requirement),
+                ]
+            case .excludes:
+                return [
+                    opening + ", and the requirement '\(requirement.requirement)' in "
+                        + "\(requirement.file) excludes that version, so a stale checkout is the "
+                        + "reason. Delete the package's checkout under DerivedData SourcePackages, "
+                        + "then retry."
+                ]
+        }
+    }
+
+    /// The file a requirement sits in, and the edit that moves the pin it holds back.
+    private static func remedy(for requirement: DeclaredRequirement) -> String {
+        switch requirement.source {
+            case .project:
+                "The project declares it in \(requirement.file). Move the requirement with "
+                    + "update_swift_package, then run this call again."
+            case .manifest:
+                "A local package's manifest declares it, in \(requirement.file). "
+                    + "update_swift_package and show_package_resolution read the project's own "
+                    + "packages alone, so change the requirement in that file, then run this call "
+                    + "again."
+        }
     }
 
     /// Reports each pin whose version, branch or revision moved.
