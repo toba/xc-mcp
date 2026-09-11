@@ -1,6 +1,6 @@
 import Testing
-import XCMCPCore
 import Foundation
+@testable import XCMCPCore
 
 @Suite
 struct SourcePackagesCacheTests {
