@@ -82,6 +82,17 @@ extension ToolRegistry {
                 }
             )
         },
+        ToolRegistration("swift_package_update", .swiftPackage, [.monolith, .swift]) { deps in
+            let tool = SwiftPackageUpdateTool(swiftRunner: deps.swift, sessionManager: deps.session)
+            return (
+                tool.tool(),
+                { call in
+                    try await call.withProgress { onProgress in
+                        try await tool.execute(arguments: call.arguments, onProgress: onProgress)
+                    }
+                }
+            )
+        },
         ToolRegistration("sync_package_pins", .swiftPackage, [.monolith, .swift]) { deps in
             let tool = SyncPackagePinsTool(swift: deps.swift)
             return (tool.tool(), { try await tool.execute(arguments: $0.arguments) })

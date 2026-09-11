@@ -188,6 +188,21 @@ public struct GitRunner: Sendable {
         try await run(["push", remote, name], in: repository, timeout: timeout)
     }
 
+    /// Fetches every tag from the default remote and prunes the ones it no longer publishes.
+    ///
+    /// A SwiftPM package mirror is a bare clone that nothing re-fetches once it exists, so a tag
+    /// published afterwards stays invisible to resolution until this runs.
+    ///
+    /// - Parameters:
+    ///   - repository: Path to the repository, bare or with a work tree.
+    ///   - timeout: Maximum time to wait for the remote to answer.
+    public func fetchTags(
+        repository: String,
+        timeout: Duration = .seconds(120),
+    ) async throws -> ProcessResult {
+        try await run(["fetch", "--tags", "--prune", "--force"], in: repository, timeout: timeout)
+    }
+
     /// Runs git in a repository directory.
     private func run(
         _ arguments: [String],

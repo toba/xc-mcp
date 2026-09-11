@@ -17,8 +17,15 @@ import Foundation
 /// `Package.resolved` altogether, so the call fails and the prior pins go back. The failure text
 /// names the requirement that admits the pin and the file declaring it, because a package reached
 /// through a local package states its requirement in that package's `Package.swift`.
+///
+/// Three caches sit between a published tag and a written pin, and an update clears them itself
+/// rather than asking the caller which one is stale. It fetches the mirrors and drops the working
+/// copies before resolving, which is the cheap half. A pin still left unwritten sends the whole
+/// `SourcePackages` tree away and resolves once more, which is the reliable half.
+/// ``SourcePackagesCache`` holds what each copy does.
 public struct ResolvePackagesTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
+    private let gitRunner: GitRunner
     private let pathUtility: PathUtility
     private let resolvedParser: PackageResolvedParser
     private let resolvedEditor: PackageResolvedEditor
@@ -26,11 +33,13 @@ public struct ResolvePackagesTool: Sendable {
     public init(
         pathUtility: PathUtility,
         xcodebuildRunner: XcodebuildRunner = .init(),
+        gitRunner: GitRunner = .init(),
         resolvedParser: PackageResolvedParser = .init(),
         resolvedEditor: PackageResolvedEditor = .init(),
     ) {
         self.pathUtility = pathUtility
         self.xcodebuildRunner = xcodebuildRunner
+        self.gitRunner = gitRunner
         self.resolvedParser = resolvedParser
         self.resolvedEditor = resolvedEditor
     }
@@ -42,8 +51,11 @@ public struct ResolvePackagesTool: Sendable {
                 "Resolve an Xcode project's Swift Package dependencies. With update: true, drops "
                 + "the pin for one named package (or for every package) first, so resolution picks "
                 + "the newest version each requirement allows. This is the command-line form of "
-                + "Xcode's 'Update to Latest Package Versions'. A dropped pin that resolution "
-                + "does not write back fails the call, and Package.resolved goes back as it was.",
+                + "Xcode's 'Update to Latest Package Versions'. An update refreshes the package "
+                + "mirrors first, and clears the whole SourcePackages tree and resolves again when a "
+                + "pin is still left unwritten, so no cache has to be cleared by hand. A dropped pin "
+                + "that resolution does not write back fails the call, and Package.resolved goes "
+                + "back as it was.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -141,12 +153,33 @@ public struct ResolvePackagesTool: Sendable {
 
         var lines: [String] = []
 
-        let before = pins(for: container)
+        let before = resolvedParser.pinsByIdentity(for: container)
 
         // Package.resolved is a checked-in file. Dropping a pin and then failing to resolve would
         // leave the project silently unpinned, so keep the original bytes and put them back on
         // every failure path.
         let backup = update ? PinsFileBackup(container: container, parser: resolvedParser) : nil
+        let cache = update
+            ? SourcePackagesCache.locate(
+                workspacePath: workspacePath, projectPath: projectPath, destination: destination,
+            )
+            : nil
+        // A plain resolve reads no cache, so it needs no target list either.
+        let targets = update
+            ? packageURL.map { [PackageResolvedParser.identity(forURL: $0)] }
+                ?? before.keys.sorted()
+            : []
+        // One target names the package the cache advice belongs to. Every other count leaves the
+        // advice unable to name one.
+        let updated = targets.count == 1 ? targets[0] : nil
+
+        // Nothing re-fetches a mirror once it exists, so a tag published afterwards is invisible
+        // and resolution re-clones the same version. The refresh therefore runs before the drop
+        // rather than as advice after a failure. It runs whether or not the tree exists yet, since
+        // the shared cache a first clone reads can be just as old.
+        if let cache {
+            await lines.append(contentsOf: cache.refresh(identities: targets, git: gitRunner))
+        }
 
         if update {
             do {
@@ -157,18 +190,114 @@ public struct ResolvePackagesTool: Sendable {
             }
         }
 
+        let run = ResolveRun(
+            projectPath: projectPath,
+            workspacePath: workspacePath,
+            scheme: scheme,
+            destination: destination,
+            timeout: timeout,
+            outputTimeout: arguments.resolveOutputTimeout(
+                default: XcodebuildRunner.deviceOutputTimeout,
+            ),
+        )
+        try await resolve(
+            run, backup: backup, cache: cache, identity: updated, onProgress: onProgress)
+
+        var after = resolvedParser.pinsByIdentity(for: container)
+        var unreplaced = Self.unreplacedPins(before: before, after: after)
+        var clearedTree = false
+
+        // A refreshed mirror still leaves a pin unwritten when a third copy of the package is
+        // stale, and only the whole tree going answers that. One more resolve costs less than
+        // asking the caller to guess which of three caches holds the old version.
+        if let backup, !unreplaced.isEmpty, let cache, cache.exists {
+            lines.append(
+                "Resolution left \(unreplaced.count) package(s) unpinned, so the whole tree at "
+                    + "\(cache.directory) went and the resolve ran again.",
+            )
+            backup.restore()
+            clearedTree = cache.clear()
+
+            do {
+                try lines.append(contentsOf: dropPins(for: container, packageURL: packageURL))
+            } catch {
+                backup.restore()
+                throw error
+            }
+            try await resolve(
+                run, backup: backup, cache: cache, identity: updated, onProgress: onProgress)
+            after = resolvedParser.pinsByIdentity(for: container)
+            unreplaced = Self.unreplacedPins(before: before, after: after)
+        }
+
+        if let backup, !unreplaced.isEmpty {
+            let diagnosed = unreplaced.map { identity in
+                UnreplacedPin(
+                    identity: identity,
+                    pinnedState: before[identity]?.stateDescription ?? "(unknown)",
+                    requirement: PackageRequirementLocator.requirement(
+                        for: identity, pinned: before[identity]?.version, in: container,
+                    ),
+                )
+            }
+            throw MCPError.internalError(Self.unreplacedPinsMessage(
+                diagnosed, restored: backup.restore(),
+                cacheNotes: Self.cacheNotes(
+                    cache: cache, identities: unreplaced, cleared: clearedTree,
+                ),
+            ))
+        }
+
+        lines.append("Package resolution succeeded.")
+        lines.append(contentsOf: PinMove.lines(
+            PinMove.moves(from: before, to: after), header: "Pin changes:",
+            whenEmpty: "No pin changed.",
+        ))
+        lines.append(DerivedDataScoper.note(
+            workspacePath: workspacePath, projectPath: projectPath, destination: destination,
+        ))
+
+        return CallTool.Result.text(lines.joined(separator: "\n"))
+    }
+
+    // MARK: - Resolving
+
+    /// The inputs of one resolve, so the retry repeats it without repeating its arguments
+    private struct ResolveRun: Sendable {
+        let projectPath: String?
+        let workspacePath: String?
+        let scheme: String?
+        let destination: String
+        let timeout: TimeInterval
+        let outputTimeout: Duration?
+    }
+
+    /// Runs one resolve and turns a failure into the tool's error.
+    ///
+    /// - Parameters:
+    ///   - run: What to resolve, and the budgets it runs under.
+    ///   - backup: The pins snapshot to put back when the resolve fails.
+    ///   - cache: The package caches, for the advice a failed checkout earns.
+    ///   - identity: The one package under update, absent when the update covers every one.
+    ///   - onProgress: The MCP progress callback.
+    /// - Throws: ``MCPError/internalError(_:)`` carrying the failure text and what it restored.
+    private func resolve(
+        _ run: ResolveRun,
+        backup: PinsFileBackup?,
+        cache: SourcePackagesCache?,
+        identity: String?,
+        onProgress: (@Sendable (String) -> Void)?,
+    ) async throws {
         let result: ProcessResult
 
         do {
             result = try await xcodebuildRunner.resolvePackageDependencies(
-                projectPath: projectPath,
-                workspacePath: workspacePath,
-                scheme: scheme,
-                destination: destination,
-                timeout: timeout,
-                outputTimeout: arguments.resolveOutputTimeout(
-                    default: XcodebuildRunner.deviceOutputTimeout,
-                ),
+                projectPath: run.projectPath,
+                workspacePath: run.workspacePath,
+                scheme: run.scheme,
+                destination: run.destination,
+                timeout: run.timeout,
+                outputTimeout: run.outputTimeout,
                 onProgress: onProgress,
             )
         } catch {
@@ -183,6 +312,10 @@ public struct ResolvePackagesTool: Sendable {
                 message += "\n\n" + advice
             }
 
+            if let advice = cache?.revisionAdvice(for: result.output, identity: identity) {
+                message += "\n\n" + advice
+            }
+
             if let backup {
                 message += backup.restore()
                     ? "\n\nPackage.resolved was restored to its prior state."
@@ -191,41 +324,9 @@ public struct ResolvePackagesTool: Sendable {
             }
             throw MCPError.internalError(message)
         }
-
-        let after = pins(for: container)
-        let unreplaced = Self.unreplacedPins(before: before, after: after)
-
-        if let backup, !unreplaced.isEmpty {
-            let diagnosed = unreplaced.map { identity in
-                UnreplacedPin(
-                    identity: identity,
-                    pinnedState: before[identity]?.stateDescription ?? "(unknown)",
-                    requirement: PackageRequirementLocator.requirement(
-                        for: identity, pinned: before[identity]?.version, in: container,
-                    ),
-                )
-            }
-            throw MCPError.internalError(Self.unreplacedPinsMessage(
-                diagnosed, restored: backup.restore()))
-        }
-
-        lines.append("Package resolution succeeded.")
-        lines.append(contentsOf: changes(from: before, to: after))
-        lines.append(DerivedDataScoper.note(
-            workspacePath: workspacePath, projectPath: projectPath, destination: destination,
-        ))
-
-        return CallTool.Result.text(lines.joined(separator: "\n"))
     }
 
     // MARK: - Pins
-
-    /// Reads the current pins, keyed by identity. Returns an empty map when no pins file exists.
-    private func pins(for container: String) -> [String: ResolvedPin] {
-        guard let file = resolvedParser.locate(for: container),
-              let parsed = try? resolvedParser.parse(fileAt: file) else { return [:] }
-        return Dictionary(parsed.map { ($0.identity, $0) }, uniquingKeysWith: { first, _ in first })
-    }
 
     /// Drops the pin for one package, or every pin, and reports what it dropped.
     private func dropPins(for container: String, packageURL: String?) throws -> [String] {
@@ -290,7 +391,12 @@ public struct ResolvePackagesTool: Sendable {
     /// - Parameters:
     ///   - pins: The packages that lost their pin, each with the requirement found for it.
     ///   - restored: Whether the prior pins file went back in place.
-    static func unreplacedPinsMessage(_ pins: [UnreplacedPin], restored: Bool) -> String {
+    ///   - cacheNotes: The lines naming the caches, from ``cacheNotes(cache:identities:cleared:)``.
+    static func unreplacedPinsMessage(
+        _ pins: [UnreplacedPin],
+        restored: Bool,
+        cacheNotes: [String] = [],
+    ) -> String {
         var lines = [
             "Package resolution succeeded but left \(pins.count) package(s) unpinned: "
                 + pins.map(\.identity).joined(separator: ", ")
@@ -306,7 +412,36 @@ public struct ResolvePackagesTool: Sendable {
             lines.append("")
             lines.append(contentsOf: detail(of: pin))
         }
+
+        if !cacheNotes.isEmpty {
+            lines.append("")
+            lines.append(contentsOf: cacheNotes)
+        }
         return lines.joined(separator: "\n")
+    }
+
+    /// The lines that name every cache able to hold a copy older than the published tag.
+    ///
+    /// The message needs all three paths, because deleting the working copy alone re-clones the
+    /// same version out of a mirror nothing re-fetches, and a fresh mirror comes from a shared
+    /// cache that can be just as old.
+    ///
+    /// - Parameters:
+    ///   - cache: The tree the resolve used, absent when no tree could be named.
+    ///   - identities: The packages that lost their pin.
+    ///   - cleared: Whether the tool already cleared the tree and resolved again.
+    static func cacheNotes(
+        cache: SourcePackagesCache?,
+        identities: [String],
+        cleared: Bool,
+    ) -> [String] {
+        guard let cache else { return [] }
+        let opening = cleared
+            ? "The whole tree at \(cache.directory) was cleared and the resolve ran again, so a "
+                + "stale copy is not the reason. These are the caches it holds:"
+            : "These caches can each hold a copy older than the published tag, and the whole tree at "
+                + "\(cache.directory) may need to go:"
+        return [opening] + identities.flatMap { cache.pathNotes(for: $0) }
     }
 
     /// The lines for one unpinned package: what admits the pin, and where the requirement sits.
@@ -315,8 +450,8 @@ public struct ResolvePackagesTool: Sendable {
 
         guard let requirement = pin.requirement else {
             return [
-                opening + ", and no project or manifest in reach declares it. Delete the package's "
-                    + "checkout under DerivedData SourcePackages, then retry."
+                opening + ", and no project or manifest in reach declares it. A cached copy older "
+                    + "than the published tag is the likely reason, so clear the paths named below."
             ]
         }
 
@@ -339,9 +474,8 @@ public struct ResolvePackagesTool: Sendable {
             case .excludes:
                 return [
                     opening + ", and the requirement '\(requirement.requirement)' in "
-                        + "\(requirement.file) excludes that version, so a stale checkout is the "
-                        + "reason. Delete the package's checkout under DerivedData SourcePackages, "
-                        + "then retry."
+                        + "\(requirement.file) excludes that version, so a cached copy is the "
+                        + "reason. Clear the paths named below."
                 ]
         }
     }
@@ -358,30 +492,5 @@ public struct ResolvePackagesTool: Sendable {
                     + "packages alone, so change the requirement in that file, then run this call "
                     + "again."
         }
-    }
-
-    /// Reports each pin whose version, branch or revision moved.
-    private func changes(
-        from before: [String: ResolvedPin],
-        to after: [String: ResolvedPin],
-    ) -> [String] {
-        var lines: [String] = []
-
-        for identity in after.keys.sorted() {
-            guard let new = after[identity] else { continue }
-
-            guard let old = before[identity] else {
-                lines.append("  + \(identity) \(new.stateDescription)")
-                continue
-            }
-            if old.stateDescription != new.stateDescription {
-                lines.append("  ~ \(identity) \(old.stateDescription) → \(new.stateDescription)")
-            }
-        }
-
-        for identity in before.keys.sorted() where after[identity] == nil {
-            lines.append("  - \(identity) (no longer pinned)")
-        }
-        return lines.isEmpty ? ["No pin changed."] : ["Pin changes:"] + lines
     }
 }

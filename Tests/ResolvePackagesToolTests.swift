@@ -125,7 +125,7 @@ struct ResolvePackagesToolTests {
     }
 
     @Test
-    func `A requirement that excludes the pin keeps the checkout remedy`() {
+    func `A requirement that excludes the pin points at the cached copy`() {
         let message = ResolvePackagesTool.unreplacedPinsMessage(
             [
                 Self.unreplaced(
@@ -141,16 +141,57 @@ struct ResolvePackagesToolTests {
         )
 
         #expect(message.contains("from: 2.0.0"))
-        #expect(message.contains("DerivedData"))
+        #expect(message.contains("a cached copy is the reason"))
     }
 
     @Test
-    func `A package no file in reach declares keeps the checkout remedy`() {
+    func `A package no file in reach declares points at the cached copy`() {
         let message = ResolvePackagesTool.unreplacedPinsMessage(
             [Self.unreplaced("toba-data", pinned: "1.2.1")], restored: true,
         )
 
         #expect(message.contains("no project or manifest in reach"))
-        #expect(message.contains("DerivedData"))
+        #expect(message.contains("older than the published tag"))
+    }
+
+    // MARK: - Naming the caches
+
+    private static let cache = SourcePackagesCache(
+        directory: "/Caches/xc-mcp/DerivedData/Jig-abc123-macosx/SourcePackages")
+
+    @Test
+    func `A failure names all three caches for each unpinned package`() {
+        let message = ResolvePackagesTool.unreplacedPinsMessage(
+            [Self.unreplaced("toba-data")],
+            restored: true,
+            cacheNotes: ResolvePackagesTool.cacheNotes(
+                cache: Self.cache, identities: ["toba-data"], cleared: false,
+            ),
+        )
+
+        #expect(message.contains("SourcePackages/checkouts/toba-data"))
+        #expect(message.contains("SourcePackages/repositories/toba-data-<hash>"))
+        #expect(message.contains("org.swift.swiftpm/repositories/toba-data-<hash>"))
+        #expect(message.contains("may need to go"))
+    }
+
+    @Test
+    func `A failure after the tree was cleared rules the caches out`() {
+        let notes = ResolvePackagesTool.cacheNotes(
+            cache: Self.cache, identities: ["toba-data"], cleared: true,
+        )
+
+        #expect(notes[0].contains("was cleared and the resolve ran again"))
+        #expect(notes[0].contains("stale copy is not the reason"))
+        #expect(notes.count == 4)
+    }
+
+    @Test
+    func `A failure with no tree to name adds no cache lines`() {
+        #expect(
+            ResolvePackagesTool
+                .cacheNotes(
+                    cache: nil, identities: ["toba-data"], cleared: false
+                ).isEmpty)
     }
 }

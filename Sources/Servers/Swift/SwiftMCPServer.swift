@@ -21,6 +21,7 @@ import XCMCPTools
 /// - Run: `swift_package_run`
 /// - Clean: `swift_package_clean`
 /// - List: `swift_package_list`
+/// - Update: `swift_package_update`
 /// - Stop: `swift_package_stop`
 public struct SwiftMCPServer: Sendable {
     private let basePath: String

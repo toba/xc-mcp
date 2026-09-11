@@ -562,20 +562,31 @@ public struct SwiftRunner: Sendable {
         )
     }
 
-    /// Updates package dependencies to their latest versions.
+    /// Updates package dependencies to the newest version each requirement allows.
     ///
     /// - Parameters:
     ///   - packagePath: Path to the Swift package directory.
+    ///   - packageName: SwiftPM identity of the one dependency to move. Pass nil to move every one.
+    ///   - dryRun: When true, report the moves and write no pin.
     ///   - timeout: Maximum time to wait. Defaults to ``defaultTimeout``.
+    ///   - onProgress: Optional callback for streamed output.
     /// - Returns: The update result containing exit code and output.
     public func update(
         packagePath: String,
+        packageName: String? = nil,
+        dryRun: Bool = false,
         timeout: Duration = Self.defaultTimeout,
+        onProgress: (@Sendable (String) -> Void)? = nil,
     ) async throws -> SwiftResult {
-        try await run(
-            arguments: ["package", "update"],
+        var arguments = ["package", "update"]
+        if dryRun { arguments.append("--dry-run") }
+        if let packageName { arguments.append(packageName) }
+
+        return try await run(
+            arguments: arguments,
             workingDirectory: packagePath,
             timeout: timeout,
+            onProgress: onProgress,
         )
     }
 }

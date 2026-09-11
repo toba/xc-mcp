@@ -87,6 +87,19 @@ public struct PackageResolvedParser: Sendable {
         Self.candidateLocations(for: path).first { FileManager.default.fileExists(atPath: $0) }
     }
 
+    /// Reads a container's pins keyed by identity.
+    ///
+    /// A caller that compares two readings of a pins file wants the map rather than the array, and
+    /// an absent or unreadable file reads as no pins rather than as a failure.
+    ///
+    /// - Parameter container: Path to the `.xcodeproj`, `.xcworkspace`, or package directory.
+    /// - Returns: The pins, keyed by identity, empty when no pins file exists.
+    public func pinsByIdentity(for container: String) -> [String: ResolvedPin] {
+        guard let file = locate(for: container),
+              let parsed = try? parse(fileAt: file) else { return [:] }
+        return Dictionary(parsed.map { ($0.identity, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
     /// Parses the `Package.resolved` at an explicit file path.
     public func parse(fileAt filePath: String) throws(ParseError) -> [ResolvedPin] {
         let data: Data

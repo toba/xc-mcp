@@ -511,6 +511,7 @@ SPM operations, formatting, linting, unused code detection, and a cross-reposito
 | `swift_package_run` | Run executable |
 | `swift_package_clean` | Clean build artifacts |
 | `swift_package_list` | List dependencies |
+| `swift_package_update` | Raise the resolved pins to the newest version each requirement allows — name one dependency, or every one, and `dry_run` reports the moves without writing |
 | `swift_package_stop` | Stop running executable |
 | `swift_format` | Run swiftformat — supports dry_run |
 | `swift_lint` | Run swiftlint — supports fix mode |
