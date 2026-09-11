@@ -27,6 +27,12 @@ public final class BuildOutputParser {
     private var currentSuiteName: String?
     private var swiftTestingExecutedCount: Int?
     private var swiftTestingFailedCount: Int?
+    private var swiftTestingKnownIssueCount: Int = 0
+    /// The normalized name of every test a Swift Testing failure line named
+    ///
+    /// The run summary counts issues, and one test can record several. The size of this set is the
+    /// count of distinct failing tests, which is the figure a reader expects.
+    private var swiftTestingFailedTestNames: Set<String> = []
     private var passedTestsCount: Int = 0
     private var seenPassedTestNames: Set<String> = []
     private var parallelTestsTotalCount: Int?
@@ -138,7 +144,9 @@ public final class BuildOutputParser {
 
                     if trimmed.hasPrefix("􀄵") || trimmed.hasPrefix("↳") {
                         let comment = String(
-                            trimmed.drop(while: { $0 != " " }).drop(while: { $0 == " " }))
+                            trimmed.drop(while: { $0 != " " }).drop(
+                                while: { $0 == " " }
+                            ))
                         if !comment.isEmpty { continuationParts.append(comment) }
                         sawDetailMarker = true
                         nextIdx += 1
@@ -178,8 +186,10 @@ public final class BuildOutputParser {
 
                 for contextIdx in startIndex..<index {
                     let contextLine = lines[contextIdx].trimmingCharacters(in: .whitespaces)
+
                     if contextLine.isEmpty || contextLine.hasPrefix("Warning:")
                         || contextLine.hasPrefix("Run script build phase") { continue }
+
                     if contextLine.contains(": warning:"), !contextLine.contains("error:") {
                         continue
                     }
@@ -231,7 +241,12 @@ public final class BuildOutputParser {
 
         let totalFailed: Int = {
             let xctestFailed = xctestFailedCount ?? 0
-            let swiftTestingFailed = swiftTestingFailedCount ?? 0
+            // A Swift Testing run summary counts issues, and one test can record several. The tests
+            // its failure lines named are the better count. The summary count stands in when the
+            // log named none, which is the truncated run.
+            let swiftTestingFailed = swiftTestingFailedTestNames.isEmpty
+                ? swiftTestingFailedCount ?? 0
+                : swiftTestingFailedTestNames.count
             let aggregated = xctestFailed + swiftTestingFailed
             return aggregated > 0 ? aggregated : failedTests.count
         }()
@@ -286,6 +301,7 @@ public final class BuildOutputParser {
             slowTests: slowTests.isEmpty ? nil : slowTests.count,
             flakyTests: flakyTests.isEmpty ? nil : flakyTests.count,
             executables: executables.isEmpty ? nil : executables.count,
+            knownIssues: swiftTestingKnownIssueCount > 0 ? swiftTestingKnownIssueCount : nil,
         )
 
         let buildInfo: BuildInfo? = parseBuildInfo
@@ -372,6 +388,8 @@ public final class BuildOutputParser {
         currentSuiteName = nil
         swiftTestingExecutedCount = nil
         swiftTestingFailedCount = nil
+        swiftTestingKnownIssueCount = 0
+        swiftTestingFailedTestNames = []
         passedTestsCount = 0
         seenPassedTestNames = []
         currentLinkerArchitecture = nil
@@ -717,6 +735,7 @@ public final class BuildOutputParser {
 
             // Skip optional (aka '...') verbose suffix
             let afterName = line[endIndex...]
+
             if afterName.hasPrefix(" (aka '"),
                let closeRange = afterName.range(of: "')") { endIndex = closeRange.upperBound }
 
@@ -818,6 +837,7 @@ public final class BuildOutputParser {
             if !trimmed.hasPrefix("error:") {
                 let hasQuotedStrings = line.contains("\"") && line.contains(":")
                 let hasEscapedContent = line.contains("\\") && line.contains("\"")
+
                 if hasEscapedContent,
                    hasQuotedStrings,
                    !line.contains("file:"),
@@ -984,6 +1004,7 @@ public final class BuildOutputParser {
         let afterColon = line[swiftColonRange.upperBound...]
 
         var lineNumEnd = afterColon.startIndex
+
         while lineNumEnd < afterColon.endIndex, afterColon[lineNumEnd].isNumber {
             lineNumEnd = afterColon.index(after: lineNumEnd)
         }
@@ -1210,6 +1231,12 @@ public final class BuildOutputParser {
             else { return nil }
             let remaining = line[extracted.endIndex...]
 
+            // the run summary counts issues, so the names are what give a count of failing tests
+            func recordingFailure(_ failure: FailedTest) -> FailedTest {
+                swiftTestingFailedTestNames.insert(normalizeTestName(failure.test))
+                return failure
+            }
+
             let issuePrefix = " recorded an issue"
 
             if remaining.hasPrefix(issuePrefix) {
@@ -1238,16 +1265,17 @@ public final class BuildOutputParser {
                             if !argDesc.isEmpty { testName = "\(extracted.name) (→ \(argDesc))" }
                         }
 
-                        return FailedTest(
+                        return recordingFailure(FailedTest(
                             test: testName, message: message, file: file, line: lineNum,
-                        )
+                        ))
                     }
                 }
 
                 // No-location variant: " recorded an issue: message"
                 if afterIssueMarker.hasPrefix(": ") {
                     let message = String(afterIssueMarker.dropFirst(2))
-                    return FailedTest(test: extracted.name, message: message, file: nil, line: nil)
+                    return recordingFailure(FailedTest(
+                        test: extracted.name, message: message, file: nil, line: nil))
                 }
             }
 
@@ -1267,10 +1295,10 @@ public final class BuildOutputParser {
                 let normalizedTest = normalizeTestName(extracted.name)
                 if let dur = duration { failedTestDurations[normalizedTest] = dur }
 
-                return FailedTest(
+                return recordingFailure(FailedTest(
                     test: extracted.name, message: "Test failed", file: nil, line: nil,
                     duration: duration,
-                )
+                ))
             }
         }
 
@@ -1411,8 +1439,7 @@ public final class BuildOutputParser {
 
             if let parenStart = line.range(of: "("),
                let parenEnd = line.range(of: ")"),
-               parenStart.lowerBound < parenEnd.lowerBound
-            {
+               parenStart.lowerBound < parenEnd.lowerBound {
                 buildTime = String(line[parenStart.upperBound..<parenEnd.lowerBound])
             }
             return
@@ -1537,21 +1564,14 @@ public final class BuildOutputParser {
                 if let testCountStr, let total = Int(testCountStr) {
                     swiftTestingExecutedCount = (swiftTestingExecutedCount ?? 0) + total
 
-                    // Extract issue count from "with Y issue(s)"
                     let afterFailed = line[failedAfterRange.upperBound...]
-
-                    if let withRange = afterFailed.range(of: " with ") {
-                        let afterWith = afterFailed[withRange.upperBound...]
-                        let issueCountStr = afterWith.split(separator: " ").first
-
-                        if let issueCountStr, let issueCount = Int(issueCountStr) {
-                            swiftTestingFailedCount = (swiftTestingFailedCount ?? 0) + issueCount
-                        } else {
-                            swiftTestingFailedCount = (swiftTestingFailedCount ?? 0) + total
-                        }
-                    } else {
-                        swiftTestingFailedCount = (swiftTestingFailedCount ?? 0) + total
-                    }
+                    let issues = Self.parseIssueCounts(inSummarySuffix: afterFailed)
+                    swiftTestingKnownIssueCount += issues.known
+                    // A summary that names no count at all leaves every test suspect. A line that
+                    // says failed carries at least one failure, whatever its counts parse to, so
+                    // the run never reads as a pass on a wording the scan does not know.
+                    let failed = issues.isEmpty ? total : max(issues.errors, 1)
+                    swiftTestingFailedCount = (swiftTestingFailedCount ?? 0) + failed
 
                     if let secondsRange = afterFailed.range(of: " seconds") {
                         let timeStr = String(afterFailed[..<secondsRange.lowerBound])
@@ -1568,6 +1588,10 @@ public final class BuildOutputParser {
 
                 if let testCountStr, let total = Int(testCountStr) {
                     swiftTestingExecutedCount = (swiftTestingExecutedCount ?? 0) + total
+
+                    // A run that records a known issue still passes, and the summary says so.
+                    swiftTestingKnownIssueCount += Self
+                        .parseIssueCounts(inSummarySuffix: line[passedAfter.upperBound...]).known
 
                     if total > 0 {
                         let afterPassed = line[passedAfter.upperBound...]
@@ -1590,6 +1614,55 @@ public final class BuildOutputParser {
 
     private static func parseTestTime(_ timeString: String) -> Double? {
         Double(timeString.trimmingCharacters(in: CharacterSet(charactersIn: ". \t")))
+    }
+
+    /// The issue counts a Swift Testing run summary carries
+    ///
+    /// Swift Testing puts a warning and a known issue in the same total as a failed expectation, so
+    /// the total alone overstates how many tests broke.
+    private struct IssueCounts {
+        var total = 0
+        var warnings = 0
+        var known = 0
+
+        /// The issues that failed a test
+        ///
+        /// A summary that names no total reports a warning or a known issue alone, and the run
+        /// passed, so the difference is zero.
+        var errors: Int { max(total - warnings - known, 0) }
+
+        var isEmpty: Bool { total == 0 && warnings == 0 && known == 0 }
+    }
+
+    /// Reads the issue counts out of the tail of a Swift Testing run summary.
+    ///
+    /// The tail takes eight shapes, from ` with 3 issues` to
+    /// ` with 10 issues (including 2 warnings and 3 known issues)`, so the scan reads every
+    /// number-and-noun pair rather than matching each shape.
+    ///
+    /// - Parameter suffix: Everything after `failed after` or `passed after` on the summary line.
+    /// - Returns: Zeroed counts when the line names no issue.
+    private static func parseIssueCounts(
+        inSummarySuffix suffix: some StringProtocol
+    ) -> IssueCounts {
+        var counts = IssueCounts()
+        guard let withRange = suffix.range(of: " with ") else { return counts }
+
+        let punctuation = CharacterSet(charactersIn: "(),.")
+        let tokens = suffix[withRange.upperBound...].split(separator: " ")
+
+        for (index, token) in tokens.enumerated() where index + 1 < tokens.count {
+            guard let value = Int(token.trimmingCharacters(in: punctuation)) else { continue }
+            let noun = tokens[index + 1].trimmingCharacters(in: punctuation)
+
+            if noun.hasPrefix("known") {
+                counts.known += value
+            } else if noun.hasPrefix("warning") {
+                counts.warnings += value
+            } else if noun.hasPrefix("issue") { counts.total += value }
+        }
+
+        return counts
     }
 
     /// Files one `Executed N tests` line under the suite level that produced it.
@@ -1715,8 +1788,7 @@ public final class BuildOutputParser {
                     let dependencyName = String(afterStartQuote[..<endQuote.lowerBound])
 
                     if targetDependencySet[currentTarget, default: []].insert(dependencyName)
-                        .inserted
-                    {
+                        .inserted {
                         targetDependencies[currentTarget, default: []].append(dependencyName)
                     }
                     return true

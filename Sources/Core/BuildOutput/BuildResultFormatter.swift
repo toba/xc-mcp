@@ -168,6 +168,8 @@ public enum BuildResultFormatter {
         // Header line
         parts.append(endedEarly ? incompleteTestHeader : formatTestHeader(result))
 
+        if !endedEarly, let note = uncapturedFailureNote(result) { parts.append(note) }
+
         // Failed tests
         if !result.failedTests.isEmpty { parts.append(formatFailedTests(result.failedTests)) }
 
@@ -246,11 +248,32 @@ public enum BuildResultFormatter {
         var details: [String] = []
         details.append("\(passed) passed")
         details.append("\(failed) failed")
+
+        if let known = result.summary.knownIssues, known > 0 {
+            details.append(pluralized(known, "known issue"))
+        }
         if let testTime = result.summary.testTime { details.append(testTime) }
 
-        if !details.isEmpty { header += " (\(details.joined(separator: ", ")))" }
+        header += " (\(details.joined(separator: ", ")))"
 
         return header
+    }
+
+    /// Names the gap when the run counts more failures than the output lists.
+    ///
+    /// The count comes from the run summary and the list comes from the individual failure lines. A
+    /// reader who sees only the count cannot tell a truncated log from a test that recorded several
+    /// issues.
+    ///
+    /// - Returns: The note, or nil when the two figures agree.
+    private static func uncapturedFailureNote(_ result: BuildResult) -> String? {
+        let failed = result.summary.failedTests
+        let listed = result.failedTests.count
+        guard failed > listed else { return nil }
+
+        let named = listed == 0 ? "none" : String(listed)
+        return "Note: the summary counts \(failed) failed and the output names \(named). "
+            + "One test can record several issues, and a truncated log drops failure lines."
     }
 
     // MARK: - Detail Formatting

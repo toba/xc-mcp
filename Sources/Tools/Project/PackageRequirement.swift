@@ -105,6 +105,15 @@ public enum PackageRequirement {
         }
     }
 
+    /// Reports whether a version falls inside the window an up-to-next-major floor allows.
+    ///
+    /// A manifest states the same window with `from:`, so both forms decide admission here rather
+    /// than each spelling the comparison out.
+    public static func allows(
+        _ version: SemanticVersion,
+        upToNextMajorFrom floor: SemanticVersion,
+    ) -> Bool { version >= floor && version < floor.nextMajor }
+
     /// Reports whether a version falls inside the window a requirement allows. Returns `false` for
     /// a branch or revision requirement, and for a version that does not parse.
     public static func allows(
@@ -114,7 +123,7 @@ public enum PackageRequirement {
         switch requirement {
             case let .exact(bound): SemanticVersion(bound) == version
             case let .upToNextMajorVersion(bound):
-                SemanticVersion(bound).map { version >= $0 && version < $0.nextMajor } ?? false
+                SemanticVersion(bound).map { allows(version, upToNextMajorFrom: $0) } ?? false
             case let .upToNextMinorVersion(bound):
                 SemanticVersion(bound).map { version >= $0 && version < $0.nextMinor } ?? false
             case let .range(from, to):

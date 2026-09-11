@@ -51,6 +51,45 @@ public struct DeclaredRequirement: Sendable, Equatable {
     }
 }
 
+/// A file the search had to read and could not
+public struct UnreadableProject: Sendable, Equatable {
+    /// Absolute path of the container or project file
+    public let file: String
+
+    /// What the reader reported
+    public let reason: String
+
+    public init(file: String, reason: String) {
+        self.file = file
+        self.reason = reason
+    }
+
+    /// Names a file the reader refused, with the error it reported as the reason.
+    ///
+    /// Every refusal renders its error the same way, so the choice of rendering lives here.
+    public init(file: String, error: some Error) {
+        self.init(file: file, reason: String(describing: error))
+    }
+}
+
+/// Everything one search over a container found
+public struct RequirementSearch: Sendable, Equatable {
+    /// The requirement a file in reach declares, absent when no file in reach declares the package
+    public let requirement: DeclaredRequirement?
+
+    /// One entry per file the search had to read and could not
+    ///
+    /// A file the reader refuses declares nothing the search can see. A caller that reads
+    /// ``requirement`` alone cannot tell that case from a project that names no package, and the
+    /// two take opposite remedies.
+    public let unreadable: [UnreadableProject]
+
+    public init(requirement: DeclaredRequirement?, unreadable: [UnreadableProject] = []) {
+        self.requirement = requirement
+        self.unreadable = unreadable
+    }
+}
+
 /// Finds the file that declares a package's version requirement
 ///
 /// A package an Xcode project names itself carries its requirement in the project file. A package
@@ -70,37 +109,95 @@ public enum PackageRequirementLocator {
     ///   - version: The version to test the requirement against. Pass `nil` for a branch or
     ///     revision pin, which reports ``DeclaredRequirement/Admission/unknown``.
     ///   - container: Path to the `.xcodeproj` or `.xcworkspace` the resolve ran against.
-    /// - Returns: The requirement and the file that declares it, or `nil` when no file in reach
-    ///   declares the package.
-    public static func requirement(
+    /// - Returns: The requirement and the file that declares it, plus every file the search could
+    ///   not read.
+    public static func search(
         for identity: String,
         pinned version: String?,
         in container: String,
-    ) -> DeclaredRequirement? {
+    ) -> RequirementSearch {
         let wanted = version.flatMap { SemanticVersion($0) }
+        var unreadable: [UnreadableProject] = []
 
-        for projectPath in projects(in: container) {
-            guard let project = try? XcodeProj(path: Path(projectPath)).pbxproj.rootProject() else {
+        let paths: [String]
+
+        switch projects(in: container) {
+            case let .projects(found): paths = found
+            case let .unreadable(failure): return .init(requirement: nil, unreadable: [failure])
+        }
+
+        for projectPath in paths {
+            let loaded: XcodeProj
+
+            do {
+                loaded = try XcodeProj(path: Path(projectPath))
+            } catch {
+                unreadable.append(.init(file: projectPath, error: error))
                 continue
             }
 
-            if let match = remote(
-                identity: identity, version: wanted, in: project, file: projectPath,
-            ) { return match }
-
-            let directory = (projectPath as NSString).deletingLastPathComponent
-            var visited: Set<String> = []
-
-            for local in project.localPackages {
-                if let match = manifest(
-                    identity: identity,
-                    version: wanted,
-                    root: absolute(local.relativePath, from: directory),
-                    visited: &visited,
-                ) { return match }
+            switch reading(identity: identity, version: wanted, in: loaded, file: projectPath) {
+                case let .found(match): return .init(requirement: match, unreadable: unreadable)
+                case .declaresNothing: continue
+                case let .unreadable(failure): unreadable.append(failure)
             }
         }
-        return nil
+        return .init(requirement: nil, unreadable: unreadable)
+    }
+
+    // MARK: - One project
+
+    /// What one project file yields
+    private enum ProjectReading {
+        case found(DeclaredRequirement)
+        case declaresNothing
+        case unreadable(UnreadableProject)
+    }
+
+    /// Reads one project's own references, then the manifests its local packages reach.
+    ///
+    /// The loaded project arrives as a parameter so it outlives the whole read. Each package
+    /// reference reaches its object through a weak link to the object graph, so both lists read
+    /// empty the moment the loaded project goes away.
+    ///
+    /// - Parameters:
+    ///   - identity: SwiftPM identity of the package to find.
+    ///   - version: The version to test the requirement against.
+    ///   - loaded: The project to read.
+    ///   - file: Absolute path of the project, which a project reference reports as its file.
+    private static func reading(
+        identity: String,
+        version: SemanticVersion?,
+        in loaded: XcodeProj,
+        file: String,
+    ) -> ProjectReading {
+        let root: PBXProject?
+
+        do {
+            root = try loaded.pbxproj.rootProject()
+        } catch {
+            return .unreadable(.init(file: file, error: error))
+        }
+        guard let root else {
+            return .unreadable(.init(file: file, reason: "it names no root project"))
+        }
+
+        if let match = remote(identity: identity, version: version, in: root, file: file) {
+            return .found(match)
+        }
+
+        let directory = (file as NSString).deletingLastPathComponent
+        var visited: Set<String> = []
+
+        for local in root.localPackages {
+            if let match = manifest(
+                identity: identity,
+                version: version,
+                root: absolute(local.relativePath, from: directory),
+                visited: &visited,
+            ) { return .found(match) }
+        }
+        return .declaresNothing
     }
 
     // MARK: - Project references
@@ -199,22 +296,36 @@ public enum PackageRequirementLocator {
         for version: SemanticVersion?,
     ) -> DeclaredRequirement.Admission {
         guard case let .from(floor) = requirement, let version else { return .unknown }
-        return PackageRequirement.allows(
-            version, requirement: .upToNextMajorVersion(floor.description),
-        ) ? .admits : .excludes
+        return PackageRequirement.allows(version, upToNextMajorFrom: floor) ? .admits : .excludes
     }
 
     // MARK: - Containers
 
+    /// What a container yields: the projects to search, or the reason it yields none
+    private enum ContainerReading {
+        case projects([String])
+        case unreadable(UnreadableProject)
+    }
+
     /// The Xcode projects a container holds: the project itself, or every project a workspace
     /// references.
-    private static func projects(in container: String) -> [String] {
+    private static func projects(in container: String) -> ContainerReading {
         guard container.hasSuffix(".xcworkspace") else {
-            return container.hasSuffix(".xcodeproj") ? [container] : []
+            guard container.hasSuffix(".xcodeproj") else {
+                return .unreadable(.init(
+                    file: container, reason: "it names neither a project nor a workspace",
+                ))
+            }
+            return .projects([container])
         }
-        guard let workspace = try? XCWorkspace(path: Path(container)) else { return [] }
-        let parent = (container as NSString).deletingLastPathComponent
-        return projects(in: workspace.data.children, relativeTo: parent)
+
+        do {
+            let workspace = try XCWorkspace(path: Path(container))
+            let parent = (container as NSString).deletingLastPathComponent
+            return .projects(projects(in: workspace.data.children, relativeTo: parent))
+        } catch {
+            return .unreadable(.init(file: container, error: error))
+        }
     }
 
     /// Walks a workspace's elements and resolves each project reference to an absolute path.

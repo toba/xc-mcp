@@ -57,6 +57,11 @@ public struct BuildSummary: Sendable {
     public let slowTests: Int?
     public let flakyTests: Int?
     public let executables: Int?
+    /// How many issues the run recorded through `withKnownIssue`, or nil when it recorded none
+    ///
+    /// Swift Testing counts a known issue as an issue, so the count separates here to keep it out
+    /// of ``failedTests``. A known issue is a deliberate failure path, not a broken test.
+    public let knownIssues: Int?
 
     public init(
         errors: Int,
@@ -70,6 +75,7 @@ public struct BuildSummary: Sendable {
         slowTests: Int? = nil,
         flakyTests: Int? = nil,
         executables: Int? = nil,
+        knownIssues: Int? = nil,
     ) {
         self.errors = errors
         self.warnings = warnings
@@ -82,6 +88,7 @@ public struct BuildSummary: Sendable {
         self.slowTests = slowTests
         self.flakyTests = flakyTests
         self.executables = executables
+        self.knownIssues = knownIssues
     }
 }
 

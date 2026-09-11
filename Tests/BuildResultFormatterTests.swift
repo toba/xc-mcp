@@ -161,6 +161,89 @@ struct BuildResultFormatterTests {
     }
 
     @Test
+    func `A test header states the known issue count`() {
+        let result = BuildResult(
+            status: "success",
+            summary: BuildSummary(
+                errors: 0, warnings: 0, failedTests: 0, passedTests: 1985, buildTime: nil,
+                testTime: "12.0s", knownIssues: 65,
+            ),
+            errors: [],
+            warnings: [],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatTestResult(result)
+
+        #expect(formatted.contains("1985 passed"))
+        #expect(formatted.contains("0 failed"))
+        #expect(formatted.contains("65 known issues"))
+    }
+
+    @Test
+    func `A test header omits a known issue count of zero`() {
+        let result = BuildResult(
+            status: "success",
+            summary: BuildSummary(
+                errors: 0, warnings: 0, failedTests: 0, passedTests: 12, buildTime: nil,
+            ),
+            errors: [],
+            warnings: [],
+            failedTests: [],
+        )
+
+        let formatted = BuildResultFormatter.formatTestResult(result)
+
+        #expect(!formatted.contains("known"))
+    }
+
+    @Test
+    func `A failed count larger than the failure list is named`() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 0, warnings: 0, failedTests: 6, passedTests: 40, buildTime: nil,
+            ),
+            errors: [],
+            warnings: [],
+            failedTests: [
+                FailedTest(
+                    test: "MyTests.testLogin", message: "Expected true, got false",
+                    file: "MyTests.swift", line: 55,
+                )
+            ],
+        )
+
+        let formatted = BuildResultFormatter.formatTestResult(result)
+
+        #expect(formatted.contains("6 failed"))
+        #expect(formatted.contains("summary counts 6"))
+        #expect(formatted.contains("names 1"))
+    }
+
+    @Test
+    func `A failure list that matches the failed count draws no note`() {
+        let result = BuildResult(
+            status: "failed",
+            summary: BuildSummary(
+                errors: 0, warnings: 0, failedTests: 1, passedTests: 40, buildTime: nil,
+            ),
+            errors: [],
+            warnings: [],
+            failedTests: [
+                FailedTest(
+                    test: "MyTests.testLogin", message: "Expected true, got false",
+                    file: "MyTests.swift", line: 55,
+                )
+            ],
+        )
+
+        let formatted = BuildResultFormatter.formatTestResult(result)
+
+        #expect(!formatted.contains("summary counts"))
+    }
+
+    @Test
     func `Format linker errors`() {
         let result = BuildResult(
             status: "failed",

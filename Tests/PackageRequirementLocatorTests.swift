@@ -56,10 +56,10 @@ struct PackageRequirementLocatorTests {
             remote: ("https://github.com/toba/toba-core", .upToNextMajorVersion("1.4.0")),
         )
 
-        let found = try #require(PackageRequirementLocator.requirement(
-            for: "toba-core", pinned: "1.4.3", in: path,
-        ))
+        let search = PackageRequirementLocator.search(for: "toba-core", pinned: "1.4.3", in: path)
 
+        #expect(search.unreadable.isEmpty)
+        let found = try #require(search.requirement)
         #expect(found.requirement == "from: 1.4.0")
         #expect(found.file == path)
         #expect(found.source == .project)
@@ -74,9 +74,9 @@ struct PackageRequirementLocatorTests {
             remote: ("https://github.com/toba/toba-core", .upToNextMajorVersion("1.4.0")),
         )
 
-        let found = try #require(PackageRequirementLocator.requirement(
-            for: "toba-core", pinned: "1.3.9", in: path,
-        ))
+        let found = try #require(
+            PackageRequirementLocator.search(for: "toba-core", pinned: "1.3.9", in: path)
+                .requirement)
 
         #expect(found.admission == .excludes)
     }
@@ -105,10 +105,12 @@ struct PackageRequirementLocatorTests {
         )
         let path = try Self.project(in: projectDirectory, localPath: "..")
 
-        let found = try #require(PackageRequirementLocator.requirement(
+        let search = PackageRequirementLocator.search(
             for: "toba-diagnostics", pinned: "1.2.1", in: path,
-        ))
+        )
 
+        #expect(search.unreadable.isEmpty)
+        let found = try #require(search.requirement)
         #expect(found.requirement == "from: 1.2.0")
         #expect(found.file == packageRoot.appendingPathComponent("Package.swift").path)
         #expect(found.source == .manifest)
@@ -148,9 +150,9 @@ struct PackageRequirementLocatorTests {
         )
         let path = try Self.project(in: temporary, localPath: "Root")
 
-        let found = try #require(PackageRequirementLocator.requirement(
-            for: "toba-hash", pinned: "2.1.0", in: path,
-        ))
+        let found = try #require(
+            PackageRequirementLocator.search(for: "toba-hash", pinned: "2.1.0", in: path)
+                .requirement)
 
         #expect(found.file == nested.appendingPathComponent("Package.swift").path)
         #expect(found.source == .manifest)
@@ -176,9 +178,8 @@ struct PackageRequirementLocatorTests {
         )
         let path = try Self.project(in: temporary, localPath: "Root")
 
-        let found = try #require(PackageRequirementLocator.requirement(
-            for: "toba-xml", pinned: nil, in: path,
-        ))
+        let found = try #require(
+            PackageRequirementLocator.search(for: "toba-xml", pinned: nil, in: path).requirement)
 
         #expect(found.requirement.contains("branch"))
         #expect(found.admission == .unknown)
@@ -192,9 +193,31 @@ struct PackageRequirementLocatorTests {
             remote: ("https://github.com/toba/toba-core", .upToNextMajorVersion("1.4.0")),
         )
 
-        #expect(
-            PackageRequirementLocator.requirement(
-                for: "toba-markdown", pinned: "1.0.0", in: path,
-            ) == nil)
+        let search = PackageRequirementLocator.search(
+            for: "toba-markdown", pinned: "1.0.0", in: path,
+        )
+
+        #expect(search.requirement == nil)
+        #expect(search.unreadable.isEmpty)
+    }
+
+    @Test
+    func `A project the reader refuses is reported rather than passed over`() {
+        let path = TemporaryDirectory.url.appendingPathComponent("Missing.xcodeproj").path
+
+        let search = PackageRequirementLocator.search(for: "toba-core", pinned: "1.0.0", in: path)
+
+        #expect(search.requirement == nil)
+        #expect(search.unreadable.map(\.file) == [path])
+    }
+
+    @Test
+    func `A container that is neither a project nor a workspace is reported`() {
+        let path = TemporaryDirectory.url.appendingPathComponent("Package.swift").path
+
+        let search = PackageRequirementLocator.search(for: "toba-core", pinned: "1.0.0", in: path)
+
+        #expect(search.requirement == nil)
+        #expect(search.unreadable.map(\.file) == [path])
     }
 }

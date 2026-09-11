@@ -563,6 +563,8 @@ struct BuildOutputParserTests {
         let parser = BuildOutputParser()
         let input = """
             ✘ Test "failingTest" recorded an issue at /path/File.swift:10:5: assertion failed
+            ✘ Test "secondTest" recorded an issue at /path/File.swift:20:5: assertion failed
+            ✘ Test "thirdTest" recorded an issue at /path/File.swift:30:5: assertion failed
             Test run with 5 tests in 2 suites failed after 1.500 seconds with 3 issues.
             """
 
@@ -585,6 +587,113 @@ struct BuildOutputParserTests {
 
         #expect(result.summary.failedTests == 1)
         #expect(result.summary.passedTests == 0)
+    }
+
+    @Test
+    func `A run whose only issues are known reports no failure`() {
+        let parser = BuildOutputParser()
+        let input = """
+            􁁛  Test expectedToFail() passed after 0.001 seconds with 1 known issue.
+            􁁛  Test alsoExpected() passed after 0.001 seconds with 1 known issue.
+            􁁛  Test run with 3 tests in 1 suite passed after 0.100 seconds with 2 known issues.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "success")
+        #expect(result.summary.failedTests == 0)
+        #expect(result.summary.passedTests == 3)
+        #expect(result.summary.knownIssues == 2)
+    }
+
+    @Test
+    func `A known issue does not count toward the failed tests`() {
+        let parser = BuildOutputParser()
+        let input = """
+            􀢄  Test realFailure() recorded an issue at File.swift:10:5: Expectation failed
+            􀢄  Test run with 1985 tests in 200 suites failed after 12.000 seconds with 66 issues (including 65 known issues).
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.summary.failedTests == 1)
+        #expect(result.summary.passedTests == 1984)
+        #expect(result.summary.knownIssues == 65)
+    }
+
+    @Test
+    func `A warning and a known issue both leave the failed count alone`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Test run with 10 tests in 2 suites failed after 1.000 seconds with 10 issues (including 2 warnings and 3 known issues).
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.summary.failedTests == 5)
+        #expect(result.summary.passedTests == 5)
+        #expect(result.summary.knownIssues == 3)
+    }
+
+    @Test
+    func `A passing run reports the warnings and the known issues it carries`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Test run with 4 tests in 1 suite passed after 0.200 seconds with 2 warnings and 1 known issue.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "success")
+        #expect(result.summary.failedTests == 0)
+        #expect(result.summary.passedTests == 4)
+        #expect(result.summary.knownIssues == 1)
+        #expect(result.summary.testTime == "0.200s")
+    }
+
+    @Test
+    func `A run without a known issue reports no known issue count`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Test run with 5 tests in 2 suites failed after 1.500 seconds with 3 issues.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.summary.failedTests == 3)
+        #expect(result.summary.knownIssues == nil)
+    }
+
+    @Test
+    func `One test that records two issues counts as one failed test`() {
+        let parser = BuildOutputParser()
+        let input = """
+            􀢄  Test twoFailures() recorded an issue at File.swift:10:5: first
+            􀢄  Test twoFailures() recorded an issue at File.swift:11:5: second
+            􀢄  Test twoFailures() failed after 0.001 seconds with 2 issues.
+            􀢄  Test run with 10 tests in 1 suite failed after 0.100 seconds with 2 issues.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.summary.failedTests == 1)
+        #expect(result.summary.passedTests == 9)
+        #expect(result.failedTests.count == 1)
+    }
+
+    @Test
+    func `A summary that says failed reports a failure whatever its counts say`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Test run with 5 tests in 1 suite failed after 1.000 seconds with 3 known issues.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.summary.failedTests == 1)
+        #expect(result.summary.knownIssues == 3)
     }
 
     @Test

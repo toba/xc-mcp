@@ -44,8 +44,12 @@ struct ResolvePackagesToolTests {
         _ identity: String,
         pinned state: String = "3.9.2",
         requirement: DeclaredRequirement? = nil,
+        unreadable: [UnreadableProject] = [],
     ) -> ResolvePackagesTool.UnreplacedPin {
-        .init(identity: identity, pinnedState: state, requirement: requirement)
+        .init(
+            identity: identity, pinnedState: state, requirement: requirement,
+            unreadable: unreadable,
+        )
     }
 
     private static func declared(
@@ -154,6 +158,48 @@ struct ResolvePackagesToolTests {
         #expect(message.contains("older than the published tag"))
     }
 
+    @Test
+    func `A file the search could not read is named instead of the cache`() {
+        let message = ResolvePackagesTool.unreplacedPinsMessage(
+            [
+                Self.unreplaced(
+                    "toba-data",
+                    pinned: "1.2.1",
+                    unreadable: [
+                        .init(file: "/repo/App.xcodeproj", reason: "it names no root project")
+                    ],
+                )
+            ],
+            restored: true,
+        )
+
+        #expect(message.contains("/repo/App.xcodeproj: it names no root project"))
+        #expect(!message.contains("no project or manifest in reach"))
+    }
+
+    @Test
+    func `A refused file is named even when the search found a requirement`() {
+        let message = ResolvePackagesTool.unreplacedPinsMessage(
+            [
+                Self.unreplaced(
+                    "toba-data",
+                    pinned: "1.2.1",
+                    requirement: Self.declared(
+                        "from: 1.2.0", file: "/repo/App.xcodeproj", source: .project,
+                        admission: .admits,
+                    ),
+                    unreadable: [
+                        .init(file: "/repo/Other.xcodeproj", reason: "it names no root project")
+                    ],
+                )
+            ],
+            restored: true,
+        )
+
+        #expect(message.contains("from: 1.2.0"))
+        #expect(message.contains("/repo/Other.xcodeproj: it names no root project"))
+    }
+
     // MARK: - Naming the caches
 
     private static let cache = SourcePackagesCache(
@@ -190,8 +236,6 @@ struct ResolvePackagesToolTests {
     func `A failure with no tree to name adds no cache lines`() {
         #expect(
             ResolvePackagesTool
-                .cacheNotes(
-                    cache: nil, identities: ["toba-data"], cleared: false
-                ).isEmpty)
+                .cacheNotes(cache: nil, identities: ["toba-data"], cleared: false).isEmpty)
     }
 }

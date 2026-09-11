@@ -232,12 +232,15 @@ public struct ResolvePackagesTool: Sendable {
 
         if let backup, !unreplaced.isEmpty {
             let diagnosed = unreplaced.map { identity in
-                UnreplacedPin(
+                let search = PackageRequirementLocator.search(
+                    for: identity, pinned: before[identity]?.version, in: container,
+                )
+
+                return UnreplacedPin(
                     identity: identity,
                     pinnedState: before[identity]?.stateDescription ?? "(unknown)",
-                    requirement: PackageRequirementLocator.requirement(
-                        for: identity, pinned: before[identity]?.version, in: container,
-                    ),
+                    requirement: search.requirement,
+                    unreadable: search.unreadable,
                 )
             }
             throw MCPError.internalError(Self.unreplacedPinsMessage(
@@ -329,29 +332,33 @@ public struct ResolvePackagesTool: Sendable {
     // MARK: - Pins
 
     /// Drops the pin for one package, or every pin, and reports what it dropped.
-    private func dropPins(for container: String, packageURL: String?) throws -> [String] {
+    private func dropPins(
+        for container: String,
+        packageURL: String?,
+    ) throws(MCPError) -> [String] {
         guard let file = resolvedParser.locate(for: container) else {
             return ["No Package.resolved found — resolution starts from scratch."]
         }
 
         let identities = packageURL.map { Set([PackageResolvedParser.identity(forURL: $0)]) }
+        let removed: [String]
 
         do {
-            let removed = try resolvedEditor.removePins(fileAt: file, identities: identities)
-
-            if removed.isEmpty {
-                guard let packageURL else { return ["Package.resolved held no pins to drop."] }
-                throw MCPError.invalidParams(
-                    "No pin for '\(packageURL)' in \(file). Check the URL, or omit package_url to "
-                        + "update every package.",
-                )
-            }
-            return ["Dropped \(removed.count) pin(s): " + removed.joined(separator: ", ")]
-        } catch let error as PackageResolvedEditor.EditError {
+            removed = try resolvedEditor.removePins(fileAt: file, identities: identities)
+        } catch {
             throw MCPError.internalError(
                 error.errorDescription ?? "Could not rewrite Package.resolved",
             )
         }
+
+        if removed.isEmpty {
+            guard let packageURL else { return ["Package.resolved held no pins to drop."] }
+            throw MCPError.invalidParams(
+                "No pin for '\(packageURL)' in \(file). Check the URL, or omit package_url to "
+                    + "update every package.",
+            )
+        }
+        return ["Dropped \(removed.count) pin(s): " + removed.joined(separator: ", ")]
     }
 
     /// The pins that resolution did not write back after the update dropped them.
@@ -378,6 +385,9 @@ public struct ResolvePackagesTool: Sendable {
 
         /// The requirement a file in reach declares, absent when the search found none
         let requirement: DeclaredRequirement?
+
+        /// The files the search had to read and could not
+        let unreadable: [UnreadableProject]
     }
 
     /// The failure text for pins resolution left out of the file.
@@ -445,10 +455,21 @@ public struct ResolvePackagesTool: Sendable {
     }
 
     /// The lines for one unpinned package: what admits the pin, and where the requirement sits.
+    ///
+    /// A file the search could not read is named whatever else the search found. A requirement
+    /// found in one project says nothing about the package a refused project declares, so the
+    /// reader needs both halves to know how complete the answer is.
     private static func detail(of pin: UnreplacedPin) -> [String] {
         let opening = "\(pin.identity): pinned \(pin.pinnedState)"
+        let refused = pin.unreadable.isEmpty
+            ? []
+            : ["The search could not read these files:"]
+                + pin.unreadable.map { "  \($0.file): \($0.reason)" }
 
         guard let requirement = pin.requirement else {
+            guard refused.isEmpty else {
+                return [opening + ", and nothing the search could read declares it."] + refused
+            }
             return [
                 opening + ", and no project or manifest in reach declares it. A cached copy older "
                     + "than the published tag is the likely reason, so clear the paths named below."
@@ -463,20 +484,20 @@ public struct ResolvePackagesTool: Sendable {
                         + "version, so resolution had nothing newer to write. The checkout is not "
                         + "the reason.",
                     remedy(for: requirement),
-                ]
+                ] + refused
             case .unknown:
                 return [
                     opening
                         + ", and the requirement '\(requirement.requirement)' states no version "
                         + "window to compare the pin against.",
                     remedy(for: requirement),
-                ]
+                ] + refused
             case .excludes:
                 return [
                     opening + ", and the requirement '\(requirement.requirement)' in "
                         + "\(requirement.file) excludes that version, so a cached copy is the "
                         + "reason. Clear the paths named below."
-                ]
+                ] + refused
         }
     }
 
