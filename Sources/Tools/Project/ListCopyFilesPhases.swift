@@ -80,7 +80,7 @@ public struct ListCopyFilesPhases: Sendable {
                 output += "  Files: \(fileCount)\n"
 
                 for buildFile in phase.files ?? [] {
-                    let label = CopyFilesPhaseEntry.label(for: buildFile)
+                    let label = BuildPhaseEntry.label(for: buildFile)
                     let attributes = BuildFileAttributes.describe(BuildFileAttributes.read(
                         buildFile))
                     let filters = PlatformFilters.describe(PlatformFilters.read(buildFile))

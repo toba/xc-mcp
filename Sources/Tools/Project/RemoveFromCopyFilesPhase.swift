@@ -85,10 +85,10 @@ public struct RemoveFromCopyFilesPhase: Sendable {
             let phaseLabel = phase.name ?? ("dstPath=" + (phase.dstPath ?? ""))
 
             let entries = phase.files ?? []
-            let matching = entries.filter { CopyFilesPhaseEntry.matches($0, name: fileName) }
+            let matching = entries.filter { BuildPhaseEntry.matches($0, name: fileName) }
 
             if matching.isEmpty {
-                let present = entries.map { "  - " + CopyFilesPhaseEntry.label(for: $0) }
+                let present = entries.map { "  - " + BuildPhaseEntry.label(for: $0) }
                 let listing = present.isEmpty
                     ? "The phase is empty."
                     : "Entries in the phase:\n\(present.joined(separator: "\n"))"
@@ -97,7 +97,7 @@ public struct RemoveFromCopyFilesPhase: Sendable {
                 )
             }
 
-            let removedLabels = matching.map { CopyFilesPhaseEntry.label(for: $0) }
+            let removedLabels = matching.map { BuildPhaseEntry.label(for: $0) }
             let doomed = Set(matching.map(\.uuid))
             phase.files?.removeAll { doomed.contains($0.uuid) }
             for buildFile in matching { xcodeproj.pbxproj.delete(object: buildFile) }

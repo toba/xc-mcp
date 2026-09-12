@@ -107,7 +107,7 @@ public struct SetCopyFilesAttributesTool: Sendable {
             let phaseLabel = CopyFilesPhaseLocator.label(for: phase)
             let entry: PBXBuildFile
 
-            switch CopyFilesPhaseEntry.resolve(named: fileName, in: phase, targetName: targetName) {
+            switch BuildPhaseEntry.resolve(named: fileName, in: phase, targetName: targetName) {
                 case let .found(match): entry = match
                 case let .explained(text): return .text(text)
             }

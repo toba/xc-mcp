@@ -87,7 +87,7 @@ public struct SetFrameworkMergeAttributeTool: Sendable {
 
             // Collect every match across all frameworks phases so we can refuse ambiguous edits.
             let matches = phases.flatMap { phase in
-                (phase.files ?? []).filter { CopyFilesPhaseEntry.matches($0, name: frameworkName) }
+                (phase.files ?? []).filter { BuildPhaseEntry.matches($0, name: frameworkName) }
             }
 
             if matches.isEmpty {

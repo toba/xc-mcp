@@ -82,6 +82,21 @@ struct PlatformFiltersToolTests {
     }
 
     @Test
+    func `Naming both a product and a dependency throws`() {
+        let tool = SetPlatformFiltersTool(pathUtility: PathUtility(basePath: "/tmp"))
+
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": Value.string("/path/to/project.xcodeproj"),
+                "target_name": Value.string("App"),
+                "platform_filters": Value.array([.string("macos")]),
+                "product_name": Value.string("MusupScan"),
+                "dependency_name": Value.string("Helper"),
+            ])
+        }
+    }
+
+    @Test
     func `Naming neither a file nor a dependency throws`() {
         let tool = SetPlatformFiltersTool(pathUtility: PathUtility(basePath: "/tmp"))
 
@@ -166,6 +181,118 @@ struct PlatformFiltersToolTests {
         let app = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
         let dependency = try #require(app.dependencies.first)
         #expect(dependency.platformFilters == ["macos"])
+    }
+
+    @Test
+    func `Set platform filters on a linked package product`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = try makeProject(at: tempDir)
+
+        let addTool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("MusupScan"),
+            "kind": Value.string("library"),
+        ])
+
+        let tool = SetPlatformFiltersTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("MusupScan"),
+            "platform_filters": Value.array([.string("macos")]),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("(none) -> [macos]"))
+
+        let updated = try XcodeProj(path: projectPath)
+        let app = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
+        let phase = try #require(
+            app.buildPhases.compactMap { $0 as? PBXFrameworksBuildPhase }.first,
+        )
+        let entry = try #require(phase.files?.first { $0.product?.productName == "MusupScan" })
+        #expect(entry.platformFilters == ["macos"])
+    }
+
+    @Test
+    func `An unlinked product name is explained`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = try makeProject(at: tempDir)
+
+        let addTool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("MusupScan"),
+            "kind": Value.string("library"),
+        ])
+
+        let tool = SetPlatformFiltersTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("MusupPlay"),
+            "platform_filters": Value.array([.string("macos")]),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Frameworks build phase"))
+        #expect(message.contains("MusupScan"))
+    }
+
+    @Test
+    func `add_package_product writes the filters on the new link`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = try makeProject(at: tempDir)
+
+        let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("MusupScan"),
+            "kind": Value.string("library"),
+            "platform_filters": Value.array([.string("macos")]),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("platformFilters [macos]"))
+
+        let updated = try XcodeProj(path: projectPath)
+        let app = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
+        let phase = try #require(
+            app.buildPhases.compactMap { $0 as? PBXFrameworksBuildPhase }.first,
+        )
+        let entry = try #require(phase.files?.first { $0.product?.productName == "MusupScan" })
+        #expect(entry.platformFilters == ["macos"])
+    }
+
+    @Test
+    func `add_package_product refuses filters on a plugin product`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = try makeProject(at: tempDir)
+
+        let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": Value.string(projectPath.string),
+                "target_name": Value.string("App"),
+                "product_name": Value.string("MyPlugin"),
+                "kind": Value.string("plugin"),
+                "platform_filters": Value.array([.string("macos")]),
+            ])
+        }
     }
 
     @Test

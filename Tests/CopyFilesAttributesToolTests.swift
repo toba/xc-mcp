@@ -273,7 +273,7 @@ struct CopyFilesAttributesToolTests {
         let tempDir = TemporaryDirectory.url
         let projectPath = try makeProject(at: tempDir)
 
-        let before = try entries(of: projectPath).map { CopyFilesPhaseEntry.label(for: $0) }
+        let before = try entries(of: projectPath).map { BuildPhaseEntry.label(for: $0) }
         let beforeUUIDs = try entries(of: projectPath).map(\.uuid)
 
         let tool = SetCopyFilesAttributesTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -285,7 +285,7 @@ struct CopyFilesAttributesToolTests {
         ])
 
         let after = try entries(of: projectPath)
-        #expect(after.map { CopyFilesPhaseEntry.label(for: $0) } == before)
+        #expect(after.map { BuildPhaseEntry.label(for: $0) } == before)
         #expect(after.map(\.uuid) == beforeUUIDs)
         #expect(BuildFileAttributes.read(after[0]) == ["RemoveHeadersOnCopy"])
     }

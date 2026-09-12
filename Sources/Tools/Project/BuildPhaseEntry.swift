@@ -6,7 +6,7 @@ import Foundation
 /// A caller names an entry by its file name, its path, or the product name of a Swift package
 /// product. The remove, attribute, platform-filter and merge tools resolve the same argument
 /// through here, so all four answer the same name with the same entry.
-enum CopyFilesPhaseEntry {
+enum BuildPhaseEntry {
     /// The outcome of naming one entry in a phase.
     enum Resolution {
         case found(PBXBuildFile)
@@ -33,10 +33,7 @@ enum CopyFilesPhaseEntry {
         return "<dangling \(buildFile.uuid)>"
     }
 
-    /// The one entry `name` answers to, or the text explaining why it answers to none or to several
-    ///
-    /// A caller returns the explanation to the client unchanged. Both set tools resolve through
-    /// here, so one name draws one answer whichever tool the client called.
+    /// The one entry `name` answers to in a Copy Files phase.
     ///
     /// - Parameters:
     ///   - name: The entry name the caller supplied.
@@ -47,7 +44,31 @@ enum CopyFilesPhaseEntry {
         in phase: PBXCopyFilesBuildPhase,
         targetName: String,
     ) -> Resolution {
-        let phaseLabel = CopyFilesPhaseLocator.label(for: phase)
+        resolve(
+            named: name,
+            in: phase,
+            phaseDescription: "Copy Files phase '\(CopyFilesPhaseLocator.label(for: phase))'",
+            targetName: targetName,
+        )
+    }
+
+    /// The one entry `name` answers to, or the text explaining why it answers to none or to several
+    ///
+    /// A caller returns the explanation to the client unchanged. Every set tool resolves through
+    /// here, so one name draws one answer whichever tool the client called.
+    ///
+    /// - Parameters:
+    ///   - name: The entry name the caller supplied.
+    ///   - phase: The phase to search.
+    ///   - phaseDescription: The phase as the explanation names it, such as
+    ///     `Frameworks build phase`.
+    ///   - targetName: The target holding the phase, named in the explanation.
+    static func resolve(
+        named name: String,
+        in phase: PBXBuildPhase,
+        phaseDescription: String,
+        targetName: String,
+    ) -> Resolution {
         let entries = phase.files ?? []
         let matching = entries.filter { matches($0, name: name) }
 
@@ -57,13 +78,13 @@ enum CopyFilesPhaseEntry {
                 ? "The phase is empty."
                 : "Entries in the phase:\n\(present.joined(separator: "\n"))"
             return .explained(
-                "'\(name)' is not in Copy Files phase '\(phaseLabel)' of target '\(targetName)'. \(listing)",
+                "'\(name)' is not in \(phaseDescription) of target '\(targetName)'. \(listing)",
             )
         }
 
         return matching.count > 1
             ? .explained(
-                "'\(name)' matches \(matching.count) entries in Copy Files phase '\(phaseLabel)' of target '\(targetName)'. Use a more specific name.",
+                "'\(name)' matches \(matching.count) entries in \(phaseDescription) of target '\(targetName)'. Use a more specific name.",
             )
             : .found(matching[0])
     }
