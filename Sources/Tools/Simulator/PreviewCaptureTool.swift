@@ -532,23 +532,8 @@ public struct PreviewCaptureTool: Sendable {
         // Collect local package directories from XCLocalSwiftPackageReference entries (Xcode 15+)
         let projectDirURL = URL(fileURLWithPath: projectDir)
         // the array keeps the search order; the set answers the duplicate test below
-        var packageDirs: [String] = []
-        var seenPackageDirs: Set<String> = []
-
-        if let project = xcodeproj.pbxproj.rootObject {
-            for localPkg in project.localPackages {
-                let rel = localPkg.relativePath
-                let resolved: String
-                resolved = rel.hasPrefix("/")
-                    ? URL(fileURLWithPath: rel).standardizedFileURL.path
-                    : projectDirURL.appendingPathComponent(rel).standardizedFileURL.path
-
-                if fm.fileExists(atPath: resolved) {
-                    packageDirs.append(resolved)
-                    seenPackageDirs.insert(resolved)
-                }
-            }
-        }
+        var packageDirs = LocalPackageManifests.directories(in: xcodeproj, projectDir: projectDir)
+        var seenPackageDirs = Set(packageDirs)
 
         // Also check file references with lastKnownFileType == "wrapper" (older-style local
         // packages)

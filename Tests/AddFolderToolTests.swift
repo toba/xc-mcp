@@ -127,6 +127,7 @@ struct AddFolderToolTests {
         // Parent group has BOTH a name and a path -- this is the shape that triggers the bug.
         let syncGroup = PBXGroup(sourceTree: .group, name: "Sync", path: "Sync")
         xcodeproj.pbxproj.add(object: syncGroup)
+
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(syncGroup)
         }
@@ -162,6 +163,7 @@ struct AddFolderToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let syncGroup = PBXGroup(sourceTree: .group, path: "Sync")
         xcodeproj.pbxproj.add(object: syncGroup)
+
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(syncGroup)
         }
@@ -198,6 +200,7 @@ struct AddFolderToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let virtualGroup = PBXGroup(sourceTree: .group, name: "Modules")
         xcodeproj.pbxproj.add(object: virtualGroup)
+
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(virtualGroup)
         }
@@ -220,6 +223,59 @@ struct AddFolderToolTests {
         })
         // Parent has no on-disk path, so folder path stays relative to project root.
         #expect(syncRoot.path == "Sync/Sources")
+    }
+
+    @Test
+    func `Stores a path relative to the project directory, not the working directory`() throws {
+        // The caller gives a path relative to the working directory. A root group resolves its path
+        // against the project directory. Here the project sits one level below the working
+        // directory, so the two spellings differ.
+        let tool = AddFolderTool(pathUtility: pathUtility)
+
+        let projectDir = Path(tempDir) + "Xcode"
+        let folderPath = projectDir + "App"
+        try FileManager.default.createDirectory(
+            atPath: folderPath.string, withIntermediateDirectories: true,
+        )
+
+        let projectPath = projectDir + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        _ = try tool.execute(arguments: [
+            "project_path": .string("Xcode/TestProject.xcodeproj"),
+            "folder_path": .string("Xcode/App"),
+        ])
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let syncRoot = try #require(reloaded.pbxproj.fileSystemSynchronizedRootGroups.first)
+        #expect(syncRoot.path == "App")
+    }
+
+    @Test
+    func `Stores a climbing path for a folder above the project directory`() throws {
+        let tool = AddFolderTool(pathUtility: pathUtility)
+
+        let projectDir = Path(tempDir) + "Xcode"
+        try FileManager.default.createDirectory(
+            atPath: projectDir.string, withIntermediateDirectories: true,
+        )
+
+        let folderPath = Path(tempDir) + "Shared"
+        try FileManager.default.createDirectory(
+            atPath: folderPath.string, withIntermediateDirectories: true,
+        )
+
+        let projectPath = projectDir + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProject(name: "TestProject", at: projectPath)
+
+        _ = try tool.execute(arguments: [
+            "project_path": .string("Xcode/TestProject.xcodeproj"),
+            "folder_path": .string("Shared"),
+        ])
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let syncRoot = try #require(reloaded.pbxproj.fileSystemSynchronizedRootGroups.first)
+        #expect(syncRoot.path == "../Shared")
     }
 
     @Test
@@ -371,6 +427,7 @@ struct AddFolderToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
         let domGroup = PBXGroup(children: [], sourceTree: .group, name: "DOM", path: "DOM")
         xcodeproj.pbxproj.add(object: domGroup)
+
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(domGroup)
         }

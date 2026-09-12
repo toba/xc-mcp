@@ -54,42 +54,38 @@ public struct RemoveFolderTool: Sendable {
                 let mainGroup = project.mainGroup
             else { throw MCPError.internalError("Main group not found in project") }
 
-            // Find and remove the synchronized folder
-            var folderRemoved = false
-            var removedPath: String?
+            // Find the synchronized folder. The utility matches a leaf path, a full path, or a
+            // trailing suffix of one, and it reports a leaf two folders share.
+            let match: SynchronizedFolderUtility.Match
 
-            func removeFromGroup(_ group: PBXGroup) -> Bool {
-                for (index, child) in group.children.enumerated() {
-                    if let syncGroup = child as? PBXFileSystemSynchronizedRootGroup {
-                        // Match by path
-                        if syncGroup.path == folderPath {
-                            // Remove any associated exception sets and build files
-                            removeAssociatedObjects(for: syncGroup, in: xcodeproj)
-
-                            group.children.remove(at: index)
-                            removedPath = syncGroup.path
-                            return true
-                        }
-                    } else if let childGroup = child as? PBXGroup {
-                        if removeFromGroup(childGroup) { return true }
-                    }
-                }
-                return false
+            switch SynchronizedFolderUtility.lookUpSyncGroup(
+                folderPath: folderPath, target: nil, in: mainGroup,
+            ) {
+                case .none:
+                    return CallTool.Result.text(
+                        "Synchronized folder not found in project: \(folderPath)")
+                case let .ambiguous(paths):
+                    throw MCPError.invalidParams(SynchronizedFolderUtility.ambiguityMessage(
+                        folderPath: folderPath, paths: paths))
+                case let .one(found): match = found
             }
 
-            folderRemoved = removeFromGroup(mainGroup)
-
-            if folderRemoved {
-                try PBXProjWriter.write(
-                    xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
-
-                return CallTool.Result.text(
-                    "Successfully removed synchronized folder '\(removedPath ?? folderPath)' from project"
-                )
-            } else {
-                return CallTool.Result.text(
-                    "Synchronized folder not found in project: \(folderPath)")
+            guard let parent = xcodeproj.pbxproj.groups.first(where: { group in
+                group.children.contains { $0 === match.group }
+            }) else {
+                throw MCPError.internalError(
+                    "Synchronized folder '\(match.fullPath)' has no parent group")
             }
+
+            // Remove any associated exception sets and build files
+            removeAssociatedObjects(for: match.group, in: xcodeproj)
+            parent.children.removeAll { $0 === match.group }
+
+            try PBXProjWriter.write(
+                xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
+
+            return CallTool.Result.text(
+                "Successfully removed synchronized folder '\(match.fullPath)' from project")
         } catch {
             throw try error.asMCPError()
         }
@@ -111,6 +107,19 @@ public struct RemoveFolderTool: Sendable {
             }
             xcodeproj.pbxproj.delete(object: buildFile)
         }
+
+        // Drop the target links. A target that keeps the id in fileSystemSynchronizedGroups holds a
+        // dangling reference once the group object goes, and the write gate refuses that file.
+        for target in xcodeproj.pbxproj.nativeTargets {
+            guard let groups = target.fileSystemSynchronizedGroups else { continue }
+            let remaining = groups.filter { $0 !== syncGroup }
+            guard remaining.count != groups.count else { continue }
+            target.fileSystemSynchronizedGroups = remaining.isEmpty ? nil : remaining
+        }
+
+        // Drop the exception sets the group owns, which nothing references once it goes
+        for exception in syncGroup.exceptions ?? [] { xcodeproj.pbxproj.delete(object: exception) }
+        syncGroup.exceptions = nil
 
         // Remove the synchronized group object itself
         xcodeproj.pbxproj.delete(object: syncGroup)

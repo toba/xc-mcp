@@ -61,7 +61,7 @@ public struct AddPackageProductTool: Sendable {
         )
     }
 
-    private enum ProductKind: String { case library, plugin }
+    private typealias ProductKind = PackageProductKind
 
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard let projectPath = arguments.getString("project_path"),
@@ -274,12 +274,11 @@ public struct AddPackageProductTool: Sendable {
         projectDir: String,
     ) -> ProductKind? {
         for candidate in candidatePackageDirs(in: xcodeproj, projectDir: projectDir) {
-            let pkgSwift = candidate.path + "/Package.swift"
-            guard let contents = try? String(contentsOfFile: pkgSwift, encoding: .utf8) else {
+            guard let contents = LocalPackageManifests.read(directory: candidate.path) else {
                 continue
             }
 
-            if let kind = parseProductKind(productName: productName, packageSwift: contents) {
+            if let kind = LocalPackageManifests.productKind(of: productName, in: contents) {
                 return kind
             }
         }
@@ -297,9 +296,8 @@ public struct AddPackageProductTool: Sendable {
         guard let project = xcodeproj.pbxproj.rootObject else { return nil }
 
         for candidate in candidatePackageDirs(in: xcodeproj, projectDir: projectDir) {
-            let pkgSwift = candidate.path + "/Package.swift"
-            guard let contents = try? String(contentsOfFile: pkgSwift, encoding: .utf8),
-                  parseProductKind(productName: productName, packageSwift: contents) != nil
+            guard let contents = LocalPackageManifests.read(directory: candidate.path),
+                  LocalPackageManifests.productKind(of: productName, in: contents) != nil
             else { continue }
 
             // Local package match: candidate originates from project.localPackages
@@ -332,21 +330,9 @@ public struct AddPackageProductTool: Sendable {
         projectDir: String,
     ) -> [PackageDirCandidate] {
         let fm = FileManager.default
-        let projectDirURL = URL(fileURLWithPath: projectDir)
-        var dirs: [PackageDirCandidate] = []
-
-        if let project = xcodeproj.pbxproj.rootObject {
-            for localPkg in project.localPackages {
-                let rel = localPkg.relativePath
-                let resolved: String = rel.hasPrefix("/")
-                    ? URL(fileURLWithPath: rel).standardizedFileURL.path
-                    : projectDirURL.appendingPathComponent(rel).standardizedFileURL.path
-
-                if fm.fileExists(atPath: resolved) {
-                    dirs.append(.init(path: resolved, origin: .local))
-                }
-            }
-        }
+        var dirs: [PackageDirCandidate] = LocalPackageManifests
+            .directories(in: xcodeproj, projectDir: projectDir)
+            .map { .init(path: $0, origin: .local) }
 
         // Conventional checkout locations adjacent to the project. Resolved Xcode SourcePackages
         // typically live under DerivedData (keyed by an unstable hash so we don't scan it), but
@@ -379,27 +365,5 @@ public struct AddPackageProductTool: Sendable {
         let lastSlash = trimmed.lastIndex(where: { $0 == "/" || $0 == ":" })
         let tail = lastSlash.map { String(trimmed[trimmed.index(after: $0)...]) } ?? trimmed
         return tail.hasSuffix(".git") ? String(tail.dropLast(4)) : tail
-    }
-
-    /// Parses a `Package.swift` source for a product declaration matching `productName`. Returns
-    /// `.plugin` for `.plugin(name: "X", ...)` and `.library` for `.library(...)` /
-    /// `.executable(...)`. Returns `nil` if no match.
-    private static func parseProductKind(
-        productName: String,
-        packageSwift: String
-    ) -> ProductKind? {
-        let escaped = NSRegularExpression.escapedPattern(for: productName)
-        let patterns: [(String, ProductKind)] = [
-            (#"\.plugin\s*\(\s*name:\s*"\#(escaped)""#, .plugin),
-            (#"\.library\s*\(\s*name:\s*"\#(escaped)""#, .library),
-            (#"\.executable\s*\(\s*name:\s*"\#(escaped)""#, .library),
-        ]
-
-        for (
-            pattern, kind
-        ) in patterns where packageSwift.range(of: pattern, options: .regularExpression) != nil {
-            return kind
-        }
-        return nil
     }
 }

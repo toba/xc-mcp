@@ -51,24 +51,31 @@ enum SynchronizedFolderUtility {
             || match.fullPath.hasSuffix("/\(folderPath)")
     }
 
-    /// Resolves a single synchronized root group for the given folder path, using the target (when
-    /// provided) to disambiguate folders that share a leaf name.
+    /// The outcome of a folder-path lookup
+    enum Lookup {
+        case none
+        case one(Match)
+        /// The full paths the argument matched, sorted
+        case ambiguous([String])
+    }
+
+    /// Resolves a folder path to at most one synchronized root group, using the target (when
+    /// provided) to disambiguate folders that share a leaf name
     ///
-    /// - When a target is supplied, matches are restricted to the target's
-    ///   `fileSystemSynchronizedGroups`.
-    /// - Throws `invalidParams` when nothing matches, or when the match is ambiguous and cannot be
-    ///   narrowed by target or by a fuller `folderPath`.
-    static func resolveSyncGroup(
+    /// A caller that treats "no match" as an ordinary reply calls this. A caller that treats it as
+    /// an error calls `resolveSyncGroup` instead.
+    ///
+    /// - Parameters:
+    ///   - folderPath: The leaf path, the full path, or a trailing suffix of the full path.
+    ///   - target: Restricts the matches to this target's `fileSystemSynchronizedGroups`.
+    static func lookUpSyncGroup(
         folderPath: String,
         target: PBXNativeTarget?,
         in mainGroup: PBXGroup,
-    ) throws(MCPError) -> PBXFileSystemSynchronizedRootGroup {
-        let all = collectSyncGroups(in: mainGroup)
-        var candidates = all.filter { matches($0, folderPath: folderPath) }
-
-        if candidates.isEmpty {
-            throw MCPError.invalidParams("Synchronized folder '\(folderPath)' not found in project")
-        }
+    ) -> Lookup {
+        var candidates = collectSyncGroups(in: mainGroup)
+            .filter { matches($0, folderPath: folderPath) }
+        if candidates.isEmpty { return .none }
 
         // Narrow by target membership when a target is provided. The target's
         // fileSystemSynchronizedGroups is the source of truth for which group a build exception
@@ -82,14 +89,38 @@ enum SynchronizedFolderUtility {
             }
         }
 
-        if candidates.count == 1 { return candidates[0].group }
+        return candidates.count == 1
+            ? .one(candidates[0])
+            : .ambiguous(candidates.map(\.fullPath).sorted())
+    }
 
-        let paths = candidates.map(\.fullPath).sorted()
-        throw MCPError.invalidParams(
-            "Synchronized folder '\(folderPath)' is ambiguous — it matches "
-                + "\(candidates.count) folders: \(paths.joined(separator: ", ")). "
-                + "Disambiguate by passing one of these as folder_path.",
-        )
+    /// The reply for a folder path that matches more than one folder
+    static func ambiguityMessage(folderPath: String, paths: [String]) -> String {
+        "Synchronized folder '\(folderPath)' is ambiguous — it matches "
+            + "\(paths.count) folders: \(paths.joined(separator: ", ")). "
+            + "Disambiguate by passing one of these as folder_path."
+    }
+
+    /// Resolves a single synchronized root group for the given folder path, using the target (when
+    /// provided) to disambiguate folders that share a leaf name.
+    ///
+    /// - When a target is supplied, matches are restricted to the target's
+    ///   `fileSystemSynchronizedGroups`.
+    /// - Throws `invalidParams` when nothing matches, or when the match is ambiguous and cannot be
+    ///   narrowed by target or by a fuller `folderPath`.
+    static func resolveSyncGroup(
+        folderPath: String,
+        target: PBXNativeTarget?,
+        in mainGroup: PBXGroup,
+    ) throws(MCPError) -> PBXFileSystemSynchronizedRootGroup {
+        switch lookUpSyncGroup(folderPath: folderPath, target: target, in: mainGroup) {
+            case .none:
+                throw MCPError.invalidParams(
+                    "Synchronized folder '\(folderPath)' not found in project")
+            case let .one(match): return match.group
+            case let .ambiguous(paths):
+                throw MCPError.invalidParams(ambiguityMessage(folderPath: folderPath, paths: paths))
+        }
     }
 
     /// Legacy leaf-only lookup retained for callers that don't disambiguate.

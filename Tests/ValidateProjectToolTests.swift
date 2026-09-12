@@ -574,6 +574,7 @@ struct ValidateProjectToolTests {
             sourceTree: .group, path: "OrphanedSources", name: "OrphanedSources",
         )
         xcodeproj.pbxproj.add(object: syncGroup)
+
         if let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup {
             mainGroup.children.append(syncGroup)
         }
@@ -749,5 +750,90 @@ struct ValidateProjectToolTests {
         #expect(content.contains("LegacyCoreName"))
         #expect(content.contains("2 distinct values"))
         #expect(content.contains("[warn]"))
+    }
+
+    /// Links `productName` to the `App` target through a product dependency that carries no package
+    /// reference, the shape Xcode writes for a local package product.
+    private func linkPackagelessProduct(_ productName: String, at projectPath: Path) throws {
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "App" })
+
+        let productDependency = XCSwiftPackageProductDependency(productName: productName)
+        xcodeproj.pbxproj.add(object: productDependency)
+
+        let buildFile = PBXBuildFile(product: productDependency)
+        xcodeproj.pbxproj.add(object: buildFile)
+
+        let frameworksPhase = PBXFrameworksBuildPhase(files: [buildFile])
+        xcodeproj.pbxproj.add(object: frameworksPhase)
+        target.buildPhases.append(frameworksPhase)
+
+        try xcodeproj.write(path: projectPath)
+    }
+
+    @Test
+    func `Accepts a product a local package reference vends`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        let packageDir = Path(tempDir.path) + "MusupKit"
+        try FileManager.default.createDirectory(
+            atPath: packageDir.string, withIntermediateDirectories: true,
+        )
+        try """
+        // swift-tools-version: 6.0
+        import PackageDescription
+
+        let package = Package(
+            name: "MusupKit",
+            products: [
+                .library(name: "MusupKit", targets: ["MusupKit"]),
+            ],
+            targets: [.target(name: "MusupKit")],
+        )
+        """.write(
+            to: URL(filePath: (packageDir + "Package.swift").string),
+            atomically: true, encoding: .utf8,
+        )
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+        try linkPackagelessProduct("MusupKit", at: projectPath)
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let project = try #require(xcodeproj.pbxproj.rootObject)
+        let localReference = XCLocalSwiftPackageReference(relativePath: "MusupKit")
+        xcodeproj.pbxproj.add(object: localReference)
+        project.localPackages.append(localReference)
+        try xcodeproj.write(path: projectPath)
+
+        let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(!content.contains("has no package reference"))
+    }
+
+    @Test
+    func `Reports a product no package reference reaches`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+        try linkPackagelessProduct("MissingKit", at: projectPath)
+
+        let tool = ValidateProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: ["project_path": .string(projectPath.string)])
+        guard case let .text(content, _, _) = result.content.first else {
+            Issue.record("Expected text content")
+            return
+        }
+        #expect(content.contains("Package product \"MissingKit\""))
+        #expect(content.contains("has no package reference"))
     }
 }

@@ -134,7 +134,10 @@ public struct ValidateProjectTool: Sendable {
             xcodeproj: xcodeproj, targets: targets, diagnostics: &projectDiagnostics,
         )
         checkPackageProductIntegrity(
-            xcodeproj: xcodeproj, targets: targets, diagnostics: &projectDiagnostics,
+            xcodeproj: xcodeproj,
+            projectDir: URL(filePath: resolvedPath).deletingLastPathComponent().path,
+            targets: targets,
+            diagnostics: &projectDiagnostics,
         )
         checkSelfProjectReferences(
             xcodeproj: xcodeproj, projectPath: resolvedPath, diagnostics: &projectDiagnostics,
@@ -157,9 +160,11 @@ public struct ValidateProjectTool: Sendable {
             output.append("No issues found in \(resolvedPath).")
         } else {
             var parts = [String]()
+
             if totalErrors > 0 {
                 parts.append("\(totalErrors) error\(totalErrors == 1 ? "" : "s")")
             }
+
             if totalWarnings > 0 {
                 parts.append("\(totalWarnings) warning\(totalWarnings == 1 ? "" : "s")")
             }
@@ -416,10 +421,17 @@ public struct ValidateProjectTool: Sendable {
     // MARK: - Package Product Integrity
 
     private func checkPackageProductIntegrity(
-        xcodeproj _: XcodeProj,
+        xcodeproj: XcodeProj,
+        projectDir: String,
         targets: [PBXNativeTarget],
         diagnostics: inout [Diagnostic],
     ) {
+        // Read each local manifest once. The loop below asks about several product names, and the
+        // same manifest answers every one of them.
+        let manifests = LocalPackageManifests.manifests(in: LocalPackageManifests.directories(
+            in: xcodeproj, projectDir: projectDir))
+        var vendedByLocalPackage = [String: Bool]()
+
         // Collect all package product references from frameworks phases
         for target in targets {
             let frameworksPhase = target.buildPhases
@@ -430,14 +442,20 @@ public struct ValidateProjectTool: Sendable {
                 // Build files that reference SPM products use productRef
                 if let productRef = buildFile.product {
                     let productName = productRef.productName
-                    // Check if the package reference still exists
-                    if productRef.package == nil {
-                        diagnostics.append(Diagnostic(
-                            .error,
-                            "Package product \"\(productName)\" in target \"\(target.name)\" has no package reference (missing or broken link)",
-                        ),
-                        )
-                    }
+                    guard productRef.package == nil else { continue }
+
+                    // Xcode omits the `package` key on a product a local package reference vends,
+                    // so a missing key is an error only when no local package declares the product.
+                    let vended = vendedByLocalPackage[productName]
+                        ?? LocalPackageManifests.declaresProduct(productName, inAnyOf: manifests)
+                    vendedByLocalPackage[productName] = vended
+                    if vended { continue }
+
+                    diagnostics.append(Diagnostic(
+                        .error,
+                        "Package product \"\(productName)\" in target \"\(target.name)\" has no package reference (missing or broken link)",
+                    ),
+                    )
                 }
             }
         }
@@ -534,6 +552,7 @@ public struct ValidateProjectTool: Sendable {
                 switch remote {
                     case let .object(obj):
                         key = obj.uuid
+
                         if nameByKey[key] == nil {
                             nameByKey[key] = (obj as? PBXTarget)?.name ?? dep.name
                         }

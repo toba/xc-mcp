@@ -103,10 +103,8 @@ public struct AddFolderTool: Sendable {
             let parentRelativePath = parentGroupPathFromProjectRoot(
                 of: targetGroup, pbxproj: xcodeproj.pbxproj,
             )
-            let folderRelativeToProject: String = pathUtility.makeRelativePath(
-                from: resolvedFolderPath)
-                ?? makeRelative(absolute: resolvedFolderPath, base: projectRoot)
-                ?? resolvedFolderPath
+            let folderRelativeToProject = Self.relativePath(
+                from: projectRoot, to: resolvedFolderPath)
 
             let relativePath: String
 
@@ -202,14 +200,24 @@ public struct AddFolderTool: Sendable {
         return components.joined(separator: "/")
     }
 
-    /// Fallback when `PathUtility.makeRelativePath` returns nil (e.g. when the project lives
-    /// outside the configured base path). Computes a simple relative path by prefix-matching.
-    private func makeRelative(absolute: String, base: String) -> String? {
-        let normalizedBase = base.hasSuffix("/") ? String(base.dropLast()) : base
-        return absolute == normalizedBase
-            ? ""
-            : absolute.hasPrefix(normalizedBase + "/")
-                ? String(absolute.dropFirst(normalizedBase.count + 1))
-                : nil
+    /// Expresses `absolute` relative to `base`, climbing with `..` components when the path leaves
+    /// the base directory
+    ///
+    /// A synchronized root group resolves its `path` against the project directory, never against
+    /// the working directory the caller passed the folder from. The two differ whenever the
+    /// `.xcodeproj` sits below the working directory, so the caller's spelling cannot be stored as
+    /// given.
+    private static func relativePath(from base: String, to absolute: String) -> String {
+        let baseComponents = URL(filePath: base).standardized.pathComponents
+        let absoluteComponents = URL(filePath: absolute).standardized.pathComponents
+        var common = 0
+
+        while common < min(baseComponents.count, absoluteComponents.count),
+              baseComponents[common] == absoluteComponents[common]
+        { common += 1 }
+
+        let components = Array(repeating: "..", count: baseComponents.count - common)
+            + absoluteComponents[common...]
+        return components.isEmpty ? "." : components.joined(separator: "/")
     }
 }
