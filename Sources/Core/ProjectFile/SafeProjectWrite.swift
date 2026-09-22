@@ -41,7 +41,11 @@ public enum SafeProjectWriteError: Error, CustomStringConvertible, LocalizedErro
     }
 }
 
-/// Durable, atomic, serialized writer for Xcode project files (`project.pbxproj`).
+/// Durable, atomic, serialized writer for Xcode project files.
+///
+/// Both on-disk formats go through here: the property list in `project.pbxproj` and the JSON5 file
+/// in `project.xcproj`. The destination file name selects the format, so a caller passes the path
+/// of the file the bundle really holds and needs no flag of its own.
 ///
 /// Every mutation funnels through here so a crash, a kill, an invalid serialization, or a
 /// concurrent writer can never corrupt or silently clobber the shared project file. The guarantees:
@@ -49,9 +53,10 @@ public enum SafeProjectWriteError: Error, CustomStringConvertible, LocalizedErro
 /// 1. **Atomic.** The new bytes are written to a temp file in the same directory, `fsync`'d, then
 ///    `rename(2)`'d over the original. A crash at any point leaves the original byte-for-byte
 ///    intact (the original is never opened for writing).
-/// 2. **Validated.** The candidate is checked with `plutil -lint` *before* it replaces the
-///    original. An invalid project is rejected and the original is left untouched — there is
-///    nothing to roll back because the original is only swapped in after validation passes.
+/// 2. **Validated.** The candidate is parsed *before* it replaces the original, as a property list
+///    or as JSON5 depending on the destination. An invalid project is rejected and the original is
+///    left untouched — there is nothing to roll back because the original is only swapped in after
+///    validation passes.
 /// 3. **Serialized.** An advisory `flock` on a per-project lock file makes the read-compare-rename
 ///    window mutually exclusive, so concurrent tool calls queue instead of racing.
 /// 4. **Concurrency-guarded.** When the caller passes the bytes it read, this re-reads the file
@@ -71,8 +76,7 @@ public enum SafeProjectWrite {
     ///     refused with ``SafeProjectWriteError/concurrentModification(path:)``. Pass the bytes
     ///     read at load time to guard against clobbering a concurrent edit. Pass `nil` to skip the
     ///     guard (e.g. when creating a new file).
-    ///   - validate: Whether to run `plutil -lint` on the candidate before promoting it. Defaults
-    ///     to `true`.
+    ///   - validate: Whether to parse the candidate before promoting it. Defaults to `true`.
     public static func write(
         _ data: Data,
         to destination: String,
@@ -105,7 +109,7 @@ public enum SafeProjectWrite {
         var promoted = false
         defer { if !promoted { unlink(tmpPath) } }
 
-        if validate { try lint(tmpPath, finalPath: destination) }
+        if validate { try validateSyntax(tmpPath, finalPath: destination) }
 
         // Referential-integrity gate: refuse a project write that *introduces* a dangling object
         // reference (a UUID pointing at an object that no longer exists). `plutil -lint` passes
@@ -235,6 +239,37 @@ public enum SafeProjectWrite {
     }
 
     // MARK: - Validation
+
+    /// Parse the candidate file in the syntax its destination name implies.
+    ///
+    /// A `project.xcproj` is JSON5. It carries comments and a trailing comma after the last entry
+    /// of every object, and `plutil` rejects both, so that file takes the JSON5 route instead. A
+    /// destination with any other name keeps the property list route, because that is what every
+    /// caller wrote before the JSON format existed.
+    private static func validateSyntax(
+        _ candidatePath: String,
+        finalPath: String,
+    ) throws(SafeProjectWriteError) {
+        switch ProjectFileFormat.format(ofFileAt: finalPath) {
+            case .json: try lintJSON5(candidatePath, finalPath: finalPath)
+            case .propertyList, nil: try lint(candidatePath, finalPath: finalPath)
+        }
+    }
+
+    private static func lintJSON5(
+        _ candidatePath: String,
+        finalPath: String,
+    ) throws(SafeProjectWriteError) {
+        guard let data = FileManager.default.contents(atPath: candidatePath) else {
+            throw .ioFailed(path: finalPath, detail: "could not read the candidate file back")
+        }
+
+        do {
+            _ = try JSONSerialization.jsonObject(with: data, options: [.json5Allowed])
+        } catch {
+            throw .validationFailed(path: finalPath, detail: error.descriptiveMessage)
+        }
+    }
 
     private static func lint(
         _ candidatePath: String,

@@ -176,7 +176,7 @@ public struct PinSyncMember: Sendable {
         } catch let error as MCPError {
             throw error
         } catch {
-            throw .invalidParams("Cannot read \(projectPath): \(error)")
+            throw .invalidParams("Cannot read \(projectPath): \(error.descriptiveMessage)")
         }
     }
 }

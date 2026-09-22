@@ -1402,4 +1402,146 @@ struct BuildOutputParserTests {
         #expect(crlfResult.warnings.map(\.message) == lfResult.warnings.map(\.message))
         #expect(crlfResult.failedTests.map(\.test) == lfResult.failedTests.map(\.test))
     }
+
+    // MARK: - Instance Reuse
+
+    @Test func `One parser reports the second log in full`() {
+        let parser = BuildOutputParser()
+        let input = """
+            main.swift:15:5: error: use of undeclared identifier 'unknown'
+            Helper.swift:3:1: warning: unused variable 'temp'
+            ** BUILD FAILED **
+            """
+
+        let first = parser.parse(input: input)
+        // The deduplication sets survived the reset before, so the second run reported neither the
+        // error nor the warning it had already seen.
+        let second = parser.parse(input: input)
+
+        #expect(second.summary.errors == first.summary.errors)
+        #expect(second.summary.warnings == first.summary.warnings)
+        #expect(second.errors.map(\.message) == first.errors.map(\.message))
+        #expect(second.warnings.map(\.message) == first.warnings.map(\.message))
+    }
+
+    // MARK: - Source Context Echo
+
+    @Test func `Diagnostic text inside an echoed source line is not an error`() {
+        let parser = BuildOutputParser()
+        let input = """
+            /Sources/Log.swift:12:20: error: cannot find 'foo' in scope
+                let banner = ": error: not a real one"
+                             ^
+            ** BUILD FAILED **
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.summary.errors == 1)
+        #expect(result.errors[0].message == "cannot find 'foo' in scope")
+    }
+
+    @Test func `A successful build stays green when the source echoes a diagnostic`() {
+        let parser = BuildOutputParser()
+        let input = """
+            /Sources/Log.swift:12:20: warning: unused variable 'banner'
+                let banner = ": error: not a real one"
+                    ^~~~~~
+            ** BUILD SUCCEEDED **
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "success")
+        #expect(result.summary.errors == 0)
+        #expect(result.summary.warnings == 1)
+    }
+
+    @Test func `An indented tool error is still reported`() {
+        let parser = BuildOutputParser()
+        let input = """
+            PhaseScriptExecution Run\\ Script
+                swiftgen: error: template not found
+                Command PhaseScriptExecution failed with a nonzero exit code
+            ** BUILD FAILED **
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.summary.errors == 2)
+        #expect(result.errors.contains { $0.message == "template not found" })
+    }
+
+    @Test func `Two diagnostic headers in a row are both reported`() {
+        let parser = BuildOutputParser()
+        let input = """
+            CompileSwift normal arm64
+                /project/Sources/First.swift:5:10: error: cannot find 'a' in scope
+                /project/Sources/Second.swift:6:11: error: cannot find 'b' in scope
+            ** BUILD FAILED **
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.summary.errors == 2)
+    }
+
+    // MARK: - Indented Diagnostic Paths
+
+    @Test func `A path recovered from an indented diagnostic carries no indentation`() {
+        let parser = BuildOutputParser()
+        let input = """
+            CompileSwift normal arm64
+                /project/Sources/ContentView.swift:5:10: error: cannot find 'foo' in scope
+            ** BUILD FAILED **
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.errors.count == 1)
+        #expect(result.errors[0].file == "/project/Sources/ContentView.swift")
+        #expect(result.errors[0].line == 5)
+        #expect(result.errors[0].column == 10)
+    }
+
+    @Test func `An indented warning path carries no indentation`() {
+        let parser = BuildOutputParser()
+        let input = """
+            CompileSwift normal arm64
+                /project/Sources/ContentView.swift:7:3: warning: unused variable 'x'
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.warnings.count == 1)
+        #expect(result.warnings[0].file == "/project/Sources/ContentView.swift")
+    }
+
+    // MARK: - Non-finite Durations
+
+    @Test func `A test that reports an infinite duration is recorded without one`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Test Case '-[LoginTests testTimeout]' failed (inf seconds).
+            ** TEST FAILED **
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].duration == nil)
+    }
+
+    @Test func `A finite test duration is still recorded`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Test Case '-[LoginTests testInvalid]' failed (0.045 seconds).
+            ** TEST FAILED **
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.failedTests.count == 1)
+        #expect(result.failedTests[0].duration == 0.045)
+    }
 }

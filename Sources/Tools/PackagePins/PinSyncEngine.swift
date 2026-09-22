@@ -306,7 +306,7 @@ public struct PinSyncEngine: Sendable {
                 entry.published = true
                 planned[identity] = entry
             } catch {
-                return "\(entry.member.name): \(error.localizedDescription)"
+                return "\(entry.member.name): \(error.descriptiveMessage)"
             }
         }
         return nil

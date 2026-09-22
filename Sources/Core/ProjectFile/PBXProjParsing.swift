@@ -1,5 +1,41 @@
 import Foundation
 
+/// The on-disk file that holds an Xcode project's objects inside a `.xcodeproj` bundle.
+///
+/// Xcode 27.2 added a JSON5 file beside the historical property list. A bundle holds one of the
+/// two, never both. The declaration order is the preference order: ``XcodeProj`` reads
+/// `project.pbxproj` first, so ``PBXProjParsing/projectFile(forProject:)`` agrees with it by
+/// walking `allCases` in the same order.
+public enum ProjectFileFormat: String, Sendable, CaseIterable {
+    /// The OpenStep property list, stored in `project.pbxproj`.
+    case propertyList
+
+    /// The JSON5 file introduced with Xcode 27, stored in `project.xcproj`.
+    case json
+
+    /// The name of the file that holds a project in this format.
+    public var fileName: String {
+        switch self {
+            case .propertyList: "project.pbxproj"
+            case .json: "project.xcproj"
+        }
+    }
+
+    /// The format a file of this name holds, or `nil` when the name is neither project file.
+    ///
+    /// - Parameter name: A bare file name, without a directory.
+    public static func format(ofFileNamed name: String) -> Self? {
+        allCases.first { $0.fileName == name }
+    }
+
+    /// The format the file at `path` holds, read from the last component of the path.
+    ///
+    /// - Parameter path: A path to a file, absolute or relative.
+    public static func format(ofFileAt path: String) -> Self? {
+        format(ofFileNamed: (path as NSString).lastPathComponent)
+    }
+}
+
 /// Shared primitives for the text-level `project.pbxproj` parsers in this directory
 /// (``PBXProjTextEditor``, ``PBXTargetMap``, ``PBXProjReferenceAudit``).
 ///
@@ -8,8 +44,36 @@ import Foundation
 /// identifier.
 public enum PBXProjParsing {
     /// The absolute path of the `project.pbxproj` inside a `.xcodeproj` bundle.
+    ///
+    /// The path is composed, never checked. A project stored in the JSON format has no file there.
+    /// Call ``projectFile(forProject:)`` to find the file the bundle really holds.
     public static func pbxprojPath(forProject projectPath: String) -> String {
         "\(projectPath)/project.pbxproj"
+    }
+
+    /// The project file inside a `.xcodeproj` bundle, with the format it is stored in.
+    ///
+    /// - Parameter projectPath: The absolute path of the `.xcodeproj` bundle.
+    /// - Returns: The absolute path of the project file and its format, or `nil` when the bundle
+    ///   holds neither file.
+    public static func projectFile(
+        forProject projectPath: String,
+    ) -> (path: String, format: ProjectFileFormat)? {
+        let manager = FileManager.default
+
+        for format in ProjectFileFormat.allCases {
+            let path = "\(projectPath)/\(format.fileName)"
+            if manager.fileExists(atPath: path) { return (path, format) }
+        }
+        return nil
+    }
+
+    /// The format the project at `projectPath` is stored in.
+    ///
+    /// - Parameter projectPath: The absolute path of the `.xcodeproj` bundle.
+    /// - Returns: The format, or `nil` when the bundle holds no project file.
+    public static func format(forProject projectPath: String) -> ProjectFileFormat? {
+        projectFile(forProject: projectPath)?.format
     }
 
     /// Decode `project.pbxproj` as UTF-8 text, or `nil` if the file is missing or not valid UTF-8.

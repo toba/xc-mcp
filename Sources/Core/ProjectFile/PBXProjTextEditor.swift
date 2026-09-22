@@ -1,3 +1,4 @@
+import MCP
 import Foundation
 
 /// Surgical text-based editor for pbxproj files.
@@ -6,17 +7,26 @@ import Foundation
 /// fields, reformats arrays). These helpers use XcodeProj for reading/validation only, then make
 /// targeted text edits to the pbxproj file.
 ///
+/// These helpers read and write the property list in `project.pbxproj` only. A project stored in
+/// the JSON format of Xcode 27 is refused with
+/// ``PBXProjTextEditor/EditError/unsupportedProjectFormat(project:format:)``, because the text
+/// edits below assume property list syntax and would corrupt that file.
+///
 /// Two entry points share one implementation:
 /// - ``PBXProjEditor`` holds the file as a mutable `[String]` of lines and applies edits in place —
 ///   use it when a tool chains several edits, so the file is split and re-joined exactly once.
 /// - The `static` `String -> String` methods on this enum are thin wrappers over a single-edit
 ///   ``PBXProjEditor``, kept for callers that apply one edit.
 public enum PBXProjTextEditor {
-    public enum EditError: Error, CustomStringConvertible {
+    public enum EditError: Error, CustomStringConvertible, MCPErrorConvertible {
         case blockNotFound(uuid: String)
         case arrayFieldNotFound(field: String, inBlock: String)
         case sectionNotFound(String)
         case fileNotFound(String)
+        /// The project is stored in a format this text editor cannot read or write.
+        case unsupportedProjectFormat(project: String, format: ProjectFileFormat)
+        /// The durable write of the edited text failed.
+        case writeFailed(SafeProjectWriteError)
 
         public var description: String {
             switch self {
@@ -25,14 +35,55 @@ public enum PBXProjTextEditor {
                     "Array field '\(field)' not found in block '\(block)'"
                 case let .sectionNotFound(section): "Section '\(section)' not found in pbxproj"
                 case let .fileNotFound(path): "File not found: \(path)"
+                case let .unsupportedProjectFormat(project, format):
+                    PBXProjTextEditor.unsupportedFormatMessage(project: project, format: format)
+                case let .writeFailed(error): error.description
             }
         }
+
+        /// Reports the wrapped write failure under its own mapping, so a concurrent edit still
+        /// reaches the caller as an invalid-parameter error rather than an internal one.
+        public func toMCPError() -> MCPError {
+            switch self {
+                case let .writeFailed(error): error.toMCPError()
+                case .unsupportedProjectFormat: .invalidParams(description)
+                case .blockNotFound, .arrayFieldNotFound, .sectionNotFound, .fileNotFound:
+                    .internalError(description)
+            }
+        }
+    }
+
+    /// The refusal text shared by every entry point that edits the project as plain text.
+    static func unsupportedFormatMessage(
+        project: String,
+        format: ProjectFileFormat,
+    ) -> String {
+        "The project at \(project) stores its objects in \(format.fileName). "
+            + "This editor rewrites the property list in project.pbxproj as text, "
+            + "so it cannot edit that format without corrupting the file. "
+            + "Use a tool that goes through XcodeProj instead."
+    }
+
+    /// The property list file of `projectPath`, or a refusal when the project is stored as JSON.
+    ///
+    /// Every text entry point starts here so a JSON project fails with a named error rather than
+    /// with a missing file, or, worse, with a property list written over the JSON.
+    private static func propertyListPath(
+        forProject projectPath: String,
+    ) throws(EditError) -> String {
+        let format = PBXProjParsing.format(forProject: projectPath)
+        guard format != .json else {
+            throw .unsupportedProjectFormat(project: projectPath, format: .json)
+        }
+        // A bundle holding neither file keeps the composed path, so the caller reads the existing
+        // `fileNotFound` message naming the file it expected.
+        return PBXProjParsing.pbxprojPath(forProject: projectPath)
     }
 
     // MARK: - File I/O
 
     public static func read(projectPath: String) throws(EditError) -> String {
-        let path = PBXProjParsing.pbxprojPath(forProject: projectPath)
+        let path = try propertyListPath(forProject: projectPath)
         guard let data = FileManager.default.contents(atPath: path),
             let content = String(data: data, encoding: .utf8)
         else {
@@ -44,7 +95,7 @@ public enum PBXProjTextEditor {
     /// Read the raw bytes of `project.pbxproj`, for use as the ``write`` concurrency guard
     /// preimage.
     public static func readData(projectPath: String) throws(EditError) -> Data {
-        let path = PBXProjParsing.pbxprojPath(forProject: projectPath)
+        let path = try propertyListPath(forProject: projectPath)
         guard let data = FileManager.default.contents(atPath: path) else {
             throw .fileNotFound(path)
         }
@@ -55,18 +106,26 @@ public enum PBXProjTextEditor {
     ///
     /// - Parameter expectedPreimage: When provided (the bytes read at load via ``readData``), the
     ///   write is refused if the file changed in the meantime, preserving the concurrent edit.
+    /// - Throws: ``EditError/unsupportedProjectFormat(project:format:)`` when the project is stored
+    ///   as JSON, matching what ``read(projectPath:)`` reports for the same project.
+    ///   ``EditError/writeFailed(_:)`` carries any failure of the write itself.
     public static func write(
         _ content: String,
         projectPath: String,
         expectedPreimage: Data? = nil,
-    ) throws(SafeProjectWriteError) {
-        let path = PBXProjParsing.pbxprojPath(forProject: projectPath)
-        try SafeProjectWrite.write(
-            Data(content.utf8),
-            to: path,
-            lockIdentifier: projectPath,
-            expectedPreimage: expectedPreimage,
-        )
+    ) throws(EditError) {
+        let path = try propertyListPath(forProject: projectPath)
+
+        do {
+            try SafeProjectWrite.write(
+                Data(content.utf8),
+                to: path,
+                lockIdentifier: projectPath,
+                expectedPreimage: expectedPreimage,
+            )
+        } catch {
+            throw .writeFailed(error)
+        }
     }
 
     // MARK: - Single-edit convenience wrappers
@@ -250,6 +309,7 @@ public struct PBXProjEditor {
         block.append("\t\t\(uuid) /* \(comment) */ = {")
         block.append("\t\t\tisa = PBXFileSystemSynchronizedBuildFileExceptionSet;")
         block.append("\t\t\tmembershipExceptions = (")
+
         for file in membershipExceptions {
             block.append("\t\t\t\t\(PBXProjTextEditor.quotePBX(file)),")
         }
@@ -304,6 +364,7 @@ public struct PBXProjEditor {
         block.append("\t\t\tisa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;")
         block.append("\t\t\tbuildPhase = \(phaseUUID) /* \(phaseComment) */;")
         block.append("\t\t\tmembershipExceptions = (")
+
         for file in membershipExceptions {
             block.append("\t\t\t\t\(PBXProjTextEditor.quotePBX(file)),")
         }
@@ -380,6 +441,7 @@ public struct PBXProjEditor {
 
         let newEnd = arrayEnd - removedCount
         var remaining = 0
+
         for i in (arrayStart + 1)..<newEnd where Self.extractPlainEntry(lines[i]) != nil {
             remaining += 1
         }
@@ -488,9 +550,7 @@ public struct PBXProjEditor {
         // Find buildSettings = { … }; within the block
         guard let settingsStart = (bStart...bEnd).first(where: {
             lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix("buildSettings = {")
-        }) else {
-            throw .arrayFieldNotFound(field: "buildSettings", inBlock: configUUID)
-        }
+        }) else { throw .arrayFieldNotFound(field: "buildSettings", inBlock: configUUID) }
 
         // Find the closing }; for buildSettings by tracking brace depth
         var depth = 0
@@ -558,9 +618,7 @@ public struct PBXProjEditor {
         }) else { throw .arrayFieldNotFound(field: field, inBlock: blockUUID) }
         guard let aEnd = ((aStart + 1)...bEnd).first(where: {
             lines[$0].trimmingCharacters(in: .whitespaces) == ");"
-        }) else {
-            throw .arrayFieldNotFound(field: field, inBlock: blockUUID)
-        }
+        }) else { throw .arrayFieldNotFound(field: field, inBlock: blockUUID) }
         return (aStart, aEnd)
     }
 
@@ -576,9 +634,7 @@ public struct PBXProjEditor {
         let (bStart, bEnd) = try findBlock(uuid: blockUUID)
         guard let isaIdx = (bStart...bEnd).first(where: {
             lines[$0].trimmingCharacters(in: .whitespaces).hasPrefix("isa = ")
-        }) else {
-            throw .blockNotFound(uuid: blockUUID)
-        }
+        }) else { throw .blockNotFound(uuid: blockUUID) }
         let fieldIndent = Self.leadingIndent(of: lines[isaIdx])
         let entryIndent = fieldIndent + "\t"
 
@@ -616,6 +672,7 @@ public struct PBXProjEditor {
         var entry = trimmed.hasSuffix(",")
             ? String(trimmed.dropLast())
             : trimmed
+
         if entry.hasPrefix("\""), entry.hasSuffix("\"") {
             entry = String(entry.dropFirst().dropLast())
         }

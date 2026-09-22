@@ -4,14 +4,26 @@ import XcodeProj
 import Foundation
 
 public enum PBXProjWriter {
-    /// Read the raw bytes of the project's `project.pbxproj`, for use as the ``write`` concurrency
-    /// guard preimage. Returns `nil` if the file does not yet exist.
+    /// Read the raw bytes of the project's object file, for use as the ``write`` concurrency guard
+    /// preimage. Returns `nil` if the bundle holds no project file yet.
+    ///
+    /// The bundle decides which file that is. A project written by Xcode 27 stores its objects as
+    /// JSON in `project.xcproj`, and reading the property list path there would hand back `nil` and
+    /// drop the guard.
     public static func preimage(of xcodeprojPath: Path) -> Data? {
-        FileManager.default.contents(atPath: XcodeProj.pbxprojPath(xcodeprojPath).string)
+        guard let file = PBXProjParsing.projectFile(forProject: xcodeprojPath.string) else {
+            return nil
+        }
+        return FileManager.default.contents(atPath: file.path)
     }
 
-    /// Write a pbxproj file durably via ``SafeProjectWrite`` (atomic + locked + validated +
+    /// Write a project file durably via ``SafeProjectWrite`` (atomic + locked + validated +
     /// rolled-back-on-failure).
+    ///
+    /// The project is written back in the format it was read from, so a JSON project stays JSON
+    /// and a property list project stays a property list. Writing the other file would leave the
+    /// bundle holding both, and `XcodeProj` then prefers `project.pbxproj` and silently ignores
+    /// every later edit to the JSON.
     ///
     /// Includes a workaround for an XcodeProj bug where `PBXProjEncoder.sortProjectReferences`
     /// force-unwraps `PBXFileElement.name`, crashing when a project reference's file element only
@@ -36,20 +48,42 @@ public enum PBXProjWriter {
             }
         }
 
+        let destination = destinationPath(for: xcodeproj, in: path)
+        let data = try serialize(xcodeproj, destination: destination)
+
+        try SafeProjectWrite.write(
+            data,
+            to: destination,
+            lockIdentifier: path.string,
+            expectedPreimage: expectedPreimage,
+        )
+    }
+
+    /// The file the project is written to, chosen by the format it was read from.
+    private static func destinationPath(for xcodeproj: XcodeProj, in path: Path) -> String {
+        switch xcodeproj.projectFormat {
+            case .xcproj: XcodeProj.xcprojPath(path).string
+            case .pbxproj: XcodeProj.pbxprojPath(path).string
+        }
+    }
+
+    /// Serialize the object graph in the format `destination` names.
+    private static func serialize(
+        _ xcodeproj: XcodeProj,
+        destination: String,
+    ) throws -> Data {
+        guard xcodeproj.projectFormat == .pbxproj else {
+            return try xcodeproj.pbxproj.xcprojData()
+        }
+
         guard let data = try xcodeproj.pbxproj.dataRepresentation(outputSettings:
                 PBXOutputSettings())
         else {
             throw SafeProjectWriteError.ioFailed(
-                path: XcodeProj.pbxprojPath(path).string,
+                path: destination,
                 detail: "XcodeProj produced no pbxproj data",
             )
         }
-
-        try SafeProjectWrite.write(
-            data,
-            to: XcodeProj.pbxprojPath(path).string,
-            lockIdentifier: path.string,
-            expectedPreimage: expectedPreimage,
-        )
+        return data
     }
 }

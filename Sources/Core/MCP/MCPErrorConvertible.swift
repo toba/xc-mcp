@@ -21,12 +21,16 @@ extension Swift.Error {
     ///   disconnect symptom in `0xp-xz6` / `ive-jzc`.
     /// - If the error is already an MCPError, returns it unchanged.
     /// - If the error conforms to MCPErrorConvertible, uses `toMCPError()`.
-    /// - Otherwise, wraps the error message in `MCPError.internalError`, with a backtrace appended.
+    /// - Otherwise, wraps ``descriptiveMessage`` in `MCPError.internalError`, with a backtrace
+    ///   appended. That property, rather than `localizedDescription`, is what keeps an upstream
+    ///   library error readable: `XCodeProjError` states the resolved project path through
+    ///   `CustomStringConvertible`, and the `NSError` bridge would replace it with
+    ///   `(XcodeProj.XCodeProjError error 0.)`.
     public func asMCPError() throws -> MCPError {
         if self is CancellationError { throw self }
         if let mcpError = self as? MCPError { return mcpError }
         if let convertible = self as? MCPErrorConvertible { return convertible.toMCPError() }
-        var message = String(describing: self)
+        var message = descriptiveMessage
         if let backtrace = Self.captureBacktrace() { message += "\n\nBacktrace:\n\(backtrace)" }
         return MCPError.internalError(message)
     }

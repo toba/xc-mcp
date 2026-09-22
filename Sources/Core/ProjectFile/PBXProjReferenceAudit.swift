@@ -11,7 +11,14 @@ import Foundation
 /// graph references something that no longer exists.
 public enum PBXProjReferenceAudit {
     /// Whether `path` is an Xcode project object graph this audit understands.
-    public static func isProjectFile(_ path: String) -> Bool { path.hasSuffix("project.pbxproj") }
+    ///
+    /// Only the property list qualifies. A `project.xcproj` stores the same object graph as JSON5,
+    /// which ``PropertyListSerialization`` cannot read, and its references are name paths rather
+    /// than the 24-character identifiers this audit counts. Reporting `false` for it leaves the
+    /// gate switched off for that format instead of failing every write of one.
+    public static func isProjectFile(_ path: String) -> Bool {
+        ProjectFileFormat.format(ofFileAt: path) == .propertyList
+    }
 
     /// Every UUID-shaped token in `data` that is **not** a key of the `objects` table. Returns an
     /// empty set when the data cannot be parsed as a pbxproj — validating the plist *shape* is

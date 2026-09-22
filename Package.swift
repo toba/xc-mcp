@@ -22,7 +22,9 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/modelcontextprotocol/swift-sdk", from: "0.12.0"),
-    .package(url: "https://github.com/tuist/xcodeproj", from: "9.15.1"),
+    // 9.17.5 is the floor because it is the first release reading and writing the Xcode 27.2
+    // JSON project format through projectFormat.
+    .package(url: "https://github.com/tuist/xcodeproj", from: "9.17.5"),
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.7.1"),
     .package(url: "https://github.com/swiftlang/swift-subprocess", from: "1.0.0"),
     .package(url: "https://github.com/toba/swiftiomatic-plugins", from: "3.0.0"),
