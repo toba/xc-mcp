@@ -62,7 +62,7 @@ public actor XCStringsParser {
         return files
     }
 
-    /// Get all keys sorted alphabetically
+    /// Get all keys in the UTF-8 byte order that Xcode writes them in
     public func listKeys() throws(XCStringsError) -> [String] { try withReader { $0.listKeys() } }
 
     /// Get all languages used in the file

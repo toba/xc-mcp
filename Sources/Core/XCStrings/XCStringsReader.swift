@@ -6,7 +6,7 @@ public struct XCStringsReader: Sendable {
 
     public init(file: XCStringsFile) { self.file = file }
 
-    /// Get all keys sorted in Xcode's natural order.
+    /// Get all keys in the UTF-8 byte order that Xcode writes them in.
     public func listKeys() -> [String] { XCStringsKeySorter.sort(file.strings.keys) }
 
     /// Find existing keys whose normalized form matches the queried key's normalized form. Surfaces
@@ -22,16 +22,16 @@ public struct XCStringsReader: Sendable {
         return XCStringsKeySorter.sort(matches)
     }
 
+    /// Built once, because `suggestions(for:)` normalizes every key in the catalog.
+    private static let curlyToAscii: [Character: Character] = [
+        "\u{2019}": "'",  // RIGHT SINGLE QUOTATION MARK
+        "\u{2018}": "'",  // LEFT SINGLE QUOTATION MARK
+        "\u{201C}": "\"",  // LEFT DOUBLE QUOTATION MARK
+        "\u{201D}": "\"",  // RIGHT DOUBLE QUOTATION MARK
+    ]
+
     private static func normalizeForSuggestions(_ string: String) -> String {
-        var folded = string.precomposedStringWithCompatibilityMapping
-        let curlyToAscii: [Character: Character] = [
-            "\u{2019}": "'",  // RIGHT SINGLE QUOTATION MARK
-            "\u{2018}": "'",  // LEFT SINGLE QUOTATION MARK
-            "\u{201C}": "\"",  // LEFT DOUBLE QUOTATION MARK
-            "\u{201D}": "\"",  // RIGHT DOUBLE QUOTATION MARK
-        ]
-        folded = String(folded.map { curlyToAscii[$0] ?? $0 })
-        return folded
+        String(string.precomposedStringWithCompatibilityMapping.map { curlyToAscii[$0] ?? $0 })
     }
 
     /// Get all languages used in the file
@@ -63,11 +63,9 @@ public struct XCStringsReader: Sendable {
     /// checks for presence. Skips entries marked `shouldTranslate: false`.
     public func checkUntranslated(languages: [String]) -> [UntranslatedIssue] {
         var issues: [UntranslatedIssue] = []
-        let sortedKeys = XCStringsKeySorter.sort(file.strings.keys)
 
-        for key in sortedKeys {
-            guard let entry = file.strings[key], entry.requiresTranslation else { continue }
-
+        for (key, entry) in XCStringsKeySorter.sortedEntries(file.strings)
+        where entry.requiresTranslation {
             for language in languages {
                 issues.append(contentsOf: detectIssues(key: key, entry: entry, language: language))
             }

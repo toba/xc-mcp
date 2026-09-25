@@ -1,18 +1,18 @@
-import Foundation
-
-/// Sort string-catalog keys the way Xcode does: `localizedStandardCompare` (natural numeric
-/// ordering, case-insensitive) with a lexicographic tiebreak so the result is deterministic across
-/// runs.
+/// Sort string-catalog keys the way Xcode's `xcstringstool` does: by UTF-8 byte order.
+///
+/// The order is not natural numeric order, and it is not `String <`. `String <` compares
+/// canonically equivalent strings as equal, but `xcstringstool` compares the bytes. Byte order is
+/// a total order on distinct keys, so the result is deterministic across runs.
 public enum XCStringsKeySorter {
     public static func sort(_ keys: some Sequence<String>) -> [String] {
-        // bridge each key to NSString once rather than on every comparison the sort makes; the
-        // argument side still bridges because localizedStandardCompare takes a String
-        let decorated = keys.map { ($0, $0 as NSString) }
-        return decorated.sorted { lhs, rhs in
-            let comparison = lhs.1.localizedStandardCompare(rhs.0)
-            return comparison == .orderedSame
-                ? lhs.0 < rhs.0
-                : comparison == .orderedAscending
-        }.map(\.0)
+        keys.sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }
+    }
+
+    /// Sort the entries of a dictionary keyed by string-catalog key, in the same order as `sort`.
+    /// Use it in place of `sort(dictionary.keys)` plus a second lookup for each key.
+    public static func sortedEntries<Value>(
+        _ dictionary: [String: Value]
+    ) -> [(key: String, value: Value)] {
+        dictionary.sorted { $0.key.utf8.lexicographicallyPrecedes($1.key.utf8) }
     }
 }

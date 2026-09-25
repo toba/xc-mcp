@@ -1,23 +1,19 @@
 import Foundation
 
-/// Encodes an `XCStringsFile` in Xcode's on-disk format: top-level `sourceLanguage` / `strings` /
-/// `version` order, `strings` keyed in `localizedStandardCompare` order, every nested object key
-/// sorted, and `"key" : value` with a space before the colon.
+/// Encodes an `XCStringsFile` in the on-disk format that Xcode's `xcstringstool` writes: top-level
+/// `sourceLanguage` / `strings` / `version` order, every other object key in UTF-8 byte order,
+/// `"key" : value` with a space before the colon, an empty object as an open brace, a blank line
+/// and a close brace, no empty `localizations` object, and no trailing newline.
 ///
-/// This matches the output of Ryu0118/xcstrings-crud@84ae167 so a round trip through this encoder
+/// This matches the output of Ryu0118/xcstrings-crud@78b31d0 so a round trip through this encoder
 /// produces a zero-diff against an Xcode-saved catalog.
 public enum XCStringsFileEncoder {
     public static func encode(_ file: XCStringsFile) throws -> Data {
-        let strings = try XCStringsKeySorter.sort(file.strings.keys).map { key in
-            guard let entry = file.strings[key] else {
-                throw EncodingError.invalidValue(
-                    key,
-                    EncodingError.Context(
-                        codingPath: [],
-                        debugDescription: "Missing string entry for key \(key)"
-                    )
-                )
-            }
+        let strings = try XCStringsKeySorter.sortedEntries(file.strings).map { key, entry in
+            var entry = entry
+            // xcstringstool leaves out an empty localizations object, as it does a nil one. A
+            // delete of a key's last language leaves one behind.
+            if entry.localizations?.isEmpty == true { entry.localizations = nil }
             return try JSONMember(key: key, value: encodeJSONValue(entry))
         }
 
@@ -27,16 +23,14 @@ public enum XCStringsFileEncoder {
             JSONMember(key: "version", value: .string(file.version)),
         ])
 
-        return Data((root.render() + "\n").utf8)
+        // xcstringstool writes no trailing newline
+        return Data(root.render().utf8)
     }
 
     /// Shared because a catalog builds one JSON value per entry, and a 3000-key catalog would
-    /// otherwise construct 3000 encoders per save.
-    private static let entryEncoder: JSONEncoder = {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        return encoder
-    }()
+    /// otherwise construct 3000 encoders per save. It sorts no keys, because `JSONValue` re-sorts
+    /// every object in byte order.
+    private static let entryEncoder = JSONEncoder()
 
     private static func encodeJSONValue(_ value: some Encodable) throws -> JSONValue {
         let data = try entryEncoder.encode(value)
@@ -62,7 +56,7 @@ private enum JSONValue {
         switch jsonObject {
             case let object as [String: Any]:
                 self = try .object(
-                    object.keys.sorted().map { key in
+                    XCStringsKeySorter.sort(object.keys).map { key in
                         try JSONMember(key: key, value: JSONValue(jsonObject: object[key] as Any))
                     })
             case let array as [Any]: self = try .array(array.map { try JSONValue(jsonObject: $0) })
@@ -87,7 +81,9 @@ private enum JSONValue {
     func render(indentation: Int = 0) -> String {
         switch self {
             case let .object(members):
-                guard !members.isEmpty else { return "{}" }
+                // xcstringstool writes an empty object as an open brace, a blank line, and a close
+                // brace at the object's own indentation
+                guard !members.isEmpty else { return "{\n\n\(String.spaces(indentation))}" }
                 let childIndentation = indentation + 2
                 let lines = members.map { member in
                     "\(String.spaces(childIndentation))\(member.key.jsonEscaped()) : \(member.value.render(indentation: childIndentation))"
