@@ -904,6 +904,67 @@ struct BuildOutputParserTests {
         #expect(result.failedTests[0].message.contains("signal 6"))
     }
 
+    @Test
+    func `SwiftPM bundle crash fails the run although another bundle passed`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Fatal error: Duplicate elements of type 'PendingDatabaseChange' were found in a Set.
+            Test run with 124 tests in 8 suites passed after 2.633 seconds.
+            Note: Some test targets reported failures:
+              - TobaDataTests (Swift Testing)
+            error: Process '/tmp/swiftpm-testing-helper --test-bundle-path /tmp/.build/debug/TobaDataTests.xctest/Contents/MacOS/TobaDataTests --testing-library swift-testing' exited with unexpected signal code 5
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.summary.passedTests == 124)
+        let messages = result.errors.map(\.message)
+        #expect(messages.contains {
+            $0.hasPrefix("Fatal error: Duplicate elements of type 'PendingDatabaseChange'")
+        })
+        #expect(messages.contains {
+            $0.hasPrefix("Test bundle 'TobaDataTests' crashed on signal 5")
+                && $0.contains("printed no run summary")
+        })
+        // The crash already explains the listed target, so the list adds no second error.
+        #expect(!messages.contains { $0.contains("reported failures") })
+    }
+
+    @Test
+    func `A failed test target with no other evidence fails the run`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Test run with 12 tests in 2 suites passed after 0.100 seconds.
+            Note: Some test targets reported failures:
+              - FooTests (Swift Testing)
+              - BarTests (XCTest)
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "failed")
+        #expect(result.errors.map(\.message) == [
+            "Test target FooTests (Swift Testing) reported failures, and the output names no failed test.",
+            "Test target BarTests (XCTest) reported failures, and the output names no failed test.",
+        ])
+        #expect(BuildResultFormatter.formatTestResult(result).hasPrefix("Tests failed"))
+    }
+
+    @Test
+    func `Summary counts add up over every bundle`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Test run with 2200 tests in 40 suites passed after 10.000 seconds.
+            Test run with 124 tests in 8 suites passed after 2.633 seconds.
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.status == "success")
+        #expect(result.summary.passedTests == 2324)
+    }
+
     // MARK: - Performance Measurement Parsing
 
     @Test

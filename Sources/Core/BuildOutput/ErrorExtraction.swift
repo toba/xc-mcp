@@ -158,18 +158,20 @@ public enum ErrorExtractor {
         } else {
             testResult = extractTestResults(from: output, endedEarly: settledAfterCompletion)
 
-            // Extract test count and parsed status from output
             let parsed = parseBuildOutput(output)
             let passed = parsed.summary.passedTests ?? 0
             let failed = parsed.summary.failedTests
             totalTestCount = passed + failed
 
-            // Override exit code with parsed status: swift test can exit non-zero even when all
-            // tests pass (e.g. due to build warnings or toolchain quirks). Only override when tests
-            // actually ran — if no tests were parsed, trust the exit code. A run the watchdog ended
-            // is never a pass: the output covers the part that arrived, not the whole run.
-            if !succeeded, !settledAfterCompletion, parsed.status == "success", totalTestCount > 0 {
-                succeeded = true
+            // The exit code wins over the parsed counts. A bundle that crashes prints no summary,
+            // so the counts of the other bundles can read as a clean run. Say so when the output
+            // names no cause, so the failure does not look like a parser fault. (8dcd0784)
+            if !succeeded, !settledAfterCompletion, parsed.status == "success" {
+                let status = termination.map { " with \($0.description)" } ?? ""
+                testResult +=
+                    "\n\nThe test command exited\(status), and the output names no failed "
+                    + "test. A test bundle can crash before it prints a summary. "
+                    + "Read the full log with show_last_build_raw."
             }
         }
 

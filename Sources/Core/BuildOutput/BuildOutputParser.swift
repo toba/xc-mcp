@@ -54,6 +54,11 @@ public final class BuildOutputParser {
         var parallelTestsTotalCount: Int?
         var testRunFailed: Bool = false
 
+        /// The test targets SwiftPM lists under `Some test targets reported failures:`
+        var failedTestTargets: [String] = []
+        /// True while the lines being read belong to the list under that note
+        var readingFailedTestTargets: Bool = false
+
         // Terminal-marker tracking. xcodebuild/swift build always emit a terminal marker on a
         // complete run; their absence means the stream was truncated or the process was killed
         // (e.g. OOM `Killed: 9`) before finishing. We require positive evidence of success rather
@@ -255,6 +260,20 @@ public final class BuildOutputParser {
             state.pendingSignalCode = nil
         }
 
+        // SwiftPM listed a failed test target, and nothing else in the output says why. Report the
+        // target, so the run cannot read as a pass on the counts of the other targets.
+        if state.errors.isEmpty, state.failedTests.isEmpty,
+           (state.swiftTestingFailedCount ?? 0) == 0, (xctestFailedCount ?? 0) == 0
+        {
+            for target in state.failedTestTargets {
+                appendErrorIfNew(BuildError(
+                    file: nil, line: nil,
+                    message: "Test target \(target) reported failures, "
+                        + "and the output names no failed test.",
+                ))
+            }
+        }
+
         // Aggregate test counts from both XCTest and Swift Testing
         let totalExecuted: Int? = {
             if let parallelTotal = state.parallelTestsTotalCount {
@@ -418,6 +437,24 @@ public final class BuildOutputParser {
         // whichever parser consumes that line.
         let insideSourceEcho = trackSourceEcho(line)
 
+        // SwiftPM closes a run with a note, then one `  - Target (Library)` line per failed test
+        // target. The list lines hold no keyword the fast path below knows, so read them here.
+        if state.readingFailedTestTargets {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            if trimmed.hasPrefix("- ") {
+                state.failedTestTargets.append(String(trimmed.dropFirst(2)))
+                return
+            }
+            state.readingFailedTestTargets = false
+        }
+
+        if line.contains("Some test targets reported failures") {
+            state.readingFailedTestTargets = true
+            state.testRunFailed = true
+            return
+        }
+
         if line.isEmpty { return }
 
         // XCTest names the suite before the `Executed` line that reports it, so the most recent
@@ -521,6 +558,16 @@ public final class BuildOutputParser {
             if let lastSpace = line.lastIndex(of: " ") {
                 let codeStr = String(line[line.index(after: lastSpace)...])
                 state.pendingSignalCode = Int(codeStr)
+            }
+
+            // SwiftPM names the crashed bundle in its own error line. A crashed bundle prints no
+            // run summary, so the counts parsed from the other bundles leave out its tests.
+            if line.hasPrefix("error: "), line.contains("exited with unexpected signal code") {
+                appendErrorIfNew(BuildError(
+                    file: nil, line: nil,
+                    message: Self.crashedBundleMessage(line, signal: state.pendingSignalCode),
+                ))
+                state.testRunFailed = true
             }
             return
         }
@@ -902,6 +949,31 @@ public final class BuildOutputParser {
         state.pendingConflictingFiles = []
     }
 
+    /// The failure a SwiftPM `exited with unexpected signal code N` line stands for.
+    ///
+    /// SwiftPM prints the whole helper command, and the `.xctest` path in it names the bundle.
+    ///
+    /// - Parameters:
+    ///   - line: The SwiftPM error line.
+    ///   - signal: The signal number the line ends with, when it parsed.
+    static func crashedBundleMessage(_ line: some StringProtocol, signal: Int?) -> String {
+        var bundle = "A test bundle"
+
+        if let suffix = line.range(of: ".xctest") {
+            let head = line[..<suffix.lowerBound]
+            let start = head.lastIndex { $0 == "/" || $0 == " " || $0 == "'" }
+                .map(head.index(after:)) ?? head.startIndex
+            if start < head.endIndex { bundle = "Test bundle '\(head[start...])'" }
+        }
+
+        let signalText = signal.map { number in
+            strsignal(Int32(number)).map { "signal \(number) (\(String(cString: $0)))" }
+                ?? "signal \(number)"
+        } ?? "a signal"
+        return "\(bundle) crashed on \(signalText) and printed no run summary. "
+            + "The test counts leave out its tests."
+    }
+
     private func appendErrorIfNew(_ error: BuildError) {
         let key = "\(error.file ?? ""):\(error.line ?? 0):\(error.message)"
 
@@ -1091,6 +1163,12 @@ public final class BuildOutputParser {
                     column: location.column,
                 )
             }
+        }
+
+        // The Swift runtime writes a trap with no source location in this form, for example a
+        // `Set` that finds duplicate elements. The line explains a crash that follows it.
+        if line.hasPrefix("Fatal error: ") {
+            return BuildError(file: nil, line: nil, message: line)
         }
 
         if line.hasPrefix("❌ ") {

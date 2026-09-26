@@ -237,9 +237,11 @@ public enum BuildResultFormatter {
         let passed = result.summary.passedTests ?? 0
         let failed = result.summary.failedTests
 
-        if failed == 0, passed > 0 {
+        // A crashed bundle adds no failed test, only an error. The passed count then covers the
+        // bundles that finished, and it must not read as a pass for the whole run.
+        if failed == 0, passed > 0, result.status == "success" {
             header = "Tests passed"
-        } else if failed > 0 {
+        } else if failed > 0 || result.status == "failed" {
             header = "Tests failed"
         } else {
             header = "Test run completed"

@@ -196,8 +196,7 @@ struct ErrorExtractorZeroTestTests {
 
 struct ErrorExtractorExitCodeOverrideTests {
     @Test
-    func `Succeeds when exit code is non-zero but parsed output shows tests passed`() async throws {
-        // Reproduces the bug: swift test exits non-zero but all tests pass
+    func `Fails when exit code is non-zero although parsed output shows tests passed`() async {
         let output = """
             Building for debugging...
             Build complete!
@@ -205,16 +204,48 @@ struct ErrorExtractorExitCodeOverrideTests {
             Test Suite 'PackageTests' passed at 2026-03-01 10:00:00.
             Executed 4535 tests, with 0 failures (0 unexpected) in 12.345 (12.567) seconds
             """
-        let result = try await ErrorExtractor.formatTestToolResult(
-            output: output,
-            succeeded: false,  // non-zero exit code
-            context: "swift package",
-        )
-        let text = result.content.compactMap {
-            if case let .text(t, _, _) = $0 { return t }
-            return nil
-        }.joined()
-        #expect(text.contains("Tests passed"))
+        var message = ""
+        do {
+            _ = try await ErrorExtractor.formatTestToolResult(
+                output: output,
+                succeeded: false,
+                context: "swift package",
+                termination: .exited(1),
+            )
+            Issue.record("a non-zero exit must not read as a pass")
+        } catch {
+            message = "\(error)"
+        }
+        #expect(message.contains("Tests failed"))
+        #expect(message.contains("exit status 1"))
+        #expect(message.contains("show_last_build_raw"))
+    }
+
+    @Test
+    func `A crashed test bundle fails the run and names the bundle`() async {
+        let output = """
+            Fatal error: Duplicate elements of type 'PendingDatabaseChange' were found in a Set.
+            Test run with 124 tests in 8 suites passed after 2.633 seconds.
+            Note: Some test targets reported failures:
+              - TobaDataTests (Swift Testing)
+            error: Process '/tmp/swiftpm-testing-helper --test-bundle-path /tmp/.build/debug/TobaDataTests.xctest/Contents/MacOS/TobaDataTests --testing-library swift-testing' exited with unexpected signal code 5
+            """
+        var message = ""
+        do {
+            _ = try await ErrorExtractor.formatTestToolResult(
+                output: output,
+                succeeded: false,
+                context: "swift package",
+                termination: .exited(1),
+            )
+            Issue.record("a crashed bundle must not read as a pass")
+        } catch {
+            message = "\(error)"
+        }
+        #expect(message.contains("Tests failed"))
+        #expect(!message.contains("Tests passed"))
+        #expect(message.contains("Test bundle 'TobaDataTests' crashed on signal 5"))
+        #expect(message.contains("Fatal error: Duplicate elements"))
     }
 
     @Test
