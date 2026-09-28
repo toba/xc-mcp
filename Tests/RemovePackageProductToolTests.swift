@@ -272,4 +272,46 @@ struct RemovePackageProductToolTests {
         #expect(appAfter.packageProductDependencies?.count == 1)
         #expect(testsAfter.packageProductDependencies?.isEmpty == true)
     }
+
+    @Test(arguments: ["SchemaListPlugin", "plugin:SchemaListPlugin"])
+    func `Remove plugin link by either name`(productName: String) throws {
+        let tempDir = TemporaryDirectory.url
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let addTool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("SchemaListPlugin"),
+            "kind": Value.string("plugin"),
+        ])
+
+        let tool = RemovePackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string(productName),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Removed product 'SchemaListPlugin' from target 'App'"))
+
+        let after = try XcodeProj(path: projectPath)
+        let target = try #require(after.pbxproj.nativeTargets.first { $0.name == "App" })
+        #expect(target.dependencies.isEmpty)
+
+        let rawContents = try String(
+            contentsOf: URL(fileURLWithPath: (projectPath + "project.pbxproj").string),
+            encoding: .utf8,
+        )
+        #expect(!rawContents.contains("PBXTargetDependency"))
+        #expect(!rawContents.contains("XCSwiftPackageProductDependency"))
+    }
 }

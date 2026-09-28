@@ -13,7 +13,7 @@ public struct RemovePackageProductTool: Sendable {
         .init(
             name: "remove_package_product",
             description:
-                "Remove an SPM package product dependency from a target without removing the package itself",
+                "Remove an SPM package product dependency from a target without removing the package itself. Also removes a build-tool plugin link, named bare or with a 'plugin:' prefix.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -30,7 +30,7 @@ public struct RemovePackageProductTool: Sendable {
                     "product_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the SPM package product to remove (e.g., 'HTTPTypes')",
+                            "Name of the SPM package product to remove (e.g., 'HTTPTypes', 'plugin:SchemaListPlugin')",
                         ),
                     ]),
                 ]),
@@ -62,8 +62,12 @@ public struct RemovePackageProductTool: Sendable {
                 return CallTool.Result.text("Target '\(targetName)' not found in project")
             }
 
-            guard let dependencies = target.packageProductDependencies,
-                  let dependency = dependencies.first(where: { $0.productName == productName })
+            // A plugin link has no packageProductDependencies entry. Its target dependency holds it.
+            let bareName = PackagePluginLinks.bareName(productName)
+
+            guard let dependency = target.packageProductDependencies?.first(where: {
+                $0.productName == bareName
+            }) ?? PackagePluginLinks.dependency(named: bareName, of: target)?.product
             else {
                 return CallTool.Result.text(
                     "Product '\(productName)' not found in target '\(targetName)'")
@@ -96,6 +100,7 @@ public struct RemovePackageProductTool: Sendable {
             let stillReferenced = xcodeproj.pbxproj.nativeTargets.contains { other in
                 guard other !== target else { return false }
                 return other.packageProductDependencies?.contains { $0 === dependency } == true
+                    || other.dependencies.contains { $0.product === dependency }
             }
 
             if !stillReferenced { xcodeproj.pbxproj.delete(object: dependency) }
@@ -104,7 +109,7 @@ public struct RemovePackageProductTool: Sendable {
                 xcodeproj, to: Path(projectURL.path), expectedPreimage: preimage)
 
             return CallTool.Result.text(
-                "Removed product '\(productName)' from target '\(targetName)'")
+                "Removed product '\(bareName)' from target '\(targetName)'")
         } catch {
             throw try error.asMCPError()
         }

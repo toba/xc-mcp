@@ -228,6 +228,78 @@ struct RemoveSwiftPackageToolTests {
         #expect(updatedTarget?.packageProductDependencies?.count == 1)
     }
 
+    /// Registers a remote package on the project and links its plugin to `App` as Xcode does.
+    private func projectWithPluginLink(at projectPath: Path, tempDir: URL) throws {
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let xcodeproj = try XcodeProj(path: projectPath)
+        let packageRef = XCRemoteSwiftPackageReference(
+            repositoryURL: "https://github.com/toba/toba-data",
+            versionRequirement: .branch("main"),
+        )
+        xcodeproj.pbxproj.add(object: packageRef)
+        let project = try #require(try xcodeproj.pbxproj.rootProject())
+        project.remotePackages.append(packageRef)
+        try xcodeproj.write(path: projectPath)
+
+        _ = try AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+            .execute(arguments: [
+                "project_path": Value.string(projectPath.string),
+                "target_name": Value.string("App"),
+                "product_name": Value.string("plugin:SchemaListPlugin"),
+                "package_url": Value.string("https://github.com/toba/toba-data"),
+            ])
+    }
+
+    @Test
+    func `Remove package from targets clears a plugin target dependency`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try projectWithPluginLink(at: projectPath, tempDir: tempDir)
+
+        let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try removeTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/toba/toba-data"),
+            "remove_from_targets": Value.bool(true),
+        ])
+
+        let updated = try XcodeProj(path: projectPath)
+        let target = try #require(updated.pbxproj.nativeTargets.first { $0.name == "App" })
+        #expect(target.dependencies.isEmpty)
+
+        let raw = try String(
+            contentsOf: URL(fileURLWithPath: (projectPath + "project.pbxproj").string),
+            encoding: .utf8,
+        )
+        #expect(!raw.contains("PBXTargetDependency"))
+        #expect(!raw.contains("XCSwiftPackageProductDependency"))
+        #expect(!raw.contains("XCRemoteSwiftPackageReference"))
+    }
+
+    @Test
+    func `Remove package refuses while a plugin target dependency uses it`() throws {
+        let tempDir = TemporaryDirectory.url
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try projectWithPluginLink(at: projectPath, tempDir: tempDir)
+
+        let removeTool = RemoveSwiftPackageTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try removeTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "package_url": Value.string("https://github.com/toba/toba-data"),
+            "remove_from_targets": Value.bool(false),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("Refusing to remove Swift Package"))
+        #expect(message.contains("App"))
+    }
+
     @Test
     func `Remove local package from project`() throws {
         let tempDir = TemporaryDirectory.url

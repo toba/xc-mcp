@@ -128,7 +128,7 @@ struct AddPackageProductToolTests {
     }
 
     @Test
-    func `plugin kind skips frameworks build phase`() throws {
+    func `plugin kind links as a plugin target dependency`() throws {
         let tempDir = TemporaryDirectory.url
 
         let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
@@ -146,15 +146,25 @@ struct AddPackageProductToolTests {
 
         if case let .text(content, _, _) = result.content[0] {
             #expect(content.contains("Linked plugin product"))
-            #expect(content.contains("skipped Frameworks build phase"))
+            #expect(content.contains("Run Build Tool Plug-ins target dependency"))
         } else {
             Issue.record("Expected text content")
         }
 
         let reloaded = try XcodeProj(path: projectPath)
         let appTarget = try #require(reloaded.pbxproj.nativeTargets.first)
-        #expect(appTarget.packageProductDependencies?.count == 1)
-        #expect(appTarget.packageProductDependencies?.first?.productName == "MyBuildToolPlugin")
+        #expect(appTarget.packageProductDependencies?.isEmpty != false)
+        let pluginDependency = try #require(appTarget.dependencies.first)
+        #expect(appTarget.dependencies.count == 1)
+        #expect(pluginDependency.product?.productName == "MyBuildToolPlugin")
+        #expect(pluginDependency.name == nil)
+
+        // Xcode reads a plugin productRef only when its productName carries the prefix.
+        let raw = try String(
+            contentsOf: URL(fileURLWithPath: (projectPath + "project.pbxproj").string),
+            encoding: .utf8,
+        )
+        #expect(raw.contains("productName = \"plugin:MyBuildToolPlugin\";"))
 
         // No PBXBuildFile referencing the plugin should exist in any frameworks phase.
         let frameworksFiles =
@@ -164,6 +174,63 @@ struct AddPackageProductToolTests {
             file.product?.productName == "MyBuildToolPlugin"
         }
         #expect(!hasPluginInFrameworks)
+    }
+
+    @Test
+    func `plugin prefix in product_name selects the plugin kind`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("plugin:SchemaListPlugin"),
+        ])
+
+        if case let .text(content, _, _) = result.content[0] {
+            #expect(content.contains("Linked plugin product 'SchemaListPlugin'"))
+        } else {
+            Issue.record("Expected text content")
+        }
+
+        let reloaded = try XcodeProj(path: projectPath)
+        let appTarget = try #require(reloaded.pbxproj.nativeTargets.first)
+        #expect(appTarget.dependencies.first?.product?.productName == "SchemaListPlugin")
+
+        // A second add of the same plugin, under either spelling, is a duplicate.
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": Value.string(projectPath.string),
+                "target_name": Value.string("App"),
+                "product_name": Value.string("SchemaListPlugin"),
+                "kind": Value.string("plugin"),
+            ])
+        }
+    }
+
+    @Test
+    func `plugin prefix with library kind fails`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        let tool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_path": Value.string(projectPath.string),
+                "target_name": Value.string("App"),
+                "product_name": Value.string("plugin:SchemaListPlugin"),
+                "kind": Value.string("library"),
+            ])
+        }
     }
 
     @Test
@@ -269,7 +336,7 @@ struct AddPackageProductToolTests {
 
         let reloaded = try XcodeProj(path: projectPath)
         let appTarget = try #require(reloaded.pbxproj.nativeTargets.first)
-        let dep = try #require(appTarget.packageProductDependencies?.first)
+        let dep = try #require(appTarget.dependencies.first?.product)
         #expect(dep.productName == "SwiftiomaticBuildToolPlugin")
         #expect(dep.package?.repositoryURL == "https://github.com/toba/swiftiomatic-plugins")
     }
@@ -353,7 +420,7 @@ struct AddPackageProductToolTests {
 
         let reloaded = try XcodeProj(path: projectPath)
         let appTarget = try #require(reloaded.pbxproj.nativeTargets.first)
-        let dep = try #require(appTarget.packageProductDependencies?.first)
+        let dep = try #require(appTarget.dependencies.first?.product)
         #expect(dep.package?.repositoryURL == "https://github.com/toba/swiftiomatic-plugins.git")
     }
 

@@ -122,6 +122,36 @@ struct ListPackageProductsToolTests {
     }
 
     @Test
+    func `List marks plugin links`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        let projectPath = Path(tempDir.path) + "TestProject.xcodeproj"
+        try TestProjectHelper.createTestProjectWithTarget(
+            name: "TestProject", targetName: "App", at: projectPath,
+        )
+
+        let addTool = AddPackageProductTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try addTool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+            "product_name": Value.string("plugin:SchemaListPlugin"),
+        ])
+
+        let tool = ListPackageProductsTool(pathUtility: PathUtility(basePath: tempDir.path))
+        let result = try tool.execute(arguments: [
+            "project_path": Value.string(projectPath.string),
+            "target_name": Value.string("App"),
+        ])
+
+        guard case let .text(message, _, _) = result.content.first else {
+            Issue.record("Expected text result")
+            return
+        }
+        #expect(message.contains("[App]"))
+        #expect(message.contains("  - SchemaListPlugin (local) [plugin]"))
+    }
+
+    @Test
     func `Target not found`() throws {
         let tempDir = TemporaryDirectory.url
 

@@ -13,7 +13,7 @@ public struct AddPackageProductTool: Sendable {
         .init(
             name: "add_package_product",
             description:
-                "Link an existing Swift Package product to a target. Use when a package is already in the project but its product needs to be added to a different target. Plugin products (build tool / command plugins) are auto-detected from local Package.swift sources and skip the Frameworks build phase; pass kind='plugin' explicitly for remote packages whose source is not on disk. Pass package_url or package_path to disambiguate when the product has not yet been linked to any target.",
+                "Link an existing Swift Package product to a target. Use when a package is already in the project but its product needs to be added to a different target. Plugin products (build tool / command plugins) are auto-detected from local Package.swift sources and link as a Run Build Tool Plug-ins target dependency, outside the Frameworks build phase; pass kind='plugin' (or a 'plugin:'-prefixed product_name) explicitly for remote packages whose source is not on disk. Pass package_url or package_path to disambiguate when the product has not yet been linked to any target.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -30,7 +30,7 @@ public struct AddPackageProductTool: Sendable {
                     "product_name": .object([
                         "type": .string("string"),
                         "description": .string(
-                            "Name of the Swift Package product to link (e.g., 'HTTPTypes', 'Alamofire')",
+                            "Name of the Swift Package product to link (e.g., 'HTTPTypes', 'Alamofire'). A 'plugin:' prefix marks a plugin product.",
                         ),
                     ]),
                     "package_url": .object([
@@ -49,7 +49,7 @@ public struct AddPackageProductTool: Sendable {
                         "type": .string("string"),
                         "enum": .array([.string("auto"), .string("library"), .string("plugin")]),
                         "description": .string(
-                            "Product kind. 'library' adds the product to the Frameworks build phase. 'plugin' skips the build phase (build-tool and command plugins are auto-discovered by Xcode). 'auto' (default) detects from local Package.swift sources, falling back to 'library'.",
+                            "Product kind. 'library' adds the product to the Frameworks build phase. 'plugin' writes a PBXTargetDependency whose productRef names 'plugin:<name>', which is how Xcode records Run Build Tool Plug-ins. 'auto' (default) detects from local Package.swift sources, falling back to 'library'.",
                         ),
                     ]),
                     "platform_filters": .object([
@@ -73,10 +73,14 @@ public struct AddPackageProductTool: Sendable {
     public func execute(arguments: [String: Value]) throws -> CallTool.Result {
         guard let projectPath = arguments.getString("project_path"),
               let targetName = arguments.getString("target_name"),
-              let productName = arguments.getString("product_name")
+              let requestedName = arguments.getString("product_name")
         else {
             throw MCPError.invalidParams("project_path, target_name, and product_name are required")
         }
+
+        // The project stores a plugin under its bare name. The prefix only marks the kind.
+        let productName = PackagePluginLinks.bareName(requestedName)
+        let prefixedAsPlugin = productName != requestedName
 
         let kindArg = arguments.getString("kind")
 
@@ -102,9 +106,9 @@ public struct AddPackageProductTool: Sendable {
             }) else { throw MCPError.invalidParams("Target '\(targetName)' not found in project") }
 
             // Check if this product is already linked to the target
-            if let existing = target.packageProductDependencies,
-               existing.contains(where: { $0.productName == productName })
-            {
+            if target.packageProductDependencies?.contains(where: {
+                $0.productName == productName
+            }) == true || PackagePluginLinks.dependency(named: productName, of: target) != nil {
                 throw MCPError.invalidParams(
                     "Product '\(productName)' is already linked to target '\(targetName)'",
                 )
@@ -141,10 +145,17 @@ public struct AddPackageProductTool: Sendable {
             let kindSource: KindSource
 
             switch kindArg {
+                case "library" where prefixedAsPlugin:
+                    throw MCPError.invalidParams(
+                        "product_name '\(requestedName)' names a plugin, but kind is 'library'",
+                    )
                 case "library":
                     resolvedKind = .library
                     kindSource = .explicit
                 case "plugin":
+                    resolvedKind = .plugin
+                    kindSource = .explicit
+                case nil where prefixedAsPlugin, "auto" where prefixedAsPlugin:
                     resolvedKind = .plugin
                     kindSource = .explicit
                 case nil, "auto":
@@ -167,19 +178,20 @@ public struct AddPackageProductTool: Sendable {
                 )
             }
 
-            // Create the product dependency
-            let productDependency = XCSwiftPackageProductDependency(
-                productName: productName,
-                package: owning.remote,
-            )
-            xcodeproj.pbxproj.add(object: productDependency)
+            if resolvedKind == .plugin {
+                PackagePluginLinks.link(
+                    productName, package: owning.remote, to: target, in: xcodeproj.pbxproj,
+                )
+            } else {
+                let productDependency = XCSwiftPackageProductDependency(
+                    productName: productName,
+                    package: owning.remote,
+                )
+                xcodeproj.pbxproj.add(object: productDependency)
 
-            if target.packageProductDependencies == nil { target.packageProductDependencies = [] }
-            target.packageProductDependencies?.append(productDependency)
+                if target.packageProductDependencies == nil { target.packageProductDependencies = [] }
+                target.packageProductDependencies?.append(productDependency)
 
-            // Plugins are not linked into the Frameworks build phase — Xcode discovers them via
-            // packageProductDependencies and runs them during the build.
-            if resolvedKind == .library {
                 let buildFile = PBXBuildFile(
                     product: productDependency,
                     platformFilters: platformFilters.isEmpty ? nil : platformFilters,
@@ -215,7 +227,8 @@ public struct AddPackageProductTool: Sendable {
             }
 
             if resolvedKind == .plugin {
-                message += " (skipped Frameworks build phase — \(kindSource.rawValue))"
+                message +=
+                    " as a Run Build Tool Plug-ins target dependency, outside the Frameworks build phase (\(kindSource.rawValue))"
             } else if kindSource == .detected { message += " (kind detected from Package.swift)" }
 
             message += owning.source.note
@@ -282,10 +295,15 @@ public struct AddPackageProductTool: Sendable {
             return .init(local: match, source: .packagePath)
         }
 
-        if let linked = xcodeproj.pbxproj.nativeTargets.lazy
-            .compactMap(\.packageProductDependencies)
-            .joined()
-            .first(where: { $0.productName == productName })?.package {
+        let targets = xcodeproj.pbxproj.nativeTargets
+        let linkedProducts = targets.lazy.compactMap(\.packageProductDependencies).joined()
+        let pluginProducts = targets.lazy
+            .flatMap { PackagePluginLinks.dependencies(of: $0) }
+            .compactMap(\.product)
+
+        if let linked = linkedProducts.first(where: { $0.productName == productName })?.package
+            ?? pluginProducts.first(where: { $0.productName == productName })?.package
+        {
             return .init(remote: linked, source: .linkedDependency)
         }
 

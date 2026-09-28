@@ -132,11 +132,14 @@ public struct RemoveSwiftPackageTool: Sendable {
 
         if removeFromTargets {
             for target in xcodeproj.pbxproj.nativeTargets {
-                let stale = (target.packageProductDependencies ?? []).filter(packageRef.owns)
+                let stale = productDependencies(of: target).filter(packageRef.owns)
 
                 for dependency in stale {
                     removeBuildFiles(xcodeproj: xcodeproj, target: target, product: dependency)
                     target.packageProductDependencies?.removeAll { $0 === dependency }
+                    removeTargetDependencies(
+                        xcodeproj: xcodeproj, target: target, product: dependency,
+                    )
                     xcodeproj.pbxproj.delete(object: dependency)
                 }
             }
@@ -146,7 +149,7 @@ public struct RemoveSwiftPackageTool: Sendable {
             // deleted reference — a dangling ref Xcode cannot load. Refuse and require the caller
             // to be explicit rather than silently writing a broken project.
             let usingTargets = xcodeproj.pbxproj.nativeTargets.filter { target in
-                (target.packageProductDependencies ?? []).contains(where: packageRef.owns)
+                productDependencies(of: target).contains(where: packageRef.owns)
             }
 
             if !usingTargets.isEmpty {
@@ -167,6 +170,36 @@ public struct RemoveSwiftPackageTool: Sendable {
         if removeFromTargets { message += " and all targets" }
 
         return CallTool.Result.text(message)
+    }
+
+    /// Every package product `target` depends on
+    ///
+    /// A library appears in `packageProductDependencies`. A build-tool plugin appears only as the
+    /// `productRef` of a `PBXTargetDependency`. Xcode can also write a target dependency for a
+    /// library, so the result holds each product once.
+    private func productDependencies(
+        of target: PBXNativeTarget,
+    ) -> [XCSwiftPackageProductDependency] {
+        var products = target.packageProductDependencies ?? []
+
+        for product in target.dependencies.compactMap(\.product)
+        where !products.contains(where: { $0 === product }) {
+            products.append(product)
+        }
+        return products
+    }
+
+    private func removeTargetDependencies(
+        xcodeproj: XcodeProj,
+        target: PBXNativeTarget,
+        product: XCSwiftPackageProductDependency,
+    ) {
+        let stale = target.dependencies.filter { $0.product === product }
+
+        for dependency in stale {
+            target.dependencies.removeAll { $0 === dependency }
+            xcodeproj.pbxproj.delete(object: dependency)
+        }
     }
 
     private func removeBuildFiles(

@@ -13,7 +13,7 @@ public struct ListPackageProductsTool: Sendable {
         .init(
             name: "list_package_products",
             description:
-                "List SPM package product dependencies for a target or all targets in an Xcode project",
+                "List SPM package product dependencies for a target or all targets in an Xcode project, including build-tool plugin links",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -62,8 +62,9 @@ public struct ListPackageProductsTool: Sendable {
             var sections: [String] = []
 
             for target in targets {
-                guard let dependencies = target.packageProductDependencies,
-                      !dependencies.isEmpty else { continue }
+                let dependencies = target.packageProductDependencies ?? []
+                let plugins = PackagePluginLinks.dependencies(of: target).compactMap(\.product)
+                guard !dependencies.isEmpty || !plugins.isEmpty else { continue }
 
                 // Collect build file products for this target's frameworks phase
                 let frameworksPhase = target.buildPhases
@@ -73,18 +74,16 @@ public struct ListPackageProductsTool: Sendable {
                 var lines = ["[\(target.name)]"]
 
                 for dep in dependencies {
-                    let packageInfo: String
-
-                    if let url = dep.package?.repositoryURL {
-                        packageInfo = url
-                    } else {
-                        packageInfo = "local"
-                    }
-
+                    let packageInfo = dep.package?.repositoryURL ?? "local"
                     let inBuildPhase = buildFileProducts.contains { $0 === dep }
                     let buildPhaseFlag = inBuildPhase ? "" : " (not in Frameworks build phase)"
 
                     lines.append("  - \(dep.productName) (\(packageInfo))\(buildPhaseFlag)")
+                }
+
+                for plugin in plugins {
+                    let packageInfo = plugin.package?.repositoryURL ?? "local"
+                    lines.append("  - \(plugin.productName) (\(packageInfo)) [plugin]")
                 }
                 sections.append(lines.joined(separator: "\n"))
             }
