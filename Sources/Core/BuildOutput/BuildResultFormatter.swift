@@ -309,10 +309,18 @@ public enum BuildResultFormatter {
                 if !error.conflictingFiles.isEmpty {
                     detail += " — defined in: \(error.conflictingFiles.joined(separator: ", "))"
                 }
-                lines.append(detail)
-            } else if !error.message.isEmpty { lines.append("  \(error.message)") }
+                lines.append(detail + targetSuffix(error))
+            } else if !error.message.isEmpty {
+                lines.append("  \(error.message)" + targetSuffix(error))
+            }
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// Names the target that failed to link, in the form xcodebuild uses in its task headers.
+    private static func targetSuffix(_ error: LinkerError) -> String {
+        guard let target = error.target else { return "" }
+        return " (in target '\(target)')"
     }
 
     private static func formatWarnings(_ warnings: [BuildWarning]) -> String {

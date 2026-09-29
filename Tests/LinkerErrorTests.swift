@@ -164,4 +164,201 @@ struct LinkerErrorTests {
         #expect(result.summary.linkerErrors == 1)
         #expect(result.linkerErrors.count == 1)
     }
+
+    @Test
+    func `Stamp the Ld target on a duplicate symbol`() throws {
+        let parser = BuildOutputParser()
+        let input = """
+            Ld /Build/Products/Release/GoogleDocs.app/Contents/MacOS/GoogleDocs normal (in target 'GoogleDocs' from project 'Thesis')
+                cd /Users/dev/Thesis
+                /Applications/Xcode.app/Contents/Developer/usr/bin/clang -o GoogleDocs
+            duplicate symbol '_relinkableLibraryClasses' in:
+                /Build/Products/Release/DOM.framework/Versions/A/DOM
+                bundle-file
+            ld: 1 duplicate symbol
+            clang: error: linker command failed with exit code 1 (use -v to see invocation)
+            """
+
+        let result = parser.parse(input: input)
+
+        let error = try #require(result.linkerErrors.first)
+        #expect(error.kind == .duplicateSymbol)
+        #expect(error.target == "GoogleDocs")
+
+        let formatted = BuildResultFormatter.formatBuildResult(result)
+        #expect(formatted.contains("(in target 'GoogleDocs')"))
+    }
+
+    @Test
+    func `Stamp the Ld target on an undefined symbol and a missing framework`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Ld /Build/Products/Debug/App.app/Contents/MacOS/App normal (in target 'App' from project 'App')
+                cd /Users/dev/App
+            Undefined symbols for architecture arm64:
+              "_MissingSymbol", referenced from:
+                  main.main() -> () in main.o
+            ld: symbol(s) not found for architecture arm64
+            ld: framework not found SomeFramework
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.linkerErrors.count == 2)
+        #expect(result.linkerErrors.allSatisfy { $0.target == "App" })
+    }
+
+    @Test
+    func `A later task header clears the link target`() throws {
+        let parser = BuildOutputParser()
+        let input = """
+            Ld /Build/Products/Debug/App.app/Contents/MacOS/App normal (in target 'App' from project 'App')
+                cd /Users/dev/App
+            CompileSwift normal arm64 /Users/dev/App/Other.swift (in target 'Other' from project 'App')
+                cd /Users/dev/App
+            ld: library not found for -lSomeLib
+            """
+
+        let result = parser.parse(input: input)
+
+        let error = try #require(result.linkerErrors.first)
+        #expect(error.target == nil)
+        #expect(!BuildResultFormatter.formatBuildResult(result).contains("(in target"))
+    }
+
+    @Test
+    func `Same missing symbol in two targets stays two errors`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Ld /Build/Products/Debug/A.app/Contents/MacOS/A normal (in target 'A' from project 'P')
+            Undefined symbols for architecture arm64:
+              "_Missing", referenced from:
+                  main.main() -> () in main.o
+            ld: symbol(s) not found for architecture arm64
+            Ld /Build/Products/Debug/B.app/Contents/MacOS/B normal (in target 'B' from project 'P')
+            Undefined symbols for architecture arm64:
+              "_Missing", referenced from:
+                  main.main() -> () in main.o
+            ld: symbol(s) not found for architecture arm64
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.linkerErrors.map(\.target) == ["A", "B"])
+    }
+
+    @Test
+    func `A duplicate symbol cut off before the summary keeps its own target`() throws {
+        let parser = BuildOutputParser()
+        let input = """
+            Ld /Build/Products/Debug/A.app/Contents/MacOS/A normal (in target 'A' from project 'P')
+            duplicate symbol '_shared' in:
+                /path/A.o
+                /path/B.o
+            Ld /Build/Products/Debug/B.app/Contents/MacOS/B normal (in target 'B' from project 'P')
+                cd /Users/dev/P
+                /Applications/Xcode.app/Contents/Developer/usr/bin/clang -o B
+            """
+
+        let result = parser.parse(input: input)
+
+        let error = try #require(result.linkerErrors.first)
+        #expect(result.linkerErrors.count == 1)
+        #expect(error.target == "A")
+        #expect(error.conflictingFiles == ["/path/A.o", "/path/B.o"])
+    }
+
+    @Test
+    func `An indented Ld line in the failed-commands list sets no target`() throws {
+        let parser = BuildOutputParser()
+        let input = """
+            The following build commands failed:
+            \tLd /Build/Products/Debug/B.app/Contents/MacOS/B normal (in target 'B' from project 'P')
+            ld: library not found for -lBar
+            """
+
+        let result = parser.parse(input: input)
+
+        let error = try #require(result.linkerErrors.first)
+        #expect(error.target == nil)
+    }
+
+    @Test
+    func `The same missing symbol twice under one Ld is one error`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Ld /Build/Products/Debug/A.app/Contents/MacOS/A normal (in target 'A' from project 'P')
+            Undefined symbols for architecture arm64:
+              "_Missing", referenced from:
+                  main.main() -> () in main.o
+              "_Missing", referenced from:
+                  main.main() -> () in main.o
+            ld: symbol(s) not found for architecture arm64
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.linkerErrors.count == 1)
+        #expect(result.linkerErrors.first?.target == "A")
+    }
+
+    @Test
+    func `The Ld line still records the Link phase`() throws {
+        let parser = BuildOutputParser()
+        let input = """
+            Ld /Build/Products/Debug/App.app/Contents/MacOS/App normal (in target 'App' from project 'App')
+            ld: framework not found SomeFramework
+            """
+
+        let result = parser.parse(input: input, parseBuildInfo: true)
+
+        let target = try #require(result.buildInfo?.targets.first { $0.name == "App" })
+        #expect(target.phases.contains("Link"))
+        #expect(result.linkerErrors.first?.target == "App")
+    }
+
+    @Test
+    func `A second parse starts with no link target`() throws {
+        let parser = BuildOutputParser()
+        _ = parser.parse(input: """
+            Ld /Build/Products/Debug/App.app/Contents/MacOS/App normal (in target 'App' from project 'App')
+            ld: framework not found SomeFramework
+            """)
+
+        let result = parser.parse(input: "ld: framework not found OtherFramework")
+
+        let error = try #require(result.linkerErrors.first)
+        #expect(error.target == nil)
+    }
+
+    @Test
+    func `Format a non-symbol linker error with its target`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Ld /Build/Products/Debug/App.app/Contents/MacOS/App normal (in target 'App' from project 'App')
+            ld: framework not found SomeFramework
+            """
+
+        let formatted = BuildResultFormatter.formatBuildResult(parser.parse(input: input))
+
+        #expect(formatted.contains("  framework not found SomeFramework (in target 'App')"))
+    }
+
+    @Test
+    func `Parse the ld-prime framework and library not found forms`() {
+        let parser = BuildOutputParser()
+        let input = """
+            Ld /Build/Products/Debug/App.app/Contents/MacOS/App normal (in target 'App' from project 'App')
+            ld: framework 'SomeFramework' not found
+            ld: library 'SomeLib' not found
+            clang: error: linker command failed with exit code 1 (use -v to see invocation)
+            """
+
+        let result = parser.parse(input: input)
+
+        #expect(result.linkerErrors.map(\.message) == [
+            "framework not found SomeFramework", "library not found for -lSomeLib",
+        ])
+        #expect(result.linkerErrors.allSatisfy { $0.target == "App" })
+    }
 }

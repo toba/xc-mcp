@@ -79,6 +79,8 @@ public final class BuildOutputParser {
         // Linker error parsing state
         var currentLinkerArchitecture: String?
         var pendingLinkerSymbol: String?
+        /// The target of the most recent `Ld` task header. See ``trackLinkTarget(_:)``.
+        var currentLinkTarget: String?
 
         // Duplicate symbol parsing state
         var pendingDuplicateSymbol: String?
@@ -739,8 +741,36 @@ public final class BuildOutputParser {
 
     // MARK: - Linker Error Parsing
 
+    /// Records the target of each `Ld` task header, so the `ld` errors that follow it can name
+    /// the target that failed to link.
+    ///
+    /// xcodebuild prints the output of one task as a block under the task header, and the next
+    /// unindented header with `(in target '` starts a new block. That header clears the target, so
+    /// a later error does not get a stale target. The association is best-effort: an error with no
+    /// `Ld` header before it in the same block gets no target.
+    ///
+    /// A new header also ends a duplicate-symbol block that ld's summary line never closed. The
+    /// block is flushed first, so it keeps the target of its own `Ld` header, and the indented
+    /// command lines of the next task do not read as defining files.
+    private func trackLinkTarget(_ line: String) {
+        if line.hasPrefix("Ld ") {
+            flushPendingDuplicateSymbol()
+            state.currentLinkTarget = XcodebuildTaskHeader.target(in: line)
+            return
+        }
+        // The guard keeps the scan off the common path, because this runs on every line.
+        guard state.currentLinkTarget != nil || state.pendingDuplicateSymbol != nil,
+              !line.hasPrefix(" "), !line.hasPrefix("\t"),
+              line.contains(" (in target '") else { return }
+        flushPendingDuplicateSymbol()
+        state.currentLinkTarget = nil
+    }
+
     private func parseLinkerLine(_ line: String) -> Bool {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        trackLinkTarget(line)
+        // A `Substring`, not a new `String`, because this runs on every line and most lines match
+        // no branch below.
+        let trimmed = Self.trimmedBlanks(line)
 
         if trimmed.hasPrefix("Undefined symbols for architecture ") {
             let afterPrefix = trimmed.dropFirst("Undefined symbols for architecture ".count)
@@ -769,21 +799,36 @@ public final class BuildOutputParser {
             if let inRange = trimmed.range(of: " in ") {
                 let referencedFrom = String(trimmed[inRange.upperBound...])
                 appendLinkerErrorIfNew(LinkerError(
-                    symbol: symbol, architecture: arch, referencedFrom: referencedFrom))
+                    symbol: symbol, architecture: arch, referencedFrom: referencedFrom,
+                    target: state.currentLinkTarget,
+                ))
                 state.pendingLinkerSymbol = nil
             }
             return true
         }
 
-        if trimmed.hasPrefix("ld: framework not found ") {
-            let framework = String(trimmed.dropFirst("ld: framework not found ".count))
-            appendLinkerErrorIfNew(LinkerError(message: "framework not found \(framework)"))
+        // ld64 prints `ld: framework not found X`. ld-prime (Xcode 15 and later) prints
+        // `ld: framework 'X' not found`. Both give one message, so the two linkers dedupe alike.
+        let framework: Substring? = trimmed.hasPrefix("ld: framework not found ")
+            ? trimmed.dropFirst("ld: framework not found ".count)
+            : Self.ldPrimeMissingName(in: trimmed, prefix: "ld: framework '")
+
+        if let framework {
+            appendLinkerErrorIfNew(LinkerError(
+                message: "framework not found \(framework)", target: state.currentLinkTarget,
+            ))
             return true
         }
 
-        if trimmed.hasPrefix("ld: library not found for ") {
-            let library = String(trimmed.dropFirst("ld: library not found for ".count))
-            appendLinkerErrorIfNew(LinkerError(message: "library not found for \(library)"))
+        // ld64 prints `ld: library not found for -lX`. ld-prime prints `ld: library 'X' not found`.
+        let library: String? = trimmed.hasPrefix("ld: library not found for ")
+            ? String(trimmed.dropFirst("ld: library not found for ".count))
+            : Self.ldPrimeMissingName(in: trimmed, prefix: "ld: library '").map { "-l\($0)" }
+
+        if let library {
+            appendLinkerErrorIfNew(LinkerError(
+                message: "library not found for \(library)", target: state.currentLinkTarget,
+            ))
             return true
         }
 
@@ -816,12 +861,14 @@ public final class BuildOutputParser {
            line.hasPrefix("    ") || line.hasPrefix("\t"),
            !trimmed.isEmpty
         {
-            state.pendingConflictingFiles.append(trimmed)
+            state.pendingConflictingFiles.append(String(trimmed))
             return true
         }
 
         if trimmed.hasPrefix("ld: building for "), trimmed.contains("but linking") {
-            appendLinkerErrorIfNew(LinkerError(message: trimmed))
+            appendLinkerErrorIfNew(LinkerError(
+                message: String(trimmed), target: state.currentLinkTarget,
+            ))
             return true
         }
 
@@ -836,6 +883,22 @@ public final class BuildOutputParser {
         }
 
         return trimmed.hasPrefix("ld: symbol(s) not found for architecture ") ? true : false
+    }
+
+    /// Returns `line` without its leading and trailing spaces and tabs, as a view into `line`.
+    private static func trimmedBlanks(_ line: String) -> Substring {
+        func isBlank(_ character: Character) -> Bool { character == " " || character == "\t" }
+        guard let first = line.firstIndex(where: { !isBlank($0) }),
+              let last = line.lastIndex(where: { !isBlank($0) })
+        else { return line[line.endIndex...] }
+        return line[first...last]
+    }
+
+    /// Returns the name in an ld-prime `<prefix>X' not found` line, or `nil` when `line` has
+    /// another form.
+    private static func ldPrimeMissingName(in line: Substring, prefix: String) -> Substring? {
+        guard line.hasPrefix(prefix), line.hasSuffix("' not found") else { return nil }
+        return line.dropFirst(prefix.count).dropLast("' not found".count)
     }
 
     /// Returns true if a trimmed line looks like a swift-testing event line (starts with one of the
@@ -928,8 +991,9 @@ public final class BuildOutputParser {
 
     private func appendLinkerErrorIfNew(_ error: LinkerError) {
         // Include the kind so an undefined and a duplicate error for the same symbol name don't
-        // collapse into one — they are opposite diagnoses.
-        let key = "\(error.kind.rawValue):\(error.symbol):\(error.message)"
+        // collapse into one — they are opposite diagnoses. Include the target, because the same
+        // missing symbol in two targets is two link failures.
+        let key = "\(error.kind.rawValue):\(error.symbol):\(error.message):\(error.target ?? "")"
 
         if !state.seenLinkerErrors.contains(key) {
             state.seenLinkerErrors.insert(key)
@@ -943,7 +1007,7 @@ public final class BuildOutputParser {
         guard let symbol = state.pendingDuplicateSymbol else { return }
         appendLinkerErrorIfNew(LinkerError(
             symbol: symbol, architecture: architecture,
-            conflictingFiles: state.pendingConflictingFiles,
+            conflictingFiles: state.pendingConflictingFiles, target: state.currentLinkTarget,
         ))
         state.pendingDuplicateSymbol = nil
         state.pendingConflictingFiles = []
@@ -1913,17 +1977,6 @@ public final class BuildOutputParser {
         }
     }
 
-    private func extractTarget(from line: String) -> String? {
-        if let inTargetRange = line.range(of: "(in target '") {
-            let afterTarget = line[inTargetRange.upperBound...]
-
-            if let endQuote = afterTarget.range(of: "'") {
-                return String(afterTarget[..<endQuote.lowerBound])
-            }
-        }
-        return nil
-    }
-
     private static let phasePatterns: [(prefix: String, phaseName: String)] = [
         ("CompileSwiftSources ", "CompileSwiftSources"),
         ("CompileC ", "CompileC"),
@@ -1936,14 +1989,14 @@ public final class BuildOutputParser {
 
     private func parseBuildPhase(_ line: String) -> (String, String)? {
         for (prefix, phaseName) in Self.phasePatterns {
-            if line.hasPrefix(prefix), let target = extractTarget(from: line) {
+            if line.hasPrefix(prefix), let target = XcodebuildTaskHeader.target(in: line) {
                 return (phaseName, target)
             }
         }
 
         if line.contains("SwiftDriver"),
            line.contains("Compilation"),
-           let target = extractTarget(from: line) { return ("SwiftCompilation", target) }
+           let target = XcodebuildTaskHeader.target(in: line) { return ("SwiftCompilation", target) }
 
         return nil
     }
@@ -2073,10 +2126,7 @@ public final class BuildOutputParser {
 
         let name = URL(fileURLWithPath: path).lastPathComponent
 
-        let afterTarget = afterPrefix[targetRange.upperBound...]
-        guard let targetEnd = afterTarget.range(of: "' from project") else { return nil }
-
-        let target = String(afterTarget[..<targetEnd.lowerBound])
+        guard let target = XcodebuildTaskHeader.target(in: afterPrefix) else { return nil }
 
         return Executable(path: path, name: name, target: target)
     }

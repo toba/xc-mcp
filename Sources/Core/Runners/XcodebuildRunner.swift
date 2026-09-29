@@ -867,10 +867,7 @@ public enum XcodebuildError: LocalizedError, Sendable, MCPErrorConvertible {
                 || trimmed.hasPrefix("Ld ") || trimmed.hasPrefix("SwiftDriver ")
             {
                 // Extract action + target from "(in target 'X' from project 'Y')"
-                if let targetRange = line.range(of: "in target '"),
-                   let endRange = line[targetRange.upperBound...].range(of: "'")
-                {
-                    let target = String(line[targetRange.upperBound..<endRange.lowerBound])
+                if let target = XcodebuildTaskHeader.target(in: line) {
                     let action = String(trimmed.prefix(while: { !$0.isWhitespace }))
                     lastAction = "\(action) in target '\(target)'"
                 }

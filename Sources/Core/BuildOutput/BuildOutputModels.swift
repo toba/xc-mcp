@@ -190,12 +190,17 @@ public struct LinkerError: Sendable {
     public let referencedFrom: String
     public let message: String
     public let conflictingFiles: [String]
+    /// The target whose link step failed, from the `Ld … (in target 'X' from project 'Y')` task
+    /// header that xcodebuild prints before the `ld` output. It is `nil` when no such header
+    /// precedes the error, as in `swift build` output or xcbeautify output.
+    public let target: String?
 
     public init(
         symbol: String,
         architecture: String,
         referencedFrom: String,
         message: String = "",
+        target: String? = nil,
     ) {
         kind = .undefinedSymbol
         self.symbol = symbol
@@ -203,24 +208,32 @@ public struct LinkerError: Sendable {
         self.referencedFrom = referencedFrom
         self.message = message
         conflictingFiles = []
+        self.target = target
     }
 
-    public init(message: String) {
+    public init(message: String, target: String? = nil) {
         kind = .other
         symbol = ""
         architecture = ""
         referencedFrom = ""
         self.message = message
         conflictingFiles = []
+        self.target = target
     }
 
-    public init(symbol: String, architecture: String, conflictingFiles: [String]) {
+    public init(
+        symbol: String,
+        architecture: String,
+        conflictingFiles: [String],
+        target: String? = nil,
+    ) {
         kind = .duplicateSymbol
         self.symbol = symbol
         self.architecture = architecture
         referencedFrom = ""
         message = ""
         self.conflictingFiles = conflictingFiles
+        self.target = target
     }
 }
 
