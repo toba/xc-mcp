@@ -94,6 +94,24 @@ struct AppBundlePreparerTests {
         #expect(plist?.count == 1)
     }
 
+    @Test func `signs an unsigned bundle ad hoc`() async {
+        #expect(await AppBundlePreparer.signingIdentity(for: TemporaryDirectory.url.path) == "-")
+    }
+
+    @Test func `throws with codesign stderr when the re-sign fails`() async throws {
+        // A plain directory is not a bundle, so `codesign --sign` exits non-zero.
+        let notABundle = TemporaryDirectory.url.appendingPathComponent("NotABundle.app")
+        try FileManager.default.createDirectory(at: notABundle, withIntermediateDirectories: true)
+
+        let error = await #expect(throws: AppBundlePreparerError.self) {
+            try await AppBundlePreparer.resignBundle(appPath: notABundle.path)
+        }
+        guard case let .resignFailed(appPath, identity, stderr) = error else { return }
+        #expect(appPath == notABundle.path)
+        #expect(identity == "-")
+        #expect(!stderr.isEmpty)
+    }
+
     @Test func `resolves flat framework binary path`() throws {
         let root = TemporaryDirectory.url
 

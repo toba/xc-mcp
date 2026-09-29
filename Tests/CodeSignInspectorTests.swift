@@ -3,6 +3,21 @@ import Foundation
 @testable import XCMCPCore
 
 struct CodeSignInspectorTests {
+    @Test func `hashes a certificate as uppercase SHA-1 hex`() {
+        // The FIPS 180 test vector for SHA-1("abc").
+        let hash = CodeSignInspector.certificateHash(der: Data("abc".utf8))
+        #expect(hash == "A9993E364706816ABA3E25717850C26C9CD0D89D")
+    }
+
+    @Test func `finds no leaf certificate on unsigned code`() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("unsigned_\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        #expect(await CodeSignInspector.leafCertificateHash(dir.path) == nil)
+    }
+
     @Test func `parses Team ID and authority from codesign output`() {
         let output = """
             Executable=/Applications/MyApp.app/Contents/MacOS/MyApp

@@ -1,3 +1,4 @@
+import CryptoKit
 import Logging
 import Foundation
 import Subprocess
@@ -126,6 +127,41 @@ public enum CodeSignInspector: Sendable {
             mergeStderr: true,
         )
         return parse(result?.stdout ?? "", path: path)
+    }
+
+    /// Returns the SHA-1 hash of the leaf certificate that signs `path`, or `nil` when the code
+    /// carries no certificate (ad hoc or unsigned).
+    ///
+    /// `codesign --sign` accepts this hash as an identity. A hash names exactly one certificate,
+    /// so it stays valid when the keychain holds two identities with the same common name (for
+    /// example, a revoked certificate beside its replacement). The common name is ambiguous there.
+    public static func leafCertificateHash(_ path: String) async -> String? {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory
+            .appendingPathComponent("codesign_certs_\(UUID().uuidString)")
+        do { try fm.createDirectory(at: dir, withIntermediateDirectories: true) } catch {
+            return nil
+        }
+        defer { try? fm.removeItem(at: dir) }
+
+        // `--extract-certificates=<prefix>` writes the chain as DER to `<prefix>0`, `<prefix>1`,
+        // and so on. The file with index 0 is the leaf certificate.
+        let prefix = dir.appendingPathComponent("cert").path
+        let result = try? await ProcessResult.runSubprocess(
+            .path("/usr/bin/codesign"),
+            arguments: ["-d", "--extract-certificates=\(prefix)", path],
+        )
+        guard result?.succeeded == true,
+              let der = fm.contents(atPath: "\(prefix)0"), !der.isEmpty
+        else { return nil }
+
+        return certificateHash(der: der)
+    }
+
+    /// Returns the SHA-1 hash of a DER-encoded certificate as uppercase hex, the form that
+    /// `security find-identity` prints and `codesign --sign` accepts. Exposed for testing.
+    static func certificateHash(der: Data) -> String {
+        Insecure.SHA1.hash(data: der).map { String(format: "%02X", $0) }.joined()
     }
 
     /// Checks Team-ID consistency between an app bundle's main executable and the frameworks in its
