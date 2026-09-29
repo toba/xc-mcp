@@ -69,6 +69,7 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(filePath: resolvedProjectPath)
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
@@ -125,7 +126,8 @@ public struct AddSynchronizedFolderExceptionTool: Sendable {
                 )
             }
 
-            try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
+            try PBXProjTextEditor.write(
+                editor.text, projectPath: projectURL.path, expectedPreimage: preimage)
 
             let fileList = files.joined(separator: ", ")
             return CallTool.Result.text(

@@ -113,13 +113,13 @@ public enum CompilerCrashReport {
     /// caller that has already done it passes the result here rather than paying for it twice.
     ///
     /// - Parameters:
-    ///   - signal: The signal the compiler died on.
+    ///   - signal: The signal the compiler died on, when the output names one.
     ///   - argv: The frontend argv, or `nil` when the output held no crash preamble.
     ///   - directory: Where to write the argv file and the replay script.
     ///   - reportWindowMinutes: How far back to look for a matching `.ips`.
     /// - Returns: The artifacts, with `nil` paths when `argv` is absent or the write failed.
     public static func write(
-        signal: Int,
+        signal: Int?,
         argv: [String]?,
         into directory: URL,
         reportWindowMinutes: Int = 10,
@@ -185,10 +185,11 @@ public enum CompilerCrashReport {
     }
 
     /// Renders a shell script that reruns one frontend invocation.
-    static func replayScript(argv: [String], signal: Int) -> String {
+    static func replayScript(argv: [String], signal: Int?) -> String {
+        let death = signal.map { "died on signal \($0)" } ?? "crashed"
         var lines = [
             "#!/bin/sh",
-            "# Replays the single swift-frontend job that died on signal \(signal).",
+            "# Replays the single swift-frontend job that \(death).",
             "# Rerunning this costs one compilation instead of a whole package build.",
             "# Add a probe flag by editing the argument list below.",
             "exec \\",

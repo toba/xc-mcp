@@ -135,6 +135,28 @@ public enum DerivedDataScoper {
         )
     }
 
+    /// Returns the DerivedData root an xcodebuild invocation writes to, when it is known without
+    /// asking xcodebuild.
+    ///
+    /// A caller-supplied `-derivedDataPath` wins. Otherwise this is ``effectivePath``, which is
+    /// `nil` when scoping is off, because Xcode's default root carries a hash only xcodebuild can
+    /// compute.
+    public static func resolvedPath(
+        workspacePath: String?,
+        projectPath: String?,
+        destination: String? = nil,
+        additionalArguments: [String] = [],
+        environment: [String: String] = ProcessEnvironment.current,
+    ) -> String? {
+        callerSuppliedPath(in: additionalArguments) ?? effectivePath(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+            destination: destination,
+            additionalArguments: additionalArguments,
+            environment: environment,
+        )
+    }
+
     /// Computes the scoped path for the given workspace/project, ignoring overrides.
     ///
     /// - Parameters:

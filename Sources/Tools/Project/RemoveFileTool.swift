@@ -63,6 +63,8 @@ public struct RemoveFileTool: Sendable {
             // Resolve and validate the file path
             let resolvedFilePath = try pathUtility.resolvePath(from: filePath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
+
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             let fileName = URL(fileURLWithPath: resolvedFilePath).lastPathComponent
@@ -153,7 +155,8 @@ public struct RemoveFileTool: Sendable {
                 try editor.removeBlock(uuid: refUUID)
             }
 
-            try PBXProjTextEditor.write(editor.text, projectPath: resolvedProjectPath)
+            try PBXProjTextEditor.write(
+                editor.text, projectPath: resolvedProjectPath, expectedPreimage: preimage)
 
             // Optionally remove from disk
             if removeFromDisk {

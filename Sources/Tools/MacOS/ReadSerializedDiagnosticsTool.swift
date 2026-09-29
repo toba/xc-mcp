@@ -5,7 +5,8 @@ import Foundation
 /// Reads Swift/Clang serialized diagnostics (.dia) files from DerivedData.
 ///
 /// These binary files are the ground truth for what the compiler actually reported, even when the
-/// build log is empty or truncated. Uses `c-index-test` to decode them.
+/// build log is empty or truncated. ``SerializedDiagnostics`` decodes them in process, because
+/// current toolchains ship no `c-index-test`.
 public struct ReadSerializedDiagnosticsTool: Sendable {
     private let xcodebuildRunner: XcodebuildRunner
     private let sessionManager: SessionManager
@@ -104,30 +105,7 @@ public struct ReadSerializedDiagnosticsTool: Sendable {
             throw MCPError.invalidParams("Either 'target' or 'dia_path' is required.")
         }
 
-        // Decode each .dia file using c-index-test. Each decode is an independent subprocess with
-        // its own timeout, so they run concurrently and the index restores the input order.
-        let decoded = try await withThrowingTaskGroup(of: (index: Int, output: String).self) {
-            group in
-            for (index, path) in diaPaths.enumerated() {
-                group.addTask(name: "read_serialized_diagnostics decode \(index)") {
-                    (index: index, output: try await decodeDiaFile(at: path))
-                }
-            }
-            var results: [(index: Int, output: String)] = []
-            results.reserveCapacity(diaPaths.count)
-            for try await result in group { results.append(result) }
-            return results.sorted { $0.index < $1.index }
-        }
-
-        var allDiagnostics: [(file: String, output: String)] = []
-
-        for result in decoded where !result.output.isEmpty {
-            allDiagnostics.append(
-                (
-                    file: URL(fileURLWithPath: diaPaths[result.index]).lastPathComponent,
-                    output: result.output,
-                ))
-        }
+        let allDiagnostics = Self.decodeDiaFiles(diaPaths)
 
         // Format output
         var text = "## Serialized Diagnostics\n\n"
@@ -181,14 +159,26 @@ public struct ReadSerializedDiagnosticsTool: Sendable {
             .map(\.path)
     }
 
-    private func decodeDiaFile(at path: String) async throws -> String {
-        // c-index-test is the standard tool for reading serialized diagnostics
-        let result = try await ProcessResult.runSubprocess(
-            .name("xcrun"),
-            arguments: ["c-index-test", "-read-diagnostics", path],
-            mergeStderr: true,
-            timeout: .seconds(10),
-        )
-        return result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// Decodes each .dia file in process, dropping the files that hold no diagnostic.
+    ///
+    /// A file that fails to decode reports why in place of its diagnostics, so one bad file does
+    /// not hide the rest.
+    static func decodeDiaFiles(_ paths: [String]) -> [(file: String, output: String)] {
+        paths.compactMap { path in
+            let output = decodeDiaFile(at: path)
+            guard !output.isEmpty else { return nil }
+            return (file: URL(fileURLWithPath: path).lastPathComponent, output: output)
+        }
+    }
+
+    static func decodeDiaFile(at path: String) -> String {
+        do {
+            return try SerializedDiagnostics.decode(contentsOf: path)
+                .lazy
+                .map { $0.formatted() }
+                .joined(separator: "\n")
+        } catch {
+            return "error: could not decode \(path): \(error)"
+        }
     }
 }

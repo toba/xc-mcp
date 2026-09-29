@@ -132,6 +132,21 @@ public struct DiagnosticsTool: Sendable {
                 lintSection: lintSection,
             )
 
+            // A swift-frontend crash leaves no source error, so the warnings above cannot explain
+            // the failure. Lead with the crash. (dcd0c744)
+            if buildFailed, let crash = FrontendCrashDiagnosis.diagnose(
+                output: buildOutput.output,
+                reportedErrorCount: parsed.errors.count + parsed.linkerErrors.count,
+                derivedDataPath: DerivedDataScoper.resolvedPath(
+                    workspacePath: workspacePath,
+                    projectPath: projectPath,
+                    destination: XcodebuildRunner.macOSDestination,
+                    additionalArguments: arguments.enableSanitizersArgs(),
+                ),
+            ) {
+                output = "## Compiler Crash\n\n\(crash)\n\n\(output)"
+            }
+
             if timedOut {
                 output =
                     "Build timed out after \(Int(timeout)) seconds. Partial diagnostics from output collected before timeout:\n\n"

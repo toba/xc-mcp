@@ -70,6 +70,8 @@ public struct AddFrameworkTool: Sendable {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(fileURLWithPath: resolvedProjectPath)
 
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
+
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             // Find the target
@@ -338,7 +340,8 @@ public struct AddFrameworkTool: Sendable {
                 }
             }
 
-            try PBXProjTextEditor.write(editor.text, projectPath: resolvedProjectPath)
+            try PBXProjTextEditor.write(
+                editor.text, projectPath: resolvedProjectPath, expectedPreimage: preimage)
 
             let embedText = embed && (!isSystemFramework || isDeveloperFramework)
                 ? " (embedded)"

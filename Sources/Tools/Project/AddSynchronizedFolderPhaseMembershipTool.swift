@@ -84,6 +84,7 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(filePath: resolvedProjectPath)
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
@@ -158,7 +159,8 @@ public struct AddSynchronizedFolderPhaseMembershipTool: Sendable {
                 )
             }
 
-            try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
+            try PBXProjTextEditor.write(
+                editor.text, projectPath: projectURL.path, expectedPreimage: preimage)
 
             let phaseDisplay = phase.name() ?? "<unnamed phase>"
             let fileList = files.joined(separator: ", ")

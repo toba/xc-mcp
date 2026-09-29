@@ -25,6 +25,10 @@ public enum PBXProjWriter {
     /// bundle holding both, and `XcodeProj` then prefers `project.pbxproj` and silently ignores
     /// every later edit to the JSON.
     ///
+    /// A property list project changes only in the object blocks the edit touched. The rest of
+    /// the file keeps the bytes Xcode wrote, so the diff shows the edit and nothing else. See
+    /// ``minimalEdit(of:producing:projectName:)``.
+    ///
     /// Includes a workaround for an XcodeProj bug where `PBXProjEncoder.sortProjectReferences`
     /// force-unwraps `PBXFileElement.name`, crashing when a project reference's file element only
     /// has `path` set (e.g. a self-referencing xcodeproj). We backfill `name` from `path` before
@@ -37,19 +41,21 @@ public enum PBXProjWriter {
         to path: Path,
         expectedPreimage: Data? = nil,
     ) throws {
-        // Workaround: XcodeProj's sortProjectReferences does `lFile.name!` which crashes when a
-        // PBXFileReference used as a ProjectRef has no `name`. Backfill name from path so the
-        // force-unwrap succeeds.
-        if let project = try xcodeproj.pbxproj.rootProject() {
-            for refDict in project.projects {
-                if let fileElement = refDict["ProjectRef"], fileElement.name == nil {
-                    fileElement.name = fileElement.path
-                }
-            }
-        }
+        try backfillProjectReferenceNames(in: xcodeproj.pbxproj)
 
         let destination = destinationPath(for: xcodeproj, in: path)
-        let data = try serialize(xcodeproj, destination: destination)
+        var data = try serialize(xcodeproj, destination: destination)
+
+        if xcodeproj.projectFormat == .pbxproj,
+           let original = expectedPreimage ?? FileManager.default.contents(atPath: destination),
+           let minimal = minimalEdit(
+               of: original,
+               producing: data,
+               projectName: try xcodeproj.pbxproj.rootProject()?.name,
+           )
+        {
+            data = minimal
+        }
 
         try SafeProjectWrite.write(
             data,
@@ -57,6 +63,70 @@ public enum PBXProjWriter {
             lockIdentifier: path.string,
             expectedPreimage: expectedPreimage,
         )
+    }
+
+    /// The original property list bytes with only the changed object blocks replaced, or `nil`
+    /// when the splice does not apply.
+    ///
+    /// The function serializes the original bytes with XcodeProj to get the baseline, and
+    /// ``PBXProjSplice`` copies each block that differs between the baseline and `updated` into
+    /// the original text. The result must parse and serialize to exactly `updated`. Any other
+    /// outcome returns `nil`, and the caller writes `updated` as it is.
+    ///
+    /// - Parameters:
+    ///   - original: The project file bytes before the edit.
+    ///   - updated: The XcodeProj serialization of the edited project.
+    ///   - projectName: The name of the root project. XcodeProj takes it from the bundle path
+    ///     when it loads a project, and some object comments contain it. A graph parsed from data
+    ///     has no path, so the name must come from the loaded graph.
+    static func minimalEdit(
+        of original: Data,
+        producing updated: Data,
+        projectName: String?,
+    ) -> Data? {
+        guard let originalText = String(data: original, encoding: .utf8),
+              let updatedText = String(data: updated, encoding: .utf8),
+              let baseline = try? serializePropertyList(
+                  PBXProj(data: original), projectName: projectName,
+              ),
+              let baselineText = String(data: baseline, encoding: .utf8),
+              let spliced = PBXProjSplice.splice(
+                  original: originalText, baseline: baselineText, updated: updatedText,
+              )
+        else { return nil }
+
+        let data = Data(spliced.utf8)
+        if data == original { return data }
+
+        guard let check = try? serializePropertyList(
+            PBXProj(data: data), projectName: projectName,
+        ), check == updated
+        else { return nil }
+        return data
+    }
+
+    /// Serialize a project graph as a property list, with the same settings ``write`` uses.
+    private static func serializePropertyList(
+        _ pbxproj: PBXProj,
+        projectName: String?,
+    ) throws -> Data? {
+        if let projectName { try pbxproj.rootProject()?.name = projectName }
+        try backfillProjectReferenceNames(in: pbxproj)
+        return try pbxproj.dataRepresentation(outputSettings: PBXOutputSettings())
+    }
+
+    /// Give each project reference a `name`, taken from its `path`.
+    ///
+    /// XcodeProj's `sortProjectReferences` does `lFile.name!`, which crashes when a
+    /// `PBXFileReference` used as a `ProjectRef` has no `name`.
+    private static func backfillProjectReferenceNames(in pbxproj: PBXProj) throws {
+        guard let project = try pbxproj.rootProject() else { return }
+
+        for refDict in project.projects {
+            if let fileElement = refDict["ProjectRef"], fileElement.name == nil {
+                fileElement.name = fileElement.path
+            }
+        }
     }
 
     /// The file the project is written to, chosen by the format it was read from.

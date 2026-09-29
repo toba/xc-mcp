@@ -101,6 +101,12 @@ public struct BuildDeviceTool: Sendable {
                 destination: destination,
                 additionalArguments: additionalArguments,
             )
+            let derivedDataPath = DerivedDataScoper.resolvedPath(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
 
             let result = try await xcodebuildRunner.build(
                 projectPath: projectPath,
@@ -116,6 +122,7 @@ public struct BuildDeviceTool: Sendable {
 
             try ErrorExtractor.checkBuildSuccess(
                 result, projectRoot: nil, derivedDataNote: derivedDataNote,
+                derivedDataPath: derivedDataPath,
             )
 
             // Extract the built .app path from build settings

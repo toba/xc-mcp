@@ -120,6 +120,12 @@ public struct BuildMacOSTool: Sendable {
             destination: destination,
             additionalArguments: additionalArguments,
         )
+        let derivedDataPath = DerivedDataScoper.resolvedPath(
+            workspacePath: workspacePath,
+            projectPath: projectPath,
+            destination: destination,
+            additionalArguments: additionalArguments,
+        )
 
         do {
             try await BuildSettingExtractor.validateMacOSSupport(
@@ -149,6 +155,7 @@ public struct BuildMacOSTool: Sendable {
             try ErrorExtractor.checkBuildSuccess(
                 result, projectRoot: projectRoot, errorsOnly: errorsOnly,
                 derivedDataNote: derivedDataNote,
+                derivedDataPath: derivedDataPath,
             )
 
             let label = forTesting ? "Build-for-testing" : "Build"

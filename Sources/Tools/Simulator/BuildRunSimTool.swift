@@ -112,6 +112,12 @@ public struct BuildRunSimTool: Sendable {
                 destination: destination,
                 additionalArguments: additionalArguments,
             )
+            let derivedDataPath = DerivedDataScoper.resolvedPath(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
 
             // Step 1: Build (use longer output timeout — linking/signing phases routinely produce
             // no output for >30 seconds)
@@ -134,6 +140,7 @@ public struct BuildRunSimTool: Sendable {
                     projectPath: projectPath, workspacePath: workspacePath,
                 ),
                 derivedDataNote: derivedDataNote,
+                derivedDataPath: derivedDataPath,
             )
 
             // Step 2: Get bundle ID and app path from build settings

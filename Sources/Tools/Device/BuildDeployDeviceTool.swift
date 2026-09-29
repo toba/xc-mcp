@@ -101,6 +101,12 @@ public struct BuildDeployDeviceTool: Sendable {
                 destination: destination,
                 additionalArguments: additionalArguments,
             )
+            let derivedDataPath = DerivedDataScoper.resolvedPath(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
 
             // Step 2: Build
             let buildResult = try await xcodebuildRunner.build(
@@ -116,6 +122,7 @@ public struct BuildDeployDeviceTool: Sendable {
             )
             try ErrorExtractor.checkBuildSuccess(
                 buildResult, projectRoot: nil, derivedDataNote: derivedDataNote,
+                derivedDataPath: derivedDataPath,
             )
             steps.append("✓ Build succeeded")
 

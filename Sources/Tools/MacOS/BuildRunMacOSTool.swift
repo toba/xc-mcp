@@ -119,6 +119,12 @@ public struct BuildRunMacOSTool: Sendable {
                 destination: destination,
                 additionalArguments: additionalArguments,
             )
+            let derivedDataPath = DerivedDataScoper.resolvedPath(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
 
             // Step 1: Build
             let buildResult = try await xcodebuildRunner.build(
@@ -135,6 +141,7 @@ public struct BuildRunMacOSTool: Sendable {
 
             try ErrorExtractor.checkBuildSuccess(
                 buildResult, projectRoot: projectRoot, derivedDataNote: derivedDataNote,
+                derivedDataPath: derivedDataPath,
             )
 
             // Step 2: Get app path from build settings (same destination as the build, so the

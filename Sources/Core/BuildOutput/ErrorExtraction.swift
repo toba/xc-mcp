@@ -309,12 +309,15 @@ public enum ErrorExtractor {
     ///   - projectRoot: Optional project root for path relativization in error output.
     ///   - derivedDataNote: One-line DerivedData root note appended to the failure message. A
     ///     failed build is the case where the caller most needs to know which tree to inspect.
+    ///   - derivedDataPath: The DerivedData root the build wrote to. When given, a failure with no
+    ///     error line searches its `.dia` files for a compiler crash note.
     /// - Throws: ``MCPError/internalError(_:)`` with formatted build errors if the build failed.
     public static func checkBuildSuccess(
         _ result: ProcessResult,
         projectRoot: String?,
         errorsOnly: Bool = false,
         derivedDataNote: String? = nil,
+        derivedDataPath: String? = nil,
     ) throws(MCPError) {
         let buildResult = parseBuildOutput(result.output)
 
@@ -323,6 +326,15 @@ public enum ErrorExtractor {
         var errorOutput = BuildResultFormatter.formatBuildResult(
             buildResult, projectRoot: projectRoot, errorsOnly: errorsOnly,
         )
+
+        // A swift-frontend crash prints no source error, so the summary above can read as a
+        // warnings-only failure. Put the crash first, because it is the cause. (dcd0c744)
+        let crash = FrontendCrashDiagnosis.diagnose(
+            output: result.output,
+            reportedErrorCount: buildResult.errors.count + buildResult.linkerErrors.count,
+            derivedDataPath: derivedDataPath,
+        )
+        if let crash { errorOutput = crash + "\n\n" + errorOutput }
 
         if let advice = MacroApprovalAdvice.advice(for: result.output) {
             errorOutput += "\n\n" + advice

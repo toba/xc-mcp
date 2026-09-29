@@ -208,6 +208,12 @@ public struct BuildDebugMacOSTool: Sendable {
                 destination: destination,
                 additionalArguments: additionalArguments,
             )
+            let derivedDataPath = DerivedDataScoper.resolvedPath(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
 
             if skipBuild {
                 onProgress?("Skipping build (skip_build); relaunching existing product")
@@ -234,6 +240,7 @@ public struct BuildDebugMacOSTool: Sendable {
                         projectPath: projectPath, workspacePath: workspacePath,
                     ),
                     derivedDataNote: derivedDataNote,
+                    derivedDataPath: derivedDataPath,
                 )
             }
 

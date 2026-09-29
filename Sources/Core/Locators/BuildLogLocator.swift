@@ -38,23 +38,39 @@ public enum BuildLogLocator {
         inProjectRoot projectRoot: String,
         limit: Int? = nil,
     ) -> [BuildLogEntry] {
+        let sorted = entries(inProjectRoot: projectRoot) { $0 > 0 }.sorted { $0.date > $1.date }
+
+        guard let limit else { return sorted }
+        return Array(sorted.prefix(limit))
+    }
+
+    /// The newest zero-byte build log, or `nil` when every log has content.
+    ///
+    /// Xcode creates the log when a build starts and writes it when the build ends. A build that
+    /// dies in between, such as one whose compiler crashed, leaves the file empty. The file date
+    /// then marks the start of that build.
+    public static func newestEmptyLog(inProjectRoot projectRoot: String) -> BuildLogEntry? {
+        entries(inProjectRoot: projectRoot) { $0 == 0 }.max { $0.date < $1.date }
+    }
+
+    /// The build logs whose byte size passes `sizeMatches`, in directory order.
+    private static func entries(
+        inProjectRoot projectRoot: String,
+        sizeMatches: (UInt64) -> Bool,
+    ) -> [BuildLogEntry] {
         let logsDir = logsDirectory(inProjectRoot: projectRoot)
         let fm = FileManager.default
-        guard let entries = try? fm.contentsOfDirectory(atPath: logsDir) else { return [] }
+        guard let names = try? fm.contentsOfDirectory(atPath: logsDir) else { return [] }
 
-        let sorted = entries.filter { $0.hasSuffix(".xcactivitylog") }
+        return names.filter { $0.hasSuffix(".xcactivitylog") }
             .compactMap { name -> BuildLogEntry? in
                 let path = URL(fileURLWithPath: logsDir).appendingPathComponent(name).path
                 guard let attrs = try? fm.attributesOfItem(atPath: path),
                       let date = attrs[.modificationDate] as? Date,
                       let size = attrs[.size] as? UInt64,
-                      size > 0 else { return nil }
+                      sizeMatches(size) else { return nil }
                 return BuildLogEntry(path: path, date: date)
             }
-            .sorted { $0.date > $1.date }
-
-        guard let limit else { return sorted }
-        return Array(sorted.prefix(limit))
     }
 
     /// The non-empty build logs, newest first, rejecting the case where there are none.

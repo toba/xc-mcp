@@ -26,7 +26,9 @@ public struct ShowBuildLogTool: Sendable {
             description:
                 "Read errors and warnings from the most recent Xcode build log in DerivedData. "
                 + "Use this when a build hangs or times out before errors appear — "
-                + "a previous Xcode build may have captured the errors you need.",
+                + "a previous Xcode build may have captured the errors you need. "
+                + "When the newest log is empty (a build that died, such as on a compiler crash), "
+                + "it reads the .dia files and the swift-frontend crash report instead.",
             inputSchema: .object([
                 "type": .string("object"),
                 "properties": .object([
@@ -67,8 +69,20 @@ public struct ShowBuildLogTool: Sendable {
             projectPath: projectPath, workspacePath: workspacePath, scheme: scheme,
         )
 
-        // Step 2: Find the most recent non-empty .xcactivitylog
-        let mostRecent = try BuildLogLocator.newestLog(inProjectRoot: derivedDataPath)
+        // Step 2: Find the most recent non-empty .xcactivitylog. A newer empty log means the last
+        // build died before Xcode wrote it, so the non-empty one belongs to an earlier build. Read
+        // the .dia files and crash reports instead. (dcd0c744)
+        let newest = BuildLogLocator.logs(inProjectRoot: derivedDataPath, limit: 1).first
+        let empty = BuildLogLocator.newestEmptyLog(inProjectRoot: derivedDataPath)
+
+        guard let mostRecent = newest, empty.map({ $0.date <= mostRecent.date }) ?? true else {
+            return CallTool.Result.text(EmptyBuildLogFallback.report(
+                derivedDataPath: derivedDataPath,
+                emptyLog: empty,
+                staleLog: newest,
+                errorsOnly: errorsOnly,
+            ))
+        }
 
         // Step 3: Decompress and extract errors/warnings
         let decompressed = try await BuildLogLocator.decompress(mostRecent)
@@ -105,18 +119,7 @@ public struct ShowBuildLogTool: Sendable {
         if errors.isEmpty, warnings.isEmpty {
             text += "No errors or warnings found in the most recent build log."
         } else {
-            if !errors.isEmpty {
-                text += "**\(errors.count) error\(errors.count == 1 ? "" : "s"):**\n\n"
-                for error in errors.prefix(50) { text += "  \(error)\n" }
-                if errors.count > 50 { text += "  (+\(errors.count - 50) more errors)\n" }
-            }
-
-            if !warnings.isEmpty {
-                if !errors.isEmpty { text += "\n" }
-                text += "**\(warnings.count) warning\(warnings.count == 1 ? "" : "s"):**\n\n"
-                for warning in warnings.prefix(30) { text += "  \(warning)\n" }
-                if warnings.count > 30 { text += "  (+\(warnings.count - 30) more warnings)\n" }
-            }
+            text += BuildLogDiagnosticList.format(errors: errors, warnings: warnings)
         }
 
         return CallTool.Result.text(text)

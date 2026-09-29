@@ -81,6 +81,7 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
         do {
             let resolvedProjectPath = try pathUtility.resolvePath(from: projectPath)
             let projectURL = URL(filePath: resolvedProjectPath)
+            let preimage = PBXProjWriter.preimage(of: Path(projectURL.path))
             let xcodeproj = try XcodeProj(path: Path(projectURL.path))
 
             guard let project = try xcodeproj.pbxproj.rootProject(),
@@ -164,13 +165,15 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                         field: "exceptions", refUUID: exceptionUUID,
                     )
 
-                    try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
+                    try PBXProjTextEditor.write(
+                        editor.text, projectPath: projectURL.path, expectedPreimage: preimage)
                     return CallTool.Result.text(
                         "Removed '\(fileName)' from \(setLabel) on '\(folderPath)'. Exception set was empty and has been removed."
                     )
                 }
 
-                try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
+                try PBXProjTextEditor.write(
+                    editor.text, projectPath: projectURL.path, expectedPreimage: preimage)
                 return CallTool.Result.text(
                     "Removed '\(fileName)' from \(setLabel) on '\(folderPath)'")
             } else {
@@ -181,7 +184,8 @@ public struct RemoveSynchronizedFolderExceptionTool: Sendable {
                     field: "exceptions", refUUID: exceptionUUID,
                 )
 
-                try PBXProjTextEditor.write(editor.text, projectPath: projectURL.path)
+                try PBXProjTextEditor.write(
+                    editor.text, projectPath: projectURL.path, expectedPreimage: preimage)
                 return CallTool.Result.text(
                     "Removed \(setLabel) from synchronized folder '\(folderPath)'")
             }

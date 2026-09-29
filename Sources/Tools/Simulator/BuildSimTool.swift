@@ -121,6 +121,12 @@ public struct BuildSimTool: Sendable {
                 destination: destination,
                 additionalArguments: additionalArguments,
             )
+            let derivedDataPath = DerivedDataScoper.resolvedPath(
+                workspacePath: workspacePath,
+                projectPath: projectPath,
+                destination: destination,
+                additionalArguments: additionalArguments,
+            )
 
             let result = try await xcodebuildRunner.build(
                 projectPath: projectPath,
@@ -140,6 +146,7 @@ public struct BuildSimTool: Sendable {
             )
             try ErrorExtractor.checkBuildSuccess(
                 result, projectRoot: projectRoot, derivedDataNote: derivedDataNote,
+                derivedDataPath: derivedDataPath,
             )
 
             return CallTool.Result.text(
