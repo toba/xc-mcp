@@ -122,6 +122,7 @@ public struct DiagnosticsTool: Sendable {
 
             // Step 4: Optionally run sm lint
             var lintSection: String?
+
             if runLint, let root = projectRoot {
                 lintSection = await SwiftLintTool.lintSection(forRoot: root)
             }
@@ -134,18 +135,17 @@ public struct DiagnosticsTool: Sendable {
 
             // A swift-frontend crash leaves no source error, so the warnings above cannot explain
             // the failure. Lead with the crash. (dcd0c744)
-            if buildFailed, let crash = FrontendCrashDiagnosis.diagnose(
-                output: buildOutput.output,
-                reportedErrorCount: parsed.errors.count + parsed.linkerErrors.count,
-                derivedDataPath: DerivedDataScoper.resolvedPath(
-                    workspacePath: workspacePath,
-                    projectPath: projectPath,
-                    destination: XcodebuildRunner.macOSDestination,
-                    additionalArguments: arguments.enableSanitizersArgs(),
-                ),
-            ) {
-                output = "## Compiler Crash\n\n\(crash)\n\n\(output)"
-            }
+            if buildFailed,
+               let crash = FrontendCrashDiagnosis.diagnose(
+                   output: buildOutput.output,
+                   reportedErrorCount: BuildOutputParser.explainedProblemCount(in: parsed),
+                   derivedDataPath: DerivedDataScoper.resolvedPath(
+                       workspacePath: workspacePath,
+                       projectPath: projectPath,
+                       destination: XcodebuildRunner.macOSDestination,
+                       additionalArguments: arguments.enableSanitizersArgs(),
+                   ),
+               ) { output = "## Compiler Crash\n\n\(crash)\n\n\(output)" }
 
             if timedOut {
                 output =

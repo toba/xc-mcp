@@ -67,6 +67,16 @@ public final class BuildOutputParser {
         var sawTerminalSuccessMarker: Bool = false
         var sawTerminalFailureMarker: Bool = false
 
+        // Failed-command tracking. See ``recordCommandFailure(_:at:in:)``.
+        /// The count of errors and linker errors when the current task header was read
+        var problemCountAtTaskStart = 0
+        /// Unexplained failed commands that no terminal marker has settled yet
+        var pendingCommandFailures: [BuildError] = []
+        /// The key of every failed command read so far
+        var seenCommandFailures: Set<String> = []
+        /// True while the lines being read belong to the list under `Testing failed:`
+        var readingTestingFailedSummary = false
+
         /// Whether the line being read belongs to the source context echoed under a diagnostic
         /// header
         ///
@@ -151,6 +161,14 @@ public final class BuildOutputParser {
         let lines = BuildLogLines.split(input)
 
         for (index, line) in lines.enumerated() {
+            let failure = Self.commandFailure(in: line)
+            trackTestingFailedSummary(line)
+
+            // a restatement of a failure already read
+            if let failure,
+               state.readingTestingFailedSummary,
+               state.seenCommandFailures.contains(failure.key) { continue }
+
             parseLine(line)
 
             // Swift Testing: append custom #expect comments / multi-line messages macOS detail
@@ -238,11 +256,20 @@ public final class BuildOutputParser {
                         file: nil, line: nil, message: combinedMessage)
                 }
             }
+
+            if let failure {
+                recordCommandFailure(failure, at: index, in: lines)
+            } else {
+                trackTaskStart(line)
+            }
         }
 
         // Flush any duplicate-symbol block still pending (output truncated before ld's summary
         // line).
         flushPendingDuplicateSymbol()
+
+        // No marker settled these, so the log ended after the failure.
+        flushPendingCommandFailures()
 
         // Safety net: if a test started but never completed and the test run failed, record it as a
         // crash (ported from xcsift a1723d8)
@@ -264,8 +291,10 @@ public final class BuildOutputParser {
 
         // SwiftPM listed a failed test target, and nothing else in the output says why. Report the
         // target, so the run cannot read as a pass on the counts of the other targets.
-        if state.errors.isEmpty, state.failedTests.isEmpty,
-           (state.swiftTestingFailedCount ?? 0) == 0, (xctestFailedCount ?? 0) == 0
+        if state.errors.isEmpty,
+           state.failedTests.isEmpty,
+           (state.swiftTestingFailedCount ?? 0) == 0,
+           (xctestFailedCount ?? 0) == 0
         {
             for target in state.failedTestTargets {
                 appendErrorIfNew(BuildError(
@@ -635,6 +664,162 @@ public final class BuildOutputParser {
         }
     }
 
+    // MARK: - Failed Commands
+
+    /// A `Command <Rule> failed with a nonzero exit code` line.
+    private struct CommandFailure {
+        /// The rule name, such as `CodeSign` or `SwiftDriver Compilation Requirements`
+        let rule: String
+        /// The failure line without its indentation
+        let line: String
+
+        /// The failure with no indentation and no target suffix, which a restatement shares
+        var key: String { "Command \(rule) failed with a nonzero exit code" }
+    }
+
+    private static let commandFailureSuffix = " failed with a nonzero exit code"
+
+    /// Reads a failed-command line, or returns `nil` for any other line.
+    ///
+    /// Every word of the rule name starts with a capital letter. That keeps prose such as
+    /// `Command line invocation failed with a nonzero exit code` out of the match.
+    private static func commandFailure(in line: String) -> CommandFailure? {
+        let trimmed = trimmedBlanks(line)
+        guard trimmed.hasPrefix("Command "),
+              let suffix = trimmed.range(of: commandFailureSuffix) else { return nil }
+
+        let rule = trimmed.dropFirst("Command ".count)[..<suffix.lowerBound]
+        let words = rule.split(separator: " ", omittingEmptySubsequences: false)
+        guard words.allSatisfy({ $0.first?.isUppercase == true }) else { return nil }
+
+        return CommandFailure(rule: String(rule), line: String(trimmed))
+    }
+
+    /// The count of errors and linker errors in `result` that explain why the build failed.
+    ///
+    /// A script phase failure is a diagnostic in its own right. Every other failed command stands
+    /// in for evidence the log does not hold, such as a compiler that crashed, so the count leaves
+    /// it out.
+    public static func explainedProblemCount(in result: BuildResult) -> Int {
+        let scriptPhaseFailure = "Command PhaseScriptExecution" + commandFailureSuffix
+        let explainedErrors = result.errors.count { error in
+            !error.message.contains(commandFailureSuffix)
+                || error.message.contains(scriptPhaseFailure)
+        }
+        return explainedErrors + result.linkerErrors.count
+    }
+
+    /// Follows the list xcodebuild prints under `Testing failed:`.
+    private func trackTestingFailedSummary(_ line: String) {
+        if state.readingTestingFailedSummary {
+            guard !line.isEmpty, !Self.isIndented(line) else { return }
+            state.readingTestingFailedSummary = false
+        }
+        if line == "Testing failed:" { state.readingTestingFailedSummary = true }
+    }
+
+    /// Notes where a task starts, so a failed command can tell whether its own task reported an
+    /// error.
+    private func trackTaskStart(_ line: String) {
+        // the closing parenthesis keeps the scan off most lines
+        guard line.utf8.last == UInt8(ascii: ")"),
+              !Self.isIndented(line),
+              line.contains(" (in target '") else { return }
+        state.problemCountAtTaskStart = state.errors.count + state.linkerErrors.count
+    }
+
+    /// Records a failed command, and reports it when nothing else explains it.
+    ///
+    /// A task runs from its header, `… (in target 'X' from project 'Y')`, to its failure line. A
+    /// compiler that failed reported its errors inside its task, and ld reported its linker errors,
+    /// so the failure line would only restate them. A task that reported nothing, such as a
+    /// CodeSign failure or a compiler that crashed, has no other record, so the failure becomes an
+    /// error. It waits for the next terminal marker: a success marker vouches for it, and a failure
+    /// marker or the end of the log reports it.
+    ///
+    /// A script phase failure stays with ``parseError(_:)``, which always reports it. A failure
+    /// listed under `Testing failed:` that appears nowhere above is the only record of it, so it is
+    /// reported at once.
+    ///
+    /// - Parameters:
+    ///   - failure: The failed command on the line being read.
+    ///   - index: The position of that line in `lines`.
+    ///   - lines: Every line of the log.
+    private func recordCommandFailure(
+        _ failure: CommandFailure,
+        at index: Int,
+        in lines: [String],
+    ) {
+        state.seenCommandFailures.insert(failure.key)
+        guard failure.rule != "PhaseScriptExecution" else { return }
+
+        if state.readingTestingFailedSummary {
+            state.errors.append(BuildError(file: nil, line: nil, message: failure.line))
+            return
+        }
+
+        let problemCount = state.errors.count + state.linkerErrors.count
+        guard problemCount == state.problemCountAtTaskStart,
+              state.pendingDuplicateSymbol == nil else { return }
+
+        let reason = Self.failureReason(before: index, in: lines)
+        state.pendingCommandFailures.append(BuildError(
+            file: nil, line: nil,
+            message: reason.isEmpty ? failure.line : reason + " " + failure.line,
+        ))
+    }
+
+    /// The output a tool printed just before its command failed.
+    ///
+    /// The reason is up to three lines at the failure line's own indentation. The invocation Xcode
+    /// echoes under the task header sits deeper, so a deeper line ends the search. So does a
+    /// shallower line, a task header, a terminal marker and an earlier failure. Blank lines,
+    /// xcodebuild's own log lines, crash backtrace frames and warnings are skipped.
+    ///
+    /// - Parameters:
+    ///   - index: The position of the failure line in `lines`.
+    ///   - lines: Every line of the log.
+    /// - Returns: The reason lines joined by a space, or an empty string when there are none.
+    private static func failureReason(before index: Int, in lines: [String]) -> String {
+        let depth = indentation(of: lines[index])
+        var reason: [Substring] = []
+        var position = index
+
+        while reason.count < 3, position > 0 {
+            position -= 1
+            let line = lines[position]
+            if line.utf8.count > 5000 { continue }
+
+            let trimmed = trimmedBlanks(line)
+
+            if trimmed.isEmpty || trimmed.contains(" xcodebuild[") || isBacktraceFrame(trimmed) {
+                continue
+            }
+            guard indentation(of: line) == depth,
+                  !(line.utf8.last == UInt8(ascii: ")") && line.contains(" (in target '")),
+                  commandFailure(in: line) == nil,
+                  parseFencedTerminalMarker(line) == nil,
+                  parseUnfencedTerminalMarker(line) == nil else { break }
+
+            if trimmed.contains("warning:") { continue }
+            reason.append(trimmed)
+        }
+        return reason.reversed().joined(separator: " ")
+    }
+
+    /// The count of spaces and tabs in front of `line`.
+    private static func indentation(of line: String) -> Int {
+        line.utf8.prefix { $0 == UInt8(ascii: " ") || $0 == UInt8(ascii: "\t") }.count
+    }
+
+    /// Whether `line` is a frame of a crash backtrace, such as `3  swift-frontend  0x0001…`.
+    private static func isBacktraceFrame(_ line: Substring) -> Bool {
+        guard let space = line.firstIndex(of: " "),
+              space > line.startIndex,
+              line[..<space].allSatisfy(\.isNumber) else { return false }
+        return line.contains(" 0x")
+    }
+
     // MARK: - Source Context Echo
 
     /// The keywords a compiler puts between the source location and the diagnostic message.
@@ -741,8 +926,8 @@ public final class BuildOutputParser {
 
     // MARK: - Linker Error Parsing
 
-    /// Records the target of each `Ld` task header, so the `ld` errors that follow it can name
-    /// the target that failed to link.
+    /// Records the target of each `Ld` task header, so the `ld` errors that follow it can name the
+    /// target that failed to link.
     ///
     /// xcodebuild prints the output of one task as a block under the task header, and the next
     /// unindented header with `(in target '` starts a new block. That header clears the target, so
@@ -760,7 +945,8 @@ public final class BuildOutputParser {
         }
         // The guard keeps the scan off the common path, because this runs on every line.
         guard state.currentLinkTarget != nil || state.pendingDuplicateSymbol != nil,
-              !line.hasPrefix(" "), !line.hasPrefix("\t"),
+              !line.hasPrefix(" "),
+              !line.hasPrefix("\t"),
               line.contains(" (in target '") else { return }
         flushPendingDuplicateSymbol()
         state.currentLinkTarget = nil
@@ -1229,8 +1415,8 @@ public final class BuildOutputParser {
             }
         }
 
-        // The Swift runtime writes a trap with no source location in this form, for example a
-        // `Set` that finds duplicate elements. The line explains a crash that follows it.
+        // The Swift runtime writes a trap with no source location in this form, for example a `Set`
+        // that finds duplicate elements. The line explains a crash that follows it.
         if line.hasPrefix("Fatal error: ") {
             return BuildError(file: nil, line: nil, message: line)
         }
@@ -1688,13 +1874,33 @@ public final class BuildOutputParser {
     /// Both marker shapes carry the same meaning, so both call this method.
     private func record(_ marker: TerminalMarker) {
         switch marker.outcome {
-            case .succeeded: state.sawTerminalSuccessMarker = true
+            case .succeeded: recordTerminalSuccess()
             case .failed:
-                state.sawTerminalFailureMarker = true
+                recordTerminalFailure()
                 // A failed test action stands in for the individual failure lines a crashed run
                 // never printed. `TEST` and `TEST EXECUTE` both carry that meaning.
                 if marker.phase.hasPrefix("TEST") { state.testRunFailed = true }
         }
+    }
+
+    /// Records a success marker, which vouches for the failed commands read since the last marker.
+    ///
+    /// A script can tolerate a nested tool that fails, and the build still succeeds. The marker
+    /// vouches only for what came before it, so a failure after `** CLEAN SUCCEEDED **` in
+    /// `xcodebuild clean test` is still reported.
+    private func recordTerminalSuccess() {
+        state.sawTerminalSuccessMarker = true
+        state.pendingCommandFailures.removeAll()
+    }
+
+    private func recordTerminalFailure() {
+        state.sawTerminalFailureMarker = true
+        flushPendingCommandFailures()
+    }
+
+    private func flushPendingCommandFailures() {
+        state.errors.append(contentsOf: state.pendingCommandFailures)
+        state.pendingCommandFailures.removeAll()
     }
 
     private func parseBuildAndTestTime(_ line: String) {
@@ -1711,7 +1917,7 @@ public final class BuildOutputParser {
         }
 
         if line.hasPrefix("Build complete!") {
-            state.sawTerminalSuccessMarker = true
+            recordTerminalSuccess()
 
             if let parenStart = line.range(of: "("),
                let parenEnd = line.range(of: ")"),
@@ -1724,7 +1930,7 @@ public final class BuildOutputParser {
         // Terminal success forms: "Build succeeded in 1.2s" (swift build), "Build succeeded
         // (2.3s)", and xcbeautify's capitalized "Build Succeeded".
         if line.hasPrefix("Build succeeded") || line.hasPrefix("Build Succeeded") {
-            state.sawTerminalSuccessMarker = true
+            recordTerminalSuccess()
 
             if line.hasPrefix("Build succeeded in ") {
                 state.buildTime = String(line.dropFirst("Build succeeded in ".count))
@@ -1739,7 +1945,7 @@ public final class BuildOutputParser {
         // Terminal failure forms: "Build failed after 1.2s", "Build failed (2 errors, …)", and
         // xcbeautify's capitalized "Build Failed".
         if line.hasPrefix("Build failed") || line.hasPrefix("Build Failed") {
-            state.sawTerminalFailureMarker = true
+            recordTerminalFailure()
 
             if line.hasPrefix("Build failed after ") {
                 state.buildTime = String(line.dropFirst("Build failed after ".count))
@@ -1996,7 +2202,9 @@ public final class BuildOutputParser {
 
         if line.contains("SwiftDriver"),
            line.contains("Compilation"),
-           let target = XcodebuildTaskHeader.target(in: line) { return ("SwiftCompilation", target) }
+           let target = XcodebuildTaskHeader.target(in: line) {
+            return ("SwiftCompilation", target)
+        }
 
         return nil
     }

@@ -328,10 +328,12 @@ public enum ErrorExtractor {
         )
 
         // A swift-frontend crash prints no source error, so the summary above can read as a
-        // warnings-only failure. Put the crash first, because it is the cause. (dcd0c744)
+        // warnings-only failure. Put the crash first, because it is the cause. (dcd0c744) A failed
+        // command such as Command SwiftCompile failed is the symptom of that crash, not an
+        // explanation of it, so it stays out of the count.
         let crash = FrontendCrashDiagnosis.diagnose(
             output: result.output,
-            reportedErrorCount: buildResult.errors.count + buildResult.linkerErrors.count,
+            reportedErrorCount: BuildOutputParser.explainedProblemCount(in: buildResult),
             derivedDataPath: derivedDataPath,
         )
         if let crash { errorOutput = crash + "\n\n" + errorOutput }
