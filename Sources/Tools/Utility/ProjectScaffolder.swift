@@ -180,6 +180,12 @@ public struct ProjectScaffolder: Sendable {
                             "Include unit test and UI test targets. Defaults to true.",
                         ),
                     ]),
+                    "development_team": .object([
+                        "type": .string("string"),
+                        "description": .string(
+                            "Apple Developer team ID (e.g., 'ABCDE12345'). When set, the team goes into a git-ignored Config/Local.xcconfig that Config/Shared.xcconfig includes, and never into the project file.",
+                        ),
+                    ]),
                 ]),
                 "required": .array([.string("project_name"), .string("path")]),
             ]),
@@ -195,6 +201,7 @@ public struct ProjectScaffolder: Sendable {
         let deploymentTarget = arguments.getString("deployment_target")
             ?? scaffoldPlatform.defaultDeploymentTarget
         let includeTests = arguments.getBool("include_tests", default: true)
+        let developmentTeam = try validatedDevelopmentTeam(arguments.getString("development_team"))
 
         let resolvedBasePath = try pathUtility.resolvePath(from: basePath)
 
@@ -222,6 +229,7 @@ public struct ProjectScaffolder: Sendable {
                 organizationName: organizationName,
                 bundleIDPrefix: bundleIDPrefix,
                 deploymentTarget: deploymentTarget,
+                usesSharedConfig: developmentTeam != nil,
             )
             pbxproj.add(object: project)
             pbxproj.rootObject = project
@@ -235,6 +243,10 @@ public struct ProjectScaffolder: Sendable {
                 "\(projectName).xcworkspace",
             ).path
             try createWorkspace(at: workspacePath, projectName: projectName)
+
+            if let developmentTeam {
+                try createConfigFiles(projectDir: projectDir, developmentTeam: developmentTeam)
+            }
 
             try createSourceFiles(appDir: appDir, projectName: projectName)
             try createAssetCatalog(appDir: appDir)
@@ -271,6 +283,11 @@ public struct ProjectScaffolder: Sendable {
             resultMessage += "  - \(projectName)/ (app sources + asset catalog)\n"
             resultMessage += "  - \(projectName)Kit/ (Swift package for shared code)\n"
 
+            if developmentTeam != nil {
+                resultMessage += "  - Config/Shared.xcconfig (project base configuration)\n"
+                resultMessage += "  - Config/Local.xcconfig (development team, git-ignored)\n"
+            }
+
             if includeTests {
                 resultMessage += "  - \(projectName)Tests/ (unit tests)\n"
                 resultMessage += "  - \(projectName)UITests/ (UI tests)\n"
@@ -285,15 +302,78 @@ public struct ProjectScaffolder: Sendable {
         }
     }
 
+    /// Rejects a team ID that is not plain ASCII letters and digits
+    ///
+    /// The value lands verbatim in an xcconfig line, so a space or a newline would corrupt the file
+    /// or inject another setting.
+    private func validatedDevelopmentTeam(_ team: String?) throws(MCPError) -> String? {
+        guard let team else { return nil }
+        guard !team.isEmpty,
+              team.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber) })
+        else {
+            throw MCPError.invalidParams(
+                "development_team must be a team ID of ASCII letters and digits, got '\(team)'",
+            )
+        }
+        return team
+    }
+
+    /// Writes the xcconfig pair that keeps the development team out of version control
+    ///
+    /// `Shared.xcconfig` is the project base configuration and optionally includes
+    /// `Local.xcconfig`, so a clone without the local file still builds. `Local.xcconfig` holds the
+    /// team and `.gitignore` excludes it.
+    private func createConfigFiles(projectDir: String, developmentTeam: String) throws {
+        let projectURL = URL(fileURLWithPath: projectDir)
+        let configURL = projectURL.appendingPathComponent("Config")
+        try FileManager.default.createDirectory(at: configURL, withIntermediateDirectories: true)
+
+        try """
+        // Settings shared by every clone. Local.xcconfig holds per-developer values and stays out of git.
+        #include? "Local.xcconfig"
+
+        """.write(
+            to: configURL.appendingPathComponent("Shared.xcconfig"), atomically: true,
+            encoding: .utf8,
+        )
+
+        try """
+        DEVELOPMENT_TEAM = \(developmentTeam)
+
+        """.write(
+            to: configURL.appendingPathComponent("Local.xcconfig"), atomically: true,
+            encoding: .utf8,
+        )
+
+        // the project directory is new, so no .gitignore exists yet
+        try "Config/Local.xcconfig\n".write(
+            to: projectURL.appendingPathComponent(".gitignore"), atomically: true, encoding: .utf8,
+        )
+    }
+
     private func createProject(
         pbxproj: PBXProj,
         projectName: String,
         organizationName: String,
         bundleIDPrefix: String,
         deploymentTarget: String,
+        usesSharedConfig: Bool,
     ) -> PBXProject {
         let mainGroup = PBXGroup(children: [], sourceTree: .group)
         pbxproj.add(object: mainGroup)
+
+        var sharedConfig: PBXFileReference?
+
+        if usesSharedConfig {
+            let reference = PBXFileReference(
+                sourceTree: .group, lastKnownFileType: "text.xcconfig", path: "Shared.xcconfig",
+            )
+            let configGroup = PBXGroup(children: [reference], sourceTree: .group, path: "Config")
+            pbxproj.add(object: reference)
+            pbxproj.add(object: configGroup)
+            mainGroup.children.append(configGroup)
+            sharedConfig = reference
+        }
 
         let debugConfig = XCBuildConfiguration(
             name: "Debug",
@@ -307,6 +387,11 @@ public struct ProjectScaffolder: Sendable {
                 debug: false, deploymentTarget: deploymentTarget,
             ),
         )
+
+        if let sharedConfig {
+            debugConfig.baseConfiguration = sharedConfig
+            releaseConfig.baseConfiguration = sharedConfig
+        }
         pbxproj.add(object: debugConfig)
         pbxproj.add(object: releaseConfig)
 

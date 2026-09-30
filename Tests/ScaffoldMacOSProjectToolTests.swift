@@ -64,12 +64,13 @@ struct ScaffoldMacOSProjectToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
 
         let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup
-        let syncGroup = mainGroup?.children.compactMap { $0 as? PBXFileSystemSynchronizedRootGroup }
+        let syncGroup = mainGroup?.children.lazy
+            .compactMap { $0 as? PBXFileSystemSynchronizedRootGroup }
             .first { $0.path == "TestApp" }
         #expect(syncGroup != nil, "Main group should contain a synchronized root group for TestApp")
 
         // No traditional PBXGroup for the app folder
-        let appGroup = mainGroup?.children.compactMap { $0 as? PBXGroup }.first {
+        let appGroup = mainGroup?.children.lazy.compactMap { $0 as? PBXGroup }.first {
             $0.name == "TestApp"
         }
         #expect(appGroup == nil, "Should not emit a traditional PBXGroup alongside the sync folder")
@@ -91,7 +92,7 @@ struct ScaffoldMacOSProjectToolTests {
 
         let projectPath = Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
         let xcodeproj = try XcodeProj(path: projectPath)
-        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" })
 
         // Sources/Resources phases exist but contribute no explicit files — the synchronized folder
         // feeds them at build time.
@@ -129,8 +130,8 @@ struct ScaffoldMacOSProjectToolTests {
             "TestApp/TestApp/Assets.xcassets/AppIcon.appiconset/Contents.json",
         )
         let data = try Data(contentsOf: contentsPath)
-        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        let images = json["images"] as! [[String: String]]
+        let json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let images = try #require(json["images"] as? [[String: String]])
 
         // Every image entry must have a "scale" key
         for image in images {
@@ -162,5 +163,95 @@ struct ScaffoldMacOSProjectToolTests {
             "TestApp/TestApp/TestApp.entitlements",
         )
         #expect(FileManager.default.fileExists(atPath: entitlementsPath.path))
+    }
+
+    @Test
+    func `Development team goes into a git-ignored Local xcconfig`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_name": Value.string("TestApp"),
+            "path": Value.string(tempDir.path),
+            "include_tests": Value.bool(false),
+            "development_team": Value.string("ABCDE12345"),
+        ])
+
+        let projectDir = tempDir.appendingPathComponent("TestApp")
+        let shared = try String(
+            contentsOf: projectDir.appendingPathComponent("Config/Shared.xcconfig"), encoding: .utf8,
+        )
+        #expect(shared.contains("#include? \"Local.xcconfig\""))
+
+        let local = try String(
+            contentsOf: projectDir.appendingPathComponent("Config/Local.xcconfig"), encoding: .utf8,
+        )
+        #expect(local.contains("DEVELOPMENT_TEAM = ABCDE12345"))
+
+        let gitignore = try String(
+            contentsOf: projectDir.appendingPathComponent(".gitignore"), encoding: .utf8,
+        )
+        #expect(gitignore.split(separator: "\n").contains("Config/Local.xcconfig"))
+
+        let xcodeproj = try XcodeProj(path: Path(projectDir.path) + "TestApp.xcodeproj")
+        let projectConfigs = try #require(
+            xcodeproj.pbxproj.rootProject()?.buildConfigurationList?.buildConfigurations,
+        )
+        #expect(projectConfigs.count == 2)
+
+        for config in projectConfigs {
+            let base = try #require(config.baseConfiguration)
+            let fullPath = try base.fullPath(sourceRoot: projectDir.path)
+            #expect(fullPath == projectDir.appendingPathComponent("Config/Shared.xcconfig").path)
+        }
+
+        let pbxprojText = try String(
+            contentsOf: projectDir.appendingPathComponent("TestApp.xcodeproj/project.pbxproj"),
+            encoding: .utf8,
+        )
+        #expect(!pbxprojText.contains("DEVELOPMENT_TEAM"))
+        #expect(!pbxprojText.contains("Local.xcconfig"))
+    }
+
+    @Test
+    func `Scaffold without development team writes no xcconfig`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_name": Value.string("TestApp"),
+            "path": Value.string(tempDir.path),
+            "include_tests": Value.bool(false),
+        ])
+
+        let projectDir = tempDir.appendingPathComponent("TestApp")
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: projectDir.appendingPathComponent("Config").path,
+            ))
+        #expect(
+            !FileManager.default.fileExists(
+                atPath: projectDir.appendingPathComponent(".gitignore").path,
+            ))
+
+        let xcodeproj = try XcodeProj(path: Path(projectDir.path) + "TestApp.xcodeproj")
+        let configs = xcodeproj.pbxproj.buildConfigurations
+        #expect(configs.allSatisfy { $0.baseConfiguration == nil })
+    }
+
+    @Test(arguments: ["", "ABC DE", "ABC\nOTHER = 1"])
+    func `Scaffold rejects a malformed development team`(team: String) throws {
+        let tempDir = TemporaryDirectory.url
+
+        let tool = ScaffoldMacOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        #expect(throws: MCPError.self) {
+            try tool.execute(arguments: [
+                "project_name": Value.string("TestApp"),
+                "path": Value.string(tempDir.path),
+                "development_team": Value.string(team),
+            ])
+        }
+        #expect(
+            !FileManager.default.fileExists(atPath: tempDir.appendingPathComponent("TestApp").path))
     }
 }

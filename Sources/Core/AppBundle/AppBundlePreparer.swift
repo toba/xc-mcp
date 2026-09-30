@@ -3,7 +3,7 @@ import Logging
 import Foundation
 import Subprocess
 
-/// Errors from ``AppBundlePreparer``.
+/// Errors from `AppBundlePreparer`.
 public enum AppBundlePreparerError: LocalizedError, Sendable, MCPErrorConvertible {
     /// `codesign` could not re-sign the prepared bundle. The bundle keeps its build signature,
     /// which does not disable library validation, so dyld rejects the symlinked frameworks.
@@ -235,7 +235,7 @@ public enum AppBundlePreparer {
 
     /// Re-signs the app bundle preserving the original signing identity and entitlements.
     ///
-    /// - Throws: ``AppBundlePreparerError/resignFailed(appPath:identity:stderr:)`` when `codesign`
+    /// - Throws: `AppBundlePreparerError.resignFailed(appPath:identity:stderr:)` when `codesign`
     ///   exits non-zero. A launch after a failed re-sign dies in dyld, so the caller must not
     ///   launch.
     static func resignBundle(appPath: String) async throws {
@@ -279,12 +279,12 @@ public enum AppBundlePreparer {
         }
     }
 
-    /// Returns the identity that re-signs `appPath`: the SHA-1 hash of its leaf certificate, or
-    /// `-` (ad hoc) when the bundle carries no certificate.
+    /// Returns the identity that re-signs `appPath`: the SHA-1 hash of its leaf certificate, or `-`
+    /// (ad hoc) when the bundle carries no certificate.
     ///
-    /// The hash, not the `Authority=` common name, is the identity. `codesign --sign <name>`
-    /// fails with "ambiguous" when the keychain holds two certificates with that name. The hash
-    /// always names the certificate that signed the build.
+    /// The hash, not the `Authority=` common name, is the identity. `codesign --sign <name>` fails
+    /// with "ambiguous" when the keychain holds two certificates with that name. The hash always
+    /// names the certificate that signed the build.
     static func signingIdentity(for appPath: String) async -> String {
         await CodeSignInspector.leafCertificateHash(appPath) ?? "-"
     }
@@ -296,6 +296,7 @@ public enum AppBundlePreparer {
     /// bundle has no entitlements, in which case a fresh dictionary is created.
     static func entitlementsWithLibraryValidationDisabled(from extracted: Data) throws -> Data {
         var entitlements: [String: Any] = [:]
+
         if !extracted.isEmpty,
            let parsed = try? PropertyListSerialization.propertyList(from: extracted, format: nil)
                as? [String: Any] { entitlements = parsed }

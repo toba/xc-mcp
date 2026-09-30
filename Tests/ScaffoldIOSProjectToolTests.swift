@@ -17,6 +17,31 @@ struct ScaffoldIOSProjectToolTests {
     }
 
     @Test
+    func `Development team goes into a git-ignored Local xcconfig`() throws {
+        let tempDir = TemporaryDirectory.url
+
+        let tool = ScaffoldIOSProjectTool(pathUtility: PathUtility(basePath: tempDir.path))
+        _ = try tool.execute(arguments: [
+            "project_name": Value.string("TestApp"),
+            "path": Value.string(tempDir.path),
+            "include_tests": Value.bool(false),
+            "development_team": Value.string("ABCDE12345"),
+        ])
+
+        let projectDir = tempDir.appendingPathComponent("TestApp")
+        let local = try String(
+            contentsOf: projectDir.appendingPathComponent("Config/Local.xcconfig"), encoding: .utf8,
+        )
+        #expect(local.contains("DEVELOPMENT_TEAM = ABCDE12345"))
+
+        let xcodeproj = try XcodeProj(path: Path(projectDir.path) + "TestApp.xcodeproj")
+        let projectConfigs = try #require(
+            xcodeproj.pbxproj.rootProject()?.buildConfigurationList?.buildConfigurations,
+        )
+        #expect(projectConfigs.allSatisfy { $0.baseConfiguration?.path == "Shared.xcconfig" })
+    }
+
+    @Test
     func `Scaffold uses synchronized root group for app source folder`() throws {
         let tempDir = TemporaryDirectory.url
 
@@ -31,11 +56,12 @@ struct ScaffoldIOSProjectToolTests {
         let xcodeproj = try XcodeProj(path: projectPath)
 
         let mainGroup = try xcodeproj.pbxproj.rootProject()?.mainGroup
-        let syncGroup = mainGroup?.children.compactMap { $0 as? PBXFileSystemSynchronizedRootGroup }
+        let syncGroup = mainGroup?.children.lazy
+            .compactMap { $0 as? PBXFileSystemSynchronizedRootGroup }
             .first { $0.path == "TestApp" }
         #expect(syncGroup != nil, "Main group should contain a synchronized root group for TestApp")
 
-        let appGroup = mainGroup?.children.compactMap { $0 as? PBXGroup }.first {
+        let appGroup = mainGroup?.children.lazy.compactMap { $0 as? PBXGroup }.first {
             $0.name == "TestApp"
         }
         #expect(appGroup == nil, "Should not emit a traditional PBXGroup alongside the sync folder")
@@ -57,7 +83,7 @@ struct ScaffoldIOSProjectToolTests {
 
         let projectPath = Path(tempDir.path) + "TestApp" + "TestApp.xcodeproj"
         let xcodeproj = try XcodeProj(path: projectPath)
-        let target = xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" }!
+        let target = try #require(xcodeproj.pbxproj.nativeTargets.first { $0.name == "TestApp" })
 
         let sourcesBuildPhase = target.buildPhases.first { $0 is PBXSourcesBuildPhase }
             as? PBXSourcesBuildPhase
@@ -90,8 +116,8 @@ struct ScaffoldIOSProjectToolTests {
             "TestApp/TestApp/Assets.xcassets/AppIcon.appiconset/Contents.json",
         )
         let data = try Data(contentsOf: contentsPath)
-        let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        let images = json["images"] as! [[String: String]]
+        let json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let images = try #require(json["images"] as? [[String: String]])
 
         // iOS uses single 1024x1024 universal entry
         #expect(images.count == 1, "iOS icon should have 1 entry, got: \(images.count)")
